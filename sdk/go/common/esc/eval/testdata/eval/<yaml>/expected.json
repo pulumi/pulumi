@@ -1,18 +1,18 @@
 {
     "check": {
         "exprs": {
-            "data": {
+            "root": {
                 "range": {
-                    "environment": "context-interpolation",
+                    "environment": "\u003cyaml\u003e",
                     "begin": {
-                        "line": 2,
+                        "line": 4,
                         "column": 9,
-                        "byte": 16
+                        "byte": 31
                     },
                     "end": {
-                        "line": 2,
+                        "line": 4,
                         "column": 101,
-                        "byte": 108
+                        "byte": 123
                     }
                 },
                 "schema": {
@@ -24,20 +24,20 @@
                             {
                                 "key": "context",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 11,
-                                        "byte": 18
+                                        "byte": 33
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 18,
-                                        "byte": 25
+                                        "byte": 40
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -53,20 +53,20 @@
                             {
                                 "key": "currentEnvironment",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 18,
-                                        "byte": 25
+                                        "byte": 40
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 37,
-                                        "byte": 44
+                                        "byte": 59
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -82,20 +82,20 @@
                             {
                                 "key": "name",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 37,
-                                        "byte": 44
+                                        "byte": 59
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 42,
-                                        "byte": 49
+                                        "byte": 64
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -116,20 +116,20 @@
                             {
                                 "key": "context",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 46,
-                                        "byte": 53
+                                        "byte": 68
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 53,
-                                        "byte": 60
+                                        "byte": 75
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -145,20 +145,20 @@
                             {
                                 "key": "rootEnvironment",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 53,
-                                        "byte": 60
+                                        "byte": 75
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 69,
-                                        "byte": 76
+                                        "byte": 91
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -174,20 +174,20 @@
                             {
                                 "key": "name",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 69,
-                                        "byte": 76
+                                        "byte": 91
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 74,
-                                        "byte": 81
+                                        "byte": 96
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -208,20 +208,20 @@
                             {
                                 "key": "context",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 78,
-                                        "byte": 85
+                                        "byte": 100
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 85,
-                                        "byte": 92
+                                        "byte": 107
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -237,20 +237,20 @@
                             {
                                 "key": "pulumi",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 85,
-                                        "byte": 92
+                                        "byte": 107
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 92,
-                                        "byte": 99
+                                        "byte": 114
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -266,20 +266,20 @@
                             {
                                 "key": "user",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 92,
-                                        "byte": 99
+                                        "byte": 114
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 97,
-                                        "byte": 104
+                                        "byte": 119
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -295,20 +295,20 @@
                             {
                                 "key": "id",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 97,
-                                        "byte": 104
+                                        "byte": 119
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 100,
-                                        "byte": 107
+                                        "byte": 122
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -327,20 +327,38 @@
             }
         },
         "properties": {
-            "data": {
-                "value": "context-interpolation-context-interpolation-USER_123",
+            "imported": {
+                "value": "a-a-USER_123",
                 "trace": {
                     "def": {
-                        "environment": "context-interpolation",
+                        "environment": "a",
                         "begin": {
                             "line": 2,
-                            "column": 9,
-                            "byte": 16
+                            "column": 13,
+                            "byte": 20
                         },
                         "end": {
                             "line": 2,
+                            "column": 105,
+                            "byte": 112
+                        }
+                    }
+                }
+            },
+            "root": {
+                "value": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "\u003cyaml\u003e",
+                        "begin": {
+                            "line": 4,
+                            "column": 9,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
                             "column": 101,
-                            "byte": 108
+                            "byte": 123
                         }
                     }
                 }
@@ -348,33 +366,38 @@
         },
         "schema": {
             "properties": {
-                "data": {
+                "imported": {
+                    "type": "string"
+                },
+                "root": {
                     "type": "string"
                 }
             },
             "type": "object",
             "required": [
-                "data"
+                "imported",
+                "root"
             ]
         }
     },
     "checkJson": {
-        "data": "context-interpolation-context-interpolation-USER_123"
+        "imported": "a-a-USER_123",
+        "root": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123"
     },
     "eval": {
         "exprs": {
-            "data": {
+            "root": {
                 "range": {
-                    "environment": "context-interpolation",
+                    "environment": "\u003cyaml\u003e",
                     "begin": {
-                        "line": 2,
+                        "line": 4,
                         "column": 9,
-                        "byte": 16
+                        "byte": 31
                     },
                     "end": {
-                        "line": 2,
+                        "line": 4,
                         "column": 101,
-                        "byte": 108
+                        "byte": 123
                     }
                 },
                 "schema": {
@@ -386,20 +409,20 @@
                             {
                                 "key": "context",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 11,
-                                        "byte": 18
+                                        "byte": 33
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 18,
-                                        "byte": 25
+                                        "byte": 40
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -415,20 +438,20 @@
                             {
                                 "key": "currentEnvironment",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 18,
-                                        "byte": 25
+                                        "byte": 40
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 37,
-                                        "byte": 44
+                                        "byte": 59
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -444,20 +467,20 @@
                             {
                                 "key": "name",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 37,
-                                        "byte": 44
+                                        "byte": 59
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 42,
-                                        "byte": 49
+                                        "byte": 64
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -478,20 +501,20 @@
                             {
                                 "key": "context",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 46,
-                                        "byte": 53
+                                        "byte": 68
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 53,
-                                        "byte": 60
+                                        "byte": 75
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -507,20 +530,20 @@
                             {
                                 "key": "rootEnvironment",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 53,
-                                        "byte": 60
+                                        "byte": 75
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 69,
-                                        "byte": 76
+                                        "byte": 91
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -536,20 +559,20 @@
                             {
                                 "key": "name",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 69,
-                                        "byte": 76
+                                        "byte": 91
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 74,
-                                        "byte": 81
+                                        "byte": 96
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -570,20 +593,20 @@
                             {
                                 "key": "context",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 78,
-                                        "byte": 85
+                                        "byte": 100
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 85,
-                                        "byte": 92
+                                        "byte": 107
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -599,20 +622,20 @@
                             {
                                 "key": "pulumi",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 85,
-                                        "byte": 92
+                                        "byte": 107
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 92,
-                                        "byte": 99
+                                        "byte": 114
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -628,20 +651,20 @@
                             {
                                 "key": "user",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 92,
-                                        "byte": 99
+                                        "byte": 114
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 97,
-                                        "byte": 104
+                                        "byte": 119
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -657,20 +680,20 @@
                             {
                                 "key": "id",
                                 "range": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 97,
-                                        "byte": 104
+                                        "byte": 119
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 100,
-                                        "byte": 107
+                                        "byte": 122
                                     }
                                 },
                                 "value": {
-                                    "environment": "context-interpolation",
+                                    "environment": "\u003cyaml\u003e",
                                     "begin": {
                                         "line": 0,
                                         "column": 0,
@@ -689,20 +712,38 @@
             }
         },
         "properties": {
-            "data": {
-                "value": "context-interpolation-context-interpolation-USER_123",
+            "imported": {
+                "value": "a-a-USER_123",
                 "trace": {
                     "def": {
-                        "environment": "context-interpolation",
+                        "environment": "a",
                         "begin": {
                             "line": 2,
-                            "column": 9,
-                            "byte": 16
+                            "column": 13,
+                            "byte": 20
                         },
                         "end": {
                             "line": 2,
+                            "column": 105,
+                            "byte": 112
+                        }
+                    }
+                }
+            },
+            "root": {
+                "value": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "\u003cyaml\u003e",
+                        "begin": {
+                            "line": 4,
+                            "column": 9,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
                             "column": 101,
-                            "byte": 108
+                            "byte": 123
                         }
                     }
                 }
@@ -710,20 +751,26 @@
         },
         "schema": {
             "properties": {
-                "data": {
+                "imported": {
+                    "type": "string"
+                },
+                "root": {
                     "type": "string"
                 }
             },
             "type": "object",
             "required": [
-                "data"
+                "imported",
+                "root"
             ]
         }
     },
     "evalJsonRedacted": {
-        "data": "context-interpolation-context-interpolation-USER_123"
+        "imported": "a-a-USER_123",
+        "root": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123"
     },
     "evalJSONRevealed": {
-        "data": "context-interpolation-context-interpolation-USER_123"
+        "imported": "a-a-USER_123",
+        "root": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123"
     }
 }

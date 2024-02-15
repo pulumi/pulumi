@@ -198,7 +198,7 @@ func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return schema.Always(), schema.Always()
 }
 
-func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
 	return esc.NewValue(inputs), nil
 }
 
@@ -339,7 +339,13 @@ func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envNam
 	providers := &testProviders{}
 	envLoader := &testEnvironments{orgName: orgName, environments: c.environments}
 
-	checked, checkDiags := eval.CheckEnvironment(ctx, envName, environment, providers, envLoader, map[string]esc.Value{})
+	execContext, err := esc.NewExecContext(make(map[string]esc.Value))
+	if err != nil {
+		return nil, nil, fmt.Errorf("initializing the ESC exec context: %w", err)
+	}
+
+	checked, checkDiags := eval.CheckEnvironment(ctx, envName, environment,
+		providers, envLoader, execContext)
 	diags.Extend(checkDiags...)
 	return checked, mapDiags(diags), nil
 }
@@ -361,7 +367,12 @@ func (c *testPulumiClient) openEnvironment(ctx context.Context, orgName, name st
 	providers := &testProviders{}
 	envLoader := &testEnvironments{orgName: orgName, environments: c.environments}
 
-	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, rot128{}, providers, envLoader, map[string]esc.Value{})
+	execContext, err := esc.NewExecContext(make(map[string]esc.Value))
+	if err != nil {
+		return "", nil, fmt.Errorf("initializing the ESC exec context: %w", err)
+	}
+
+	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, rot128{}, providers, envLoader, execContext)
 	diags.Extend(evalDiags...)
 
 	if diags.HasErrors() {

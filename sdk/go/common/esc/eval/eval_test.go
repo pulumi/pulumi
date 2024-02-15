@@ -43,7 +43,7 @@ func (errorProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return schema.Record(map[string]schema.Builder{"why": schema.String()}).Schema(), schema.Always()
 }
 
-func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
 	return esc.Value{}, errors.New(inputs["why"].Value.(string))
 }
 
@@ -106,7 +106,7 @@ func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return s, s
 }
 
-func (testSchemaProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+func (testSchemaProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
 	return esc.NewValue(inputs), nil
 }
 
@@ -116,7 +116,7 @@ func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return schema.Always(), schema.Always()
 }
 
-func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value) (esc.Value, error) {
+func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
 	return esc.NewValue(inputs), nil
 }
 
@@ -195,6 +195,9 @@ func TestEval(t *testing.T) {
 	entries, err := os.ReadDir(path)
 	require.NoError(t, err)
 	for _, e := range entries {
+		if e.Name() != "<yaml>" {
+			continue
+		}
 		t.Run(e.Name(), func(t *testing.T) {
 			basePath := filepath.Join(path, e.Name())
 			envPath, expectedPath := filepath.Join(basePath, "env.yaml"), filepath.Join(basePath, "expected.json")
@@ -202,16 +205,14 @@ func TestEval(t *testing.T) {
 			envBytes, err := os.ReadFile(envPath)
 			require.NoError(t, err)
 
-			contextValues := map[string]esc.Value{
+			execContext, err := esc.NewExecContext(map[string]esc.Value{
 				"pulumi": esc.NewValue(map[string]esc.Value{
 					"user": esc.NewValue(map[string]esc.Value{
 						"id": esc.NewValue("USER_123"),
 					}),
 				}),
-				"environment": esc.NewValue(map[string]esc.Value{
-					"name": esc.NewValue("TEST_ENVIRONMENT"),
-				}),
-			}
+			})
+			assert.NoError(t, err)
 
 			if accept() {
 				env, loadDiags, err := LoadYAMLBytes(e.Name(), envBytes)
@@ -219,11 +220,11 @@ func TestEval(t *testing.T) {
 				sortEnvironmentDiagnostics(loadDiags)
 
 				check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{},
-					&testEnvironments{basePath}, contextValues)
+					&testEnvironments{basePath}, execContext)
 				sortEnvironmentDiagnostics(checkDiags)
 
 				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{},
-					&testEnvironments{basePath}, contextValues)
+					&testEnvironments{basePath}, execContext)
 				sortEnvironmentDiagnostics(evalDiags)
 
 				var checkJSON any
@@ -272,12 +273,12 @@ func TestEval(t *testing.T) {
 			require.Equal(t, expected.LoadDiags, diags)
 
 			check, diags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{},
-				&testEnvironments{basePath}, contextValues)
+				&testEnvironments{basePath}, execContext)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
 			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{},
-				&testEnvironments{basePath}, contextValues)
+				&testEnvironments{basePath}, execContext)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 

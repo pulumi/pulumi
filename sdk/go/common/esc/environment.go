@@ -16,9 +16,120 @@ package esc
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/pulumi/esc/schema"
 )
+
+const AnonymousEnvironmentName = "<yaml>"
+
+type ExecContext struct {
+	rootEnvironment string
+	values          map[string]Value
+}
+
+type copier struct {
+	memo map[*Value]*Value
+}
+
+func newCopier() copier {
+	return copier{memo: map[*Value]*Value{}}
+}
+
+func (c copier) copy(v *Value) *Value {
+	if v == nil {
+		return nil
+	}
+
+	if copy, ok := c.memo[v]; ok {
+		return copy
+	}
+
+	copy := &Value{}
+	c.memo[v] = copy
+
+	var nv any
+	switch vr := v.Value.(type) {
+	case []*Value:
+		a := make([]*Value, len(vr))
+		for i, v := range vr {
+			a[i] = c.copy(v)
+		}
+		nv = a
+	case map[string]*Value:
+		m := make(map[string]*Value, len(vr))
+		for k, v := range vr {
+			m[k] = c.copy(v)
+		}
+		nv = m
+	default:
+		nv = vr
+	}
+
+	*copy = Value{
+		Value: nv,
+	}
+	return copy
+}
+
+func copyContext(context map[string]Value) map[string]Value {
+	newContext := make(map[string]Value)
+	for key, v := range context {
+		value := v
+		copy := newCopier().copy(&value)
+		newContext[key] = *copy
+	}
+	return newContext
+}
+
+func (ec *ExecContext) CopyForEnv(envName string) *ExecContext {
+	values := copyContext(ec.values)
+	values["currentEnvironment"] = NewValue(map[string]Value{
+		"name": NewValue(envName),
+	})
+
+	root := ec.rootEnvironment
+	if ec.rootEnvironment == AnonymousEnvironmentName || ec.rootEnvironment == "" {
+		root = envName
+	}
+
+	values["rootEnvironment"] = NewValue(map[string]Value{
+		"name": NewValue(root),
+	})
+
+	return &ExecContext{
+		values:          values,
+		rootEnvironment: root,
+	}
+}
+
+func (ec *ExecContext) Values() map[string]Value {
+	return ec.values
+}
+
+var ErrReservedContextkey = errors.New("reserved context key")
+
+func validateContextVariable(context map[string]Value, key string) error {
+	if _, ok := context[key]; ok {
+		return fmt.Errorf("%w: %q", ErrReservedContextkey, key)
+	}
+	return nil
+}
+
+func NewExecContext(values map[string]Value) (*ExecContext, error) {
+	if err := validateContextVariable(values, "currentEnvironment"); err != nil {
+		return nil, err
+	}
+
+	if err := validateContextVariable(values, "rootEnvironment"); err != nil {
+		return nil, err
+	}
+
+	return &ExecContext{
+		values: values,
+	}, nil
+}
 
 // An Environment contains the result of evaluating an environment definition.
 type Environment struct {

@@ -30,7 +30,10 @@ func TestExpressionAt(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, diags)
 
-	env, diags := eval.CheckEnvironment(context.Background(), "def", syntax, testProviders{}, testEnvironments{}, map[string]esc.Value{})
+	execContext, err := esc.NewExecContext(make(map[string]esc.Value))
+	require.NoError(t, err)
+
+	env, diags := eval.CheckEnvironment(context.Background(), "def", syntax, testProviders{}, testEnvironments{}, execContext)
 	require.Empty(t, diags)
 
 	analysis := New(*env, map[string]*schema.Schema{"test": testProviderSchema})
