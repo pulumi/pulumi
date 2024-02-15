@@ -440,6 +440,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing the kubernetes20 compatibility mode.",
 		Skip:        codegen.NewStringSet("go/test"),
 	},
+	{
+		Directory:   "regress-dotnet-14130",
+		Description: "Test for https://github.com/pulumi/pulumi/issues/14130",
+		Skip:        allLanguages.Except("dotnet/any"),
+	},
 }
 
 var genSDKOnly bool
