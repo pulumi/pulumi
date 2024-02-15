@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -223,6 +224,10 @@ func optsForConstructPython(
 
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "darwin" {
+		// TODO[pulumi/pulumi#15240]: Address issue and re-enable the test.
+		t.Skip("Temporarily skip on macOS due to https://github.com/pulumi/pulumi/issues/15240")
+	}
 
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)
