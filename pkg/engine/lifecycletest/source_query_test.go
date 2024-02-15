@@ -116,7 +116,7 @@ func TestRunQuery_call_invoke(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 			"name": resource.NewStringProperty("bar"),
-		}, "", "")
+		}, nil, "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, (resource.PropertyMap{
 			"message": resource.NewStringProperty("Hello, bar!"),

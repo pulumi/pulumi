@@ -2279,6 +2279,8 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 						sawPreview = true
 					}
 
+					assert.Equal(t, []resource.URN{"urn:pulumi:test::test::pkgA:m:typB::resB"}, options.ArgDependencies["name"])
+
 					ret := "unexpected"
 					if args["name"].IsString() {
 						ret = "Hello, " + args["name"].StringValue() + "!"
@@ -2366,7 +2368,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			assert.True(t, state.DeepEquals(ins))
 		}
 
-		_, _, cstate, _, err := monitor.RegisterResource("pkgA:m:typB", "resB", false, deploytest.ResourceOptions{
+		cURN, _, cState, _, err := monitor.RegisterResource("pkgA:m:typB", "resB", false, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"name": state["foo"],
 			},
@@ -2377,18 +2379,27 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			// We expect construction of remote component resources to fail during previews if the provider is
 			// configured with unknowns.
 			assert.ErrorContains(t, err, "cannot construct components if the provider is configured with unknown values")
-			assert.True(t, cstate.DeepEquals(resource.PropertyMap{}))
+			assert.True(t, cState.DeepEquals(resource.PropertyMap{}))
 		} else {
 			assert.NoError(t, err)
-			assert.True(t, cstate.DeepEquals(resource.PropertyMap{
+			assert.True(t, cState.DeepEquals(resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			}))
 		}
 
-		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
-			"name": cstate["foo"],
-		}, provRef.String(), "")
-		assert.NoError(t, err)
+		var outs resource.PropertyMap
+		if preview {
+			// We can't send any args or dependencies in preview because the RegisterResource call above failed.
+			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "")
+			assert.NoError(t, err)
+		} else {
+			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
+				"name": cState["foo"],
+			}, map[resource.PropertyKey][]resource.URN{
+				"name": {cURN},
+			}, provRef.String(), "")
+			assert.NoError(t, err)
+		}
 		if preview {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
 		} else {
@@ -2398,7 +2409,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		}
 
 		outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
-			"name": cstate["foo"],
+			"name": cState["foo"],
 		}, provRef.String(), "")
 		assert.NoError(t, err)
 		if preview {
@@ -2846,7 +2857,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 			"name": resource.NewStringProperty("Alice"),
-		}, "", "")
+		}, nil, "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"message": resource.NewStringProperty("Alice, bar!"),
@@ -2925,7 +2936,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 			"foo": resource.NewStringProperty("bar"),
 		}, state)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, "", "")
+		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -4855,7 +4866,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, "", "")
+		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "")
 		assert.NoError(t, err)
 
 		return nil
@@ -4918,6 +4929,11 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						tok tokens.ModuleMember, args resource.PropertyMap,
 						info plugin.CallInfo, options plugin.CallOptions,
 					) (plugin.CallResult, error) {
+						// Arg was sent as an output but the dependency map should still be filled in for providers just look at that
+						assert.Equal(t,
+							[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a"},
+							options.ArgDependencies["arg"])
+
 						// Assume a single output arg that this call depends on
 						arg := args["arg"]
 						deps := arg.OutputValue().Dependencies
@@ -4965,7 +4981,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, "", "")
+			}, nil, "", "")
 			assert.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -5053,6 +5069,11 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						tok tokens.ModuleMember, args resource.PropertyMap,
 						info plugin.CallInfo, options plugin.CallOptions,
 					) (plugin.CallResult, error) {
+						// Arg was sent as an output but the dependency map should still be filled in for providers just look at that
+						assert.Equal(t,
+							[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a"},
+							options.ArgDependencies["arg"])
+
 						// Assume a single output arg that this call depends on
 						arg := args["arg"]
 						deps := arg.OutputValue().Dependencies
@@ -5104,7 +5125,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, "", "")
+			}, nil, "", "")
 			assert.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output

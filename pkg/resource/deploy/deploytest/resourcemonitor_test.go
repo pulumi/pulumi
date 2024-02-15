@@ -22,6 +22,8 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 		// ResourceMonitorClient is unset
 		// so this will panic if an unexpected method is called.
 		CallFunc: func(req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
+			assert.ElementsMatch(t, req.ArgDependencies["k1"].Urns, []string{"urn1", "urn2"})
+
 			res, err := structpb.NewStruct(map[string]interface{}{
 				"k3": "value3",
 				"k4": "value4",
@@ -44,6 +46,9 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 			"k1": "value1",
 			"k2": "value2",
 		}),
+		map[resource.PropertyKey][]resource.URN{
+			"k1": {"urn1", "urn2"},
+		},
 		"provider", "1.0")
 	require.NoError(t, err)
 

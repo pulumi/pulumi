@@ -398,12 +398,13 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	return outs, nil, nil
 }
 
-func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.PropertyMap,
+func (rm *ResourceMonitor) Call(
+	tok tokens.ModuleMember, args resource.PropertyMap, argDependencies map[resource.PropertyKey][]resource.URN,
 	provider string, version string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
 	[]*pulumirpc.CheckFailure, error,
 ) {
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+	mArgs, err := plugin.MarshalProperties(args, plugin.MarshalOptions{
 		KeepUnknowns:     true,
 		KeepResources:    true,
 		KeepSecrets:      true,
@@ -413,12 +414,24 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 		return nil, nil, nil, err
 	}
 
+	mArgDependencies := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
+	for k, p := range argDependencies {
+		urns := make([]string, len(p))
+		for i, urn := range p {
+			urns[i] = string(urn)
+		}
+		mArgDependencies[string(k)] = &pulumirpc.ResourceCallRequest_ArgumentDependencies{
+			Urns: urns,
+		}
+	}
+
 	// submit request
 	resp, err := rm.resmon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
-		Tok:      string(tok),
-		Provider: provider,
-		Args:     ins,
-		Version:  version,
+		Tok:             string(tok),
+		Provider:        provider,
+		Args:            mArgs,
+		ArgDependencies: mArgDependencies,
+		Version:         version,
 	})
 	if err != nil {
 		return nil, nil, nil, err
