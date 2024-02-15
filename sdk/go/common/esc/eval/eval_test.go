@@ -195,9 +195,6 @@ func TestEval(t *testing.T) {
 	entries, err := os.ReadDir(path)
 	require.NoError(t, err)
 	for _, e := range entries {
-		if e.Name() != "<yaml>" {
-			continue
-		}
 		t.Run(e.Name(), func(t *testing.T) {
 			basePath := filepath.Join(path, e.Name())
 			envPath, expectedPath := filepath.Join(basePath, "env.yaml"), filepath.Join(basePath, "expected.json")

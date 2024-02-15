@@ -131,6 +131,14 @@ func NewExecContext(values map[string]Value) (*ExecContext, error) {
 	}, nil
 }
 
+type EvaluatedExecutionContext struct {
+	// Properties contains the detailed values produced by the execution context.
+	Properties map[string]Value `json:"properties,omitempty"`
+
+	// Schema contains the schema for Properties.
+	Schema *schema.Schema `json:"schema,omitempty"`
+}
+
 // An Environment contains the result of evaluating an environment definition.
 type Environment struct {
 	// Exprs contains the AST for each expression in the environment definition.
@@ -141,6 +149,9 @@ type Environment struct {
 
 	// Schema contains the schema for Properties.
 	Schema *schema.Schema `json:"schema,omitempty"`
+
+	// ExecutionContext contains the values + schema for the execution context passed to the root environment.
+	ExecutionContext *EvaluatedExecutionContext `json:"executionContext,omitempty"`
 }
 
 // GetEnvironmentVariables returns any environment variables defined by the environment.

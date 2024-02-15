@@ -122,10 +122,16 @@ func evalEnvironment(
 		}
 	}
 
+	executionContext := &esc.EvaluatedExecutionContext{
+		Properties: ec.myContext.export(name).Value.(map[string]esc.Value),
+		Schema:     ec.myContext.schema,
+	}
+
 	return &esc.Environment{
-		Exprs:      ec.root.export(name).Object,
-		Properties: v.export(name).Value.(map[string]esc.Value),
-		Schema:     s,
+		Exprs:            ec.root.export(name).Object,
+		Properties:       v.export(name).Value.(map[string]esc.Value),
+		Schema:           s,
+		ExecutionContext: executionContext,
 	}, diags
 }
 
