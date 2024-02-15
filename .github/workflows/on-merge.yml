@@ -72,7 +72,7 @@ jobs:
 
   update-dev-version:
     name: update-dev-version
-    needs: [dev-release]
+    needs: [dev-release, info]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -93,11 +93,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
-          version="${{ steps.ghd.outputs.describe }}"
-          # the git describe output includes a 'v' prefix, but we
-          # don't expect that in the latest-dev-version file.  Strip
-          # it here.
-          version="${version#v}"
+          short_sha="${{ steps.ghd.outputs.short-sha }}"
+          version="${{ needs.info.outputs.version }}"
+          version="${version#v}-alpha.${short_sha}"
           pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version="$version"
 
   ci-ok:
