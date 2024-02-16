@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.106.0 (2024-02-16)
+
+
+### Features
+
+- [components] Component providers can return output values in their response to the engine.
+  [#15408](https://github.com/pulumi/pulumi/pull/15408)
+
+- [programgen/{dotnet,go,nodejs,python}] Emit missing trivia for resources and local variables
+  [#15419](https://github.com/pulumi/pulumi/pull/15419)
+
+- [sdk/{nodejs,python}] Publish dev versions of the nodejs and python SDKs
+  [#15299](https://github.com/pulumi/pulumi/pull/15299)
+
+
+### Bug Fixes
+
+- [cli] Fix `pulumi destroy` to fill in stack config with the secret config from state, not fresh secret config.
+  [#15432](https://github.com/pulumi/pulumi/pull/15432)
+
+- [engine] Engine no longer assumes program dependencies are specified as semantic versions.
+  [#15409](https://github.com/pulumi/pulumi/pull/15409)
+
+- [components/go] Component providers now correctly return output values to the engine.
+  [#15405](https://github.com/pulumi/pulumi/pull/15405)
+
+
+### Miscellaneous
+
+- [protobuf] Split CallRequest into ResourceCallRequest for the ResourceMonitor service.
+  [#15404](https://github.com/pulumi/pulumi/pull/15404)
+
+- [backend/diy] Add a warning that non-project mode will be deprecated at some point.
+  [#15411](https://github.com/pulumi/pulumi/pull/15411)
+
 ## 3.105.0 (2024-02-07)
 
 
