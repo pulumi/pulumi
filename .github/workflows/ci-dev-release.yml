@@ -135,7 +135,7 @@ jobs:
   nodejs-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
-#    if: ${{ needs.sdk-check-release.outputs.nodejs-release }} #TODO: enable this after testing
+    if: ${{ needs.sdk-check-release.outputs.nodejs-release }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -179,7 +179,7 @@ jobs:
   python-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release]
     runs-on: ubuntu-latest
-#    if: ${{ needs.sdk-check-release.outputs.python-release }} # TODO: enable this after testing
+    if: ${{ needs.sdk-check-release.outputs.python-release }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
