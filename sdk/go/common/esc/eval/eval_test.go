@@ -180,6 +180,10 @@ func normalize[T any](t *testing.T, v T) T {
 }
 
 func TestEval(t *testing.T) {
+	type testOverrides struct {
+		RootEnvironment string `json:"rootEnvironment,omitempty"`
+	}
+
 	type expectedData struct {
 		LoadDiags        syntax.Diagnostics `json:"loadDiags,omitempty"`
 		CheckDiags       syntax.Diagnostics `json:"checkDiags,omitempty"`
@@ -197,7 +201,9 @@ func TestEval(t *testing.T) {
 	for _, e := range entries {
 		t.Run(e.Name(), func(t *testing.T) {
 			basePath := filepath.Join(path, e.Name())
-			envPath, expectedPath := filepath.Join(basePath, "env.yaml"), filepath.Join(basePath, "expected.json")
+			envPath := filepath.Join(basePath, "env.yaml")
+			expectedPath := filepath.Join(basePath, "expected.json")
+			overridesPath := filepath.Join(basePath, "overrides.json")
 
 			envBytes, err := os.ReadFile(envPath)
 			require.NoError(t, err)
@@ -211,16 +217,30 @@ func TestEval(t *testing.T) {
 			})
 			assert.NoError(t, err)
 
+			environmentName := e.Name()
+			overridesBytes, err := os.ReadFile(overridesPath)
+			require.True(t, err == nil || errors.Is(err, os.ErrNotExist))
+
+			if err == nil {
+				var overrides testOverrides
+				err = json.Unmarshal(overridesBytes, &overrides)
+				require.NoError(t, err)
+
+				if overrides.RootEnvironment != "" {
+					environmentName = overrides.RootEnvironment
+				}
+			}
+
 			if accept() {
-				env, loadDiags, err := LoadYAMLBytes(e.Name(), envBytes)
+				env, loadDiags, err := LoadYAMLBytes(environmentName, envBytes)
 				require.NoError(t, err)
 				sortEnvironmentDiagnostics(loadDiags)
 
-				check, checkDiags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{},
+				check, checkDiags := CheckEnvironment(context.Background(), environmentName, env, testProviders{},
 					&testEnvironments{basePath}, execContext)
 				sortEnvironmentDiagnostics(checkDiags)
 
-				actual, evalDiags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{},
+				actual, evalDiags := EvalEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
 					&testEnvironments{basePath}, execContext)
 				sortEnvironmentDiagnostics(evalDiags)
 
@@ -264,17 +284,17 @@ func TestEval(t *testing.T) {
 			err = dec.Decode(&expected)
 			require.NoError(t, err)
 
-			env, diags, err := LoadYAMLBytes(e.Name(), envBytes)
+			env, diags, err := LoadYAMLBytes(environmentName, envBytes)
 			require.NoError(t, err)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.LoadDiags, diags)
 
-			check, diags := CheckEnvironment(context.Background(), e.Name(), env, testProviders{},
+			check, diags := CheckEnvironment(context.Background(), environmentName, env, testProviders{},
 				&testEnvironments{basePath}, execContext)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
-			actual, diags := EvalEnvironment(context.Background(), e.Name(), env, rot128{}, testProviders{},
+			actual, diags := EvalEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
 				&testEnvironments{basePath}, execContext)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
