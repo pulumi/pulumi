@@ -51,31 +51,81 @@ func chdir(t *testing.T, dir string) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables, changes working directory
+//nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
-		testInstall(t, "npm", false /*production*/)
+		testInstall(t, "npm", false /*production*/, "npm")
 	})
 
 	t.Run("production", func(t *testing.T) {
-		testInstall(t, "npm", true /*production*/)
+		testInstall(t, "npm", true /*production*/, "npm")
 	})
 }
 
-//nolint:paralleltest // mutates environment variables, changes working directory
+//nolint:paralleltest // changes working directory
 func TestYarnInstall(t *testing.T) {
-	t.Setenv("PULUMI_PREFER_YARN", "true")
-
 	t.Run("development", func(t *testing.T) {
-		testInstall(t, "yarn", false /*production*/)
+		testInstall(t, "yarn", false /*production*/, "yarn")
 	})
 
 	t.Run("production", func(t *testing.T) {
-		testInstall(t, "yarn", true /*production*/)
+		testInstall(t, "yarn", true /*production*/, "yarn")
 	})
 }
 
-func testInstall(t *testing.T, expectedBin string, production bool) {
+//nolint:paralleltest // changes working directory
+func TestPnpmInstall(t *testing.T) {
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "pnpm", false /*production*/, "pnpm")
+	})
+
+	t.Run("production", func(t *testing.T) {
+		testInstall(t, "pnpm", true /*production*/, "pnpm")
+	})
+}
+
+func TestResolvePackageManager(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name      string
+		exepcted  string
+		lockFiles []string
+	}{
+		{"defaults to npm", "npm", []string{}},
+		{"picks npm", "npm", []string{"npm"}},
+		{"picks yarn", "yarn", []string{"yarn"}},
+		{"picks pnpm", "pnpm", []string{"pnpm"}},
+		{"yarn > pnpm > npm", "yarn", []string{"yarn", "pnpm", "npm"}},
+		{"pnpm > npm", "pnpm", []string{"pnpm", "npm"}},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			for _, lockFile := range tt.lockFiles {
+				writeLockFile(t, dir, lockFile)
+			}
+			pm, err := ResolvePackageManager(dir)
+			require.NoError(t, err)
+			require.Equal(t, tt.exepcted, pm.Name())
+		})
+	}
+}
+
+// writeLockFile writes a mock lockfile for the selected package manager
+func writeLockFile(t *testing.T, dir string, packageManager string) {
+	t.Helper()
+	switch packageManager {
+	case "npm":
+		writeFile(t, filepath.Join(dir, "package-lock.json"), "{\"lockfileVersion\": 2}")
+	case "yarn":
+		writeFile(t, filepath.Join(dir, "yarn.lock"), "# yarn lockfile v1")
+	case "pnpm":
+		writeFile(t, filepath.Join(dir, "pnpm-lock.yaml"), "lockfileVersion: '6.0'")
+	}
+}
+
+func testInstall(t *testing.T, expectedBin string, production bool, packageManager string) {
 	// To test this functionality without actually hitting NPM,
 	// we'll spin up a local HTTP server that implements a subset
 	// of the NPM registry API.
@@ -84,6 +134,8 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	// containing the line:
 	//
 	//   registry = <srv.URL>
+	//
+	// Pnpm reads the same .npmrc file.
 	//
 	// Similarly, we'll tell Yarn to use this server with a
 	// ~/.yarnrc file containing the line:
@@ -115,6 +167,8 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	    }
 	}`)
 	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+
+	writeLockFile(t, pkgdir, packageManager)
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
