@@ -20,7 +20,6 @@ import (
 	sha256 "crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"flag"
 	"fmt"
@@ -28,7 +27,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -37,9 +35,6 @@ import (
 	"testing"
 	"time"
 
-	gogit "github.com/go-git/go-git/v5"
-	gitconfig "github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/storage/memory"
 	multierror "github.com/hashicorp/go-multierror"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -170,7 +165,7 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
-	// Automatically use the latest dev version of pulumi SDKs and providers if available.
+	// Automatically use the latest dev version of pulumi SDKs if available.
 	InstallDevReleases bool
 	// List of environments to create in order.
 	CreateEnvironments []Environment
@@ -2129,22 +2124,9 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	// package.json to use them.  Note that Overrides take
 	// priority over installing dev versions.
 	if pt.opts.InstallDevReleases {
-		packageJSON, err := readPackageJSON(cwd)
+		err := pt.runYarnCommand("yarn-add", []string{"add", "@pulumi/pulumi@dev"}, cwd)
 		if err != nil {
 			return err
-		}
-		for _, section := range []string{"dependencies", "devDependencies"} {
-			if _, has := packageJSON[section]; has {
-				entries := packageJSON[section].(map[string]interface{})
-				for entry := range entries {
-					if strings.HasPrefix(entry, "@pulumi") {
-						err := pt.runYarnCommand("yarn-add", []string{"add", entry + "@dev"}, cwd)
-						if err != nil {
-							return err
-						}
-					}
-				}
-			}
 		}
 	}
 
@@ -2273,10 +2255,13 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
-		command := []string{"python", "-m", "pip", "install", "-r", "requirements.txt"}
 		if pt.opts.InstallDevReleases {
-			command = []string{"python", "-m", "pip", "install", "--pre", "-r", "requirements.txt"}
+			command := []string{"python", "-m", "pip", "install", "--pre", "pulumi"}
+			if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {
+				return err
+			}
 		}
+		command := []string{"python", "-m", "pip", "install", "-r", "requirements.txt"}
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {
 			return err
 		}
@@ -2311,10 +2296,13 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	// Install the package's dependencies. We do this by running `pip` inside the virtualenv that `pipenv` has created.
 	// We don't use `pipenv install` because we don't want a lock file and prefer the similar model of `pip install`
 	// which matches what our customers do
-	command := []string{"run", "pip", "install", "-r", "requirements.txt"}
 	if pt.opts.InstallDevReleases {
-		command = []string{"run", "pip", "install", "--pre", "-r", "requirements.txt"}
+		command := []string{"run", "pip", "install", "--pre", "pulumi"}
+		if err := pt.runVirtualEnvCommand("pip-install", command, cwd); err != nil {
+			return err
+		}
 	}
+	command := []string{"run", "pip", "install", "-r", "requirements.txt"}
 	err := pt.runPipenvCommand("pipenv-install", command, cwd)
 	if err != nil {
 		return err
@@ -2423,26 +2411,6 @@ func GoPath() (string, error) {
 	return gopath, nil
 }
 
-func getDefaultBranch(githubURL string) (string, error) {
-	storer := memory.NewStorage()
-	remoteConfig := &gitconfig.RemoteConfig{
-		URLs: []string{githubURL},
-	}
-
-	remote := gogit.NewRemote(storer, remoteConfig)
-	// TODO: Use context to cancel the operation if it takes too long
-	refs, err := remote.List(&gogit.ListOptions{})
-	if err != nil {
-		return "", err
-	}
-	for _, ref := range refs {
-		if ref.Name() == "HEAD" {
-			return ref.Target().Short(), nil
-		}
-	}
-	return "", fmt.Errorf("could not find default branch for %s", githubURL)
-}
-
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -2473,30 +2441,14 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	// install dev dependencies if requested
 	if pt.opts.InstallDevReleases {
-		modFile := filepath.Join(cwd, "go.mod")
-		modData, err := os.ReadFile(modFile)
+		// We're currently only installing pulumi/pulumi dependencies, which always have
+		// "master" as the default branch.
+		defaultBranch := "master"
+		err = pt.runCommand("go-get-dev-deps", []string{
+			goBin, "get", "-u", "github.com/pulumi/pulumi/sdk/v3@" + defaultBranch,
+		}, cwd)
 		if err != nil {
-			return fmt.Errorf("error reading go.mod: %w", err)
-		}
-		file, err := modfile.Parse("go.mod", modData, nil)
-		if err != nil {
-			return fmt.Errorf("error parsing go.mod: %w", err)
-		}
-		for _, dep := range file.Require {
-			if strings.HasPrefix(dep.Mod.Path, "github.com/pulumi/") {
-				split := strings.Split(dep.Mod.Path, "/")
-				if len(split) < 3 {
-					return fmt.Errorf("invalid module path %s", dep.Mod.Path)
-				}
-				defaultBranch, err := getDefaultBranch("https://github.com/" + path.Join(split[1], split[2]))
-				if err != nil {
-					return err
-				}
-				err = pt.runCommand("go-get-dev-deps", []string{goBin, "get", "-u", dep.Mod.Path + "@" + defaultBranch}, cwd)
-				if err != nil {
-					return err
-				}
-			}
+			return err
 		}
 	}
 
@@ -2620,44 +2572,14 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	}
 
 	if pt.opts.InstallDevReleases {
-		csproj, err := filepath.Glob(filepath.Join(cwd, "*.csproj"))
+		err = pt.runCommand("dotnet-add-package",
+			[]string{
+				dotNetBin, "add", "package", "Pulumi",
+				"--prerelease",
+			},
+			cwd)
 		if err != nil {
-			return fmt.Errorf("failed to find .csproj file: %w", err)
-		}
-		if len(csproj) != 1 {
-			return fmt.Errorf("expected to find exactly one .csproj file in %s, but found %d", cwd, len(csproj))
-		}
-		// parse the csproj xml file
-		csprojFile, err := os.Open(csproj[0])
-		if err != nil {
-			return fmt.Errorf("failed to open csproj file: %w", err)
-		}
-		defer contract.IgnoreClose(csprojFile)
-		type Project struct {
-			ItemGroup []struct {
-				PackageReference []struct {
-					Include string `xml:"Include,attr"`
-				} `xml:"PackageReference"`
-			} `xml:"ItemGroup"`
-		}
-		var project Project
-		if err := xml.NewDecoder(csprojFile).Decode(&project); err != nil {
-			return fmt.Errorf("failed to decode csproj file: %w", err)
-		}
-		for _, itemGroup := range project.ItemGroup {
-			for _, packageReference := range itemGroup.PackageReference {
-				if strings.HasPrefix(packageReference.Include, "Pulumi") {
-					err = pt.runCommand("dotnet-add-package",
-						[]string{
-							dotNetBin, "add", "package", packageReference.Include,
-							"--prerelease",
-						},
-						cwd)
-					if err != nil {
-						return fmt.Errorf("failed to add package %s: %w", packageReference.Include, err)
-					}
-				}
-			}
+			return err
 		}
 	}
 
