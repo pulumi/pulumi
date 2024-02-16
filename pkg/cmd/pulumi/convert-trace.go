@@ -425,6 +425,12 @@ func (s *otelSpan) InstrumentationLibrary() instrumentation.Library {
 	return instrumentation.Library{Name: "pulumi-convert"}
 }
 
+// InstrumentationScope returns information about the instrumentation
+// scope that created the span.
+func (s *otelSpan) InstrumentationScope() instrumentation.Scope {
+	return instrumentation.Scope{}
+}
+
 // Resource returns information about the entity that produced the span.
 func (s *otelSpan) Resource() *sdkresource.Resource {
 	return s.resource
