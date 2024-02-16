@@ -25,11 +25,13 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/google/go-querystring/query"
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/cmd/esc/cli/version"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -47,26 +49,51 @@ type Client interface {
 	// GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 	GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error)
 
+	// ListEnvironments lists all environments in the given org that are accessible to the calling user.
+	//
+	// Each call to ListEnvironments returns a page of results and a continuation token. If there are no
+	// more results, the continuation token will be empty. Otherwise, the continuattion token should be
+	// passed to the next call to ListEnvironments to fetch the next page of results.
 	ListEnvironments(
 		ctx context.Context,
 		orgName string,
 		continuationToken string,
-	) ([]OrgEnvironment, string, error)
+	) (environments []OrgEnvironment, nextToken string, err error)
 
+	// CreateEnvironment creats an environment named envName in orgName.
 	CreateEnvironment(ctx context.Context, orgName, envName string) error
 
-	GetEnvironment(ctx context.Context, orgName, envName string, decrypt bool) ([]byte, string, error)
+	// GetEnvironment returns the YAML + ETag for the environment envName in org orgName. If decrypt is
+	// true, any { fn::secret: { ciphertext: "..." } } constructs in the definition will be decrypted and
+	// replaced with { fn::secret: "plaintext" }.
+	//
+	// The etag returned by GetEnvironment can be passed to UpdateEnvironment in order to avoid RMW issues
+	// when editing envirionments.
+	GetEnvironment(ctx context.Context, orgName, envName string, decrypt bool) (yaml []byte, etag string, err error)
 
+	// UpdateEnvironment updates the YAML for the environment envName in org orgName.
+	//
+	// If the new environment definition contains errors, the update will fail with diagnostics.
+	//
+	// If etag is not the empty string and the environment's current etag does not match the provided etag
+	// (i.e. because a different entity has called UpdateEnvironment), the update will fail with a 409
+	// error.
 	UpdateEnvironment(
 		ctx context.Context,
 		orgName string,
 		envName string,
 		yaml []byte,
-		tag string,
+		etag string,
 	) ([]EnvironmentDiagnostic, error)
 
+	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, envName string) error
 
+	// OpenEnvironment evaluates the environment envName in org orgName and returns the ID of the opened
+	// environment. The opened environment will be available for the indicated duration, after which it
+	// will expire.
+	//
+	// If the environment contains errors, the open will fail with diagnostics.
 	OpenEnvironment(
 		ctx context.Context,
 		orgName string,
@@ -74,12 +101,21 @@ type Client interface {
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
+	// CheckYAMLEnvironment checks the given environment YAML for errors within the context of org orgName.
+	//
+	// This call returns the checked environment's AST, values, schema, and any diagnostics issued by the
+	// evaluator.
 	CheckYAMLEnvironment(
 		ctx context.Context,
 		orgName string,
 		yaml []byte,
 	) (*esc.Environment, []EnvironmentDiagnostic, error)
 
+	// OpenYAMLEnvironment evaluates the given environment YAML within the context of org orgName and
+	// returns the ID of the opened environment. The opened environment will be available for the indicated
+	// duration, after which it will expire.
+	//
+	// If the environment contains errors, the open will fail with diagnostics.
 	OpenYAMLEnvironment(
 		ctx context.Context,
 		orgName string,
@@ -87,8 +123,20 @@ type Client interface {
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
+	// GetOpenEnvironment returns the AST, values, and schema for the open environment with ID openEnvID in
+	// environment envName and org orgName.
 	GetOpenEnvironment(ctx context.Context, orgName, envName, openEnvID string) (*esc.Environment, error)
 
+	// GetOpenProperty returns the value of a single property in the open environment with ID openEnvID in
+	// environment envName and org orgName.
+	//
+	// The property parameter is a Pulumi property path. Property paths may contain dotted accessors and
+	// numeric or string subscripts. For example:
+	//
+	//     foo.bar[0]["baz"]
+	//     aws.login
+	//     environmentVariables["AWS_ACCESS_KEY_ID"]
+	//
 	GetOpenProperty(ctx context.Context, orgName, envName, openEnvID, property string) (*esc.Value, error)
 }
 
@@ -128,6 +176,12 @@ func newClient(userAgent, apiURL, apiToken string, httpClient *http.Client) *cli
 // Insecure returns true if this client is insecure (i.e. has TLS disabled).
 func (pc *client) Insecure() bool {
 	return pc.insecure
+}
+
+// New creates a new Pulumi API client with the given URL and API token.
+func NewDefaultClient(apiToken string) Client {
+	userAgent := fmt.Sprintf("esc-sdk/1 (%s; %s)", version.Version, runtime.GOOS)
+	return New(userAgent, "https://api.pulumi.com", apiToken, false)
 }
 
 // New creates a new Pulumi API client with the given URL and API token.
