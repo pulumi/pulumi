@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs,python
-  description: Publish dev versions of the nodejs and python SDKs

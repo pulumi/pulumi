@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: components/go
-  description: Component providers now correctly return output values to the engine.

@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: backend/diy
-  description: Add a warning that non-project mode will be deprecated at some point.
