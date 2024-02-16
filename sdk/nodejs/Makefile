@@ -95,9 +95,11 @@ ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 	@cd cmd/pulumi-language-nodejs && $(GO_TEST_FAST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
+	$(GO_TEST_FAST) $(shell go list ./...)
 
 test_go:: $(TEST_ALL_DEPS)
 	@cd cmd/pulumi-language-nodejs && $(GO_TEST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
+	$(GO_TEST) $(shell go list ./...)
 
 test_all:: sxs_tests unit_tests test_auto test_go
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)

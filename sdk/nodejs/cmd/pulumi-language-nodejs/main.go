@@ -807,9 +807,21 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	_, err = npm.Install(ctx, req.Info.ProgramDirectory, false /*production*/, stdout, stderr)
+	workspaceRoot := req.Info.ProgramDirectory
+	newWorkspaceRoot, err := npm.FindWorkspaceRoot(req.Info.ProgramDirectory)
 	if err != nil {
-		return fmt.Errorf("npm install failed: %w", err)
+		// If we are not in a npm/yarn workspace, we will keep the current directory as the root.
+		if !errors.Is(err, npm.ErrNotInWorkspace) {
+			return fmt.Errorf("failure while trying to find workspace root: %w", err)
+		}
+	} else {
+		stdout.Write([]byte(fmt.Sprintf("Detected workspace root at %s\n", newWorkspaceRoot)))
+		workspaceRoot = newWorkspaceRoot
+	}
+
+	_, err = npm.Install(ctx, workspaceRoot, false /*production*/, stdout, stderr)
+	if err != nil {
+		return fmt.Errorf("dependency installation failed: %w", err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Detect npm and yarn workspaces setups when installing dependencies
