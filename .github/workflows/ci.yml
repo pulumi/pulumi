@@ -3,6 +3,8 @@ name: CI
 permissions:
   contents: read
   id-token: write
+  checks: write
+  pull-requests: write
 
 on:
   workflow_call:
