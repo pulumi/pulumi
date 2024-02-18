@@ -402,8 +402,28 @@ jobs:
   #     version-set: ${{ toJson(matrix.version-set) }}
   #   secrets: inherit
 
-  # test-collect-junut:
-  #   move Publish test results here?
+  publish-test-results:
+    name: Publish test results
+    runs-on: ubuntu-latest
+    needs: [unit-test, integration-test]
+    if: ${{ always() }}
+    permissions:
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: junit-test-results
+          path: test-results
+      - name: Debug
+        continue-on-error: true
+        run: |
+          ls -lhR test-results
+      - uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            test-results/*.xml
   test-collect-reports:
     needs: [unit-test, integration-test]
     if: ${{ always() }}
