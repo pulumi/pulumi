@@ -118,16 +118,22 @@ jobs:
       checks: write
       pull-requests: write
     steps:
-      - uses: actions/cache@v3
+      - uses: actions/download-artifact@v3
         with:
+          name: junit-${{ github.run_id }}
           path: test-results
-          key: gotestsum-timing-${{ github.run_number }}
-          restore-keys: gotestsum-timing-
+      - name: debug
+        continue-on-error: true
+        run: |
+          ls -lhR test-results
+      - name: Display structure of downloaded files
+        run: ls -R
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: |
             test-results/*.xml
+            test-results/**/*.xml
 
   prepare-release:
     name: prepare
