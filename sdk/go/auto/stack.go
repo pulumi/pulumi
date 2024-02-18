@@ -538,7 +538,46 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		o.ApplyOption(refreshOpts)
 	}
 
-	args := refreshOptsToCmd(refreshOpts, s, false /*isPreview*/)
+	args := slice.Prealloc[string](len(refreshOpts.Target))
+
+	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
+	args = append(args, "refresh", "--yes", "--skip-preview")
+	if refreshOpts.Message != "" {
+		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
+	}
+	if refreshOpts.ExpectNoChanges {
+		args = append(args, "--expect-no-changes")
+	}
+	for _, tURN := range refreshOpts.Target {
+		args = append(args, "--target="+tURN)
+	}
+	if refreshOpts.Parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
+	}
+	if refreshOpts.UserAgent != "" {
+		args = append(args, "--exec-agent="+refreshOpts.UserAgent)
+	}
+	if refreshOpts.Color != "" {
+		args = append(args, "--color="+refreshOpts.Color)
+	}
+	execKind := constant.ExecKindAutoLocal
+	if s.Workspace().Program() != nil {
+		execKind = constant.ExecKindAutoInline
+	}
+	args = append(args, "--exec-kind="+execKind)
+
+	if len(refreshOpts.EventStreams) > 0 {
+		eventChannels := refreshOpts.EventStreams
+		t, err := tailLogs("refresh", eventChannels)
+		if err != nil {
+			return res, fmt.Errorf("failed to tail logs: %w", err)
+		}
+		defer t.Close()
+		args = append(args, "--event-log", t.Filename)
+	}
+
+	// Apply the remote args, if needed.
+	args = append(args, s.remoteArgs()...)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
