@@ -7,6 +7,7 @@ permissions:
   pull-requests: write
   # To sign artifacts.
   id-token: write
+  checks: write
 
 on:
   pull_request:
@@ -108,6 +109,20 @@ jobs:
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false
     secrets: inherit
+
+  publish-test-results:
+    name: Publish test results
+    runs-on: ubuntu-latest
+    needs: [ci]
+    permissions:
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            test-results/**/*.json
 
   prepare-release:
     name: prepare
