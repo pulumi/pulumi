@@ -346,7 +346,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: junit-${{ inputs.test-name }}
+          name: junit-${{ github.run_id }}
           path: test-results/*.xml
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}

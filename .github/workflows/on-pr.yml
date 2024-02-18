@@ -118,6 +118,11 @@ jobs:
       checks: write
       pull-requests: write
     steps:
+      - uses: actions/cache@v3
+        with:
+          path: test-results
+          key: gotestsum-timing-${{ github.run_number }}
+          restore-keys: gotestsum-timing-
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
