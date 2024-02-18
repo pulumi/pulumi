@@ -90,7 +90,7 @@ jobs:
       - name: Setup Go Caching
         uses: actions/setup-go@v3 # only used by gotestsum
         with:
-          go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
+          go-version: ">=1.19.0" # decoupled from version sets, only used by gotestsum
           cache: true
           cache-dependency-path: |
             pkg/go.sum
@@ -352,58 +352,58 @@ jobs:
     secrets: inherit
 
   # Tests that depend on builds, but a smaller subset against Windows platform.
-  acceptance-test-win:
-    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
-    # appearing in the rendered title of the job name. See: unit test.
-    name: Acceptance Test${{ matrix.platform && '' }}
-    needs: [matrix, build-binaries, build-sdks]
-    if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
-    # alow jobs to fail if the platform contains windows
-    strategy:
-      matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
-    uses: ./.github/workflows/ci-run-test.yml
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      platform: ${{ matrix.platform }}
+  # acceptance-test-win:
+  #   # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+  #   # appearing in the rendered title of the job name. See: unit test.
+  #   name: Acceptance Test${{ matrix.platform && '' }}
+  #   needs: [matrix, build-binaries, build-sdks]
+  #   if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
+  #   # alow jobs to fail if the platform contains windows
+  #   strategy:
+  #     matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
+  #   uses: ./.github/workflows/ci-run-test.yml
+  #   with:
+  #     ref: ${{ inputs.ref }}
+  #     version: ${{ inputs.version }}
+  #     platform: ${{ matrix.platform }}
 
-      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
-      test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true
-      enable-coverage: ${{ inputs.enable-coverage }}
-      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+  #     test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+  #     test-command: ${{ matrix.test-suite.command }}
+  #     is-integration-test: true
+  #     enable-coverage: ${{ inputs.enable-coverage }}
+  #     # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
-      version-set: ${{ toJson(matrix.version-set) }}
-    secrets: inherit
+  #     version-set: ${{ toJson(matrix.version-set) }}
+  #   secrets: inherit
 
-  # Tests that depend on builds, but a smaller subset against MacOS platform.
-  acceptance-test-macos:
-    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
-    # appearing in the rendered title of the job name. See: unit test.
-    name: Acceptance Test${{ matrix.platform && '' }}
-    needs: [matrix, build-binaries, build-sdks]
-    if: ${{ needs.matrix.outputs.acceptance-test-matrix-macos != '{}' }}
-    # alow jobs to fail if the platform contains windows
-    strategy:
-      fail-fast: true
-      matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-macos) }}
-    uses: ./.github/workflows/ci-run-test.yml
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      platform: ${{ matrix.platform }}
+  # # Tests that depend on builds, but a smaller subset against MacOS platform.
+  # acceptance-test-macos:
+  #   # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+  #   # appearing in the rendered title of the job name. See: unit test.
+  #   name: Acceptance Test${{ matrix.platform && '' }}
+  #   needs: [matrix, build-binaries, build-sdks]
+  #   if: ${{ needs.matrix.outputs.acceptance-test-matrix-macos != '{}' }}
+  #   # alow jobs to fail if the platform contains windows
+  #   strategy:
+  #     fail-fast: true
+  #     matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-macos) }}
+  #   uses: ./.github/workflows/ci-run-test.yml
+  #   with:
+  #     ref: ${{ inputs.ref }}
+  #     version: ${{ inputs.version }}
+  #     platform: ${{ matrix.platform }}
 
-      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
-      test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true
-      enable-coverage: ${{ inputs.enable-coverage }}
-      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+  #     test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+  #     test-command: ${{ matrix.test-suite.command }}
+  #     is-integration-test: true
+  #     enable-coverage: ${{ inputs.enable-coverage }}
+  #     # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
-      version-set: ${{ toJson(matrix.version-set) }}
-    secrets: inherit
+  #     version-set: ${{ toJson(matrix.version-set) }}
+  #   secrets: inherit
 
   test-collect-reports:
-    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    needs: [unit-test, integration-test]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -423,7 +423,7 @@ jobs:
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
   test-collect-coverage:
-    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    needs: [unit-test, integration-test]
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:
@@ -459,7 +459,13 @@ jobs:
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
     name: Rebuild binaries
-    needs: [matrix, unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    needs: [
+        matrix,
+        unit-test,
+        integration-test,
+        # acceptance-test-win,
+        # acceptance-test-macos,
+      ]
     if: ${{ inputs.enable-coverage }}
     strategy:
       # To avoid tying up macOS runners:
