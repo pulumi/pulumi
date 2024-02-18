@@ -879,8 +879,9 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
-//nolint:paralleltest
 func TestNewStackInlineSource(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
