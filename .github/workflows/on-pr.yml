@@ -120,20 +120,17 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: junit-${{ github.run_id }}
+          name: junit-test-results
           path: test-results
-      - name: debug
+      - name: Debug
         continue-on-error: true
         run: |
           ls -lhR test-results
-      - name: Display structure of downloaded files
-        run: ls -R
       - uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: |
             test-results/*.xml
-            test-results/**/*.xml
 
   prepare-release:
     name: prepare
