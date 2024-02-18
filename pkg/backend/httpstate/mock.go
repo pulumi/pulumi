@@ -40,6 +40,7 @@ type MockHTTPBackend struct {
 		stackRef backend.StackReference,
 		req apitype.CreateDeploymentRequest,
 		opts display.Options,
+		deploymentInitiator string,
 	) error
 }
 
@@ -72,8 +73,9 @@ func (b *MockHTTPBackend) RunDeployment(
 	stackRef backend.StackReference,
 	req apitype.CreateDeploymentRequest,
 	opts display.Options,
+	deploymentInitiator string,
 ) error {
-	return b.FRunDeployment(ctx, stackRef, req, opts)
+	return b.FRunDeployment(ctx, stackRef, req, opts, deploymentInitiator)
 }
 
 func (b *MockHTTPBackend) Search(
