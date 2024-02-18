@@ -90,6 +90,7 @@ if shutil.which('gotestsum') is not None:
 
     json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
     junit_file = str(test_results_dir.joinpath(f'{test_run}-junit.xml'))
+    print("Writing test results to: " + junit_file)
     args = ['gotestsum', '--junitfile', junit_file, '--jsonfile', json_file, '--rerun-fails=1', '--packages', pkgs, '--'] + \
         opts
 else:
