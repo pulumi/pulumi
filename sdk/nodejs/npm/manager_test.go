@@ -112,6 +112,71 @@ func TestResolvePackageManager(t *testing.T) {
 	}
 }
 
+func TestPack(t *testing.T) {
+	t.Parallel()
+
+	packageJSON := []byte(`{
+	    "name": "test-package",
+		"version": "1.0"
+	}`)
+
+	for _, pm := range []string{"npm", "yarn", "pnpm"} {
+		pm := pm
+		t.Run(pm, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			writeLockFile(t, dir, pm)
+			packageJSONFilename := filepath.Join(dir, "package.json")
+			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+			stderr := new(bytes.Buffer)
+
+			artifact, err := Pack(context.Background(), dir, stderr)
+
+			require.NoError(t, err)
+			// check that the artifact contains a package.json
+			b, err := gzip.NewReader(bytes.NewReader((artifact)))
+			require.NoError(t, err)
+			tr := tar.NewReader(b)
+			for {
+				h, err := tr.Next()
+				if err == io.EOF {
+					require.Fail(t, "package.json not found")
+					break
+				}
+				require.NoError(t, err)
+				if h.Name == "package/package.json" {
+					break
+				}
+			}
+		})
+	}
+}
+
+func TestPackInvalidPackageJSON(t *testing.T) {
+	t.Parallel()
+
+	// Missing a version field
+	packageJSON := []byte(`{
+	    "name": "test-package"
+	}`)
+
+	for _, pm := range []string{"npm", "yarn", "pnpm"} {
+		pm := pm
+		t.Run(pm, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			writeLockFile(t, dir, pm)
+			packageJSONFilename := filepath.Join(dir, "package.json")
+			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+			stderr := new(bytes.Buffer)
+
+			_, err := Pack(context.Background(), dir, stderr)
+
+			require.Error(t, err)
+		})
+	}
+}
+
 // writeLockFile writes a mock lockfile for the selected package manager
 func writeLockFile(t *testing.T, dir string, packageManager string) {
 	t.Helper()

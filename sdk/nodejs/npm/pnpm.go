@@ -80,7 +80,8 @@ func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer)
 	// Next, we try to read the name of the file from stdout.
 	// packfile is the name of the file containing the tarball,
 	// as produced by `pnpm pack`.
-	packfile := strings.TrimSpace(stdout.String())
+	packFilename := strings.TrimSpace(stdout.String())
+	packfile := filepath.Join(dir, packFilename)
 	defer os.Remove(packfile)
 
 	packTarball, err := os.ReadFile(packfile)
