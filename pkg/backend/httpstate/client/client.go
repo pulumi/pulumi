@@ -1127,10 +1127,14 @@ func getDeploymentPath(stack StackIdentifier, components ...string) string {
 }
 
 func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
-	req apitype.CreateDeploymentRequest,
+	req apitype.CreateDeploymentRequest, deploymentInitiator string,
 ) (*apitype.CreateDeploymentResponse, error) {
 	var resp apitype.CreateDeploymentResponse
-	err := pc.restCall(ctx, http.MethodPost, getDeploymentPath(stack), nil, req, &resp)
+	err := pc.restCallWithOptions(ctx, http.MethodPost, getDeploymentPath(stack), nil, req, &resp, httpCallOptions{
+		Header: map[string][]string{
+			"X-Pulumi-Deployment-Initiator": {deploymentInitiator},
+		},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("creating deployment failed: %w", err)
 	}

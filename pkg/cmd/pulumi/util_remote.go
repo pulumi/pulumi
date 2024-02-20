@@ -336,7 +336,11 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			Options:              operationOptions,
 		},
 	}
-	err = cb.RunDeployment(ctx, stackRef, req, opts)
+	// For now, these commands are only used by automation API, so we can unilaterally set the initiator
+	// to "automation-api".
+	// In the future, we may want to expose initiating deployments from the CLI, in which case we would need to
+	// pass this value in from the CLI as a flag or environment variable.
+	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/)
 	if err != nil {
 		return result.FromError(err)
 	}

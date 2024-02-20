@@ -173,7 +173,7 @@ type Backend interface {
 	Client() *client.Client
 
 	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
-		opts display.Options) error
+		opts display.Options, deploymentInitiator string) error
 
 	// Queries the backend for resources based on the given query parameters.
 	Search(
@@ -1837,14 +1837,14 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 const pulumiOperationHeader = "Pulumi operation"
 
 func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.StackReference,
-	req apitype.CreateDeploymentRequest, opts display.Options,
+	req apitype.CreateDeploymentRequest, opts display.Options, deploymentInitiator string,
 ) error {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return err
 	}
 
-	resp, err := b.client.CreateDeployment(ctx, stackID, req)
+	resp, err := b.client.CreateDeployment(ctx, stackID, req, deploymentInitiator)
 	if err != nil {
 		return err
 	}
