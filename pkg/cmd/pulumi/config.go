@@ -302,6 +302,7 @@ func copyEntireConfigMap(currentStack backend.Stack,
 
 func newConfigGetCmd(stack *string) *cobra.Command {
 	var jsonOut bool
+	var open bool
 	var path bool
 
 	getCmd := &cobra.Command{
@@ -330,12 +331,15 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(ctx, s, key, path, jsonOut)
+			return getConfig(ctx, s, key, path, jsonOut, open)
 		}),
 	}
 	getCmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
+	getCmd.Flags().BoolVar(
+		&open, "open", true,
+		"Open and resolve any environments listed in the stack configuration")
 	getCmd.PersistentFlags().BoolVar(
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to get")
@@ -1029,7 +1033,7 @@ func listConfig(
 	return nil
 }
 
-func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut bool) error {
+func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut, openEnvironment bool) error {
 	project, _, err := readProject()
 	if err != nil {
 		return err
@@ -1039,7 +1043,13 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 		return err
 	}
 
-	env, diags, err := checkStackEnv(ctx, stack, ps)
+	var env *esc.Environment
+	var diags []apitype.EnvironmentDiagnostic
+	if openEnvironment {
+		env, diags, err = openStackEnv(ctx, stack, ps)
+	} else {
+		env, diags, err = checkStackEnv(ctx, stack, ps)
+	}
 	if err != nil {
 		return err
 	}

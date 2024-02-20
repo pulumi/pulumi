@@ -350,9 +350,9 @@ config:
 }
 
 func TestConfigCommandsUsingEnvironments(t *testing.T) {
-	//if getTestOrg() != pulumiTestOrg {
-	//	t.Skip("Skipping test because the required environment is in the moolumi org.")
-	//}
+	if getTestOrg() != pulumiTestOrg {
+		t.Skip("Skipping test because the required environment is in the moolumi org.")
+	}
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
@@ -395,6 +395,14 @@ test_secret  this_is_my_secret`, strings.Trim(stdout, "\r\n"))
 	stdout, _ = e.RunCommand("pulumi", "config", "--show-secrets", "--open=false")
 	assert.Equal(t, `KEY          VALUE
 test_secret  [unknown]`, strings.Trim(stdout, "\r\n"))
+
+	// `pulumi config get`
+	stdout, _ = e.RunCommand("pulumi", "config", "get", "test_secret")
+	assert.Equal(t, "this_is_my_secret", strings.Trim(stdout, "\r\n"))
+
+	// `pulumi config get --open=false`
+	stdout, _ = e.RunCommand("pulumi", "config", "get", "test_secret", "--open=false")
+	assert.Equal(t, "[unknown]", strings.Trim(stdout, "\r\n"))
 
 	// delete the stack
 	e.RunCommand("pulumi", "stack", "rm", "-s", "test", "--yes")
