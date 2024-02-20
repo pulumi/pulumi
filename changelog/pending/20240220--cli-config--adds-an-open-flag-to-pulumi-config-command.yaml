@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Adds an `--open` flag to `pulumi config` command which resolves the environment listed in the stack configuration.
