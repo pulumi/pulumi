@@ -1,7 +1,4 @@
-//go:build !windows
-// +build !windows
-
-// Copyright 2020, Pulumi Corporation.
+// Copyright 2020-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
