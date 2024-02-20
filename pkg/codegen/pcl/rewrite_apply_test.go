@@ -183,4 +183,35 @@ func TestApplyRewriter(t *testing.T) {
 			assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 		})
 	}
+
+	t.Run("skip rewriting applies with toJSON", func(t *testing.T) {
+		input := `toJSON({
+	Version = "2012-10-17"
+	Statement = [{
+		Effect = "Allow"
+		Principal = "*"
+		Action = [ "s3:GetObject" ]
+		Resource = [ "arn:aws:s3:::${resource.id}/*" ]
+	}]
+})`
+		expectedOutput := `toJSON({
+	Version = "2012-10-17"
+	Statement = [{
+		Effect = "Allow"
+		Principal = "*"
+		Action = [ "s3:GetObject" ]
+		Resource = [
+                __apply(resource.id,eval(id,  "arn:aws:s3:::${id}/*")) ]
+	}]
+})`
+
+		expr, diags := model.BindExpressionText(input, scope, hcl.Pos{})
+		assert.Len(t, diags, 0)
+
+		expr, diags = RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, true /* skiToJson */)
+		assert.Len(t, diags, 0)
+
+		output := fmt.Sprintf("%v", expr)
+		assert.Equal(t, expectedOutput, output)
+	})
 }

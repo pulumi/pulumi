@@ -146,12 +146,12 @@ export = async () => {
     });
     return {
         clusterName: eksCluster.name,
-        kubeconfig: pulumi.all([eksCluster.endpoint, eksCluster.certificateAuthority, eksCluster.name]).apply(([endpoint, certificateAuthority, name]) => JSON.stringify({
+        kubeconfig: pulumi.jsonStringify({
             apiVersion: "v1",
             clusters: [{
                 cluster: {
-                    server: endpoint,
-                    "certificate-authority-data": certificateAuthority.data,
+                    server: eksCluster.endpoint,
+                    "certificate-authority-data": eksCluster.certificateAuthority.apply(certificateAuthority => certificateAuthority.data),
                 },
                 name: "kubernetes",
             }],
@@ -173,10 +173,10 @@ export = async () => {
                     args: [
                         "token",
                         "-i",
-                        name,
+                        eksCluster.name,
                     ],
                 },
             }],
-        })),
+        }),
     };
 }

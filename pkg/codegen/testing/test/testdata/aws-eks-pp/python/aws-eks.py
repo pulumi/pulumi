@@ -130,12 +130,12 @@ node_group = aws.eks.NodeGroup("nodeGroup",
         min_size=1,
     ))
 pulumi.export("clusterName", eks_cluster.name)
-pulumi.export("kubeconfig", pulumi.Output.all(eks_cluster.endpoint, eks_cluster.certificate_authority, eks_cluster.name).apply(lambda endpoint, certificate_authority, name: json.dumps({
+pulumi.export("kubeconfig", pulumi.Output.json_dumps({
     "apiVersion": "v1",
     "clusters": [{
         "cluster": {
-            "server": endpoint,
-            "certificate-authority-data": certificate_authority.data,
+            "server": eks_cluster.endpoint,
+            "certificate-authority-data": eks_cluster.certificate_authority.data,
         },
         "name": "kubernetes",
     }],
@@ -157,8 +157,8 @@ pulumi.export("kubeconfig", pulumi.Output.all(eks_cluster.endpoint, eks_cluster.
             "args": [
                 "token",
                 "-i",
-                name,
+                eks_cluster.name,
             ],
         },
     }],
-})))
+}))

@@ -28,7 +28,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	skipToJSONWhenRewritingApplies := true
+	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
@@ -404,7 +405,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "base64.b64decode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
-		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgenf(w, "pulumi.Output.json_dumps(%.v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+		}
 	case "sha1":
 		g.Fgenf(w, "hashlib.sha1(%v.encode()).hexdigest()", expr.Args[0])
 	case "project":

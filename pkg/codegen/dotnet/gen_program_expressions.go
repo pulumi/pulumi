@@ -39,7 +39,8 @@ func (g *generator) rewriteExpression(expr model.Expression, typ model.Type, rew
 	expr = pcl.RewritePropertyReferences(expr)
 	var diags hcl.Diagnostics
 	if rewriteApplies {
-		expr, diags = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
+		skipToJSONWhenRewritingApplies := true
+		expr, diags = pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncInit, skipToJSONWhenRewritingApplies)
 	}
 
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
@@ -618,9 +619,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(%v))", expr.Args[0])
 	case "toJSON":
-		g.Fgen(w, "JsonSerializer.Serialize(")
-		g.genDictionaryOrTuple(w, expr.Args[0])
-		g.Fgen(w, ")")
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgen(w, "Output.JsonSerialize(Output.Create(")
+			g.genDictionaryOrTuple(w, expr.Args[0])
+			g.Fgen(w, "))")
+		} else {
+			g.Fgen(w, "JsonSerializer.Serialize(")
+			g.genDictionaryOrTuple(w, expr.Args[0])
+			g.Fgen(w, ")")
+		}
 	case "sha1":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ComputeSHA1(%v)", expr.Args[0])
@@ -640,7 +647,12 @@ func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 	case *model.ObjectConsExpression:
 		g.genDictionary(w, expr, "object?")
 	case *model.TupleConsExpression:
-		g.Fgen(w, "new[]\n")
+		if g.isListOfDifferentTypes(expr) {
+			g.Fgen(w, "new object?[]\n")
+		} else {
+			g.Fgen(w, "new[]\n")
+		}
+
 		g.Fgenf(w, "%[1]s{\n", g.Indent)
 		g.Indented(func() {
 			for _, v := range expr.Expressions {
@@ -666,6 +678,35 @@ func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression,
 		}
 	})
 	g.Fgenf(w, "%s}", g.Indent)
+}
+
+func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool {
+	var prevType model.Type
+	for _, v := range expr.Expressions {
+		if prevType == nil {
+			prevType = v.Type()
+			continue
+		}
+
+		_, isObjectType := prevType.(*model.ObjectType)
+		_, isMap := prevType.(*model.MapType)
+
+		if isObjectType || isMap {
+			// don't actually compare object types or maps because these are always
+			// mapped to Dictionary<string, object?> in C# so they will be the same type
+			// even if their contents are different
+			continue
+		}
+
+		conversionFrom := prevType.ConversionFrom(v.Type())
+		conversionTo := v.Type().ConversionFrom(prevType)
+
+		if conversionTo != model.SafeConversion || conversionFrom != model.SafeConversion {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -1045,7 +1086,7 @@ func removeDuplicates(inputs []string) []string {
 	return distinctInputs
 }
 
-func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool {
+func (g *generator) isListOfDifferentObjectTypes(expr *model.TupleConsExpression) bool {
 	switch expr.Type().(type) {
 	case *model.TupleType:
 		tupleType := expr.Type().(*model.TupleType)
@@ -1070,7 +1111,7 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	case 0:
 		g.Fgenf(w, "%s {}", g.listInitializer)
 	default:
-		if !g.isListOfDifferentTypes(expr) {
+		if !g.isListOfDifferentObjectTypes(expr) {
 			// only generate a list initializer when we don't have a list of union types
 			// because list of a union is mapped to InputList<object>
 			// which means new[] will not work because type-inference won't

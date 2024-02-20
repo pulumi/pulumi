@@ -228,62 +228,56 @@ return await Deployment.RunAsync(async() =>
     return new Dictionary<string, object?>
     {
         ["clusterName"] = eksCluster.Name,
-        ["kubeconfig"] = Output.Tuple(eksCluster.Endpoint, eksCluster.CertificateAuthority, eksCluster.Name).Apply(values =>
+        ["kubeconfig"] = Output.JsonSerialize(Output.Create(new Dictionary<string, object?>
         {
-            var endpoint = values.Item1;
-            var certificateAuthority = values.Item2;
-            var name = values.Item3;
-            return JsonSerializer.Serialize(new Dictionary<string, object?>
+            ["apiVersion"] = "v1",
+            ["clusters"] = new[]
             {
-                ["apiVersion"] = "v1",
-                ["clusters"] = new[]
+                new Dictionary<string, object?>
                 {
-                    new Dictionary<string, object?>
+                    ["cluster"] = new Dictionary<string, object?>
                     {
-                        ["cluster"] = new Dictionary<string, object?>
-                        {
-                            ["server"] = endpoint,
-                            ["certificate-authority-data"] = certificateAuthority.Data,
-                        },
-                        ["name"] = "kubernetes",
+                        ["server"] = eksCluster.Endpoint,
+                        ["certificate-authority-data"] = eksCluster.CertificateAuthority.Apply(certificateAuthority => certificateAuthority.Data),
+                    },
+                    ["name"] = "kubernetes",
+                },
+            },
+            ["contexts"] = new[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["contest"] = new Dictionary<string, object?>
+                    {
+                        ["cluster"] = "kubernetes",
+                        ["user"] = "aws",
                     },
                 },
-                ["contexts"] = new[]
+            },
+            ["current-context"] = "aws",
+            ["kind"] = "Config",
+            ["users"] = new[]
+            {
+                new Dictionary<string, object?>
                 {
-                    new Dictionary<string, object?>
+                    ["name"] = "aws",
+                    ["user"] = new Dictionary<string, object?>
                     {
-                        ["contest"] = new Dictionary<string, object?>
+                        ["exec"] = new Dictionary<string, object?>
                         {
-                            ["cluster"] = "kubernetes",
-                            ["user"] = "aws",
+                            ["apiVersion"] = "client.authentication.k8s.io/v1alpha1",
+                            ["command"] = "aws-iam-authenticator",
                         },
-                    },
-                },
-                ["current-context"] = "aws",
-                ["kind"] = "Config",
-                ["users"] = new[]
-                {
-                    new Dictionary<string, object?>
-                    {
-                        ["name"] = "aws",
-                        ["user"] = new Dictionary<string, object?>
+                        ["args"] = new object?[]
                         {
-                            ["exec"] = new Dictionary<string, object?>
-                            {
-                                ["apiVersion"] = "client.authentication.k8s.io/v1alpha1",
-                                ["command"] = "aws-iam-authenticator",
-                            },
-                            ["args"] = new[]
-                            {
-                                "token",
-                                "-i",
-                                name,
-                            },
+                            "token",
+                            "-i",
+                            eksCluster.Name,
                         },
                     },
                 },
-            });
-        }),
+            },
+        })),
     };
 });
 

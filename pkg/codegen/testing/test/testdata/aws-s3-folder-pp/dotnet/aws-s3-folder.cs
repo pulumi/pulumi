@@ -35,7 +35,7 @@ return await Deployment.RunAsync(() =>
     var bucketPolicy = new Aws.S3.BucketPolicy("bucketPolicy", new()
     {
         Bucket = siteBucket.Id,
-        Policy = siteBucket.Id.Apply(id => JsonSerializer.Serialize(new Dictionary<string, object?>
+        Policy = Output.JsonSerialize(Output.Create(new Dictionary<string, object?>
         {
             ["Version"] = "2012-10-17",
             ["Statement"] = new[]
@@ -50,7 +50,7 @@ return await Deployment.RunAsync(() =>
                     },
                     ["Resource"] = new[]
                     {
-                        $"arn:aws:s3:::{id}/*",
+                        siteBucket.Id.Apply(id => $"arn:aws:s3:::{id}/*"),
                     },
                 },
             },
