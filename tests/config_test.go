@@ -28,6 +28,8 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
+const pulumiTestOrg = "moolumi"
+
 func TestConfigCommands(t *testing.T) {
 	t.Parallel()
 
@@ -345,4 +347,63 @@ config:
 	thirdValue := config["pulumi-test:third-value"].(map[string]interface{})
 	assert.Equal(t, "[\"third\"]", thirdValue["value"])
 	assert.Equal(t, []interface{}{"third"}, thirdValue["objectValue"])
+}
+
+func TestConfigCommandsUsingEnvironments(t *testing.T) {
+	//if getTestOrg() != pulumiTestOrg {
+	//	t.Skip("Skipping test because the required environment is in the moolumi org.")
+	//}
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		deleteIfNotFailed(e)
+	}()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.RunCommand("pulumi", "org", "set-default", getTestOrg())
+	e.RunCommand("pulumi", "stack", "init", "test")
+
+	// check config is empty
+	stdout, _ := e.RunCommand("pulumi", "config")
+	assert.Equal(t, "KEY  VALUE", strings.Trim(stdout, "\r\n"))
+
+	// set an esc environment
+	e.RunCommand("pulumi", "config", "env", "add", "secrets-test-env-DO-NOT-DELETE", "--yes")
+
+	// just `pulumi config`
+	stdout, _ = e.RunCommand("pulumi", "config")
+	assert.Equal(t, `KEY          VALUE
+test_secret  [secret]`, strings.Trim(stdout, "\r\n"))
+
+	// `pulumi config --show-secrets`
+	stdout, _ = e.RunCommand("pulumi", "config", "--show-secrets")
+	assert.Equal(t, `KEY          VALUE
+test_secret  this_is_my_secret`, strings.Trim(stdout, "\r\n"))
+
+	// `pulumi config --open`
+	stdout, _ = e.RunCommand("pulumi", "config", "--open")
+	assert.Equal(t, `KEY          VALUE
+test_secret  [secret]`, strings.Trim(stdout, "\r\n"))
+
+	// `pulumi config --show-secrets --open`
+	stdout, _ = e.RunCommand("pulumi", "config", "--show-secrets", "--open")
+	assert.Equal(t, `KEY          VALUE
+test_secret  this_is_my_secret`, strings.Trim(stdout, "\r\n"))
+
+	// `pulumi config --show-secrets --open=false`
+	stdout, _ = e.RunCommand("pulumi", "config", "--show-secrets", "--open=false")
+	assert.Equal(t, `KEY          VALUE
+test_secret  [unknown]`, strings.Trim(stdout, "\r\n"))
+
+	// delete the stack
+	e.RunCommand("pulumi", "stack", "rm", "-s", "test", "--yes")
+}
+
+func getTestOrg() string {
+	testOrg := pulumiTestOrg
+	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
+		testOrg = os.Getenv("PULUMI_TEST_ORG")
+	}
+	return testOrg
 }
