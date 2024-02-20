@@ -36,3 +36,12 @@ func TestFindWorkspaceRootNotInWorkspace(t *testing.T) {
 
 	require.ErrorIs(t, err, ErrNotInWorkspace)
 }
+
+func TestFindWorkspaceRootYarnExtended(t *testing.T) {
+	t.Parallel()
+
+	root, err := FindWorkspaceRoot(filepath.Join("testdata", "workspace-extended", "project"))
+
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join("testdata", "workspace-extended"), root)
+}
