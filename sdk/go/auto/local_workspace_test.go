@@ -914,18 +914,11 @@ func TestNewStackInlineSource(t *testing.T) {
 		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
-	err = s.SetAllConfig(ctx, cfg)
-	if err != nil {
-		t.Errorf("failed to set config, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, s.SetAllConfig(ctx, cfg))
 
 	// -- pulumi up --
 	res, err := s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
-	if err != nil {
-		t.Errorf("up failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "up failed")
 
 	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
@@ -944,33 +937,29 @@ func TestNewStackInlineSource(t *testing.T) {
 	prevCh := make(chan events.EngineEvent)
 	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent), optpreview.Refresh())
-	if err != nil {
-		t.Errorf("preview failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "preview failed")
 	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 2, steps)
 
+	// -- pulumi refresh --preview-only --
+
+	pref, err := s.PreviewRefresh(ctx, optrefresh.UserAgent(agent))
+	assert.NoError(t, err, "preview-only refresh failed")
+	assert.Equal(t, 1, pref.ChangeSummary[apitype.OpSame])
+
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
-	if err != nil {
-		t.Errorf("refresh failed, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err, "refresh failed")
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
 	// -- pulumi destroy --
 
 	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
+	require.NoError(t, err, "destroy failed")
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
