@@ -54,33 +54,33 @@ func chdir(t *testing.T, dir string) {
 //nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
-		testInstall(t, "npm", false /*production*/, "npm")
+		testInstall(t, "npm", false /*production*/)
 	})
 
 	t.Run("production", func(t *testing.T) {
-		testInstall(t, "npm", true /*production*/, "npm")
+		testInstall(t, "npm", true /*production*/)
 	})
 }
 
 //nolint:paralleltest // changes working directory
 func TestYarnInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
-		testInstall(t, "yarn", false /*production*/, "yarn")
+		testInstall(t, "yarn", false /*production*/)
 	})
 
 	t.Run("production", func(t *testing.T) {
-		testInstall(t, "yarn", true /*production*/, "yarn")
+		testInstall(t, "yarn", true /*production*/)
 	})
 }
 
 //nolint:paralleltest // changes working directory
 func TestPnpmInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
-		testInstall(t, "pnpm", false /*production*/, "pnpm")
+		testInstall(t, "pnpm", false /*production*/)
 	})
 
 	t.Run("production", func(t *testing.T) {
-		testInstall(t, "pnpm", true /*production*/, "pnpm")
+		testInstall(t, "pnpm", true /*production*/)
 	})
 }
 
@@ -190,7 +190,7 @@ func writeLockFile(t *testing.T, dir string, packageManager string) {
 	}
 }
 
-func testInstall(t *testing.T, expectedBin string, production bool, packageManager string) {
+func testInstall(t *testing.T, packageManager string, production bool) {
 	// To test this functionality without actually hitting NPM,
 	// we'll spin up a local HTTP server that implements a subset
 	// of the NPM registry API.
@@ -242,7 +242,7 @@ func testInstall(t *testing.T, expectedBin string, production bool, packageManag
 	out := iotest.LogWriter(t)
 	bin, err := Install(context.Background(), pkgdir, production, out, out)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedBin, bin)
+	assert.Equal(t, packageManager, bin)
 }
 
 // fakeNPMRegistry starts up an HTTP server that implements a subset of the NPM registry API
