@@ -16,6 +16,7 @@
 import * as runtime from "@pulumi/pulumi/runtime" // @pulumi dependency is not included
 import * as semver from "semver" // npm dependency
 import * as myRandom from "my-random" // workspace dependency
+import * as myDynamicProvider from "my-dynamic-provider" // workspace dependency
 
 const random = new myRandom.MyRandom("plop", {});
 
@@ -23,12 +24,21 @@ export const id = random.randomID;
 
 export const version = semver.parse("1.2.3");
 
+const dynamicProviderResource = new myDynamicProvider.MyDynamicProviderResource("prov", {});
+
 (async function () {
   const deps = await runtime.computeCodePaths();
 
   const actual = JSON.stringify([...deps.keys()].sort());
   // semver depends on lru-cache (6.0.0), which depends on yallist
-  const expected = `["../node_modules/lru-cache","../node_modules/my-random","../node_modules/semver","../node_modules/yallist"]`;
+  const expected = `[` +
+    `"../node_modules/is-finite",` +
+    `"../node_modules/lru-cache",` +
+    `"../node_modules/my-dynamic-provider",` +
+    `"../node_modules/my-random",` +
+    `"../node_modules/semver",` +
+    `"../node_modules/yallist"` +
+    `]`;
 
   if (actual !== expected) {
     throw new Error(`Got '${actual}' expected '${expected}'`)

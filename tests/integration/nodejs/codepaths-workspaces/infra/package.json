@@ -3,8 +3,9 @@
     "main": "index.ts",
     "version": "1.0.0",
     "dependencies": {
-        "@pulumi/pulumi": "^3.104.2",
+        "@pulumi/pulumi": "latest",
+        "my-dynamic-provider": "1.0.0",
         "my-random": "1.0.0",
-        "semver": "^7.6.0"
+        "semver": "^7.5.2"
     }
 }
