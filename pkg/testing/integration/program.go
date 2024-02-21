@@ -165,6 +165,8 @@ type ProgramTestOptions struct {
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
 	Overrides map[string]string
+	// Automatically use the latest dev version of pulumi SDKs if available.
+	InstallDevReleases bool
 	// List of environments to create in order.
 	CreateEnvironments []Environment
 	// List of environments to use.
@@ -477,6 +479,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Overrides != nil {
 		opts.Overrides = overrides.Overrides
+	}
+	if overrides.InstallDevReleases {
+		opts.InstallDevReleases = overrides.InstallDevReleases
 	}
 	if len(overrides.CreateEnvironments) != 0 {
 		opts.CreateEnvironments = append(opts.CreateEnvironments, overrides.CreateEnvironments...)
@@ -2115,6 +2120,16 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
+	// If dev versions were requested, we need to update the
+	// package.json to use them.  Note that Overrides take
+	// priority over installing dev versions.
+	if pt.opts.InstallDevReleases {
+		err := pt.runYarnCommand("yarn-add", []string{"add", "@pulumi/pulumi@dev"}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
 	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
 	// direct dependency of the project, we change the version constraint in the package.json. For transitive
 	// dependeices, we use yarn's "resolutions" feature to force them to a specific version.
@@ -2240,8 +2255,14 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
-		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
-			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
+		if pt.opts.InstallDevReleases {
+			command := []string{"python", "-m", "pip", "install", "--pre", "pulumi"}
+			if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {
+				return err
+			}
+		}
+		command := []string{"python", "-m", "pip", "install", "-r", "requirements.txt"}
+		if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {
 			return err
 		}
 	}
@@ -2275,7 +2296,11 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	// Install the package's dependencies. We do this by running `pip` inside the virtualenv that `pipenv` has created.
 	// We don't use `pipenv install` because we don't want a lock file and prefer the similar model of `pip install`
 	// which matches what our customers do
-	err := pt.runPipenvCommand("pipenv-install", []string{"run", "pip", "install", "-r", "requirements.txt"}, cwd)
+	command := []string{"run", "pip", "install", "-r", "requirements.txt"}
+	if pt.opts.InstallDevReleases {
+		command = []string{"run", "pip", "install", "--pre", "-r", "requirements.txt"}
+	}
+	err := pt.runPipenvCommand("pipenv-install", command, cwd)
 	if err != nil {
 		return err
 	}
@@ -2411,6 +2436,19 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
+	// install dev dependencies if requested
+	if pt.opts.InstallDevReleases {
+		// We're currently only installing pulumi/pulumi dependencies, which always have
+		// "master" as the default branch.
+		defaultBranch := "master"
+		err = pt.runCommand("go-get-dev-deps", []string{
+			goBin, "get", "-u", "github.com/pulumi/pulumi/sdk/v3@" + defaultBranch,
+		}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
 	// link local dependencies
 	for _, dep := range pt.opts.Dependencies {
 		editStr, err := getEditStr(dep, gopath, depRoot)
@@ -2528,6 +2566,18 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	if localNuget == "" {
 		home := os.Getenv("HOME")
 		localNuget = filepath.Join(home, ".pulumi-dev", "nuget")
+	}
+
+	if pt.opts.InstallDevReleases {
+		err = pt.runCommand("dotnet-add-package",
+			[]string{
+				dotNetBin, "add", "package", "Pulumi",
+				"--prerelease",
+			},
+			cwd)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, dep := range pt.opts.Dependencies {
