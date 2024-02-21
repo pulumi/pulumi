@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	zxcvbn "github.com/nbutton23/zxcvbn-go"
+	"github.com/nbutton23/zxcvbn-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -52,6 +52,7 @@ func newConfigCmd() *cobra.Command {
 	var stack string
 	var showSecrets bool
 	var jsonOut bool
+	var open bool
 
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -81,13 +82,27 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut)
+			// If --open is explicitly set, use that value. Otherwise, default to true if --show-secrets is set.
+			openSetByUser := cmd.Flags().Changed("open")
+
+			var openEnvironment bool
+			if openSetByUser {
+				openEnvironment = open
+			} else {
+				openEnvironment = showSecrets
+			}
+
+			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut, openEnvironment)
 		}),
 	}
 
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
+	cmd.Flags().BoolVar(
+		&open, "open", false,
+		"Open and resolve any environments listed in the stack configuration. "+
+			"Defaults to true if --show-secrets is set, false otherwise")
 	cmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
@@ -287,6 +302,7 @@ func copyEntireConfigMap(currentStack backend.Stack,
 
 func newConfigGetCmd(stack *string) *cobra.Command {
 	var jsonOut bool
+	var open bool
 	var path bool
 
 	getCmd := &cobra.Command{
@@ -315,12 +331,15 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(ctx, s, key, path, jsonOut)
+			return getConfig(ctx, s, key, path, jsonOut, open)
 		}),
 	}
 	getCmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
+	getCmd.Flags().BoolVar(
+		&open, "open", true,
+		"Open and resolve any environments listed in the stack configuration")
 	getCmd.PersistentFlags().BoolVar(
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to get")
@@ -853,8 +872,16 @@ func listConfig(
 	ps *workspace.ProjectStack,
 	showSecrets bool,
 	jsonOut bool,
+	openEnvironment bool,
 ) error {
-	env, diags, err := checkStackEnv(ctx, stack, ps)
+	var env *esc.Environment
+	var diags []apitype.EnvironmentDiagnostic
+	var err error
+	if openEnvironment {
+		env, diags, err = openStackEnv(ctx, stack, ps)
+	} else {
+		env, diags, err = checkStackEnv(ctx, stack, ps)
+	}
 	if err != nil {
 		return err
 	}
@@ -968,8 +995,8 @@ func listConfig(
 
 		if env != nil {
 			_, environ, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
-				Pretend: true,
-				Redact:  true,
+				Pretend: !openEnvironment,
+				Redact:  !showSecrets,
 			})
 			if err != nil {
 				return err
@@ -1006,7 +1033,7 @@ func listConfig(
 	return nil
 }
 
-func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut bool) error {
+func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut, openEnvironment bool) error {
 	project, _, err := readProject()
 	if err != nil {
 		return err
@@ -1016,7 +1043,13 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 		return err
 	}
 
-	env, diags, err := checkStackEnv(ctx, stack, ps)
+	var env *esc.Environment
+	var diags []apitype.EnvironmentDiagnostic
+	if openEnvironment {
+		env, diags, err = openStackEnv(ctx, stack, ps)
+	} else {
+		env, diags, err = checkStackEnv(ctx, stack, ps)
+	}
 	if err != nil {
 		return err
 	}

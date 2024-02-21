@@ -165,7 +165,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return err
 	}
 
-	if err := listConfig(ctx, cmd.stdout, project, *stack, projectStack, showSecrets, false); err != nil {
+	if err := listConfig(ctx, cmd.stdout, project, *stack, projectStack, showSecrets, false, false); err != nil {
 		return err
 	}
 

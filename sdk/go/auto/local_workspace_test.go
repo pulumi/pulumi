@@ -1768,6 +1768,18 @@ func TestEnvFunctions(t *testing.T) {
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
 	assert.Error(t, err)
+
+	require.NoError(t, s.AddEnvironments(ctx, "secrets-test-env-DO-NOT-DELETE"),
+		"adding environments failed, err: %v", err)
+	envs, err = s.ListEnvironments(ctx)
+	require.NoError(t, err, "listing environments failed, err: %v", err)
+	assert.Contains(t, envs, "secrets-test-env-DO-NOT-DELETE")
+	cfg, err = s.GetAllConfig(ctx)
+	require.NoError(t, err, "getting config failed, err: %v", err)
+	assert.Equal(t, "this_is_my_secret", cfg["testproj:test_secret"].Value)
+	v, err = s.GetConfig(ctx, "test_secret")
+	require.NoError(t, err, "getting config failed, err: %v", err)
+	assert.Equal(t, "this_is_my_secret", v.Value)
 }
 
 func TestTagFunctions(t *testing.T) {
