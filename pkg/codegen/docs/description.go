@@ -104,7 +104,7 @@ func (dctx *docGenContext) processDescription(description string) docInfo {
 		importDetails = parts[1]
 		description = parts[0]
 	}
-	openIndices, closeIndices := getSubstringIndices(description, beginCodeBlock, endCodeBlock)
+	openIndices, closeIndices := getCodeBlockIndices(description, beginCodeBlock, endCodeBlock)
 
 	startIndex := 0
 	var markedUpDescription string
