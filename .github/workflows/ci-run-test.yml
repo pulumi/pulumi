@@ -208,9 +208,9 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
-      - name: Install yarn
+      - name: Install yarn and pnpm
         run: |
-          npm install -g yarn
+          npm install -g yarn pnpm
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
