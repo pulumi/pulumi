@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Adds a --json flag to pulumi config --set-all, this flag enables users to set configs from a json input
