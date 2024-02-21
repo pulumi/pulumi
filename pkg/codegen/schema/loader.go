@@ -144,7 +144,7 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	defer l.m.Unlock()
 
 	key := packageIdentity(pkg, version)
-	if p, ok := l.getPackage(key); ok && version == nil {
+	if p, ok := l.getPackage(key); ok {
 		return p, nil
 	}
 
