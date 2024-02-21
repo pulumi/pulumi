@@ -846,6 +846,11 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
 
+	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
+	for key, output := range args {
+		argDependencies[key] = addOutputDependencies(argDependencies[key], output)
+	}
+
 	info := plugin.CallInfo{
 		Project:        rm.constructInfo.Project,
 		Stack:          rm.constructInfo.Stack,
