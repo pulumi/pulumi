@@ -54,7 +54,7 @@ func (pnpm *pnpmManager) Install(ctx context.Context, dir string, production boo
 }
 
 func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.Cmd {
-	args := []string{"install"}
+	args := []string{"install", "--use-stderr"}
 
 	if production {
 		args = append(args, "--production")
@@ -66,7 +66,7 @@ func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.
 
 func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
-	command := exec.CommandContext(ctx, pnpm.executable, "pack")
+	command := exec.CommandContext(ctx, pnpm.executable, "pack", "--use-stderr")
 	command.Dir = dir
 
 	// We have to read the name of the file from stdout.

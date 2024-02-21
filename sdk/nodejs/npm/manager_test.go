@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -160,19 +161,26 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 	    "name": "test-package"
 	}`)
 
-	for _, pm := range []string{"npm", "yarn", "pnpm"} {
-		pm := pm
-		t.Run(pm, func(t *testing.T) {
+	for _, tt := range []struct{ packageManager, expectedErrorMessage string }{
+		{"npm", "Invalid package, must have name and version"},
+		{"yarn", "Package doesn't have a version"},
+		{"pnpm", "Package version is not defined in the package.json"},
+	} {
+		tt := tt
+		t.Run(tt.packageManager, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			writeLockFile(t, dir, pm)
+			writeLockFile(t, dir, tt.packageManager)
 			packageJSONFilename := filepath.Join(dir, "package.json")
 			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 			stderr := new(bytes.Buffer)
 
 			_, err := Pack(context.Background(), dir, stderr)
 
-			require.Error(t, err)
+			exitErr := new(exec.ExitError)
+			require.ErrorAs(t, err, &exitErr)
+			assert.NotZero(t, exitErr.ExitCode())
+			require.Contains(t, stderr.String(), tt.expectedErrorMessage)
 		})
 	}
 }
