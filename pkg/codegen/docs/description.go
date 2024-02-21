@@ -19,15 +19,16 @@
 package docs
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"strings"
 )
 
 var (
-	beginCodeBlock = "<!--Begin TFConversion -->"
-	endCodeBlock   = "<!--End TFConversion -->"
+	beginCodeBlock = "<!--Begin Code Chooser -->"
+	endCodeBlock   = "<!--End Code Chooser -->"
 )
 
-func getSubstringIndices(s, openStr, closeStr string) ([]int, []int) {
+func getCodeBlockIndices(s, openStr, closeStr string) ([]int, []int) {
 	var openIndices []int
 	var closeIndices []int
 
@@ -39,19 +40,18 @@ func getSubstringIndices(s, openStr, closeStr string) ([]int, []int) {
 		}
 		openIndices = append(openIndices, startIndex+open)
 		startIndex += open + len(openStr)
-		close := strings.Index(s[startIndex:], closeStr)
-		if close == -1 {
-			panic("this should never happen: there should be equal amounts of opening and closing code block markers")
+		closing := strings.Index(s[startIndex:], closeStr)
+		if closing == -1 {
+			contract.Failf("this should never happen: there should be equal amounts of opening and closing code block markers")
 		}
-		closeIndices = append(closeIndices, startIndex+close)
-		startIndex += close + len(closeStr)
+		closeIndices = append(closeIndices, startIndex+closing)
+		startIndex += closing + len(closeStr)
 
 	}
 	return openIndices, closeIndices
 }
 
 func markupBlock(block string) string {
-
 	languages := []string{
 		"typescript",
 		"python",
@@ -73,25 +73,25 @@ func markupBlock(block string) string {
 	choosableEnd := "</pulumi-choosable>\n</div>\n"
 
 	var markedUpBlock string
-	//first, append the start chooser
+	// first, append the start chooser
 	markedUpBlock += chooserStart
 
 	for lang, choosable := range choosables {
 		// Add language specific open choosable
 		markedUpBlock += choosable
 		// find our language - because we have no guarantee of order from our input, we need to find both code fences
-		//and then append the content in the order that docsgen expects.
+		// and then append the content in the order that docsgen expects.
 		start := strings.Index(block, "```"+languages[lang])
 		if start == -1 {
 			markedUpBlock += "```\n" + defaultMissingExampleSnippetPlaceholder + "```\n"
 		} else {
-			//find end index - this is the next code fence. Unfortunately Go doesn't allow us to look for the second
-			//instance of a substring.
+			// find end index - this is the next code fence. Unfortunately Go doesn't allow us to look for the second
+			// instance of a substring.
 			endLangBlock := start + len("```"+languages[lang]) + strings.Index(block[start+len("```"+languages[lang]):], "```")
-			//append code to block, and include code fences
+			// append code to block, and include code fences
 			markedUpBlock += block[start:endLangBlock+len("```")] + "\n"
 		}
-		//add close choosable
+		// add close choosable
 		markedUpBlock += choosableEnd
 	}
 	return markedUpBlock
@@ -108,11 +108,11 @@ func (dctx *docGenContext) processDescription(description string) docInfo {
 
 	startIndex := 0
 	var markedUpDescription string
-	for i, _ := range openIndices {
-		//append text
+	for i := range openIndices {
+		// append text
 		markedUpDescription += description[startIndex:openIndices[i]]
 		codeBlock := description[openIndices[i]:closeIndices[i]]
-		//append marked up block
+		// append marked up block
 		markedUpDescription += markupBlock(codeBlock)
 		startIndex = closeIndices[i] + len(endCodeBlock)
 	}
