@@ -149,6 +149,8 @@ type ResourceOptions struct {
 	DisableSecrets            bool
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
+
+	Transforms []*pulumirpc.Callback
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -269,6 +271,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeletedWith:                string(opts.DeletedWith),
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
+		Transforms:                 opts.Transforms,
 	}
 
 	ctx := context.Background()
@@ -459,6 +462,11 @@ func (rm *ResourceMonitor) Call(
 	}
 
 	return outs, deps, nil, nil
+}
+
+func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) error {
+	_, err := rm.resmon.RegisterStackTransform(context.Background(), callback)
+	return err
 }
 
 func prepareTestTimeout(timeout float64) string {

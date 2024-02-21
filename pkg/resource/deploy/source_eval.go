@@ -33,7 +33,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
@@ -518,10 +520,35 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 	return res.ref, res.err
 }
 
+// A transformation function that can be applied to a resource.
+type TransformFunction func(
+	ctx context.Context,
+	name, typ string, custom bool, parent resource.URN,
+	props resource.PropertyMap,
+	opts *pulumirpc.TransformResourceOptions,
+) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
+
+type CallbacksClient struct {
+	pulumirpc.CallbacksClient
+
+	conn *grpc.ClientConn
+}
+
+func (c *CallbacksClient) Close() error {
+	return c.conn.Close()
+}
+
+func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
+	return &CallbacksClient{
+		CallbacksClient: pulumirpc.NewCallbacksClient(conn),
+		conn:            conn,
+	}
+}
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	pulumirpc.UnimplementedResourceMonitorServer
+	pulumirpc.UnsafeResourceMonitorServer
 
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.
@@ -539,6 +566,13 @@ type resmon struct {
 	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
+
+	stackTransformsLock    sync.Mutex
+	stackTransforms        []TransformFunction // stack transformation functions
+	resourceTransformsLock sync.Mutex
+	resourceTransforms     map[resource.URN][]TransformFunction // option transformation functions per resource
+	callbacksLock          sync.Mutex
+	callbacks              map[string]*CallbacksClient // callbacks clients per target address
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -575,6 +609,8 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		cancel:                    cancel,
 		disableResourceReferences: opts.DisableResourceReferences,
 		disableOutputValues:       opts.DisableOutputValues,
+		callbacks:                 map[string]*CallbacksClient{},
+		resourceTransforms:        map[resource.URN][]TransformFunction{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -606,6 +642,25 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 	return resmon, nil
 }
 
+// Get or allocate a new grpc client for the given callback address.
+func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
+	rm.callbacksLock.Lock()
+	defer rm.callbacksLock.Unlock()
+
+	if client, has := rm.callbacks[target]; has {
+		return client, nil
+	}
+
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
+	client := NewCallbacksClient(conn)
+	rm.callbacks[target] = client
+	return client, nil
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
@@ -614,7 +669,11 @@ func (rm *resmon) Address() string {
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
 func (rm *resmon) Cancel() error {
 	close(rm.cancel)
-	return <-rm.done
+	errs := []error{<-rm.done}
+	for _, client := range rm.callbacks {
+		errs = append(errs, client.Close())
+	}
+	return errors.Join(errs...)
 }
 
 func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
@@ -731,6 +790,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "aliasSpecs":
 		hasSupport = true
 	case "deletedWith":
+		hasSupport = true
+	case "transforms":
 		hasSupport = true
 	}
 
@@ -1073,6 +1134,94 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(
+		ctx context.Context, name, typ string, custom bool, parent resource.URN,
+		props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+		logging.V(5).Infof("Transform: name=%v type=%v custom=%v parent=%v props=%v opts=%v",
+			name, typ, custom, parent, props, opts)
+
+		mopts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+
+		mprops, err := plugin.MarshalProperties(props, mopts)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		request, err := proto.Marshal(&pulumirpc.TransformRequest{
+			Name:       name,
+			Type:       typ,
+			Custom:     custom,
+			Properties: mprops,
+			Options:    opts,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshaling request: %w", err)
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(5).Infof("Transform callback error: %v", err)
+			return nil, nil, err
+		}
+
+		var response pulumirpc.TransformResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
+		}
+
+		newOpts := opts
+		if response.Options != nil {
+			newOpts = response.Options
+		}
+
+		newProps := props
+		if response.Properties != nil {
+			newProps, err = plugin.UnmarshalProperties(response.Properties, mopts)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
+
+		return newProps, newOpts, nil
+	}, nil
+}
+
+func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+	rm.stackTransformsLock.Lock()
+	defer rm.stackTransformsLock.Unlock()
+
+	if cb.Target == "" {
+		return nil, errors.New("target must be specified")
+	}
+
+	wrapped, err := rm.wrapTransformCallback(cb)
+	if err != nil {
+		return nil, err
+	}
+
+	rm.stackTransforms = append(rm.stackTransforms, wrapped)
+	return &emptypb.Empty{}, nil
+}
+
 // inheritFromParent returns a new goal that inherits from the given parent goal.
 // Currently only inherits DeletedWith from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
@@ -1234,17 +1383,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
-	protect := req.GetProtect()
-	deleteBeforeReplaceValue := req.GetDeleteBeforeReplace()
-	ignoreChanges := req.GetIgnoreChanges()
-	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
-	customTimeouts := req.GetCustomTimeouts()
-	retainOnDelete := req.GetRetainOnDelete()
-	deletedWith, err := resource.ParseOptionalURN(req.GetDeletedWith())
-	if err != nil {
-		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
-	}
 	sourcePosition := rm.sourcePositions.getFromRequest(req)
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
@@ -1260,63 +1399,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		t = tokens.Type(req.GetType())
 	}
 
-	// Take a copy of req.Providers so we don't mutate it
-	resolvedProviders := make(map[string]string, len(req.GetProviders()))
-	for k, v := range req.GetProviders() {
-		resolvedProviders[k] = v
-	}
-
-	// We handle updating the providers map to include the providers field of the parent if
-	// both the current resource and its parent is a component resource.
-	func() {
-		// Function exists to scope the lock
-		rm.componentProvidersLock.Lock()
-		defer rm.componentProvidersLock.Unlock()
-		if parentsProviders, parentIsComponent := rm.componentProviders[parent]; !custom &&
-			parent != "" && parentIsComponent {
-			for k, v := range parentsProviders {
-				if _, ok := resolvedProviders[k]; !ok {
-					resolvedProviders[k] = v
-				}
-			}
-		}
-	}()
-
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 
-	var providerRef providers.Reference
-	var providerRefs map[string]string
-
-	if custom && !providers.IsProviderType(t) || remote {
-		providerReq, err := parseProviderRequest(
-			t.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums())
-		if err != nil {
-			return nil, err
-		}
-
-		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, req.GetProvider())
-		if err != nil {
-			return nil, err
-		}
-
-		providerRefs = make(map[string]string, len(resolvedProviders))
-		for name, provider := range resolvedProviders {
-			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
-			if err != nil {
-				return nil, err
-			}
-			providerRefs[name] = ref.String()
-		}
-	}
-
-	aliases := []resource.Alias{}
+	// We need to build the full alias spec list here, so we can pass it to transforms.
+	aliases := []*pulumirpc.Alias{}
 	for _, aliasURN := range req.GetAliasURNs() {
-		urn, err := resource.ParseURN(aliasURN)
-		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid alias URN: %s", err))
-		}
-		aliases = append(aliases, resource.Alias{URN: urn})
+		aliases = append(aliases, &pulumirpc.Alias{Alias: &pulumirpc.Alias_Urn{Urn: aliasURN}})
 	}
 
 	// We assume aliases are properly specified. However, if a request hasn't explicitly
@@ -1330,7 +1418,158 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if transformAliases {
 			aliasObject = transformAliasForNodeJSCompat(aliasObject)
 		}
+		aliases = append(aliases, aliasObject)
+	}
 
+	var deleteBeforeReplace *bool
+	// Technically DeleteBeforeReplaceDefined should be used to decided if DeleteBeforeReplace should be looked at or
+	// not. However the Go sdk doesn't set Defined so we have a fallback here of respecting this field if either Defined
+	// is set or DeleteBeforeReplace is true.
+	if req.GetDeleteBeforeReplaceDefined() || req.GetDeleteBeforeReplace() {
+		deleteBeforeReplace = &req.DeleteBeforeReplace
+	}
+
+	props, err := plugin.UnmarshalProperties(
+		req.GetObject(), plugin.MarshalOptions{
+			Label:                 label,
+			KeepUnknowns:          true,
+			ComputeAssetHashes:    true,
+			KeepSecrets:           true,
+			KeepResources:         true,
+			KeepOutputValues:      true,
+			UpgradeToOutputValues: true,
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	opts := &pulumirpc.TransformResourceOptions{
+		DependsOn:               req.GetDependencies(),
+		Protect:                 req.GetProtect(),
+		IgnoreChanges:           req.GetIgnoreChanges(),
+		ReplaceOnChanges:        req.GetReplaceOnChanges(),
+		Version:                 req.GetVersion(),
+		Aliases:                 aliases,
+		Provider:                req.GetProvider(),
+		Providers:               req.GetProviders(),
+		CustomTimeouts:          req.GetCustomTimeouts(),
+		PluginDownloadUrl:       req.GetPluginDownloadURL(),
+		RetainOnDelete:          req.GetRetainOnDelete(),
+		DeletedWith:             req.GetDeletedWith(),
+		DeleteBeforeReplace:     deleteBeforeReplace,
+		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
+		PluginChecksums:         req.GetPluginChecksums(),
+	}
+
+	// Before we calculate anything else run the transformations. First run the transforms for this resource,
+	// then it's parents etc etc
+	transforms, err := slice.MapError(req.Transforms, rm.wrapTransformCallback)
+	if err != nil {
+		return nil, err
+	}
+	for _, transform := range transforms {
+		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
+		if err != nil {
+			return nil, err
+		}
+		props = newProps
+		opts = newOpts
+	}
+	// Lookup our parents transformations and run those
+	err = func() error {
+		// Function exists to scope the lock
+		rm.resourceTransformsLock.Lock()
+		defer rm.resourceTransformsLock.Unlock()
+		rm.resGoalsLock.Lock()
+		defer rm.resGoalsLock.Unlock()
+
+		current := parent
+		for current != "" {
+			if transforms, ok := rm.resourceTransforms[current]; ok {
+				for _, transform := range transforms {
+					newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
+					if err != nil {
+						return err
+					}
+					props = newProps
+					opts = newOpts
+				}
+			}
+			current = rm.resGoals[current].Parent
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// Then lock the stack transformations and run all of those
+	err = func() error {
+		// Function exists to scope the lock
+		rm.stackTransformsLock.Lock()
+		defer rm.stackTransformsLock.Unlock()
+
+		for _, transform := range rm.stackTransforms {
+			newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
+			if err != nil {
+				return err
+			}
+			props = newProps
+			opts = newOpts
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// We handle updating the providers map to include the providers field of the parent if
+	// both the current resource and its parent is a component resource.
+	func() {
+		// Function exists to scope the lock
+		rm.componentProvidersLock.Lock()
+		defer rm.componentProvidersLock.Unlock()
+		if parentsProviders, parentIsComponent := rm.componentProviders[parent]; !custom &&
+			parent != "" && parentIsComponent {
+			for k, v := range parentsProviders {
+				if opts.Providers == nil {
+					opts.Providers = map[string]string{}
+				}
+				if _, ok := opts.Providers[k]; !ok {
+					opts.Providers[k] = v
+				}
+			}
+		}
+	}()
+
+	var providerRef providers.Reference
+	var providerRefs map[string]string
+
+	if custom && !providers.IsProviderType(t) || remote {
+		providerReq, err := parseProviderRequest(
+			t.Package(), opts.GetVersion(),
+			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums())
+		if err != nil {
+			return nil, err
+		}
+
+		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
+		if err != nil {
+			return nil, err
+		}
+
+		providerRefs = make(map[string]string, len(opts.GetProviders()))
+		for name, provider := range opts.GetProviders() {
+			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
+			if err != nil {
+				return nil, err
+			}
+			providerRefs[name] = ref.String()
+		}
+	}
+
+	parsedAliases := []resource.Alias{}
+	for _, aliasObject := range opts.Aliases {
 		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
 		if aliasSpec != nil {
@@ -1361,11 +1600,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			alias = resource.Alias{URN: urn}
 		}
-		aliases = append(aliases, alias)
+		parsedAliases = append(parsedAliases, alias)
 	}
 
 	dependencies := []resource.URN{}
-	for _, dependingURN := range req.GetDependencies() {
+	for _, dependingURN := range opts.GetDependsOn() {
 		urn, err := resource.ParseURN(dependingURN)
 		if err != nil {
 			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
@@ -1373,35 +1612,22 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		dependencies = append(dependencies, urn)
 	}
 
-	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{
-			Label:                 label,
-			KeepUnknowns:          true,
-			ComputeAssetHashes:    true,
-			KeepSecrets:           true,
-			KeepResources:         true,
-			KeepOutputValues:      true,
-			UpgradeToOutputValues: true,
-		})
-	if err != nil {
-		return nil, err
-	}
 	if providers.IsProviderType(t) {
-		if req.GetVersion() != "" {
-			version, err := semver.Parse(req.GetVersion())
+		if opts.GetVersion() != "" {
+			version, err := semver.Parse(opts.GetVersion())
 			if err != nil {
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}
 			providers.SetProviderVersion(props, &version)
 		}
-		if req.GetPluginDownloadURL() != "" {
-			providers.SetProviderURL(props, req.GetPluginDownloadURL())
+		if opts.GetPluginDownloadUrl() != "" {
+			providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
 		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
-		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
 				providers.SetProviderVersion(props, defaultProvider.Version)
 			}
@@ -1434,12 +1660,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
-
-	var deleteBeforeReplace *bool
-	if deleteBeforeReplaceValue || req.GetDeleteBeforeReplaceDefined() {
-		deleteBeforeReplace = &deleteBeforeReplaceValue
+	protect := opts.Protect
+	ignoreChanges := opts.IgnoreChanges
+	replaceOnChanges := opts.ReplaceOnChanges
+	retainOnDelete := opts.RetainOnDelete
+	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
 	}
+	customTimeouts := opts.CustomTimeouts
+
+	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
@@ -1455,8 +1686,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
-		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		t, name, custom, len(props), parent, protect, providerRef, dependencies, opts.DeleteBeforeReplace, ignoreChanges,
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1494,8 +1725,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Delete: customTimeouts.Delete,
 			}
 		}
-		if deleteBeforeReplace != nil {
-			options.DeleteBeforeReplace = *deleteBeforeReplace
+		if opts.DeleteBeforeReplace != nil {
+			options.DeleteBeforeReplace = *opts.DeleteBeforeReplace
 		}
 
 		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
@@ -1555,8 +1786,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
-			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
+			providerRef.String(), nil, propertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
+			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
 			sourcePosition,
 		)
 
@@ -1595,12 +1826,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	if !custom && result != nil && result.State != nil && result.State.URN != "" {
+	if result != nil && result.State != nil && result.State.URN != "" {
+		// We've got a safe URN now, save the transformations
 		func() {
-			rm.componentProvidersLock.Lock()
-			defer rm.componentProvidersLock.Unlock()
-			rm.componentProviders[result.State.URN] = req.GetProviders()
+			rm.resourceTransformsLock.Lock()
+			defer rm.resourceTransformsLock.Unlock()
+			rm.resourceTransforms[result.State.URN] = transforms
 		}()
+		if !custom {
+			func() {
+				rm.componentProvidersLock.Lock()
+				defer rm.componentProvidersLock.Unlock()
+				rm.componentProviders[result.State.URN] = opts.GetProviders()
+			}()
+		}
 	}
 
 	// Filter out partially-known values if the requestor does not support them.
