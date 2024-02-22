@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Use pnpm as package manager if we find a pnpm-lock.yaml file

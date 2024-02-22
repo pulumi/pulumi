@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Fix infinite recursion when binding invoke signature into promises without accounting for recursive type references
