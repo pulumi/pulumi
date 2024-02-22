@@ -390,6 +390,52 @@ func TestInvalidTypes(t *testing.T) {
 	}
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/15478.
+func TestOverlyNestedTypes(t *testing.T) {
+	t.Parallel()
+
+	badTests := []struct {
+		filename string
+		expected string
+	}{
+		{"bad-nested-type-1.json", "#/types/nestedTypes:index:NestedType/properties/arrs: type Array<Array<Array<string>>> is nested too deeply"},
+		{"bad-nested-type-2.json", "#/types/nestedTypes:index:NestedType/properties/maps: type Map<Map<Map<string>>> is nested too deeply"},
+		{"bad-nested-type-3.json", "#/resources/nestedTypes:index:Resource/properties/arrs: type Array<Array<Array<string>>> is nested too deeply"},
+		{"bad-nested-type-4.json", "#/resources/nestedTypes:index:Resource/properties/maps: type Map<Map<Map<string>>> is nested too deeply"},
+	}
+
+	for _, tt := range badTests {
+		tt := tt
+		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			assert.ErrorContains(t, err, tt.expected)
+		})
+	}
+
+	goodTests := []string{
+		"good-nested-type-1.json",
+		"good-nested-type-2.json",
+		"good-nested-type-3.json",
+		"good-nested-type-4.json",
+	}
+
+	for _, tt := range goodTests {
+		tt := tt
+		t.Run(tt, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestEnums(t *testing.T) {
 	t.Parallel()
 

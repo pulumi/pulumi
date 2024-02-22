@@ -1,0 +1,27 @@
+{
+  "name": "nestedTypes",
+  "version": "1.0.0",
+  "resources": {
+    "nestedTypes:index:Resource": {
+      "properties": {
+        "maps": { 
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "pulumi.json#/Any"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "nested-types/nestedTypes"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "nestedTypes",
+  "version": "1.0.0",
+  "types": {
+    "nestedTypes:index:NestedType": {
+      "properties": {
+        "arrs": { 
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "pulumi.json#/Any"
+              }
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+          "arrs"
+      ]
+    }
+  },
+  "resources": {
+    "nestedTypes:index:Resource": {
+      "properties": {
+        "nested": {
+          "$ref": "#/types/nestedTypes:index:NestedType"
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "nested-types/nestedTypes"
+    }
+  }
+}
