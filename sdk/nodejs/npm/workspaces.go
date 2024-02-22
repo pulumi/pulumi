@@ -48,11 +48,11 @@ func FindWorkspaceRoot(programDirectory string) (string, error) {
 		}
 		for _, workspace := range workspaces {
 			// See if any of the workspace glob results is the programDirectory.
-			paths, err := filepath.Glob(filepath.Join(currentDir, workspace))
+			paths, err := filepath.Glob(filepath.Join(currentDir, workspace, "package.json"))
 			if err != nil {
 				return "", err
 			}
-			if paths != nil && slices.Contains(paths, programDirectory) {
+			if paths != nil && slices.Contains(paths, filepath.Join(programDirectory, "package.json")) {
 				return currentDir, nil
 			}
 		}
