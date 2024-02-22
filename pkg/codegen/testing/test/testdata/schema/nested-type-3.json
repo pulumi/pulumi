@@ -1,0 +1,27 @@
+{
+  "name": "nestedTypes",
+  "version": "1.0.0",
+  "resources": {
+    "nestedTypes:index:Resource": {
+      "properties": {
+        "arrs": { 
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "nested-types/nestedTypes"
+    }
+  }
+}

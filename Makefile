@@ -182,7 +182,6 @@ get_schemas: \
 			schema-aws!4.37.1           \
 			schema-aws!5.4.0            \
 			schema-aws!5.16.2           \
-			schema-azure-native!1.28.0  \
 			schema-azure-native!1.29.0  \
 			schema-azure-native!1.56.0  \
 			schema-azure!4.18.0         \

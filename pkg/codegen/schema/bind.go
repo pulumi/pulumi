@@ -1049,6 +1049,33 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 	return dv, diags
 }
 
+func isOverlyNested(path string, typ Type) hcl.Diagnostics {
+	isCollection := func(typ Type) Type {
+		switch typ := typ.(type) {
+		case *ArrayType:
+			return typ.ElementType
+		case *MapType:
+			return typ.ElementType
+		}
+		return nil
+	}
+
+	// If isCollection returns non-nil three, the type is overly nested.
+	inner := isCollection(typ)
+	if inner == nil {
+		return nil
+	}
+	innerInner := isCollection(inner)
+	if innerInner == nil {
+		return nil
+	}
+	innerInnerInner := isCollection(innerInner)
+	if innerInnerInner == nil {
+		return nil
+	}
+	return hcl.Diagnostics{errorf(path, "type %v is nested too deeply", typ)}
+}
+
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
 func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
@@ -1075,6 +1102,11 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding type for property %q: %w", name, err)
 		}
+
+		// After binding the type of a property we need to check if it's overly nested, we can only handle two layers of
+		// nesting so array[array[string]] is ok but array[array[array[string]]] is not.
+		diags = diags.Extend(isOverlyNested(propertyPath, typ))
+		// Note we can keep binding after this but it will be an error diagnostic and so stop any later codegen.
 
 		cv, cvDiags := bindConstValue(propertyPath+"/const", "constant", spec.Const, typ)
 		diags = diags.Extend(cvDiags)

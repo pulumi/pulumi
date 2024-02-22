@@ -6,18 +6,18 @@
       "isComponent": true,
       "inputProperties": {
         "resourceGroup": {
-          "$ref": "/azure-native/v1.28.0/schema.json#/resources/azure-native:resources:ResourceGroup",
+          "$ref": "/azure-native/v1.29.0/schema.json#/resources/azure-native:resources:ResourceGroup",
           "description": "The resource group that hosts the component resource"
         }
       },
       "requiredInputs": ["resourceGroup"],
       "properties": {
         "registry": {
-          "$ref": "/azure-native/v1.28.0/schema.json#/resources/azure-native:containerregistry:Registry",
+          "$ref": "/azure-native/v1.29.0/schema.json#/resources/azure-native:containerregistry:Registry",
           "description": "The Registry"
         },
         "replication": {
-          "$ref": "/azure-native/v1.28.0/schema.json#/resources/azure-native:containerregistry:Replication",
+          "$ref": "/azure-native/v1.29.0/schema.json#/resources/azure-native:containerregistry:Replication",
           "description": "The replication policy"
         },
         "acrLoginServerOut": {
@@ -31,7 +31,7 @@
   "language": {
     "csharp": {
       "packageReferences": {
-        "Pulumi.AzureNative": "1.28.*"
+        "Pulumi.AzureNative": "1.29.*"
       }
     },
     "go": {
@@ -42,7 +42,7 @@
     "nodejs": {
       "dependencies": {
         "@pulumi/pulumi": "^3.7.0",
-        "@pulumi/azure-native": "^1.28.0"
+        "@pulumi/azure-native": "^1.29.0"
       },
       "devDependencies": {
         "typescript": "^3.7.0"

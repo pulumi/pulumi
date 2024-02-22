@@ -390,6 +390,33 @@ func TestInvalidTypes(t *testing.T) {
 	}
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/15478.
+func TestOverlyNestedTypes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{"nested-type-1.json", "#/types/nestedTypes:index:NestedType/properties/arrs: type Array<Array<Array<string>>> is nested too deeply"},
+		{"nested-type-2.json", "#/types/nestedTypes:index:NestedType/properties/maps: type Map<Map<Map<string>>> is nested too deeply"},
+		{"nested-type-3.json", "#/resources/nestedTypes:index:Resource/properties/arrs: type Array<Array<Array<string>>> is nested too deeply"},
+		{"nested-type-4.json", "#/resources/nestedTypes:index:Resource/properties/maps: type Map<Map<Map<string>>> is nested too deeply"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			assert.ErrorContains(t, err, tt.expected)
+		})
+	}
+}
+
 func TestEnums(t *testing.T) {
 	t.Parallel()
 

@@ -57,7 +57,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"aws", "4.37.1"},
 		SchemaProvider{"aws", "5.16.2"},
 		SchemaProvider{"azure", "4.18.0"},
-		SchemaProvider{"azure-native", "1.28.0"},
 		SchemaProvider{"azure-native", "1.29.0"},
 		SchemaProvider{"random", "4.2.0"},
 		SchemaProvider{"random", "4.3.1"},
