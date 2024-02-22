@@ -12,62 +12,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
-// goconst linter's warning.
-//
-//nolint:lll, goconst
 package docs
 
 import (
-	"strings"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"strings"
 )
 
-var (
-	beginCodeBlock = "<!--Begin Code Chooser -->"
-	endCodeBlock   = "<!--End Code Chooser -->"
+const (
+	beginCodeBlock = "<!--Start PulumiCodeChooser -->"
+	endCodeBlock   = "<!--End PulumiCodeChooser -->"
 )
 
-func getCodeBlockIndices(s, openStr, closeStr string) ([]int, []int) {
-	var openIndices []int
-	var closeIndices []int
+type codeLocation struct {
+	open  int
+	close int
+}
+
+func getCodeSection(doc string) []codeLocation {
+	var fences []codeLocation
 
 	startIndex := 0
 	for {
-		open := strings.Index(s[startIndex:], openStr)
+		open := strings.Index(doc[startIndex:], beginCodeBlock)
 		if open == -1 {
 			break
 		}
-		openIndices = append(openIndices, startIndex+open)
-		startIndex += open + len(openStr)
-		closing := strings.Index(s[startIndex:], closeStr)
-		if closing == -1 {
-			contract.Failf("this should never happen: there should be equal amounts of opening and closing code block markers")
-		}
-		closeIndices = append(closeIndices, startIndex+closing)
-		startIndex += closing + len(closeStr)
+		var fence codeLocation
+		fence.open = startIndex + open
+		startIndex += open + len(beginCodeBlock)
+		closing := strings.Index(doc[startIndex:], endCodeBlock)
 
+		contract.Assertf(closing != -1, "this should never happen: there should be equal amounts of opening and closing code block markers")
+
+		fence.close = startIndex + closing
+
+		startIndex += closing + len(endCodeBlock)
+		fences = append(fences, fence)
 	}
-	return openIndices, closeIndices
+	return fences
 }
 
 func markupBlock(block string) string {
-	languages := []string{
-		"typescript",
-		"python",
-		"go",
-		"csharp",
-		"java",
-		"yaml",
-	}
-	choosables := []string{
-		"<div>\n<pulumi-choosable type=\"language\" values=\"javascript,typescript\">\n\n",
-		"<div>\n<pulumi-choosable type=\"language\" values=\"python\">\n\n",
-		"<div>\n<pulumi-choosable type=\"language\" values=\"go\">\n\n",
-		"<div>\n<pulumi-choosable type=\"language\" values=\"csharp\">\n\n",
-		"<div>\n<pulumi-choosable type=\"language\" values=\"java\">\n\n",
-		"<div>\n<pulumi-choosable type=\"language\" values=\"yaml\">\n\n",
+
+	languages := map[string]string{
+		"typescript": "<div>\n<pulumi-choosable type=\"language\" values=\"javascript,typescript\">\n\n",
+		"python":     "<div>\n<pulumi-choosable type=\"language\" values=\"python\">\n\n",
+		"go":         "<div>\n<pulumi-choosable type=\"language\" values=\"go\">\n\n",
+		"csharp":     "<div>\n<pulumi-choosable type=\"language\" values=\"csharp\">\n\n",
+		"java":       "<div>\n<pulumi-choosable type=\"language\" values=\"java\">\n\n",
+		"yaml":       "<div>\n<pulumi-choosable type=\"language\" values=\"yaml\">\n\n",
 	}
 
 	chooserStart := "<div>\n<pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser>\n</div>\n"
@@ -77,22 +71,21 @@ func markupBlock(block string) string {
 	// first, append the start chooser
 	markedUpBlock += chooserStart
 
-	for lang, choosable := range choosables {
+	for tag, choosable := range languages {
 		// Add language specific open choosable
 		markedUpBlock += choosable
 		// find our language - because we have no guarantee of order from our input, we need to find both code fences
 		// and then append the content in the order that docsgen expects.
-		start := strings.Index(block, "```"+languages[lang])
+		start := strings.Index(block, "```"+tag)
 		if start == -1 {
 			markedUpBlock += "```\n" + defaultMissingExampleSnippetPlaceholder + "```\n"
 		} else {
-			// find end index - this is the next code fence. Unfortunately Go doesn't allow us to look for the second
-			// instance of a substring.
-			endLangBlock := start + len("```"+languages[lang]) + strings.Index(block[start+len("```"+languages[lang]):], "```")
+			// find end index - this is the next code fence.
+			endLangBlock := start + len("```"+tag) + strings.Index(block[start+len("```"+tag):], "```")
 			// append code to block, and include code fences
 			markedUpBlock += block[start:endLangBlock+len("```")] + "\n"
 		}
-		// add close choosable
+		// add closing choosable
 		markedUpBlock += choosableEnd
 	}
 	return markedUpBlock
@@ -105,17 +98,18 @@ func (dctx *docGenContext) processDescription(description string) docInfo {
 		importDetails = parts[1]
 		description = parts[0]
 	}
-	openIndices, closeIndices := getCodeBlockIndices(description, beginCodeBlock, endCodeBlock)
+
+	codeBlocks := getCodeSection(description)
 
 	startIndex := 0
 	var markedUpDescription string
-	for i := range openIndices {
+	for _, block := range codeBlocks {
 		// append text
-		markedUpDescription += description[startIndex:openIndices[i]]
-		codeBlock := description[openIndices[i]:closeIndices[i]]
+		markedUpDescription += description[startIndex:block.open]
+		codeBlock := description[block.open:block.close]
 		// append marked up block
 		markedUpDescription += markupBlock(codeBlock)
-		startIndex = closeIndices[i] + len(endCodeBlock)
+		startIndex = block.close + len(endCodeBlock)
 	}
 	// append remainder of description, if any
 	markedUpDescription += description[startIndex:]

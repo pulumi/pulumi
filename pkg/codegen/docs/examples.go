@@ -46,7 +46,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 	if docstring == "" {
 		return docInfo{}
 	}
-	if strings.Contains(docstring, "<!--Begin TFConversion -->") {
+	if strings.Contains(docstring, beginCodeBlock) {
 		return dctx.processDescription(docstring)
 	}
 
