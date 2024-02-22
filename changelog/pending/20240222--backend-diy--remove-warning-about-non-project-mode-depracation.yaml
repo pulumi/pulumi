@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: backend/diy
+  description: Remove warning about non-project mode depracation.
