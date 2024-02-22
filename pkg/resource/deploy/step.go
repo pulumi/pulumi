@@ -67,6 +67,8 @@ type SameStep struct {
 	// If this is a same-step for a resource being created but which was not --target'ed by the user
 	// (and thus was skipped).
 	skippedCreate bool
+
+	nonTargeted bool
 }
 
 var _ Step = (*SameStep)(nil)
@@ -117,6 +119,17 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	}
 }
 
+// TODO docs
+func NewNonTargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
+	return &SameStep{
+		deployment:  deployment,
+		reg:         reg,
+		old:         old,
+		new:         new,
+		nonTargeted: true,
+	}
+}
+
 func (s *SameStep) Op() display.StepOp      { return OpSame }
 func (s *SameStep) Deployment() *Deployment { return s.deployment }
 func (s *SameStep) Type() tokens.Type       { return s.new.Type }
@@ -126,6 +139,7 @@ func (s *SameStep) Old() *resource.State    { return s.old }
 func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
+func (s *SameStep) IsNonTargeted() bool     { return s.nonTargeted }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Retain the ID and outputs

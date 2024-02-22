@@ -889,7 +889,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	//
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
-	if hasOld && isTargeted {
+	if hasOld {
 		contract.Assertf(old != nil, "must have old resource if hasOld is true")
 
 		// If the user requested only specific resources to update, and this resource was not in
@@ -897,22 +897,23 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
-		} else {
-			updateSteps, err := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(updateSteps) > 0 {
-				// 'Diff' produced update steps.  We're done at this point.
-				return updateSteps, nil
-			}
-
-			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
-			// is same/unchanged.
-			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
+			sg.sames[urn] = true
+			return []Step{NewNonTargetedSameStep(sg.deployment, event, old, new)}, nil
 		}
+		updateSteps, err := sg.generateStepsFromDiff(
+			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(updateSteps) > 0 {
+			// 'Diff' produced update steps.  We're done at this point.
+			return updateSteps, nil
+		}
+
+		// Diff didn't produce any steps for this resource.  Fall through and indicate that it
+		// is same/unchanged.
+		logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
