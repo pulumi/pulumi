@@ -549,8 +549,9 @@ func TestRunLangPlugin(t *testing.T) {
 								assert.Equal(t, "expected-address", info.MonitorAddress)
 								assert.Equal(t, "expected-stack", info.Stack)
 								assert.Equal(t, "expected-project", info.Project)
-								assert.Equal(t, "expected-pwd", info.Pwd)
-								assert.Equal(t, "expected-program", p.EntryPoint())
+								assert.Equal(t, "/expected-pwd", info.Pwd)
+								assert.Equal(t, "/expected-pwd", info.Info.ProgramDirectory())
+								assert.Equal(t, "expected-program", info.Info.EntryPoint())
 								assert.Equal(t, []string{"expected", "args"}, info.Args)
 								assert.Equal(t, "secret-value", info.Config[config.MustMakeKey("test", "secret")])
 								assert.Equal(t, "regular-value", info.Config[config.MustMakeKey("test", "regular")])
@@ -574,7 +575,7 @@ func TestRunLangPlugin(t *testing.T) {
 					Name:    "expected-project",
 					Runtime: workspace.NewProjectRuntimeInfo("stuff", map[string]interface{}{}),
 				},
-				Pwd:     "expected-pwd",
+				Pwd:     "/expected-pwd",
 				Program: "expected-program",
 				Args:    []string{"expected", "args"},
 				Target: &Target{

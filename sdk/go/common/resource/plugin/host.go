@@ -100,21 +100,21 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
 		for _, providerOpts := range plugins.Providers {
-			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
+			info, err := parsePluginOpts(ctx.Root, providerOpts, workspace.ResourcePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, languageOpts := range plugins.Languages {
-			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
+			info, err := parsePluginOpts(ctx.Root, languageOpts, workspace.LanguagePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, analyzerOpts := range plugins.Analyzers {
-			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
+			info, err := parsePluginOpts(ctx.Root, analyzerOpts, workspace.AnalyzerPlugin)
 			if err != nil {
 				return nil, err
 			}
@@ -163,7 +163,9 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	return host, nil
 }
 
-func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (workspace.ProjectPlugin, error) {
+func parsePluginOpts(
+	root string, providerOpts workspace.PluginOptions, k workspace.PluginKind,
+) (workspace.ProjectPlugin, error) {
 	handleErr := func(msg string, a ...interface{}) (workspace.ProjectPlugin, error) {
 		return workspace.ProjectPlugin{},
 			fmt.Errorf("parsing plugin options for '%s': %w", providerOpts.Name, fmt.Errorf(msg, a...))
@@ -189,9 +191,18 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 		return handleErr("provider folder '%s' is not a directory", providerOpts.Path)
 	}
 
+	// The path is relative to the project root. Make it absolute here so we don't need to track that everywhere its used.
+	path := providerOpts.Path
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(filepath.Join(root, path))
+		if err != nil {
+			return handleErr("getting absolute path for plugin path %s: %w", providerOpts.Path, err)
+		}
+	}
+
 	pluginInfo := workspace.ProjectPlugin{
 		Name:    providerOpts.Name,
-		Path:    filepath.Clean(providerOpts.Path),
+		Path:    path,
 		Kind:    k,
 		Version: v,
 	}
