@@ -1953,3 +1953,86 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	assert.Error(t, err)
 	validateSnap(snap)
 }
+
+func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
+	// This test is a regression test for https://github.com/pulumi/pulumi/issues/12096
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "unrelated", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	programF2 := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		dep, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "dep", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "unrelated", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{
+				dep,
+			},
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF2 := deploytest.NewPluginHostF(nil, nil, programF2, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Create all resources.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		HostF: hostF,
+	}, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Check we have 4 resources in the stack (stack, parent, provider, child)
+	require.Equal(t, 4, len(snap.Resources))
+
+	// Run an update to target the child. This works because we don't need to create the parent so can just
+	// SameStep it using the data currently in state.
+	inputs = resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		HostF: hostF2,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"**child**",
+			}),
+		},
+	}, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 4, len(snap.Resources))
+	unrelatedURN := snap.Resources[3].URN
+	assert.Equal(t, "unrelated", unrelatedURN.Name())
+	assert.Equal(t, 0, len(snap.Resources[2].Dependencies))
+}

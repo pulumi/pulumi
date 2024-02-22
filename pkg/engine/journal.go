@@ -85,7 +85,10 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpSame:
 				step, ok := e.Step.(*deploy.SameStep)
 				contract.Assertf(ok, "expected *deploy.SameStep, got %T", e.Step)
-				if !step.IsSkippedCreate() {
+				if step.IsNonTargeted() {
+					resources = append(resources, e.Step.Old())
+					dones[e.Step.Old()] = true
+				} else if !step.IsSkippedCreate() {
 					resources = append(resources, e.Step.New())
 					dones[e.Step.Old()] = true
 				}
