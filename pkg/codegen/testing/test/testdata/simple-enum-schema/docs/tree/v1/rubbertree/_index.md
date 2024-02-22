@@ -1108,48 +1108,48 @@ Container<wbr>Brightness<pulumi-choosable type="language" values="python,go" cla
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
-    <dd>0.1</dd><dt>One</dt>
+<dl class="tabular"><dt class="">Zero<wbr>Point<wbr>One</dt>
+    <dd>0.1</dd><dt class="">One</dt>
     <dd>1</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Container<wbr>Brightness<wbr>Zero<wbr>Point<wbr>One</dt>
-    <dd>0.1</dd><dt>Container<wbr>Brightness<wbr>One</dt>
+<dl class="tabular"><dt class="">Container<wbr>Brightness<wbr>Zero<wbr>Point<wbr>One</dt>
+    <dd>0.1</dd><dt class="">Container<wbr>Brightness<wbr>One</dt>
     <dd>1</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
-    <dd>0.1</dd><dt>One</dt>
+<dl class="tabular"><dt class="">Zero<wbr>Point<wbr>One</dt>
+    <dd>0.1</dd><dt class="">One</dt>
     <dd>1</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
-    <dd>0.1</dd><dt>One</dt>
+<dl class="tabular"><dt class="">Zero<wbr>Point<wbr>One</dt>
+    <dd>0.1</dd><dt class="">One</dt>
     <dd>1</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>ZERO_POINT_ONE</dt>
-    <dd>0.1</dd><dt>ONE</dt>
+<dl class="tabular"><dt class="">ZERO_POINT_ONE</dt>
+    <dd>0.1</dd><dt class="">ONE</dt>
     <dd>1</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>%!q(float64=0.1)</dt>
-    <dd>0.1</dd><dt>%!q(float64=1)</dt>
+<dl class="tabular"><dt class="">%!q(float64=0.1)</dt>
+    <dd>0.1</dd><dt class="">%!q(float64=1)</dt>
     <dd>1</dd></dl>
 </pulumi-choosable>
 </div>
@@ -1160,54 +1160,54 @@ Container<wbr>Color<pulumi-choosable type="language" values="python,go" class="i
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Red</dt>
-    <dd>red</dd><dt>Blue</dt>
-    <dd>blue</dd><dt>Yellow</dt>
+<dl class="tabular"><dt class="">Red</dt>
+    <dd>red</dd><dt class="">Blue</dt>
+    <dd>blue</dd><dt class="">Yellow</dt>
     <dd>yellow</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Container<wbr>Color<wbr>Red</dt>
-    <dd>red</dd><dt>Container<wbr>Color<wbr>Blue</dt>
-    <dd>blue</dd><dt>Container<wbr>Color<wbr>Yellow</dt>
+<dl class="tabular"><dt class="">Container<wbr>Color<wbr>Red</dt>
+    <dd>red</dd><dt class="">Container<wbr>Color<wbr>Blue</dt>
+    <dd>blue</dd><dt class="">Container<wbr>Color<wbr>Yellow</dt>
     <dd>yellow</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Red</dt>
-    <dd>red</dd><dt>Blue</dt>
-    <dd>blue</dd><dt>Yellow</dt>
+<dl class="tabular"><dt class="">Red</dt>
+    <dd>red</dd><dt class="">Blue</dt>
+    <dd>blue</dd><dt class="">Yellow</dt>
     <dd>yellow</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Red</dt>
-    <dd>red</dd><dt>Blue</dt>
-    <dd>blue</dd><dt>Yellow</dt>
+<dl class="tabular"><dt class="">Red</dt>
+    <dd>red</dd><dt class="">Blue</dt>
+    <dd>blue</dd><dt class="">Yellow</dt>
     <dd>yellow</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>RED</dt>
-    <dd>red</dd><dt>BLUE</dt>
-    <dd>blue</dd><dt>YELLOW</dt>
+<dl class="tabular"><dt class="">RED</dt>
+    <dd>red</dd><dt class="">BLUE</dt>
+    <dd>blue</dd><dt class="">YELLOW</dt>
     <dd>yellow</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>"red"</dt>
-    <dd>red</dd><dt>"blue"</dt>
-    <dd>blue</dd><dt>"yellow"</dt>
+<dl class="tabular"><dt class="">"red"</dt>
+    <dd>red</dd><dt class="">"blue"</dt>
+    <dd>blue</dd><dt class="">"yellow"</dt>
     <dd>yellow</dd></dl>
 </pulumi-choosable>
 </div>
@@ -1218,55 +1218,55 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Four<wbr>Inch</dt>
-    <dd>4</dd><dt>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+<dl class="tabular"><dt class="">Four<wbr>Inch</dt>
+    <dd>4</dd><dt class="">Six<wbr>Inch</dt>
+    <dd>6</dd><dt class="property-deprecated">Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated:&nbsp;Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Container<wbr>Size<wbr>Four<wbr>Inch</dt>
-    <dd>4</dd><dt>Container<wbr>Size<wbr>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+<dl class="tabular"><dt class="">Container<wbr>Size<wbr>Four<wbr>Inch</dt>
+    <dd>4</dd><dt class="">Container<wbr>Size<wbr>Six<wbr>Inch</dt>
+    <dd>6</dd><dt class="property-deprecated">Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated:&nbsp;Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Four<wbr>Inch</dt>
-    <dd>4</dd><dt>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+<dl class="tabular"><dt class="">Four<wbr>Inch</dt>
+    <dd>4</dd><dt class="">Six<wbr>Inch</dt>
+    <dd>6</dd><dt class="property-deprecated">Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated:&nbsp;Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Four<wbr>Inch</dt>
-    <dd>4</dd><dt>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+<dl class="tabular"><dt class="">Four<wbr>Inch</dt>
+    <dd>4</dd><dt class="">Six<wbr>Inch</dt>
+    <dd>6</dd><dt class="property-deprecated">Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated:&nbsp;Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>FOUR_INCH</dt>
-    <dd>4</dd><dt>SIX_INCH</dt>
-    <dd>6</dd><dt>EIGHT_INCH</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+<dl class="tabular"><dt class="">FOUR_INCH</dt>
+    <dd>4</dd><dt class="">SIX_INCH</dt>
+    <dd>6</dd><dt class="property-deprecated">EIGHT_INCH</dt>
+    <dd>8<p class="property-message">Deprecated:&nbsp;Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>'\x04'</dt>
-    <dd>4</dd><dt>'\x06'</dt>
-    <dd>6</dd><dt>'\b'</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+<dl class="tabular"><dt class="">'\x04'</dt>
+    <dd>4</dd><dt class="">'\x06'</dt>
+    <dd>6</dd><dt class="property-deprecated">'\b'</dt>
+    <dd>8<p class="property-message">Deprecated:&nbsp;Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1276,48 +1276,48 @@ Diameter<pulumi-choosable type="language" values="python,go" class="inline">, Di
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Sixinch</dt>
-    <dd>6</dd><dt>Twelveinch</dt>
+<dl class="tabular"><dt class="">Sixinch</dt>
+    <dd>6</dd><dt class="">Twelveinch</dt>
     <dd>12</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Diameter<wbr>Sixinch</dt>
-    <dd>6</dd><dt>Diameter<wbr>Twelveinch</dt>
+<dl class="tabular"><dt class="">Diameter<wbr>Sixinch</dt>
+    <dd>6</dd><dt class="">Diameter<wbr>Twelveinch</dt>
     <dd>12</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Sixinch</dt>
-    <dd>6</dd><dt>Twelveinch</dt>
+<dl class="tabular"><dt class="">Sixinch</dt>
+    <dd>6</dd><dt class="">Twelveinch</dt>
     <dd>12</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Sixinch</dt>
-    <dd>6</dd><dt>Twelveinch</dt>
+<dl class="tabular"><dt class="">Sixinch</dt>
+    <dd>6</dd><dt class="">Twelveinch</dt>
     <dd>12</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>SIXINCH</dt>
-    <dd>6</dd><dt>TWELVEINCH</dt>
+<dl class="tabular"><dt class="">SIXINCH</dt>
+    <dd>6</dd><dt class="">TWELVEINCH</dt>
     <dd>12</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>%!q(float64=6)</dt>
-    <dd>6</dd><dt>%!q(float64=12)</dt>
+<dl class="tabular"><dt class="">%!q(float64=6)</dt>
+    <dd>6</dd><dt class="">%!q(float64=12)</dt>
     <dd>12</dd></dl>
 </pulumi-choosable>
 </div>
@@ -1328,48 +1328,48 @@ Farm<pulumi-choosable type="language" values="python,go" class="inline">, Farm<w
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
-    <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
+<dl class="tabular"><dt class="">Pulumi_Planters_Inc_</dt>
+    <dd>Pulumi Planters Inc.</dd><dt class="">Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Farm_Pulumi_Planters_Inc_</dt>
-    <dd>Pulumi Planters Inc.</dd><dt>Farm_Plants_R_Us</dt>
+<dl class="tabular"><dt class="">Farm_Pulumi_Planters_Inc_</dt>
+    <dd>Pulumi Planters Inc.</dd><dt class="">Farm_Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
-    <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
+<dl class="tabular"><dt class="">Pulumi_Planters_Inc_</dt>
+    <dd>Pulumi Planters Inc.</dd><dt class="">Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
-    <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
+<dl class="tabular"><dt class="">Pulumi_Planters_Inc_</dt>
+    <dd>Pulumi Planters Inc.</dd><dt class="">Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>PULUMI_PLANTERS_INC_</dt>
-    <dd>Pulumi Planters Inc.</dd><dt>PLANTS_R_US</dt>
+<dl class="tabular"><dt class="">PULUMI_PLANTERS_INC_</dt>
+    <dd>Pulumi Planters Inc.</dd><dt class="">PLANTS_R_US</dt>
     <dd>Plants'R'Us</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>"Pulumi Planters Inc."</dt>
-    <dd>Pulumi Planters Inc.</dd><dt>"Plants'R'Us"</dt>
+<dl class="tabular"><dt class="">"Pulumi Planters Inc."</dt>
+    <dd>Pulumi Planters Inc.</dd><dt class="">"Plants'R'Us"</dt>
     <dd>Plants'R'Us</dd></dl>
 </pulumi-choosable>
 </div>
@@ -1380,54 +1380,54 @@ Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" 
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+<dl class="tabular"><dt class="">Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
+<dl class="tabular"><dt class="">Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+<dl class="tabular"><dt class="">Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+<dl class="tabular"><dt class="">Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>BURGUNDY</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>RUBY</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>TINEKE</dt>
+<dl class="tabular"><dt class="">BURGUNDY</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">RUBY</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">TINEKE</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>"Burgundy"</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>"Ruby"</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>"Tineke"</dt>
+<dl class="tabular"><dt class="">"Burgundy"</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">"Ruby"</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">"Tineke"</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
@@ -1438,54 +1438,54 @@ Tree<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline"
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Small</dt>
-    <dd>small</dd><dt>Medium</dt>
-    <dd>medium</dd><dt>Large</dt>
+<dl class="tabular"><dt class="">Small</dt>
+    <dd>small</dd><dt class="">Medium</dt>
+    <dd>medium</dd><dt class="">Large</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Tree<wbr>Size<wbr>Small</dt>
-    <dd>small</dd><dt>Tree<wbr>Size<wbr>Medium</dt>
-    <dd>medium</dd><dt>Tree<wbr>Size<wbr>Large</dt>
+<dl class="tabular"><dt class="">Tree<wbr>Size<wbr>Small</dt>
+    <dd>small</dd><dt class="">Tree<wbr>Size<wbr>Medium</dt>
+    <dd>medium</dd><dt class="">Tree<wbr>Size<wbr>Large</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Small</dt>
-    <dd>small</dd><dt>Medium</dt>
-    <dd>medium</dd><dt>Large</dt>
+<dl class="tabular"><dt class="">Small</dt>
+    <dd>small</dd><dt class="">Medium</dt>
+    <dd>medium</dd><dt class="">Large</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Small</dt>
-    <dd>small</dd><dt>Medium</dt>
-    <dd>medium</dd><dt>Large</dt>
+<dl class="tabular"><dt class="">Small</dt>
+    <dd>small</dd><dt class="">Medium</dt>
+    <dd>medium</dd><dt class="">Large</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>SMALL</dt>
-    <dd>small</dd><dt>MEDIUM</dt>
-    <dd>medium</dd><dt>LARGE</dt>
+<dl class="tabular"><dt class="">SMALL</dt>
+    <dd>small</dd><dt class="">MEDIUM</dt>
+    <dd>medium</dd><dt class="">LARGE</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>"small"</dt>
-    <dd>small</dd><dt>"medium"</dt>
-    <dd>medium</dd><dt>"large"</dt>
+<dl class="tabular"><dt class="">"small"</dt>
+    <dd>small</dd><dt class="">"medium"</dt>
+    <dd>medium</dd><dt class="">"large"</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>

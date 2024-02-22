@@ -1251,48 +1251,48 @@ Output<wbr>Only<wbr>Enum<wbr>Type<pulumi-choosable type="language" values="pytho
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Foo</dt>
-    <dd>foo</dd><dt>Bar</dt>
+<dl class="tabular"><dt class="">Foo</dt>
+    <dd>foo</dd><dt class="">Bar</dt>
     <dd>bar</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Foo</dt>
-    <dd>foo</dd><dt>Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Bar</dt>
+<dl class="tabular"><dt class="">Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Foo</dt>
+    <dd>foo</dd><dt class="">Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Bar</dt>
     <dd>bar</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Foo</dt>
-    <dd>foo</dd><dt>Bar</dt>
+<dl class="tabular"><dt class="">Foo</dt>
+    <dd>foo</dd><dt class="">Bar</dt>
     <dd>bar</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Foo</dt>
-    <dd>foo</dd><dt>Bar</dt>
+<dl class="tabular"><dt class="">Foo</dt>
+    <dd>foo</dd><dt class="">Bar</dt>
     <dd>bar</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>FOO</dt>
-    <dd>foo</dd><dt>BAR</dt>
+<dl class="tabular"><dt class="">FOO</dt>
+    <dd>foo</dd><dt class="">BAR</dt>
     <dd>bar</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>"foo"</dt>
-    <dd>foo</dd><dt>"bar"</dt>
+<dl class="tabular"><dt class="">"foo"</dt>
+    <dd>foo</dd><dt class="">"bar"</dt>
     <dd>bar</dd></dl>
 </pulumi-choosable>
 </div>
@@ -1391,54 +1391,54 @@ Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" 
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+<dl class="tabular"><dt class="">Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
+<dl class="tabular"><dt class="">Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+<dl class="tabular"><dt class="">Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Burgundy</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+<dl class="tabular"><dt class="">Burgundy</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">Tineke</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>BURGUNDY</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>RUBY</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>TINEKE</dt>
+<dl class="tabular"><dt class="">BURGUNDY</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">RUBY</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">TINEKE</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>"Burgundy"</dt>
-    <dd>BurgundyA burgundy rubber tree.</dd><dt>"Ruby"</dt>
-    <dd>RubyA ruby rubber tree.</dd><dt>"Tineke"</dt>
+<dl class="tabular"><dt class="">"Burgundy"</dt>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt class="">"Ruby"</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt class="">"Tineke"</dt>
     <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>

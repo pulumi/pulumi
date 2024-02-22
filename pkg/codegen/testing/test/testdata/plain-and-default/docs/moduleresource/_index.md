@@ -1045,54 +1045,54 @@ Enum<wbr>Thing<pulumi-choosable type="language" values="python,go" class="inline
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="tabular"><dt>Four</dt>
-    <dd>4</dd><dt>Six</dt>
-    <dd>6</dd><dt>Eight</dt>
+<dl class="tabular"><dt class="">Four</dt>
+    <dd>4</dd><dt class="">Six</dt>
+    <dd>6</dd><dt class="">Eight</dt>
     <dd>8</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="tabular"><dt>Enum<wbr>Thing<wbr>Four</dt>
-    <dd>4</dd><dt>Enum<wbr>Thing<wbr>Six</dt>
-    <dd>6</dd><dt>Enum<wbr>Thing<wbr>Eight</dt>
+<dl class="tabular"><dt class="">Enum<wbr>Thing<wbr>Four</dt>
+    <dd>4</dd><dt class="">Enum<wbr>Thing<wbr>Six</dt>
+    <dd>6</dd><dt class="">Enum<wbr>Thing<wbr>Eight</dt>
     <dd>8</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="tabular"><dt>Four</dt>
-    <dd>4</dd><dt>Six</dt>
-    <dd>6</dd><dt>Eight</dt>
+<dl class="tabular"><dt class="">Four</dt>
+    <dd>4</dd><dt class="">Six</dt>
+    <dd>6</dd><dt class="">Eight</dt>
     <dd>8</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="tabular"><dt>Four</dt>
-    <dd>4</dd><dt>Six</dt>
-    <dd>6</dd><dt>Eight</dt>
+<dl class="tabular"><dt class="">Four</dt>
+    <dd>4</dd><dt class="">Six</dt>
+    <dd>6</dd><dt class="">Eight</dt>
     <dd>8</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="tabular"><dt>FOUR</dt>
-    <dd>4</dd><dt>SIX</dt>
-    <dd>6</dd><dt>EIGHT</dt>
+<dl class="tabular"><dt class="">FOUR</dt>
+    <dd>4</dd><dt class="">SIX</dt>
+    <dd>6</dd><dt class="">EIGHT</dt>
     <dd>8</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="tabular"><dt>'\x04'</dt>
-    <dd>4</dd><dt>'\x06'</dt>
-    <dd>6</dd><dt>'\b'</dt>
+<dl class="tabular"><dt class="">'\x04'</dt>
+    <dd>4</dd><dt class="">'\x06'</dt>
+    <dd>6</dd><dt class="">'\b'</dt>
     <dd>8</dd></dl>
 </pulumi-choosable>
 </div>
