@@ -405,3 +405,24 @@ func TestPreviewImportFile(t *testing.T) {
 	_, has := actual["nameTable"]
 	assert.False(t, has, "nameTable should not be present in import file")
 }
+
+// Small integration test for relative plugin paths. It's hard to do this test via the standard ProgramTest because that
+// framework does it's own manipulation of plugin paths. Regression test for
+// https://github.com/pulumi/pulumi/issues/15467.
+func TestRelativePluginPath(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("testdata/relative_plugin_node")
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "preview")
+}

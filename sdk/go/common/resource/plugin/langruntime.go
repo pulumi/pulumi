@@ -38,18 +38,15 @@ type ProgramInfo struct {
 }
 
 func NewProgramInfo(rootDirectory, programDirectory, entryPoint string, options map[string]any) ProgramInfo {
-	isValidPath := func(path string) bool {
-		return filepath.IsLocal(path) || filepath.IsAbs(path)
-	}
 	isFileName := func(path string) bool {
 		return filepath.Base(path) == path
 	}
 
-	if !isValidPath(rootDirectory) {
+	if !filepath.IsAbs(rootDirectory) {
 		panic(fmt.Sprintf("rootDirectory '%s' is not a valid path when creating ProgramInfo", rootDirectory))
 	}
 
-	if !isValidPath(programDirectory) {
+	if !filepath.IsAbs(programDirectory) {
 		panic(fmt.Sprintf("programDirectory '%s' is not a valid path when creating ProgramInfo", programDirectory))
 	}
 
