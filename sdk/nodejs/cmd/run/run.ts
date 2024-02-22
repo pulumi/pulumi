@@ -218,7 +218,7 @@ function tracingIsEnabled(tracingUrl: string | boolean): boolean {
 }
 
 /** @internal */
-export function run(
+export async function run(
     argv: minimist.ParsedArgs,
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
@@ -487,7 +487,8 @@ ${defaultMessage}`,
     };
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    const stackOutputs = stack.runInPulumiStack(runProgram);
+    const stackOutputs = await stack.runInPulumiStack(runProgram);
+    await settings.disconnect();
     span.end();
     return stackOutputs;
 }

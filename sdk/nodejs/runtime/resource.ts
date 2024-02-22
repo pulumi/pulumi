@@ -51,7 +51,9 @@ import {
     transferProperties,
 } from "./rpc";
 import {
+    awaitStackRegistrations,
     excessiveDebugOutput,
+    getCallbacks,
     getMonitor,
     getStack,
     isDryRun,
@@ -64,6 +66,7 @@ import {
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as aliasproto from "../proto/alias_pb";
+import { Callback } from "../proto/callback_pb";
 import * as provproto from "../proto/provider_pb";
 import * as resproto from "../proto/resource_pb";
 import * as sourceproto from "../proto/source_pb";
@@ -360,9 +363,12 @@ function getParentURN(parent?: Resource | Input<string>) {
     return output(parent);
 }
 
-function mapAliasesForRequest(aliases: (URN | Alias)[] | undefined, parentURN?: URN) {
+export function mapAliasesForRequest(
+    aliases: (URN | Alias)[] | undefined,
+    parentURN?: URN,
+): Promise<aliasproto.Alias[]> {
     if (aliases === undefined) {
-        return [];
+        return Promise.resolve([]);
     }
 
     return Promise.all(
@@ -443,6 +449,24 @@ export function registerResource(
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
 
+            await awaitStackRegistrations();
+
+            const callbacks: Callback[] = [];
+            if (opts.xTransforms !== undefined && opts.xTransforms.length > 0) {
+                if (!getStore().supportsTransforms) {
+                    throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
+                }
+
+                const callbackServer = getCallbacks();
+                if (callbackServer === undefined) {
+                    throw new Error("Callback server could not initialize");
+                }
+
+                for (const transform of opts.xTransforms) {
+                    callbacks.push(await callbackServer.registerTransform(transform));
+                }
+            }
+
             const req = new resproto.RegisterResourceRequest();
             req.setType(t);
             req.setName(name);
@@ -480,6 +504,7 @@ export function registerResource(
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
+            req.setTransformsList(callbacks);
 
             if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import { getAllTransitivelyReferencedResourceURNs } from "./resource";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 import { getStore } from "./state";
 
-import * as semver from "semver";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
+import * as semver from "semver";
 
 export type OutputResolvers = Record<
     string,
@@ -769,7 +769,7 @@ export function register<T extends { readonly version?: string }>(
 export function getRegistration<T extends { readonly version?: string }>(
     source: Map<string, T[]>,
     key: string,
-    version: string,
+    version: string | undefined,
 ): T | undefined {
     const ver = version ? new semver.SemVer(version) : undefined;
 
@@ -811,7 +811,7 @@ export function registerResourcePackage(pkg: string, resourcePackage: ResourcePa
     register(resourcePackages, "package", pkg, resourcePackage);
 }
 
-export function getResourcePackage(pkg: string, version: string): ResourcePackage | undefined {
+export function getResourcePackage(pkg: string, version: string | undefined): ResourcePackage | undefined {
     return getRegistration(resourcePackages, pkg, version);
 }
 
@@ -843,7 +843,7 @@ export function registerResourceModule(pkg: string, mod: string, module: Resourc
     register(resourceModules, "module", key, module);
 }
 
-export function getResourceModule(pkg: string, mod: string, version: string): ResourceModule | undefined {
+export function getResourceModule(pkg: string, mod: string, version: string | undefined): ResourceModule | undefined {
     const key = moduleKey(pkg, mod);
     return getRegistration(resourceModules, key, version);
 }
