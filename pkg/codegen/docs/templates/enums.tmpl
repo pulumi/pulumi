@@ -7,7 +7,7 @@
 <dl class="tabular">
 {{- range . -}}
     <dt {{- if .DeprecationMessage }} class="property-deprecated"{{- end -}}>{{- htmlSafe .DisplayName -}}</dt>
-    <dd>{{- htmlSafe .Value }}{{- if .Comment }}{{- markdownify .Comment -}}{{ end -}}{{- if .DeprecationMessage }}<p class="property-message">Deprecated:&nbsp;{{- markdownify .DeprecationMessage -}}</p>{{- end -}}</dd>
+    <dd>{{- htmlSafe .Value }}{{- if .Comment }}{{- markdownify .Comment -}}{{ end -}}{{- if .DeprecationMessage }}<p class="property-message">Deprecated: {{ markdownify .DeprecationMessage -}}</p>{{- end -}}</dd>
 {{- end -}}
 </dl>
 </pulumi-choosable>
