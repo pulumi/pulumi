@@ -963,7 +963,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		tok = mod.pkg.Name()
 	}
 
-	argsOverride := fmt.Sprintf("args ?? new %sArgs()", className)
+	argsOverride := fmt.Sprintf("args ?? new %s()", argsClassName)
 	if hasConstInputs {
 		argsOverride = "MakeArgs(args)"
 	}
