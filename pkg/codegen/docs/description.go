@@ -15,8 +15,9 @@
 package docs
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -43,7 +44,8 @@ func getCodeSection(doc string) []codeLocation {
 		startIndex += open + len(beginCodeBlock)
 		closing := strings.Index(doc[startIndex:], endCodeBlock)
 
-		contract.Assertf(closing != -1, "this should never happen: there should be equal amounts of opening and closing code block markers")
+		contract.Assertf(closing != -1, "this should never happen: "+
+			"there should be equal amounts of opening and closing code block markers")
 
 		fence.close = startIndex + closing
 
@@ -54,7 +56,6 @@ func getCodeSection(doc string) []codeLocation {
 }
 
 func markupBlock(block string) string {
-
 	languages := map[string]string{
 		"typescript": "<div>\n<pulumi-choosable type=\"language\" values=\"javascript,typescript\">\n\n",
 		"python":     "<div>\n<pulumi-choosable type=\"language\" values=\"python\">\n\n",
@@ -63,7 +64,7 @@ func markupBlock(block string) string {
 		"java":       "<div>\n<pulumi-choosable type=\"language\" values=\"java\">\n\n",
 		"yaml":       "<div>\n<pulumi-choosable type=\"language\" values=\"yaml\">\n\n",
 	}
-
+	//nolint:lll
 	chooserStart := "<div>\n<pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser>\n</div>\n"
 	choosableEnd := "</pulumi-choosable>\n</div>\n"
 
