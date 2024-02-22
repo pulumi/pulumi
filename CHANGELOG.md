@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.107.0 (2024-02-21)
+
+
+### Features
+
+- [cli/config] Adds an `--open` flag to `pulumi config` command which resolves the environment listed in the stack configuration.
+  [#15469](https://github.com/pulumi/pulumi/pull/15469)
+
+- [auto/go] Automation API support for `pulumi refresh --preview-only`
+  [#15340](https://github.com/pulumi/pulumi/pull/15340)
+
+- [engine] Add support for remote transforms to the engine.
+  [#15290](https://github.com/pulumi/pulumi/pull/15290)
+
+- [pkg/testing] Add a InstallDevReleases option to ProgramTest, to install pulumi dev SDKs
+  [#15387](https://github.com/pulumi/pulumi/pull/15387)
+
+- [programgen/{dotnet,nodejs,python}] Emit Output-returning JSON serialization methods without rewriting applies for top-level function expression
+  [#15371](https://github.com/pulumi/pulumi/pull/15371)
+
+- [sdk/nodejs] Detect npm and yarn workspaces setups when installing dependencies
+  [#15421](https://github.com/pulumi/pulumi/pull/15421)
+
+- [sdk/nodejs] Use pnpm as package manager if we find a pnpm-lock.yaml file
+  [#15456](https://github.com/pulumi/pulumi/pull/15456)
+
+
+### Bug Fixes
+
+- [docs] Fixes docs generator parent module computation
+  [#15035](https://github.com/pulumi/pulumi/pull/15035)
+
+- [engine] Test and fix the engine filling in args dependencies to provider calls.
+  [#15450](https://github.com/pulumi/pulumi/pull/15450)
+
+- [programgen] Fix infinite recursion when binding invoke signature into promises without accounting for recursive type references
+  [#15463](https://github.com/pulumi/pulumi/pull/15463)
+
 ## 3.106.0 (2024-02-16)
 
 

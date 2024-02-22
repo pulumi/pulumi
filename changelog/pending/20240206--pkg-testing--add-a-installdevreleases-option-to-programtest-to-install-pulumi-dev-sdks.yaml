@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg/testing
-  description: Add a InstallDevReleases option to ProgramTest, to install pulumi dev SDKs
