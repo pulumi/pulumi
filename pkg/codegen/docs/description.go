@@ -56,13 +56,13 @@ func getCodeSection(doc string) []codeLocation {
 }
 
 func markupBlock(block string) string {
-	languages := map[string]string{
-		"typescript": "<div>\n<pulumi-choosable type=\"language\" values=\"javascript,typescript\">\n\n",
-		"python":     "<div>\n<pulumi-choosable type=\"language\" values=\"python\">\n\n",
-		"go":         "<div>\n<pulumi-choosable type=\"language\" values=\"go\">\n\n",
-		"csharp":     "<div>\n<pulumi-choosable type=\"language\" values=\"csharp\">\n\n",
-		"java":       "<div>\n<pulumi-choosable type=\"language\" values=\"java\">\n\n",
-		"yaml":       "<div>\n<pulumi-choosable type=\"language\" values=\"yaml\">\n\n",
+	languages := []struct{ tag, choosable string }{
+		{"typescript", "<div>\n<pulumi-choosable type=\"language\" values=\"javascript,typescript\">\n\n"},
+		{"python", "<div>\n<pulumi-choosable type=\"language\" values=\"python\">\n\n"},
+		{"go", "<div>\n<pulumi-choosable type=\"language\" values=\"go\">\n\n"},
+		{"csharp", "<div>\n<pulumi-choosable type=\"language\" values=\"csharp\">\n\n"},
+		{"java", "<div>\n<pulumi-choosable type=\"language\" values=\"java\">\n\n"},
+		{"yaml", "<div>\n<pulumi-choosable type=\"language\" values=\"yaml\">\n\n"},
 	}
 	//nolint:lll
 	chooserStart := "<div>\n<pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser>\n</div>\n"
@@ -72,17 +72,17 @@ func markupBlock(block string) string {
 	// first, append the start chooser
 	markedUpBlock += chooserStart
 
-	for tag, choosable := range languages {
+	for _, lang := range languages {
 		// Add language specific open choosable
-		markedUpBlock += choosable
+		markedUpBlock += lang.choosable
 		// find our language - because we have no guarantee of order from our input, we need to find both code fences
 		// and then append the content in the order that docsgen expects.
-		start := strings.Index(block, "```"+tag)
+		start := strings.Index(block, "```"+lang.tag)
 		if start == -1 {
 			markedUpBlock += "```\n" + defaultMissingExampleSnippetPlaceholder + "```\n"
 		} else {
 			// find end index - this is the next code fence.
-			endLangBlock := start + len("```"+tag) + strings.Index(block[start+len("```"+tag):], "```")
+			endLangBlock := start + len("```"+lang.tag) + strings.Index(block[start+len("```"+lang.tag):], "```")
 			// append code to block, and include code fences
 			markedUpBlock += block[start:endLangBlock+len("```")] + "\n"
 		}
