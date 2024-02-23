@@ -23,6 +23,7 @@ import (
 	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -734,8 +735,8 @@ func (eng *languageTestServer) RunLanguageTest(
 	for i, run := range test.runs {
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if run.subDir != "" {
-			sourceDir = filepath.Join(sourceDir, run.subDir)
+		if len(test.runs) > 1 {
+			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
 		if err != nil {
@@ -744,8 +745,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if run.subDir != "" {
-			pclDir = filepath.Join(pclDir, run.subDir)
+		if len(test.runs) > 1 {
+			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
 		err = copyDirectory(languageTestdata, pclDir, sourceDir)
 		if err != nil {
@@ -754,8 +755,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-		if run.subDir != "" {
-			projectDir = filepath.Join(projectDir, run.subDir)
+		if len(test.runs) > 1 {
+			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(projectDir, 0o755)
 		if err != nil {
@@ -781,8 +782,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-		if run.subDir != "" {
-			snapshotDir = filepath.Join(snapshotDir, run.subDir)
+		if len(test.runs) > 1 {
+			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 		}
 		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
 		if err != nil {

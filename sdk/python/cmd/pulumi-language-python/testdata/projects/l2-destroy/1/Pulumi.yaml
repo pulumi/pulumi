@@ -1,4 +1,4 @@
-name: l2-multiple-tests
+name: l2-destroy
 runtime:
   name: python
   options:

@@ -29,7 +29,6 @@ import (
 )
 
 type testRun struct {
-	subDir string
 	config config.Map
 	// This can be used to set a main value for the test.
 	main string
@@ -157,11 +156,10 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
-	"l2-multiple-tests": {
+	"l2-destroy": {
 		providers: []plugin.Provider{&simpleProvider{}},
 		runs: []testRun{
 			{
-				subDir: "setup",
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
 					requireStackResource(l, res, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
@@ -176,7 +174,6 @@ var languageTests = map[string]languageTest{
 				},
 			},
 			{
-				subDir: "destroy",
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
 					assert.Equal(l, 1, changes[deploy.OpDelete], "expected a delete operation")
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")

@@ -1,5 +1,5 @@
 {
-	"name": "l2-multiple-tests",
+	"name": "l2-destroy",
 	"devDependencies": {
 		"@types/node": "^14"
 	},
