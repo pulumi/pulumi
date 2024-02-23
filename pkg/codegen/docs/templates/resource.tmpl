@@ -7,10 +7,8 @@
 <div class="resource-deprecated">Deprecated: {{ markdownify .DeprecationMessage -}}</div>
 {{- end }}
 
-<!-- Render surrounding description -->
 {{ htmlSafe .Comment }}
 
-<!--Render examples section, if using -->
 {{- if ne (len .ExamplesSection) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
