@@ -1999,8 +1999,6 @@ async function createMockEngineAsync(
         });
     });
 
-    server.start();
-
     cleanup(async () => server.forceShutdown());
 
     return { server: server, addr: `127.0.0.1:${port}` };

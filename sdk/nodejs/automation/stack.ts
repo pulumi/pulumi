@@ -227,7 +227,6 @@ Event: ${line}\n${e.toString()}`);
                     }
                 });
             });
-            server.start();
             onExit = (hasError: boolean) => {
                 languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
@@ -359,7 +358,6 @@ Event: ${line}\n${e.toString()}`);
                     }
                 });
             });
-            server.start();
             onExit = (hasError: boolean) => {
                 languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
