@@ -119,7 +119,11 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	}
 }
 
-// TODO docs
+// NewNonTargetedSameStep produces a SameStep for a resource that was not targeted by the user
+// (and thus was skipped).  This is similar to NewSkippedCreateStep, but is used for resources that
+// already exist and are being updated.  These resources will still need to be written into the
+// checkpoint file, however we want to keep the old version of them instead of a potentially updated
+// version.
 func NewNonTargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
 	return &SameStep{
 		deployment:  deployment,
