@@ -754,6 +754,9 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
+		if run.subDir != "" {
+			projectDir = filepath.Join(projectDir, run.subDir)
+		}
 		err = os.MkdirAll(projectDir, 0o755)
 		if err != nil {
 			return nil, fmt.Errorf("create project dir: %w", err)
@@ -778,6 +781,9 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+		if run.subDir != "" {
+			snapshotDir = filepath.Join(snapshotDir, run.subDir)
+		}
 		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
 		if err != nil {
 			return nil, fmt.Errorf("program snapshot validation: %w", err)

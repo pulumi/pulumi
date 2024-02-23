@@ -167,19 +167,22 @@ func (p *simpleProvider) GetMappings(key string) ([]string, error) {
 	return nil, nil
 }
 
-func (p *simpleProvider) DiffConfig(urn resource.URN, oldInputs, ouldOutputs, newInputs resource.PropertyMap,
+func (p *simpleProvider) DiffConfig(
+	urn resource.URN, oldInputs, ouldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, nil
 }
 
-func (p *simpleProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (p *simpleProvider) Diff(
+	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, nil
 }
 
-func (p *simpleProvider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
+func (p *simpleProvider) Delete(
+	urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	return resource.StatusOK, nil
 }
