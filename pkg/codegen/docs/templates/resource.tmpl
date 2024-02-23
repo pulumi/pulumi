@@ -8,6 +8,7 @@
 {{- end }}
 
 {{ htmlSafe .Comment }}
+
 {{- if ne (len .ExamplesSection) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
