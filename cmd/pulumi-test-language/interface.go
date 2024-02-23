@@ -871,6 +871,9 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("create test stack: %w", err)
 	}
 
+	updateOptions := test.updateOptions
+	updateOptions.Host = pctx.Host
+
 	// Set up the stack and engine configuration
 	opts := backend.UpdateOptions{
 		AutoApprove: true,
@@ -880,9 +883,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			Stdout: stdout,
 			Stderr: stderr,
 		},
-		Engine: engine.UpdateOptions{
-			Host: pctx.Host,
-		},
+		Engine: updateOptions,
 	}
 	sm := b64secrets.NewBase64SecretsManager()
 	dec, err := sm.Decrypter()

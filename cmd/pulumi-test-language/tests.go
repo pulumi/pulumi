@@ -18,6 +18,7 @@ import (
 	"embed"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -35,6 +36,9 @@ type languageTest struct {
 	main string
 	// TODO: This should just return "string", if == "" then ok, else fail
 	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
+
+	// updateOptions can be used to set the update options for the engine.
+	updateOptions engine.UpdateOptions
 }
 
 //go:embed testdata
@@ -48,7 +52,7 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&badProvider{}},
 	},
 	// ==========
-	// L1
+	// L1 (Tests not using providers)
 	// ==========
 	"l1-empty": {
 		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -86,7 +90,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	// ==========
-	// L2
+	// L2 (Tests using providers)
 	// ==========
 	"l2-resource-simple": {
 		providers: []plugin.Provider{&simpleProvider{}},
@@ -105,6 +109,27 @@ var languageTests = map[string]languageTest{
 			want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
 			assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
 			assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+		},
+	},
+	"l2-engine-update-options": {
+		providers: []plugin.Provider{&simpleProvider{}},
+		updateOptions: engine.UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"**target**",
+			}),
+		},
+		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+			requireStackResource(l, res, changes)
+			require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
+
+			// Check that we have the target in the snapshot, but not the other resource.
+			stack := snap.Resources[0]
+			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+			provider := snap.Resources[1]
+			assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+			target := snap.Resources[2]
+			require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
+			require.Equal(l, "target", target.URN.Name(), "expected target resource")
 		},
 	},
 }
