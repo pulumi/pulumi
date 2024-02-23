@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* eslint-disable max-len */
-
 import * as fs from "fs";
 import { glob } from "glob";
 import normalize from "normalize-package-data";
-import readPackageTree from "read-package-tree";
+import * as arborist from "@npmcli/arborist";
 import * as upath from "upath";
 import { promisify } from "util";
 import { log } from "../..";
@@ -26,16 +24,6 @@ import { ResourceError } from "../../errors";
 import { Resource } from "../../resource";
 
 const pGlob = promisify(glob);
-const pReadPackageTree = async (dir: string): Promise<readPackageTree.Node> =>
-    new Promise((resolve, reject) => {
-        readPackageTree(dir, (err, data) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data);
-            }
-        });
-    });
 
 /**
  * Options for controlling what gets returned by [computeCodePaths].
@@ -270,24 +258,8 @@ async function allFoldersForPackages(
     // Read package tree from the workspace root to ensure we can find all
     // packages in the workspace.  We then call addPackageAndDependenciesToSet
     // to recursively add all the dependencies of the referenced packages.
-    const root = await pReadPackageTree(workspaceRoot);
-
-    // read-package-tree defers to read-package-json to parse the project.json file. If that
-    // fails, root.error is set to the underlying error.  Unfortunately, read-package-json is
-    // very finicky and can fail for reasons that are not relevant to us.  For example, it
-    // can fail if a "version" string is not a legal semver.  We still want to proceed here
-    // as this is not an actual problem for determining the set of dependencies.
-    if (root.error) {
-        if (!root.realpath) {
-            throw new ResourceError(
-                "Failed to parse package.json. Underlying issue:\n  " + root.error.toString(),
-                logResource,
-            );
-        }
-
-        // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
-        root.package = computeDependenciesDirectlyFromPackageFile(upath.join(workingDir, "package.json"), logResource);
-    }
+    const arb = new arborist.Arborist({ path: workspaceRoot });
+    const root = await arb.loadActual();
 
     // package.json files can contain circularities.  For example es6-iterator depends
     // on es5-ext, which depends on es6-iterator, which depends on es5-ext:
@@ -351,7 +323,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
-    root: readPackageTree.Node,
+    root: arborist.Node,
     pkg: string,
     seenPaths: Set<string>,
     normalizedPackagePaths: Set<string>,
@@ -369,7 +341,7 @@ function addPackageAndDependenciesToSet(
     }
 
     // Don't process a child path if we've already encountered it.
-    const normalizedPath = upath.normalize(child.path);
+    const normalizedPath = upath.relative(upath.resolve("."), upath.resolve(child.path));
     if (seenPaths.has(normalizedPath)) {
         return;
     }
@@ -400,7 +372,13 @@ function addPackageAndDependenciesToSet(
     function recurse(dependencies: any) {
         if (dependencies) {
             for (const dep of Object.keys(dependencies)) {
-                addPackageAndDependenciesToSet(child!, dep, seenPaths, normalizedPackagePaths, excludedPackages);
+                let next: arborist.Node;
+                if (child?.isLink) {
+                    next = child.target;
+                } else {
+                    next = child!;
+                }
+                addPackageAndDependenciesToSet(next!, dep, seenPaths, normalizedPackagePaths, excludedPackages);
             }
         }
     }
@@ -410,24 +388,22 @@ function addPackageAndDependenciesToSet(
 // for the given name. It is assumed that the tree was correctly constructed such that dependencies
 // are resolved to compatible versions in the closest available match starting at the provided root
 // and walking up to the head of the tree.
-function findDependency(root: readPackageTree.Node | undefined | null, name: string): readPackageTree.Node | undefined {
-    for (; root; root = root.parent) {
-        for (const child of root.children) {
-            let childName = child.name;
-            // Note: `read-package-tree` returns incorrect `.name` properties for packages in an
-            // organization - like `@types/express` or `@protobufjs/path`.  Compute the correct name
-            // from the `path` property instead. Match any name that ends with something that looks
-            // like `@foo/bar`, such as `node_modules/@foo/bar` or
-            // `node_modules/baz/node_modules/@foo/bar.
-            const childFolderName = upath.basename(child.path);
-            const parentFolderName = upath.basename(upath.dirname(child.path));
-            if (parentFolderName[0] === "@") {
-                childName = upath.join(parentFolderName, childFolderName);
-            }
-
+function findDependency(
+    root: arborist.Node | undefined | null,
+    name: string,
+): arborist.Node | arborist.Link | undefined {
+    while (root) {
+        for (const [childName, child] of root.children) {
             if (childName === name) {
                 return child;
             }
+        }
+        if (root.parent) {
+            root = root.parent;
+        } else if (root.root !== root) {
+            root = root.root; // jump up to the workspace root
+        } else {
+            break;
         }
     }
 

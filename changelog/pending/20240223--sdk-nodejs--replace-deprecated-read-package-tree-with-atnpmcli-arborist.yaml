@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Replace deprecated read-package-tree with @npmcli/arborist
