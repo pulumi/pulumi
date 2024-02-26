@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix an issue where snapshots could become invalid when doing a targeted up
