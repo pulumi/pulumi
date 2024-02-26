@@ -19,6 +19,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -422,13 +423,13 @@ func (s *otelSpan) Status() sdktrace.Status {
 // InstrumentationLibrary returns information about the instrumentation
 // library that created the span.
 func (s *otelSpan) InstrumentationLibrary() instrumentation.Library {
-	return instrumentation.Library{Name: "pulumi-convert"}
+	return s.InstrumentationScope()
 }
 
 // InstrumentationScope returns information about the instrumentation
 // scope that created the span.
 func (s *otelSpan) InstrumentationScope() instrumentation.Scope {
-	return instrumentation.Scope{}
+	return instrumentation.Scope{Name: "pulumi-convert"}
 }
 
 // Resource returns information about the entity that produced the span.
@@ -496,8 +497,45 @@ func (t *otelTrace) criticalPath(span *otelSpan) (string, time.Duration) {
 	return max.urn, max.length
 }
 
-func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
+// Extract the start and end times from a trace
+//
+// If the trace doesn't have a TimespanEvent, check the sub spans and infer the
+// start and end times from them
+func extractTimespan(root *appdash.Trace) (time.Time, time.Time, error) {
 	timespanEvent, err := root.TimespanEvent()
+	if err == nil {
+		return timespanEvent.Start(), timespanEvent.End(), nil
+	}
+
+	var start, end time.Time
+	// Try and extract timespan from sub spans
+	for _, sub := range root.Sub {
+		if subTimeSpan, err := sub.TimespanEvent(); err == nil {
+			subStart := subTimeSpan.Start()
+			subEnd := subTimeSpan.End()
+			if start.IsZero() {
+				start = subStart
+				end = subEnd
+			} else {
+				if subStart.UnixNano() < start.UnixNano() {
+					start = subStart
+				}
+				if subEnd.UnixNano() > end.UnixNano() {
+					end = subEnd
+				}
+			}
+		}
+	}
+
+	if start.IsZero() {
+		return start, end, errors.New("time span event not found")
+	}
+
+	return start, end, nil
+}
+
+func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
+	start, end, err := extractTimespan(root)
 	if err != nil {
 		return err
 	}
@@ -568,8 +606,8 @@ func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
 			TraceID: t.id,
 			SpanID:  t.getNextSpanID(),
 		}),
-		start:      timespanEvent.Start(),
-		end:        timespanEvent.End(),
+		start:      start,
+		end:        end,
 		resource:   t.resource,
 		attributes: attributes,
 		links:      links,
