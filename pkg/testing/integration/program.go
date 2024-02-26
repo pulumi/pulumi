@@ -901,6 +901,10 @@ func MakeTempBackend(t *testing.T) string {
 	return "file://" + filepath.ToSlash(tempDir)
 }
 
+func (pt *ProgramTester) GetTmpDir() string {
+	return pt.tmpdir
+}
+
 func (pt *ProgramTester) getBin() (string, error) {
 	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
 }

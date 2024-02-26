@@ -1511,10 +1511,13 @@ func TestNestedPackageJSON(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
 	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
 
-	// There is no node_modules directory in the parent directory
-	parent := filepath.Dir(dir)
-	_, err := os.Stat(filepath.Join(parent, "node_modules"))
+	// There is no node_modules directory in the test directory (parent of program dir)
+	_, err := os.Stat(filepath.Join(pt.GetTmpDir(), "node_modules"))
 	require.True(t, os.IsNotExist(err))
+
+	// node_modules was created inside the program directory
+	_, err = os.Stat(filepath.Join(pt.GetTmpDir(), "infra", "node_modules"))
+	require.NoError(t, err)
 
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
