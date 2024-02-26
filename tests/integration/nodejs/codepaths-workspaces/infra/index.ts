@@ -31,6 +31,7 @@ const dynamicProviderResource = new myDynamicProvider.MyDynamicProviderResource(
 
   const actual = JSON.stringify([...deps.keys()].sort());
   // semver depends on lru-cache (6.0.0), which depends on yallist
+  // my-dynamic-provider depends on is-finite
   const expected = `[` +
     `"../node_modules/is-finite",` +
     `"../node_modules/lru-cache",` +

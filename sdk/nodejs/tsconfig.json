@@ -14,7 +14,11 @@
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "typeRoots": [
+            "node_modules/@types",
+            "types/"
+        ],
     },
     "files": [
         "index.ts",
@@ -111,6 +115,8 @@
 
         "tests_with_mocks/mocks.spec.ts",
 
-        "npm/testdata/nested/project/index.ts"
+        "npm/testdata/nested/project/index.ts",
+
+        "types/arborist.d.ts"
     ]
 }
