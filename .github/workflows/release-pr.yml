@@ -60,7 +60,7 @@ jobs:
           )
           make tidy
           git add -A
-          git commit -m "chore: post-release go.mod and changelog updates"
+          git commit -m "chore: post-release go.mod and changelog updates for v${PULUMI_VERSION}"
 
           # Rebase on the latest upstream commit.  We want to make sure to only clear
           # the changelog at the latest tag (which we check out originally), but rebase
