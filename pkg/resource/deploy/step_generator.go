@@ -24,6 +24,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/opentracing/opentracing-go"
+	ot_log "github.com/opentracing/opentracing-go/log"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -502,6 +503,10 @@ func (sg *stepGenerator) generateSteps(span opentracing.Span, event RegisterReso
 	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
 	if err != nil {
 		return nil, err
+	}
+
+	if span != nil {
+		span.LogFields(ot_log.String("urn", string(urn)))
 	}
 
 	// Generate the aliases for this resource.
