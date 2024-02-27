@@ -86,14 +86,12 @@ type pluginConfig struct {
 	supportsPreview bool // true if this plugin supports previews for Create and Update.
 }
 
-// NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
-// plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
-) (Provider, error) {
-	// See if this is a provider we just want to attach to
-	var plug *plugin
+// Checks PULUMI_DEBUG_PROVIDERS environment variable for any overrides for the provider identified
+// by pkg. If the user has requested to attach to a live provider, returns the port number from the
+// env var. For example, `PULUMI_DEBUG_PROVIDERS=aws:12345,gcp:678` will result in 12345 for aws.
+func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 	var optAttach string
+
 	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
 		for _, provider := range strings.Split(providersEnvVar, ",") {
 			parts := strings.SplitN(provider, ":", 2)
@@ -105,14 +103,35 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 	}
 
+	if optAttach == "" {
+		return nil, nil
+	}
+
+	port, err := strconv.Atoi(optAttach)
+	if err != nil {
+		return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_PROVIDERS: %w",
+			optAttach, err)
+	}
+	return &port, nil
+}
+
+// NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
+// plugin could not be found, or an error occurs while creating the child process, an error is returned.
+func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
+	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+) (Provider, error) {
+	// See if this is a provider we just want to attach to
+	var plug *plugin
+
+	attachPort, err := GetProviderAttachPort(pkg)
+	if err != nil {
+		return nil, err
+	}
+
 	prefix := fmt.Sprintf("%v (resource)", pkg)
 
-	if optAttach != "" {
-		port, err := strconv.Atoi(optAttach)
-		if err != nil {
-			return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_PROVIDERS: %w",
-				optAttach, err)
-		}
+	if attachPort != nil {
+		port := *attachPort
 
 		conn, err := dialPlugin(port, pkg.String(), prefix, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
