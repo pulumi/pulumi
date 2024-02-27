@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Tag new pkg versions on a commit on the main branch

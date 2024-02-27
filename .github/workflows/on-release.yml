@@ -37,6 +37,5 @@ jobs:
       ref: ${{ github.event.release.tag_name }}
       version: ${{ needs.info.outputs.version }}
       release-notes: ${{ github.event.release.body }}
-      queue-merge: true
       run-dispatch-commands: true
     secrets: inherit
