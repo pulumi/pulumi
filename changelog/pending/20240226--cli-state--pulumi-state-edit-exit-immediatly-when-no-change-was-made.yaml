@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/state
-  description: "`pulumi state edit`: exit immediatly when no change was made"
+  description: Exit immediately from state edit when no change was made
