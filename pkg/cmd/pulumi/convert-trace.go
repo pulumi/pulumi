@@ -19,7 +19,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -528,7 +527,7 @@ func extractTimespan(root *appdash.Trace) (time.Time, time.Time, error) {
 	}
 
 	if start.IsZero() {
-		return start, end, errors.New("time span event not found")
+		return start, end, fmt.Errorf("time span event not found: %w", err)
 	}
 
 	return start, end, nil
@@ -536,9 +535,6 @@ func extractTimespan(root *appdash.Trace) (time.Time, time.Time, error) {
 
 func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
 	start, end, err := extractTimespan(root)
-	if err != nil {
-		return err
-	}
 
 	// find the trace name
 	name := root.Name()
@@ -551,6 +547,11 @@ func (t *otelTrace) newSpan(root *appdash.Trace, parent *otelSpan) error {
 
 	if name == "/pulumirpc.Engine/Log" && t.ignoreLogSpans {
 		return nil
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "eliding %v: %v", name, err)
+		return err
 	}
 
 	isRegisterResource := root.Name() == "/pulumirpc.ResourceMonitor/RegisterResource"
