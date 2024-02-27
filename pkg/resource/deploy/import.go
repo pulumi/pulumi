@@ -22,6 +22,7 @@ import (
 	"sort"
 
 	"github.com/blang/semver"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -112,12 +113,14 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 type noopEvent int
 
 func (noopEvent) event()                      {}
+func (noopEvent) Span() opentracing.Span      { return nil }
 func (noopEvent) Goal() *resource.Goal        { return nil }
 func (noopEvent) Done(result *RegisterResult) {}
 
 type noopOutputsEvent resource.URN
 
 func (noopOutputsEvent) event()                        {}
+func (noopOutputsEvent) Span() opentracing.Span        { return nil }
 func (e noopOutputsEvent) URN() resource.URN           { return resource.URN(e) }
 func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.PropertyMap{} }
 func (noopOutputsEvent) Done()                         {}

@@ -295,6 +295,7 @@ type defaultProviderResponse struct {
 }
 
 type defaultProviderRequest struct {
+	span     opentracing.Span
 	req      providers.ProviderRequest
 	response chan<- defaultProviderResponse
 }
@@ -302,6 +303,7 @@ type defaultProviderRequest struct {
 // newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
 // engine to register a default provider resource for the indicated package.
 func (d *defaultProviders) newRegisterDefaultProviderEvent(
+	span opentracing.Span,
 	req providers.ProviderRequest,
 ) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
@@ -374,6 +376,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
+		span: span,
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
@@ -390,7 +393,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 //
 // Note that this function must not be called from two goroutines concurrently; it is the responsibility of d.serve()
 // to ensure this.
-func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
+func (d *defaultProviders) handleRequest(span opentracing.Span, req providers.ProviderRequest) (providers.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
 
 	denyCreation, err := d.shouldDenyRequest(req)
@@ -413,7 +416,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 		return ref, nil
 	}
 
-	event, done, err := d.newRegisterDefaultProviderEvent(req)
+	event, done, err := d.newRegisterDefaultProviderEvent(span, req)
 	if err != nil {
 		return providers.Reference{}, err
 	}
@@ -500,7 +503,7 @@ func (d *defaultProviders) serve() {
 		case req := <-d.requests:
 			// Note that we do not need to handle cancellation when sending the response: every message we receive is
 			// guaranteed to have something waiting on the other end of the response channel.
-			ref, err := d.handleRequest(req.req)
+			ref, err := d.handleRequest(req.span, req.req)
 			req.response <- defaultProviderResponse{ref: ref, err: err}
 		case <-d.cancel:
 			return
@@ -509,10 +512,10 @@ func (d *defaultProviders) serve() {
 }
 
 // getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
-func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) (providers.Reference, error) {
+func (d *defaultProviders) getDefaultProviderRef(span opentracing.Span, req providers.ProviderRequest) (providers.Reference, error) {
 	response := make(chan defaultProviderResponse)
 	select {
-	case d.requests <- defaultProviderRequest{req: req, response: response}:
+	case d.requests <- defaultProviderRequest{span: span, req: req, response: response}:
 	case <-d.cancel:
 		return providers.Reference{}, context.Canceled
 	}
@@ -703,7 +706,7 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, l
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
 // given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
 // to the default provider for the indicated package.
-func getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
+func getProviderReference(span opentracing.Span, defaultProviders *defaultProviders, req providers.ProviderRequest,
 	rawProviderRef string,
 ) (providers.Reference, error) {
 	if rawProviderRef != "" {
@@ -714,7 +717,7 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 		return ref, nil
 	}
 
-	ref, err := defaultProviders.getDefaultProviderRef(req)
+	ref, err := defaultProviders.getDefaultProviderRef(span, req)
 	if err != nil {
 		return providers.Reference{}, err
 	}
@@ -725,11 +728,12 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
 func getProviderFromSource(
+	span opentracing.Span,
 	providerSource ProviderSource, defaultProviders *defaultProviders,
 	req providers.ProviderRequest, rawProviderRef string,
 	token tokens.ModuleMember,
 ) (plugin.Provider, error) {
-	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
+	providerRef, err := getProviderReference(span, defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
 	} else if providers.IsDenyDefaultsProvider(providerRef) {
@@ -812,7 +816,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := getProviderFromSource(opentracing.SpanFromContext(ctx), rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -874,7 +878,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := getProviderFromSource(opentracing.SpanFromContext(ctx), rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -980,7 +984,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := getProviderFromSource(opentracing.SpanFromContext(stream.Context()), rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -1053,7 +1057,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
+		ref, provErr := rm.defaultProviders.getDefaultProviderRef(opentracing.SpanFromContext(ctx), providerReq)
 		if provErr != nil {
 			return nil, provErr
 		} else if providers.IsDenyDefaultsProvider(ref) {
@@ -1090,6 +1094,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	event := &readResourceEvent{
+		span:                    opentracing.SpanFromContext(ctx),
 		id:                      id,
 		name:                    name,
 		baseType:                t,
@@ -1553,14 +1558,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
+		span := opentracing.SpanFromContext(ctx)
+		providerRef, err = getProviderReference(span, rm.defaultProviders, providerReq, opts.GetProvider())
 		if err != nil {
 			return nil, err
 		}
 
 		providerRefs = make(map[string]string, len(opts.GetProviders()))
 		for name, provider := range opts.GetProviders() {
-			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
+			ref, err := getProviderReference(span, rm.defaultProviders, providerReq, provider)
 			if err != nil {
 				return nil, err
 			}
@@ -1801,6 +1807,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
+			span: opentracing.SpanFromContext(ctx),
 			goal: goal,
 			done: make(chan *RegisterResult),
 		}
@@ -1973,6 +1980,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 
 	// Now send the step over to the engine to perform.
 	step := &registerResourceOutputsEvent{
+		span:    opentracing.SpanFromContext(ctx),
 		urn:     urn,
 		outputs: outs,
 		done:    make(chan bool),
@@ -1999,6 +2007,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type registerResourceEvent struct {
+	span opentracing.Span
 	goal *resource.Goal       // the resource goal state produced by the iterator.
 	done chan *RegisterResult // the channel to communicate with after the resource state is available.
 }
@@ -2006,6 +2015,10 @@ type registerResourceEvent struct {
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)
 
 func (g *registerResourceEvent) event() {}
+
+func (g *registerResourceEvent) Span() opentracing.Span {
+	return g.span
+}
 
 func (g *registerResourceEvent) Goal() *resource.Goal {
 	return g.goal
@@ -2017,6 +2030,7 @@ func (g *registerResourceEvent) Done(result *RegisterResult) {
 }
 
 type registerResourceOutputsEvent struct {
+	span    opentracing.Span
 	urn     resource.URN         // the URN to which this completion applies.
 	outputs resource.PropertyMap // an optional property bag for output properties.
 	done    chan bool            // the channel to communicate with after the operation completes.
@@ -2025,6 +2039,10 @@ type registerResourceOutputsEvent struct {
 var _ RegisterResourceOutputsEvent = (*registerResourceOutputsEvent)(nil)
 
 func (g *registerResourceOutputsEvent) event() {}
+
+func (g *registerResourceOutputsEvent) Span() opentracing.Span {
+	return g.span
+}
 
 func (g *registerResourceOutputsEvent) URN() resource.URN {
 	return g.urn
@@ -2040,6 +2058,7 @@ func (g *registerResourceOutputsEvent) Done() {
 }
 
 type readResourceEvent struct {
+	span                    opentracing.Span
 	id                      resource.ID
 	name                    string
 	baseType                tokens.Type
@@ -2055,6 +2074,10 @@ type readResourceEvent struct {
 var _ ReadResourceEvent = (*readResourceEvent)(nil)
 
 func (g *readResourceEvent) event() {}
+
+func (g *readResourceEvent) Span() opentracing.Span {
+	return g.span
+}
 
 func (g *readResourceEvent) ID() resource.ID                  { return g.id }
 func (g *readResourceEvent) Name() string                     { return g.name }

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -181,6 +182,12 @@ func (sg *stepGenerator) generateURN(
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+	var eventSpan opentracing.Span
+	if span := event.Span(); span != nil {
+		eventSpan = opentracing.StartSpan("stepGenerator.GenerateReadSteps", opentracing.ChildOf(span.Context()))
+		defer eventSpan.Finish()
+	}
+
 	// Some event settings are based on the parent settings so make sure our parent is correct.
 	parent, err := sg.checkParent(event.Parent(), event.Type())
 	if err != nil {
@@ -262,7 +269,13 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
 func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, error) {
-	steps, err := sg.generateSteps(event)
+	var eventSpan opentracing.Span
+	if span := event.Span(); span != nil {
+		eventSpan = opentracing.StartSpan("stepGenerator.GenerateSteps", opentracing.ChildOf(span.Context()))
+		defer eventSpan.Finish()
+	}
+
+	steps, err := sg.generateSteps(eventSpan, event)
 	if err != nil {
 		contract.Assertf(len(steps) == 0, "expected no steps if there is an error")
 		return nil, err
@@ -474,7 +487,7 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	return result
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, error) {
+func (sg *stepGenerator) generateSteps(span opentracing.Span, event RegisterResourceEvent) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
@@ -899,7 +912,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, err := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
+				span, event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
 			if err != nil {
 				return nil, err
 			}
@@ -955,6 +968,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 }
 
 func (sg *stepGenerator) generateStepsFromDiff(
+	span opentracing.Span,
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
@@ -962,7 +976,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
 
-	diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
+	diff, err := sg.diff(span, urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
 	// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 	// report the message contained in the error.
 	if _, ok := err.(plugin.DiffUnavailableError); ok {
@@ -1571,7 +1585,9 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 }
 
 // diff returns a DiffResult for the given resource.
-func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
+func (sg *stepGenerator) diff(
+	span opentracing.Span,
+	urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {

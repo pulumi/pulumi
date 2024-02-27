@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -74,6 +75,8 @@ type SourceResourceMonitor interface {
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source
 // program, and it is the responsibility of the engine to make it so.
 type SourceEvent interface {
+	Span() opentracing.Span
+
 	event()
 }
 
