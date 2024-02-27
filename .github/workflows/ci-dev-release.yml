@@ -119,13 +119,13 @@ jobs:
       - name: Check for changes
         id: check-changes
         run: |
-          if git diff --exit-code master...HEAD sdk/nodejs; then
+          if ! git diff --exit-code master...HEAD sdk/nodejs; then
             echo "nodejs-release=true" >>"${GITHUB_OUTPUT}"
           else
             echo "nodejs-release=false" >>"${GITHUB_OUTPUT}"
           fi
 
-          if git diff --exit-code master...HEAD sdk/python; then
+          if ! git diff --exit-code master...HEAD sdk/python; then
             echo "python-release=true" >>"${GITHUB_OUTPUT}"
           else
             echo "python-release=false" >>"${GITHUB_OUTPUT}"
