@@ -69,6 +69,10 @@ func (h *L2DestroyLanguageHost) Pack(
 	return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
 }
 
+func (h *L2DestroyLanguageHost) TotalRuns() int {
+	return h.currentRun
+}
+
 func (h *L2DestroyLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
@@ -277,4 +281,5 @@ func TestL2Destroy(t *testing.T) {
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
+	assert.Equal(t, runtime.TotalRuns(), 2)
 }

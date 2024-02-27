@@ -16,6 +16,7 @@ package main
 
 import (
 	"embed"
+	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -164,13 +165,21 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, res, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
+					// check that both expected resources are in the snapshot
 					provider := snap.Resources[1]
 					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
-					// check that both expected resources are in the snapshot
+
+					// Make sure we can assert the resource names in a consistent order
+					sort.Slice(snap.Resources[2:3], func(i, j int) bool {
+						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
+					})
+
 					simple := snap.Resources[2]
 					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, "aresource", simple.URN.Name(), "expected aresource resource")
 					simple2 := snap.Resources[3]
 					assert.Equal(l, "simple:index:Resource", simple2.Type.String(), "expected simple resource")
+					assert.Equal(l, "other", simple2.URN.Name(), "expected other resource")
 				},
 			},
 			{
@@ -178,11 +187,13 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, 1, changes[deploy.OpDelete], "expected a delete operation")
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
+					// No need to sort here, since we have only resources that depend on each other in a chain.
 					provider := snap.Resources[1]
 					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
 					// check that only the expected resource is left in the snapshot
 					simple := snap.Resources[2]
 					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, "aresource", simple.URN.Name(), "expected aresource resource")
 				},
 			},
 		},
