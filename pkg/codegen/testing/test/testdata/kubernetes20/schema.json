@@ -719,6 +719,68 @@
         "chart"
       ]
     },
+    "kubernetes:yaml/v2:ConfigGroup": {
+      "description": "A non-overlay component resource.",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "description": "Resources created by the ConfigGroup."
+        }
+      },
+      "type": "object",
+      "inputProperties": {
+        "files": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Set of paths or a URLs that uniquely identify files."
+        },
+        "objs": {
+          "oneOf": [
+            {
+              "$ref": "pulumi.json#/Any"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "pulumi.json#/Any"
+              }
+            }
+          ],
+          "description": "Objects representing Kubernetes resources."
+        },
+        "resourcePrefix": {
+          "type": "string",
+          "description": "An optional prefix for the auto-generated resource names. Example: A resource created with resourcePrefix=\"foo\" would produce a resource named \"foo-resourceName\"."
+        },
+        "yaml": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "YAML text containing Kubernetes resource definitions."
+        }
+      },
+      "isComponent": true
+    },
     "kubernetes:yaml:ConfigGroup": {
       "description": "An overlay component resource.",
       "properties": {

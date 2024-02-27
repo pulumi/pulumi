@@ -12,6 +12,8 @@
     "meta/v1/_index.md",
     "provider/_index.md",
     "yaml/_index.md",
-    "yaml/configgroup/_index.md"
+    "yaml/configgroup/_index.md",
+    "yaml/v2/_index.md",
+    "yaml/v2/configgroup/_index.md"
   ]
 }

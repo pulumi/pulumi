@@ -15,11 +15,13 @@ utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 import * as core from "./core";
 import * as helm from "./helm";
 import * as types from "./types";
+import * as yaml from "./yaml";
 
 export {
     core,
     helm,
     types,
+    yaml,
 };
 pulumi.runtime.registerResourcePackage("kubernetes", {
     version: utilities.getVersion(),

@@ -21,6 +21,8 @@
     "pulumi_kubernetes/pulumi-plugin.json",
     "pulumi_kubernetes/py.typed",
     "pulumi_kubernetes/yaml/__init__.py",
+    "pulumi_kubernetes/yaml/v2/ConfigGroup.py",
+    "pulumi_kubernetes/yaml/v2/__init__.py",
     "pyproject.toml"
   ]
 }
