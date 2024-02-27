@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"reflect"
 
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -87,6 +88,8 @@ type snapshotBuffer struct {
 	Snapshot func(ctx context.Context) (*deploy.Snapshot, error)
 	Reset    func() error
 	Cleanup  func()
+
+	originalText snapshotText
 }
 
 func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot) (*snapshotBuffer, error) {
@@ -116,6 +119,7 @@ func newSnapshotBuffer(fileExt string, sf snapshotEncoder, snap *deploy.Snapshot
 		Cleanup: func() {
 			os.Remove(tempFile.Name())
 		},
+		originalText: originalText,
 	}
 	if err := t.Reset(); err != nil {
 		t.Cleanup()
@@ -166,7 +170,10 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 		var msg string
 		var options []string
 		news, err := cmd.validateAndPrintState(ctx, f)
-		if err != nil {
+		if errors.Is(err, errNoStateChange) {
+			cmdutil.Diag().Warningf(diag.Message("", "provided state was not changed"))
+			return nil
+		} else if err != nil {
 			cmdutil.Diag().Errorf(diag.Message("", "provided state is not valid: %v"), err)
 			msg = "Received invalid state. What would you like to do?"
 			options = []string{
@@ -201,6 +208,8 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 	}
 }
 
+var errNoStateChange = fmt.Errorf("No state change")
+
 func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotBuffer) (*deploy.Snapshot, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 
@@ -220,6 +229,10 @@ func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotB
 	if err != nil {
 		// This should not fail as we have already verified the integrity of the snapshot.
 		return nil, err
+	}
+
+	if reflect.DeepEqual(f.originalText, previewText) {
+		return nil, errNoStateChange
 	}
 
 	fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(
