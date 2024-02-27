@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -65,7 +67,7 @@ type Host interface {
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
-	Provider(pkg tokens.Package, version *semver.Version) (Provider, error)
+	Provider(cxt context.Context, pkg tokens.Package, version *semver.Version) (Provider, error)
 	// CloseProvider closes the given provider plugin and deregisters it from this host.
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
@@ -363,7 +365,8 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
-func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
+func (host *defaultHost) Provider(ctx context.Context, pkg tokens.Package, version *semver.Version) (Provider, error) {
+	span := opentracing.SpanFromContext(ctx)
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// Try to load and bind to a plugin.
 
@@ -380,7 +383,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 		}
 
 		plug, err := NewProvider(
-			host, host.ctx, pkg, version,
+			host, host.ctx, span, pkg, version,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig))
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
@@ -491,7 +494,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 			}
 		case workspace.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(tokens.Package(plugin.Name), plugin.Version); err != nil {
+				if _, err := host.Provider(context.TODO(), tokens.Package(plugin.Name), plugin.Version); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load resource plugin %s", plugin.Name))
 				}

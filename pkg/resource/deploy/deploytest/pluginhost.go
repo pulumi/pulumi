@@ -364,7 +364,7 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (host *pluginHost) Provider(ctx context.Context, pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}

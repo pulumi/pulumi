@@ -364,7 +364,7 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt)
+	deleteSteps, err := ex.stepGen.GenerateDeletes(ctx, targetsOpt)
 	// Regardless of if this error'd or not the step executor needs unlocking
 	ex.stepExec.Unlock()
 	if err != nil {
@@ -483,7 +483,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	for _, res := range prev.Resources {
 		if opts.Targets.Contains(res.URN) {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
-			err := ex.deployment.EnsureProvider(res.Provider)
+			err := ex.deployment.EnsureProvider(callerCtx, res.Provider)
 			if err != nil {
 				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 			}

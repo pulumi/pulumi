@@ -1735,7 +1735,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			options.DeleteBeforeReplace = *opts.DeleteBeforeReplace
 		}
 
-		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
+		constructResult, err := provider.Construct(ctx, rm.constructInfo, t, name, parent, props, options)
 		if err != nil {
 			return nil, err
 		}

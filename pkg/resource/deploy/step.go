@@ -15,11 +15,13 @@
 package deploy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -55,6 +57,18 @@ type Step interface {
 	Res() *resource.State    // the latest state for the resource that is known (worst case, old).
 	Logical() bool           // true if this step represents a logical operation in the program.
 	Deployment() *Deployment // the owning deployment.
+}
+
+func spanContext(span opentracing.Span) context.Context {
+	ctx := context.Background()
+	if span != nil {
+		ctx = opentracing.ContextWithSpan(ctx, span)
+	}
+	return ctx
+}
+
+func eventContext(event SourceEvent) context.Context {
+	return spanContext(event.Span())
 }
 
 // SameStep is a mutating step that does nothing.
@@ -136,7 +150,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	// We can only do this if the provider is actually a same, not a skipped create.
 	if providers.IsProviderType(s.new.Type) && !s.skippedCreate {
 		if s.Deployment() != nil {
-			err := s.Deployment().SameProvider(s.new)
+			err := s.Deployment().SameProvider(eventContext(s.reg), s.new)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
@@ -245,7 +259,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
+		id, outs, rst, err := prov.Create(eventContext(s.reg), s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -417,7 +431,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
+		if rst, err := prov.Delete(context.TODO(), s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
 			return rst, nil, err
 		}
 	}
@@ -530,7 +544,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
-		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
+		outs, rst, upderr := prov.Update(eventContext(s.reg), s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
 			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
 		if upderr != nil {
 			if rst != resource.StatusPartialFailure {
@@ -720,7 +734,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
 		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
 		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
-		result, rst, err := prov.Read(urn, id, s.new.Inputs, s.new.Inputs)
+		result, rst, err := prov.Read(eventContext(s.event), urn, id, s.new.Inputs, s.new.Inputs)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -840,7 +854,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	var initErrors []string
-	refreshed, rst, err := prov.Read(s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
+	refreshed, rst, err := prov.Read(context.TODO(), s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
 	if err != nil {
 		if rst != resource.StatusPartialFailure {
 			return rst, nil, err
@@ -1030,7 +1044,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 		var read plugin.ReadResult
-		read, rst, err = prov.Read(s.new.URN, s.new.ID, nil, nil)
+		read, rst, err = prov.Read(eventContext(s.reg), s.new.URN, s.new.ID, nil, nil)
 		if err != nil {
 			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 				s.new.InitErrors = initErr.Reasons
@@ -1102,7 +1116,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
+		_, failures, err := prov.Check(eventContext(s.reg), s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 		if err != nil {
 			return rst, nil, err
 		}
@@ -1143,7 +1157,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
+	inputs, failures, err := prov.Check(eventContext(s.reg), s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 	if err != nil {
 		return rst, nil, err
 	}
@@ -1154,7 +1168,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
 	// is from an import deployment.
-	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
+	diff, err := diffResource(s.reg.Span(), s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
 		s.ignoreChanges)
 	if err != nil {
 		return rst, nil, err

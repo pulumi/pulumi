@@ -69,7 +69,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
+	plug, err := newPlugin(ctx, nil, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		workspace.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+	plug, err := newPlugin(ctx, nil, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		workspace.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for

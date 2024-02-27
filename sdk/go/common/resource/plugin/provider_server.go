@@ -183,7 +183,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.CheckConfig(urn, state, inputs, true)
+	newInputs, failures, err := p.provider.CheckConfig(ctx, urn, state, inputs, true)
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
@@ -222,7 +222,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, err
 	}
 
-	diff, err := p.provider.DiffConfig(urn, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.DiffConfig(ctx, urn, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
 	}
@@ -257,7 +257,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 	}
 
-	if err := p.provider.Configure(inputs); err != nil {
+	if err := p.provider.Configure(ctx, inputs); err != nil {
 		return nil, err
 	}
 
@@ -281,7 +281,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, req.RandomSeed)
+	newInputs, failures, err := p.provider.Check(ctx, urn, state, inputs, true, req.RandomSeed)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +320,7 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		return nil, err
 	}
 
-	diff, err := p.provider.Diff(urn, id, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.Diff(ctx, urn, id, oldInputs, oldOutputs, newInputs, true, req.GetIgnoreChanges())
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +335,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	id, state, _, err := p.provider.Create(urn, inputs, req.GetTimeout(), req.GetPreview())
+	id, state, _, err := p.provider.Create(ctx, urn, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	result, _, err := p.provider.Read(urn, requestID, inputs, state)
+	result, _, err := p.provider.Read(ctx, urn, requestID, inputs, state)
 	if err != nil {
 		return nil, err
 	}
@@ -408,6 +408,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	}
 
 	newState, _, err := p.provider.Update(
+		ctx,
 		urn, id, oldOutputs, oldInputs, newInputs,
 		req.GetTimeout(), req.GetIgnoreChanges(), req.GetPreview())
 	if err != nil {
@@ -435,7 +436,7 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
-	if _, err = p.provider.Delete(urn, id, inputs, outputs, req.GetTimeout()); err != nil {
+	if _, err = p.provider.Delete(ctx, urn, id, inputs, outputs, req.GetTimeout()); err != nil {
 		return nil, err
 	}
 
@@ -504,7 +505,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		PropertyDependencies: propertyDependencies,
 	}
 
-	result, err := p.provider.Construct(info, typ, name, parent, inputs, options)
+	result, err := p.provider.Construct(ctx, info, typ, name, parent, inputs, options)
 	if err != nil {
 		return nil, err
 	}

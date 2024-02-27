@@ -171,7 +171,7 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
+func newPlugin(ctx *Context, span opentracing.Span, pwd, bin, prefix string, kind workspace.PluginKind,
 	args, env []string, dialOptions []grpc.DialOption,
 ) (*plugin, error) {
 	if logging.V(9) {
@@ -191,8 +191,11 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 		opentracing.Tag{Key: "bin", Value: bin},
 		opentracing.Tag{Key: "pulumi-decorator", Value: prefix + ":" + bin},
 	}
-	if ctx != nil && ctx.tracingSpan != nil {
-		opts = append(opts, opentracing.ChildOf(ctx.tracingSpan.Context()))
+	if span == nil && ctx != nil {
+		span = ctx.tracingSpan
+	}
+	if span != nil {
+		opts = append(opts, opentracing.ChildOf(span.Context()))
 	}
 	tracingSpan := opentracing.StartSpan("newPlugin", opts...)
 	defer tracingSpan.Finish()

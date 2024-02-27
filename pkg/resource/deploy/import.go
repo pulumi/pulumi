@@ -270,7 +270,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
+		inputs, failures, err := i.deployment.providers.Check(ctx, urn, nil, inputs, false, nil)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
 		}

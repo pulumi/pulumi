@@ -495,13 +495,13 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-func (d *Deployment) SameProvider(res *resource.State) error {
-	return d.providers.Same(res)
+func (d *Deployment) SameProvider(ctx context.Context, res *resource.State) error {
+	return d.providers.Same(ctx, res)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
 // the provider is available in the previous snapshot.
-func (d *Deployment) EnsureProvider(provider string) error {
+func (d *Deployment) EnsureProvider(ctx context.Context, provider string) error {
 	if provider == "" {
 		return nil
 	}
@@ -524,7 +524,7 @@ func (d *Deployment) EnsureProvider(provider string) error {
 			return fmt.Errorf("could not find provider %v", providerRef)
 		}
 
-		err := d.SameProvider(providerResource)
+		err := d.SameProvider(ctx, providerResource)
 		if err != nil {
 			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
 		}

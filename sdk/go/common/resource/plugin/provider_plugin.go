@@ -88,7 +88,7 @@ type pluginConfig struct {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
+func NewProvider(host Host, ctx *Context, span opentracing.Span, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
@@ -145,7 +145,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
-		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+		plug, err = newPlugin(ctx, span, ctx.Pwd, path, prefix,
 			workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
@@ -202,10 +202,10 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, span opentracing.Span, path string) (Provider, error) {
 	env := os.Environ()
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
+	plug, err := newPlugin(ctx, span, ctx.Pwd, path, "",
 		workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err
@@ -251,11 +251,22 @@ func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
 }
 
-func (p *provider) requestContext() context.Context {
+func (p *provider) requestContext(ctx context.Context) context.Context {
 	if p.ctx == nil {
-		return context.Background()
+		return ctx
 	}
-	return p.ctx.Request()
+
+	req := p.ctx.Request()
+	child, cancel := context.WithCancel(ctx)
+	go func() {
+		defer cancel()
+
+		select {
+		case <-req.Done():
+		case <-child.Done():
+		}
+	}()
+	return child
 }
 
 // isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
@@ -285,7 +296,7 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 
 // GetSchema fetches the schema for this resource provider, if any.
 func (p *provider) GetSchema(version int) ([]byte, error) {
-	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
+	resp, err := p.clientRaw.GetSchema(p.requestContext(context.TODO()), &pulumirpc.GetSchemaRequest{
 		Version: int32(version),
 	})
 	if err != nil {
@@ -295,7 +306,9 @@ func (p *provider) GetSchema(version int) ([]byte, error) {
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(urn resource.URN, olds,
+func (p *provider) CheckConfig(
+	ctx context.Context,
+	urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool,
 ) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
@@ -317,7 +330,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 		return nil, nil, err
 	}
 
-	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
+	resp, err := p.clientRaw.CheckConfig(p.requestContext(ctx), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
 		Olds: molds,
 		News: mnews,
@@ -397,7 +410,9 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+func (p *provider) DiffConfig(
+	ctx context.Context,
+	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
@@ -428,7 +443,7 @@ func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs
 		return DiffResult{}, err
 	}
 
-	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
+	resp, err := p.clientRaw.DiffConfig(p.requestContext(ctx), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
 		OldInputs:     mOldInputs,
 		Olds:          mOldOutputs,
@@ -650,7 +665,10 @@ func restoreElidedAssetContents(original resource.PropertyMap, transformed resou
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *provider) Configure(inputs resource.PropertyMap) error {
+func (p *provider) Configure(
+	ctx context.Context,
+	inputs resource.PropertyMap,
+) error {
 	label := p.label() + ".Configure()"
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
 
@@ -702,7 +720,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+		resp, err := p.clientRaw.Configure(p.requestContext(ctx), &pulumirpc.ConfigureRequest{
 			AcceptSecrets:          true,
 			AcceptResources:        true,
 			SendsOldInputs:         true,
@@ -731,7 +749,9 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *provider) Check(urn resource.URN,
+func (p *provider) Check(
+	ctx context.Context,
+	urn resource.URN,
 	olds, news resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []CheckFailure, error) {
@@ -770,7 +790,7 @@ func (p *provider) Check(urn resource.URN,
 		return nil, nil, err
 	}
 
-	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
+	resp, err := client.Check(p.requestContext(ctx), &pulumirpc.CheckRequest{
 		Urn:        string(urn),
 		Olds:       molds,
 		News:       mnews,
@@ -815,7 +835,9 @@ func (p *provider) Check(urn resource.URN,
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) Diff(urn resource.URN, id resource.ID,
+func (p *provider) Diff(
+	ctx context.Context,
+	urn resource.URN, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
 	ignoreChanges []string,
 ) (DiffResult, error) {
@@ -879,7 +901,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
+	resp, err := client.Diff(p.requestContext(ctx), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
 		OldInputs:     mOldInputs,
@@ -923,7 +945,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
+func (p *provider) Create(
+	ctx context.Context,
+	urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
 	resource.PropertyMap, resource.Status, error,
 ) {
 	contract.Assertf(urn != "", "Create requires a URN")
@@ -979,7 +1003,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	var liveObject *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
+	resp, err := client.Create(p.requestContext(ctx), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 		Timeout:    timeout,
@@ -1030,7 +1054,9 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
-func (p *provider) Read(urn resource.URN, id resource.ID,
+func (p *provider) Read(
+	ctx context.Context,
+	urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap,
 ) (ReadResult, resource.Status, error) {
 	contract.Assertf(urn != "", "Read URN was empty")
@@ -1084,7 +1110,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	var liveInputs *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
+	resp, err := client.Read(p.requestContext(ctx), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mstate,
@@ -1154,7 +1180,9 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 }
 
 // Update updates an existing resource with new values.
-func (p *provider) Update(urn resource.URN, id resource.ID,
+func (p *provider) Update(
+	ctx context.Context,
+	urn resource.URN, id resource.ID,
 	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
@@ -1232,7 +1260,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	var liveObject *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
+	resp, err := client.Update(p.requestContext(ctx), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
 		Olds:          mOldOutputs,
@@ -1279,7 +1307,9 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
+func (p *provider) Delete(
+	ctx context.Context,
+	urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
 	contract.Assertf(urn != "", "Delete requires a URN")
@@ -1321,7 +1351,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutput
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
-	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
+	if _, err := client.Delete(p.requestContext(ctx), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: moutputs,
@@ -1339,7 +1369,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, oldInputs, oldOutput
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
-func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, parent resource.URN,
+func (p *provider) Construct(
+	ctx context.Context,
+	info ConstructInfo, typ tokens.Type, name string, parent resource.URN,
 	inputs resource.PropertyMap, options ConstructOptions,
 ) (ConstructResult, error) {
 	contract.Assertf(typ != "", "Construct requires a type")
@@ -1445,7 +1477,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, p
 		}
 	}
 
-	resp, err := client.Construct(p.requestContext(), req)
+	resp, err := client.Construct(p.requestContext(ctx), req)
 	if err != nil {
 		return ConstructResult{}, err
 	}
@@ -1508,7 +1540,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		return nil, nil, err
 	}
 
-	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
+	resp, err := client.Invoke(p.requestContext(context.TODO()), &pulumirpc.InvokeRequest{
 		Tok:  string(tok),
 		Args: margs,
 	})
@@ -1573,7 +1605,7 @@ func (p *provider) StreamInvoke(
 	}
 
 	streamClient, err := client.StreamInvoke(
-		p.requestContext(), &pulumirpc.InvokeRequest{
+		p.requestContext(context.TODO()), &pulumirpc.InvokeRequest{
 			Tok:  string(tok),
 			Args: margs,
 		})
@@ -1670,7 +1702,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 		config[k.String()] = v
 	}
 
-	resp, err := client.Call(p.requestContext(), &pulumirpc.CallRequest{
+	resp, err := client.Call(p.requestContext(context.TODO()), &pulumirpc.CallRequest{
 		Tok:                 string(tok),
 		Args:                margs,
 		ArgDependencies:     argDependencies,
@@ -1726,7 +1758,7 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
-	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
+	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(context.TODO()), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
@@ -1763,7 +1795,7 @@ func (p *provider) Attach(address string) error {
 
 	// Calling Attach happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
-	_, err := p.clientRaw.Attach(p.requestContext(), &pulumirpc.PluginAttach{Address: address})
+	_, err := p.clientRaw.Attach(p.requestContext(context.TODO()), &pulumirpc.PluginAttach{Address: address})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
@@ -1774,7 +1806,7 @@ func (p *provider) Attach(address string) error {
 }
 
 func (p *provider) SignalCancellation() error {
-	_, err := p.clientRaw.Cancel(p.requestContext(), &emptypb.Empty{})
+	_, err := p.clientRaw.Cancel(p.requestContext(context.TODO()), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
@@ -1925,7 +1957,7 @@ func (p *provider) GetMapping(key, provider string) ([]byte, string, error) {
 	label := p.label() + ".GetMapping"
 	logging.V(7).Infof("%s executing: key=%s, provider=%s", label, key, provider)
 
-	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
+	resp, err := p.clientRaw.GetMapping(p.requestContext(context.TODO()), &pulumirpc.GetMappingRequest{
 		Key:      key,
 		Provider: provider,
 	})
@@ -1950,7 +1982,7 @@ func (p *provider) GetMappings(key string) ([]string, error) {
 	label := p.label() + ".GetMappings"
 	logging.V(7).Infof("%s executing: key=%s", label, key)
 
-	resp, err := p.clientRaw.GetMappings(p.requestContext(), &pulumirpc.GetMappingsRequest{
+	resp, err := p.clientRaw.GetMappings(p.requestContext(context.TODO()), &pulumirpc.GetMappingsRequest{
 		Key: key,
 	})
 	if err != nil {

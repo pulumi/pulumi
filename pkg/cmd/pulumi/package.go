@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -153,7 +154,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(tokens.Package(pkg), version)
+		provider, err := host.Provider(context.TODO(), tokens.Package(pkg), version)
 		if err != nil {
 			// There is an executable with the same name, so suggest that
 			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
@@ -182,7 +183,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 					return nil, err
 				}
 
-				p, err := host.Provider(tokens.Package(pkg), version)
+				p, err := host.Provider(context.TODO(), tokens.Package(pkg), version)
 				if err != nil {
 					return nil, err
 				}
@@ -212,7 +213,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 		return nil, err
 	}
 
-	p, err := plugin.NewProviderFromPath(host, pCtx, pkg)
+	p, err := plugin.NewProviderFromPath(host, pCtx, nil, pkg)
 	if err != nil {
 		return nil, err
 	}

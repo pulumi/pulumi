@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
@@ -683,7 +684,7 @@ func (sg *stepGenerator) generateSteps(span opentracing.Span, event RegisterReso
 		checkInputs := prov.Check
 		if !isTargeted {
 			// If not targeted, stub out the provider check and use the old inputs directly.
-			checkInputs = func(urn resource.URN, olds, news resource.PropertyMap,
+			checkInputs = func(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 				allowUnknowns bool, randomSeed []byte,
 			) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return oldInputs, nil, nil
@@ -695,9 +696,9 @@ func (sg *stepGenerator) generateSteps(span opentracing.Span, event RegisterReso
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			inputs, failures, err = checkInputs(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+			inputs, failures, err = checkInputs(spanContext(span), urn, nil, goal.Properties, allowUnknowns, randomSeed)
 		} else {
-			inputs, failures, err = checkInputs(urn, oldInputs, inputs, allowUnknowns, randomSeed)
+			inputs, failures, err = checkInputs(spanContext(span), urn, oldInputs, inputs, allowUnknowns, randomSeed)
 		}
 
 		if err != nil {
@@ -1041,7 +1042,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+				inputs, failures, err = prov.Check(spanContext(span), urn, nil, goal.Properties, allowUnknowns, randomSeed)
 				if err != nil {
 					return nil, err
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
@@ -1087,7 +1088,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
 				if sg.opts.TrustDependencies {
-					toReplace, err := sg.calculateDependentReplacements(old)
+					toReplace, err := sg.calculateDependentReplacements(span, old)
 					if err != nil {
 						return nil, err
 					}
@@ -1132,7 +1133,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 
 				// We're going to delete the old resource before creating the new one. We need to make sure
 				// that the old provider is loaded.
-				err := sg.deployment.EnsureProvider(old.Provider)
+				err := sg.deployment.EnsureProvider(spanContext(span), old.Provider)
 				if err != nil {
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", old.URN, err)
 				}
@@ -1175,7 +1176,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	return nil, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
+func (sg *stepGenerator) GenerateDeletes(ctx context.Context, targetsOpt UrnTargets) ([]Step, error) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -1230,7 +1231,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 
 			// We just added a Delete step, so we need to ensure the provider for this resource is available.
 			if sg.deletes[res.URN] {
-				err := sg.deployment.EnsureProvider(res.Provider)
+				err := sg.deployment.EnsureProvider(ctx, res.Provider)
 				if err != nil {
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
@@ -1277,7 +1278,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
-	allowedResourcesToDelete, err := sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
+	allowedResourcesToDelete, err := sg.determineAllowedResourcesToDeleteFromTargets(opentracing.SpanFromContext(ctx), targetsOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -1363,6 +1364,7 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 // will include the targetsOpt resources, but may contain more than just that, if there are dependent
 // or child resources that require the targets to exist (and so are implicated in the deletion).
 func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
+	span opentracing.Span,
 	targetsOpt UrnTargets,
 ) (map[resource.URN]bool, error) {
 	if !targetsOpt.IsConstrained() {
@@ -1392,7 +1394,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		// the item the user is asking to destroy may cause downstream replacements.  Clean those up
 		// as well. Use the standard delete-before-replace computation to determine the minimal
 		// set of downstream resources that are affected.
-		deps, err := sg.calculateDependentReplacements(current)
+		deps, err := sg.calculateDependentReplacements(span, current)
 		if err != nil {
 			return nil, err
 		}
@@ -1501,7 +1503,7 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 
 // providerChanged diffs the Provider field of old and new resources, returning true if the rest of the step generator
 // should consider there to be a diff between these two resources.
-func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.State) (bool, error) {
+func (sg *stepGenerator) providerChanged(span opentracing.Span, urn resource.URN, old, new *resource.State) (bool, error) {
 	// If a resource's Provider field has changed, we may need to show a diff and we may not. This is subtle. See
 	// pulumi/pulumi#2753 for more details.
 	//
@@ -1571,7 +1573,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new deployment didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, oldRes.Outputs, newRes.Inputs, true, nil)
+	diff, err := newProv.DiffConfig(spanContext(span), newRef.URN(), oldRes.Inputs, oldRes.Outputs, newRes.Inputs, true, nil)
 	if err != nil {
 		return false, err
 	}
@@ -1603,7 +1605,7 @@ func (sg *stepGenerator) diff(
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
-	providerChanged, err := sg.providerChanged(urn, old, new)
+	providerChanged, err := sg.providerChanged(span, urn, old, new)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	} else if providerChanged {
@@ -1625,11 +1627,13 @@ func (sg *stepGenerator) diff(
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
-	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
+	return diffResource(span, urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
-func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
+func diffResource(
+	span opentracing.Span,
+	urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
@@ -1637,7 +1641,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+	diff, err := prov.Diff(spanContext(span), urn, id, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 	if err != nil {
 		return diff, err
 	}
@@ -1859,7 +1863,7 @@ type dependentReplace struct {
 	keys []resource.PropertyKey
 }
 
-func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([]dependentReplace, error) {
+func (sg *stepGenerator) calculateDependentReplacements(span opentracing.Span, root *resource.State) ([]dependentReplace, error) {
 	// We need to compute the set of resources that may be replaced by a change to the resource
 	// under consideration. We do this by taking the complete set of transitive dependents on the
 	// resource under consideration and removing any resources that would not be replaced by changes
@@ -1900,7 +1904,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 			}
 			if replaceSet[ref.URN()] {
 				// We need to use the old provider configuration to delete this resource so ensure it's loaded.
-				err := sg.deployment.EnsureProvider(r.Provider)
+				err := sg.deployment.EnsureProvider(spanContext(span), r.Provider)
 				if err != nil {
 					return false, nil, fmt.Errorf("could not load provider for resource %v: %w", r.URN, err)
 				}
@@ -1930,13 +1934,13 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 
 		// We're going to have to call diff on this resources provider so ensure that we have it created
 		if !providers.IsProviderType(r.Type) {
-			err := sg.deployment.EnsureProvider(r.Provider)
+			err := sg.deployment.EnsureProvider(spanContext(span), r.Provider)
 			if err != nil {
 				return false, nil, fmt.Errorf("could not load provider for resource %v: %w", r.URN, err)
 			}
 		} else {
 			// This is a provider itself so load it so that Diff below is possible
-			err := sg.deployment.SameProvider(r)
+			err := sg.deployment.SameProvider(spanContext(span), r)
 			if err != nil {
 				return false, nil, fmt.Errorf("create provider %v: %w", r.URN, err)
 			}
@@ -1951,7 +1955,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, true, nil)
+		diff, err := prov.Diff(spanContext(span), r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, true, nil)
 		if err != nil {
 			return false, nil, err
 		}
