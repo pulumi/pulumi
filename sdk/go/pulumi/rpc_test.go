@@ -1776,3 +1776,247 @@ func TestMarshalInputsPropertyDependencies(t *testing.T) {
 	// Expect a non-empty property deps map, even when there aren't any deps.
 	assert.Equal(t, map[string][]URN{"s": nil, "a": nil}, pdeps)
 }
+
+func TestUnmarshalPropertyMap(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		input    resource.PropertyMap
+		expected Map
+	}{
+		{
+			name:     "empty",
+			input:    resource.PropertyMap{},
+			expected: Map{},
+		},
+		{
+			name: "primitive types",
+			input: resource.PropertyMap{
+				"nil":    resource.NewNullProperty(),
+				"bool":   resource.NewBoolProperty(true),
+				"number": resource.NewNumberProperty(42),
+				"string": resource.NewStringProperty("hello"),
+			},
+			expected: Map{
+				"nil":    nil,
+				"bool":   Bool(true),
+				"number": Float64(42),
+				"string": String("hello"),
+			},
+		},
+		{
+			name: "array",
+			input: resource.PropertyMap{
+				"array": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewNullProperty(),
+					resource.NewBoolProperty(true),
+					resource.NewNumberProperty(42),
+					resource.NewStringProperty("hello"),
+				}),
+			},
+			expected: Map{
+				"array": Array{
+					nil,
+					Bool(true),
+					Float64(42),
+					String("hello"),
+				},
+			},
+		},
+		{
+			name: "object",
+			input: resource.PropertyMap{
+				"object": resource.NewObjectProperty(resource.PropertyMap{
+					"nil":    resource.NewNullProperty(),
+					"bool":   resource.NewBoolProperty(true),
+					"number": resource.NewNumberProperty(42),
+					"string": resource.NewStringProperty("hello"),
+				}),
+			},
+			expected: Map{
+				"object": Map{
+					"nil":    nil,
+					"bool":   Bool(true),
+					"number": Float64(42),
+					"string": String("hello"),
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, err := NewContext(context.Background(), RunInfo{})
+			require.NoError(t, err)
+
+			actual, err := unmarshalPropertyMap(ctx, c.input)
+			assert.NoError(t, err)
+			assert.Equal(t, c.expected, actual)
+		})
+	}
+
+	t.Run("unknown", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, err := NewContext(context.Background(), RunInfo{})
+		require.NoError(t, err)
+
+		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
+			"computed": resource.NewComputedProperty(resource.Computed{}),
+			"unknown":  resource.MakeComputed(resource.NewStringProperty("")),
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, actual, 2)
+		_, known, secret, _, err := awaitWithContext(ctx.Context(), actual["computed"].(AnyOutput))
+		require.NoError(t, err)
+		assert.False(t, known)
+		assert.False(t, secret)
+
+		_, known, secret, _, err = awaitWithContext(ctx.Context(), actual["unknown"].(AnyOutput))
+		require.NoError(t, err)
+		assert.False(t, known)
+		assert.False(t, secret)
+	})
+
+	t.Run("secret", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, err := NewContext(context.Background(), RunInfo{})
+		require.NoError(t, err)
+
+		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
+			"secret":  resource.MakeSecret(resource.NewStringProperty("secret string")),
+			"unknown": resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty(""))),
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, actual, 2)
+		value, known, secret, _, err := awaitWithContext(ctx.Context(), actual["secret"].(StringOutput))
+		require.NoError(t, err)
+		assert.Equal(t, "secret string", value.(string))
+		assert.True(t, known)
+		assert.True(t, secret)
+
+		_, known, secret, _, err = awaitWithContext(ctx.Context(), actual["unknown"].(AnyOutput))
+		require.NoError(t, err)
+		assert.False(t, known)
+		assert.True(t, secret)
+	})
+
+	t.Run("output", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, err := NewContext(context.Background(), RunInfo{})
+		require.NoError(t, err)
+
+		dependencies := []resource.URN{"urn:pulumi:test_stack::test_project::pkg:index:type::name"}
+
+		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
+			"standard": resource.NewOutputProperty(resource.Output{
+				Element:      resource.NewStringProperty("a string"),
+				Known:        true,
+				Secret:       false,
+				Dependencies: dependencies,
+			}),
+			"secret": resource.NewOutputProperty(resource.Output{
+				Element:      resource.NewStringProperty("secret string"),
+				Known:        true,
+				Secret:       true,
+				Dependencies: dependencies,
+			}),
+			"unknown": resource.NewOutputProperty(resource.Output{
+				Dependencies: dependencies,
+			}),
+			"secret unknown": resource.NewOutputProperty(resource.Output{
+				Dependencies: dependencies,
+				Secret:       true,
+			}),
+			"nested": resource.NewOutputProperty(resource.Output{
+				Element: resource.NewOutputProperty(resource.Output{
+					Element: resource.NewNumberProperty(42),
+					Known:   true,
+					Secret:  true,
+				}),
+				Known:        true,
+				Dependencies: dependencies,
+			}),
+		})
+		require.NoError(t, err)
+
+		assertDeps := func(actual []Resource) {
+			assert.Len(t, actual, 1)
+
+			value, known, _, _, err := awaitWithContext(ctx.Context(), actual[0].URN())
+			require.NoError(t, err)
+			assert.True(t, known)
+			assert.Equal(t, URN("urn:pulumi:test_stack::test_project::pkg:index:type::name"), value.(URN))
+		}
+
+		assert.Len(t, actual, 5)
+		value, known, secret, deps, err := awaitWithContext(ctx.Context(), actual["standard"].(StringOutput))
+		require.NoError(t, err)
+		assert.Equal(t, "a string", value.(string))
+		assert.True(t, known)
+		assert.False(t, secret)
+		assertDeps(deps)
+
+		value, known, secret, deps, err = awaitWithContext(ctx.Context(), actual["secret"].(StringOutput))
+		require.NoError(t, err)
+		assert.Equal(t, "secret string", value.(string))
+		assert.True(t, known)
+		assert.True(t, secret)
+		assertDeps(deps)
+
+		_, known, secret, deps, err = awaitWithContext(ctx.Context(), actual["unknown"].(AnyOutput))
+		require.NoError(t, err)
+		assert.False(t, known)
+		assert.False(t, secret)
+		assertDeps(deps)
+
+		_, known, secret, deps, err = awaitWithContext(ctx.Context(), actual["secret unknown"].(AnyOutput))
+		require.NoError(t, err)
+		assert.False(t, known)
+		assert.True(t, secret)
+		assertDeps(deps)
+
+		value, known, secret, deps, err = awaitWithContext(ctx.Context(), actual["nested"].(Float64Output))
+		require.NoError(t, err)
+		assert.Equal(t, 42.0, value.(float64))
+		assert.True(t, known)
+		assert.True(t, secret)
+		assertDeps(deps)
+	})
+
+	t.Run("resource", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, err := NewContext(context.Background(), RunInfo{})
+		require.NoError(t, err)
+
+		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
+			"unknown id": resource.NewResourceReferenceProperty(resource.ResourceReference{
+				URN: "urn:pulumi:test_stack::test_project::pkg:index:type::name",
+			}),
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, actual, 1)
+		value, known, secret, _, err := awaitWithContext(ctx.Context(), actual["unknown id"].(ResourceOutput))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		res, ok := value.(Resource)
+		require.True(t, ok)
+
+		value, known, secret, _, err = awaitWithContext(ctx.Context(), res.URN())
+		require.NoError(t, err)
+		assert.Equal(t, URN("urn:pulumi:test_stack::test_project::pkg:index:type::name"), value)
+		assert.True(t, known)
+		assert.False(t, secret)
+	})
+}

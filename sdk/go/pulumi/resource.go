@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -201,6 +202,15 @@ func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResour
 	return &res
 }
 
+func (ctx *Context) newDependencyProviderResourceFromRef(ref string) ProviderResource {
+	idx := strings.LastIndex(ref, "::")
+	if idx == -1 {
+		return nil
+	}
+	urn, id := ref[:idx], ref[idx+2:]
+	return ctx.newDependencyProviderResource(URN(urn), ID(id))
+}
+
 // Resource represents a cloud resource managed by Pulumi.
 type Resource interface {
 	internal.Resource
@@ -369,6 +379,12 @@ type ResourceOptions struct {
 	// the resource's properties during construction.
 	Transformations []ResourceTransformation
 
+	// XTransforms is a list of functions that transform
+	// the resource's properties during construction.
+	//
+	// Experimental.
+	XTransforms []XResourceTransform
+
 	// URN is the URN of a previously-registered resource of this type.
 	URN string
 
@@ -418,6 +434,7 @@ type resourceOptions struct {
 	Providers               map[string]ProviderResource
 	ReplaceOnChanges        []string
 	Transformations         []ResourceTransformation
+	XTransforms             []XResourceTransform
 	URN                     string
 	Version                 string
 	PluginDownloadURL       string
@@ -473,6 +490,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
 		Transformations:         ro.Transformations,
+		XTransforms:             ro.XTransforms,
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
@@ -834,6 +852,15 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 func Transformations(o []ResourceTransformation) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Transformations = append(ro.Transformations, o...)
+	})
+}
+
+// XTransforms is an optional list of transforms to be applied to the resource.
+//
+// Experimental.
+func XTransforms(o []XResourceTransform) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.XTransforms = append(ro.XTransforms, o...)
 	})
 }
 
