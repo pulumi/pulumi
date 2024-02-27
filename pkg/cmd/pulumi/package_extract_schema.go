@@ -51,6 +51,7 @@ func newExtractSchemaCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			fmt.Println("I made a change here")
 			if len(bytes) != n {
 				return fmt.Errorf("only wrote %d/%d bytes of the schema", len(bytes), n)
 			}

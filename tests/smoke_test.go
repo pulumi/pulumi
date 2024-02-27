@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -234,27 +235,32 @@ func TestPackageGetSchema(t *testing.T) {
 	// Make sure the random provider is not installed locally
 	// So that we can test the `package get-schema` command works if the plugin
 	// is not installed locally on first run.
-	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	out, stderr := e.RunCommand("pulumi", "plugin", "ls")
+	fmt.Println(stderr)
 	if strings.Contains(out, "random  resource") {
 		removeRandomFromLocalPlugins()
 	}
 
 	// get the schema and bind it
-	schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", "random")
+	schemaJSON, stderr := e.RunCommand("pulumi", "package", "get-schema", "random")
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 
 	// try again using a specific version
 	removeRandomFromLocalPlugins()
-	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	schemaJSON, stderr = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 
 	// Now that the random provider is installed, run the command again without removing random from plugins
-	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random")
+	schemaJSON, stderr = e.RunCommand("pulumi", "package", "get-schema", "random")
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
 	pulumiHome, err := workspace.GetPulumiHomeDir()
-	require.NoError(t, err)
+	assert.NoError(t, err)
+	fmt.Println(pulumiHome)
 	binaryPath := filepath.Join(
 		pulumiHome,
 		"plugins",
@@ -264,7 +270,15 @@ func TestPackageGetSchema(t *testing.T) {
 		binaryPath += ".exe"
 	}
 
-	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	// TODO: remove this, it's for debugging only.
+	entries, _ := os.ReadDir(pulumiHome)
+
+	for _, e := range entries {
+		fmt.Println(e.Name())
+	}
+
+	schemaJSON, stderr = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	fmt.Println(stderr)
 	bindSchema(schemaJSON)
 }
 
