@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import os
+import sys
 import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
@@ -101,6 +102,10 @@ def invoke(
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
+
+    start = time.time_ns()
+    print(f'{{"timestamp":{start},"event":"start","label":"pulumi.runtime.invoke({ty},{name})"}}', file=sys.stderr)
+
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -178,6 +183,10 @@ def invoke(
 
     async def do_rpc():
         resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
+
+        end = time.time_ns()
+        print(f'{{"timestamp":{end},"event":"end","label":"pulumi.runtime.invoke({ty},{name})"}}', file=sys.stderr)
+
         # If there was an RPC level exception, we will raise it. Note that this will also crash the
         # process because it will have been considered "unhandled". For semantic level errors, such
         # as errors from the data source itself, we return that as part of the returned tuple instead.
