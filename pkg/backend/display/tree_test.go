@@ -50,6 +50,8 @@ func TestTreeFrameSize(t *testing.T) {
 			treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
 				Color: colors.Always,
 			}).(*treeRenderer)
+			display := &ProgressDisplay{}
+			treeRenderer.initializeDisplay(display)
 
 			// Fill the renderer with too many rows of strings to fit in the terminal.
 			for i := 0; i < 1000; i++ {
@@ -75,6 +77,8 @@ func TestTreeKeyboardHandling(t *testing.T) {
 	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
 		Color: colors.Always,
 	}).(*treeRenderer)
+	display := &ProgressDisplay{}
+	treeRenderer.initializeDisplay(display)
 
 	// Fill the renderer with too many rows of strings to fit in the terminal.
 	for i := 0; i < 1000; i++ {
