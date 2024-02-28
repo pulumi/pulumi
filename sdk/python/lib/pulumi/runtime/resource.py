@@ -884,8 +884,14 @@ def register_resource(
             nonlocal opts
             opts = opts if opts is not None else ResourceOptions()
 
+            start = time.time_ns()
+            print(f'{{"timestamp":{start},"event":"start","label":"pulumi.runtime.prepare_resource({ty},{name})"}}', file=sys.stderr)
+
             resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
+
+            end = time.time_ns()
+            print(f'{{"timestamp":{end},"event":"end","label":"pulumi.runtime.prepare_resource({ty},{name})"}}', file=sys.stderr)
 
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
