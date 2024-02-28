@@ -725,7 +725,7 @@ def read_resource(
     # - user code
     #
     # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
-    source_position = _get_source_position(4)
+    source_position = _get_source_position(5)
 
     async def do_read():
         try:
@@ -861,7 +861,7 @@ def register_resource(
     # - user code
     #
     # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
-    source_position = _get_source_position(4)
+    source_position = _get_source_position(5)
 
     async def do_register() -> None:
         try:
