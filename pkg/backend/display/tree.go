@@ -265,7 +265,14 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
 		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
+		if r.maxTreeTableOffset < 0 {
+			r.maxTreeTableOffset = 0
+		}
 		scrollable := r.maxTreeTableOffset != 0
+
+		if r.treeTableOffset > r.maxTreeTableOffset {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
 
 		if autoscroll {
 			r.treeTableOffset = r.maxTreeTableOffset
@@ -275,7 +282,11 @@ func (r *treeRenderer) frame(locked, done bool) {
 			// Ensure that the treeTableHeight is at least 1 to avoid going out of bounds.
 			treeTableHeight = 1
 		}
-		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		if r.treeTableOffset+treeTableHeight-1 < len(treeTableRows) {
+			treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		} else if r.treeTableOffset < len(treeTableRows) {
+			treeTableRows = treeTableRows[r.treeTableOffset:]
+		}
 
 		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
 

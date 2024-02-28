@@ -19,8 +19,13 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 )
@@ -131,4 +136,86 @@ func TestTreeKeyboardHandling(t *testing.T) {
 				"Current line was not moved to the expected value of %d for %v", tt.expectedAbsolute, tt.name)
 		}
 	}
+}
+
+func TestTreeRenderCallsFrameOnTick(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
+		Color: colors.Always,
+	}).(*treeRenderer)
+	display := &ProgressDisplay{
+		stack:                 tokens.MustParseStackName("stack"),
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		renderer:              treeRenderer,
+	}
+	treeRenderer.initializeDisplay(display)
+	treeRenderer.ticker.Stop()
+
+	// Fill the renderer with too many rows of strings to fit in the terminal.
+	for i := 0; i < 1000; i++ {
+		// Fill the renderer with strings that are too long to fit in the terminal.
+		display.handleSystemEvent(engine.StdoutEventPayload{
+			Message: strings.Repeat("a", 1000),
+			Color:   colors.Always,
+		})
+	}
+
+	// Mark a row as updated, this used to invoke render, it should now
+	// only mark the renderer as dirty. This is only cleared when the
+	// frame function is called. the ticker is currently stopped, so
+	// this should never happen
+	treeRenderer.rowUpdated(&resourceRowData{})
+
+	// check 16 times, sleeping 2 ms each time to verify that the
+	// renderer is still dirty.
+	// The default interval for the ticker is 16ms (or 60Hz) so
+	// If the ticker was running it would update in this interval
+	for check := 0; check != 16; check++ {
+		time.Sleep(time.Millisecond * 2)
+		func() {
+			treeRenderer.m.Lock()
+			defer treeRenderer.m.Unlock()
+			assert.Truef(t, treeRenderer.dirty, "Expecting the renderer to be dirty until we explicitly call tick")
+			// the treeRenderer has never rendered, so the systemMessages array
+			// should be empty at this point
+			assert.Emptyf(t, treeRenderer.systemMessages, "Not expecting system messages to be populated until render time.")
+		}()
+	}
+
+	// Restart the ticker with the default delay
+	treeRenderer.ticker.Reset(time.Millisecond * 16)
+	// Wait the same interval as the ticker. Which means that it
+	// has most likely ticked
+	time.Sleep(time.Millisecond * 16)
+
+	isDirty := true
+	// loop up to 160 times, waiting 1 ms each iteration. This gives the
+	// event handler in the tree renderer 10x the expected time to
+	// process the tick
+	for check := 0; check != 160; check++ {
+		time.Sleep(time.Millisecond)
+		isDirty = func() bool {
+			treeRenderer.m.Lock()
+			defer treeRenderer.m.Unlock()
+			return treeRenderer.dirty
+		}()
+
+		if !isDirty {
+			// If the tree renderer is not dirty, then the tick
+			// has been handled
+			treeRenderer.ticker.Stop()
+			break
+		}
+	}
+
+	// If isDirty is true here, then even after an interval of 10 ticks, the
+	// frame was not redrawn
+	assert.Falsef(t, isDirty, "Expecting the renderer to not be dirty after a tick")
+	// A consequence of rendering is that the treeRenderer now has an
+	// array of system messages
+	assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
+		"Expecting 1000 system messages to now be in  the tree renderer")
 }
