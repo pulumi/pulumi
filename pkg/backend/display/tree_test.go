@@ -20,7 +20,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,6 +54,8 @@ func TestTreeFrameSize(t *testing.T) {
 			treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
 				Color: colors.Always,
 			}).(*treeRenderer)
+			display := &ProgressDisplay{}
+			treeRenderer.initializeDisplay(display)
 
 			// Fill the renderer with too many rows of strings to fit in the terminal.
 			for i := 0; i < 1000; i++ {
@@ -75,6 +81,8 @@ func TestTreeKeyboardHandling(t *testing.T) {
 	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
 		Color: colors.Always,
 	}).(*treeRenderer)
+	display := &ProgressDisplay{}
+	treeRenderer.initializeDisplay(display)
 
 	// Fill the renderer with too many rows of strings to fit in the terminal.
 	for i := 0; i < 1000; i++ {
@@ -127,4 +135,71 @@ func TestTreeKeyboardHandling(t *testing.T) {
 				"Current line was not moved to the expected value of %d for %v", tt.expectedAbsolute, tt.name)
 		}
 	}
+}
+
+func TestTreeRenderCallsFrameOnTick(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
+		Color: colors.Always,
+	}).(*treeRenderer)
+	display := &ProgressDisplay{
+		stack:                 tokens.MustParseStackName("stack"),
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		renderer:              treeRenderer,
+	}
+	treeRenderer.initializeDisplay(display)
+	// Stop the ticker, this prevents the eventHandler from calling the frame method
+	// and rendering the tree.
+	treeRenderer.ticker.Stop()
+
+	// Fill the renderer with too many rows of strings to fit in the terminal.
+	for i := 0; i < 1000; i++ {
+		// Fill the renderer with strings that are too long to fit in the terminal.
+		display.handleSystemEvent(engine.StdoutEventPayload{
+			Message: strings.Repeat("a", 1000),
+			Color:   colors.Always,
+		})
+	}
+
+	// Mark a row as updated, this used to invoke render, it should now
+	// only mark the renderer as dirty. This is only cleared when the
+	// frame function is called. the ticker is currently stopped, so
+	// this should never happen
+	treeRenderer.rowUpdated(&resourceRowData{})
+
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Truef(t, treeRenderer.dirty, "Expecting the renderer to be dirty until we explicitly call frame")
+		// the treeRenderer has never rendered, so the systemMessages array
+		// should be empty at this point
+		assert.Emptyf(t, treeRenderer.systemMessages,
+			"Not expecting system messages to be populated until rendering happens.")
+		assert.Equalf(t, "", buf.String(), "Nothing should have been written to the terminal yet")
+	}()
+
+	// This should trigger a render, and reset the dirty flag to false.
+	// This is normally called by the ticker event in treeRenderer.eventHandler, but for the test
+	// we have stopped the ticker.
+	treeRenderer.frame(false, false)
+
+	// If dirty is true here, then there was no render operation
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Falsef(t, treeRenderer.dirty, "Expecting the renderer to not be dirty after a frame is called")
+
+		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
+		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
+			"Expecting 1000 system messages to now be in  the tree renderer")
+	}()
+
+	// Check that at least one system messages was written to the mock terminal
+	terminalText := buf.String()
+	assert.Contains(t, terminalText, "pulumi:pulumi:Stack")
+	assert.Contains(t, terminalText, "System Messages")
+	assert.Contains(t, terminalText, strings.Repeat("a", 1000))
 }
