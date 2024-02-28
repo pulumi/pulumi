@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -1405,6 +1406,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
+	fmt.Fprintf(os.Stderr, `{"timestamp":%v,"event":"start","label":%q}`+"\n", time.Now().Unix(), label)
+	defer func() {
+		fmt.Fprintf(os.Stderr, `{"timestamp":%v,"event":"end","label":%q}`+"\n", time.Now().Unix(), label)
+	}()
 
 	// We need to build the full alias spec list here, so we can pass it to transforms.
 	aliases := []*pulumirpc.Alias{}

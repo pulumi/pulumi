@@ -14,6 +14,8 @@
 import asyncio
 import os
 import pathlib
+import sys
+import time
 import traceback
 from typing import (
     TYPE_CHECKING,
@@ -689,6 +691,9 @@ def read_resource(
     if opts.id is None:
         raise Exception("Cannot read resource whose options are lacking an ID value")
 
+    start = time.time()
+    print(f'{{"timestamp":{start},"event":"start","label":"pulumi.runtime.read_resource({ty},{name})"}}', file=sys.stderr)
+
     log.debug(f"reading resource: ty={ty}, name={name}, id={opts.id}")
     monitor = settings.get_monitor()
 
@@ -805,6 +810,9 @@ def read_resource(
             transform_using_type_metadata,
         )
 
+        end = time.time()
+        print(f'{{"timestamp":{start},"event":"end","label":"pulumi.runtime.read_resource({ty},{name})"}}', file=sys.stderr)
+
     asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())
 
 
@@ -825,6 +833,10 @@ def register_resource(
     properties will be initialized to property objects that the registration operation will resolve
     at the right time (or remain unresolved for deployments).
     """
+
+    start = time.time()
+    print(f'{{"timestamp":{start},"event":"start","label":"pulumi.runtime.register_resource({ty},{name})"}}', file=sys.stderr)
+
     log.debug(
         f"registering resource: ty={ty}, name={name}, custom={custom}, remote={remote}"
     )
@@ -1039,6 +1051,9 @@ def register_resource(
                 transform_using_type_metadata,
             )
             resolve_outputs_called = True
+
+            end = time.time()
+            print(f'{{"timestamp":{start},"event":"end","label":"pulumi.runtime.register_resource({ty},{name})"}}', file=sys.stderr)
 
         except Exception as exn:
             log.debug(f"exception after executing rpc: {traceback.format_exc()}")

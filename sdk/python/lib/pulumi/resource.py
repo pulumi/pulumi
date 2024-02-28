@@ -16,6 +16,8 @@
 
 import asyncio
 import copy
+import sys
+import time
 import warnings
 from typing import (
     Optional,
@@ -761,6 +763,9 @@ class Resource:
             self._providers = {}
             return
 
+        start = time.time()
+        print(f'{{"timestamp":{start},"event":"start","label":"pulumi.Resource.__init__({t},{name})"}}', file=sys.stderr)
+
         if props is None:
             props = {}
         if not t:
@@ -878,6 +883,9 @@ class Resource:
             register_resource(
                 self, t, name, custom, remote, DependencyResource, props, opts, typ
             )
+
+        end = time.time()
+        print(f'{{"timestamp":{end},"event":"end","label":"pulumi.Resource.__init__({t},{name})"}}', file=sys.stderr)
 
     def _get_providers(
         self, t: str, pkg: Optional[str], opts: ResourceOptions
