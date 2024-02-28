@@ -153,6 +153,7 @@ func validateUnsupportedRemoteFlags(
 // Flags for remote operations.
 type RemoteArgs struct {
 	remote                   bool
+	inheritSettings          bool
 	envVars                  []string
 	secretEnvVars            []string
 	preRunCommands           []string
@@ -179,6 +180,9 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(
 		&r.remote, "remote", false,
 		"[EXPERIMENTAL] Run the operation remotely")
+	cmd.PersistentFlags().BoolVar(
+		&r.inheritSettings, "remote-inherit-settings", false,
+		"[EXPERIMENTAL] Inherit deployment settings from the current stack")
 	cmd.PersistentFlags().StringArrayVar(
 		&r.envVars, "remote-env", []string{},
 		"[EXPERIMENTAL] Environment variables to use in the remote operation of the form NAME=value "+
@@ -355,6 +359,8 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	}
 
 	req := apitype.CreateDeploymentRequest{
+		Op:              operation,
+		InheritSettings: args.inheritSettings,
 		Executor: &apitype.ExecutorContext{
 			ExecutorImage: executorImage,
 		},
@@ -368,7 +374,6 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			},
 		},
 		Operation: &apitype.OperationContext{
-			Operation:            operation,
 			PreRunCommands:       args.preRunCommands,
 			EnvironmentVariables: env,
 			Options:              operationOptions,
