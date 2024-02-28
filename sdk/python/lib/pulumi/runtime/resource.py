@@ -691,7 +691,7 @@ def read_resource(
     if opts.id is None:
         raise Exception("Cannot read resource whose options are lacking an ID value")
 
-    start = time.time()
+    start = time.time_ns()
     print(f'{{"timestamp":{start},"event":"start","label":"pulumi.runtime.read_resource({ty},{name})"}}', file=sys.stderr)
 
     log.debug(f"reading resource: ty={ty}, name={name}, id={opts.id}")
@@ -810,8 +810,8 @@ def read_resource(
             transform_using_type_metadata,
         )
 
-        end = time.time()
-        print(f'{{"timestamp":{start},"event":"end","label":"pulumi.runtime.read_resource({ty},{name})"}}', file=sys.stderr)
+        end = time.time_ns()
+        print(f'{{"timestamp":{end},"event":"end","label":"pulumi.runtime.read_resource({ty},{name})"}}', file=sys.stderr)
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())
 
@@ -834,7 +834,7 @@ def register_resource(
     at the right time (or remain unresolved for deployments).
     """
 
-    start = time.time()
+    start = time.time_ns()
     print(f'{{"timestamp":{start},"event":"start","label":"pulumi.runtime.register_resource({ty},{name})"}}', file=sys.stderr)
 
     log.debug(
@@ -1052,8 +1052,8 @@ def register_resource(
             )
             resolve_outputs_called = True
 
-            end = time.time()
-            print(f'{{"timestamp":{start},"event":"end","label":"pulumi.runtime.register_resource({ty},{name})"}}', file=sys.stderr)
+            end = time.time_ns()
+            print(f'{{"timestamp":{end},"event":"end","label":"pulumi.runtime.register_resource({ty},{name})"}}', file=sys.stderr)
 
         except Exception as exn:
             log.debug(f"exception after executing rpc: {traceback.format_exc()}")

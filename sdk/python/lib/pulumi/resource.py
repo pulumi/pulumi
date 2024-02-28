@@ -763,7 +763,7 @@ class Resource:
             self._providers = {}
             return
 
-        start = time.time()
+        start = time.time_ns()
         print(f'{{"timestamp":{start},"event":"start","label":"pulumi.Resource.__init__({t},{name})"}}', file=sys.stderr)
 
         if props is None:
@@ -884,7 +884,7 @@ class Resource:
                 self, t, name, custom, remote, DependencyResource, props, opts, typ
             )
 
-        end = time.time()
+        end = time.time_ns()
         print(f'{{"timestamp":{end},"event":"end","label":"pulumi.Resource.__init__({t},{name})"}}', file=sys.stderr)
 
     def _get_providers(
