@@ -809,6 +809,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
 	providerReq, err := parseProviderRequest(
@@ -823,6 +824,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
+
+	fmt.Fprintf(os.Stderr, `{"timestamp":%v,"event":"start","label":%q}`+"\n", time.Now().UnixNano(), label)
+	defer func() {
+		fmt.Fprintf(os.Stderr, `{"timestamp":%v,"event":"end","label":%q}`+"\n", time.Now().UnixNano(), label)
+	}()
 
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{
