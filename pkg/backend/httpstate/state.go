@@ -115,8 +115,9 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// We take the channel of engine events and pass them to separate components that will display
 	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
 	// they see a CancelEvent, and when finished, close the "done" channel.
-	const eventChannelBufferSize = 100 // Use the same buffer size for both channels to reduce the chance of
+	// Use the same buffer size for both channels to reduce the chance of
 	// one channel stalling the other
+	const eventChannelBufferSize = 100 
 	displayEvents := make(chan engine.Event, eventChannelBufferSize)
 	displayEventsDone := make(chan bool)
 
