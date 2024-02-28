@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -181,6 +182,7 @@ func (h *L2DestroyLanguageHost) InstallDependencies(
 func (h *L2DestroyLanguageHost) Run(
 	ctx context.Context, req *pulumirpc.RunRequest,
 ) (*pulumirpc.RunResponse, error) {
+	contract.Assertf(h.currentRun < 2, "unexpected run count %d", h.currentRun)
 	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-destroy", strconv.Itoa(h.currentRun)) {
 		return nil, fmt.Errorf("unexpected root directory to run %s", req.Info.RootDirectory)
 	}
