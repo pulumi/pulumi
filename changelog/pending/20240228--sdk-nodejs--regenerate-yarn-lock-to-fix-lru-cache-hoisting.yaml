@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Regenerate yarn.lock to fix lru-cache hoisting
