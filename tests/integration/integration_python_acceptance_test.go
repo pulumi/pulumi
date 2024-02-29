@@ -221,8 +221,8 @@ func optsForConstructPython(
 	}
 }
 
+//nolint:paralleltest // sets env var, must be run in isolation
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
-	t.Parallel()
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	const testDir = "construct_component_configure_provider"
