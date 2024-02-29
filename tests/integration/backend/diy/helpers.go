@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"testing"
 
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +12,7 @@ import (
 func loginAndCreateStack(t *testing.T, cloudURL string) {
 	t.Helper()
 
-	stackName := pulumi_testing.RandomStackName()
+	stackName := ptesting.RandomStackName()
 	out, err := exec.Command("pulumi", "login", cloudURL).CombinedOutput()
 	require.NoError(t, err, string(out))
 

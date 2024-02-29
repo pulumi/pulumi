@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/stretchr/testify/assert"
@@ -104,7 +104,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	t.Skip("disabled, see https://github.com/pulumi/pulumi/issues/5312")
 	ctx := context.Background()
 	pName := "inline_conflict_error"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// initialize
@@ -161,7 +161,7 @@ func TestCompilationErrorGo(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
@@ -194,7 +194,7 @@ func TestSelectStack404Error(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
 	// initialize
@@ -215,7 +215,7 @@ func TestCreateStack409Error(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
 	// initialize first stack
@@ -249,7 +249,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
@@ -282,7 +282,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
@@ -326,7 +326,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
@@ -359,7 +359,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
@@ -393,7 +393,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
@@ -453,7 +453,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
@@ -495,7 +495,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
@@ -537,7 +537,7 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
