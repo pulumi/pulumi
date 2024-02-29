@@ -45,7 +45,8 @@ func TestConfigCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
-		e.RunCommand("pulumi", "stack", "init", "test")
+		stackName := ptesting.RandomStackName()
+		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// check config is empty
 		stdout, _ := e.RunCommand("pulumi", "config")
@@ -74,12 +75,12 @@ func TestConfigCommands(t *testing.T) {
 		// check that the nested config does not exist because we didn't use path
 		_, stderr := e.RunCommandExpectError("pulumi", "config", "get", "outer")
 		assert.Equal(t,
-			"error: configuration key 'outer' not found for stack 'test'",
+			"error: configuration key 'outer' not found for stack '"+stackName+"'",
 			strings.Trim(stderr, "\r\n"))
 
 		_, stderr = e.RunCommandExpectError("pulumi", "config", "get", "myList")
 		assert.Equal(t,
-			"error: configuration key 'myList' not found for stack 'test'",
+			"error: configuration key 'myList' not found for stack '"+stackName+"'",
 			strings.Trim(stderr, "\r\n"))
 
 		// set the nested config using --path
@@ -141,7 +142,8 @@ func TestConfigCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
-		e.RunCommand("pulumi", "stack", "init", "test")
+		stackName := ptesting.RandomStackName()
+		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// check config is empty
 		stdout, _ := e.RunCommand("pulumi", "config")
@@ -155,7 +157,7 @@ func TestConfigCommands(t *testing.T) {
 config:
   pulumi-test:a: A
 $`
-		b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -169,7 +171,7 @@ config:
   pulumi-test:b:
     secure: \S*
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -183,7 +185,7 @@ config:
   pulumi-test:b:
     secure: \S*
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -197,7 +199,7 @@ config:
   pulumi-test:b:
     secure: \S*
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -213,7 +215,7 @@ config:
     secure: \S*
   pulumi-test:c: C
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -231,7 +233,7 @@ config:
   pulumi-test:d:
     a: D
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -251,7 +253,7 @@ config:
   pulumi-test:e:
     - E
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -274,7 +276,7 @@ config:
     g:
       - F
 $`
-		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi."+stackName+".yaml"))
 		assert.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
@@ -302,7 +304,8 @@ config:
 
 	integration.CreatePulumiRepo(e, pulumiProject)
 	e.SetBackend(e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "test")
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "stack", "init", stackName)
 	stdout, _ := e.RunCommand("pulumi", "config", "get", "first-value")
 	assert.Equal(t, "first", strings.Trim(stdout, "\r\n"))
 }
@@ -334,7 +337,8 @@ config:
 
 	integration.CreatePulumiRepo(e, pulumiProject)
 	e.SetBackend(e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "test")
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "config", "set", "second-value", "second")
 	stdout, _ := e.RunCommand("pulumi", "config", "--json")
 	// check that stdout is an array containing 2 objects
@@ -362,7 +366,8 @@ func TestConfigCommandsUsingEnvironments(t *testing.T) {
 
 	integration.CreateBasicPulumiRepo(e)
 	e.RunCommand("pulumi", "org", "set-default", getTestOrg())
-	e.RunCommand("pulumi", "stack", "init", "test")
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	// check config is empty
 	stdout, _ := e.RunCommand("pulumi", "config")
@@ -405,7 +410,7 @@ test_secret  [unknown]`, strings.Trim(stdout, "\r\n"))
 	assert.Equal(t, "[unknown]", strings.Trim(stdout, "\r\n"))
 
 	// delete the stack
-	e.RunCommand("pulumi", "stack", "rm", "-s", "test", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "-s", stackName, "--yes")
 }
 
 func getTestOrg() string {
