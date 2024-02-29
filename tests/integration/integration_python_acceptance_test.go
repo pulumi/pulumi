@@ -19,6 +19,7 @@ package ints
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -221,9 +222,11 @@ func optsForConstructPython(
 	}
 }
 
-//nolint:paralleltest // sets env var, must be run in isolation
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
+
+	err := exec.Command("pulumi", "plugin", "install", "resource", "tls", "v4.10.0").Run()
+	assert.NoError(t, err)
 
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)
