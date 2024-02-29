@@ -37,7 +37,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	n := 50
 	ctx := context.Background()
 	pName := "conflict_error"
-	sName := randomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// initialize
