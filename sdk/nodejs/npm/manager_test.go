@@ -31,7 +31,7 @@ import (
 	"strconv"
 	"testing"
 
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -245,8 +245,8 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
-	pulumi_testing.YarnInstallMutex.Lock()
-	defer pulumi_testing.YarnInstallMutex.Unlock()
+	ptesting.YarnInstallMutex.Lock()
+	defer ptesting.YarnInstallMutex.Unlock()
 	out := iotest.LogWriter(t)
 	bin, err := Install(context.Background(), pkgdir, production, out, out)
 	assert.NoError(t, err)

@@ -68,10 +68,10 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// other places at the moment, and yarn does not run into the
 	// ${VERSION} problem; use yarn for now.
 
+	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
-	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},

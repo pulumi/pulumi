@@ -66,6 +66,8 @@ linters-settings:
       alias: testingrpc
     - pkg: github.com/deckarep/golang-set/v2
       alias: mapset
+    - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/testing
+      alias: ptesting
 
 issues:
   exclude-rules:

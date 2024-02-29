@@ -127,6 +127,9 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
 
+		// Make sure random is installed
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+
 		// Try some invalid flag combinations.
 		_, stderr := e.RunCommandExpectError("pulumi", "import", "random:index/randomId:RandomId",
 			"identifier", "p-9hUg", "--preview-only", "--yes")

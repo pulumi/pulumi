@@ -1,27 +1,18 @@
 package diy
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"os/exec"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func randomStackName() string {
-	b := make([]byte, 4)
-	_, err := rand.Read(b)
-	contract.AssertNoErrorf(err, "failed to generate random stack name")
-	return "test" + hex.EncodeToString(b)
-}
-
 func loginAndCreateStack(t *testing.T, cloudURL string) {
 	t.Helper()
 
-	stackName := randomStackName()
+	stackName := ptesting.RandomStackName()
 	out, err := exec.Command("pulumi", "login", cloudURL).CombinedOutput()
 	require.NoError(t, err, string(out))
 
