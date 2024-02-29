@@ -91,6 +91,12 @@ func newInstallCmd() *cobra.Command {
 				return err
 			}
 
+			// Add in any additional plugins that the project file specifies.
+			for _, plugin := range proj.Plugins {
+				if plugin
+
+
+
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
 				// PluginSpec.String() just returns the name and version, we want the kind too.

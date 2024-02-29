@@ -257,8 +257,7 @@
             "type":"object",
             "additionalProperties":false,
             "required":[
-                "name",
-                "path"
+                "name"
             ],
             "properties":{
                 "name":{
@@ -272,6 +271,14 @@
                 "version":{
                     "type":"string",
                     "description":"Version of the plugin, if not set, will match any version the engine requests."
+                },
+                "sdk":{
+                    "type":"string",
+                    "description":"Path to generate the SDK of this provider into. If not set, the SDK will not be generated."
+                },
+                "downloadUrl":{
+                    "type":"string",
+                    "description":"URL to download the plugin from, same format as ResourceOptions.PluginDownloadURL"
                 }
             }
         },

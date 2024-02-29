@@ -1,0 +1,12 @@
+{
+  "name": "local_sdk_plugin_node",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/node": "^16"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.19.0",
+    "testprovider": "file:./sdks/testprovider",
+    "random": "file:./sdks/random"
+  }
+}

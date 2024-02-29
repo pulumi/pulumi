@@ -426,3 +426,26 @@ func TestRelativePluginPath(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "preview")
 }
+
+// Integration test for local sdk generation. This tests both a local plugin and a downloaded plugin.
+func TestLocalSdkGeneration(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("testdata/local_sdk_plugin_node")
+	require.NoError(t, err)
+
+	// Remove the sdks folder so we can test that it gets generated.
+	err = os.RemoveAll(filepath.Join(e.CWD, "sdks"))
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "preview")
+}
