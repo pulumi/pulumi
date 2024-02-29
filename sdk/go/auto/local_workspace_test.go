@@ -42,7 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	resourceConfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -84,7 +84,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	mkstack := func(passphrase string) Stack {
@@ -167,7 +167,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestRemoveWithForce(t *testing.T) {
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -247,7 +247,7 @@ func TestRemoveWithForce(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -360,7 +360,7 @@ func TestNewStackLocalSource(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestUpsertStackLocalSource(t *testing.T) {
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -469,7 +469,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -563,7 +563,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -657,7 +657,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -766,7 +766,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -874,7 +874,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -964,7 +964,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 		ctx := context.Background()
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
-			sName := pulumi_testing.RandomStackName()
+			sName := ptesting.RandomStackName()
 			stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 			cfg := ConfigMap{
 				"bar": ConfigValue{
@@ -1060,7 +1060,7 @@ func TestNestedStackFails(t *testing.T) {
 	t.Parallel()
 
 	testCtx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	parentstackName := FullyQualifiedStackName(pulumiOrg, "parent", sName)
 	nestedstackName := FullyQualifiedStackName(pulumiOrg, "nested", sName)
 
@@ -1122,7 +1122,7 @@ func TestErrorProgressStreams(t *testing.T) {
 
 	ctx := context.Background()
 	pName := "inline_error_progress_streams"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	logLevel := uint(4)
@@ -1182,7 +1182,7 @@ func TestProgressStreams(t *testing.T) {
 
 	ctx := context.Background()
 	pName := "inline_progress_streams"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1253,7 +1253,7 @@ func TestImportExportStack(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1327,7 +1327,7 @@ func TestConfigFlagLike(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
@@ -1362,7 +1362,7 @@ func TestConfigWithOptions(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
@@ -1541,7 +1541,7 @@ func TestConfigAllWithOptions(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
@@ -1713,7 +1713,7 @@ func TestEnvFunctions(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	stackName := FullyQualifiedStackName(pulumiOrg, pName, pulumi_testing.RandomStackName())
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	pDir := filepath.Join(".", "test", pName)
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
@@ -1777,7 +1777,7 @@ func TestTagFunctions(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	stackName := FullyQualifiedStackName(pulumiOrg, pName, pulumi_testing.RandomStackName())
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
@@ -1826,7 +1826,7 @@ func TestTagFunctions(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestStructuredOutput(t *testing.T) {
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1949,7 +1949,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -2165,7 +2165,7 @@ func TestProjectSettingsRespected(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	pName := "correct_project"
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	badProjectName := "project_was_overwritten"
@@ -2190,7 +2190,7 @@ func TestSaveStackSettings(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	opts := []LocalWorkspaceOption{
@@ -2259,7 +2259,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	ctx := context.Background()
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"plainstr1":    ConfigValue{Value: "1"},
@@ -2689,7 +2689,7 @@ func TestWhoAmIDetailed(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	stackName := FullyQualifiedStackName(pulumiOrg, pName, pulumi_testing.RandomStackName())
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")

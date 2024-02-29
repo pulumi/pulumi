@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -149,7 +149,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
-	stackName := pulumi_testing.RandomStackName()
+	stackName := ptesting.RandomStackName()
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 

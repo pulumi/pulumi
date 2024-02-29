@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremotepreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 const (
@@ -151,7 +151,7 @@ func testRemoteStackGitSource(
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := pulumi_testing.RandomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	repo := GitRepo{
 		URL:         remoteTestRepo,

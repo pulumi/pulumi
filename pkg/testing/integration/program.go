@@ -47,7 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1077,8 +1077,8 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 
 func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
 	// Yarn will time out if multiple processes are trying to install packages at the same time.
-	pulumi_testing.YarnInstallMutex.Lock()
-	defer pulumi_testing.YarnInstallMutex.Unlock()
+	ptesting.YarnInstallMutex.Lock()
+	defer ptesting.YarnInstallMutex.Unlock()
 	pt.t.Log("acquired yarn install lock")
 	defer pt.t.Log("released yarn install lock")
 
@@ -2111,7 +2111,7 @@ func (pt *ProgramTester) prepareProjectDir(projectDir string) error {
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
-	if err := pulumi_testing.WriteYarnRCForTest(projinfo.Root); err != nil {
+	if err := ptesting.WriteYarnRCForTest(projinfo.Root); err != nil {
 		return err
 	}
 
