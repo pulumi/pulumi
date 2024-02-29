@@ -291,6 +291,18 @@ func GetPulumiConfig() (PulumiConfig, error) {
 		return PulumiConfig{}, err
 	}
 
+	// We would really only need a read lock here.  However
+	// lockedfile doesn't currently support that.  Since compared
+	// to pulumi invocations this is a very fast operation, and we
+	// don't expect the command line to be invoked in parallel
+	// frequently, we'll just use a write lock.
+	fileLock := lockedfile.MutexAt(configFile + ".lock")
+	unlock, err := fileLock.Lock()
+	if err != nil {
+		return PulumiConfig{}, err
+	}
+	defer unlock()
+
 	c, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -312,6 +324,16 @@ func StorePulumiConfig(config PulumiConfig) error {
 	if err != nil {
 		return err
 	}
+
+	// Unfortunately os.Rename isn't atomic on all platforms, so
+	// we'll use lockedfile to ensure changes to the config can
+	// happen in parallel.
+	fileLock := lockedfile.MutexAt(configFile + ".lock")
+	unlock, err := fileLock.Lock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
 
 	raw, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
