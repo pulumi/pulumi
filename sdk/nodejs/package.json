@@ -38,8 +38,6 @@
         "semver": "^7.5.2",
         "source-map-support": "^0.5.6",
         "tmp": "^0.2.1",
-        "ts-node": "^7.0.1",
-        "typescript": "~3.8.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -61,7 +59,21 @@
         "mocha": "^9.0.0",
         "nyc": "^15.1.0",
         "rome": "^12.1.0",
-        "sinon": "^14.0.0"
+        "sinon": "^14.0.0",
+        "ts-node": "^7.0.1",
+        "typescript": "~3.8.3"
+    },
+    "peerDependencies": {
+        "ts-node": ">= 7.0.1 < 12",
+        "typescript": ">= 3.8.3 < 6"
+    },
+    "peerDependenciesMeta": {
+        "typescript": {
+            "optional": true
+        },
+        "ts-node": {
+            "optional": true
+        }
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
