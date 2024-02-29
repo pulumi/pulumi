@@ -13,7 +13,8 @@
             ".direnv/",
             "cmd/pulumi-language-nodejs",
             "tests/mockpackage/lib/",
-            "tests/runtime/testdata/closure-tests"
+            "tests/runtime/testdata/closure-tests",
+            "vendor/"
         ]
     },
     "formatter": {

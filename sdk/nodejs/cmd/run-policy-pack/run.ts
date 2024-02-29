@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The tsnode import is used for type-checking only. Do not reference it in the emitted code.
+import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as tsnode from "ts-node";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
@@ -166,12 +167,14 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     const tsConfigPath = "tsconfig.json";
 
     if (opts.typeScript) {
+        const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require("ts-node");
+        const tsn: typeof tsnode = require(tsnodeRequire);
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
+            compiler: typescriptRequire,
             compilerOptions: {
                 target: "es6",
                 module: "commonjs",
@@ -220,7 +223,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        } else if (err.name === tsnode.TSError.name || err.name === SyntaxError.name) {
+        } else if (err.name === "TSError" || err.name === SyntaxError.name) {
             // Hide stack frames as TSError/SyntaxError have messages containing
             // where the error is located
             const errOut = err.stack?.toString() || "";
