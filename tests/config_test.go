@@ -334,6 +334,7 @@ config:
 
 	integration.CreatePulumiRepo(e, pulumiProject)
 	e.SetBackend(e.LocalURL())
+
 	e.RunCommand("pulumi", "stack", "init", "test")
 	e.RunCommand("pulumi", "config", "set", "second-value", "second")
 	stdout, _ := e.RunCommand("pulumi", "config", "--json")
@@ -362,7 +363,9 @@ func TestConfigCommandsUsingEnvironments(t *testing.T) {
 
 	integration.CreateBasicPulumiRepo(e)
 	e.RunCommand("pulumi", "org", "set-default", getTestOrg())
-	e.RunCommand("pulumi", "stack", "init", "test")
+
+	stackName := string((&integration.ProgramTestOptions{}).GetStackName())
+	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	// check config is empty
 	stdout, _ := e.RunCommand("pulumi", "config")
@@ -405,7 +408,7 @@ test_secret  [unknown]`, strings.Trim(stdout, "\r\n"))
 	assert.Equal(t, "[unknown]", strings.Trim(stdout, "\r\n"))
 
 	// delete the stack
-	e.RunCommand("pulumi", "stack", "rm", "-s", "test", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "-s", stackName, "--yes")
 }
 
 func getTestOrg() string {
