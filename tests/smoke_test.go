@@ -11,7 +11,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -253,10 +252,8 @@ func TestPackageGetSchema(t *testing.T) {
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
-	pulumiHome, err := workspace.GetPulumiHomeDir()
-	require.NoError(t, err)
 	binaryPath := filepath.Join(
-		pulumiHome,
+		e.HomePath,
 		"plugins",
 		"resource-random-v4.13.0",
 		"pulumi-resource-random")
