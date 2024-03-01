@@ -575,12 +575,15 @@ func newImportCmd() *cobra.Command {
 			"A single resource may be specified in the command line arguments or a set of\n" +
 			"resources may be specified by a JSON file.\n" +
 			"\n" +
-			"If using the command line args directly, the type, name, id and optional flags\n" +
+			"If using the command line args directly, the type token, name, id and optional flags\n" +
 			"must be provided.  For example:\n" +
 			"\n" +
 			"    pulumi import 'aws:iam/user:User' name id\n" +
 			"\n" +
-			"Or to fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"The type token and property used for resource lookup are available in the Import section of" +
+			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
+			"\n" +
+			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
