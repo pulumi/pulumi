@@ -3,6 +3,7 @@
 
 import argparse
 import asyncio
+import cProfile
 from typing import Optional
 import logging
 import os
@@ -76,6 +77,13 @@ if __name__ == "__main__":
     ap.add_argument('PROGRAM', help='The Python program to run')
     ap.add_argument('ARGS', help='Arguments to pass to the program', nargs='*')
     args = ap.parse_args()
+
+    # Set up profiling.
+    profile = None
+    profile_path = os.environ["PULUMI_PYTHON_PROFILE"] if "PULUMI_PYTHON_PROFILE" in os.environ else None
+    if profile_path:
+        profile = cProfile.Profile()
+        profile.enable()
 
     # If any config variables are present, parse and set them, so subsequent accesses are fast.
     config_env = pulumi.runtime.get_config_env()
@@ -200,5 +208,9 @@ if __name__ == "__main__":
         loop.close()
         sys.stdout.flush()
         sys.stderr.flush()
+
+    if profile is not None:
+        profile.create_stats()
+        profile.dump_stats(profile_path)
 
     sys.exit(exit_code)
