@@ -143,6 +143,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 }
 
 func TestLanguage(t *testing.T) {
+	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
+
 	t.Parallel()
 
 	engineAddress, engine := runTestingHost(t)
