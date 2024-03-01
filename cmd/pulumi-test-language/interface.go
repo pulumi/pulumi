@@ -23,6 +23,7 @@ import (
 	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -730,198 +731,230 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	// Create a source directory for the test
-	sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-	err = os.MkdirAll(sourceDir, 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("create source dir: %w", err)
-	}
-
-	// Find and copy the tests PCL code to the source dir
-	err = copyDirectory(languageTestdata, filepath.Join("testdata", req.Test), sourceDir)
-	if err != nil {
-		return nil, fmt.Errorf("copy source test data: %w", err)
-	}
-
-	// Create a directory for the project
-	projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-	err = os.MkdirAll(projectDir, 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("create project dir: %w", err)
-	}
-
-	// Generate the project and read in the Pulumi.yaml
-	projectJSON := func() string {
-		if test.main == "" {
-			return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+	var result LResult
+	for i, run := range test.runs {
+		// Create a source directory for the test
+		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
+		if len(test.runs) > 1 {
+			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
-		return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, test.main)
-	}()
-
-	// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
-	diagnostics, err := languageClient.GenerateProject(
-		sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
-	}
-	if diagnostics.HasErrors() {
-		return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
-	}
-
-	snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-	validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
-	if err != nil {
-		return nil, fmt.Errorf("program snapshot validation: %w", err)
-	}
-	if len(validations) > 0 {
-		return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
-	}
-
-	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
-	}
-
-	info := &engine.Projinfo{Proj: project, Root: projectDir}
-	pwd, main, err := info.GetPwdMain()
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
-	}
-
-	programInfo := plugin.NewProgramInfo(
-		projectDir, /* rootDirectory */
-		pwd,        /* programDirectory */
-		main,
-		project.Runtime.Options())
-
-	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
-	// plugin, so we can't show it back to the test.
-	err = languageClient.InstallDependencies(programInfo)
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
-	}
-	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
-
-	// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
-	// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
-	// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
-	// well.
-	dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
-	}
-	expectedDependencies := []plugin.DependencyInfo{
-		{Name: "pulumi", Version: "1.0.1"},
-	}
-	for _, provider := range test.providers {
-		pkg := string(provider.Pkg())
-		version, err := getProviderVersion(provider)
+		err = os.MkdirAll(sourceDir, 0o700)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create source dir: %w", err)
 		}
-		expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
-			Name:    pkg,
-			Version: version.String(),
-		})
-	}
-	for _, expectedDependency := range expectedDependencies {
-		// We have to do some fuzzy matching by name here because the language plugin returns the name of the
-		// library, which is generally _not_ just the plugin name. e.g. "@pulumi/aws" for the nodejs aws library.
 
-		// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
-		// so this is just to give better error messages. For our main dependencies we should have a different version
-		// for every package, so the fuzzy check by name then exact check by version should be unique.
-		var found *string
-		for _, actual := range dependencies {
-			actual := actual
-			if strings.Contains(strings.ToLower(actual.Name), strings.ToLower(expectedDependency.Name)) {
-				found = &actual.Version
-				if expectedDependency.Version == actual.Version {
-					break
+		// Find and copy the tests PCL code to the source dir
+		pclDir := filepath.Join("testdata", req.Test)
+		if len(test.runs) > 1 {
+			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
+		}
+		err = copyDirectory(languageTestdata, pclDir, sourceDir)
+		if err != nil {
+			return nil, fmt.Errorf("copy source test data: %w", err)
+		}
+
+		// Create a directory for the project
+		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
+		if len(test.runs) > 1 {
+			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
+		}
+		err = os.MkdirAll(projectDir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create project dir: %w", err)
+		}
+
+		// Generate the project and read in the Pulumi.yaml
+		projectJSON := func() string {
+			if run.main == "" {
+				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+			}
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
+		}()
+
+		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
+		diagnostics, err := languageClient.GenerateProject(
+			sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
+		}
+		if diagnostics.HasErrors() {
+			return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
+		}
+
+		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+		if len(test.runs) > 1 {
+			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
+		if err != nil {
+			return nil, fmt.Errorf("program snapshot validation: %w", err)
+		}
+		if len(validations) > 0 {
+			return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
+		}
+
+		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
+		}
+
+		info := &engine.Projinfo{Proj: project, Root: projectDir}
+		pwd, main, err := info.GetPwdMain()
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
+		}
+
+		programInfo := plugin.NewProgramInfo(
+			projectDir, /* rootDirectory */
+			pwd,        /* programDirectory */
+			main,
+			project.Runtime.Options())
+
+		// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
+		// plugin, so we can't show it back to the test.
+		err = languageClient.InstallDependencies(programInfo)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
+		}
+		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
+
+		// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
+		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
+		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
+		// well.
+		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
+		}
+		expectedDependencies := []plugin.DependencyInfo{
+			{Name: "pulumi", Version: "1.0.1"},
+		}
+		for _, provider := range test.providers {
+			pkg := string(provider.Pkg())
+			version, err := getProviderVersion(provider)
+			if err != nil {
+				return nil, err
+			}
+			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+				Name:    pkg,
+				Version: version.String(),
+			})
+		}
+		for _, expectedDependency := range expectedDependencies {
+			// We have to do some fuzzy matching by name here because the language plugin returns the name of the
+			// library, which is generally _not_ just the plugin name. e.g. "@pulumi/aws" for the nodejs aws library.
+
+			// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
+			// so this is just to give better error messages. For our main dependencies we should have a different version
+			// for every package, so the fuzzy check by name then exact check by version should be unique.
+			var found *string
+			for _, actual := range dependencies {
+				actual := actual
+				if strings.Contains(strings.ToLower(actual.Name), strings.ToLower(expectedDependency.Name)) {
+					found = &actual.Version
+					if expectedDependency.Version == actual.Version {
+						break
+					}
 				}
+			}
+
+			if found == nil {
+				return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
+			} else if expectedDependency.Version != *found {
+				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
+					expectedDependency.Name, *found, expectedDependency.Version)), nil
 			}
 		}
 
-		if found == nil {
-			return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
-		} else if expectedDependency.Version != *found {
-			return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
-				expectedDependency.Name, *found, expectedDependency.Version)), nil
-		}
-	}
-
-	// Create a temp dir for the a diy backend to run in for the test
-	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
-	err = os.MkdirAll(backendDir, 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("create temp backend dir: %w", err)
-	}
-	testBackend, err := diy.New(ctx, snk, "file://"+backendDir, project)
-	if err != nil {
-		return nil, fmt.Errorf("create diy backend: %w", err)
-	}
-
-	// Create a new stack for the test
-	stackReference, err := testBackend.ParseStackReference("test")
-	if err != nil {
-		return nil, fmt.Errorf("parse test stack reference: %w", err)
-	}
-	s, err := testBackend.CreateStack(ctx, stackReference, projectDir, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create test stack: %w", err)
-	}
-
-	updateOptions := test.updateOptions
-	updateOptions.Host = pctx.Host
-
-	// Set up the stack and engine configuration
-	opts := backend.UpdateOptions{
-		AutoApprove: true,
-		SkipPreview: true,
-		Display: backendDisplay.Options{
-			Color:  colors.Never,
-			Stdout: stdout,
-			Stderr: stderr,
-		},
-		Engine: updateOptions,
-	}
-	sm := b64secrets.NewBase64SecretsManager()
-	dec, err := sm.Decrypter()
-	contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
-
-	cfg := backend.StackConfiguration{
-		Config:    test.config,
-		Decrypter: dec,
-	}
-
-	changes, res := s.Update(ctx, backend.UpdateOperation{
-		Proj:               project,
-		Root:               projectDir,
-		Opts:               opts,
-		M:                  &backend.UpdateMetadata{},
-		StackConfiguration: cfg,
-		SecretsManager:     sm,
-		SecretsProvider:    b64secrets.Base64SecretsProvider,
-		Scopes:             backend.CancellationScopes,
-	})
-
-	var snap *deploy.Snapshot
-	if res == nil {
-		// Refetch the stack so we can get the snapshot
-		s, err = testBackend.GetStack(ctx, stackReference)
+		// Create a temp dir for the a diy backend to run in for the test
+		backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
+		err = os.MkdirAll(backendDir, 0o755)
 		if err != nil {
-			return nil, fmt.Errorf("get stack: %w", err)
+			return nil, fmt.Errorf("create temp backend dir: %w", err)
+		}
+		testBackend, err := diy.New(ctx, snk, "file://"+backendDir, project)
+		if err != nil {
+			return nil, fmt.Errorf("create diy backend: %w", err)
 		}
 
-		snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+		// Create a new stack for the test
+		stackReference, err := testBackend.ParseStackReference("test")
 		if err != nil {
-			return nil, fmt.Errorf("snapshot: %w", err)
+			return nil, fmt.Errorf("parse test stack reference: %w", err)
+		}
+		var s backend.Stack
+		if i == 0 {
+			s, err = testBackend.CreateStack(ctx, stackReference, projectDir, nil)
+			if err != nil {
+				return nil, fmt.Errorf("create test stack: %w", err)
+			}
+		} else {
+			s, err = testBackend.GetStack(ctx, stackReference)
+			if err != nil {
+				return nil, fmt.Errorf("get test stack: %w", err)
+			}
+		}
+
+		updateOptions := run.updateOptions
+		updateOptions.Host = pctx.Host
+
+		// Set up the stack and engine configuration
+		opts := backend.UpdateOptions{
+			AutoApprove: true,
+			SkipPreview: true,
+			Display: backendDisplay.Options{
+				Color:  colors.Never,
+				Stdout: stdout,
+				Stderr: stderr,
+			},
+			Engine: updateOptions,
+		}
+		sm := b64secrets.NewBase64SecretsManager()
+		dec, err := sm.Decrypter()
+		contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
+
+		cfg := backend.StackConfiguration{
+			Config:    run.config,
+			Decrypter: dec,
+		}
+
+		changes, res := s.Update(ctx, backend.UpdateOperation{
+			Proj:               project,
+			Root:               projectDir,
+			Opts:               opts,
+			M:                  &backend.UpdateMetadata{},
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			SecretsProvider:    b64secrets.Base64SecretsProvider,
+			Scopes:             backend.CancellationScopes,
+		})
+
+		var snap *deploy.Snapshot
+		if res == nil {
+			// Refetch the stack so we can get the snapshot
+			s, err = testBackend.GetStack(ctx, stackReference)
+			if err != nil {
+				return nil, fmt.Errorf("get stack: %w", err)
+			}
+
+			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+			if err != nil {
+				return nil, fmt.Errorf("snapshot: %w", err)
+			}
+		}
+
+		result = WithL(func(l *L) {
+			run.assert(l, res, snap, changes)
+		})
+		if result.Failed {
+			return &testingrpc.RunLanguageTestResponse{
+				Success:  !result.Failed,
+				Messages: result.Messages,
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+			}, nil
 		}
 	}
-
-	result := WithL(func(l *L) {
-		test.assert(l, res, snap, changes)
-	})
 
 	return &testingrpc.RunLanguageTestResponse{
 		Success:  !result.Failed,

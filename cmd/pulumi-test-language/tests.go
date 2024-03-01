@@ -16,6 +16,7 @@ package main
 
 import (
 	"embed"
+	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -28,17 +29,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type languageTest struct {
+type testRun struct {
 	config config.Map
-	// TODO: This should be a function so we don't have to load all providers in memory all the time.
-	providers []plugin.Provider
 	// This can be used to set a main value for the test.
 	main string
 	// TODO: This should just return "string", if == "" then ok, else fail
 	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
-
 	// updateOptions can be used to set the update options for the engine.
 	updateOptions engine.UpdateOptions
+}
+
+type languageTest struct {
+	// TODO: This should be a function so we don't have to load all providers in memory all the time.
+	providers []plugin.Provider
+
+	runs []testRun
 }
 
 //go:embed testdata
@@ -55,38 +60,50 @@ var languageTests = map[string]languageTest{
 	// L1 (Tests not using providers)
 	// ==========
 	"l1-empty": {
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			assertStackResource(l, res, changes)
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					assertStackResource(l, res, changes)
+				},
+			},
 		},
 	},
 	"l1-output-bool": {
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			requireStackResource(l, res, changes)
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
 
-			// Check we have two outputs in the stack for true and false
-			require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
-			stack := snap.Resources[0]
-			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					// Check we have two outputs in the stack for true and false
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 
-			outputs := stack.Outputs
+					outputs := stack.Outputs
 
-			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
-			assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+					assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+					assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+				},
+			},
 		},
 	},
 	"l1-main": {
-		main: "subdir",
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			requireStackResource(l, res, changes)
+		runs: []testRun{
+			{
+				main: "subdir",
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
 
-			// Check we have an output in the stack for true
-			require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
-			stack := snap.Resources[0]
-			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					// Check we have an output in the stack for true
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 
-			outputs := stack.Outputs
+					outputs := stack.Outputs
 
-			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+					assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+				},
+			},
 		},
 	},
 	// ==========
@@ -94,42 +111,91 @@ var languageTests = map[string]languageTest{
 	// ==========
 	"l2-resource-simple": {
 		providers: []plugin.Provider{&simpleProvider{}},
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			requireStackResource(l, res, changes)
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
 
-			// Check we have the one simple resource in the snapshot, it's provider and the stack.
-			require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					// Check we have the one simple resource in the snapshot, it's provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
-			provider := snap.Resources[1]
-			assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
 
-			simple := snap.Resources[2]
-			assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					simple := snap.Resources[2]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
 
-			want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-			assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
-			assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
 		},
 	},
 	"l2-engine-update-options": {
 		providers: []plugin.Provider{&simpleProvider{}},
-		updateOptions: engine.UpdateOptions{
-			Targets: deploy.NewUrnTargets([]string{
-				"**target**",
-			}),
-		},
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			requireStackResource(l, res, changes)
-			require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
+		runs: []testRun{
+			{
+				updateOptions: engine.UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{
+						"**target**",
+					}),
+				},
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+					require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
 
-			// Check that we have the target in the snapshot, but not the other resource.
-			stack := snap.Resources[0]
-			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-			provider := snap.Resources[1]
-			assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
-			target := snap.Resources[2]
-			require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
-			require.Equal(l, "target", target.URN.Name(), "expected target resource")
+					// Check that we have the target in the snapshot, but not the other resource.
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+					target := snap.Resources[2]
+					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
+					require.Equal(l, "target", target.URN.Name(), "expected target resource")
+				},
+			},
+		},
+	},
+	"l2-destroy": {
+		providers: []plugin.Provider{&simpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					// check that both expected resources are in the snapshot
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+
+					// Make sure we can assert the resource names in a consistent order
+					sort.Slice(snap.Resources[2:3], func(i, j int) bool {
+						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
+					})
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, "aresource", simple.URN.Name(), "expected aresource resource")
+					simple2 := snap.Resources[3]
+					assert.Equal(l, "simple:index:Resource", simple2.Type.String(), "expected simple resource")
+					assert.Equal(l, "other", simple2.URN.Name(), "expected other resource")
+				},
+			},
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					assert.Equal(l, 1, changes[deploy.OpDelete], "expected a delete operation")
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					// No need to sort here, since we have only resources that depend on each other in a chain.
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+					// check that only the expected resource is left in the snapshot
+					simple := snap.Resources[2]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, "aresource", simple.URN.Name(), "expected aresource resource")
+				},
+			},
 		},
 	},
 }
