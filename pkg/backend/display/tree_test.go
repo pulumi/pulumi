@@ -182,6 +182,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 			// the treeRenderer has never rendered, so the systemMessages array
 			// should be empty at this point
 			assert.Emptyf(t, treeRenderer.systemMessages, "Not expecting system messages to be populated until render time.")
+			assert.Equalf(t, "", buf.String(), "Nothing should have been written to the terminal yet")
 		}()
 	}
 
@@ -218,4 +219,9 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 	// array of system messages
 	assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
 		"Expecting 1000 system messages to now be in  the tree renderer")
+	// Check that at least one system messages was written to the terminal
+	terminalText := buf.String()
+	assert.Contains(t, terminalText, "pulumi:pulumi:Stack")
+	assert.Contains(t, terminalText, "System Messages")
+	assert.Contains(t, terminalText, strings.Repeat("a", 1000))
 }
