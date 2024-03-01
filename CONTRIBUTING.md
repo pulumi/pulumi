@@ -136,7 +136,7 @@ $ make changelog
 
 ### Changelog messages
 
-Changelog notes are written in the active imperative mood.  They should not end with a period.
+Changelog notes are written in the active imperative form.  They should not end with a period.
 
 Good examples for changelog entries are:
 - Exit immediately from state edit when no change was made
