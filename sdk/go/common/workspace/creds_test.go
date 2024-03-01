@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 
@@ -26,8 +27,10 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 		},
 	}
 
+	runtime.GOMAXPROCS(5000)
+
 	// using 1000 may trigger sporadic 'Too many open files'
-	n := 256
+	n := 5000
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2 * n)
@@ -51,4 +54,5 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+	assert.False(t, true)
 }
