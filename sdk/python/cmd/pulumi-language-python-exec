@@ -141,6 +141,11 @@ if __name__ == "__main__":
     # Configure the event loop to respect the parallelism value provided as input.
     _set_default_executor(loop, settings.parallel)
 
+    # Configure the loop to use an eager task factory if possible
+    if hasattr(asyncio, "eager_task_factory") and "PULUMI_PYTHON_EAGER_TASKS" in os.environ:
+        print("using eager task factory")
+        loop.set_task_factory(asyncio.eager_task_factory)
+
     # We are (unfortunately) suppressing the log output of asyncio to avoid showing to users some of the bad things we
     # do in our programming model.
     #
