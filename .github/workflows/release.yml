@@ -24,6 +24,11 @@ on:
         required: true
         description: "Release notes to publish"
         type: string
+      queue-merge:
+        required: false
+        default: false
+        description: "Whether to queue the release for immediate merge"
+        type: boolean
       run-dispatch-commands:
         required: false
         default: false
@@ -134,6 +139,7 @@ jobs:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
       release-notes: ${{ inputs.release-notes }}
+      queue-merge: ${{ inputs.queue-merge }}
     secrets: inherit
 
   dispatch:
