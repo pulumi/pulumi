@@ -67,8 +67,6 @@ type SameStep struct {
 	// If this is a same-step for a resource being created but which was not --target'ed by the user
 	// (and thus was skipped).
 	skippedCreate bool
-
-	nonTargeted bool
 }
 
 var _ Step = (*SameStep)(nil)
@@ -83,7 +81,7 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new != old && new.ID == "", "new", "must not have an ID")
 	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
 		"new", "must have or be a provider if it is a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
@@ -119,21 +117,6 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	}
 }
 
-// NewNonTargetedSameStep produces a SameStep for a resource that was not targeted by the user
-// (and thus was skipped).  This is similar to NewSkippedCreateStep, but is used for resources that
-// already exist and are being updated.  These resources will still need to be written into the
-// checkpoint file, however we want to keep the old version of them instead of a potentially updated
-// version.
-func NewNonTargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
-	return &SameStep{
-		deployment:  deployment,
-		reg:         reg,
-		old:         old,
-		new:         new,
-		nonTargeted: true,
-	}
-}
-
 func (s *SameStep) Op() display.StepOp      { return OpSame }
 func (s *SameStep) Deployment() *Deployment { return s.deployment }
 func (s *SameStep) Type() tokens.Type       { return s.new.Type }
@@ -143,7 +126,6 @@ func (s *SameStep) Old() *resource.State    { return s.old }
 func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
-func (s *SameStep) IsNonTargeted() bool     { return s.nonTargeted }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Retain the ID and outputs

@@ -898,7 +898,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 			sg.sames[urn] = true
-			return []Step{NewNonTargetedSameStep(sg.deployment, event, old, new)}, nil
+			return []Step{NewSameStep(sg.deployment, event, old, old)}, nil
 		}
 		updateSteps, err := sg.generateStepsFromDiff(
 			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)

@@ -305,11 +305,6 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 				return false
 			}
 
-			if sameStep.IsNonTargeted() {
-				ssm.manager.markNew(step.Old())
-				return true
-			}
-
 			ssm.manager.markNew(step.New())
 
 			// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
