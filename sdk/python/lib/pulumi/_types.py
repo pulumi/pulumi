@@ -717,10 +717,18 @@ def _globals_for_cls(cls: type) -> Optional[Dict[str, Any]]:
     return globalns
 
 
+FROM_PY_PROPERTIES_CACHE: Dict[type, Dict[str, type]] = {}
+
+
 def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
     """
+
+    global FROM_PY_PROPERTIES_CACHE
+    if cls in FROM_PY_PROPERTIES_CACHE:
+        return FROM_PY_PROPERTIES_CACHE[cls]
+
     # pylint: disable=import-outside-toplevel
     from . import Output
 
@@ -762,6 +770,8 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
             if typ is Output:
                 continue
             result[pulumi_name] = typ
+
+    FROM_PY_PROPERTIES_CACHE[cls] = result
     return result
 
 
