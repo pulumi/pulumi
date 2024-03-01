@@ -1,6 +1,12 @@
 # Changelog
 
-## 3.108.1 (2024-03-01)   ### Bug Fixes  - [sdk/nodejs] Move @types/glob to dev dependencies   [#15544](https://github.com/pulumi/pulumi/pull/15544)
+## 3.108.1 (2024-03-01)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Move @types/glob to dev dependencies
+  [#15544](https://github.com/pulumi/pulumi/pull/15544)
 
 ## 3.108.0 (2024-02-29)
 
