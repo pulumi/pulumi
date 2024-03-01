@@ -152,4 +152,5 @@ jobs:
   #     version: ${{ needs.info.outputs.version }}
   #     release-notes: ${{ needs.info.outputs.release-notes }}
   #     version-set: ${{ needs.matrix.outputs.version-set }}
+  #     queue-merge: false
   #   secrets: inherit
