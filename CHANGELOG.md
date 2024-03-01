@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.108.0 (2024-02-29)
+
+
+### Features
+
+- [cli/state] Exit immediately from state edit when no change was made
+  [#15514](https://github.com/pulumi/pulumi/pull/15514)
+
+- [docs] Adds ability to process docs without Examples logic, using `<!--Start PulumiCodeChooser -->` markers in incoming schema descriptions
+  [#15475](https://github.com/pulumi/pulumi/pull/15475)
+
+- [pkg] Adds simple vim keyboard shortcuts to the live tree view (j,k,g,G,Ctrl+F,Ctrl+B) and also wires up Home and End keys
+  [#15418](https://github.com/pulumi/pulumi/pull/15418)
+
+- [sdk/go] Add experimental support to the Go SDK for the new transforms system.
+  [#15355](https://github.com/pulumi/pulumi/pull/15355)
+
+
+### Bug Fixes
+
+- [ci] Use SYSTEM_PULLREQUEST_SOURCECOMMITID for AZ pipeline on GH PR
+  [#15513](https://github.com/pulumi/pulumi/pull/15513)
+
+- [engine] Fix root and program paths to always be absolute.
+  [#15470](https://github.com/pulumi/pulumi/pull/15470)
+
+- [pkg] Tag new pkg versions on a commit on the main branch
+  [#15515](https://github.com/pulumi/pulumi/pull/15515)
+
+- [sdk/nodejs] Handle yarn/npm workspaces when computing codepaths for function serialization
+  [#15426](https://github.com/pulumi/pulumi/pull/15426)
+
+- [sdk/nodejs] Replace deprecated read-package-tree with @npmcli/arborist
+  [#15503](https://github.com/pulumi/pulumi/pull/15503)
+
+- [sdk/nodejs] Upgrade to @grpc/grpc-js 1.10.1
+  [#15500](https://github.com/pulumi/pulumi/pull/15500)
+
+- [sdk/nodejs] Regenerate yarn.lock to fix lru-cache hoisting
+  [#15543](https://github.com/pulumi/pulumi/pull/15543)
+
+
+### Miscellaneous
+
+- [backend/diy] Remove warning about non-project mode deprecation.
+  [#15497](https://github.com/pulumi/pulumi/pull/15497)
+
 ## 3.107.0 (2024-02-21)
 
 

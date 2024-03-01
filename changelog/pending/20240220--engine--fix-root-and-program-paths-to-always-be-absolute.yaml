@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix root and program paths to always be absolute.

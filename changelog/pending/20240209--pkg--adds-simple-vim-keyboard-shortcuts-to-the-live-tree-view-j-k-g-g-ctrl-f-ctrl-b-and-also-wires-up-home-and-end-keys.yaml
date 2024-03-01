@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg
-  description: Adds simple vim keyboard shortcuts to the live tree view (j,k,g,G,Ctrl+F,Ctrl+B) and also wires up Home and End keys

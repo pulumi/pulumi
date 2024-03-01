@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: docs
-  description: Adds ability to process docs without Examples logic, using `<!--Start PulumiCodeChooser -->` markers in incoming schema descriptions

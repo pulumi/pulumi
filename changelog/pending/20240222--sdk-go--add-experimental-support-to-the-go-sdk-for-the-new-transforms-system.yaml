@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Add experimental support to the Go SDK for the new transforms system.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Upgrade to @grpc/grpc-js 1.10.1

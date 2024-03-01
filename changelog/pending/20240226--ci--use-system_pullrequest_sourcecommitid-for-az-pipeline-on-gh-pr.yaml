@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: ci
-  description: Use SYSTEM_PULLREQUEST_SOURCECOMMITID for AZ pipeline on GH PR
