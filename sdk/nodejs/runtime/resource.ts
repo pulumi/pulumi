@@ -992,7 +992,7 @@ async function resolveOutputs(
     t: string,
     name: string,
     props: Inputs,
-    outputs: any,
+    outputs: gstruct.Struct | undefined,
     deps: Record<string, Resource[]>,
     resolvers: OutputResolvers,
     err?: Error,

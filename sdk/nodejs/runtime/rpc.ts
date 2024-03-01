@@ -23,6 +23,7 @@ import { excessiveDebugOutput, isDryRun } from "./settings";
 import { getStore } from "./state";
 
 import * as semver from "semver";
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
 export type OutputResolvers = Record<
     string,
@@ -185,9 +186,9 @@ export async function serializePropertiesReturnDeps(label: string, props: Inputs
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  */
-export function deserializeProperties(outputsStruct: any): any {
-    const props: any = {};
-    const outputs: any = outputsStruct.toJavaScript();
+export function deserializeProperties(outputsStruct: gstruct.Struct): Inputs {
+    const props: Inputs = {};
+    const outputs = outputsStruct.toJavaScript();
     for (const k of Object.keys(outputs)) {
         // We treat properties with undefined values as if they do not exist.
         if (outputs[k] !== undefined) {
