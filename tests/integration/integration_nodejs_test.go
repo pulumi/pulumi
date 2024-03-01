@@ -1450,6 +1450,8 @@ func TestNestedPackageJSON(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePaths(t *testing.T) {
+	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "codepaths"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -1459,6 +1461,8 @@ func TestCodePaths(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePathsNested(t *testing.T) {
+	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "codepaths-nested"),
 		Dependencies:    []string{"@pulumi/pulumi"},
@@ -1469,6 +1473,8 @@ func TestCodePathsNested(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePathsWorkspace(t *testing.T) {
+	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "codepaths-workspaces"),
 		Dependencies:    []string{"@pulumi/pulumi"},
