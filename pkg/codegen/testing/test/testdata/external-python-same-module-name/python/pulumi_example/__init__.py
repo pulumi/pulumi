@@ -9,14 +9,34 @@ from .provider import *
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
+    import pulumi_example.aws_ecs_service as __aws_ecs_service
+    aws_ecs_service = __aws_ecs_service
     import pulumi_example.cloudtrail as __cloudtrail
     cloudtrail = __cloudtrail
 else:
+    aws_ecs_service = _utilities.lazy_import('pulumi_example.aws_ecs_service')
     cloudtrail = _utilities.lazy_import('pulumi_example.cloudtrail')
 
 _utilities.register(
     resource_modules="""
 [
+ {
+  "pkg": "example",
+  "mod": "aws_ecs_service/blue_green",
+  "fqn": "pulumi_example.aws_ecs_service.blue_green",
+  "classes": {
+   "example:aws_ecs_service/blue_green:CodeDeploy": "CodeDeploy"
+  }
+ },
+ {
+  "pkg": "example",
+  "mod": "aws_ecs_service/service",
+  "fqn": "pulumi_example.aws_ecs_service.service",
+  "classes": {
+   "example:aws_ecs_service/service:EcrImage": "EcrImage",
+   "example:aws_ecs_service/service:EcsService": "EcsService"
+  }
+ },
  {
   "pkg": "example",
   "mod": "cloudtrail",
