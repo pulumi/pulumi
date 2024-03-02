@@ -435,6 +435,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing the use of snake_case names and tokens.",
 		Skip:        codegen.NewStringSet("go/test"),
 	},
+	{
+		Directory:   "kubernetes20",
+		Description: "Testing the kubernetes20 compatibility mode.",
+		Skip:        codegen.NewStringSet("go/test"),
+	},
 }
 
 var genSDKOnly bool
