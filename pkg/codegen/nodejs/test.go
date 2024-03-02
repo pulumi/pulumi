@@ -53,8 +53,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0o600)
 	require.NoError(t, err)
 
-	// TODO: https://github.com/pulumi/pulumi/issues/15557
-	// TypeCheck(t, path, dependencies, linkLocal)
+	TypeCheck(t, path, dependencies, linkLocal)
 }
 
 func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
