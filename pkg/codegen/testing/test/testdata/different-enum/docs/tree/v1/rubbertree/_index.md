@@ -1220,8 +1220,8 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+    <dd>6</dd><dt class="property-deprecated">Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated: Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1229,8 +1229,8 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Size<wbr>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Container<wbr>Size<wbr>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+    <dd>6</dd><dt class="property-deprecated">Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated: Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1238,8 +1238,8 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+    <dd>6</dd><dt class="property-deprecated">Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated: Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1247,8 +1247,8 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
-    <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+    <dd>6</dd><dt class="property-deprecated">Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated: Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1256,8 +1256,8 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>FOUR_INCH</dt>
     <dd>4</dd><dt>SIX_INCH</dt>
-    <dd>6</dd><dt>EIGHT_INCH</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+    <dd>6</dd><dt class="property-deprecated">EIGHT_INCH</dt>
+    <dd>8<p class="property-message">Deprecated: Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1265,8 +1265,8 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <pulumi-choosable type="language" values="yaml">
 <dl class="tabular"><dt>'\x04'</dt>
     <dd>4</dd><dt>'\x06'</dt>
-    <dd>6</dd><dt>'\b'</dt>
-    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
+    <dd>6</dd><dt class="property-deprecated">'\b'</dt>
+    <dd>8<p class="property-message">Deprecated: Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
