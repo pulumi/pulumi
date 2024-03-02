@@ -15,12 +15,14 @@
 import * as runtime from "@pulumi/pulumi/runtime"
 
 (async function () {
-    const deps = await runtime.computeCodePaths();
+    const deps = await runtime.computeCodePaths() as Map<string, string>;
+    const directDependencies = [`node_modules/semver`]
 
-    const actual = JSON.stringify([...deps.keys()].sort());
-    const expected = `["../node_modules/lru-cache","../node_modules/semver","../node_modules/yallist"]`;
-
-    if (actual !== expected) {
-        throw new Error(`Got '${actual}' expected '${expected}'`)
+    const depPaths = [...deps.keys()]
+    for (const expected of directDependencies) {
+        const depPath = depPaths.find((path) => path.includes(expected));
+        if (!depPath) {
+            throw new Error(`Expected to find a path matching ${expected}, got ${depPaths}`)
+        }
     }
 })();

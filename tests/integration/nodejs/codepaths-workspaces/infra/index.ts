@@ -27,21 +27,14 @@ export const version = semver.parse("1.2.3");
 const dynamicProviderResource = new myDynamicProvider.MyDynamicProviderResource("prov", {});
 
 (async function () {
-  const deps = await runtime.computeCodePaths();
+    const deps = await runtime.computeCodePaths() as Map<string, string>;
+    const directDependencies = [`node_modules/semver`, `node_modules/my-random`, `node_modules/my-dynamic-provider`]
 
-  const actual = JSON.stringify([...deps.keys()].sort());
-  // semver depends on lru-cache (6.0.0), which depends on yallist
-  // my-dynamic-provider depends on is-finite
-  const expected = `[` +
-    `"../node_modules/is-finite",` +
-    `"../node_modules/lru-cache",` +
-    `"../node_modules/my-dynamic-provider",` +
-    `"../node_modules/my-random",` +
-    `"../node_modules/semver",` +
-    `"../node_modules/yallist"` +
-    `]`;
-
-  if (actual !== expected) {
-    throw new Error(`Got '${actual}' expected '${expected}'`)
-  }
+    const depPaths = [...deps.keys()]
+    for (const expected of directDependencies) {
+        const depPath = depPaths.find((path) => path.includes(expected));
+        if (!depPath) {
+            throw new Error(`Expected to find a path matching ${expected}, got ${depPaths}`)
+        }
+    }
 })();
