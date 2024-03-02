@@ -184,6 +184,7 @@ jobs:
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
 
+          ACCEPTANCE_TEST_MATRIX_WIN="{}"
           if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]windows-latest[[:space:]] ]]; then
             ACCEPTANCE_TEST_MATRIX_WIN=$(
               ./scripts/get-job-matrix.py \
@@ -201,6 +202,7 @@ jobs:
             )
           fi
 
+          ACCEPTANCE_TEST_MATRIX_MACOS="{}"
           if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]macos-latest[[:space:]] ]]; then
             ACCEPTANCE_TEST_MATRIX_MACOS=$(
               ./scripts/get-job-matrix.py \
