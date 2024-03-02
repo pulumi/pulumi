@@ -122,7 +122,7 @@ $ make lint
 If you see formatting failures, fix them by running [gofumpt](https://github.com/mvdan/gofumpt) on your code:
 
 ```bash
-$ gofumpt -w path/to/file.go 
+$ gofumpt -w path/to/file.go
 # or
 $ gofumpt -w path/to/dir
 ```
@@ -133,6 +133,19 @@ We require a changelog entry for all PR that aren't labeled `impact/no-changelog
 $ make changelog
 ````
 …and follow the prompts on screen.
+
+### Changelog messages
+
+Changelog notes are written in the active imperative form.  They should not end with a period.  The simple rule is to pretend the message starts with "This change will ..."
+
+Good examples for changelog entries are:
+- Exit immediately from state edit when no change was made
+- Fix root and program paths to always be absolute
+
+Here's some examples of what we're trying to avoid:
+- Fixes a bug
+- Adds a feature
+- Feature now does something
 
 ### Pulumi employees
 
