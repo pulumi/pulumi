@@ -11,6 +11,7 @@ from . import _utilities
 
 __all__ = [
     'BastionShareableLink',
+    'BastionShareableLinkArgs',
 ]
 
 @pulumi.input_type
@@ -33,6 +34,29 @@ class BastionShareableLink:
 
     @vm.setter
     def vm(self, value: str):
+        pulumi.set(self, "vm", value)
+
+
+@pulumi.input_type
+class BastionShareableLinkArgs:
+    def __init__(__self__, *,
+                 vm: pulumi.Input[str]):
+        """
+        Bastion Shareable Link.
+        :param pulumi.Input[str] vm: Reference of the virtual machine resource.
+        """
+        pulumi.set(__self__, "vm", vm)
+
+    @property
+    @pulumi.getter
+    def vm(self) -> pulumi.Input[str]:
+        """
+        Reference of the virtual machine resource.
+        """
+        return pulumi.get(self, "vm")
+
+    @vm.setter
+    def vm(self, value: pulumi.Input[str]):
         pulumi.set(self, "vm", value)
 
 
