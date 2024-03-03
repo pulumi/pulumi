@@ -3289,16 +3289,19 @@ type nestedTypeInfo struct {
 // collectNestedCollectionTypes builds a deduped mapping of element types -> associated collection types.
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
-func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedTypeInfo, typ schema.Type) {
+func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedTypeInfo, typ schema.Type) (err error) {
 	var elementTypeName string
 	var names []string
 	switch t := typ.(type) {
 	case *schema.ArrayType:
 		// Builtins already cater to primitive arrays
 		if schema.IsPrimitiveType(t.ElementType) {
-			return
+			return nil
 		}
-		elementTypeName = pkg.nestedTypeToType(t.ElementType)
+		elementTypeName, err = pkg.nestedTypeToType(t.ElementType)
+		if err != nil {
+			return err
+		}
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Array"
 
 		// We make sure that subsidiary elements are marked for array as well
@@ -3306,13 +3309,18 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		pkg.detailsForType(t.ElementType).markArray(details.arrayInput, details.arrayOutput)
 
 		names = pkg.addSuffixesToName(t, elementTypeName)
-		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
+		defer func() {
+			err = pkg.collectNestedCollectionTypes(types, t.ElementType)
+		}()
 	case *schema.MapType:
 		// Builtins already cater to primitive maps
 		if schema.IsPrimitiveType(t.ElementType) {
-			return
+			return nil
 		}
-		elementTypeName = pkg.nestedTypeToType(t.ElementType)
+		elementTypeName, err = pkg.nestedTypeToType(t.ElementType)
+		if err != nil {
+			return err
+		}
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Map"
 
 		// We make sure that subsidiary elements are marked for map as well
@@ -3320,9 +3328,11 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		pkg.detailsForType(t.ElementType).markMap(details.mapInput, details.mapOutput)
 
 		names = pkg.addSuffixesToName(t, elementTypeName)
-		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
+		defer func() {
+			err = pkg.collectNestedCollectionTypes(types, t.ElementType)
+		}()
 	default:
-		return
+		return nil
 	}
 	nti, ok := types[elementTypeName]
 	if !ok {
@@ -3335,6 +3345,7 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 	for _, n := range names {
 		nti.names[n] = true
 	}
+	return nil
 }
 
 // genNestedCollectionTypes emits nested collection types given the deduped mapping of element types -> associated collection types.
@@ -3384,18 +3395,32 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 	return names
 }
 
-func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
+func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, error) {
 	switch t := codegen.UnwrapType(typ).(type) {
 	case *schema.ArrayType:
-		return pkg.nestedTypeToType(t.ElementType) + "Array"
+		inner, err := pkg.nestedTypeToType(t.ElementType)
+		if err != nil {
+			return "", err
+		}
+		return inner + "Array", nil
 	case *schema.MapType:
-		return pkg.nestedTypeToType(t.ElementType) + "Map"
+		inner, err := pkg.nestedTypeToType(t.ElementType)
+		if err != nil {
+			return "", err
+		}
+		return inner + "Map", nil
 	case *schema.ObjectType:
-		return pkg.resolveObjectType(t)
+		return pkg.resolveObjectType(t), nil
 	case *schema.EnumType:
-		return pkg.resolveEnumType(t)
+		return pkg.resolveEnumType(t), nil
 	}
-	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args")
+
+	// If we hit a primitive type, we need to error it's too nested
+	if schema.IsPrimitiveType(typ) {
+		return "", fmt.Errorf("primitive type %s cannot be nested so deeply", typ.String())
+	}
+
+	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args"), nil
 }
 
 func (pkg *pkgContext) genTypeRegistrations(
@@ -4754,7 +4779,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 			collectionTypes := map[string]*nestedTypeInfo{}
 			for _, t := range sortedKnownTypes {
-				pkg.collectNestedCollectionTypes(collectionTypes, t)
+				err = pkg.collectNestedCollectionTypes(collectionTypes, t)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			if len(collectionTypes) > 0 {
@@ -4880,7 +4908,10 @@ func generateTypes(
 
 	collectionTypes := map[string]*nestedTypeInfo{}
 	for _, t := range knownTypes {
-		pkg.collectNestedCollectionTypes(collectionTypes, t)
+		err := pkg.collectNestedCollectionTypes(collectionTypes, t)
+		if err != nil {
+			return err
+		}
 	}
 
 	// All collection types have Outputs
