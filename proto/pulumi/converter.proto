@@ -15,9 +15,6 @@
 syntax = "proto3";
 
 import "pulumi/codegen/hcl.proto";
-import "pulumi/plugin.proto";
-import "google/protobuf/empty.proto";
-import "google/protobuf/struct.proto";
 
 package pulumirpc;
 

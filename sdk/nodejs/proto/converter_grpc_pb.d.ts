@@ -7,9 +7,6 @@
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_converter_pb from "./converter_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
-import * as pulumi_plugin_pb from "./plugin_pb";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 interface IConverterService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     convertState: IConverterService_IConvertState;

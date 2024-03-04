@@ -6,8 +6,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_codegen_mapper_pb from "../codegen/mapper_pb";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 interface IMapperService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     getMapping: IMapperService_IGetMapping;

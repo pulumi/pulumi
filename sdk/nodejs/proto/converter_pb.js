@@ -17,12 +17,6 @@ var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
-var pulumi_plugin_pb = require('./plugin_pb.js');
-goog.object.extend(proto, pulumi_plugin_pb);
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
-goog.object.extend(proto, google_protobuf_empty_pb);
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
-goog.object.extend(proto, google_protobuf_struct_pb);
 goog.exportSymbol('proto.pulumirpc.ConvertProgramRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ConvertProgramResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.ConvertStateRequest', null, global);

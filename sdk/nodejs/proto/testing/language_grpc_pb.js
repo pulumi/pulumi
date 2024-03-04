@@ -18,7 +18,6 @@
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var pulumi_testing_language_pb = require('../testing/language_pb.js');
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 
 function serialize_pulumirpc_testing_GetLanguageTestsRequest(arg) {
   if (!(arg instanceof pulumi_testing_language_pb.GetLanguageTestsRequest)) {

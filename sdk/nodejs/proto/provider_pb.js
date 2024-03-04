@@ -21,8 +21,6 @@ var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
-var pulumi_source_pb = require('./source_pb.js');
-goog.object.extend(proto, pulumi_source_pb);
 goog.exportSymbol('proto.pulumirpc.CallRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.CallRequest.ArgumentDependencies', null, global);
 goog.exportSymbol('proto.pulumirpc.CallResponse', null, global);
