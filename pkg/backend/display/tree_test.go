@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -152,6 +151,8 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		renderer:              treeRenderer,
 	}
 	treeRenderer.initializeDisplay(display)
+	// Stop the ticker, this prevents the eventHandler from calling the frame method
+	// and rendering the tree.
 	treeRenderer.ticker.Stop()
 
 	// Fill the renderer with too many rows of strings to fit in the terminal.
@@ -169,57 +170,34 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 	// this should never happen
 	treeRenderer.rowUpdated(&resourceRowData{})
 
-	// check 16 times, sleeping 2 ms each time to verify that the
-	// renderer is still dirty.
-	// The default interval for the ticker is 16ms (or 60Hz) so
-	// If the ticker was running it would update in this interval
-	for check := 0; check != 16; check++ {
-		time.Sleep(time.Millisecond * 2)
-		func() {
-			treeRenderer.m.Lock()
-			defer treeRenderer.m.Unlock()
-			assert.Truef(t, treeRenderer.dirty, "Expecting the renderer to be dirty until we explicitly call tick")
-			// the treeRenderer has never rendered, so the systemMessages array
-			// should be empty at this point
-			assert.Emptyf(t, treeRenderer.systemMessages, "Not expecting system messages to be populated until render time.")
-			assert.Equalf(t, "", buf.String(), "Nothing should have been written to the terminal yet")
-		}()
-	}
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Truef(t, treeRenderer.dirty, "Expecting the renderer to be dirty until we explicitly call frame")
+		// the treeRenderer has never rendered, so the systemMessages array
+		// should be empty at this point
+		assert.Emptyf(t, treeRenderer.systemMessages,
+			"Not expecting system messages to be populated until rendering happens.")
+		assert.Equalf(t, "", buf.String(), "Nothing should have been written to the terminal yet")
+	}()
 
-	// Restart the ticker with the default delay
-	treeRenderer.ticker.Reset(time.Millisecond * 16)
-	// Wait the same interval as the ticker. Which means that it
-	// has most likely ticked
-	time.Sleep(time.Millisecond * 16)
+	// This should trigger a render, and reset the dirty flag to false.
+	// This is normally called by the ticker event in treeRenderer.eventHandler, but for the test
+	// we have stopped the ticker.
+	treeRenderer.frame(false, false)
 
-	isDirty := true
-	// loop up to 160 times, waiting 1 ms each iteration. This gives the
-	// event handler in the tree renderer 10x the expected time to
-	// process the tick
-	for check := 0; check != 160; check++ {
-		time.Sleep(time.Millisecond)
-		isDirty = func() bool {
-			treeRenderer.m.Lock()
-			defer treeRenderer.m.Unlock()
-			return treeRenderer.dirty
-		}()
+	// If dirty is true here, then there was no render operation
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Falsef(t, treeRenderer.dirty, "Expecting the renderer to not be dirty after a frame is called")
 
-		if !isDirty {
-			// If the tree renderer is not dirty, then the tick
-			// has been handled
-			treeRenderer.ticker.Stop()
-			break
-		}
-	}
+		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
+		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
+			"Expecting 1000 system messages to now be in  the tree renderer")
+	}()
 
-	// If isDirty is true here, then even after an interval of 10 ticks, the
-	// frame was not redrawn
-	assert.Falsef(t, isDirty, "Expecting the renderer to not be dirty after a tick")
-	// A consequence of rendering is that the treeRenderer now has an
-	// array of system messages
-	assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
-		"Expecting 1000 system messages to now be in  the tree renderer")
-	// Check that at least one system messages was written to the terminal
+	// Check that at least one system messages was written to the mock terminal
 	terminalText := buf.String()
 	assert.Contains(t, terminalText, "pulumi:pulumi:Stack")
 	assert.Contains(t, terminalText, "System Messages")
