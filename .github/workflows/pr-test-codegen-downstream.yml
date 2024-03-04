@@ -47,7 +47,7 @@ jobs:
                  "pr-reviewers": ${{ toJSON( github.triggering_actor || 'justinvp' ) }},
                  "pr-description": "This is a downstream codegen test for pulumi/pulumi#${{ github.event.pull_request.number }}. (run-id: ${{ github.run_id }})",
                  "automerge": false,
-                 "pr-title-prefix": "[DOWNSTREAM TEST][PU/PU]"
+                 "pr-title-prefix": "[DOWNSTREAM TEST][PLATFORM]"
               }
         - name: Await PR opened for pulumi-${{ matrix.provider }}
           run: |
