@@ -564,7 +564,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 
 type policyPackSummary struct {
 	IsLocal           bool
-	LocalPath         string
+	LocalPaths        []string
 	ViolationEvents   []engine.PolicyViolationEventPayload
 	RemediationEvents []engine.PolicyRemediationEventPayload
 }
@@ -585,12 +585,20 @@ func (display *ProgressDisplay) printPolicies() bool {
 	for name, version := range display.summaryEventPayload.PolicyPacks {
 		var summary policyPackSummary
 		baseName, path := engine.GetLocalPolicyPackInfoFromEventName(name)
+		var key string
 		if baseName != "" {
-			summary.IsLocal = true
-			summary.LocalPath = path
-			name = baseName
+			key = fmt.Sprintf("%s@v%s", baseName, version)
+			if s, has := policyPackInfos[key]; has {
+				summary = s
+				summary.LocalPaths = append(summary.LocalPaths, path)
+			} else {
+				summary.IsLocal = true
+				summary.LocalPaths = []string{path}
+			}
+		} else {
+			key = fmt.Sprintf("%s@v%s", name, version)
 		}
-		policyPackInfos[fmt.Sprintf("%s@v%s", name, version)] = summary
+		policyPackInfos[key] = summary
 	}
 
 	// Next associate all violation events with the corresponding policy pack in the list.
@@ -641,7 +649,15 @@ func (display *ProgressDisplay) printPolicies() bool {
 
 		var localMark string
 		if info.IsLocal {
-			localMark = fmt.Sprintf(" (local: %s)", info.LocalPath)
+			localMark = fmt.Sprintf(" (local: ")
+			sort.Strings(info.LocalPaths)
+			for i, path := range info.LocalPaths {
+				if i > 0 {
+					localMark += "; "
+				}
+				localMark += path
+			}
+			localMark += ")"
 		}
 
 		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
