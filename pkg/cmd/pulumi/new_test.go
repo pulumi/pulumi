@@ -1054,27 +1054,68 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
-	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
-
-	args := newArgs{
-		interactive:       false,
-		generateOnly:      true,
-		yes:               true,
-		name:              projectName,
-		prompt:            promptForValue,
-		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			"typescript",
+			"typescript",
+		},
+		{
+			"https://github.com/pulumi/templates/tree/master/yaml?foo=bar",
+			"https://github.com/pulumi/templates/tree/master/yaml",
+		},
 	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			tempdir := tempProjectDir(t)
+			chdir(t, tempdir)
 
-	err := runNew(context.Background(), args)
-	assert.NoError(t, err)
+			args := newArgs{
+				interactive:       false,
+				generateOnly:      true,
+				yes:               true,
+				name:              projectName,
+				prompt:            promptForValue,
+				secretsProvider:   "default",
+				templateNameOrURL: tt.input,
+			}
 
-	proj := loadProject(t, tempdir)
-	require.NoError(t, err)
-	tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
-	assert.True(t, has)
-	tagsObject, ok := tagsValue.Value.(map[string]interface{})
-	assert.True(t, ok)
-	assert.Equal(t, "typescript", tagsObject[apitype.ProjectTemplateTag])
+			err := runNew(context.Background(), args)
+			assert.NoError(t, err)
+
+			proj := loadProject(t, tempdir)
+			require.NoError(t, err)
+			tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
+			assert.True(t, has)
+			tagsObject, ok := tagsValue.Value.(map[string]interface{})
+			assert.True(t, ok)
+			assert.Equal(t, tt.expected, tagsObject[apitype.ProjectTemplateTag])
+		})
+	}
+}
+
+func TestSanitizeTemplate(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"https://user:pass@example.com/path?param=value", "https://example.com/path"},
+		{"https://user:pass@example.com", "https://example.com"},
+		{"https://example.com/path?param=value", "https://example.com/path"},
+		{"ssh://user@hostname/project/repo", "ssh://hostname/project/repo"},
+		{"typescript", "typescript"},
+		{"aws-typescript", "aws-typescript"},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+			result := sanitizeTemplate(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
