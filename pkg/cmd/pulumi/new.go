@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -326,7 +327,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	proj.AddConfigStackTags(map[string]string{
-		apitype.ProjectTemplateTag: args.templateNameOrURL,
+		apitype.ProjectTemplateTag: sanitizeTemplate(args.templateNameOrURL),
 	})
 
 	if err = workspace.SaveProject(proj); err != nil {
@@ -407,6 +408,18 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	return nil
+}
+
+// sanitizeTemplate strips sensitive data such as credentials and query strings from a template URL.
+func sanitizeTemplate(template string) string {
+	// If it's a valid URL, strip any credentials and query strings.
+	if parsedURL, err := url.Parse(template); err == nil {
+		parsedURL.User = nil
+		parsedURL.RawQuery = ""
+		return parsedURL.String()
+	}
+	// Otherwise, return the original string.
+	return template
 }
 
 // Ensure the directory exists and uses it as the current working
