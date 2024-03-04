@@ -201,4 +201,36 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.Equal(t, "thing3", pipInstallTest.plugin.Server)
 		assert.True(t, pipInstallTest.plugin.Resource)
 	})
+	t.Run("no-pulumiplugin.json-file", func(t *testing.T) {
+		t.Parallel()
+
+		cwd := t.TempDir()
+		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
+
+		_, err = runPythonCommand(context.Background(),
+			"venv", cwd, "-m", "pip", "install", "--upgrade", "pip", "setuptools")
+		assert.NoError(t, err)
+
+		// Install the local Pulumi SDK into the virtual environment.
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
+		assert.NoError(t, err)
+		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		assert.NoError(t, err)
+
+		// Install a local old provider SDK that does not have a pulumi-plugin.json file.
+		oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
+		assert.NoError(t, err)
+		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", oldSdkDir)
+		assert.NoError(t, err)
+
+		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
+		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, packages)
+		assert.Equal(t, 1, len(packages))
+		old := packages[0]
+		assert.Equal(t, "pulumi_old", old.Name)
+		assert.NotEmpty(t, old.Location)
+	})
 }

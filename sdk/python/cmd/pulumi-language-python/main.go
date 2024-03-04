@@ -461,7 +461,7 @@ func (pkg *pythonPackage) isPulumiPackage() bool {
 		return true
 	}
 
-	return strings.HasPrefix(pkg.Name, "pulumi-")
+	return strings.HasPrefix(pkg.Name, "pulumi_") || strings.HasPrefix(pkg.Name, "pulumi-")
 }
 
 func (pkg *pythonPackage) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
