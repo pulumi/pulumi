@@ -563,7 +563,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 }
 
 type policyPackSummary struct {
-	IsLocal           bool
+	HasCloudPack      bool
 	LocalPaths        []string
 	ViolationEvents   []engine.PolicyViolationEventPayload
 	RemediationEvents []engine.PolicyRemediationEventPayload
@@ -592,11 +592,14 @@ func (display *ProgressDisplay) printPolicies() bool {
 				summary = s
 				summary.LocalPaths = append(summary.LocalPaths, path)
 			} else {
-				summary.IsLocal = true
 				summary.LocalPaths = []string{path}
 			}
 		} else {
 			key = fmt.Sprintf("%s@v%s", name, version)
+			if s, has := policyPackInfos[key]; has {
+				summary = s
+				summary.HasCloudPack = true
+			}
 		}
 		policyPackInfos[key] = summary
 	}
@@ -648,7 +651,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 		}
 
 		var localMark string
-		if info.IsLocal {
+		if len(info.LocalPaths) > 0 {
 			localMark = fmt.Sprintf(" (local: ")
 			sort.Strings(info.LocalPaths)
 			for i, path := range info.LocalPaths {
@@ -658,6 +661,10 @@ func (display *ProgressDisplay) printPolicies() bool {
 				localMark += path
 			}
 			localMark += ")"
+
+			if info.HasCloudPack {
+				localMark += " + (cloud)"
+			}
 		}
 
 		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
