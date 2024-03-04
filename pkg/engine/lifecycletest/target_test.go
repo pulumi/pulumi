@@ -1970,7 +1970,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
@@ -1985,7 +1985,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	programF2 := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
@@ -2017,8 +2017,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	// Check we have 4 resources in the stack (stack, parent, provider, child)
 	require.Equal(t, 4, len(snap.Resources))
 
-	// Run an update to target the child. This works because we don't need to create the parent so can just
-	// SameStep it using the data currently in state.
+	// Run an update to target the target, and make sure the unrelated dependency isn't changed
 	inputs = resource.PropertyMap{
 		"foo": resource.NewStringProperty("bar"),
 	}
@@ -2026,7 +2025,7 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 		HostF: hostF2,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
-				"**child**",
+				"**target**",
 			}),
 		},
 	}, false, p.BackendClient, nil)
