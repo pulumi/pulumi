@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg/testing
+  description: Make ProgramTest use a temporary PULUMI_HOME for each test

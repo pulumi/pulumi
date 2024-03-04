@@ -875,6 +875,7 @@ type ProgramTester struct {
 	tmpdir         string              // the temporary directory we use for our test environment
 	projdir        string              // the project directory we use for this run
 	TestFinished   bool                // whether or not the test if finished
+	pulumiHome     string              // The directory PULUMI_HOME will be set to
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -883,11 +884,14 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
+	home, err := os.MkdirTemp("", "test-env-home")
+	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
 		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
+		pulumiHome:     home,
 	}
 }
 
@@ -995,7 +999,7 @@ func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
 }
 
 func (pt *ProgramTester) runCommand(name string, args []string, wd string) error {
-	return RunCommand(pt.t, name, args, wd, pt.opts)
+	return RunCommandPulumiHome(pt.t, name, args, wd, pt.opts, pt.pulumiHome)
 }
 
 // RunPulumiCommand runs a Pulumi command in the project directory.
