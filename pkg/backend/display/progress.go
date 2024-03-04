@@ -652,7 +652,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 
 		var localMark string
 		if len(info.LocalPaths) > 0 {
-			localMark = fmt.Sprintf(" (local: ")
+			localMark = " (local: "
 			sort.Strings(info.LocalPaths)
 			for i, path := range info.LocalPaths {
 				if i > 0 {
