@@ -887,7 +887,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	switch {
 	case r.IsProvider:
 		baseType = "global::Pulumi.ProviderResource"
-	case mod.isK8sCompatMode():
+	case mod.isK8sCompatMode() && !r.IsComponent:
 		baseType = "KubernetesResource"
 	case r.IsComponent:
 		baseType = "global::Pulumi.ComponentResource"

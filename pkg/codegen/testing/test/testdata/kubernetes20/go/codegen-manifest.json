@@ -15,6 +15,8 @@
     "kubernetes/pulumi-plugin.json",
     "kubernetes/pulumiTypes.go",
     "kubernetes/utilities/pulumiUtilities.go",
-    "kubernetes/utilities/pulumiVersion.go"
+    "kubernetes/utilities/pulumiVersion.go",
+    "kubernetes/yaml/v2/configGroup.go",
+    "kubernetes/yaml/v2/init.go"
   ]
 }

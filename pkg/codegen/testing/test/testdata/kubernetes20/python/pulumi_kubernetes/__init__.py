@@ -43,6 +43,14 @@ _utilities.register(
   "classes": {
    "kubernetes:helm.sh/v3:Release": "Release"
   }
+ },
+ {
+  "pkg": "kubernetes",
+  "mod": "yaml/v2",
+  "fqn": "pulumi_kubernetes.yaml.v2",
+  "classes": {
+   "kubernetes:yaml/v2:ConfigGroup": "ConfigGroup"
+  }
  }
 ]
 """,

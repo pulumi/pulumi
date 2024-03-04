@@ -29,6 +29,8 @@
     "README.md",
     "Utilities.cs",
     "Yaml/README.md",
+    "Yaml/V2/ConfigGroup.cs",
+    "Yaml/V2/README.md",
     "logo.png",
     "pulumi-plugin.json"
   ]
