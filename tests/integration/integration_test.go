@@ -1162,5 +1162,5 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 	assert.Contains(t, stdout, "error: update failed")
-	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
+	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: advisory_policy_pack; mandatory_policy_pack)")
 }
