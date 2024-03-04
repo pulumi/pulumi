@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -699,4 +700,44 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
 		false, nil)
 	assert.ErrorContains(t, err, "some other error")
+}
+
+//nolint:paralleltest // using t.Setenv which is incompatible with t.Parallel
+func TestGetProviderAttachPort(t *testing.T) {
+	t.Run("no attach", func(t *testing.T) {
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.Nil(t, port)
+	})
+	t.Run("aws:12345", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "aws:12345")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.NotNil(t, port)
+		require.Equal(t, 12345, *port)
+	})
+	t.Run("gcp:999,aws:12345", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "gcp:999,aws:12345")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.NotNil(t, port)
+		require.Equal(t, 12345, *port)
+	})
+	t.Run("gcp:999", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "gcp:999")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.Nil(t, port)
+	})
+	t.Run("invalid", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "aws:port")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.Error(t, err)
+		require.Nil(t, port)
+	})
 }

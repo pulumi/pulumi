@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pkg
+  description: Make schema.NewPluginLoader respect PULUMI_DEBUG_PROVIDERS, which enables Pulumi YAML programs to work correctly with this feature
