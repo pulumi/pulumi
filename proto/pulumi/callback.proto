@@ -14,8 +14,6 @@
 
 syntax = "proto3";
 
-import "google/protobuf/struct.proto";
-
 package pulumirpc;
 
 option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";

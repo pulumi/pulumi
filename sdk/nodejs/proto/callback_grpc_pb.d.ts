@@ -6,7 +6,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_callback_pb from "./callback_pb";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 interface ICallbacksService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     invoke: ICallbacksService_IInvoke;

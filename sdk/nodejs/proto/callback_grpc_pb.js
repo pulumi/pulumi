@@ -18,7 +18,6 @@
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var pulumi_callback_pb = require('./callback_pb.js');
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
 function serialize_pulumirpc_CallbackInvokeRequest(arg) {
   if (!(arg instanceof pulumi_callback_pb.CallbackInvokeRequest)) {

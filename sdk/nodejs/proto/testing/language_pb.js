@@ -15,8 +15,6 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
-goog.object.extend(proto, google_protobuf_empty_pb);
 goog.exportSymbol('proto.pulumirpc.testing.GetLanguageTestsRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.testing.GetLanguageTestsResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.testing.PrepareLanguageTestsRequest', null, global);
