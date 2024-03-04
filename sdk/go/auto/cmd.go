@@ -320,14 +320,15 @@ func fixupPath(env []string, pulumiBin string) []string {
 	copy(newEnv, env)
 	pathIndex := -1
 	for i, e := range env {
-		if strings.HasPrefix(e, "PATH=") {
+		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".
+		if strings.EqualFold(e[0:4], "PATH") {
 			pathIndex = i
 			break
 		}
 	}
 	if pathIndex >= 0 {
 		pathEntry := pulumiBin
-		oldPath := strings.TrimPrefix(env[pathIndex], "PATH=")
+		oldPath := env[pathIndex][5:]
 		if oldPath != "" {
 			pathEntry = pulumiBin + string(os.PathListSeparator) + oldPath
 		}
