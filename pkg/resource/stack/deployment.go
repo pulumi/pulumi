@@ -240,6 +240,17 @@ func DeserializeDeploymentV3(
 	var dec config.Decrypter
 	var enc config.Encrypter
 	if secretsManager == nil {
+		var ciphertexts []string
+		for _, res := range deployment.Resources {
+			collectCiphertexts(&ciphertexts, res.Inputs)
+			collectCiphertexts(&ciphertexts, res.Outputs)
+		}
+		if len(ciphertexts) > 0 {
+			// If there are ciphertexts, but we couldn't set up a secrets manager, error out early
+			// to avoid panic'ing later on.  This snapshot is broken and needs to be repaired
+			// manually.
+			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found.")
+		}
 		dec = config.NewPanicCrypter()
 		enc = config.NewPanicCrypter()
 	} else {
