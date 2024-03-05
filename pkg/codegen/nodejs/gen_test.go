@@ -23,23 +23,18 @@ import (
 var genPkgBatchSize = len(test.PulumiPulumiSDKTests) / 3
 
 func TestGeneratePackageOne(t *testing.T) {
-	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
-
 	t.Parallel()
 
 	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[0:genPkgBatchSize])
 }
 
 func TestGeneratePackageTwo(t *testing.T) {
-	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
 	t.Parallel()
 
 	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[genPkgBatchSize:2*genPkgBatchSize])
 }
 
 func TestGeneratePackageThree(t *testing.T) {
-	t.Skip("Skipping https://github.com/pulumi/pulumi/issues/15557")
-
 	t.Parallel()
 
 	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[2*genPkgBatchSize:])

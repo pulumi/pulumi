@@ -161,7 +161,6 @@ func optsForConstructNode(
 }
 
 func TestConstructComponentConfigureProviderNode(t *testing.T) {
-	t.Skip("https://github.com/pulumi/pulumi/pull/15555")
 	t.Parallel()
 
 	if runtime.GOOS == WindowsOS {

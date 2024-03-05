@@ -83,7 +83,7 @@
                 "@pulumi/kubernetes": "^3.0.0"
             },
             "devDependencies": {
-                "typescript": "^3.7.0"
+                "typescript": "^4.3.5"
             }
         },
         "python": {
