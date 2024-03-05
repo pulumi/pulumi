@@ -43,10 +43,10 @@ namespace Configstation.Pulumi.Configstation
         /// <summary>
         /// this is a relaxed string enum which can also be set via env var
         /// </summary>
-        [Input("favoriteColor", json: true)]
+        [Input("favoriteColor")]
         public InputUnion<string, Configstation.Pulumi.Configstation.Color>? FavoriteColor { get; set; }
 
-        [Input("secretSandwiches", json: true)]
+        [Input("secretSandwiches")]
         private InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>? _secretSandwiches;
 
         /// <summary>
