@@ -45,3 +45,22 @@ func TestFindWorkspaceRootYarnExtended(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join("testdata", "workspace-extended"), root)
 }
+
+func TestFindWorkspaceRootNested(t *testing.T) {
+	t.Parallel()
+
+	root, err := FindWorkspaceRoot(filepath.Join("testdata", "workspace-nested", "project", "dist"))
+
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join("testdata", "workspace-nested"), root)
+}
+
+func TestFindWorkspaceRootFileArgument(t *testing.T) {
+	t.Parallel()
+
+	// Use a file as the argument to FindWorkspaceRoot instead of a directory.
+	root, err := FindWorkspaceRoot(filepath.Join("testdata", "workspace-nested", "project", "dist", "index.js"))
+
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join("testdata", "workspace-nested"), root)
+}

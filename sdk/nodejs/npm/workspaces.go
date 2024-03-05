@@ -25,10 +25,22 @@ import (
 var ErrNotInWorkspace = errors.New("not in a workspace")
 
 // FindWorkspaceRoot determines if we are in a yarn/npm workspace setup and
-// returns the root directory of the workspace.  If the programDirectory is
+// returns the root directory of the workspace.  If the startingPath is
 // not in a workspace, it returns ErrNotInWorkspace.
-func FindWorkspaceRoot(programDirectory string) (string, error) {
-	currentDir := filepath.Dir(programDirectory)
+func FindWorkspaceRoot(startingPath string) (string, error) {
+	stat, err := os.Stat(startingPath)
+	if err != nil {
+		return "", err
+	}
+	if !stat.IsDir() {
+		startingPath = filepath.Dir(startingPath)
+	}
+	// We start at the location of the first `package.json` we find.
+	packageJSONDir, err := searchup(startingPath, "package.json")
+	if err != nil {
+		return "", fmt.Errorf("did not find package.json in %s: %w", startingPath, err)
+	}
+	currentDir := packageJSONDir
 	nextDir := filepath.Dir(currentDir)
 	for currentDir != nextDir { // We're at the root when the nextDir is the same as the currentDir.
 		p := filepath.Join(currentDir, "package.json")
@@ -52,15 +64,12 @@ func FindWorkspaceRoot(programDirectory string) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			if paths != nil && slices.Contains(paths, filepath.Join(programDirectory, "package.json")) {
+			if paths != nil && slices.Contains(paths, filepath.Join(packageJSONDir, "package.json")) {
 				return currentDir, nil
 			}
 		}
-		// None of the workspace globs matched the program directory, so we're
-		// in the slightly weird situation where a parent directory has a
-		// package.json with workspaces set up, but the program directory is
-		// not part of this.
-		return "", ErrNotInWorkspace
+		currentDir = nextDir
+		nextDir = filepath.Dir(currentDir)
 	}
 	return "", ErrNotInWorkspace
 }
@@ -103,4 +112,15 @@ func parseWorkspaces(p string) ([]string, error) {
 		return []string{}, err
 	}
 	return pkgExtended.Workspaces.Packages, nil
+}
+
+func searchup(currentDir, fileToFind string) (string, error) {
+	if _, err := os.Stat(filepath.Join(currentDir, fileToFind)); err == nil {
+		return currentDir, nil
+	}
+	parentDir := filepath.Dir(currentDir)
+	if currentDir == parentDir {
+		return "", nil
+	}
+	return searchup(parentDir, fileToFind)
 }

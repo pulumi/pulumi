@@ -186,8 +186,17 @@ function searchUp(currentDir: string, fileToFind: string): string | null {
  * returns the root of the workspace. If we are not in a workspace setup, it
  * returns null.
  */
-async function findWorkspaceRoot(programDirectory: string): Promise<string | null> {
-    let currentDir = upath.dirname(programDirectory);
+async function findWorkspaceRoot(startingPath: string): Promise<string | null> {
+    const stat = fs.statSync(startingPath);
+    if (!stat.isDirectory()) {
+        startingPath = upath.dirname(startingPath);
+    }
+    const packageJSONDir = searchUp(startingPath, "package.json");
+    if (packageJSONDir === null) {
+        return null;
+    }
+    // We start at the location of the first `package.json` we find.
+    let currentDir = packageJSONDir;
     let nextDir = upath.dirname(currentDir);
     while (currentDir !== nextDir) {
         const p = upath.join(currentDir, "package.json");
@@ -199,12 +208,13 @@ async function findWorkspaceRoot(programDirectory: string): Promise<string | nul
         const workspaces = parseWorkspaces(p);
         for (const workspace of workspaces) {
             const files = await pGlob(upath.join(currentDir, workspace, "package.json"));
-            const normalized = upath.normalizeTrim(upath.join(programDirectory, "package.json"));
+            const normalized = upath.normalizeTrim(upath.join(packageJSONDir, "package.json"));
             if (files.map((f) => upath.normalizeTrim(f)).includes(normalized)) {
                 return currentDir;
             }
         }
-        return null;
+        currentDir = nextDir;
+        nextDir = upath.dirname(currentDir);
     }
     return null;
 }
