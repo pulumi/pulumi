@@ -2,6 +2,7 @@ package batchyaml
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -17,7 +18,11 @@ import (
 // testing/test/testdata/transpiled_examples, as it requires a different SDK path in Check
 func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
-	err := os.Chdir("../../../go") // chdir into codegen/go
+
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "..", "sdk"))
+	assert.NoError(t, err)
+
+	err = os.Chdir("../../../go") // chdir into codegen/go
 	assert.NoError(t, err)
 
 	test.TestProgramCodegen(t,
@@ -26,7 +31,7 @@ func TestGenerateProgram(t *testing.T) {
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				codegenGo.Check(t, path, dependencies, "../../../../../../../../sdk")
+				codegenGo.Check(t, path, dependencies, sdkDir)
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 				// Prevent tests from interfering with each other

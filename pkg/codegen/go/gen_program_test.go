@@ -41,13 +41,16 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 		},
 	}
 
+	sdkPath, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
+	require.NoError(t, err)
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, "../../../../../../../sdk")
+				Check(t, path, dependencies, sdkPath)
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 				// Prevent tests from interfering with each other
