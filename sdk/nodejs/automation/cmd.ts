@@ -166,7 +166,7 @@ export class PulumiCommand {
         if (path.isAbsolute(this.command)) {
             const pulumiBin = path.dirname(this.command);
             const sep = os.platform() === "win32" ? ";" : ":";
-            const envPath = pulumiBin + sep + (additionalEnv["PATH"] || process.env["PATH"]);
+            const envPath = pulumiBin + sep + (additionalEnv["PATH"] || process.env.PATH);
             additionalEnv["PATH"] = envPath;
         }
 
