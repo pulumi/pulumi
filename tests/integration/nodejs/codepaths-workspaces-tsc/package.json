@@ -1,0 +1,12 @@
+{
+    "name": "codepaths-workspaces-tsc",
+    "description": "A project that uses npm and yarn workspaces and tsc. CodePaths computation should discover dependencies across the workspaces.",
+    "private": true,
+    "scripts": {
+        "build": "yarn workspaces run build"
+    },
+    "workspaces": [
+        "packages/*",
+        "infra/"
+    ]
+}

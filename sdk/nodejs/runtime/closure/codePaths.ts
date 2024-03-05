@@ -244,10 +244,7 @@ async function allFoldersForPackages(
         // searching up from the current directory
         throw new ResourceError("Failed to find package.json.", logResource);
     }
-    // Ensure workingDir is a relative path so we get relative paths in the
-    // output. If we have absolute paths, AWS lambda might not find the
-    // dependencies.
-    workingDir = upath.relative(upath.resolve("."), workingDir);
+    workingDir = upath.resolve(workingDir);
 
     // This is the core starting point of the algorithm.  We read the
     // package.json information for this project, and then we start by walking
@@ -262,7 +259,10 @@ async function allFoldersForPackages(
     }
 
     // Find the workspace root, fallback to current working directory if we are not in a workspaces setup.
-    let workspaceRoot = (await findWorkspaceRoot(upath.resolve("."))) || workingDir;
+    let workspaceRoot = (await findWorkspaceRoot(workingDir)) || workingDir;
+    // Ensure workingDir is a relative path so we get relative paths in the
+    // output. If we have absolute paths, AWS lambda might not find the
+    // dependencies.
     workspaceRoot = upath.relative(upath.resolve("."), workspaceRoot);
 
     // Read package tree from the workspace root to ensure we can find all
