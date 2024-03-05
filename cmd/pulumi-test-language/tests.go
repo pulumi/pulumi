@@ -198,4 +198,51 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-target-up-with-new-dependency": {
+		providers: []plugin.Provider{&simpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+					err := snap.VerifyIntegrity()
+					require.NoError(l, err, "expected snapshot to be valid")
+
+					sort.Slice(snap.Resources, func(i, j int) bool {
+						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
+					})
+
+					target := snap.Resources[2]
+					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
+					require.Equal(l, "targetOnly", target.URN.Name(), "expected target resource")
+					unrelated := snap.Resources[3]
+					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
+					require.Equal(l, "unrelated", unrelated.URN.Name(), "expected target resource")
+					require.Equal(l, 0, len(unrelated.Dependencies), "expected no dependencies")
+				},
+			},
+			{
+				updateOptions: engine.UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{
+						"**targetOnly**",
+					}),
+				},
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					sort.Slice(snap.Resources, func(i, j int) bool {
+						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
+					})
+
+					target := snap.Resources[2]
+					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
+					require.Equal(l, "targetOnly", target.URN.Name(), "expected target resource")
+					unrelated := snap.Resources[3]
+					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
+					require.Equal(l, "unrelated", unrelated.URN.Name(), "expected target resource")
+					require.Equal(l, 0, len(unrelated.Dependencies), "expected still no dependencies")
+				},
+			},
+		},
+	},
 }

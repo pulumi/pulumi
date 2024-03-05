@@ -897,22 +897,23 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
-		} else {
-			updateSteps, err := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(updateSteps) > 0 {
-				// 'Diff' produced update steps.  We're done at this point.
-				return updateSteps, nil
-			}
-
-			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
-			// is same/unchanged.
-			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
+			sg.sames[urn] = true
+			return []Step{NewSameStep(sg.deployment, event, old, old)}, nil
 		}
+		updateSteps, err := sg.generateStepsFromDiff(
+			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(updateSteps) > 0 {
+			// 'Diff' produced update steps.  We're done at this point.
+			return updateSteps, nil
+		}
+
+		// Diff didn't produce any steps for this resource.  Fall through and indicate that it
+		// is same/unchanged.
+		logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
