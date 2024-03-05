@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/service
+  description: Make decrypt/encrypt network calls retryable to help work around network hiccups
