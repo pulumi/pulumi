@@ -73,22 +73,23 @@ unit_tests:: $(TEST_ALL_DEPS)
 test_auto:: $(TEST_ALL_DEPS)
 	yarn run nyc -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
 
-TSC_SUPPORTED_VERSIONS = ~3.7.3 ^3 ^4
+TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4
 
 version=$(subst sxs_test_,,$(word 1,$(subst !, ,$@)))
 sxs_test_%:
 	@cd tests/sxs_ts_test && ( \
-		yarn add typescript@$(version); \
-		yarn run tsc; \
-		echo "✅ TypeScript $(version) passed"; \
-		git checkout package.json; \
+		cp -f package$(version).json package.json && \
+		yarn install && \
+		yarn run tsc --version && \
+		yarn run tsc &&  \
+		rm package.json && \
+		echo "✅ TypeScript $(version) passed" \
 	) || ( \
 		echo "🚫 TypeScript $(version) failed"; \
-		git checkout package.json; \
 		exit 1; \
 	)
 
-sxs_tests:: $(TEST_ALL_DEPS) $(TSC_SUPPORTED_VERSIONS:%=sxs_test_%)
+sxs_tests:: $(TSC_SUPPORTED_VERSIONS:%=sxs_test_%)
 
 test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
