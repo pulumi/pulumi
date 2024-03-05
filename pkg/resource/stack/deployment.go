@@ -249,7 +249,7 @@ func DeserializeDeploymentV3(
 			// If there are ciphertexts, but we couldn't set up a secrets manager, error out early
 			// to avoid panic'ing later on.  This snapshot is broken and needs to be repaired
 			// manually.
-			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found.")
+			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found")
 		}
 		dec = config.NewPanicCrypter()
 		enc = config.NewPanicCrypter()
