@@ -662,6 +662,17 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		sdkName := fmt.Sprintf("%s-%s", pkg, version)
 		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+		_, err = os.Stat(sdkTempDir)
+		if err == nil {
+			// If the directory already exists then we don't need to regenerate the SDK
+			sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
+			if err != nil {
+				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
+			}
+			localDependencies[pkg] = sdkArtifact
+			continue
+		}
+
 		err = os.MkdirAll(sdkTempDir, 0o755)
 		if err != nil {
 			return nil, fmt.Errorf("create temp sdks dir: %w", err)
