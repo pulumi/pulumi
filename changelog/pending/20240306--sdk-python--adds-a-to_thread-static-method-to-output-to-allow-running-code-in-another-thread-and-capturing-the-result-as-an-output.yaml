@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Adds a `to_thread` static method to output, to allow running code in another thread and capturing the result as an output

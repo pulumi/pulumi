@@ -14,8 +14,9 @@
 
 import asyncio
 import json
+import threading
 import unittest
-from typing import Mapping, Optional, Sequence, cast
+from typing import Mapping, Optional, Sequence, Tuple, cast
 
 from pulumi.runtime import rpc, rpc_manager, settings
 
@@ -419,3 +420,20 @@ class OutputJsonLoadsTests(unittest.TestCase):
         self.assertEqual(await x.future(), [0, 1])
         self.assertEqual(await x.is_secret(), False)
         self.assertEqual(await x.is_known(), True)
+
+
+def add(a:int, b:int) -> Tuple[int, int]:
+    return a + b, threading.get_ident()
+
+
+class OutputToThreadTests(unittest.TestCase):
+    @pulumi_test
+    async def test_basic(self):
+        x = Output.to_thread(add, 19, 23)
+        sum, id = await x.future()
+        self.assertEqual(sum, 42)
+        self.assertNotEqual(
+            id,
+            threading.get_ident(),
+            "`add()` should have been called on a different thread",
+        )

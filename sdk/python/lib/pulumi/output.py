@@ -381,6 +381,25 @@ class Output(Generic[T_co]):
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
     @staticmethod
+    def to_thread(
+        func: Callable[[Any], T], *args: Tuple[Any], **kwargs: Dict[str, Any]
+    ) -> "Output[T]":
+        """
+        Asynchronously run function *func* in a different thread.
+
+        This has the same semantics as `asyncio.to_thread` except it returns an Output rather than a coroutine.
+
+        Any *args and **kwargs supplied for this function are passed directly to *func*
+
+        :param Callable[[Any], T] func: A function that will be called on a new thread.
+        :param Tuple[Any] *args: The arguments list if any to pass to *func*
+        :param Dict[str, Any] **kwargs: The keyword arguments that will be passed to *func*
+        :return: The result of *func* as an Output.
+        :rtype: Output[T]
+        """
+        return Output._from_input_shallow(asyncio.to_thread(func, *args, **kwargs))
+
+    @staticmethod
     def unsecret(val: "Output[T]") -> "Output[T]":
         """
         Takes an existing Output, deeply unwraps the nested values and returns a new Output without any secrets included
