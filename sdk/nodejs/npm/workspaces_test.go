@@ -45,3 +45,20 @@ func TestFindWorkspaceRootYarnExtended(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join("testdata", "workspace-extended"), root)
 }
+
+func TestFindWorkspaceRootPNPM(t *testing.T) {
+	t.Parallel()
+
+	root, err := FindWorkspaceRoot(filepath.Join("testdata", "pnpm-workspace", "project"))
+
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join("testdata", "pnpm-workspace"), root)
+}
+
+func TestNotAWorkspace(t *testing.T) {
+	t.Parallel()
+
+	_, err := FindWorkspaceRoot(filepath.Join("testdata", "not-a-workspace"))
+
+	require.ErrorIs(t, err, ErrNotInWorkspace)
+}

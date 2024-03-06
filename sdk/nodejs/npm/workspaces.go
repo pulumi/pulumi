@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+
+	"gopkg.in/yaml.v3"
 )
 
 var ErrNotInWorkspace = errors.New("not in a workspace")
@@ -42,27 +44,61 @@ func FindWorkspaceRoot(programDirectory string) (string, error) {
 			}
 			return "", err
 		}
+
+		// First look for pnpm workspace configuration
+		pnpmWorkspace := filepath.Join(currentDir, "pnpm-workspace.yaml")
+		_, err = os.Stat(pnpmWorkspace)
+		if err == nil {
+			// We have a pnpm-workspace.yaml
+			workspaces, err := parsePnpmWorkspace(pnpmWorkspace)
+			if err != nil {
+				return "", err
+			}
+			matches, err := matchesWorkspaceGlobs(workspaces, currentDir, programDirectory)
+			if err != nil {
+				return "", err
+			}
+			if matches {
+				return currentDir, nil
+			}
+		}
+
+		// No pnpm-workspace.yaml, check for npm/yarn workspaces in the package.json
 		workspaces, err := parseWorkspaces(p)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse workspaces from %s: %w", p, err)
 		}
-		for _, workspace := range workspaces {
-			// See if any of the workspace glob results is the programDirectory.
-			paths, err := filepath.Glob(filepath.Join(currentDir, workspace, "package.json"))
-			if err != nil {
-				return "", err
-			}
-			if paths != nil && slices.Contains(paths, filepath.Join(programDirectory, "package.json")) {
-				return currentDir, nil
-			}
+		matches, err := matchesWorkspaceGlobs(workspaces, currentDir, programDirectory)
+		if err != nil {
+			return "", err
 		}
+		if matches {
+			return currentDir, nil
+		}
+
 		// None of the workspace globs matched the program directory, so we're
 		// in the slightly weird situation where a parent directory has a
 		// package.json with workspaces set up, but the program directory is
 		// not part of this.
 		return "", ErrNotInWorkspace
 	}
+
+	// We walked all the way to the root and didn't find a workspace configuration.
 	return "", ErrNotInWorkspace
+}
+
+// matchesWorkspaceGlobs checks if the program directory matches any of the workspaces.
+func matchesWorkspaceGlobs(workspaces []string, currentDir string, programDirectory string) (bool, error) {
+	for _, workspace := range workspaces {
+		paths, err := filepath.Glob(filepath.Join(currentDir, workspace, "package.json"))
+		if err != nil {
+			return false, err
+		}
+		if paths != nil && slices.Contains(paths, filepath.Join(programDirectory, "package.json")) {
+			return true, nil
+		}
+	}
+	return false, ErrNotInWorkspace
 }
 
 // parseWorkspaces reads a package.json file and returns the list of workspaces.
@@ -103,4 +139,19 @@ func parseWorkspaces(p string) ([]string, error) {
 		return []string{}, err
 	}
 	return pkgExtended.Workspaces.Packages, nil
+}
+
+func parsePnpmWorkspace(p string) ([]string, error) {
+	workspaceContent, err := os.ReadFile(p)
+	if err != nil {
+		return []string{}, err
+	}
+	workspace := struct {
+		Packages []string `yaml:"packages"`
+	}{}
+	err = yaml.Unmarshal(workspaceContent, &workspace)
+	if err != nil {
+		return []string{}, err
+	}
+	return workspace.Packages, nil
 }
