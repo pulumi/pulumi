@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -491,13 +493,13 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 func TestDeserializeMissingSecretsManager(t *testing.T) {
 	t.Parallel()
 
-	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
+	urn := "urn:pulumi:urn:pulumi:test_stack::test_project::pkg:index:type::name"
 	ctx := context.Background()
 	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
 				URN:  resource.URN(urn),
-				Type: "aws:ebs/volume:Volume",
+				Type: "pkg:index:type",
 				Outputs: map[string]interface{}{
 					"secret": map[string]interface{}{
 						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
@@ -514,10 +516,33 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 		Resources: []apitype.ResourceV3{
 			{
 				URN:  resource.URN(urn),
-				Type: "aws:ebs/volume:Volume",
+				Type: "pkg:index:type",
 			},
 		},
 	}, b64.Base64SecretsProvider)
+	assert.Equal(t, deployment, &deploy.Snapshot{
+		Manifest: deploy.Manifest{
+			Time:    time.Time{},
+			Version: "",
+			Plugins: nil,
+		},
+		SecretsManager: nil,
+		Resources: []*resource.State{
+			{
+				Type:         "pkg:index:type",
+				URN:          resource.URN(urn),
+				Custom:       false,
+				Delete:       false,
+				ID:           "",
+				Inputs:       resource.PropertyMap{},
+				Outputs:      resource.PropertyMap{},
+				Parent:       "",
+				Protect:      false,
+				Dependencies: nil,
+			},
+		},
+		PendingOperations: nil,
+	})
 	assert.NoError(t, err)
 }
 
