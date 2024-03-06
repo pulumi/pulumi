@@ -488,6 +488,39 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	assert.EqualError(t, err, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn))
 }
 
+func TestDeserializeMissingSecretsManager(t *testing.T) {
+	t.Parallel()
+
+	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
+	ctx := context.Background()
+	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.URN(urn),
+				Type: "aws:ebs/volume:Volume",
+				Outputs: map[string]interface{}{
+					"secret": map[string]interface{}{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":                       "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
+					},
+				},
+			},
+		},
+	}, b64.Base64SecretsProvider)
+	assert.Nil(t, deployment)
+	assert.EqualError(t, err, "snapshot contains encrypted secrets but no secrets manager could be found")
+
+	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.URN(urn),
+				Type: "aws:ebs/volume:Volume",
+			},
+		},
+	}, b64.Base64SecretsProvider)
+	assert.NoError(t, err)
+}
+
 func TestSerializePropertyValue(t *testing.T) {
 	t.Parallel()
 
