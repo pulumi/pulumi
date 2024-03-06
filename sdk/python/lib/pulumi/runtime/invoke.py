@@ -14,7 +14,18 @@
 import asyncio
 import os
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Coroutine,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Set,
+    overload,
+)
 
 import grpc
 from google.protobuf import struct_pb2
@@ -101,6 +112,46 @@ def invoke(
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
+    return _invoke(tok, props, opts, typ, run_async=False)
+
+
+async def invoke_async(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions] = None,
+    typ: Optional[type] = None,
+) -> Any:
+    """
+    invoke_async dynamically asynchronously invokes the function, tok, which is offered by a provider plugin.
+    the inputs can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
+    resolves when the invoke finishes.
+    """
+    return await _invoke(tok, props, opts, typ, run_async=True)
+
+
+@overload
+def _invoke(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions],
+    typ: Optional[type],
+    run_async: Literal[False],
+) -> InvokeResult: ...
+@overload
+def _invoke(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions],
+    typ: Optional[type],
+    run_async: Literal[True],
+) -> Coroutine[Any, Any, Any]: ...
+def _invoke(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions],
+    typ: Optional[type],
+    run_async: bool,
+):
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -185,9 +236,21 @@ def invoke(
             raise exn
         return resp
 
+    fut = asyncio.ensure_future(do_rpc())
+
+    if run_async:
+
+        async def wait_for_fut():
+            invoke_result, invoke_error = await fut
+            if invoke_error is not None:
+                raise invoke_error
+            return invoke_result
+
+        return wait_for_fut()
+
     # Run the RPC callback asynchronously and then immediately await it.
     # If there was a semantic error, raise it now, otherwise return the resulting value.
-    invoke_result, invoke_error = _sync_await(asyncio.ensure_future(do_rpc()))
+    invoke_result, invoke_error = _sync_await(fut)
     if invoke_error is not None:
         raise invoke_error
     return InvokeResult(invoke_result)

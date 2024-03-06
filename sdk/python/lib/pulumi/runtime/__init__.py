@@ -49,6 +49,7 @@ from .stack import (
 
 from .invoke import (
     invoke,
+    invoke_async,
     call,
 )
 
@@ -87,6 +88,8 @@ __all__ = [
     "register_stack_transformation",
     # invoke
     "invoke",
+    "invoke_async",
+    "call",
     # _json
     "to_json",
     # rpc

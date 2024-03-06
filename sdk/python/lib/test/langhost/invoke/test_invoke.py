@@ -19,7 +19,7 @@ class TestInvoke(LanghostTest):
     def test_invoke_success(self):
         self.run_test(
             program=path.join(self.base_path(), "invoke"),
-            expected_resource_count=2)
+            expected_resource_count=3)
 
     def invoke(self, _ctx, token, args, provider, _version):
         self.assertEqual("test:index:MyFunction", token)
