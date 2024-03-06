@@ -472,7 +472,10 @@ func isStackHasResourcesError(err error) bool {
 func (pc *Client) EncryptValue(ctx context.Context, stack StackIdentifier, plaintext []byte) ([]byte, error) {
 	req := apitype.EncryptValueRequest{Plaintext: plaintext}
 	var resp apitype.EncryptValueResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "encrypt"), nil, &req, &resp); err != nil {
+	if err := pc.restCallWithOptions(
+		ctx, "POST", getStackPath(stack, "encrypt"), nil, &req, &resp,
+		httpCallOptions{RetryPolicy: retryAllMethods},
+	); err != nil {
 		return nil, err
 	}
 	return resp.Ciphertext, nil
@@ -482,7 +485,10 @@ func (pc *Client) EncryptValue(ctx context.Context, stack StackIdentifier, plain
 func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphertext []byte) ([]byte, error) {
 	req := apitype.DecryptValueRequest{Ciphertext: ciphertext}
 	var resp apitype.DecryptValueResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "decrypt"), nil, &req, &resp); err != nil {
+	if err := pc.restCallWithOptions(
+		ctx, "POST", getStackPath(stack, "decrypt"), nil, &req, &resp,
+		httpCallOptions{RetryPolicy: retryAllMethods},
+	); err != nil {
 		return nil, err
 	}
 	return resp.Plaintext, nil
@@ -513,7 +519,7 @@ func (pc *Client) BulkDecryptValue(ctx context.Context, stack StackIdentifier,
 	req := apitype.BulkDecryptValueRequest{Ciphertexts: ciphertexts}
 	var resp apitype.BulkDecryptValueResponse
 	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp,
-		httpCallOptions{GzipCompress: true}); err != nil {
+		httpCallOptions{GzipCompress: true, RetryPolicy: retryAllMethods}); err != nil {
 		return nil, err
 	}
 
