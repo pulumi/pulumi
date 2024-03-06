@@ -268,6 +268,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Refresh {
 		sharedArgs = append(sharedArgs, "--refresh")
 	}
+	if preOpts.SuppressOutputs {
+		sharedArgs = append(sharedArgs, "--suppress-outputs")
+	}
+	if preOpts.SuppressProgress {
+		sharedArgs = append(sharedArgs, "--suppress-progress")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -392,6 +398,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.Refresh {
 		sharedArgs = append(sharedArgs, "--refresh")
+	}
+	if upOpts.SuppressOutputs {
+		sharedArgs = append(sharedArgs, "--suppress-outputs")
+	}
+	if upOpts.SuppressProgress {
+		sharedArgs = append(sharedArgs, "--suppress-progress")
 	}
 
 	// Apply the remote args, if needed.
@@ -616,6 +628,13 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	if o.Color != "" {
 		args = append(args, "--color="+o.Color)
 	}
+	if o.SuppressOutputs {
+		args = append(args, "--suppress-outputs")
+	}
+	if o.SuppressProgress {
+		args = append(args, "--suppress-progress")
+	}
+
 
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
@@ -663,6 +682,13 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if destroyOpts.Refresh {
 		args = append(args, "--refresh")
 	}
+	if destroyOpts.SuppressOutputs {
+		args = append(args, "--suppress-outputs")
+	}
+	if destroyOpts.SuppressProgress {
+		args = append(args, "--suppress-progress")
+	}
+
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
