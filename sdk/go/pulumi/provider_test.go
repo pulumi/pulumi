@@ -1942,9 +1942,9 @@ func TestConstruct_await(t *testing.T) {
 	t.Parallel()
 
 	// Runs Construct to initiate some async RPCs and/or to produce some outputs.
-	// A given output may or may not be "attached" to the context's waitgroup.
-	// Fails the test if any operation fails.
-	doConstruct := func(t *testing.T, req *pulumirpc.ConstructRequest, stateF func(ctx *Context, state Map)) error {
+	// Note: a given output may or may not be associated with the Pulumi context, depending on how it's made,
+	// meaning that it may or may not be tracked by the context's waitgroup.
+	constructWithState := func(t *testing.T, req *pulumirpc.ConstructRequest, stateF func(ctx *Context, state Map)) error {
 		// Keep test cases simple:
 		req.Stack = "mystack"
 		req.Project = "myproject"
@@ -1973,8 +1973,9 @@ func TestConstruct_await(t *testing.T) {
 	t.Run("outstanding rpc", func(t *testing.T) {
 		t.Parallel()
 
-		err := doConstruct(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
-			// begin an outstanding RPC call that will complete after constructF returns.
+		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
+			// begin an outstanding RPC call that will complete after constructF returns,
+			// and don't emit any output properties to keep it pure.
 			err := ctx.beginRPC()
 			require.NoError(t, err, "failed to begin RPC")
 			go func() {
@@ -1985,14 +1986,15 @@ func TestConstruct_await(t *testing.T) {
 		require.NoError(t, err, "failed to construct")
 	})
 
-	t.Run("attached output", func(t *testing.T) {
+	t.Run("associated output", func(t *testing.T) {
 		t.Parallel()
 
-		err := doConstruct(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
-			// return an attached output property that will complete after constructF returns.
+		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
+			// return an output property, derived from the context, that will complete after constructF returns.
 			a, resolve, reject := ctx.NewOutput()
 			go func() {
 				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
 				err := ctx.beginRPC()
 				if err != nil {
 					reject(err)
@@ -2006,14 +2008,92 @@ func TestConstruct_await(t *testing.T) {
 		require.NoError(t, err, "failed to construct")
 	})
 
-	t.Run("detached output", func(t *testing.T) {
+	t.Run("unassociated output", func(t *testing.T) {
 		t.Parallel()
 
-		err := doConstruct(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
-			// return a detached output property that will complete after constructF returns.
-			// by "detached" we mean that it isn't attached to the context's waitgroup.
+		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
+			// return an output property, not derived from the context, that will complete after constructF returns.
 			state["b"] = String("b").ToStringOutput().ApplyT(func(v interface{}) (interface{}, error) {
 				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
+				err := ctx.beginRPC()
+				if err != nil {
+					return nil, err
+				}
+				ctx.endRPC(nil)
+				return v.(string), nil
+			})
+		})
+		require.NoError(t, err, "failed to construct")
+	})
+}
+
+func TestCall_await(t *testing.T) {
+	t.Parallel()
+
+	// Runs Call to initiate some async RPCs and/or to produce some results.
+	// Note: a given result may or may not be associated with the Pulumi context, depending on how it's made,
+	// meaning that it may or may not be tracked by the context's waitgroup.
+	callWithResult := func(t *testing.T, req *pulumirpc.CallRequest, resultF func(ctx *Context, state Map)) error {
+		// Keep test cases simple:
+		req.Stack = "mystack"
+		req.Project = "myproject"
+
+		ctx := context.Background()
+		_, err := call(ctx, req, nil, func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error) {
+			result := make(Map)
+			resultF(ctx, result)
+			return result, nil, nil
+		})
+		return err
+	}
+
+	t.Run("outstanding rpc", func(t *testing.T) {
+		t.Parallel()
+
+		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
+			// begin an outstanding RPC call that will complete after callF returns,
+			// and don't emit any output properties to keep it pure.
+			err := ctx.beginRPC()
+			require.NoError(t, err, "failed to begin RPC")
+			go func() {
+				time.Sleep(1 * time.Second)
+				ctx.endRPC(nil)
+			}()
+		})
+		require.NoError(t, err, "failed to construct")
+	})
+
+	t.Run("associated output", func(t *testing.T) {
+		t.Parallel()
+
+		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
+			// return an output property, derived from the context, that will complete after callF returns.
+			a, resolve, reject := ctx.NewOutput()
+			go func() {
+				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
+				err := ctx.beginRPC()
+				if err != nil {
+					reject(err)
+					return
+				}
+				ctx.endRPC(nil)
+				resolve(42)
+			}()
+			result["a"] = a
+		})
+		require.NoError(t, err, "failed to construct")
+	})
+
+	t.Run("unassociated output", func(t *testing.T) {
+		t.Parallel()
+
+		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
+			// return an output property, not derived from the context, that will complete after callF returns.
+			result["b"] = String("b").ToStringOutput().ApplyT(func(v interface{}) (interface{}, error) {
+				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
 				err := ctx.beginRPC()
 				if err != nil {
 					return nil, err
