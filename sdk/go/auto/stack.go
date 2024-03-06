@@ -635,7 +635,6 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 		args = append(args, "--suppress-progress")
 	}
 
-
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
 
