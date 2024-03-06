@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/nodejs
-  description: Adds support to suppress progress and suppress outputs parameters
+  description: Add support for suppress progress and suppress outputs parameters in the Automation API
