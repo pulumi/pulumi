@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet
+  description: Update dotnet language host to 3.60.0
