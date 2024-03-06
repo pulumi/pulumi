@@ -19,9 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -193,7 +191,5 @@ func TestLanguage(t *testing.T) {
 			t.Logf("stderr: %s", result.Stderr)
 			assert.True(t, result.Success)
 		})
-		err = os.RemoveAll(filepath.Join(rootDir, "sdks"))
-		assert.NoError(t, err)
 	}
 }
