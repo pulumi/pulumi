@@ -520,6 +520,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 			},
 		},
 	}, b64.Base64SecretsProvider)
+	require.NoError(t, err)
 	assert.Equal(t, deployment, &deploy.Snapshot{
 		Manifest: deploy.Manifest{
 			Time:    time.Time{},
@@ -543,7 +544,6 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 		},
 		PendingOperations: nil,
 	})
-	assert.NoError(t, err)
 }
 
 func TestSerializePropertyValue(t *testing.T) {
