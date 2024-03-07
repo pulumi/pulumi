@@ -2061,7 +2061,7 @@ func TestCall_await(t *testing.T) {
 				ctx.endRPC(nil)
 			}()
 		})
-		require.NoError(t, err, "failed to construct")
+		require.NoError(t, err, "failed to call")
 	})
 
 	t.Run("associated output", func(t *testing.T) {
@@ -2083,7 +2083,7 @@ func TestCall_await(t *testing.T) {
 			}()
 			result["a"] = a
 		})
-		require.NoError(t, err, "failed to construct")
+		require.NoError(t, err, "failed to call")
 	})
 
 	t.Run("unassociated output", func(t *testing.T) {
@@ -2102,6 +2102,6 @@ func TestCall_await(t *testing.T) {
 				return v.(string), nil
 			})
 		})
-		require.NoError(t, err, "failed to construct")
+		require.NoError(t, err, "failed to call")
 	})
 }
