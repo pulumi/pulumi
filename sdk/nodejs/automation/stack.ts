@@ -761,6 +761,12 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
     if (opts.debug) {
         args.push("--debug");
     }
+    if (opts.suppressOutputs) {
+        args.push("--suppress-outputs");
+    }
+    if (opts.suppressProgress) {
+        args.push("--suppress-progress");
+    }
 }
 
 /**
@@ -895,6 +901,14 @@ export interface GlobalOpts {
     tracing?: string;
     /** Print detailed debugging output during resource operations */
     debug?: boolean;
+    /**
+     * Suppress display of stack outputs (in case they contain sensitive values)
+     */
+    suppressOutputs?: boolean;
+    /**
+     * Suppress display of periodic progress dots
+     */
+    suppressProgress?: boolean;
 }
 
 /**

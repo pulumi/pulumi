@@ -225,6 +225,8 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -251,6 +253,8 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -343,6 +347,8 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -368,6 +374,8 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -456,6 +464,8 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -475,6 +485,8 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -526,6 +538,8 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -544,6 +558,8 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -858,6 +874,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
     log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
     tracing: Optional[str] = kwargs.get("tracing")
     debug: Optional[bool] = kwargs.get("debug")
+    suppress_outputs: Optional[bool] = kwargs.get("suppress_outputs")
+    suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
 
     if message:
         extra_args.extend(["--message", message])
@@ -893,6 +911,10 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--tracing", tracing])
     if debug:
         extra_args.extend(["--debug"])
+    if suppress_outputs:
+        extra_args.extend(["--suppress-outputs"])
+    if suppress_progress:
+        extra_args.extend(["--suppress-progress"])
     return extra_args
 
 

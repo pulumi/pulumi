@@ -122,6 +122,20 @@ func ShowSecrets(show bool) Option {
 	})
 }
 
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
 // Refresh will refresh the stack's state before the update.
 func Refresh() Option {
 	return optionFunc(func(opts *Options) {
@@ -175,6 +189,10 @@ type Options struct {
 	ShowSecrets *bool
 	// Refresh will refresh the stack's state before the update.
 	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
 }
 
 type optionFunc func(*Options)
