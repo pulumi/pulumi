@@ -182,11 +182,12 @@ function searchUp(currentDir: string, fileToFind: string): string | null {
 }
 
 /**
+ * @internal
  * findWorkspaceRoot detects if we are in a yarn/npm workspace setup, and
  * returns the root of the workspace. If we are not in a workspace setup, it
  * returns null.
  */
-async function findWorkspaceRoot(startingPath: string): Promise<string | null> {
+export async function findWorkspaceRoot(startingPath: string): Promise<string | null> {
     const stat = fs.statSync(startingPath);
     if (!stat.isDirectory()) {
         startingPath = upath.dirname(startingPath);
