@@ -875,6 +875,47 @@ return () => os;
     }
 
     {
+        const crypto = require("crypto");
+
+        cases.push({
+            title: "Capture built in crypto module by ref",
+            func: () => crypto,
+            expectText: `exports.handler = __f0;
+const crypto = require("crypto");
+
+function __f0() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return () => crypto;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+      cases.push({
+          title: "Use webcrypto via global.crypto",
+          func: () => crypto,
+          expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ crypto: global.crypto, this: undefined, arguments: undefined }) {
+
+return () => crypto;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+      });
+    }
+
+    {
         const os = require("os");
 
         cases.push({
@@ -6709,6 +6750,12 @@ return function /*reproHandler*/(input) {
         // //if (test.title !== "Analyze property chain #23") {
         //     continue;
         // }
+
+        const nodeMajor = parseInt(process.version.split(".")[0].slice(1));
+        if (test.title === "Use webcrypto via global.crypto" && nodeMajor < 19) {
+          // This test uses global.crypto, which is only available in Node 19 and later.
+          continue;
+        }
 
         it(test.title, async () => {
             // Run pre-actions.
