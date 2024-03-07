@@ -437,8 +437,6 @@ export function disconnect(): Promise<void> {
 
 /** @internal */
 export function waitForRPCs(disconnectFromServers = false): Promise<void> {
-    console.log("waitForRPCs", disconnectFromServers);
-
     const localStore = getStore();
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
