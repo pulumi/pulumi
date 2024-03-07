@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Properly capture node:crypto and global.crypto in node 19+

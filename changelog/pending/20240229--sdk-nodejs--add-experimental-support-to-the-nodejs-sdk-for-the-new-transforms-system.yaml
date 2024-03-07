@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Add experimental support to the NodeJS SDK for the new transforms system.

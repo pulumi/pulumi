@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs,python
-  description: Add support for suppress progress and suppress outputs parameters in the Automation API
