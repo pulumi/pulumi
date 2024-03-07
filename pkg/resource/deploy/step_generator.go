@@ -799,6 +799,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 					return nil, fmt.Errorf("failed to run policy: %w", err)
 				}
 				for _, d := range diagnostics {
+					if d.EnforcementLevel == apitype.Remediate {
+						// If we ran a remediation, but we are still somehow triggering a violation,
+						// "downgrade" the level we report from remediate to mandatory.
+						d.EnforcementLevel = apitype.Mandatory
+					}
+
 					if d.EnforcementLevel == apitype.Mandatory {
 						if !sg.deployment.preview {
 							invalid = true
@@ -2009,6 +2015,11 @@ func (sg *stepGenerator) AnalyzeResources() error {
 			return err
 		}
 		for _, d := range diagnostics {
+			if d.EnforcementLevel == apitype.Remediate {
+				// Stack policies cannot be remediated, so treat the level as mandatory.
+				d.EnforcementLevel = apitype.Mandatory
+			}
+
 			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
 			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
 			// Otherwise, if the URN is empty or is not associated with a resource in the stack, use

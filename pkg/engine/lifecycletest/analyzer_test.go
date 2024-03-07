@@ -8,10 +8,12 @@ import (
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -328,4 +330,132 @@ func TestRemediateFailure(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 0, len(snap.Resources))
+}
+
+func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				AnalyzeF: func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
+					return []plugin.AnalyzeDiagnostic{{
+						PolicyName:       "always-fails",
+						PolicyPackName:   "analyzerA",
+						Description:      "a policy that always fails",
+						Message:          "a policy failed",
+						EnforcementLevel: apitype.Remediate,
+						URN:              r.URN,
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.Error(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
+		},
+		Steps: []TestStep{
+			{
+				Op:            Update,
+				SkipPreview:   true,
+				ExpectFailure: true,
+				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+					events []Event, err error,
+				) error {
+					violationEvents := []Event{}
+					for _, e := range events {
+						if e.Type == PolicyViolationEvent {
+							violationEvents = append(violationEvents, e)
+						}
+					}
+					assert.Len(t, violationEvents, 1)
+					assert.Equal(t, apitype.Mandatory,
+						violationEvents[0].Payload().(PolicyViolationEventPayload).EnforcementLevel)
+
+					return err
+				},
+			},
+		},
+	}
+
+	p.Run(t, nil)
+}
+
+func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+					return []plugin.AnalyzeDiagnostic{{
+						PolicyName:       "always-fails",
+						PolicyPackName:   "analyzerA",
+						Description:      "a policy that always fails",
+						Message:          "a policy failed",
+						EnforcementLevel: apitype.Remediate,
+						URN:              rs[0].URN,
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
+		},
+		Steps: []TestStep{
+			{
+				Op:            Update,
+				SkipPreview:   true,
+				ExpectFailure: true,
+				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+					events []Event, err error,
+				) error {
+					violationEvents := []Event{}
+					for _, e := range events {
+						if e.Type == PolicyViolationEvent {
+							violationEvents = append(violationEvents, e)
+						}
+					}
+					assert.Len(t, violationEvents, 1)
+					assert.Equal(t, apitype.Mandatory,
+						violationEvents[0].Payload().(PolicyViolationEventPayload).EnforcementLevel)
+
+					return err
+				},
+			},
+		},
+	}
+
+	p.Run(t, nil)
 }
