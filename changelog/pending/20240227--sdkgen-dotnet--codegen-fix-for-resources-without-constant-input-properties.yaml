@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet
-  description: Codegen fix for resources without constant input properties

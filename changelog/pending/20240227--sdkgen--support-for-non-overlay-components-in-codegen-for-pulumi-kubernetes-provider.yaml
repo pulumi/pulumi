@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/dotnet
-  description: Support for non-overlay components in codegen for pulumi-kubernetes provider

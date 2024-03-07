@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.109.0 (2024-03-07)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Add support for suppress progress and suppress outputs parameters in the Automation API
+  [#15596](https://github.com/pulumi/pulumi/pull/15596)
+
+- [pkg] Make schema.NewPluginLoader respect PULUMI_DEBUG_PROVIDERS, which enables Pulumi YAML programs to work correctly with this feature
+  [#15526](https://github.com/pulumi/pulumi/pull/15526)
+
+- [sdk/dotnet] Update dotnet language host to 3.60.0
+  [#15609](https://github.com/pulumi/pulumi/pull/15609)
+
+- [sdk/nodejs] Add experimental support to the NodeJS SDK for the new transforms system.
+  [#15532](https://github.com/pulumi/pulumi/pull/15532)
+
+- [sdk/python] Add support for asynchronous invokes via a new `invoke_async` function
+  [#15602](https://github.com/pulumi/pulumi/pull/15602)
+
+- [sdkgen/dotnet] Support for non-overlay components in codegen for pulumi-kubernetes provider
+  [#15490](https://github.com/pulumi/pulumi/pull/15490)
+
+
+### Bug Fixes
+
+- [cli] Fix a panic when the secrets provider is missing from the deployment snapshot
+  [#15599](https://github.com/pulumi/pulumi/pull/15599)
+
+- [backend/service] Make decrypt/encrypt network calls retryable to help work around network hiccups
+  [#15600](https://github.com/pulumi/pulumi/pull/15600)
+
+- [cli/new] Strip credentials and query strings from template URLs saved to project
+  [#15586](https://github.com/pulumi/pulumi/pull/15586)
+
+- [engine] Fix an issue where snapshots could become invalid when doing a targeted up
+  [#15476](https://github.com/pulumi/pulumi/pull/15476)
+
+- [engine] Downgrade remediate policy violations to mandatory
+
+- [pkg/testing] Make ProgramTest use a temporary PULUMI_HOME for each test
+  [#15568](https://github.com/pulumi/pulumi/pull/15568)
+
+- [sdkgen/dotnet] Codegen fix for resources without constant input properties
+  [#15488](https://github.com/pulumi/pulumi/pull/15488)
+
+- [sdk/nodejs] Properly capture node:crypto and global.crypto in node 19+
+  [#15492](https://github.com/pulumi/pulumi/pull/15492)
+
+- [sdk/python] Fix determining plugins for old packages in the Python language host
+  [#15576](https://github.com/pulumi/pulumi/pull/15576)
+
 ## 3.108.1 (2024-03-01)
 
 
