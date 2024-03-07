@@ -13,6 +13,8 @@ coverage.cov
 coverage/
 venv/
 .envrc
+# Ignore VSCode created solution file
+/pulumi.sln
 
 # Ignore user-provided go.work files.
 /go.work

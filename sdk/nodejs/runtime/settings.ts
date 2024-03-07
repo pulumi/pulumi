@@ -16,6 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource } from "../resource";
+import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
 import { getLocalStore, getStore } from "./state";
 
@@ -98,6 +99,8 @@ export function resetOptions(
     store.supportsOutputValues = false;
     store.supportsDeletedWith = false;
     store.supportsAliasSpecs = false;
+    store.supportsTransforms = false;
+    store.callbacks = undefined;
 }
 
 export function setMockOptions(
@@ -186,6 +189,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
         store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
+        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
     }
 }
 
@@ -310,6 +314,38 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
     }
 }
 
+/**
+ * Waits for any pending stack transforms to register.
+ */
+export async function awaitStackRegistrations(): Promise<void> {
+    const store = getStore();
+    const callbacks = store.callbacks;
+    if (callbacks === undefined) {
+        return;
+    }
+    return await callbacks.awaitStackRegistrations();
+}
+
+/**
+ * getCallbacks returns the current callbacks for RPC communications.
+ */
+export function getCallbacks(): ICallbackServer | undefined {
+    const store = getStore();
+    const callbacks = store.callbacks;
+    if (callbacks !== undefined) {
+        return callbacks;
+    }
+
+    const monitorRef = getMonitor();
+    if (monitorRef === undefined) {
+        return undefined;
+    }
+
+    const callbackServer = new CallbackServer(monitorRef);
+    store.callbacks = callbackServer;
+    return callbackServer;
+}
+
 /** @internal */
 export interface SyncInvokes {
     requests: number;
@@ -401,6 +437,8 @@ export function disconnect(): Promise<void> {
 
 /** @internal */
 export function waitForRPCs(disconnectFromServers = false): Promise<void> {
+    console.log("waitForRPCs", disconnectFromServers);
+
     const localStore = getStore();
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
@@ -431,6 +469,12 @@ export function getMaximumListeners(): number {
  */
 export function disconnectSync(): void {
     // Otherwise, actually perform the close activities (ignoring errors and crashes).
+    const store = getStore();
+    if (store.callbacks) {
+        store.callbacks.shutdown();
+        store.callbacks = undefined;
+    }
+
     if (monitor) {
         try {
             monitor.close();

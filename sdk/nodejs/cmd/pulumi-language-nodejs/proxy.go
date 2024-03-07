@@ -183,7 +183,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 // perform.
 
 type monitorProxy struct {
-	pulumirpc.UnimplementedResourceMonitorServer
+	pulumirpc.UnsafeResourceMonitorServer
 
 	target pulumirpc.ResourceMonitorClient
 }
@@ -250,4 +250,10 @@ func (p *monitorProxy) SupportsFeature(
 	ctx context.Context, req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
 	return p.target.SupportsFeature(ctx, req)
+}
+
+func (p *monitorProxy) RegisterStackTransform(
+	ctx context.Context, req *pulumirpc.Callback,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterStackTransform(ctx, req)
 }
