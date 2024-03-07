@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add `blocking_call` api to allow programs to run blocking calls synchronously without stopping the event loop

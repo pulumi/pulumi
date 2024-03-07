@@ -100,6 +100,8 @@ from ._types import (
 
 from . import runtime, dynamic, policy, automation
 
+from .runtime.sync_await import blocking_call
+
 __all__ = [
     # asset
     "Asset",
@@ -159,6 +161,8 @@ __all__ = [
     "getter",
     "get",
     "set",
+    # runtime.sync_await
+    "blocking_call",
     # sub-modules
     "runtime",
     "dynamic",
