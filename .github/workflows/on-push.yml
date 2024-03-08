@@ -1,0 +1,26 @@
+name: On Push
+
+permissions:
+  # To push the tag
+  contents: write
+
+on:
+  push:
+    branches:
+      - 'master'
+
+  tag-pkg:
+    name: tag-pkg
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Tag and push pkg version if necessary
+        run: |
+          title=$(git show --pretty=format:%s -s HEAD)
+          if [[ $title == "Changelog and go.mod updates for"* ]]; then
+            pkg_version="${title#*updates for }"
+            pkg_version="${pkg_version% \(*}"
+            git tag "pkg/${pkg_version}"
+            git push origin "pkg/${pkg_version}"
+          fi

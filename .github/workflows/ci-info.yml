@@ -36,8 +36,6 @@ jobs:
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
       release-notes: "${{ fromJSON(steps.notes.outputs.release-notes) }}"
-      is-changelog-update: "${{ fromJSON(steps.check-changelog-update.outputs.is-changelog-update) }}"
-      pkg-version: "${{ fromJSON(steps.check-changelog-update.outputs.pkg-version) }}"
     env:
       GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       GH_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
@@ -103,17 +101,4 @@ jobs:
 
           if $ERROR; then
             exit 1;
-          fi
-      - name: check changelog update
-        id: check-changelog-update
-        run: |
-          title=$(git show --pretty=format:%s -s HEAD)
-          if [[ $title == "Changelog and go.mod updates for"* ]]; then
-            ./.github/scripts/set-output is-changelog-update true
-            pkg_version="${title#*updates for }"
-            pkg_version="${pkg_version% \(*}"
-            ./.github/scripts/set-output pkg-version "${pkg_version}"
-          else
-            ./.github/scripts/set-output is-changelog-update false
-            ./.github/scripts/set-output pkg-version ""
           fi

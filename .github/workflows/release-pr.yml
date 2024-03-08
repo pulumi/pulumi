@@ -72,6 +72,8 @@ jobs:
 
           git push -u origin HEAD
 
+          # Note that the title of the PR is used in the on-merge workflow.  If the title needs to
+          # change here, please also check on-merge.yml
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
 
           if [ "${QUEUE_MERGE}" = "true" ]; then
