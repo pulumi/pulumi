@@ -100,6 +100,20 @@ jobs:
           version="${version#v}-alpha.${short_sha}"
           pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version="$version"
 
+  tag-pkg:
+    name: tag-pkg
+    needs: [info, ci, update-dev-version]
+    if: ${{ needs.info.outputs.is-changelog-update }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Tag and push pkg version
+        run: |
+          version=${{ needs.info.outputs.pkg-version }}
+          git tag "pkg/${version}"
+          git push origin "pkg/${version}"
+
   ci-ok:
     name: ci-ok
     needs: [ci, prepare-release, dev-release, update-dev-version]

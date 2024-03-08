@@ -70,12 +70,6 @@ jobs:
           git add -A
           git commit -m "chore: post-release go.mod updates"
 
-          # TODO: https://github.com/pulumi/pulumi/issues/15458
-          # Temporarily disable tagging `pkg`. For now, we'll have to manually do it
-          # once the change lands in `master`.
-          # # Publish pkg module on another tag.
-          # git tag "pkg/v${PULUMI_VERSION}"
-          # git push origin "pkg/v${PULUMI_VERSION}"
           git push -u origin HEAD
 
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
