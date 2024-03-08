@@ -225,24 +225,9 @@ func (ctx *Context) Close() error {
 	return nil
 }
 
-// wait waits for all asynchronous work associated with this context to drain.
-func (ctx *Context) wait() {
-	// Wait for async work to flush.
-	ctx.state.join.Wait()
-
-	// Ensure all outstanding RPCs have completed before proceeding.
-	ctx.state.rpcsLock.Lock()
-	defer ctx.state.rpcsLock.Unlock()
-
-	// Wait until the RPC count hits zero.
-	for ctx.state.rpcs > 0 {
-		ctx.state.rpcsDone.Wait()
-	}
-}
-
-// close waits for all asynchronous work associated with this context to drain. RPCs may not be queued once close
+// wait waits for all asynchronous work associated with this context to drain. RPCs may not be queued once wait
 // returns.
-func (ctx *Context) close() error {
+func (ctx *Context) wait() error {
 	// Wait for async work to flush.
 	ctx.state.join.Wait()
 

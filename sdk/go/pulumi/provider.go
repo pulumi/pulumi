@@ -141,23 +141,21 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		return nil, err
 	}
 
-	// Wait for async work to finish, but don't close the context until after the output properties have resolved.
-	// Note that output properties may or may not be attached to the context's waitgroup.
-	pulumiCtx.wait()
-
 	rpcURN, _, _, err := urn.ToURNOutput().awaitURN(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Serialize all state properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	// Note that the state properties may or may not be attached to the context's waitgroup, so it's important to
+	// await them before closing the context.
 	resolvedProps, propertyDeps, _, err := marshalInputs(state)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
 
-	// Close the context now that all async work has completed and all output properties have resolved.
-	if err = pulumiCtx.close(); err != nil {
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
 		return nil, err
 	}
 
@@ -805,18 +803,16 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		return nil, err
 	}
 
-	// Wait for async work to finish, but don't close the context until after the result properties have resolved.
-	// Note that result properties may or may not be attached to the context's waitgroup.
-	pulumiCtx.wait()
-
 	// Serialize all result properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	// Note that the state properties may or may not be attached to the context's waitgroup, so it's important to
+	// await them before closing the context.
 	resolvedProps, propertyDeps, _, err := marshalInputs(result)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
 
-	// Close the context now that all async work has completed and all output properties have resolved.
-	if err = pulumiCtx.close(); err != nil {
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
 		return nil, err
 	}
 
