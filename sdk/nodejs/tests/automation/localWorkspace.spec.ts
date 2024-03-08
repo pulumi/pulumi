@@ -622,7 +622,7 @@ describe("LocalWorkspace", () => {
         };
         const projectName = "inline_node";
         const stackNames = Array.from(Array(10).keys()).map((_) =>
-            fullyQualifiedStackName("pulumi-test", projectName, `int_test${getTestSuffix()}`),
+            fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
         );
 
         const testStackLifetime = async (stackName: string) => {
