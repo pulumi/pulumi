@@ -1458,6 +1458,16 @@ func TestCodePaths(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsTSC(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "codepaths-tsc"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		RunBuild:     true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCodePathsNested(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "codepaths-nested"),
@@ -1474,6 +1484,17 @@ func TestCodePathsWorkspace(t *testing.T) {
 		Dependencies:    []string{"@pulumi/pulumi"},
 		RelativeWorkDir: "infra",
 		Quick:           true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsWorkspaceTSC(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "codepaths-workspaces-tsc"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
+		RunBuild:        true,
+		RelativeWorkDir: "infra",
 	})
 }
 

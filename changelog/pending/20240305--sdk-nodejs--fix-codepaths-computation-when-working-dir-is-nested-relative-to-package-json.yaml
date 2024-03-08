@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix codepaths computation when working dir is nested relative to package.json

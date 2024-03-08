@@ -1,0 +1,9 @@
+{
+    "name": "a-workspace-example",
+    "description": "A project that uses npm and yarn workspaces.",
+    "private": true,
+    "workspaces": [
+        "packages/*",
+        "project/"
+    ]
+}
