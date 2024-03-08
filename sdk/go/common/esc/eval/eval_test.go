@@ -43,7 +43,7 @@ func (errorProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return schema.Record(map[string]schema.Builder{"why": schema.String()}).Schema(), schema.Always()
 }
 
-func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
+func (errorProvider) Open(ctx context.Context, inputs map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
 	return esc.Value{}, errors.New(inputs["why"].Value.(string))
 }
 
@@ -106,7 +106,7 @@ func (testSchemaProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return s, s
 }
 
-func (testSchemaProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
+func (testSchemaProvider) Open(ctx context.Context, inputs map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
 	return esc.NewValue(inputs), nil
 }
 
@@ -116,7 +116,7 @@ func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
 	return schema.Always(), schema.Always()
 }
 
-func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, context map[string]esc.Value) (esc.Value, error) {
+func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
 	return esc.NewValue(inputs), nil
 }
 

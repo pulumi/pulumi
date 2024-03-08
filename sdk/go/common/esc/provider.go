@@ -27,5 +27,5 @@ type Provider interface {
 	Schema() (inputs, outputs *schema.Schema)
 
 	// Open retrieves the provider's secrets.
-	Open(ctx context.Context, inputs map[string]Value, executionContext map[string]Value) (Value, error)
+	Open(ctx context.Context, inputs map[string]Value, executionContext EnvExecContext) (Value, error)
 }

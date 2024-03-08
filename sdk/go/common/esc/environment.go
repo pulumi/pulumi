@@ -24,9 +24,56 @@ import (
 
 const AnonymousEnvironmentName = "<yaml>"
 
+type EnvExecContext interface {
+	// Returns the current execution context values
+	Values() map[string]Value
+
+	// Returns the root evaluated environment.
+	// For anonymous environments, it resolves to the "rootest" non anonymous environment.
+	GetRootEnvironmentName() string
+
+	// Returns the current environment being evaluated.
+	GetCurrentEnvironmentName() string
+}
+
 type ExecContext struct {
-	rootEnvironment string
-	values          map[string]Value
+	rootEnvironment    string
+	currentEnvironment string
+	values             map[string]Value
+}
+
+func (ec *ExecContext) CopyForEnv(envName string) *ExecContext {
+	values := copyContext(ec.values)
+	values["currentEnvironment"] = NewValue(map[string]Value{
+		"name": NewValue(envName),
+	})
+
+	root := ec.rootEnvironment
+	if ec.rootEnvironment == AnonymousEnvironmentName || ec.rootEnvironment == "" {
+		root = envName
+	}
+
+	values["rootEnvironment"] = NewValue(map[string]Value{
+		"name": NewValue(root),
+	})
+
+	return &ExecContext{
+		values:             values,
+		rootEnvironment:    root,
+		currentEnvironment: envName,
+	}
+}
+
+func (ec *ExecContext) Values() map[string]Value {
+	return ec.values
+}
+
+func (ec *ExecContext) GetRootEnvironmentName() string {
+	return ec.rootEnvironment
+}
+
+func (ec *ExecContext) GetCurrentEnvironmentName() string {
+	return ec.currentEnvironment
 }
 
 type copier struct {
@@ -81,31 +128,6 @@ func copyContext(context map[string]Value) map[string]Value {
 		newContext[key] = *copy
 	}
 	return newContext
-}
-
-func (ec *ExecContext) CopyForEnv(envName string) *ExecContext {
-	values := copyContext(ec.values)
-	values["currentEnvironment"] = NewValue(map[string]Value{
-		"name": NewValue(envName),
-	})
-
-	root := ec.rootEnvironment
-	if ec.rootEnvironment == AnonymousEnvironmentName || ec.rootEnvironment == "" {
-		root = envName
-	}
-
-	values["rootEnvironment"] = NewValue(map[string]Value{
-		"name": NewValue(root),
-	})
-
-	return &ExecContext{
-		values:          values,
-		rootEnvironment: root,
-	}
-}
-
-func (ec *ExecContext) Values() map[string]Value {
-	return ec.values
 }
 
 var ErrReservedContextkey = errors.New("reserved context key")

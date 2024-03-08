@@ -903,7 +903,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 		return v
 	}
 
-	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value), e.execContext.Values())
+	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value), e.execContext)
 	if err != nil {
 		e.errorf(repr.syntax(), err.Error())
 		v.unknown = true
