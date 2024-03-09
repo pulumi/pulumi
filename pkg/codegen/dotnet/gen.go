@@ -757,7 +757,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 
 		var paramDef string
 		if _, ok := pt.mod.propertyNames[prop]; ok {
-			paramDef = fmt.Sprintf("[OutputConstructorParameterAttribute(\"%s\")] ", prop.Name)
+			paramDef = fmt.Sprintf("[OutputConstructorParameterAttribute(\"%s\")]\n%s        ", prop.Name, indent)
 		}
 		paramDef += fmt.Sprintf("%s %s%s", paramType, paramName, terminator)
 		if len(pt.properties) > 1 {
