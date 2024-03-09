@@ -731,9 +731,6 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 		}
 		fieldType := pt.mod.typeString(typ, pt.propertyTypeQualifier, false, false, false)
 		printComment(w, prop.Comment, indent+"    ")
-		if _, ok := pt.mod.propertyNames[prop]; ok {
-			fmt.Fprintf(w, "%s    [ConstructorParameterApiNameAttribute(\"%s\")]\n", indent, prop.Name)
-		}
 		fmt.Fprintf(w, "%s    public readonly %s %s;\n", indent, fieldType, fieldName)
 	}
 	if len(pt.properties) > 0 {
@@ -758,7 +755,11 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 			terminator = ",\n"
 		}
 
-		paramDef := fmt.Sprintf("%s %s%s", paramType, paramName, terminator)
+		var paramDef string
+		if _, ok := pt.mod.propertyNames[prop]; ok {
+			paramDef = fmt.Sprintf("[OutputConstructorParameterAttribute(\"%s\")] ", prop.Name)
+		}
+		paramDef += fmt.Sprintf("%s %s%s", paramType, paramName, terminator)
 		if len(pt.properties) > 1 {
 			paramDef = fmt.Sprintf("\n%s        %s", indent, paramDef)
 		}
