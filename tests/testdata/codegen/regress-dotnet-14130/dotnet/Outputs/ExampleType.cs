@@ -13,17 +13,19 @@ namespace Pulumi.Example.Outputs
     [OutputType]
     public sealed class ExampleType
     {
-        public readonly string? myBar;
         public readonly string? InputData;
+        public readonly string? myBar;
 
         [OutputConstructor]
         private ExampleType(
-            string? myBar,
+            [OutputConstructorParameterAttribute("$inputData")]
+            string? inputData,
 
-            string? inputData)
+            [OutputConstructorParameterAttribute("bar")]
+            string? myBar)
         {
-            this.myBar = myBar;
             InputData = inputData;
+            this.myBar = myBar;
         }
     }
 }

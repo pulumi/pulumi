@@ -12,11 +12,11 @@ namespace Pulumi.Example.Inputs
 
     public sealed class ExampleTypeArgs : global::Pulumi.ResourceArgs
     {
+        [Input("$inputData")]
+        public Input<string>? InputData { get; set; }
+
         [Input("bar")]
         public Input<string>? myBar { get; set; }
-
-        [Input("input_data")]
-        public Input<string>? InputData { get; set; }
 
         public ExampleTypeArgs()
         {

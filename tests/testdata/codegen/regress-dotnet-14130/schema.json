@@ -15,7 +15,7 @@
                 }
             }
           },
-          "input_data": {
+          "$inputData": {
             "type": "string",
             "language": {
                 "csharp": {
