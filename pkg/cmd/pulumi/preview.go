@@ -241,6 +241,7 @@ func newPreviewCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var runtimeConfigArray []string
 	var configPath bool
 	var client string
 	var planFilePath string
@@ -401,6 +402,11 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}
 
+			err = applyRuntimeConfigValues(cfg.Config, runtimeConfigArray, configPath)
+			if err != nil {
+				return result.FromError(fmt.Errorf("applying runtime config values: %w", err))
+			}
+
 			targetURNs := []string{}
 			targetURNs = append(targetURNs, targets...)
 
@@ -526,6 +532,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the preview")
+	cmd.PersistentFlags().StringArrayVar(
+		&runtimeConfigArray, "runtime-config", []string{},
+		"Config used at runtime without persisting to the local config file")
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")

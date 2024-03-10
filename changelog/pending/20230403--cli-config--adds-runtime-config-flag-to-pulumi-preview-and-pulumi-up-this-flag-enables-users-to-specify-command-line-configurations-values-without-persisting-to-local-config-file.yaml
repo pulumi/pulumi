@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Adds --runtime-config flag to pulumi preview and pulumi up, this flag enables users to specify command line configurations values without persisting to local config file

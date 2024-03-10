@@ -496,16 +496,37 @@ func chooseStack(ctx context.Context,
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
 func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) error {
-	if len(configArray) == 0 {
-		return nil
-	}
-	commandLineConfig, err := parseConfig(configArray, path)
+	commandLineConfig, err := parseConfigArray(configArray, path)
 	if err != nil {
 		return err
 	}
 
 	if err = saveConfig(s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
+	}
+	return nil
+}
+
+// parseConfigArray parses the config array
+// returns empty config if configArray argument is empty
+func parseConfigArray(configArray []string, path bool) (config.Map, error) {
+	commandLineConfig, err := parseConfig(configArray, path)
+	if err != nil {
+		return nil, err
+	}
+	return commandLineConfig, nil
+}
+
+// applyRuntimeConfigValues overrides config with provided runtime-only values
+func applyRuntimeConfigValues(configMap config.Map, runtimeConfigArray []string, path bool) error {
+	commandLineRuntimeConfig, err := parseConfigArray(runtimeConfigArray, path)
+	if err != nil {
+		return err
+	}
+	for key, value := range commandLineRuntimeConfig {
+		if err = configMap.Set(key, value, path); err != nil {
+			return err
+		}
 	}
 	return nil
 }
