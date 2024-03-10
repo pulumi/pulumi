@@ -93,6 +93,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Fargate",
 	},
 	{
+		Directory:   "aws-static-website",
+		Description: "an example resource from AWS static website multi-language component",
+		// TODO: blocked on resolving imports (python) / using statements (C#) for types from external packages
+		SkipCompile: codegen.NewStringSet("dotnet", "python"),
+	},
+	{
 		Directory:   "aws-fargate-output-versioned",
 		Description: "AWS Fargate Using Output-versioned invokes for python and typescript",
 		Skip:        codegen.NewStringSet("go", "dotnet"),

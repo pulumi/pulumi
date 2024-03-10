@@ -1051,9 +1051,14 @@ func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType m
 		qualifier = ""
 	}
 
-	pkg, _, member, diags := pcl.DecomposeToken(token, tokenRange)
+	pkg, modName, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
-	module := g.tokenToModules[pkg](token)
+	var module string
+	if getModule, ok := g.tokenToModules[pkg]; ok {
+		module = getModule(token)
+	} else {
+		module = strings.SplitN(modName, "/", 2)[0]
+	}
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
