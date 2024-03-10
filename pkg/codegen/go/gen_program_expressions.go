@@ -927,7 +927,10 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 
 func (g *generator) argumentTypeNamePtr(expr model.Expression, destType model.Type, isInput bool) (result string) {
 	res := g.argumentTypeName(expr, destType, isInput)
-	return "*" + res
+	if !strings.HasPrefix(res, "pulumi.") {
+		return "*" + res
+	}
+	return res
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer,
