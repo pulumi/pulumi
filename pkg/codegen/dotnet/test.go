@@ -119,6 +119,8 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
 		case "random":
 			result[i] = dep{"Pulumi.Random", test.RandomSchema}
+		case "aws-static-website":
+			result[i] = dep{"Pulumi.AwsStaticWebsite", test.AwsStaticWebsiteSchema}
 		default:
 			result[i] = dep{"Pulumi." + Title(d), ""}
 		}
