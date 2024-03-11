@@ -9,6 +9,7 @@ on:
     branches:
       - 'master'
 
+jobs:
   tag-pkg:
     name: tag-pkg
     runs-on: ubuntu-latest
