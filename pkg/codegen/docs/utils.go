@@ -22,8 +22,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -63,6 +65,12 @@ func tokenToName(tok string) string {
 	return components[2]
 }
 
+func tokenToPackageName(tok string) string {
+	components := strings.Split(tok, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+	return components[0]
+}
+
 func title(s, lang string) string {
 	switch lang {
 	case "go":
@@ -96,4 +104,25 @@ func getResourceLink(name string) string {
 
 func getFunctionLink(name string) string {
 	return strings.ToLower(name)
+}
+
+// isExternalType checks if the type is external to the given package.
+func isExternalType(t schema.Type, pkg schema.PackageReference) (
+	isExternal bool, token string,
+) {
+	switch typ := t.(type) {
+	case *schema.ObjectType:
+		isExternal = typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
+		token = typ.Token
+		return
+	case *schema.ResourceType:
+		isExternal = typ.Resource != nil && pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg)
+		token = typ.Token
+		return
+	case *schema.EnumType:
+		isExternal = pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
+		token = typ.Token
+		return
+	}
+	return
 }
