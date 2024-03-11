@@ -607,7 +607,11 @@ func newImportCmd() *cobra.Command {
 			"                \"parent\": \"optional-parent-name\",\n" +
 			"                \"provider\": \"optional-provider-name\",\n" +
 			"                \"version\": \"optional-provider-version\",\n" +
+			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
+			"                \"logicalName\": \"optionalLogicalName\",\n" +
 			"                \"properties\": [\"optional-property-names\"],\n" +
+			"                \"component\": false,\n" +
+			"                \"remote\": false,\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -628,6 +632,12 @@ func newImportCmd() *cobra.Command {
 			"specify a provider, it will be imported using the default provider for its type. A\n" +
 			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n" +
+			"\n" +
+			"A resource can define a logical name as well as it's name for the name table.\n" +
+			"If a logical name is given that will be used the name the resource in the Pulumi state.\n" +
+			"\n" +
+			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
+			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
 			"\n" +
 			"Each resource may specify which input properties to import with;\n" +
 			"\n" +
