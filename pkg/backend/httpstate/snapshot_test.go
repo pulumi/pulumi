@@ -548,13 +548,19 @@ func BenchmarkDiffStackRecorded(b *testing.B) {
 	testOrBenchmarkDiffStack(b, benchmarkDiffStack, recordedCases)
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func TestDiffStackRecorded(t *testing.T) {
-	t.Parallel()
 	testOrBenchmarkDiffStack(t, testDiffStack, recordedCases)
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func TestMarshalDeployment(t *testing.T) {
-	t.Parallel()
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, dynamicCases)
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, recordedCases)
 }
