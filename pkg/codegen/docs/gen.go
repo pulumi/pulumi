@@ -1140,7 +1140,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 		isExt, _ := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg)
 		if isExt {
 			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
-			comment = fmt.Sprintf("This type is defined in the [%s](https://pulumi.com/registry/packages/%s) package.", getPackageDisplayName(packageName), packageName)
+			comment = fmt.Sprintf("This type is defined in the [%s](/registry/packages/%s) package.", getPackageDisplayName(packageName), packageName)
 			link = ""
 		}
 
