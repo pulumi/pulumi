@@ -51,6 +51,7 @@ This only has an effect on DIY backends.
 			return nil
 		}),
 	}
+	cmd.Flags().BoolVarP(&sucmd.yes, "yes", "y", false, "Automatically approve and perform the upgrade")
 	return cmd
 }
 
@@ -59,6 +60,8 @@ type stateUpgradeCmd struct {
 	Stdin  io.Reader // defaults to os.Stdin
 	Stdout io.Writer // defaults to os.Stdout
 	Stderr io.Writer // defaults to os.Stderr
+
+	yes bool
 
 	// Used to mock out the currentBackend function for testing.
 	// Defaults to currentBackend function.
@@ -104,7 +107,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	prompt := "This will upgrade the current backend to the latest supported version.\n" +
 		"Older versions of Pulumi will not be able to read the new format.\n" +
 		"Are you sure you want to proceed?"
-	if !confirmPrompt(prompt, "yes", dopts) {
+	if !cmd.yes && !confirmPrompt(prompt, "yes", dopts) {
 		fmt.Fprintln(cmd.Stdout, "Upgrade cancelled")
 		return nil
 	}
