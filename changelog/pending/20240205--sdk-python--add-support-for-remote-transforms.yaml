@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/python
-  description: Add experimental support to the Python SDK for the new transforms system.
+  description: Add experimental support to the Python SDK for the new transforms system
