@@ -79,7 +79,7 @@ func newDestroyCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        use,
-		Aliases:    []string{"down"},
+		Aliases:    []string{"down", "dn"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
 		Short:      "Destroy all existing resources in the stack",
 		Long: "Destroy all existing resources in the stack, but not the stack itself\n" +
