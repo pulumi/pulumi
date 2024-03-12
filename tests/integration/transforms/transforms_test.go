@@ -46,7 +46,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			optionalPrefix := res.Inputs["prefix"]
 			assert.NotNil(t, optionalPrefix)
-			assert.Equal(t, "stackDefault", optionalPrefix.(string))
+			assert.Equal(t, "stackDefault", optionalPrefix)
 			length := res.Inputs["length"]
 			assert.NotNil(t, length)
 			// length should be secret
@@ -65,7 +65,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 			optionalPrefix := res.Inputs["prefix"]
 			assert.NotNil(t, optionalPrefix)
-			assert.Equal(t, "stackDefault", optionalPrefix.(string))
+			assert.Equal(t, "stackDefault", optionalPrefix)
 		}
 		// "res5" should have mutated the length
 		if res.URN.Name() == "res5" {
@@ -73,7 +73,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			length := res.Inputs["length"]
 			assert.NotNil(t, length)
-			assert.Equal(t, 20.0, length.(float64))
+			assert.Equal(t, 20.0, length)
 		}
 	}
 	assert.True(t, foundRes1)
