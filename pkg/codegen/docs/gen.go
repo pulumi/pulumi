@@ -1030,7 +1030,6 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
-				// fmt.Printf("isExternal: %v \n\n", isExternalReference(typ, mod.pkg))
 				typs = append(typs, docNestedType{
 					Name:       wbr(name),
 					AnchorID:   strings.ToLower(name),
@@ -1141,7 +1140,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 		isExt, _ := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg)
 		if isExt {
 			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
-			comment = fmt.Sprintf("This type is defined in the [%s](https://pulumi.com/registry/packages/%s) package.", strings.Title(packageName), packageName)
+			comment = fmt.Sprintf("This type is defined in the [%s](https://pulumi.com/registry/packages/%s) package.", getPackageDisplayName(packageName), packageName)
 			link = ""
 		}
 
