@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdk/nodejs
-  description: Replace glob with fdir to avoid an indirect dependency on inflight.
+  description: Replace glob with fdir to avoid an indirect dependency on inflight
