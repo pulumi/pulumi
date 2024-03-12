@@ -37,13 +37,25 @@ from google.protobuf import struct_pb2
 from .. import _types, log
 from .. import urn as urn_util
 from ..output import Input, Output
-from ..runtime.proto import alias_pb2, resource_pb2, source_pb2
+from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from .rpc import _expand_dependencies
-from .settings import _get_rpc_manager, handle_grpc_error
+from .settings import (
+    _get_callbacks,
+    _get_rpc_manager,
+    _sync_monitor_supports_transforms,
+    handle_grpc_error,
+)
 
 if TYPE_CHECKING:
-    from .. import Alias, CustomResource, Inputs, ProviderResource, Resource
+    from .. import (
+        Alias,
+        CustomResource,
+        Inputs,
+        ProviderResource,
+        Resource,
+        CustomTimeouts,
+    )
     from ..resource import ResourceOptions
 
 
@@ -144,6 +156,14 @@ async def prepare_aliases(
     return aliases
 
 
+async def _create_provider_ref(provider: "ProviderResource") -> str:
+    # Wait for the provider to resolve and construct a provider reference from it.
+    # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
+    urn = await provider.urn.future()
+    pid = await provider.id.future() or rpc.UNKNOWN
+    return f"{urn}::{pid}"
+
+
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 # pylint: disable=too-many-locals
 async def prepare_resource(
@@ -203,13 +223,7 @@ async def prepare_resource(
         if pkg is not None and pkg == opts.provider.package:
             send_provider = True
     if send_provider and opts is not None and opts.provider is not None:
-        provider = opts.provider
-
-        # If we were given a provider, wait for it to resolve and construct a provider reference from it.
-        # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
-        provider_urn = await provider.urn.future()
-        provider_id = await provider.id.future() or rpc.UNKNOWN
-        provider_ref = f"{provider_urn}::{provider_id}"
+        provider_ref = await _create_provider_ref(opts.provider)
 
     # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
     # resolved provider refs.
@@ -217,12 +231,7 @@ async def prepare_resource(
     if (remote or not custom) and opts is not None:
         providers = convert_providers(opts.provider, opts.providers)
         for name, provider in providers.items():
-            # If we were given providers, wait for them to resolve and construct provider references from them.
-            # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
-            urn = await provider.urn.future()
-            id_ = await provider.id.future() or rpc.UNKNOWN
-            ref = f"{urn}::{id_}"
-            provider_refs[name] = ref
+            provider_refs[name] = await _create_provider_ref(provider)
 
     dependencies: Set[str] = set(explicit_urn_dependencies)
     property_dependencies: Dict[str, List[str]] = {}
@@ -808,6 +817,31 @@ def read_resource(
     asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())
 
 
+def _create_custom_timeouts(
+    custom_timeouts: "CustomTimeouts",
+) -> "resource_pb2.RegisterResourceRequest.CustomTimeouts":
+    result = resource_pb2.RegisterResourceRequest.CustomTimeouts()
+    # It could be an actual CustomTimeouts object.
+    if known_types.is_custom_timeouts(custom_timeouts):
+        if custom_timeouts.create is not None:
+            result.create = custom_timeouts.create
+        if custom_timeouts.update is not None:
+            result.update = custom_timeouts.update
+        if custom_timeouts.delete is not None:
+            result.delete = custom_timeouts.delete
+    # Or, it could be a workaround passing in a dict.
+    elif isinstance(custom_timeouts, dict):
+        if "create" in custom_timeouts:
+            result.create = custom_timeouts["create"]
+        if "update" in custom_timeouts:
+            result.update = custom_timeouts["update"]
+        if "delete" in custom_timeouts:
+            result.delete = custom_timeouts["delete"]
+    else:
+        raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
+    return result
+
+
 def register_resource(
     res: "Resource",
     ty: str,
@@ -875,6 +909,18 @@ def register_resource(
             resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
+            callbacks: List[callback_pb2.Callback] = []
+            if opts.x_transforms:
+                if not _sync_monitor_supports_transforms():
+                    raise Exception(
+                        "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
+                    )
+                callback_server = _get_callbacks()
+                if callback_server is None:
+                    raise Exception("Callback server not initialized")
+                for transform in opts.x_transforms:
+                    callbacks.append(callback_server.register_transform(transform))
+
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
                 property_dependencies[key] = (
@@ -892,27 +938,7 @@ def register_resource(
             # Translate the CustomTimeouts object.
             custom_timeouts = None
             if opts.custom_timeouts is not None:
-                custom_timeouts = resource_pb2.RegisterResourceRequest.CustomTimeouts()
-                # It could be an actual CustomTimeouts object.
-                if known_types.is_custom_timeouts(opts.custom_timeouts):
-                    if opts.custom_timeouts.create is not None:
-                        custom_timeouts.create = opts.custom_timeouts.create
-                    if opts.custom_timeouts.update is not None:
-                        custom_timeouts.update = opts.custom_timeouts.update
-                    if opts.custom_timeouts.delete is not None:
-                        custom_timeouts.delete = opts.custom_timeouts.delete
-                # Or, it could be a workaround passing in a dict.
-                elif isinstance(opts.custom_timeouts, dict):
-                    if "create" in opts.custom_timeouts:
-                        custom_timeouts.create = opts.custom_timeouts["create"]
-                    if "update" in opts.custom_timeouts:
-                        custom_timeouts.update = opts.custom_timeouts["update"]
-                    if "delete" in opts.custom_timeouts:
-                        custom_timeouts.delete = opts.custom_timeouts["delete"]
-                else:
-                    raise Exception(
-                        "Expected custom_timeouts to be a CustomTimeouts object"
-                    )
+                custom_timeouts = _create_custom_timeouts(opts.custom_timeouts)
 
             if (
                 resolver.deleted_with_urn
@@ -963,6 +989,7 @@ def register_resource(
                 retainOnDelete=opts.retain_on_delete or False,
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
+                transforms=callbacks,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1149,7 +1176,8 @@ def convert_providers(
 
 
 async def _resolve_depends_on_urns(
-    options: "ResourceOptions", from_resource: "Resource"
+    options: "ResourceOptions",
+    from_resource: Optional["Resource"] = None,
 ) -> Set[str]:
     """
     Resolves the set of all dependent resources implied by
