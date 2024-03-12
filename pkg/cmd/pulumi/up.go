@@ -530,7 +530,7 @@ func newUpCmd() *cobra.Command {
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
-		"Config to use during the update")
+		"Config to use during the update and save to the stack config file")
 	cmd.PersistentFlags().BoolVar(
 		&path, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
