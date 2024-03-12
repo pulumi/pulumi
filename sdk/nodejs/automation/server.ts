@@ -107,7 +107,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 }
 
                 if (errorSet.size !== 0 || log.hasErrors()) {
-                    throw new Error("One or more errors occurred");
+                    throw new Error('One or more errors occurred: ${log.errorMessages.join(", ")};  ${errorSet}');
                 }
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(`unknown error ${e}`);

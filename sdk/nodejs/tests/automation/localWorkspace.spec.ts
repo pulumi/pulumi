@@ -621,7 +621,7 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackNames = Array.from(Array(10).keys()).map((_) =>
+        const stackNames = Array.from(Array(100).keys()).map((_) =>
             fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
         );
 
