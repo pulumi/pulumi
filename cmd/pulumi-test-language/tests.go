@@ -170,7 +170,9 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
 
 					// Make sure we can assert the resource names in a consistent order
-					sort.Slice(snap.Resources[2:3], func(i, j int) bool {
+					sort.Slice(snap.Resources[2:4], func(i, j int) bool {
+						i = i + 2
+						j = j + 2
 						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
 					})
 
