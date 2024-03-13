@@ -152,7 +152,6 @@ func getComponentN(input string, delimiter string, index int, open bool) string 
 	}
 	nameDelimiters := 0
 	partStart := 0
-	partEnd := len(input)
 	for i := 0; i < len(input); i++ {
 		if strings.HasPrefix(input[i:], delimiter) {
 			nameDelimiters++
@@ -164,12 +163,13 @@ func getComponentN(input string, delimiter string, index int, open bool) string 
 				}
 				i--
 			} else if nameDelimiters > index {
-				partEnd = i
-				break
+				return input[partStart:i]
+			} else {
+				i += len(delimiter) - 1
 			}
 		}
 	}
-	return input[partStart:partEnd]
+	return input[partStart:]
 }
 
 // Type returns the resource type part of a URN

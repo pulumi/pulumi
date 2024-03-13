@@ -88,6 +88,135 @@ func TestIsValid(t *testing.T) {
 	}
 }
 
+func TestComponentAccess(t *testing.T) {
+	t.Parallel()
+
+	type ComponentTestCase struct {
+		urn      string
+		expected string
+	}
+
+	t.Run("Stack component", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []ComponentTestCase{
+			{urn: "urn:pulumi:stack::test::pulumi:pulumi:Stack::test-test", expected: "stack"},
+			{urn: "urn:pulumi:stack::::::", expected: "stack"},
+			{urn: "urn:pulumi:::test::pulumi:pulumi:Stack::test-test", expected: ""},
+			{urn: "urn:pulumi:::::::", expected: ""},
+		}
+
+		for _, test := range cases {
+			urn, err := ParseURN(test.urn)
+			require.NoError(t, err)
+			require.Equal(t, test.urn, string(urn))
+
+			assert.Equalf(t, tokens.QName(test.expected), urn.Stack(),
+				"Expecting stack to be '%v' from urn '%v'", test.expected, test.urn)
+		}
+	})
+
+	t.Run("Project component", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []ComponentTestCase{
+			{urn: "urn:pulumi:stack::proj::pulumi:pulumi:Stack::test-test", expected: "proj"},
+			{urn: "urn:pulumi:::proj::::", expected: "proj"},
+			{urn: "urn:pulumi:stack::::pulumi:pulumi:Stack::test-test", expected: ""},
+			{urn: "urn:pulumi:::::::", expected: ""},
+		}
+
+		for _, test := range cases {
+			urn, err := ParseURN(test.urn)
+			require.NoError(t, err)
+			require.Equal(t, test.urn, string(urn))
+
+			assert.Equalf(t, tokens.PackageName(test.expected), urn.Project(),
+				"Expecting project to be '%v' from urn '%v'", test.expected, test.urn)
+		}
+	})
+
+	t.Run("QualifiedType component", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []ComponentTestCase{
+			{urn: "urn:pulumi:stack::proj::qualified$type::test-test", expected: "qualified$type"},
+			{urn: "urn:pulumi:::::qualified$type::", expected: "qualified$type"},
+			{urn: "urn:pulumi:stack::proj::::test-test", expected: ""},
+			{urn: "urn:pulumi:::::::", expected: ""},
+		}
+
+		for _, test := range cases {
+			urn, err := ParseURN(test.urn)
+			require.NoError(t, err)
+			require.Equal(t, test.urn, string(urn))
+
+			assert.Equalf(t, tokens.Type(test.expected), urn.QualifiedType(),
+				"Expecting qualified type to be '%v' from urn '%v'", test.expected, test.urn)
+		}
+	})
+
+	t.Run("Type component", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []ComponentTestCase{
+			{urn: "urn:pulumi:stack::proj::very$qualified$type::test-test", expected: "type"},
+			{urn: "urn:pulumi:::::very$qualified$type::", expected: "type"},
+			{urn: "urn:pulumi:stack::proj::qualified$type::test-test", expected: "type"},
+			{urn: "urn:pulumi:::::qualified$type::", expected: "type"},
+			{urn: "urn:pulumi:stack::proj::qualified-type::test-test", expected: "qualified-type"},
+			{urn: "urn:pulumi:::::qualified-type::", expected: "qualified-type"},
+			{urn: "urn:pulumi:stack::proj::::test-test", expected: ""},
+			{urn: "urn:pulumi:::::::", expected: ""},
+		}
+
+		for _, test := range cases {
+			urn, err := ParseURN(test.urn)
+			require.NoError(t, err)
+			require.Equal(t, test.urn, string(urn))
+
+			assert.Equalf(t, tokens.Type(test.expected), urn.Type(),
+				"Expecting type to be '%v' from urn '%v'", test.expected, test.urn)
+		}
+	})
+
+	t.Run("Name component", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []ComponentTestCase{
+			{urn: "urn:pulumi:stack::proj::qualified$type::name", expected: "name"},
+			{urn: "urn:pulumi:::::::name", expected: "name"},
+			{urn: "urn:pulumi:stack::proj::qualified$type::", expected: ""},
+			{urn: "urn:pulumi:::::::", expected: ""},
+			{
+				urn:      "urn:pulumi::stack::proj::type::a-longer-name",
+				expected: "a-longer-name",
+			},
+			{
+				urn:      "urn:pulumi::stack::proj::type::a name with spaces",
+				expected: "a name with spaces",
+			},
+			{
+				urn:      "urn:pulumi::stack::proj::type::a-name-with::a-name-separator",
+				expected: "a-name-with::a-name-separator",
+			},
+			{
+				urn:      "urn:pulumi::stack::proj::type::a-name-with::many::name::separators",
+				expected: "a-name-with::many::name::separators",
+			},
+		}
+
+		for _, test := range cases {
+			urn, err := ParseURN(test.urn)
+			require.NoError(t, err)
+			require.Equal(t, test.urn, string(urn))
+
+			assert.Equalf(t, test.expected, urn.Name(),
+				"Expecting name to be '%v' from urn '%v'", test.expected, test.urn)
+		}
+	})
+}
+
 func TestParseURN(t *testing.T) {
 	t.Parallel()
 
@@ -206,28 +335,4 @@ func TestRename(t *testing.T) {
 	assert.Equal(t,
 		NewURN(stack, proj, parentType, typ, "a-better-resource"),
 		renamed)
-}
-
-func TestName(t *testing.T) {
-	t.Parallel()
-
-	stack := tokens.QName("stack")
-	proj := tokens.PackageName("project")
-	parentType := tokens.Type("parent$type")
-	typ := tokens.Type("bang:boom/fizzle:MajorResource")
-
-	names := []string{
-		"test",
-		"a-longer-name",
-		"a name with spaces",
-		"a-name-with::a-name-separator",
-		"a-name-with::many::name::separators",
-	}
-
-	for _, name := range names {
-		urn := NewURN(stack, proj, parentType, typ, name)
-		require.NotEmpty(t, urn)
-
-		assert.Equal(t, name, urn.Name())
-	}
 }
