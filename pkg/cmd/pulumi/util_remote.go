@@ -246,7 +246,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	if args.gitBranch != "" && args.gitCommit != "" {
 		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
 	}
-	if args.gitBranch == "" && args.gitCommit == "" {
+	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
 		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required"))
 	}
 	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
