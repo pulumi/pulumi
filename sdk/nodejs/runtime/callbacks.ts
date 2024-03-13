@@ -44,7 +44,7 @@ import { deserializeProperties, serializeProperties, unknownValue } from "./rpc"
 /** @internal */
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
-type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
+type CallbackFunction = (args: Uint8Array, abort: AbortSignal) => Promise<jspb.Message>;
 
 export interface ICallbackServer {
     registerTransform(callback: ResourceTransform): Promise<callproto.Callback>;
@@ -130,6 +130,12 @@ export class CallbackServer implements ICallbackServer {
         call: grpc.ServerUnaryCall<CallbackInvokeRequest, CallbackInvokeResponse>,
         callback: grpc.sendUnaryData<CallbackInvokeResponse>,
     ) {
+        // Hook cancellation
+        const abort = new AbortController();
+        call.on("cancelled", () => {
+            abort.abort();
+        });
+
         const req = call.request;
 
         const cb = this._callbacks.get(req.getToken());
@@ -142,7 +148,7 @@ export class CallbackServer implements ICallbackServer {
         }
 
         try {
-            const response = await cb(req.getRequest_asU8());
+            const response = await cb(req.getRequest_asU8(), abort.signal);
             const resp = new CallbackInvokeResponse();
             resp.setResponse(response.serializeBinary());
             callback(null, resp);
@@ -159,7 +165,7 @@ export class CallbackServer implements ICallbackServer {
     }
 
     async registerTransform(transform: ResourceTransform): Promise<callproto.Callback> {
-        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+        const cb = async (bytes: Uint8Array, abort: AbortSignal): Promise<jspb.Message> => {
             const request = resproto.TransformRequest.deserializeBinary(bytes);
 
             let opts = request.getOptions() || new resproto.TransformResourceOptions();
@@ -233,7 +239,7 @@ export class CallbackServer implements ICallbackServer {
                 opts: ropts,
             };
 
-            const result = await transform(args);
+            const result = await transform(args, abort);
 
             const response = new resproto.TransformResponse();
             if (result === undefined) {
@@ -352,9 +358,9 @@ export class CallbackServer implements ICallbackServer {
 
             return response;
         };
-        const tryCb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+        const tryCb = async (bytes: Uint8Array, abort: AbortSignal): Promise<jspb.Message> => {
             try {
-                return await cb(bytes);
+                return await cb(bytes, abort);
             } catch (e) {
                 throw new Error(`transform failed: ${e}`);
             }

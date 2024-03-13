@@ -771,6 +771,7 @@ export type ResourceTransformation = (args: ResourceTransformationArgs) => Resou
  */
 export type ResourceTransform = (
     args: ResourceTransformArgs,
+    abort?: AbortSignal, // Technically this will always be defined, but it breaks sxs types if we type it as such.
 ) => Promise<ResourceTransformResult | undefined> | ResourceTransformResult | undefined;
 
 /**
