@@ -1435,7 +1435,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
 	if len(replaceOnChangesProps) > 0 {
-		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps, PyName)
+		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+			func(x string) string { return x })
 		fmt.Fprintf(w, `        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, strings.Join(replaceOnChangesStrings, `", "`))
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n")
 	}

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/python
+  description: Replace-on-changes values should be camelCased not kebab_cased

@@ -65,8 +65,8 @@ class NoRecursive(pulumi.CustomResource):
             __props__ = NoRecursiveArgs.__new__(NoRecursiveArgs)
 
             __props__.__dict__["rec"] = None
-            __props__.__dict__["replace"] = None
-        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["replace"])
+            __props__.__dict__["replace_me"] = None
+        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["replaceMe"])
         opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)
         super(NoRecursive, __self__).__init__(
             'example::NoRecursive',
@@ -91,7 +91,7 @@ class NoRecursive(pulumi.CustomResource):
         __props__ = NoRecursiveArgs.__new__(NoRecursiveArgs)
 
         __props__.__dict__["rec"] = None
-        __props__.__dict__["replace"] = None
+        __props__.__dict__["replace_me"] = None
         return NoRecursive(resource_name, opts=opts, __props__=__props__)
 
     @property
@@ -100,7 +100,7 @@ class NoRecursive(pulumi.CustomResource):
         return pulumi.get(self, "rec")
 
     @property
-    @pulumi.getter
-    def replace(self) -> pulumi.Output[Optional[str]]:
-        return pulumi.get(self, "replace")
+    @pulumi.getter(name="replaceMe")
+    def replace_me(self) -> pulumi.Output[Optional[str]]:
+        return pulumi.get(self, "replace_me")
 
