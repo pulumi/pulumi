@@ -108,8 +108,7 @@ func (urn URN) IsValid() bool {
 		return false
 	}
 
-	split := strings.SplitN(string(urn), URNNameDelimiter, 4)
-	return len(split) == 4
+	return strings.Count(string(urn), URNNameDelimiter) >= 3
 	// TODO: We should validate the stack, project and type tokens here, but currently those fields might not
 	// actually be "valid" (e.g. spaces in project names, custom component types, etc).
 }
@@ -123,31 +122,68 @@ func (urn URN) URNName() string {
 
 // Stack returns the resource stack part of a URN.
 func (urn URN) Stack() tokens.QName {
-	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[0])
+	return tokens.QName(getComponent(urn.URNName(), URNNameDelimiter, 0))
 }
 
 // Project returns the project name part of a URN.
 func (urn URN) Project() tokens.PackageName {
-	return tokens.PackageName(strings.Split(urn.URNName(), URNNameDelimiter)[1])
+	return tokens.PackageName(getComponent(urn.URNName(), URNNameDelimiter, 1))
 }
 
 // QualifiedType returns the resource type part of a URN including the parent type
 func (urn URN) QualifiedType() tokens.Type {
-	return tokens.Type(strings.Split(urn.URNName(), URNNameDelimiter)[2])
+	return tokens.Type(getComponent(urn.URNName(), URNNameDelimiter, 2))
+}
+
+// Gets the n'th delimited component of a string.
+//
+// This is used instead of the `strings.Split(string, delimiter)[index]` pattern which
+// is inefficient.
+func getComponent(input string, delimiter string, index int) string {
+	return getComponentN(input, delimiter, index, false)
+}
+
+// This gets the n'th delimited compnent of a string, and optionally the rest of the string
+//
+// If the *open* parameter is true, then this will return everything after the n-1th delimiter
+func getComponentN(input string, delimiter string, index int, open bool) string {
+	if open && index == 0 {
+		return input
+	}
+	nameDelimiters := 0
+	partStart := 0
+	partEnd := len(input)
+	for i := 0; i < len(input); i++ {
+		if strings.HasPrefix(input[i:], delimiter) {
+			nameDelimiters++
+			if nameDelimiters == index {
+				i += len(delimiter)
+				partStart = i
+				if open {
+					return input[partStart:]
+				}
+				i--
+			} else if nameDelimiters > index {
+				partEnd = i
+				break
+			}
+		}
+	}
+	return input[partStart:partEnd]
 }
 
 // Type returns the resource type part of a URN
 func (urn URN) Type() tokens.Type {
-	qualifiedType := strings.Split(urn.URNName(), URNNameDelimiter)[2]
-	types := strings.Split(qualifiedType, URNTypeDelimiter)
-	lastType := types[len(types)-1]
-	return tokens.Type(lastType)
+	name := urn.URNName()
+	qualifiedType := getComponent(name, URNNameDelimiter, 2)
+
+	lastTypeDelimiter := strings.LastIndex(qualifiedType, URNTypeDelimiter)
+	return tokens.Type(qualifiedType[lastTypeDelimiter+1:])
 }
 
 // Name returns the resource name part of a URN.
 func (urn URN) Name() string {
-	split := strings.SplitN(urn.URNName(), URNNameDelimiter, 4)
-	return split[3]
+	return getComponentN(urn.URNName(), URNNameDelimiter, 3, true)
 }
 
 // Returns a new URN with an updated name part

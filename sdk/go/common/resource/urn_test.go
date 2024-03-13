@@ -15,9 +15,12 @@
 package resource
 
 import (
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -83,5 +86,149 @@ func TestIsValid(t *testing.T) {
 	for _, str := range goodUrns {
 		urn := URN(str)
 		assert.True(t, urn.IsValid(), "IsValid expected to be true: %v", urn)
+	}
+}
+
+func TestParseURN(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Positive Tests", func(t *testing.T) {
+		t.Parallel()
+
+		goodUrns := []string{
+			"urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+			"urn:pulumi:stack-name::project-name::my:customtype$aws:s3/bucket:Bucket::bob",
+			"urn:pulumi:stack::project::type::",
+			"urn:pulumi:stack::project::type::some really ::^&\n*():: crazy name",
+			"urn:pulumi:stack::project with whitespace::type::some name",
+		}
+		for _, str := range goodUrns {
+			urn, err := ParseURN(str)
+			assert.NoErrorf(t, err, "Expecting %v to parse as a good urn", str)
+			assert.NotEmptyf(t, urn, "Expecting non empty urn parsing %v", str)
+		}
+	})
+
+	t.Run("Negative Tests", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Empty String", func(t *testing.T) {
+			t.Parallel()
+
+			urn, err := ParseURN("")
+			assert.ErrorContains(t, err, "missing required URN")
+			assert.Empty(t, urn)
+		})
+
+		t.Run("Invalid URNs", func(t *testing.T) {
+			t.Parallel()
+
+			invalidUrns := []string{
+				"URN:PULUMI:TEST::TEST::PULUMI:PULUMI:STACK::TEST-TEST",
+				"urn:not-pulumi:stack-name::project-name::my:customtype$aws:s3/bucket:Bucket::bob",
+				"The quick brown fox",
+				"urn:pulumi:stack::too-few-elements",
+			}
+			for _, str := range invalidUrns {
+				urn, err := ParseURN(str)
+				assert.ErrorContainsf(t, err, "invalid URN", "Expecting %v to parse as an invalid urn")
+				assert.Empty(t, urn)
+			}
+		})
+	})
+}
+
+func TestParseOptionalURN(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Positive Tests", func(t *testing.T) {
+		t.Parallel()
+
+		goodUrns := []string{
+			"urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+			"urn:pulumi:stack-name::project-name::my:customtype$aws:s3/bucket:Bucket::bob",
+			"urn:pulumi:stack::project::type::",
+			"urn:pulumi:stack::project::type::some really ::^&\n*():: crazy name",
+			"urn:pulumi:stack::project with whitespace::type::some name",
+			"",
+		}
+		for _, str := range goodUrns {
+			urn, err := ParseOptionalURN(str)
+			assert.NoErrorf(t, err, "Expecting '%v' to parse as a good urn", str)
+			assert.Equal(t, str, string(urn))
+		}
+	})
+
+	t.Run("Invalid URNs", func(t *testing.T) {
+		t.Parallel()
+
+		invalidUrns := []string{
+			"URN:PULUMI:TEST::TEST::PULUMI:PULUMI:STACK::TEST-TEST",
+			"urn:not-pulumi:stack-name::project-name::my:customtype$aws:s3/bucket:Bucket::bob",
+			"The quick brown fox",
+			"urn:pulumi:stack::too-few-elements",
+		}
+		for _, str := range invalidUrns {
+			urn, err := ParseOptionalURN(str)
+			assert.ErrorContainsf(t, err, "invalid URN", "Expecting %v to parse as an invalid urn")
+			assert.Empty(t, urn)
+		}
+	})
+}
+
+func TestQuote(t *testing.T) {
+	t.Parallel()
+
+	urn, err := ParseURN("urn:pulumi:test::test::pulumi:pulumi:Stack::test-test")
+	require.NoError(t, err)
+	require.NotEmpty(t, urn)
+
+	expected := "'urn:pulumi:test::test::pulumi:pulumi:Stack::test-test'"
+	if runtime.GOOS == "windows" {
+		expected = "\"urn:pulumi:test::test::pulumi:pulumi:Stack::test-test\""
+	}
+
+	assert.Equal(t, expected, urn.Quote())
+}
+
+func TestRename(t *testing.T) {
+	t.Parallel()
+
+	stack := tokens.QName("stack")
+	proj := tokens.PackageName("foo/bar/baz")
+	parentType := tokens.Type("parent$type")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+	name := "a-swell-resource"
+
+	urn := NewURN(stack, proj, parentType, typ, name)
+	renamed := urn.Rename("a-better-resource")
+
+	assert.NotEqual(t, urn, renamed)
+	assert.Condition(t, func() bool {
+		return strings.HasSuffix(string(renamed), "::a-better-resource")
+	})
+}
+
+func TestName(t *testing.T) {
+	t.Parallel()
+
+	stack := tokens.QName("stack")
+	proj := tokens.PackageName("project")
+	parentType := tokens.Type("parent$type")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+
+	names := []string{
+		"test",
+		"a-longer-name",
+		"a name with spaces",
+		"a-name-with::a-name-separator",
+		"a-name-with::many::name::separators",
+	}
+
+	for _, name := range names {
+		urn := NewURN(stack, proj, parentType, typ, name)
+		require.NotEmpty(t, urn)
+
+		assert.Equal(t, name, urn.Name())
 	}
 }
