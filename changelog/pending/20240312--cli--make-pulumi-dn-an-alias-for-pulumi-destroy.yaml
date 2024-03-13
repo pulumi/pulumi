@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Make "pulumi dn" an alias for "pulumi destroy"
