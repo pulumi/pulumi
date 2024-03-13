@@ -822,7 +822,7 @@ func (display *ProgressDisplay) processTick() {
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
-	// Take the write lock here because this can write the the eventUrnToResourceRow map
+	// Take the write lock here because this can write the eventUrnToResourceRow map
 	display.m.Lock()
 	defer display.m.Unlock()
 
