@@ -16,7 +16,6 @@ package resource
 
 import (
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -105,7 +104,7 @@ func TestParseURN(t *testing.T) {
 		for _, str := range goodUrns {
 			urn, err := ParseURN(str)
 			assert.NoErrorf(t, err, "Expecting %v to parse as a good urn", str)
-			assert.NotEmptyf(t, urn, "Expecting non empty urn parsing %v", str)
+			assert.Equal(t, str, string(urn), "A parsed URN should be the same as the string that it was parsed from")
 		}
 	})
 
@@ -204,9 +203,9 @@ func TestRename(t *testing.T) {
 	renamed := urn.Rename("a-better-resource")
 
 	assert.NotEqual(t, urn, renamed)
-	assert.Condition(t, func() bool {
-		return strings.HasSuffix(string(renamed), "::a-better-resource")
-	})
+	assert.Equal(t,
+		NewURN(stack, proj, parentType, typ, "a-better-resource"),
+		renamed)
 }
 
 func TestName(t *testing.T) {
