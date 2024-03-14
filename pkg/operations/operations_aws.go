@@ -120,6 +120,7 @@ const (
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	//exhaustive:ignore
 	switch state.Type {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
