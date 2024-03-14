@@ -14,6 +14,8 @@
 
 package pulumi
 
+import "golang.org/x/net/context"
+
 // XResourceTransformArgs is the argument bag passed to a resource transform.
 //
 // Experimental.
@@ -50,4 +52,4 @@ type XResourceTransformResult struct {
 // this indicates that the resource will not be transformed.
 //
 // Experimental.
-type XResourceTransform func(*XResourceTransformArgs) *XResourceTransformResult
+type XResourceTransform func(context.Context, *XResourceTransformArgs) *XResourceTransformResult
