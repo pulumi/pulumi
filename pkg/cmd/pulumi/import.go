@@ -633,8 +633,8 @@ func newImportCmd() *cobra.Command {
 			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n" +
 			"\n" +
-			"A resource can define a logical name as well as it's name for the name table.\n" +
-			"If a logical name is given that will be used the name the resource in the Pulumi state.\n" +
+			"A resource can define a logical name as well as its name for the name table.\n" +
+			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
 			"\n" +
 			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
 			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
