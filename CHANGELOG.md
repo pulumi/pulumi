@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.110.0 (2024-03-14)
+
+
+### Features
+
+- [cli] Make "pulumi dn" an alias for "pulumi destroy"
+  [#15650](https://github.com/pulumi/pulumi/pull/15650)
+
+- [yaml] Update yaml to v1.6.0
+  [#15661](https://github.com/pulumi/pulumi/pull/15661)
+
+- [sdk/python] Add experimental support to the Python SDK for the new transforms system
+  [#15376](https://github.com/pulumi/pulumi/pull/15376)
+
+
+### Bug Fixes
+
+- [cli/state] Add `--yes` to `state upgrade`
+  [#15648](https://github.com/pulumi/pulumi/pull/15648)
+
+- [programgen/{dotnet,go,python}] Fix panic when generating programs for MLC packages where they include type references to external packages
+  [#15605](https://github.com/pulumi/pulumi/pull/15605)
+
+- [programgen/go] Fix optional primitive values being derefrenced
+  [#15592](https://github.com/pulumi/pulumi/pull/15592)
+
+- [sdk/go] Await output properties from Construct/Call before closing the Context
+  [#15611](https://github.com/pulumi/pulumi/pull/15611)
+
+- [sdk/nodejs] Fix codepaths computation when working dir is nested relative to package.json
+  [#15601](https://github.com/pulumi/pulumi/pull/15601)
+
+- [sdk/nodejs] Replace glob with fdir to avoid an indirect dependency on inflight
+  [#15617](https://github.com/pulumi/pulumi/pull/15617)
+
+- [sdkgen/python] Make replace-on-changes values camelCased not kebab_cased
+  [#15666](https://github.com/pulumi/pulumi/pull/15666)
+
 ## 3.109.0 (2024-03-07)
 
 

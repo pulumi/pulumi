@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet,go,python
-  description: Fix panic when generating programs for MLC packages where they include type references to external packages
