@@ -4230,6 +4230,7 @@ func TestTimestampTracking(t *testing.T) {
 		assert.Equal(t, creationTimes[resource.URN], *resource.Created,
 			"created time changed: %v", resource.URN)
 
+		//exhaustive:ignore
 		switch resource.Type {
 		case "pkgA:m:typA":
 			tz, _ := resource.Modified.Zone()

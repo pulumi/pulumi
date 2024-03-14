@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package urn_test
 
 import (
 	"runtime"
@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -32,7 +33,7 @@ func TestURNRoundTripping(t *testing.T) {
 	parentType := tokens.Type("")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
 	name := "a-swell-resource"
-	urn := NewURN(stack, proj, parentType, typ, name)
+	urn := urn.New(stack, proj, parentType, typ, name)
 	assert.Equal(t, stack, urn.Stack())
 	assert.Equal(t, proj, urn.Project())
 	assert.Equal(t, typ, urn.QualifiedType())
@@ -48,7 +49,7 @@ func TestURNRoundTripping2(t *testing.T) {
 	parentType := tokens.Type("parent$type")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
 	name := "a-swell-resource"
-	urn := NewURN(stack, proj, parentType, typ, name)
+	urn := urn.New(stack, proj, parentType, typ, name)
 	assert.Equal(t, stack, urn.Stack())
 	assert.Equal(t, proj, urn.Project())
 	assert.Equal(t, tokens.Type("parent$type$bang:boom/fizzle:MajorResource"), urn.QualifiedType())
@@ -64,7 +65,7 @@ func TestURNRoundTripping3(t *testing.T) {
 	parentType := tokens.Type("parent$type")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
 	name := "a-swell-resource::with_awkward$names"
-	urn := NewURN(stack, proj, parentType, typ, name)
+	urn := urn.New(stack, proj, parentType, typ, name)
 	assert.Equal(t, stack, urn.Stack())
 	assert.Equal(t, proj, urn.Project())
 	assert.Equal(t, tokens.Type("parent$type$bang:boom/fizzle:MajorResource"), urn.QualifiedType())
@@ -83,7 +84,7 @@ func TestIsValid(t *testing.T) {
 		"urn:pulumi:stack::project with whitespace::type::some name",
 	}
 	for _, str := range goodUrns {
-		urn := URN(str)
+		urn := urn.URN(str)
 		assert.True(t, urn.IsValid(), "IsValid expected to be true: %v", urn)
 	}
 }
@@ -107,7 +108,7 @@ func TestComponentAccess(t *testing.T) {
 		}
 
 		for _, test := range cases {
-			urn, err := ParseURN(test.urn)
+			urn, err := urn.Parse(test.urn)
 			require.NoError(t, err)
 			require.Equal(t, test.urn, string(urn))
 
@@ -127,7 +128,7 @@ func TestComponentAccess(t *testing.T) {
 		}
 
 		for _, test := range cases {
-			urn, err := ParseURN(test.urn)
+			urn, err := urn.Parse(test.urn)
 			require.NoError(t, err)
 			require.Equal(t, test.urn, string(urn))
 
@@ -147,7 +148,7 @@ func TestComponentAccess(t *testing.T) {
 		}
 
 		for _, test := range cases {
-			urn, err := ParseURN(test.urn)
+			urn, err := urn.Parse(test.urn)
 			require.NoError(t, err)
 			require.Equal(t, test.urn, string(urn))
 
@@ -171,7 +172,7 @@ func TestComponentAccess(t *testing.T) {
 		}
 
 		for _, test := range cases {
-			urn, err := ParseURN(test.urn)
+			urn, err := urn.Parse(test.urn)
 			require.NoError(t, err)
 			require.Equal(t, test.urn, string(urn))
 
@@ -207,7 +208,7 @@ func TestComponentAccess(t *testing.T) {
 		}
 
 		for _, test := range cases {
-			urn, err := ParseURN(test.urn)
+			urn, err := urn.Parse(test.urn)
 			require.NoError(t, err)
 			require.Equal(t, test.urn, string(urn))
 
@@ -217,7 +218,7 @@ func TestComponentAccess(t *testing.T) {
 	})
 }
 
-func TestParseURN(t *testing.T) {
+func TestURNParse(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Positive Tests", func(t *testing.T) {
@@ -231,7 +232,7 @@ func TestParseURN(t *testing.T) {
 			"urn:pulumi:stack::project with whitespace::type::some name",
 		}
 		for _, str := range goodUrns {
-			urn, err := ParseURN(str)
+			urn, err := urn.Parse(str)
 			assert.NoErrorf(t, err, "Expecting %v to parse as a good urn", str)
 			assert.Equal(t, str, string(urn), "A parsed URN should be the same as the string that it was parsed from")
 		}
@@ -243,7 +244,7 @@ func TestParseURN(t *testing.T) {
 		t.Run("Empty String", func(t *testing.T) {
 			t.Parallel()
 
-			urn, err := ParseURN("")
+			urn, err := urn.Parse("")
 			assert.ErrorContains(t, err, "missing required URN")
 			assert.Empty(t, urn)
 		})
@@ -258,7 +259,7 @@ func TestParseURN(t *testing.T) {
 				"urn:pulumi:stack::too-few-elements",
 			}
 			for _, str := range invalidUrns {
-				urn, err := ParseURN(str)
+				urn, err := urn.Parse(str)
 				assert.ErrorContainsf(t, err, "invalid URN", "Expecting %v to parse as an invalid urn")
 				assert.Empty(t, urn)
 			}
@@ -281,7 +282,7 @@ func TestParseOptionalURN(t *testing.T) {
 			"",
 		}
 		for _, str := range goodUrns {
-			urn, err := ParseOptionalURN(str)
+			urn, err := urn.ParseOptional(str)
 			assert.NoErrorf(t, err, "Expecting '%v' to parse as a good urn", str)
 			assert.Equal(t, str, string(urn))
 		}
@@ -297,7 +298,7 @@ func TestParseOptionalURN(t *testing.T) {
 			"urn:pulumi:stack::too-few-elements",
 		}
 		for _, str := range invalidUrns {
-			urn, err := ParseOptionalURN(str)
+			urn, err := urn.ParseOptional(str)
 			assert.ErrorContainsf(t, err, "invalid URN", "Expecting %v to parse as an invalid urn")
 			assert.Empty(t, urn)
 		}
@@ -307,7 +308,7 @@ func TestParseOptionalURN(t *testing.T) {
 func TestQuote(t *testing.T) {
 	t.Parallel()
 
-	urn, err := ParseURN("urn:pulumi:test::test::pulumi:pulumi:Stack::test-test")
+	urn, err := urn.Parse("urn:pulumi:test::test::pulumi:pulumi:Stack::test-test")
 	require.NoError(t, err)
 	require.NotEmpty(t, urn)
 
@@ -328,11 +329,11 @@ func TestRename(t *testing.T) {
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
 	name := "a-swell-resource"
 
-	urn := NewURN(stack, proj, parentType, typ, name)
-	renamed := urn.Rename("a-better-resource")
+	oldURN := urn.New(stack, proj, parentType, typ, name)
+	renamed := oldURN.Rename("a-better-resource")
 
-	assert.NotEqual(t, urn, renamed)
+	assert.NotEqual(t, oldURN, renamed)
 	assert.Equal(t,
-		NewURN(stack, proj, parentType, typ, "a-better-resource"),
+		urn.New(stack, proj, parentType, typ, "a-better-resource"),
 		renamed)
 }

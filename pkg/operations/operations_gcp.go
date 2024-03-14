@@ -72,6 +72,7 @@ const (
 func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	//exhaustive:ignore
 	switch state.Type {
 	case gcpFunctionType:
 		return ops.getFunctionLogs(state, query)
