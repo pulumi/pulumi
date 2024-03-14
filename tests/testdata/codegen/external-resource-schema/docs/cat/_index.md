@@ -513,7 +513,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
@@ -545,7 +545,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
@@ -575,7 +575,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
@@ -607,7 +607,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
@@ -637,7 +637,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
@@ -669,7 +669,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_java" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
@@ -699,7 +699,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
@@ -731,7 +731,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
@@ -761,7 +761,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="required_name_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>array</a>
@@ -793,7 +793,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_array_python" style="color: inherit; text-decoration: inherit;">name_<wbr>array</a>
@@ -823,7 +823,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
@@ -855,7 +855,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>

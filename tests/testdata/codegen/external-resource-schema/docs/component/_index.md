@@ -232,7 +232,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
@@ -256,7 +256,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
@@ -286,7 +286,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
@@ -310,7 +310,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
@@ -340,7 +340,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
@@ -364,7 +364,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
@@ -394,7 +394,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
@@ -418,7 +418,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
@@ -448,7 +448,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="required_metadata_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>array</a>
@@ -472,7 +472,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_array_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>array</a>
@@ -502,7 +502,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Property Map</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
@@ -526,7 +526,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Property Map</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
@@ -571,7 +571,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Aws.<wbr>Ec2.<wbr>Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_csharp" style="color: inherit; text-decoration: inherit;">Provider</a>
@@ -579,7 +579,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Kubernetes.<wbr>Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_csharp" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
@@ -609,7 +609,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_go" style="color: inherit; text-decoration: inherit;">Provider</a>
@@ -617,7 +617,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_go" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
@@ -647,7 +647,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_java" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -655,7 +655,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_java" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
@@ -685,7 +685,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Awsec2Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_nodejs" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -693,7 +693,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Kubernetes<wbr>Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_nodejs" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
@@ -723,7 +723,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_python" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -731,7 +731,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storage_classes_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storage_classes_python" style="color: inherit; text-decoration: inherit;">storage_<wbr>classes</a>
@@ -761,7 +761,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">aws:ec2:Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_yaml" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -769,7 +769,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi:providers:kubernetes</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_yaml" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>

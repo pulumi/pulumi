@@ -236,7 +236,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager.<wbr>V1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -258,7 +258,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -280,7 +280,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -302,7 +302,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">pulumi<wbr>Google<wbr>Nativeaccesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -324,7 +324,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -346,7 +346,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">&#34;MANAGEMENT_UNSPECIFIED&#34; | &#34;NONE&#34; | &#34;BASIC&#34; | &#34;COMPLETE&#34;</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 

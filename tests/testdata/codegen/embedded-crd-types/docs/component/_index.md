@@ -236,7 +236,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Core.<wbr>V1.<wbr>Pod</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -258,7 +258,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pod<wbr>Type<wbr>Args</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -280,7 +280,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pod</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -302,7 +302,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">pulumi<wbr>Kubernetestypesinputcorev1Pod</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -324,7 +324,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pod<wbr>Args</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -346,7 +346,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Property Map</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
