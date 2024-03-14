@@ -67,11 +67,8 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
-				if account == nil {
-					backendURL = "https://api.pulumi.com"
-				} else {
-					backendURL = account.BackendURL
-				}
+
+				backendURL = esc.workspace.GetCurrentCloudURL(account)
 				shared = isShared
 			}
 
@@ -157,7 +154,33 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		return fmt.Errorf("could not determine current cloud: %w", err)
 	}
 	if account == nil {
-		return fmt.Errorf("no credentials. Please run `%v login` to log in.", esc.command)
+		backendURL := esc.workspace.GetCurrentCloudURL(nil)
+
+		nAccount, err := esc.login.Login(
+			ctx,
+			backendURL,
+			false,
+			"esc",
+			"Pulumi ESC environments",
+			nil,
+			false,
+			display.Options{Color: esc.colors},
+		)
+
+		if err != nil {
+			return fmt.Errorf("could not determine current cloud: %w", err)
+		}
+
+		defaultOrg, err := esc.workspace.GetBackendConfigDefaultOrg(backendURL, nAccount.Username)
+		if err != nil {
+			return fmt.Errorf("could not determine default org: %w", err)
+		}
+
+		account = &workspace.Account{
+			Account:    *nAccount,
+			BackendURL: backendURL,
+			DefaultOrg: defaultOrg,
+		}
 	}
 
 	if err := esc.checkBackendURL(account.BackendURL); err != nil {

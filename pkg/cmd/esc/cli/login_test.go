@@ -7,19 +7,19 @@ import (
 	"testing"
 
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNoCreds(t *testing.T) {
 	fs := testFS{}
-	esc := &escCommand{workspace: workspace.New(fs, &testPulumiWorkspace{})}
+	esc := &escCommand{
+		workspace: workspace.New(fs, &testPulumiWorkspace{}),
+		login:     httpstate.NewLoginManager(),
+	}
 	err := esc.getCachedClient(context.Background())
-	assert.ErrorContains(t, err, "no credentials")
-
-	esc.command = "pulumi"
-	err = esc.getCachedClient(context.Background())
-	assert.ErrorContains(t, err, "pulumi login")
+	assert.ErrorContains(t, err, "could not determine current cloud")
 }
 
 func TestInvalidSelfHostedBackend(t *testing.T) {

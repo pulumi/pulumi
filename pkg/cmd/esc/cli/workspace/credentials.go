@@ -20,10 +20,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
+// used instead of the currently logged in backend or the current projects backend.
+const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
 
 // Account holds details about a Pulumi account.
 type Account struct {
@@ -60,6 +65,18 @@ func (w *Workspace) GetAccount(backendURL string) (*Account, error) {
 		BackendURL: backendURL,
 		DefaultOrg: config.BackendConfig[backendURL].DefaultOrg,
 	}, nil
+}
+
+func (w *Workspace) GetCurrentCloudURL(account *Account) string {
+	if account != nil {
+		return account.BackendURL
+	}
+
+	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
+		return backend
+	}
+
+	return "https://api.pulumi.com"
 }
 
 // GetCurrentAccount returns information about the currently logged-in account.
