@@ -1141,7 +1141,6 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
 			extPkgLink := fmt.Sprintf("/registry/packages/%s", packageName)
 			comment += fmt.Sprintf("\nThis type is defined in the [%s](%s) package.", getPackageDisplayName(packageName), extPkgLink)
-			link = ""
 		}
 
 		// Default values for Provider inputs correspond to environment variables, so add that info to the docs.
