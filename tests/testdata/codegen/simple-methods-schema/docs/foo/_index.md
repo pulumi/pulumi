@@ -382,7 +382,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Required</a>
@@ -430,7 +430,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Plain</a>
@@ -438,7 +438,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value</a>
@@ -484,7 +484,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Required</a>
@@ -532,7 +532,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Plain</a>
@@ -540,7 +540,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value</a>
@@ -586,7 +586,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -634,7 +634,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_java" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -642,7 +642,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
@@ -688,7 +688,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -736,7 +736,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -744,7 +744,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
@@ -790,7 +790,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_string_value_required_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_required_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value_<wbr>required</a>
@@ -838,7 +838,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_plain_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_plain_python" style="color: inherit; text-decoration: inherit;">name_<wbr>plain</a>
@@ -846,7 +846,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_string_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value</a>
@@ -892,7 +892,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -940,7 +940,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -948,7 +948,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>

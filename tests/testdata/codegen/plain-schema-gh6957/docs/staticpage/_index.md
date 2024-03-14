@@ -367,7 +367,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Aws.<wbr>S3.<wbr>Bucket</span>
     </dt>
-    <dd>The bucket resource.</dd><dt class="property-"
+    <dd>The bucket resource.
+This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="websiteurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_csharp" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
@@ -389,7 +390,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
     </dt>
-    <dd>The bucket resource.</dd><dt class="property-"
+    <dd>The bucket resource.
+This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="websiteurl_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_go" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
@@ -411,7 +413,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
     </dt>
-    <dd>The bucket resource.</dd><dt class="property-"
+    <dd>The bucket resource.
+This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="websiteurl_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_java" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
@@ -433,7 +436,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Awss3Bucket</span>
     </dt>
-    <dd>The bucket resource.</dd><dt class="property-"
+    <dd>The bucket resource.
+This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="websiteurl_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_nodejs" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
@@ -455,7 +459,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
     </dt>
-    <dd>The bucket resource.</dd><dt class="property-"
+    <dd>The bucket resource.
+This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="website_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#website_url_python" style="color: inherit; text-decoration: inherit;">website_<wbr>url</a>
@@ -477,7 +482,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">aws:s3:Bucket</span>
     </dt>
-    <dd>The bucket resource.</dd><dt class="property-"
+    <dd>The bucket resource.
+This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="websiteurl_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_yaml" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>

@@ -1132,6 +1132,17 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 		}
 
 		comment := prop.Comment
+		link := "#" + propID
+
+		// Check if type is defined in a package external to the current package. If
+		// it is external, update comment to indicate to user that type is defined
+		// in another package and link there.
+		if isExt := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg); isExt {
+			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
+			extPkgLink := fmt.Sprintf("/registry/packages/%s", packageName)
+			comment += fmt.Sprintf("\nThis type is defined in the [%s](%s) package.", getPackageDisplayName(packageName), extPkgLink)
+		}
+
 		// Default values for Provider inputs correspond to environment variables, so add that info to the docs.
 		if isProvider && input && prop.DefaultValue != nil && len(prop.DefaultValue.Environment) > 0 {
 			var suffix string
@@ -1159,7 +1170,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 			// a) we will force the replace at the engine level
 			// b) we are told that the provider will require a replace
 			IsReplaceOnChanges: prop.ReplaceOnChanges || prop.WillReplaceOnChanges,
-			Link:               "#" + propID,
+			Link:               link,
 			Types:              propTypes,
 		})
 	}

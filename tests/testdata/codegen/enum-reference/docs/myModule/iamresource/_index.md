@@ -227,7 +227,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#auditconfig">Pulumi.<wbr>Google<wbr>Native.<wbr>IAM.<wbr>V1.<wbr>Inputs.<wbr>Audit<wbr>Config</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -241,7 +241,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -255,7 +255,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#auditconfig">Audit<wbr>Config</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -269,7 +269,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#auditconfig">pulumi<wbr>Google<wbr>Native.types.input.iam.v1.<wbr>Audit<wbr>Config</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -283,7 +283,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -297,7 +297,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#auditconfig">Property Map</a></span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 

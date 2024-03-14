@@ -453,7 +453,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Tls.<wbr>Provider</span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -475,7 +475,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -497,7 +497,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -519,7 +519,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Tls<wbr>Provider</span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -541,7 +541,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -563,7 +563,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi:providers:tls</span>
     </dt>
-    <dd></dd></dl>
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
