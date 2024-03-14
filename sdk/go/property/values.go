@@ -34,7 +34,7 @@ type (
 
 // Value is an imitable representation of a Pulumi value.
 //
-// It may represent any type in GoValues. In addition, values may be secret or
+// It may represent any type in GoValue. In addition, values may be secret or
 // computed. It may have resource dependencies.
 //
 // The zero value of Value is null.
@@ -51,19 +51,19 @@ type Value struct {
 	v any
 }
 
-// GoValues constrains the set of go values that can be contained inside a Value.
+// GoValue constrains the set of go values that can be contained inside a Value.
 //
 // Value can also be a null value.
-type GoValues interface {
+type GoValue interface {
 	bool | float64 | string | // Primitive types
 		Array | Map | // Collection types
 		Asset | Archive | // Pulumi types
 		ResourceReference | // Resource references
-		computed | null
+		computed | null // marker singletons
 }
 
 // Create a new Value from a GoValue.
-func Of[T GoValues](goValue T) Value {
+func Of[T GoValue](goValue T) Value {
 	return Value{v: normalize(goValue)}
 }
 
@@ -92,7 +92,7 @@ func normalize(goValue any) any {
 }
 
 // Create a new Value from a GoValue of unknown type. An error is returned if goValue is
-// not a member of GoValues.
+// not a member of GoValue.
 func OfAny(goValue any) (Value, error) {
 	switch goValue := goValue.(type) {
 	case bool:
@@ -140,12 +140,12 @@ type (
 	null     struct{}
 )
 
-func is[T GoValues](v Value) bool {
+func is[T GoValue](v Value) bool {
 	_, ok := v.v.(T)
 	return ok
 }
 
-func as[T GoValues](v Value) T { return v.v.(T) }
+func as[T GoValue](v Value) T { return v.v.(T) }
 
 func (v Value) IsBool() bool              { return is[bool](v) }
 func (v Value) IsNumber() bool            { return is[float64](v) }
@@ -216,7 +216,7 @@ func (v Value) WithDependencies(deps []urn.URN) Value {
 // WithGoValue creates a new Value with the inner value newGoValue.
 //
 // To set to a null or computed value, pass Null or Computed as newGoValue.
-func WithGoValue[T GoValues](value Value, newGoValue T) Value {
+func WithGoValue[T GoValue](value Value, newGoValue T) Value {
 	value.v = Of(newGoValue).v
 	return value
 }
