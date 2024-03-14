@@ -18,19 +18,17 @@ package property
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type (
-	MapKey            tokens.Name
-	Array             = []Value
-	Map               = map[MapKey]Value
-	Asset             = *asset.Asset
-	Archive           = *archive.Archive
-	ResourceReference = resource.ResourceReference
+	MapKey  tokens.Name
+	Array   = []Value
+	Map     = map[MapKey]Value
+	Asset   = *asset.Asset
+	Archive = *archive.Archive
 )
 
 // Value is an imitable representation of a Pulumi value.
@@ -190,7 +188,7 @@ func (v Value) WithSecret() Value {
 }
 
 // WithNotSecret copies v where secret is false.
-func (v Value) WithNotSecret() Value {
+func (v Value) WithoutSecret() Value {
 	v.isSecret = false
 	return v
 }
