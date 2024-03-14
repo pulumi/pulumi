@@ -12,138 +12,145 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package property
+package resource
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// Translate a Value into a resource.PropertyValue.
+// Translate a Value into a PropertyValue.
 //
 // This is a lossless transition, such that this will be true:
 //
 //	FromResourcePropertyValue(ToResourcePropertyValue(v)).Equals(v)
-func ToResourcePropertyValue(v Value) resource.PropertyValue {
-	var r resource.PropertyValue
+func ToResourcePropertyValue(v property.Value) PropertyValue {
+	var r PropertyValue
 	switch {
 	case v.IsBool():
-		r = resource.NewBoolProperty(v.AsBool())
+		r = NewBoolProperty(v.AsBool())
 	case v.IsNumber():
-		r = resource.NewNumberProperty(v.AsNumber())
+		r = NewNumberProperty(v.AsNumber())
 	case v.IsString():
-		r = resource.NewStringProperty(v.AsString())
+		r = NewStringProperty(v.AsString())
 	case v.IsArray():
 		vArr := v.AsArray()
-		arr := make([]resource.PropertyValue, len(vArr))
+		arr := make([]PropertyValue, len(vArr))
 		for i, vElem := range vArr {
 			arr[i] = ToResourcePropertyValue(vElem)
 		}
-		r = resource.NewArrayProperty(arr)
+		r = NewArrayProperty(arr)
 	case v.IsMap():
 		vMap := v.AsMap()
-		rMap := make(resource.PropertyMap, len(vMap))
+		rMap := make(PropertyMap, len(vMap))
 		for k, vElem := range vMap {
-			rMap[resource.PropertyKey(k)] = ToResourcePropertyValue(vElem)
+			rMap[PropertyKey(k)] = ToResourcePropertyValue(vElem)
 		}
-		r = resource.NewObjectProperty(rMap)
+		r = NewObjectProperty(rMap)
 	case v.IsAsset():
-		r = resource.NewAssetProperty(v.AsAsset())
+		r = NewAssetProperty(v.AsAsset())
 	case v.IsArchive():
-		r = resource.NewArchiveProperty(v.AsArchive())
+		r = NewArchiveProperty(v.AsArchive())
 	case v.IsResourceReference():
-		r = resource.NewResourceReferenceProperty(v.AsResourceReference())
+		ref := v.AsResourceReference()
+		r = NewResourceReferenceProperty(ResourceReference{
+			URN:            ref.URN,
+			ID:             ToResourcePropertyValue(ref.ID),
+			PackageVersion: ref.PackageVersion,
+		})
 	case v.IsNull():
-		r = resource.NewNullProperty()
+		r = NewNullProperty()
 	}
 
 	switch {
-	case len(v.dependencies) > 0 || (v.isSecret && v.IsComputed()):
-		r = resource.NewOutputProperty(resource.Output{
+	case len(v.Dependencies()) > 0 || (v.Secret() && v.IsComputed()):
+		r = NewOutputProperty(Output{
 			Element:      r,
 			Known:        !v.IsComputed(),
 			Secret:       v.Secret(),
-			Dependencies: v.dependencies,
+			Dependencies: v.Dependencies(),
 		})
-	case v.isSecret:
-		r = resource.MakeSecret(r)
+	case v.Secret():
+		r = MakeSecret(r)
 	case v.IsComputed():
-		r = resource.MakeComputed(r)
+		r = MakeComputed(r)
 	}
 
 	return r
 }
 
-// Translate a resource.PropertyValue into a Value.
+// Translate a PropertyValue into a Value.
 //
 // This is a normalizing transition, such that the last expression will be true:
 //
 //	normalized := ToResourcePropertyValue(FromResourcePropertyValue(v))
 //	normalized.DeepEquals(ToResourcePropertyValue(FromResourcePropertyValue(v)))
-func FromResourcePropertyValue(v resource.PropertyValue) Value {
+func FromResourcePropertyValue(v PropertyValue) property.Value {
 	switch {
 	// Value types
 	case v.IsBool():
-		return Of(v.BoolValue())
+		return property.Of(v.BoolValue())
 	case v.IsNumber():
-		return Of(v.NumberValue())
+		return property.Of(v.NumberValue())
 	case v.IsString():
-		return Of(v.StringValue())
+		return property.Of(v.StringValue())
 	case v.IsArray():
 		vArr := v.ArrayValue()
-		arr := make(Array, len(vArr))
+		arr := make(property.Array, len(vArr))
 		for i, v := range vArr {
 			arr[i] = FromResourcePropertyValue(v)
 		}
-		return Of(arr)
+		return property.Of(arr)
 	case v.IsObject():
 		vMap := v.ObjectValue()
-		rMap := make(Map, len(vMap))
+		rMap := make(property.Map, len(vMap))
 		for k, v := range vMap {
-			rMap[MapKey(k)] = FromResourcePropertyValue(v)
+			rMap[property.MapKey(k)] = FromResourcePropertyValue(v)
 		}
-		return Of(rMap)
+		return property.Of(rMap)
 	case v.IsAsset():
-		return Of(v.AssetValue())
+		return property.Of(v.AssetValue())
 	case v.IsArchive():
-		return Of(v.ArchiveValue())
+		return property.Of(v.ArchiveValue())
 	case v.IsResourceReference():
-		return Of(v.ResourceReferenceValue())
+		r := v.ResourceReferenceValue()
+
+		return property.Of(property.ResourceReference{
+			URN:            r.URN,
+			ID:             FromResourcePropertyValue(r.ID),
+			PackageVersion: r.PackageVersion,
+		})
 	case v.IsNull():
-		return Value{}
+		return property.Value{}
 
 	// Flavor types
 	case v.IsComputed():
 		if v.Input().Element.IsSecret() || (v.Input().Element.IsOutput() &&
 			v.Input().Element.OutputValue().Secret) {
-			return Of(Computed).WithSecret()
+			return property.Of(property.Computed).WithSecret()
 		}
-		return Of(Computed)
+		return property.Of(property.Computed)
 	case v.IsSecret():
-		elem := FromResourcePropertyValue(v.SecretValue().Element)
-		elem.isSecret = true
-		return elem
+		return FromResourcePropertyValue(v.SecretValue().Element).WithSecret()
 	case v.IsOutput():
 		o := v.OutputValue()
-		var elem Value
+		var elem property.Value
 		if !o.Known {
-			elem = Of(Computed)
+			elem = property.Of(property.Computed)
 		} else {
 			elem = FromResourcePropertyValue(o.Element)
 		}
 
 		// If the value is already secret, we leave it secret, otherwise we take
 		// the value from Output.
-		if !elem.isSecret {
-			elem.isSecret = o.Secret
+		if o.Secret {
+			elem = elem.WithSecret()
 		}
 
-		elem.dependencies = o.Dependencies
-
-		return elem
+		return elem.WithDependencies(o.Dependencies)
 
 	default:
 		contract.Failf("Unknown property value type %T", v.V)
-		return Value{}
+		return property.Value{}
 	}
 }

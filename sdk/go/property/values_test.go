@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 )
 
 // Calling == does not implement desirable behavior, so we ensure that it is invalid.
@@ -85,7 +85,7 @@ func TestNil(t *testing.T) {
 		assert.True(t, nilAsset.IsNull())
 		assert.True(t, nilAsset.Equals(nullValue))
 
-		a, err := resource.NewTextAsset("")
+		a, err := asset.FromText("")
 		require.NoError(t, err)
 		assert.True(t, Of(a).IsAsset())
 	})

@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -40,7 +41,7 @@ type (
 type Value struct {
 	isSecret bool
 
-	dependencies []resource.URN // the dependencies associated with this value.
+	dependencies []urn.URN // the dependencies associated with this value.
 
 	// The inner go value for the Value.
 	//
@@ -204,10 +205,10 @@ func (v Value) HasComputed() bool {
 }
 
 // The dependency set of v.
-func (v Value) Dependencies() []resource.URN { return v.dependencies }
+func (v Value) Dependencies() []urn.URN { return v.dependencies }
 
 // Set deps as the v.Dependencies() value of the returned Value.
-func (v Value) WithDependencies(deps []resource.URN) Value {
+func (v Value) WithDependencies(deps []urn.URN) Value {
 	v.dependencies = deps
 	return v
 }

@@ -1,6 +1,6 @@
 package property
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import "github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 
 // ResourceReference is a property value that represents a reference to a Resource. The reference captures the
 // resource's URN, ID, and the version of its containing package. Note that there are several cases to consider with
@@ -11,7 +11,7 @@ import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 //   - The ID may be unknown (in which case it will be the Computed property value)
 //   - Otherwise, the ID must be a string.
 type ResourceReference struct {
-	URN            resource.URN
+	URN            urn.URN
 	ID             Value
 	PackageVersion string
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package test
+package resource_test
 
 import (
 	"testing"
@@ -20,7 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"pgregory.net/rapid"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pTest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 )
 
 // Test that we can round trip through
@@ -34,9 +35,9 @@ func TestRoundTripConvert(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		source := Value(10).Draw(t, "round-trip value")
-		propertyValue := property.ToResourcePropertyValue(source)
-		roundTripped := property.FromResourcePropertyValue(propertyValue)
+		source := pTest.Value(10).Draw(t, "round-trip value")
+		propertyValue := resource.ToResourcePropertyValue(source)
+		roundTripped := resource.FromResourcePropertyValue(propertyValue)
 
 		assert.True(t, source.Equals(roundTripped))
 	})

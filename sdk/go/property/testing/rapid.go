@@ -17,7 +17,7 @@ package test
 import (
 	"pgregory.net/rapid"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
@@ -105,8 +105,8 @@ func DependenciesOf(value *rapid.Generator[property.Value]) *rapid.Generator[pro
 //
 // Because the github.com/pulumi/pulumi/sdk/v3/go/property does not enforce URN validity,
 // we don't enforce it here.
-func URN() *rapid.Generator[resource.URN] {
-	return rapid.Custom(func(t *rapid.T) resource.URN {
-		return resource.URN(rapid.String().Draw(t, "urn-body"))
+func URN() *rapid.Generator[urn.URN] {
+	return rapid.Custom(func(t *rapid.T) urn.URN {
+		return urn.URN(rapid.String().Draw(t, "urn-body"))
 	})
 }
