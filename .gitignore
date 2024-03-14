@@ -9,6 +9,7 @@
 **/.DS_Store
 coverage.cov
 *.coverprofile
+*.cov
 **/obj/
 coverage/
 venv/
