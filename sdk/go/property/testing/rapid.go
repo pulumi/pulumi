@@ -50,17 +50,19 @@ func MapKey() *rapid.Generator[property.MapKey] {
 	})
 }
 
-func String() *rapid.Generator[property.Value] { return rapid.Map(rapid.String(), property.Of[string]) }
+func String() *rapid.Generator[property.Value] {
+	return rapid.Map(rapid.String(), property.New[string])
+}
 
-func Bool() *rapid.Generator[property.Value] { return rapid.Map(rapid.Bool(), property.Of[bool]) }
+func Bool() *rapid.Generator[property.Value] { return rapid.Map(rapid.Bool(), property.New[bool]) }
 
 func Number() *rapid.Generator[property.Value] {
-	return rapid.Map(rapid.Float64(), property.Of[float64])
+	return rapid.Map(rapid.Float64(), property.New[float64])
 }
 
 func Null() *rapid.Generator[property.Value] { return rapid.Just(property.Value{}) }
 
-func Computed() *rapid.Generator[property.Value] { return rapid.Just(property.Of(property.Computed)) }
+func Computed() *rapid.Generator[property.Value] { return rapid.Just(property.New(property.Computed)) }
 
 func Array(maxDepth int) *rapid.Generator[property.Value] { return ArrayOf(Value(maxDepth - 1)) }
 
@@ -74,13 +76,13 @@ func Dependencies(maxDepth int) *rapid.Generator[property.Value] {
 
 func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
 	return rapid.Custom(func(t *rapid.T) property.Value {
-		return property.Of(rapid.SliceOf(value).Draw(t, "V"))
+		return property.New(rapid.SliceOf(value).Draw(t, "V"))
 	})
 }
 
 func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
 	return rapid.Custom(func(t *rapid.T) property.Value {
-		return property.Of(rapid.MapOf(
+		return property.New(rapid.MapOf(
 			MapKey(),
 			value,
 		).Draw(t, "V"))

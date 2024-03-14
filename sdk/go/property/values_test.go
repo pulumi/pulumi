@@ -32,11 +32,11 @@ func TestCannotCompareValues(t *testing.T) {
 
 func TestNullEquivalence(t *testing.T) {
 	t.Parallel()
-	assert.Nil(t, Of(Null).v)
+	assert.Nil(t, New(Null).v)
 
-	assert.True(t, Of(Null).Equals(Value{}))
+	assert.True(t, New(Null).Equals(Value{}))
 
-	assert.True(t, Of(Null).IsNull())
+	assert.True(t, New(Null).IsNull())
 }
 
 // This test locks in the nil vs null behavior.
@@ -52,13 +52,13 @@ func TestNullEquivalence(t *testing.T) {
 //
 // Unlike the Go language, Value's Null is not typed. This means that:
 //
-//	Of[Array](nil).Equals(Of(Null))
+//	New[Array](nil).Equals(New(Null))
 //
 // Further, since Null is it's own type, it is the case that:
 //
-//	Of[Array](nil).IsArray() == false
+//	New[Array](nil).IsArray() == false
 //
-//	Of[Map](nil).IsNull() == true
+//	New[Map](nil).IsNull() == true
 func TestNil(t *testing.T) {
 	t.Parallel()
 
@@ -67,19 +67,19 @@ func TestNil(t *testing.T) {
 	// []T based type, zero value is Array(nil)
 	t.Run("array", func(t *testing.T) {
 		t.Parallel()
-		nilArray := Of[Array](nil)
+		nilArray := New[Array](nil)
 
 		assert.False(t, nilArray.IsArray())
 		assert.True(t, nilArray.IsNull())
 		assert.True(t, nilArray.Equals(nullValue))
 
-		assert.True(t, Of(Array{}).IsArray())
+		assert.True(t, New(Array{}).IsArray())
 	})
 
 	// *T based type, zero value is *resource.Asset(nil)
 	t.Run("asset", func(t *testing.T) {
 		t.Parallel()
-		nilAsset := Of[Asset](nil)
+		nilAsset := New[Asset](nil)
 
 		assert.False(t, nilAsset.IsAsset())
 		assert.True(t, nilAsset.IsNull())
@@ -87,13 +87,13 @@ func TestNil(t *testing.T) {
 
 		a, err := asset.FromText("")
 		require.NoError(t, err)
-		assert.True(t, Of(a).IsAsset())
+		assert.True(t, New(a).IsAsset())
 	})
 
 	// string based type, zero value is ""
 	t.Run("string", func(t *testing.T) {
 		t.Parallel()
-		emptyString := Of[string]("")
+		emptyString := New[string]("")
 
 		assert.True(t, emptyString.IsString())
 		assert.False(t, emptyString.IsNull())

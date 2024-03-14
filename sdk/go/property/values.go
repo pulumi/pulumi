@@ -47,7 +47,7 @@ type Value struct {
 	//
 	// Note: null{} is not a valid value for v. null{} should be normalized to nil
 	// during creation, so that the zero value of Value is bit for bit equivalent to
-	// `Of(Null)`.
+	// `New(Null)`.
 	v any
 }
 
@@ -62,8 +62,8 @@ type GoValue interface {
 		computed | null // marker singletons
 }
 
-// Create a new Value from a GoValue.
-func Of[T GoValue](goValue T) Value {
+// New creates a new Value from a GoValue.
+func New[T GoValue](goValue T) Value {
 	return Value{v: normalize(goValue)}
 }
 
@@ -91,28 +91,28 @@ func normalize(goValue any) any {
 	return goValue
 }
 
-// Create a new Value from a GoValue of unknown type. An error is returned if goValue is
-// not a member of GoValue.
-func OfAny(goValue any) (Value, error) {
+// Any creates a new Value from a GoValue of unknown type. An error is returned if goValue
+// is not a member of GoValue.
+func Any(goValue any) (Value, error) {
 	switch goValue := goValue.(type) {
 	case bool:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case float64:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case string:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case Array:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case Map:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case Asset:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case Archive:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case ResourceReference:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case computed:
-		return Of(goValue), nil
+		return New(goValue), nil
 	case nil, null:
 		return Value{}, nil
 	default:
@@ -198,7 +198,7 @@ func (v Value) HasComputed() bool {
 	return hasComputed
 }
 
-// The dependency set of v.
+// Dependencies returns the dependency set of v.
 func (v Value) Dependencies() []urn.URN { return v.dependencies }
 
 // Set deps as the v.Dependencies() value of the returned Value.
@@ -211,6 +211,6 @@ func (v Value) WithDependencies(deps []urn.URN) Value {
 //
 // To set to a null or computed value, pass Null or Computed as newGoValue.
 func WithGoValue[T GoValue](value Value, newGoValue T) Value {
-	value.v = Of(newGoValue).v
+	value.v = New(newGoValue).v
 	return value
 }

@@ -89,33 +89,33 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 	switch {
 	// Value types
 	case v.IsBool():
-		return property.Of(v.BoolValue())
+		return property.New(v.BoolValue())
 	case v.IsNumber():
-		return property.Of(v.NumberValue())
+		return property.New(v.NumberValue())
 	case v.IsString():
-		return property.Of(v.StringValue())
+		return property.New(v.StringValue())
 	case v.IsArray():
 		vArr := v.ArrayValue()
 		arr := make(property.Array, len(vArr))
 		for i, v := range vArr {
 			arr[i] = FromResourcePropertyValue(v)
 		}
-		return property.Of(arr)
+		return property.New(arr)
 	case v.IsObject():
 		vMap := v.ObjectValue()
 		rMap := make(property.Map, len(vMap))
 		for k, v := range vMap {
 			rMap[property.MapKey(k)] = FromResourcePropertyValue(v)
 		}
-		return property.Of(rMap)
+		return property.New(rMap)
 	case v.IsAsset():
-		return property.Of(v.AssetValue())
+		return property.New(v.AssetValue())
 	case v.IsArchive():
-		return property.Of(v.ArchiveValue())
+		return property.New(v.ArchiveValue())
 	case v.IsResourceReference():
 		r := v.ResourceReferenceValue()
 
-		return property.Of(property.ResourceReference{
+		return property.New(property.ResourceReference{
 			URN:            r.URN,
 			ID:             FromResourcePropertyValue(r.ID),
 			PackageVersion: r.PackageVersion,
@@ -125,7 +125,7 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 
 	// Flavor types
 	case v.IsComputed():
-		return property.Of(property.Computed).WithSecret(
+		return property.New(property.Computed).WithSecret(
 			v.Input().Element.IsSecret() ||
 				(v.Input().Element.IsOutput() && v.Input().Element.OutputValue().Secret))
 	case v.IsSecret():
@@ -134,7 +134,7 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		o := v.OutputValue()
 		var elem property.Value
 		if !o.Known {
-			elem = property.Of(property.Computed)
+			elem = property.New(property.Computed)
 		} else {
 			elem = FromResourcePropertyValue(o.Element)
 		}
