@@ -1137,7 +1137,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 		// Check if type is defined in a package external to the current package. If
 		// it is external, update comment to indicate to user that type is defined
 		// in another package and link there.
-		if isExt, _ := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg); isExt {
+		if isExt := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg); isExt {
 			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
 			extPkgLink := fmt.Sprintf("/registry/packages/%s", packageName)
 			comment += fmt.Sprintf("\nThis type is defined in the [%s](%s) package.", getPackageDisplayName(packageName), extPkgLink)

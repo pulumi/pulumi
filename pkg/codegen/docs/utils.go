@@ -107,22 +107,14 @@ func getFunctionLink(name string) string {
 }
 
 // isExternalType checks if the type is external to the given package.
-func isExternalType(t schema.Type, pkg schema.PackageReference) (
-	isExternal bool, token string,
-) {
+func isExternalType(t schema.Type, pkg schema.PackageReference) (isExternal bool) {
 	switch typ := t.(type) {
 	case *schema.ObjectType:
-		isExternal = typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
-		token = typ.Token
-		return
+		return typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
 	case *schema.ResourceType:
-		isExternal = typ.Resource != nil && pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg)
-		token = typ.Token
-		return
+		return typ.Resource != nil && pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg)
 	case *schema.EnumType:
-		isExternal = pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
-		token = typ.Token
-		return
+		return pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
 	}
 	return
 }
