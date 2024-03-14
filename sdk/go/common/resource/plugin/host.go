@@ -100,10 +100,17 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
+		defaults := make(map[string]struct{})
 		for _, providerOpts := range plugins.Providers {
 			info, err := parsePluginOpts(ctx.Root, providerOpts, apitype.ResourcePlugin)
 			if err != nil {
 				return nil, err
+			}
+			if info.Default {
+				if _, has := defaults[info.Name]; has {
+					return nil, fmt.Errorf("multiple default providers for package %s", info.Name)
+				}
+				defaults[info.Name] = struct{}{}
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
@@ -176,28 +183,30 @@ func parsePluginOpts(
 	}
 	var v *semver.Version
 	if providerOpts.Version != "" {
-		ver, err := semver.Parse(providerOpts.Version)
+		ver, err := semver.ParseTolerant(providerOpts.Version)
 		if err != nil {
 			return workspace.ProjectPlugin{}, err
 		}
 		v = &ver
 	}
 
-	stat, err := os.Stat(providerOpts.Path)
-	if os.IsNotExist(err) {
-		return handleErr("no folder at path '%s'", providerOpts.Path)
-	} else if err != nil {
-		return handleErr("checking provider folder: %w", err)
-	} else if !stat.IsDir() {
-		return handleErr("provider folder '%s' is not a directory", providerOpts.Path)
-	}
-
-	// The path is relative to the project root. Make it absolute here so we don't need to track that everywhere its used.
 	path := providerOpts.Path
-	if !filepath.IsAbs(path) {
-		path, err = filepath.Abs(filepath.Join(root, path))
-		if err != nil {
-			return handleErr("getting absolute path for plugin path %s: %w", providerOpts.Path, err)
+	if path != "" {
+		stat, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			return handleErr("no folder at path '%s'", path)
+		} else if err != nil {
+			return handleErr("checking provider folder: %w", err)
+		} else if !stat.IsDir() {
+			return handleErr("provider folder '%s' is not a directory", path)
+		}
+
+		// The path is relative to the project root. Make it absolute here so we don't need to track that everywhere its used.
+		if !filepath.IsAbs(path) {
+			path, err = filepath.Abs(filepath.Join(root, path))
+			if err != nil {
+				return handleErr("getting absolute path for plugin path %s: %w", path, err)
+			}
 		}
 	}
 
