@@ -89,7 +89,7 @@ func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Val
 
 func SecretOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
 	return rapid.Custom(func(t *rapid.T) property.Value {
-		return value.Draw(t, "V").WithSecret()
+		return value.Draw(t, "V").WithSecret(true)
 	})
 }
 

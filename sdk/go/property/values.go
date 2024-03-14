@@ -183,14 +183,8 @@ func (v Value) HasSecrets() bool {
 }
 
 // WithSecret copies v where secret is true.
-func (v Value) WithSecret() Value {
-	v.isSecret = true
-	return v
-}
-
-// WithNotSecret copies v where secret is false.
-func (v Value) WithoutSecret() Value {
-	v.isSecret = false
+func (v Value) WithSecret(isSecret bool) Value {
+	v.isSecret = isSecret
 	return v
 }
 

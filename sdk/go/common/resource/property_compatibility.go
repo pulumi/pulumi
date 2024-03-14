@@ -125,13 +125,11 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 
 	// Flavor types
 	case v.IsComputed():
-		if v.Input().Element.IsSecret() || (v.Input().Element.IsOutput() &&
-			v.Input().Element.OutputValue().Secret) {
-			return property.Of(property.Computed).WithSecret()
-		}
-		return property.Of(property.Computed)
+		return property.Of(property.Computed).WithSecret(
+			v.Input().Element.IsSecret() ||
+				(v.Input().Element.IsOutput() && v.Input().Element.OutputValue().Secret))
 	case v.IsSecret():
-		return FromResourcePropertyValue(v.SecretValue().Element).WithSecret()
+		return FromResourcePropertyValue(v.SecretValue().Element).WithSecret(true)
 	case v.IsOutput():
 		o := v.OutputValue()
 		var elem property.Value
@@ -144,7 +142,7 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		// If the value is already secret, we leave it secret, otherwise we take
 		// the value from Output.
 		if o.Secret {
-			elem = elem.WithSecret()
+			elem = elem.WithSecret(true)
 		}
 
 		return elem.WithDependencies(o.Dependencies)
