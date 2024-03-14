@@ -106,6 +106,34 @@ func TestWorkerPool_oneError(t *testing.T) {
 	assert.ErrorIs(t, ctx.Err(), context.Canceled)
 }
 
+func TestWorkerPool_canSaturate(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	workerPool := newWorkerPool(8, cancel)
+
+	const numTasks = 800
+	var highWater atomic.Int64
+	var load atomic.Int64
+	for i := 0; i < numTasks; i++ {
+		workerPool.AddWorker(func() error {
+			defer load.Add(-1)
+			curr := load.Add(1)
+			for high := highWater.Load(); curr > high; high = highWater.Load() {
+				highWater.CompareAndSwap(high, curr)
+			}
+			runtime.Gosched()
+			return nil
+		})
+	}
+
+	err := workerPool.Wait(true)
+	require.NoError(t, err)
+	assert.Nil(t, ctx.Err())
+
+	assert.Equal(t, int64(8), highWater.Load())
+}
+
 func TestWorkerPool_workerCount(t *testing.T) {
 	t.Parallel()
 
