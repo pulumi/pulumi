@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Ensure package generation for Go doesn't panic when encountering overly nested arrays or maps of primitive types
