@@ -69,7 +69,7 @@ def heartbeat():
     if not sys:
         # occurs during interpreter shutdown
         return
-    print(heartbeat_str, file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
+    print(heartbeat_str + str(datetime.now()), file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
     sys.stdout.flush()
     sys.stderr.flush()
 
@@ -95,8 +95,13 @@ else:
     args = ['go', 'test'] + args
 
 if not dryrun:
-    print("Running: " + ' '.join(args))
-    sp.check_call(args, shell=False)
+    try:
+        print("Running: " + ' '.join(args))
+        sp.check_call(args, shell=False)
+        print("Completed: " + ' '.join(args))
+    except sp.CalledProcessError as e:
+        print("Failed: " + ' '.join(args))
+        raise e
 else:
     print("Would have run: " + ' '.join(args))
 
