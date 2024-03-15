@@ -142,12 +142,27 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 		}
 	}
 
+	if remoteOpts.ExecutorImage != nil {
+		if remoteOpts.ExecutorImage.Image == "" {
+			return nil, errors.New("executorImage.Image cannot be empty")
+		}
+		if remoteOpts.ExecutorImage.Credentials != nil {
+			if remoteOpts.ExecutorImage.Credentials.Username == "" {
+				return nil, errors.New("executorImage.Credentials.Username cannot be empty")
+			}
+			if remoteOpts.ExecutorImage.Credentials.Password == "" {
+				return nil, errors.New("executorImage.Credentials.Password cannot be empty")
+			}
+		}
+	}
+
 	localOpts := []LocalWorkspaceOption{
 		remote(true),
 		remoteEnvVars(remoteOpts.EnvVars),
 		preRunCommands(remoteOpts.PreRunCommands...),
 		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
 		Repo(repo),
+		remoteExecutorImage(remoteOpts.ExecutorImage),
 	}
 	return localOpts, nil
 }
@@ -160,6 +175,18 @@ type remoteWorkspaceOptions struct {
 	PreRunCommands []string
 	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
 	SkipInstallDependencies bool
+	// ExecutorImage is the image to use for the remote executor.
+	ExecutorImage *ExecutorImage
+}
+
+type ExecutorImage struct {
+	Image       string
+	Credentials *DockerImageCredentials
+}
+
+type DockerImageCredentials struct {
+	Username string
+	Password string
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -193,6 +220,13 @@ func RemotePreRunCommands(commands ...string) RemoteWorkspaceOption {
 func RemoteSkipInstallDependencies(skipInstallDependencies bool) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.SkipInstallDependencies = skipInstallDependencies
+	})
+}
+
+// RemoteExecutorImage sets the image to use for the remote executor.
+func RemoteExecutorImage(image *ExecutorImage) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.ExecutorImage = image
 	})
 }
 

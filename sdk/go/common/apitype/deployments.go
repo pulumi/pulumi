@@ -51,7 +51,19 @@ type ExecutorContext struct {
 	WorkingDirectory string `json:"workingDirectory"`
 
 	// Defines the image that the pulumi operations should run in.
-	ExecutorImage string `json:"executorImage,omitempty"`
+	ExecutorImage *DockerImage `json:"executorImage,omitempty"`
+}
+
+// A DockerImage describes a Docker image reference + optional credentials for use with a job definition.
+type DockerImage struct {
+	Reference   string                  `json:"reference"`
+	Credentials *DockerImageCredentials `json:"credentials,omitempty"`
+}
+
+// DockerImageCredentials describes the credentials needed to access a Docker repository.
+type DockerImageCredentials struct {
+	Username string      `json:"username"`
+	Password SecretValue `json:"password"`
 }
 
 // SourceContext describes some source code, and how to obtain it.

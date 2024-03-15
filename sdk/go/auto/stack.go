@@ -1140,12 +1140,14 @@ func (s *Stack) remoteArgs() []string {
 	var preRunCommands []string
 	var envvars map[string]EnvVarValue
 	var skipInstallDependencies bool
+	var executorImage *ExecutorImage
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
 		remote = lws.remote
 		repo = lws.repo
 		preRunCommands = lws.preRunCommands
 		envvars = lws.remoteEnvVars
 		skipInstallDependencies = lws.remoteSkipInstallDependencies
+		executorImage = lws.remoteExecutorImage
 	}
 	if !remote {
 		return nil
@@ -1200,6 +1202,18 @@ func (s *Stack) remoteArgs() []string {
 
 	if skipInstallDependencies {
 		args = append(args, "--remote-skip-install-dependencies")
+	}
+
+	if executorImage != nil {
+		args = append(args, "--remote-executor-image="+executorImage.Image)
+		if executorImage.Credentials != nil {
+			if executorImage.Credentials.Username != "" {
+				args = append(args, "--remote-executor-image-username="+executorImage.Credentials.Username)
+			}
+			if executorImage.Credentials.Password != "" {
+				args = append(args, "--remote-executor-image-password="+executorImage.Credentials.Password)
+			}
+		}
 	}
 
 	return args
