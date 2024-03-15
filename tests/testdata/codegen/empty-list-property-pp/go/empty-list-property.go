@@ -9,11 +9,11 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := storage.NewStorageAccount(ctx, "storageAccounts", &storage.StorageAccountArgs{
 			AccountName:       pulumi.String("sto4445"),
-			Kind:              pulumi.String("BlockBlobStorage"),
+			Kind:              pulumi.String(storage.KindBlockBlobStorage),
 			Location:          pulumi.String("eastus"),
 			ResourceGroupName: pulumi.String("res9101"),
 			Sku: &storage.SkuArgs{
-				Name: pulumi.String("Premium_LRS"),
+				Name: pulumi.String(storage.SkuName_Premium_LRS),
 			},
 			NetworkRuleSet: &storage.NetworkRuleSetArgs{
 				DefaultAction: storage.DefaultActionAllow,

@@ -38,7 +38,7 @@ const service = new kubernetes.core.v1.Service("service", {
         },
     },
     spec: {
-        type: "ClusterIP",
+        type: kubernetes.core.v1.ServiceSpecType.ClusterIP,
         ports: [{
             port: 80,
             targetPort: 80,

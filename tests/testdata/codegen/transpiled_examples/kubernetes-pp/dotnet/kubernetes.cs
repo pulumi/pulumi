@@ -61,7 +61,7 @@ return await Deployment.RunAsync(() =>
         },
         Spec = new Kubernetes.Types.Inputs.Core.V1.ServiceSpecArgs
         {
-            Type = "ClusterIP",
+            Type = Kubernetes.Core.V1.ServiceSpecType.ClusterIP,
             Ports = new[]
             {
                 new Kubernetes.Types.Inputs.Core.V1.ServicePortArgs

@@ -51,7 +51,7 @@ return await Deployment.RunAsync(() =>
         {
             { "Name", "web-server-www" },
         },
-        InstanceType = "t2.micro",
+        InstanceType = Aws.Ec2.InstanceType.T2_Micro,
         SecurityGroups = new[]
         {
             securityGroup.Name,

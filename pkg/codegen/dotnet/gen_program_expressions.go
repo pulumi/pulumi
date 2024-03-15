@@ -368,6 +368,12 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 func enumName(enum *model.EnumType) (string, string) {
 	components := strings.Split(enum.Token, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	modParts := strings.Split(components[1], "/")
+	// if the token has the format {pkg}:{mod}/{name}:{Name}
+	// then we simplify into {pkg}:{mod}:{Name}
+	if len(modParts) == 2 && strings.EqualFold(modParts[1], components[2]) {
+		components[1] = modParts[0]
+	}
 	enumName := tokenToName(enum.Token)
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {

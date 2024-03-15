@@ -33,16 +33,16 @@ func main() {
 							{
 								Name: "CacheExpiration",
 								Parameters: {
-									CacheBehavior: "Override",
+									CacheBehavior: cdn.CacheBehaviorOverride,
 									CacheDuration: "10:10:09",
-									CacheType:     "All",
+									CacheType:     cdn.CacheTypeAll,
 									OdataType:     "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
 								},
 							},
 							{
 								Name: "ModifyResponseHeader",
 								Parameters: {
-									HeaderAction: "Overwrite",
+									HeaderAction: cdn.HeaderActionOverwrite,
 									HeaderName:   "Access-Control-Allow-Origin",
 									OdataType:    "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
 									Value:        "*",
@@ -51,7 +51,7 @@ func main() {
 							{
 								Name: "ModifyRequestHeader",
 								Parameters: {
-									HeaderAction: "Overwrite",
+									HeaderAction: cdn.HeaderActionOverwrite,
 									HeaderName:   "Accept-Encoding",
 									OdataType:    "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
 									Value:        "gzip",
@@ -68,7 +68,7 @@ func main() {
 									},
 									NegateCondition: true,
 									OdataType:       "#Microsoft.Azure.Cdn.Models.DeliveryRuleRemoteAddressConditionParameters",
-									Operator:        "IPMatch",
+									Operator:        cdn.RemoteAddressOperatorIPMatch,
 								},
 							},
 						},

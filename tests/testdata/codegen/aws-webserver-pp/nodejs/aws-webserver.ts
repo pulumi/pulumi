@@ -22,7 +22,7 @@ const server = new aws.ec2.Instance("server", {
     tags: {
         Name: "web-server-www",
     },
-    instanceType: "t2.micro",
+    instanceType: aws.ec2.InstanceType.T2_Micro,
     securityGroups: [securityGroup.name],
     ami: ami.then(ami => ami.id),
     userData: `#!/bin/bash

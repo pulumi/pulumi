@@ -159,7 +159,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	g.genNYI(w, "For expression")
 }
 
-func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
+func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType, dest model.Type) func(member *schema.Enum) {
 	return func(member *schema.Enum) {
 		// We know the enum value at the call site, so we can directly stamp in a
 		// valid enum instance. We don't need to convert.
@@ -173,6 +173,14 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 		pkg, mod, _, _ := pcl.DecomposeToken(to.Token, to.SyntaxNode().Range())
 		mod = g.getModOrAlias(pkg, mod, mod)
 
+		if union, isUnion := dest.(*model.UnionType); isUnion && len(union.Annotations) > 0 {
+			if input, ok := union.Annotations[0].(schema.Type); ok {
+				if _, ok := codegen.ResolvedType(input).(*schema.UnionType); ok {
+					g.Fgenf(w, "pulumi.String(%s.%s)", mod, memberTag)
+					return
+				}
+			}
+		}
 		g.Fgenf(w, "%s.%s", mod, memberTag)
 	}
 }
@@ -206,7 +214,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					from, enumTag, underlyingType)
 				return
 			}
-			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
+			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to, expr.Signature.ReturnType), func(from model.Expression) {
 				g.Fgenf(w, "%s(%v)", enumTag, from)
 			})
 			if diag != nil {

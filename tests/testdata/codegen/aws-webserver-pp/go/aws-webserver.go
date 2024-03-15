@@ -47,7 +47,7 @@ func main() {
 			Tags: pulumi.StringMap{
 				"Name": pulumi.String("web-server-www"),
 			},
-			InstanceType: pulumi.String("t2.micro"),
+			InstanceType: pulumi.String(ec2.InstanceType_T2_Micro),
 			SecurityGroups: pulumi.StringArray{
 				securityGroup.Name,
 			},

@@ -7,9 +7,9 @@ const sqlAdmin = config.get("sqlAdmin") || "pulumi";
 const appservicegroup = new azure_native.resources.ResourceGroup("appservicegroup", {});
 const sa = new azure_native.storage.StorageAccount("sa", {
     resourceGroupName: appservicegroup.name,
-    kind: "StorageV2",
+    kind: azure_native.storage.Kind.StorageV2,
     sku: {
-        name: "Standard_LRS",
+        name: azure_native.storage.SkuName.Standard_LRS,
     },
 });
 const container = new azure_native.storage.BlobContainer("container", {
@@ -22,9 +22,9 @@ const blobAccessToken = pulumi.secret(pulumi.all([sa.name, appservicegroup.name,
     protocols: azure_native.storage.HttpProtocol.Https,
     sharedAccessStartTime: "2022-01-01",
     sharedAccessExpiryTime: "2030-01-01",
-    resource: "c",
+    resource: azure_native.storage.SignedResource.C,
     resourceGroupName: appservicegroupName,
-    permissions: "r",
+    permissions: azure_native.storage.Permissions.R,
     canonicalizedResource: `/blob/${saName1}/${containerName}`,
     contentType: "application/json",
     cacheControl: "max-age=5",
@@ -48,7 +48,7 @@ const blob = new azure_native.storage.Blob("blob", {
 });
 const appInsights = new azure_native.insights.Component("appInsights", {
     resourceGroupName: appservicegroup.name,
-    applicationType: "web",
+    applicationType: azure_native.insights.ApplicationType.Web,
     kind: "web",
 });
 const sqlPassword = new random.RandomPassword("sqlPassword", {

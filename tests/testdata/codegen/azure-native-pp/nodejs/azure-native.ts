@@ -20,16 +20,16 @@ const endpoint = new azure_native.cdn.Endpoint("endpoint", {
                 {
                     name: "CacheExpiration",
                     parameters: {
-                        cacheBehavior: "Override",
+                        cacheBehavior: azure_native.cdn.CacheBehavior.Override,
                         cacheDuration: "10:10:09",
-                        cacheType: "All",
+                        cacheType: azure_native.cdn.CacheType.All,
                         odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
                     },
                 },
                 {
                     name: "ModifyResponseHeader",
                     parameters: {
-                        headerAction: "Overwrite",
+                        headerAction: azure_native.cdn.HeaderAction.Overwrite,
                         headerName: "Access-Control-Allow-Origin",
                         odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
                         value: "*",
@@ -38,7 +38,7 @@ const endpoint = new azure_native.cdn.Endpoint("endpoint", {
                 {
                     name: "ModifyRequestHeader",
                     parameters: {
-                        headerAction: "Overwrite",
+                        headerAction: azure_native.cdn.HeaderAction.Overwrite,
                         headerName: "Accept-Encoding",
                         odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
                         value: "gzip",
@@ -54,7 +54,7 @@ const endpoint = new azure_native.cdn.Endpoint("endpoint", {
                     ],
                     negateCondition: true,
                     odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleRemoteAddressConditionParameters",
-                    operator: "IPMatch",
+                    operator: azure_native.cdn.RemoteAddressOperator.IPMatch,
                 },
             }],
             name: "rule1",

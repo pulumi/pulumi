@@ -40,9 +40,9 @@ return await Deployment.RunAsync(() =>
                             Name = "CacheExpiration",
                             Parameters = new AzureNative.Cdn.Inputs.CacheExpirationActionParametersArgs
                             {
-                                CacheBehavior = "Override",
+                                CacheBehavior = AzureNative.Cdn.CacheBehavior.Override,
                                 CacheDuration = "10:10:09",
-                                CacheType = "All",
+                                CacheType = AzureNative.Cdn.CacheType.All,
                                 OdataType = "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
                             },
                         },
@@ -51,7 +51,7 @@ return await Deployment.RunAsync(() =>
                             Name = "ModifyResponseHeader",
                             Parameters = new AzureNative.Cdn.Inputs.HeaderActionParametersArgs
                             {
-                                HeaderAction = "Overwrite",
+                                HeaderAction = AzureNative.Cdn.HeaderAction.Overwrite,
                                 HeaderName = "Access-Control-Allow-Origin",
                                 OdataType = "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
                                 Value = "*",
@@ -62,7 +62,7 @@ return await Deployment.RunAsync(() =>
                             Name = "ModifyRequestHeader",
                             Parameters = new AzureNative.Cdn.Inputs.HeaderActionParametersArgs
                             {
-                                HeaderAction = "Overwrite",
+                                HeaderAction = AzureNative.Cdn.HeaderAction.Overwrite,
                                 HeaderName = "Accept-Encoding",
                                 OdataType = "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
                                 Value = "gzip",
@@ -83,7 +83,7 @@ return await Deployment.RunAsync(() =>
                                 },
                                 NegateCondition = true,
                                 OdataType = "#Microsoft.Azure.Cdn.Models.DeliveryRuleRemoteAddressConditionParameters",
-                                Operator = "IPMatch",
+                                Operator = AzureNative.Cdn.RemoteAddressOperator.IPMatch,
                             },
                         },
                     },
