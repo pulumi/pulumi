@@ -392,7 +392,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			Opts:   opts,
 		}
 
-		res := t(args)
+		res := t(innerCtx, args)
 		rpcRes := &pulumirpc.TransformResponse{
 			Properties: nil,
 			Options:    nil,
