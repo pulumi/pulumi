@@ -871,6 +871,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remote:                        lwOpts.Remote,
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
+		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
 		repo:                          lwOpts.Repo,
 		pulumiCommand:                 pulumiCommand,
 	}
