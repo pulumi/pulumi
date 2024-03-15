@@ -21,7 +21,7 @@ return await Deployment.RunAsync(() =>
             Capacity = 2,
             Family = "Gen5",
             Name = "B_Gen5_2",
-            Tier = "Basic",
+            Tier = AzureNative.DBforPostgreSQL.SkuTier.Basic,
         },
         Tags = 
         {

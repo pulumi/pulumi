@@ -14,7 +14,7 @@ const server = new azure_native.dbforpostgresql.Server("server", {
         capacity: 2,
         family: "Gen5",
         name: "B_Gen5_2",
-        tier: "Basic",
+        tier: azure_native.dbforpostgresql.SkuTier.Basic,
     },
     tags: {
         ElasticServer: "1",

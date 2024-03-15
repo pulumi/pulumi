@@ -243,10 +243,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
 			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
-			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
-				pkg += "." + m
-			}
 			enumName := tokenToName(to.Token)
+			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
+				modParts := strings.Split(m, "/")
+				if len(modParts) == 2 && strings.EqualFold(modParts[1], enumName) {
+					m = modParts[0]
+				}
+				pkg += "." + strings.ReplaceAll(m, "/", ".")
+			}
 
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)

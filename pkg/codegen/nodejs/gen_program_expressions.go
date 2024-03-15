@@ -317,6 +317,12 @@ func enumNameWithPackage(enumToken string, pkgRef schema.PackageReference) (stri
 	name := tokenToName(enumToken)
 	pkg := makeValidIdentifier(components[0])
 	if mod := components[1]; mod != "" && mod != "index" {
+		// if the token has the format {pkg}:{mod}/{name}:{Name}
+		// then we simplify into {pkg}:{mod}:{Name}
+		modParts := strings.Split(mod, "/")
+		if len(modParts) == 2 && strings.EqualFold(modParts[1], components[2]) {
+			mod = modParts[0]
+		}
 		if pkgRef != nil {
 			mod = moduleName(mod, pkgRef)
 		}

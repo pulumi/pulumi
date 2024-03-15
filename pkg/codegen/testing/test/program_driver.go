@@ -159,6 +159,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Azure SA",
 	},
 	{
+		Directory:   "string-enum-union-list",
+		Description: "Contains resource which has a property of type List<Union<String, Enum>>",
+		// skipping compiling on Go because it doesn't know to handle unions in lists
+		// and instead generates pulumi.StringArray
+		SkipCompile: codegen.NewStringSet("go"),
+	},
+	{
 		Directory:   "kubernetes-operator",
 		Description: "K8s Operator",
 	},
