@@ -229,7 +229,6 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(
 		&r.executorImagePassword, "remote-executor-image-password", "",
 		"[EXPERIMENTAL] The password for the credentials with access to the Docker image to use for the executor")
-
 }
 
 // runDeployment kicks off a remote deployment.
