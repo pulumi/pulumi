@@ -57,6 +57,7 @@ type LocalWorkspace struct {
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
 	pulumiCommand                 PulumiCommand
+	remoteExecutorImage           *ExecutorImage
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -964,6 +965,8 @@ type localWorkspaceOptions struct {
 	PreRunCommands []string
 	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
 	RemoteSkipInstallDependencies bool
+	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
+	RemoteExecutorImage *ExecutorImage
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -1120,6 +1123,12 @@ func preRunCommands(commands ...string) LocalWorkspaceOption {
 func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteSkipInstallDependencies = skipInstallDependencies
+	})
+}
+
+func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteExecutorImage = image
 	})
 }
 

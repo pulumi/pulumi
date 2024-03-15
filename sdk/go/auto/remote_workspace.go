@@ -148,6 +148,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 		preRunCommands(remoteOpts.PreRunCommands...),
 		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
 		Repo(repo),
+		remoteExecutorImage(remoteOpts.ExecutorImage),
 	}
 	return localOpts, nil
 }
@@ -160,6 +161,18 @@ type remoteWorkspaceOptions struct {
 	PreRunCommands []string
 	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
 	SkipInstallDependencies bool
+	// ExecutorImage is the image to use for the remote executor.
+	ExecutorImage *ExecutorImage
+}
+
+type ExecutorImage struct {
+	Image       string
+	Credentials *DockerImageCredentials
+}
+
+type DockerImageCredentials struct {
+	Username string
+	Password string
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
