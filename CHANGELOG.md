@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.111.0 (2024-03-15)
+
+
+### Features
+
+- [auto/go] Support remote deployment executor image
+  [#15697](https://github.com/pulumi/pulumi/pull/15697)
+
+
+### Bug Fixes
+
+- [engine] Test and fix the engine filling in property dependencies to provider constructs
+
+- [sdkgen/go] Ensure package generation for Go doesn't panic when encountering overly nested arrays or maps of primitive types
+  [#15680](https://github.com/pulumi/pulumi/pull/15680)
+
 ## 3.110.0 (2024-03-14)
 
 
