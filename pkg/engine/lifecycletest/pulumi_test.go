@@ -4930,7 +4930,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						tok tokens.ModuleMember, args resource.PropertyMap,
 						info plugin.CallInfo, options plugin.CallOptions,
 					) (plugin.CallResult, error) {
-						// Arg was sent as an output but the dependency map should still be filled in for providers just look at that
+						// Arg was sent as an output but the dependency map should still be filled in for providers to look at
 						assert.Equal(t,
 							[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a"},
 							options.ArgDependencies["arg"])
@@ -5070,7 +5070,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						tok tokens.ModuleMember, args resource.PropertyMap,
 						info plugin.CallInfo, options plugin.CallOptions,
 					) (plugin.CallResult, error) {
-						// Arg was sent as an output but the dependency map should still be filled in for providers just look at that
+						// Arg was sent as an output but the dependency map should still be filled in for providers to look at
 						assert.Equal(t,
 							[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a"},
 							options.ArgDependencies["arg"])
@@ -5152,6 +5152,161 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 		_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
 		assert.NoError(t, err)
 	}
+	t.Run("WithGrpc", func(t *testing.T) {
+		t.Parallel()
+		test(t, deploytest.WithGrpc)
+	})
+	t.Run("WithoutGrpc", func(t *testing.T) {
+		t.Parallel()
+		test(t, deploytest.WithoutGrpc)
+	})
+}
+
+// Test that the engine fills in dependencies to Construct and Call given just OutputValues
+func TestConstructCallSendDependencies(t *testing.T) {
+	t.Parallel()
+
+	test := func(t *testing.T, opt deploytest.PluginOption) {
+		loaders := []*deploytest.ProviderLoader{
+			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+				return &deploytest.Provider{
+					CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+						preview bool,
+					) (resource.ID, resource.PropertyMap, resource.Status, error) {
+						return "created-id", inputs, resource.StatusOK, nil
+					},
+					ReadF: func(urn resource.URN, id resource.ID,
+						inputs, state resource.PropertyMap,
+					) (plugin.ReadResult, resource.Status, error) {
+						return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+					},
+					ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+						inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
+					) (plugin.ConstructResult, error) {
+						// Arg was sent as an output but the dependency map should still be filled in for providers to look at
+						assert.Equal(t,
+							[]resource.URN{"urn:pulumi:test::test::pkgA:m:typC::resC"},
+							options.PropertyDependencies["arg"])
+
+						urn, _, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+						assert.NoError(t, err)
+
+						urnA, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", name+"-a", true, deploytest.ResourceOptions{
+							Parent: urn,
+						})
+						assert.NoError(t, err)
+
+						// Return a secret and unknown output depending on some internal resource
+						deps := []resource.URN{urnA}
+						return plugin.ConstructResult{
+							URN: urn,
+							Outputs: resource.PropertyMap{
+								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
+								"bar": resource.MakeComputed(resource.NewStringProperty("")),
+							},
+							OutputDependencies: map[resource.PropertyKey][]resource.URN{
+								"foo": deps,
+								"bar": deps,
+							},
+						}, nil
+					},
+					CallF: func(monitor *deploytest.ResourceMonitor,
+						tok tokens.ModuleMember, args resource.PropertyMap,
+						info plugin.CallInfo, options plugin.CallOptions,
+					) (plugin.CallResult, error) {
+						// Arg was sent as an output but the dependency map should still be filled in for providers to look at
+						assert.Equal(t,
+							[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a"},
+							options.ArgDependencies["arg"])
+
+						// Assume a single output arg that this call depends on
+						arg := args["arg"]
+						deps := arg.OutputValue().Dependencies
+
+						return plugin.CallResult{
+							Return: resource.PropertyMap{
+								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
+								"bar": resource.MakeComputed(resource.NewStringProperty("")),
+							},
+							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
+								"foo": deps,
+								"bar": deps,
+							},
+						}, nil
+					},
+				}, nil
+			}, opt),
+		}
+
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			urnC, _, stateC, _, err := monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"arg": resource.NewNumberProperty(1),
+				},
+			})
+			assert.NoError(t, err)
+
+			_, _, state, deps, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+				Remote: true,
+				Inputs: resource.PropertyMap{
+					"arg": resource.NewOutputProperty(resource.Output{
+						Element:      stateC["arg"],
+						Known:        true,
+						Dependencies: []resource.URN{urnC},
+					}),
+				},
+			})
+			assert.NoError(t, err)
+
+			// The urn of the internal resource the component created
+			urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a")
+
+			// Assert that the outputs are received as just plain values because SDKs don't yet support output
+			// values returned from RegisterResource.
+			assert.Equal(t, resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+			}, state)
+			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
+				"foo": {urn},
+				"bar": {urn},
+			}, deps)
+
+			result, deps, _, err := monitor.Call("pkgA:m:typA", resource.PropertyMap{
+				// Send this as an output value using the dependencies returned.
+				"arg": resource.NewOutputProperty(resource.Output{
+					Element:      state["foo"].SecretValue().Element,
+					Known:        true,
+					Secret:       true,
+					Dependencies: []resource.URN{urn},
+				}),
+			}, nil, "", "")
+			assert.NoError(t, err)
+
+			// Assert that the outputs are received as just plain values because SDKs don't yet support output
+			// values returned from Call.
+			assert.Equal(t, resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+			}, result)
+			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
+				"foo": {urn},
+				"bar": {urn},
+			}, deps)
+
+			return nil
+		})
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+		p := &TestPlan{
+			Options: TestUpdateOptions{HostF: hostF},
+		}
+
+		project := p.GetProject()
+		_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
+		assert.NoError(t, err)
+	}
+
 	t.Run("WithGrpc", func(t *testing.T) {
 		t.Parallel()
 		test(t, deploytest.WithGrpc)

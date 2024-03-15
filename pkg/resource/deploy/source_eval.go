@@ -1659,6 +1659,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			propertyDependencies[resource.PropertyKey(pk)] = deps
 		}
 	}
+	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
+	for key, output := range props {
+		propertyDependencies[key] = addOutputDependencies(propertyDependencies[key], output)
+	}
 
 	protect := opts.Protect
 	ignoreChanges := opts.IgnoreChanges
