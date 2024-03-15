@@ -182,6 +182,12 @@ func (r *treeRenderer) markDirty() {
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	if r.display == nil || r.display.headerRow == nil {
+		// Don't mark dirty if there is no display, or
+		// if the display has never been initialized
+		return
+	}
+
 	r.dirty = true
 	if r.opts.deterministicOutput {
 		r.frame(true, false)
@@ -392,59 +398,63 @@ func (r *treeRenderer) handleEvents() {
 		case <-r.ticker.C:
 			r.frame(false, false)
 		case key := <-r.keys:
-			switch key {
-			case terminal.KeyCtrlC:
-				sigint()
-			case terminal.KeyCtrlO:
-				if r.permalink != "" {
-					if err := browser.OpenURL(r.permalink); err != nil {
-						r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
-					}
-				}
-			case terminal.KeyUp, "k":
-				if r.treeTableOffset > 0 {
-					r.treeTableOffset--
-				}
-				r.markDirty()
-			case terminal.KeyDown, "j":
-				if r.treeTableOffset < r.maxTreeTableOffset {
-					r.treeTableOffset++
-				}
-				r.markDirty()
-			case terminal.KeyPageUp:
-				_, termHeight, err := r.term.Size()
-				contract.IgnoreError(err)
-
-				if r.treeTableOffset > termHeight {
-					r.treeTableOffset -= termHeight
-				} else {
-					r.treeTableOffset = 0
-				}
-				r.markDirty()
-			case terminal.KeyPageDown:
-				_, termHeight, err := r.term.Size()
-				contract.IgnoreError(err)
-
-				if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
-					r.treeTableOffset += termHeight
-				} else {
-					r.treeTableOffset = r.maxTreeTableOffset
-				}
-				r.markDirty()
-			case terminal.KeyHome, "g":
-				if r.treeTableOffset > 0 {
-					r.treeTableOffset = 0
-				}
-				r.markDirty()
-			case terminal.KeyEnd, "G":
-				if r.treeTableOffset < r.maxTreeTableOffset {
-					r.treeTableOffset = r.maxTreeTableOffset
-				}
-				r.markDirty()
-			}
+			r.handleKey(key)
 		case <-r.closed:
 			return
 		}
+	}
+}
+
+func (r *treeRenderer) handleKey(key string) {
+	switch key {
+	case terminal.KeyCtrlC:
+		sigint()
+	case terminal.KeyCtrlO:
+		if r.permalink != "" {
+			if err := browser.OpenURL(r.permalink); err != nil {
+				r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
+			}
+		}
+	case terminal.KeyUp, "k":
+		if r.treeTableOffset > 0 {
+			r.treeTableOffset--
+		}
+		r.markDirty()
+	case terminal.KeyDown, "j":
+		if r.treeTableOffset < r.maxTreeTableOffset {
+			r.treeTableOffset++
+		}
+		r.markDirty()
+	case terminal.KeyPageUp:
+		_, termHeight, err := r.term.Size()
+		contract.IgnoreError(err)
+
+		if r.treeTableOffset > termHeight {
+			r.treeTableOffset -= termHeight
+		} else {
+			r.treeTableOffset = 0
+		}
+		r.markDirty()
+	case terminal.KeyPageDown:
+		_, termHeight, err := r.term.Size()
+		contract.IgnoreError(err)
+
+		if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
+			r.treeTableOffset += termHeight
+		} else {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
+		r.markDirty()
+	case terminal.KeyHome, "g":
+		if r.treeTableOffset > 0 {
+			r.treeTableOffset = 0
+		}
+		r.markDirty()
+	case terminal.KeyEnd, "G":
+		if r.treeTableOffset < r.maxTreeTableOffset {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
+		r.markDirty()
 	}
 }
 
