@@ -53,6 +53,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
@@ -909,7 +911,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
 	for key, output := range args {
-		argDependencies[key] = addOutputDependencies(argDependencies[key], output)
+		argDependencies[key] = extendOutputDependencies(argDependencies[key], output)
 	}
 
 	info := plugin.CallInfo{
@@ -936,7 +938,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
 	for k, v := range ret.Return {
-		ret.ReturnDependencies[k] = addOutputDependencies(ret.ReturnDependencies[k], v)
+		ret.ReturnDependencies[k] = extendOutputDependencies(ret.ReturnDependencies[k], v)
 	}
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
@@ -1661,7 +1663,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
 	for key, output := range props {
-		propertyDependencies[key] = addOutputDependencies(propertyDependencies[key], output)
+		propertyDependencies[key] = extendOutputDependencies(propertyDependencies[key], output)
 	}
 
 	protect := opts.Protect
@@ -1746,7 +1748,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
 		for k, v := range result.State.Outputs {
-			constructResult.OutputDependencies[k] = addOutputDependencies(constructResult.OutputDependencies[k], v)
+			constructResult.OutputDependencies[k] = extendOutputDependencies(constructResult.OutputDependencies[k], v)
 		}
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
@@ -2151,30 +2153,35 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 	return result
 }
 
-func addOutputDependencies(deps []resource.URN, v resource.PropertyValue) []resource.URN {
+func extendOutputDependencies(deps []resource.URN, v resource.PropertyValue) []resource.URN {
+	set := mapset.NewSet(deps...)
+	addOutputDependencies(set, v)
+	return set.ToSlice()
+}
+
+func addOutputDependencies(deps mapset.Set[resource.URN], v resource.PropertyValue) {
 	if v.IsOutput() {
 		output := v.OutputValue()
 		if output.Known {
-			deps = addOutputDependencies(deps, output.Element)
+			addOutputDependencies(deps, output.Element)
 		}
-		deps = append(deps, output.Dependencies...)
+		deps.Append(output.Dependencies...)
 	}
 	if v.IsResourceReference() {
 		ref := v.ResourceReferenceValue()
-		deps = addOutputDependencies(deps, ref.ID)
+		addOutputDependencies(deps, ref.ID)
 	}
 	if v.IsObject() {
 		for _, elem := range v.ObjectValue() {
-			deps = addOutputDependencies(deps, elem)
+			addOutputDependencies(deps, elem)
 		}
 	}
 	if v.IsArray() {
 		for _, elem := range v.ArrayValue() {
-			deps = addOutputDependencies(deps, elem)
+			addOutputDependencies(deps, elem)
 		}
 	}
 	if v.IsSecret() {
-		deps = addOutputDependencies(deps, v.SecretValue().Element)
+		addOutputDependencies(deps, v.SecretValue().Element)
 	}
-	return deps
 }
