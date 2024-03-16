@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet,go,nodejs,python
-  description: Fix enum resolution from types of the form union[string, enum]
