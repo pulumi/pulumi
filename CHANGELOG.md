@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.111.1 (2024-03-15)
+
+
+### Bug Fixes
+
+- [cli/display] Fix superfluous newlines being written during updates
+
+- [programgen/{dotnet,go,nodejs,python}] Fix enum resolution from types of the form union[string, enum]
+  [#15696](https://github.com/pulumi/pulumi/pull/15696)
+
 ## 3.111.0 (2024-03-15)
 
 
