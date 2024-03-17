@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: Fix installing local language plugins on Windows

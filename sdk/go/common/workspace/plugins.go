@@ -1285,6 +1285,9 @@ func (p singleFilePlugin) writeToDir(finalDir string) error {
 	}
 
 	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", p.Kind, p.Name))
+	if runtime.GOOS == "windows" {
+		finalPath += ".exe"
+	}
 	// We are writing an executable.
 	return os.WriteFile(finalPath, bytes, 0o700) //nolint:gosec
 }
