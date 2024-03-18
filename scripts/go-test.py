@@ -69,7 +69,7 @@ def heartbeat():
     if not sys:
         # occurs during interpreter shutdown
         return
-    print(heartbeat_str + str(datetime.now()), file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
+    print(heartbeat_str + " " + str(datetime.now()), file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
     sys.stdout.flush()
     sys.stderr.flush()
 
