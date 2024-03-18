@@ -35,7 +35,8 @@ type treeRenderer struct {
 
 	opts Options
 
-	term terminal.Terminal
+	display *ProgressDisplay
+	term    terminal.Terminal
 
 	permalink string
 
@@ -84,20 +85,24 @@ func (r *treeRenderer) Close() error {
 	return r.term.Close()
 }
 
-func (r *treeRenderer) tick(display *ProgressDisplay) {
-	r.render(display)
+func (r *treeRenderer) initializeDisplay(display *ProgressDisplay) {
+	r.display = display
 }
 
-func (r *treeRenderer) rowUpdated(display *ProgressDisplay, _ Row) {
-	r.render(display)
+func (r *treeRenderer) tick() {
+	r.markDirty()
 }
 
-func (r *treeRenderer) systemMessage(display *ProgressDisplay, _ engine.StdoutEventPayload) {
-	r.render(display)
+func (r *treeRenderer) rowUpdated(_ Row) {
+	r.markDirty()
 }
 
-func (r *treeRenderer) done(display *ProgressDisplay) {
-	r.render(display)
+func (r *treeRenderer) systemMessage(_ engine.StdoutEventPayload) {
+	r.markDirty()
+}
+
+func (r *treeRenderer) done() {
+	r.markDirty()
 
 	r.ticker.Stop()
 	r.closed <- true
@@ -118,7 +123,7 @@ func (r *treeRenderer) print(text string) {
 	contract.IgnoreError(err)
 }
 
-func (r *treeRenderer) println(display *ProgressDisplay, text string) {
+func (r *treeRenderer) println(text string) {
 	r.print(text)
 	r.print("\n")
 }
@@ -133,22 +138,21 @@ func (r *treeRenderer) overln(text string) {
 	r.print("\n")
 }
 
-func (r *treeRenderer) render(display *ProgressDisplay) {
-	r.m.Lock()
-	defer r.m.Unlock()
+func (r *treeRenderer) render() {
+	contract.Assertf(!r.m.TryLock(), "treeRenderer.render() MUST be called from within a locked context")
 
-	if display.headerRow == nil {
+	if r.display.headerRow == nil {
 		return
 	}
 
 	// Render the resource tree table into rows.
-	rootNodes := display.generateTreeNodes()
-	rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
+	rootNodes := r.display.generateTreeNodes()
+	rootNodes = r.display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 	sortNodes(rootNodes)
-	display.addIndentations(rootNodes, true /*isRoot*/, "")
+	r.display.addIndentations(rootNodes, true /*isRoot*/, "")
 
 	maxSuffixLength := 0
-	for _, v := range display.suffixesArray {
+	for _, v := range r.display.suffixesArray {
 		runeCount := utf8.RuneCountInString(v)
 		if runeCount > maxSuffixLength {
 			maxSuffixLength = runeCount
@@ -157,7 +161,7 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 
 	var treeTableRows [][]string
 	var maxColumnLengths []int
-	display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths)
+	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths)
 	removeInfoColumnIfUnneeded(treeTableRows)
 
 	r.treeTableRows = r.treeTableRows[:0]
@@ -168,14 +172,9 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 
 	// Convert system events into lines.
 	r.systemMessages = r.systemMessages[:0]
-	for _, payload := range display.systemEventPayloads {
+	for _, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
-	}
-
-	r.dirty = true
-	if r.opts.deterministicOutput {
-		r.frame(true, false)
 	}
 }
 
@@ -183,7 +182,16 @@ func (r *treeRenderer) markDirty() {
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	if r.display == nil || r.display.headerRow == nil {
+		// Don't mark dirty if there is no display, or
+		// if the display has never been initialized
+		return
+	}
+
 	r.dirty = true
+	if r.opts.deterministicOutput {
+		r.frame(true, false)
+	}
 }
 
 // +--------------------------------------------+
@@ -204,6 +212,9 @@ func (r *treeRenderer) frame(locked, done bool) {
 		return
 	}
 	r.dirty = false
+
+	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
+	r.render()
 
 	termWidth, termHeight, err := r.term.Size()
 	contract.IgnoreError(err)
@@ -260,7 +271,14 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
 		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
+		if r.maxTreeTableOffset < 0 {
+			r.maxTreeTableOffset = 0
+		}
 		scrollable := r.maxTreeTableOffset != 0
+
+		if r.treeTableOffset > r.maxTreeTableOffset {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
 
 		if autoscroll {
 			r.treeTableOffset = r.maxTreeTableOffset
@@ -270,7 +288,11 @@ func (r *treeRenderer) frame(locked, done bool) {
 			// Ensure that the treeTableHeight is at least 1 to avoid going out of bounds.
 			treeTableHeight = 1
 		}
-		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		if r.treeTableOffset+treeTableHeight-1 < len(treeTableRows) {
+			treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		} else if r.treeTableOffset < len(treeTableRows) {
+			treeTableRows = treeTableRows[r.treeTableOffset:]
+		}
 
 		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
 
@@ -376,59 +398,63 @@ func (r *treeRenderer) handleEvents() {
 		case <-r.ticker.C:
 			r.frame(false, false)
 		case key := <-r.keys:
-			switch key {
-			case terminal.KeyCtrlC:
-				sigint()
-			case terminal.KeyCtrlO:
-				if r.permalink != "" {
-					if err := browser.OpenURL(r.permalink); err != nil {
-						r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
-					}
-				}
-			case terminal.KeyUp, "k":
-				if r.treeTableOffset > 0 {
-					r.treeTableOffset--
-				}
-				r.markDirty()
-			case terminal.KeyDown, "j":
-				if r.treeTableOffset < r.maxTreeTableOffset {
-					r.treeTableOffset++
-				}
-				r.markDirty()
-			case terminal.KeyPageUp:
-				_, termHeight, err := r.term.Size()
-				contract.IgnoreError(err)
-
-				if r.treeTableOffset > termHeight {
-					r.treeTableOffset -= termHeight
-				} else {
-					r.treeTableOffset = 0
-				}
-				r.markDirty()
-			case terminal.KeyPageDown:
-				_, termHeight, err := r.term.Size()
-				contract.IgnoreError(err)
-
-				if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
-					r.treeTableOffset += termHeight
-				} else {
-					r.treeTableOffset = r.maxTreeTableOffset
-				}
-				r.markDirty()
-			case terminal.KeyHome, "g":
-				if r.treeTableOffset > 0 {
-					r.treeTableOffset = 0
-				}
-				r.markDirty()
-			case terminal.KeyEnd, "G":
-				if r.treeTableOffset < r.maxTreeTableOffset {
-					r.treeTableOffset = r.maxTreeTableOffset
-				}
-				r.markDirty()
-			}
+			r.handleKey(key)
 		case <-r.closed:
 			return
 		}
+	}
+}
+
+func (r *treeRenderer) handleKey(key string) {
+	switch key {
+	case terminal.KeyCtrlC:
+		sigint()
+	case terminal.KeyCtrlO:
+		if r.permalink != "" {
+			if err := browser.OpenURL(r.permalink); err != nil {
+				r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
+			}
+		}
+	case terminal.KeyUp, "k":
+		if r.treeTableOffset > 0 {
+			r.treeTableOffset--
+		}
+		r.markDirty()
+	case terminal.KeyDown, "j":
+		if r.treeTableOffset < r.maxTreeTableOffset {
+			r.treeTableOffset++
+		}
+		r.markDirty()
+	case terminal.KeyPageUp:
+		_, termHeight, err := r.term.Size()
+		contract.IgnoreError(err)
+
+		if r.treeTableOffset > termHeight {
+			r.treeTableOffset -= termHeight
+		} else {
+			r.treeTableOffset = 0
+		}
+		r.markDirty()
+	case terminal.KeyPageDown:
+		_, termHeight, err := r.term.Size()
+		contract.IgnoreError(err)
+
+		if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
+			r.treeTableOffset += termHeight
+		} else {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
+		r.markDirty()
+	case terminal.KeyHome, "g":
+		if r.treeTableOffset > 0 {
+			r.treeTableOffset = 0
+		}
+		r.markDirty()
+	case terminal.KeyEnd, "G":
+		if r.treeTableOffset < r.maxTreeTableOffset {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
+		r.markDirty()
 	}
 }
 
