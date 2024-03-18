@@ -15,8 +15,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumix",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/util/contract:go_default_library",
-        "//sdk/go/internal:go_default_library",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/internal",
     ],
 )
 
@@ -48,4 +48,26 @@ alias(
     name = "go_default_library",
     actual = ":pulumix",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "pulumix_test",
+    srcs = [
+        "applyn_test.go",
+        "array_test.go",
+        "combinators_test.go",
+        "context_test.go",
+        "map_test.go",
+        "ptr_test.go",
+        "types_ext_test.go",
+        "types_test.go",
+    ],
+    embed = [":pulumix"],
+    deps = [
+        "//sdk/go/common/resource",
+        "//sdk/go/internal",
+        "//sdk/go/pulumi",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )

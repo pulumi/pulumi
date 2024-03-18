@@ -6,9 +6,9 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/resource/analyzer",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/apitype:go_default_library",
-        "//sdk/go/common/resource/plugin:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/contract",
         "@com_github_xeipuuv_gojsonschema//:gojsonschema",
     ],
 )
@@ -18,8 +18,8 @@ go_test(
     srcs = ["config_test.go"],
     embed = [":analyzer"],
     deps = [
-        "//sdk/go/common/apitype:go_default_library",
-        "//sdk/go/common/resource/plugin:go_default_library",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource/plugin",
         "@com_github_stretchr_testify//assert",
     ],
 )

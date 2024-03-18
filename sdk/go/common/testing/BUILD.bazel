@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/testing",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/tools:go_default_library",
-        "//sdk/go/common/util/fsutil:go_default_library",
+        "//sdk/go/common/tools",
+        "//sdk/go/common/util/fsutil",
         "@com_github_stretchr_testify//assert",
     ],
 )

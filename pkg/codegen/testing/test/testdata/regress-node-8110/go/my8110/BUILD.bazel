@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "my8110",
+    srcs = [
+        "doc.go",
+        "exampleFunc.go",
+        "init.go",
+        "provider.go",
+        "pulumiEnums.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/regress-node-8110/go/my8110",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":my8110",
+    visibility = ["//visibility:public"],
+)

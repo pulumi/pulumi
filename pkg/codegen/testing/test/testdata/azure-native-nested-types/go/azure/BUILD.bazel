@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "azure",
+    srcs = [
+        "doc.go",
+        "init.go",
+        "provider.go",
+        "pulumiUtilities.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/azure-native-nested-types/go/azure",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":azure",
+    visibility = ["//visibility:public"],
+)

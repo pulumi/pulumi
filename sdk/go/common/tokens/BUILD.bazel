@@ -9,7 +9,7 @@ go_library(
     ],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/tokens",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/util/contract:go_default_library"],
+    deps = ["//sdk/go/common/util/contract"],
 )
 
 go_test(

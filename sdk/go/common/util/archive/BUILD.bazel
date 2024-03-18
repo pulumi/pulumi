@@ -11,8 +11,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/archive",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/util/contract:go_default_library",
-        "//sdk/go/common/util/logging:go_default_library",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
         "@com_github_sabhiram_go_gitignore//:go-gitignore",
     ],
 )

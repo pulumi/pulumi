@@ -6,14 +6,14 @@ go_library(
     importpath = "github.com/pulumi/pulumi/tests/integration/construct_component/testcomponent2-go",
     visibility = ["//visibility:private"],
     deps = [
-        "//sdk/proto/go:go_default_library",
+        "//pkg/resource/provider",
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/config",
+        "//sdk/go/pulumi/provider",
         "@com_github_golang_protobuf//ptypes/empty",
-        "//pkg/resource/provider:go_default_library",
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/util/cmdutil:go_default_library",
-        "//sdk/go/pulumi:go_default_library",
-        "//sdk/go/pulumi/config:go_default_library",
-        "//sdk/go/pulumi/provider:go_default_library",
     ],
 )
 

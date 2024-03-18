@@ -5,14 +5,14 @@ go_library(
     srcs = ["env.go"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/env",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/util/cmdutil:go_default_library"],
+    deps = ["//sdk/go/common/util/cmdutil"],
 )
 
 go_test(
     name = "env_test",
     srcs = ["env_test.go"],
     deps = [
-        "//sdk/go/common/util/env:go_default_library",
+        ":env",
         "@com_github_stretchr_testify//assert",
     ],
 )

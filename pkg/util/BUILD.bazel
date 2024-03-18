@@ -5,7 +5,7 @@ go_library(
     srcs = ["plugin.go"],
     importpath = "github.com/pulumi/pulumi/pkg/v3/util",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/workspace:go_default_library"],
+    deps = ["//sdk/go/common/workspace"],
 )
 
 go_test(
@@ -13,7 +13,7 @@ go_test(
     srcs = ["plugin_test.go"],
     embed = [":util"],
     deps = [
-        "//sdk/go/common/workspace:go_default_library",
+        "//sdk/go/common/workspace",
         "@com_github_stretchr_testify//assert",
     ],
 )

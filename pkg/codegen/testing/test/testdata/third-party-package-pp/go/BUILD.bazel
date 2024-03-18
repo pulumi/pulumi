@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_lib",
+    srcs = ["third-party-package.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/third-party-package-pp/go",
+    visibility = ["//visibility:private"],
+    deps = ["//sdk/go/pulumi"],
+)
+
+go_binary(
+    name = "go",
+    embed = [":go_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -5,7 +5,7 @@ go_library(
     srcs = ["executable.go"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/executable",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/util/logging:go_default_library"],
+    deps = ["//sdk/go/common/util/logging"],
 )
 
 go_test(

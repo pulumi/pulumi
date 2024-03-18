@@ -12,8 +12,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/internal",
     visibility = ["//sdk/go:__subpackages__"],
     deps = [
-        "//sdk/go/common/slice:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
     ],
 )
 

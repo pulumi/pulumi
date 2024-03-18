@@ -6,11 +6,11 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/resource/deploy/deploytest",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
         "@com_github_blang_semver//:semver",
-        "//pkg/resource/deploy/deploytest:go_default_library",
-        "//sdk/go/common/resource/plugin:go_default_library",
-        "//sdk/go/common/slice:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
     ],
 )
 

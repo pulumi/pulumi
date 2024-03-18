@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_lib",
+    srcs = ["random.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/transpiled_examples/random-pp/go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_pulumi_pulumi_random_sdk_v4//go/random:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "go",
+    embed = [":go_lib"],
+    visibility = ["//visibility:public"],
+)

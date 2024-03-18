@@ -6,11 +6,11 @@ go_library(
     importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_methods_provider/testcomponent-go",
     visibility = ["//visibility:private"],
     deps = [
+        "//pkg/resource/provider",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/provider",
         "@com_github_blang_semver//:semver",
-        "//pkg/resource/provider:go_default_library",
-        "//sdk/go/common/util/cmdutil:go_default_library",
-        "//sdk/go/pulumi:go_default_library",
-        "//sdk/go/pulumi/provider:go_default_library",
     ],
 )
 

@@ -6,10 +6,10 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/proto/go:go_default_library",
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/util/contract",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_pkg_errors//:errors",
-        "//sdk/go/common/util/contract:go_default_library",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
     ],

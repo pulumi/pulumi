@@ -13,9 +13,9 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
         "@org_golang_x_crypto//pbkdf2",
     ],
 )
@@ -32,9 +32,9 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":config"],
     deps = [
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/util/cmdutil:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@in_gopkg_yaml_v2//:yaml_v2",

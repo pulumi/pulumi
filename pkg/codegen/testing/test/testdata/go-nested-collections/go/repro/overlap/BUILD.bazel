@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "overlap",
+    srcs = [
+        "consumer.go",
+        "init.go",
+        "someType.go",
+        "someTypeMap.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/go-nested-collections/go/repro/overlap",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":overlap",
+    visibility = ["//visibility:public"],
+)

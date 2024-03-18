@@ -10,10 +10,10 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/diag",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/diag/colors:go_default_library",
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
-        "//sdk/go/common/util/logging:go_default_library",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
     ],
 )
 
@@ -22,7 +22,7 @@ go_test(
     srcs = ["sink_test.go"],
     embed = [":diag"],
     deps = [
-        "//sdk/go/common/diag/colors:go_default_library",
+        "//sdk/go/common/diag/colors",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],

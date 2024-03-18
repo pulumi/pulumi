@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "x",
+    srcs = [
+        "doc.go",
+        "funcWithAllOptionalInputs.go",
+        "funcWithConstInput.go",
+        "funcWithDefaultValue.go",
+        "funcWithDictParam.go",
+        "funcWithEmptyOutputs.go",
+        "funcWithListParam.go",
+        "getBastionShareableLink.go",
+        "getClientConfig.go",
+        "getIntegrationRuntimeObjectMetadatum.go",
+        "init.go",
+        "listStorageAccountKeys.go",
+        "provider.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/output-funcs/go/mypkg/x",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":x",
+    visibility = ["//visibility:public"],
+)

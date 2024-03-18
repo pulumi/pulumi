@@ -5,7 +5,7 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/generate",
     visibility = ["//visibility:private"],
-    deps = ["//sdk/go/common/slice:go_default_library"],
+    deps = ["//sdk/go/common/slice"],
 )
 
 go_binary(

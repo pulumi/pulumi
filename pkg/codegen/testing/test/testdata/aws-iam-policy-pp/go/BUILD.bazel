@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_lib",
+    srcs = ["aws-iam-policy.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/aws-iam-policy-pp/go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_pulumi_pulumi_aws_sdk_v5//go/aws/iam:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "go",
+    embed = [":go_lib"],
+    visibility = ["//visibility:public"],
+)

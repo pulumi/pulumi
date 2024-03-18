@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "example",
+    srcs = [
+        "argFunction.go",
+        "cat.go",
+        "component.go",
+        "doc.go",
+        "init.go",
+        "provider.go",
+        "pulumiTypes.go",
+        "workload.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/external-resource-schema/go/example",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_aws_sdk_v4//go/aws/ec2:go_default_library",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v3//go/kubernetes:go_default_library",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v3//go/kubernetes/core/v1:go_default_library",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v3//go/kubernetes/meta/v1:go_default_library",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v3//go/kubernetes/storage/v1:go_default_library",
+        "@com_github_pulumi_pulumi_random_sdk_v4//go/random:go_default_library",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":example",
+    visibility = ["//visibility:public"],
+)

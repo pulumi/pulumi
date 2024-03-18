@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_lib",
+    srcs = ["azure-sa.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/azure-sa-pp/go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/config",
+        "@com_github_pulumi_pulumi_azure_sdk_v4//go/azure/core:go_default_library",
+        "@com_github_pulumi_pulumi_azure_sdk_v4//go/azure/storage:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "go",
+    embed = [":go_lib"],
+    visibility = ["//visibility:public"],
+)

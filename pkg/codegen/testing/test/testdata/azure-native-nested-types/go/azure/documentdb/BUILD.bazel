@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "documentdb",
+    srcs = [
+        "init.go",
+        "pulumiTypes.go",
+        "sqlResourceSqlContainer.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/azure-native-nested-types/go/azure/documentdb",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_azure_native_sdk//go/azure:go_default_library",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":documentdb",
+    visibility = ["//visibility:public"],
+)

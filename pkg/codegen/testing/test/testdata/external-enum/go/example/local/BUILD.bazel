@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "local",
+    srcs = ["pulumiEnums.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/external-enum/go/example/local",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":local",
+    visibility = ["//visibility:public"],
+)

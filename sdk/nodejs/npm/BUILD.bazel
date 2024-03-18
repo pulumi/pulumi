@@ -7,12 +7,12 @@ go_library(
         "npm.go",
         "yarn.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/go/nodejs/npm",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/util/cmdutil:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
-        "//sdk/go/common/util/logging:go_default_library",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
     ],
 )
 
@@ -24,8 +24,8 @@ go_test(
     ],
     embed = [":npm"],
     deps = [
-        "//sdk/go/common/testing:go_default_library",
-        "//sdk/go/common/testing/iotest:go_default_library",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/testing/iotest",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],

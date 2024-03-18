@@ -9,8 +9,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
         "@com_github_stretchr_testify//assert",
         "@net_pgregory_rapid//:rapid",
     ],

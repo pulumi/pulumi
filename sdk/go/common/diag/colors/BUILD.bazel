@@ -10,7 +10,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/util/contract:go_default_library",
+        "//sdk/go/common/util/contract",
         "@com_github_rivo_uniseg//:uniseg",
     ] + select({
         "@io_bazel_rules_go//go/platform:windows": [

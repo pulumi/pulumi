@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_lib",
+    srcs = ["azure-native.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/azure-native-pp/go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_pulumi_pulumi_azure_native_sdk//go/azure/cdn:go_default_library",
+        "@com_github_pulumi_pulumi_azure_native_sdk//go/azure/network:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "go",
+    embed = [":go_lib"],
+    visibility = ["//visibility:public"],
+)

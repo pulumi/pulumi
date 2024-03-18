@@ -6,9 +6,9 @@ go_library(
     importpath = "github.com/pulumi/pulumi/tests/integration/resource_refs_get_resource/go",
     visibility = ["//visibility:private"],
     deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/internals",
         "@com_github_blang_semver//:semver",
-        "//sdk/go/pulumi:go_default_library",
-        "//sdk/go/pulumi/internals:go_default_library",
     ],
 )
 

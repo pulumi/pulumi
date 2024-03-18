@@ -8,7 +8,7 @@ go_library(
     ],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/pulumi:go_default_library"],
+    deps = ["//sdk/go/pulumi"],
 )
 
 go_test(
@@ -16,7 +16,7 @@ go_test(
     srcs = ["outputs_test.go"],
     embed = [":internals"],
     deps = [
-        "//sdk/go/pulumi:go_default_library",
+        "//sdk/go/pulumi",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
     ],

@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "example",
+    srcs = [
+        "component.go",
+        "doFoo.go",
+        "doc.go",
+        "init.go",
+        "provider.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-plain-schema/go/example",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":example",
+    visibility = ["//visibility:public"],
+)

@@ -4,7 +4,7 @@ go_test(
     name = "batch4_test",
     srcs = ["gen_program_test.go"],
     deps = [
-        "//pkg/codegen/nodejs:go_default_library",
-        "//pkg/codegen/testing/test:go_default_library",
+        "//pkg/codegen/nodejs",
+        "//pkg/codegen/testing/test",
     ],
 )

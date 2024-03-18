@@ -11,7 +11,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/pulumi:go_default_library",
+        "//sdk/go/pulumi",
         "@com_github_spf13_cast//:cast",
     ],
 )
@@ -21,7 +21,7 @@ go_test(
     srcs = ["config_test.go"],
     embed = [":config"],
     deps = [
-        "//sdk/go/pulumi:go_default_library",
+        "//sdk/go/pulumi",
         "@com_github_stretchr_testify//assert",
     ],
 )

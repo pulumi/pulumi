@@ -3,9 +3,9 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go_lib",
     srcs = ["main.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/python/lib/test/automation/errors/runtime_error/go",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/python/lib/test/automation/errors/runtime_error/go",
     visibility = ["//visibility:private"],
-    deps = ["//sdk/go/pulumi:go_default_library"],
+    deps = ["//sdk/go/pulumi"],
 )
 
 go_binary(

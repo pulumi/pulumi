@@ -26,12 +26,12 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/apitype",
     visibility = ["//visibility:public"],
     deps = [
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/workspace",
         "@com_github_pulumi_esc//:esc",
-        "//sdk/go/common/diag/colors:go_default_library",
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/resource/config:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
-        "//sdk/go/common/workspace:go_default_library",
         "@in_gopkg_yaml_v3//:yaml_v3",
     ],
 )

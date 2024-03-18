@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "example",
+    srcs = [
+        "argFunction.go",
+        "doc.go",
+        "init.go",
+        "otherResource.go",
+        "provider.go",
+        "pulumiTypes.go",
+        "resource.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema-custom-pypackage-name/go/example",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":example",
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "internal",
+    srcs = [
+        "pulumiUtilities.go",
+        "pulumiVersion.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/output-funcs-edgeorder/go/myedgeorder/internal",
+    visibility = ["//pkg/codegen/testing/test/testdata/output-funcs-edgeorder/go/myedgeorder:__subpackages__"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":internal",
+    visibility = ["//pkg/codegen/testing/test/testdata/output-funcs-edgeorder/go/myedgeorder:__subpackages__"],
+)

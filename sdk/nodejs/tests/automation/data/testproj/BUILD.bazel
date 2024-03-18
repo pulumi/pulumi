@@ -3,11 +3,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "testproj_lib",
     srcs = ["main.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/nodejs/tests/automation/data/testproj",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/nodejs/tests/automation/data/testproj",
     visibility = ["//visibility:private"],
     deps = [
-        "//sdk/go/pulumi:go_default_library",
-        "//sdk/go/pulumi/config:go_default_library",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/config",
     ],
 )
 

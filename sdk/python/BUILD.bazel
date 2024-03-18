@@ -7,9 +7,9 @@ go_library(
         "shim_unix.go",
         "shim_windows.go",
     ],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/go/python",
+    importpath = "github.com/pulumi/pulumi/sdk/v3/python",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/util/contract:go_default_library"],
+    deps = ["//sdk/go/common/util/contract"],
 )
 
 go_test(

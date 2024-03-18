@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mod2",
+    srcs = ["pulumiTypes.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/plain-object-defaults/go/example/mod2",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":mod2",
+    visibility = ["//visibility:public"],
+)

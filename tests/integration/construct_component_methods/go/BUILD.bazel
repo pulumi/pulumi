@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_methods/go",
     visibility = ["//visibility:private"],
     deps = [
-        "//sdk/go/pulumi:go_default_library",
-        "//sdk/go/pulumi/internals:go_default_library",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/internals",
     ],
 )
 

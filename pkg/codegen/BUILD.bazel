@@ -10,10 +10,10 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/codegen",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/codegen/schema",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
         "@com_github_pgavlin_goldmark//ast",
-        "//pkg/codegen/schema:go_default_library",
-        "//sdk/go/common/slice:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
     ],
 )
 
@@ -25,7 +25,7 @@ go_test(
     ],
     embed = [":codegen"],
     deps = [
-        "//pkg/codegen/schema:go_default_library",
+        "//pkg/codegen/schema",
         "@com_github_stretchr_testify//assert",
     ],
 )

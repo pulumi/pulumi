@@ -5,7 +5,7 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/pulumi/pulumi/tests/integration/aliases/go/rename_component/step1",
     visibility = ["//visibility:private"],
-    deps = ["//sdk/go/pulumi:go_default_library"],
+    deps = ["//sdk/go/pulumi"],
 )
 
 go_binary(

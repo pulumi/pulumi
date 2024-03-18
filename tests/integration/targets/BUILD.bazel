@@ -4,11 +4,11 @@ go_test(
     name = "targets_test",
     srcs = ["targets_test.go"],
     deps = [
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/testing:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
-        "//sdk/go/common/util/fsutil:go_default_library",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
         "@com_github_stretchr_testify//assert",
     ],
 )

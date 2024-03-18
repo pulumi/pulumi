@@ -4,11 +4,11 @@ go_test(
     name = "batchyaml_test",
     srcs = ["gen_program_test.go"],
     deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/go",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/testing/test",
         "@com_github_hashicorp_hcl_v2//:hcl",
-        "//pkg/codegen:go_default_library",
-        "//pkg/codegen/go:go_default_library",
-        "//pkg/codegen/pcl:go_default_library",
-        "//pkg/codegen/testing/test:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

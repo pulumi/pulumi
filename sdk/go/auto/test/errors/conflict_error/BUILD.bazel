@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "conflict_error_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/test/errors/conflict_error",
+    visibility = ["//visibility:private"],
+    deps = ["//sdk/go/pulumi"],
+)
+
+go_binary(
+    name = "conflict_error",
+    embed = [":conflict_error_lib"],
+    visibility = ["//visibility:public"],
+)

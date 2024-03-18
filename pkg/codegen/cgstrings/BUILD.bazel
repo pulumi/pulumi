@@ -5,7 +5,7 @@ go_library(
     srcs = ["cgstrings.go"],
     importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/slice:go_default_library"],
+    deps = ["//sdk/go/common/slice"],
 )
 
 go_test(

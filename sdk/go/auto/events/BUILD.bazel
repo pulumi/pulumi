@@ -5,7 +5,7 @@ go_library(
     srcs = ["events.go"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/events",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/apitype:go_default_library"],
+    deps = ["//sdk/go/common/apitype"],
 )
 
 alias(

@@ -9,12 +9,12 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/workspace",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/util",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
         "@com_github_blang_semver//:semver",
-        "//pkg/util:go_default_library",
-        "//sdk/go/common/diag:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
-        "//sdk/go/common/util/logging:go_default_library",
-        "//sdk/go/common/workspace:go_default_library",
     ],
 )
 
@@ -26,8 +26,8 @@ go_test(
     ],
     embed = [":workspace"],
     deps = [
+        "//sdk/go/common/workspace",
         "@com_github_blang_semver//:semver",
-        "//sdk/go/common/workspace:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

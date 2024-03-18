@@ -6,9 +6,9 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/graph/dotconv",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/graph:go_default_library",
-        "//sdk/go/common/slice:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
+        "//pkg/graph",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
     ],
 )
 

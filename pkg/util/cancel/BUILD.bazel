@@ -5,7 +5,7 @@ go_library(
     srcs = ["context.go"],
     importpath = "github.com/pulumi/pulumi/pkg/v3/util/cancel",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/common/util/contract:go_default_library"],
+    deps = ["//sdk/go/common/util/contract"],
 )
 
 alias(

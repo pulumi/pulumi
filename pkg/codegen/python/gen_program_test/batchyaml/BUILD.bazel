@@ -4,8 +4,8 @@ go_test(
     name = "batchyaml_test",
     srcs = ["gen_program_test.go"],
     deps = [
-        "//pkg/codegen/python:go_default_library",
-        "//pkg/codegen/testing/test:go_default_library",
+        "//pkg/codegen/python",
+        "//pkg/codegen/testing/test",
         "@com_github_stretchr_testify//assert",
     ],
 )

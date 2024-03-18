@@ -5,7 +5,7 @@ go_library(
     srcs = ["optremotedestroy.go"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/optremotedestroy",
     visibility = ["//visibility:public"],
-    deps = ["//sdk/go/auto/events:go_default_library"],
+    deps = ["//sdk/go/auto/events"],
 )
 
 alias(

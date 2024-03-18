@@ -21,11 +21,11 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource",
     visibility = ["//visibility:public"],
     deps = [
-        "//sdk/go/common/slice:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
-        "//sdk/go/common/util/contract:go_default_library",
-        "//sdk/go/common/util/httputil:go_default_library",
-        "//sdk/go/common/util/mapper:go_default_library",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/httputil",
+        "//sdk/go/common/util/mapper",
         "@com_lukechampine_frand//:frand",
     ],
 )
@@ -59,4 +59,27 @@ alias(
     name = "go_default_library",
     actual = ":resource",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "resource_test",
+    srcs = [
+        "alias_test.go",
+        "asset_test.go",
+        "mapper_test.go",
+        "properties_diff_test.go",
+        "properties_path_test.go",
+        "properties_test.go",
+        "resource_id_test.go",
+        "urn_test.go",
+    ],
+    embed = [":resource"],
+    deps = [
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/deepcopy",
+        "//sdk/go/common/util/mapper",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )

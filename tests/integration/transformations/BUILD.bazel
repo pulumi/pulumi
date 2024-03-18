@@ -4,9 +4,9 @@ go_test(
     name = "transformations_test",
     srcs = ["transformations_test.go"],
     deps = [
-        "//pkg/testing/integration:go_default_library",
-        "//sdk/go/common/resource:go_default_library",
-        "//sdk/go/common/tokens:go_default_library",
+        "//pkg/testing/integration",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
         "@com_github_stretchr_testify//assert",
     ],
 )
