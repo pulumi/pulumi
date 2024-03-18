@@ -170,7 +170,7 @@ jobs:
             pkg/go.sum
             .gocache.tmp
       - name: Prime Go cache
-        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
+        if: ${{ ! steps.setup-go.outputs.cache-hit }}
         # Compile every test to ensure we populate a good cache entry.
         run: |
           ( cd sdk && go test -run "_________" ./... )
