@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/python"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/stretchr/testify/assert"
 )
 

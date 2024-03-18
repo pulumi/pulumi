@@ -84,3 +84,5 @@ __pycache__
 *.tmp
 test-results/
 yarn-error.log
+
+bazel-*

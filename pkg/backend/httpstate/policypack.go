@@ -22,8 +22,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/go/python"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 type cloudRequiredPolicy struct {

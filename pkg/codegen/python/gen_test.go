@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/python"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 var pathTests = []struct {

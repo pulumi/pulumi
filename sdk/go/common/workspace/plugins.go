@@ -52,8 +52,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/go/python"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 const (

@@ -3673,7 +3673,6 @@ mvdan.cc/gofumpt v0.1.0 h1:hsVv+Y9UsZ/mFZTxJZuHVI6shSQCtzZ11h1JEFPAZLw=
 mvdan.cc/gofumpt v0.1.0/go.mod h1:yXG1r1WqZVKWbVRtBWKWX9+CxGYfA51nSomhM0woR48=
 mvdan.cc/sh/v3 v3.7.0/go.mod h1:K2gwkaesF/D7av7Kxl0HbF5kGOd2ArupNTX3X44+8l8=
 nhooyr.io/websocket v1.8.6/go.mod h1:B70DZP8IakI65RVQ51MsWP/8jndNma26DVA/nFSCgW0=
-pgregory.net/rapid v0.5.5/go.mod h1:PY5XlDGj0+V1FCq0o192FdRhpKHGTRIWBgqjDBTrq04=
 pgregory.net/rapid v0.6.1 h1:4eyrDxyht86tT4Ztm+kvlyNBLIk071gR+ZQdhphc9dQ=
 pgregory.net/rapid v0.6.1/go.mod h1:PY5XlDGj0+V1FCq0o192FdRhpKHGTRIWBgqjDBTrq04=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=

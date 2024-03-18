@@ -1,0 +1,35 @@
+# gazelle:prefix github.com/pulumi/pulumi/sdk/v3/go/proto/go
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "pulumirpc_proto",
+    srcs = [
+        "alias.proto",
+        "analyzer.proto",
+        "converter.proto",
+        "engine.proto",
+        "errors.proto",
+        "language.proto",
+        "plugin.proto",
+        "provider.proto",
+        "resource.proto",
+        "source.proto",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/pulumi/codegen:codegen_proto",
+        "@com_google_protobuf//:empty_proto",
+        "@com_google_protobuf//:struct_proto",
+    ],
+)
+
+go_proto_library(
+    name = "pulumirpc_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go",
+    proto = ":pulumirpc_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//proto/pulumi/codegen:codegen_go_proto"],
+)

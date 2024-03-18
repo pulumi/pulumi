@@ -56,19 +56,19 @@ go_deps()
 
 go_rules_dependencies()
 
-go_register_toolchains(version = "1.20.5")
+go_register_toolchains(version = "1.21.0")
 
 gazelle_dependencies()
 
-SHA="84aec9e21cc56fbc7f1335035a71c850d1b9b5cc6ff497306f84cced9a769841"
+SHA = "84aec9e21cc56fbc7f1335035a71c850d1b9b5cc6ff497306f84cced9a769841"
 
-VERSION="0.23.1"
+VERSION = "0.23.1"
 
 http_archive(
     name = "rules_python",
     sha256 = SHA,
     strip_prefix = "rules_python-{}".format(VERSION),
-    url = "https://github.com/bazelbuild/rules_python/releases/download/{}/rules_python-{}.tar.gz".format(VERSION,VERSION),
+    url = "https://github.com/bazelbuild/rules_python/releases/download/{}/rules_python-{}.tar.gz".format(VERSION, VERSION),
 )
 
 load("@rules_python//python:repositories.bzl", "py_repositories")

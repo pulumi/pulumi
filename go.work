@@ -1,0 +1,8 @@
+go 1.21
+
+use ./cmd/pulumi-test-language
+use ./developer-docs
+use ./pkg
+use ./sdk
+use ./sdk/nodejs/cmd/pulumi-language-nodejs
+use ./tests

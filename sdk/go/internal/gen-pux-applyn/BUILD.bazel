@@ -10,8 +10,8 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/internal/gen-pux-applyn",
     visibility = ["//visibility:private"],
     deps = [
+        "//sdk/go/common/util/contract",
         "@com_github_hashicorp_go_multierror//:go-multierror",
-        "//sdk/go/common/util/contract:go_default_library",
     ],
 )
 

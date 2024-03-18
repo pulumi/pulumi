@@ -1,13 +1,12 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 proto_library(
     name = "codegen_proto",
     srcs = [
         "hcl.proto",
-	"loader.proto",
-	"mapper.proto",
+        "loader.proto",
+        "mapper.proto",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -21,25 +20,5 @@ go_proto_library(
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen",
     proto = ":codegen_proto",
-    visibility = ["//visibility:public"],
-    deps = [
-        # "//pulumi:alias_proto",
-        # "//pulumi:plugin_proto",
-        # "//pulumi:provider_proto",
-        # "//pulumi:source_proto",
-        # "//pulumi/codegen:hcl_proto",
-    ],
-)
-
-go_library(
-    name = "go",
-    embed = [":codegen_go_proto"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/codegen",
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":go",
     visibility = ["//visibility:public"],
 )

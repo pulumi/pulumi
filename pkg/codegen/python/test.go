@@ -10,7 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/sdk/v3/go/python"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 func Check(t *testing.T, path string, _ codegen.StringSet) {

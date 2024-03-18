@@ -1,5 +1,4 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 proto_library(
@@ -14,18 +13,5 @@ go_proto_library(
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing",
     proto = ":testing_proto",
-    visibility = ["//visibility:public"],
-)
-
-go_library(
-    name = "testing",
-    embed = [":testing_go_proto"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing",
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":testing",
     visibility = ["//visibility:public"],
 )

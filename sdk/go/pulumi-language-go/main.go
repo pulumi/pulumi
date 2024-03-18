@@ -211,7 +211,7 @@ func (cmd *mainCmd) Run(p *runParams) error {
 
 // goLanguageHost implements the LanguageRuntimeServer interface for use as an API endpoint.
 type goLanguageHost struct {
-	pulumirpc.UnsafeLanguageRuntimeServer // opt out of forward compat
+	pulumirpc.UnimplementedLanguageRuntimeServer // opt out of forward compat
 
 	cwd           string
 	engineAddress string
