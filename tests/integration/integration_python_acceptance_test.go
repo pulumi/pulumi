@@ -350,3 +350,57 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		assert.NotContains(t, stderr, "fork/exec")
 	})
 }
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestMypySupport(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the mypy failure.
+		messages := []string{}
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				messages = append(messages,
+					strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1))
+			}
+		}
+		expected := "__main__.py:8: error: " +
+			"Argument 1 to \"export\" has incompatible type \"int\"; expected \"str\"" +
+			"  [arg-type]\n\n"
+		assert.Contains(t, messages, expected, "Did not find expected mypy diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "mypy"),
+		// mypy doesn't really support editable packages, so we install pulumi normally from pip for this test.
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPyrightSupport(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the pyright failure.
+		found := false
+		expected := "__main__.py:8:15 - error:" +
+			" Argument of type \"Literal[42]\" cannot be assigned to parameter \"name\"" +
+			" of type \"str\" in function \"export\"\n\n"
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				message := strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1)
+				if strings.HasSuffix(message, expected) {
+					found = true
+				}
+			}
+		}
+		assert.True(t, found, "Did not find expected pyright diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "pyright"),
+		// to match the mypy test we install pulumi normally from pip for this test.
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
+	})
+}
