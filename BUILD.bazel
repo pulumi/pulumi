@@ -19,7 +19,9 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 #
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/apitype //sdk/go/common/apitype
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/workspace //sdk/go/common/workspace
+# gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/diag //sdk/go/common/diag
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors //sdk/go/common/diag/colors
+# gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil //sdk/go/common/util/cmdutil
 # gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/backend/display //pkg/backend/display
 # gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/codegen/schema //pkg/codegen/schema
 gazelle(name = "gazelle")
