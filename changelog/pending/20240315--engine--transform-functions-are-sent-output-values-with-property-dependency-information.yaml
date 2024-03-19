@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: engine
-  description: Transform functions are sent output values with property dependency information
+  description: Send output values with property dependency information to transform functions
