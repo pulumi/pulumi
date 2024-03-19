@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -372,7 +373,7 @@ func (ex *deploymentExecutor) performDeletes(
 		return err
 	}
 
-	deletes := ex.stepGen.ScheduleDeletes(deleteSteps)
+	deleteChains := ex.stepGen.ScheduleDeletes(deleteSteps)
 
 	// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 	// in parallel, but each list must execute completes before the next list can safely begin
@@ -381,7 +382,27 @@ func (ex *deploymentExecutor) performDeletes(
 	// This is not "true" delete parallelism, since there may be resources that could safely begin
 	// deleting but we won't until the previous set of deletes fully completes. This approximation
 	// is conservative, but correct.
-	for _, antichain := range deletes {
+	erroredDeps := mapset.NewSet[*resource.State]()
+	seenErrors := mapset.NewSet[Step]()
+	for _, antichain := range deleteChains {
+		if ex.stepExec.opts.ContinueOnError {
+			erroredSteps := ex.stepExec.GetErroredSteps()
+			for _, step := range erroredSteps {
+				if seenErrors.Contains(step) {
+					continue
+				}
+				deps := ex.deployment.depGraph.TransitiveDependenciesOf(step.Res())
+				erroredDeps = erroredDeps.Union(deps)
+			}
+			seenErrors.Append(erroredSteps...)
+			newChain := make([]Step, 0, len(antichain))
+			for _, step := range antichain {
+				if !erroredDeps.Contains(step.Res()) {
+					newChain = append(newChain, step)
+				}
+			}
+			antichain = newChain
+		}
 		logging.V(4).Infof("deploymentExecutor.Execute(...): beginning delete antichain")
 		tok := ex.stepExec.ExecuteParallel(antichain)
 		tok.Wait(ctx)

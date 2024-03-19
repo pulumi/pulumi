@@ -164,6 +164,9 @@ type UpdateOptions struct {
 
 	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
 	Experimental bool
+
+	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
+	ContinueOnError bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.

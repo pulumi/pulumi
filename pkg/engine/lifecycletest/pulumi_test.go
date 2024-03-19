@@ -5476,3 +5476,72 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 		test(t, deploytest.WithoutGrpc)
 	})
 }
+
+func TestContinueOnError(t *testing.T) {
+	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
+					timeout float64,
+				) (resource.Status, error) {
+					return resource.StatusOK, errors.New("intentionally failed delete")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	createResource := true
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if createResource {
+			unrelated1, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "unrelated1", true, deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+			_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "unrelated2", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{unrelated1},
+			})
+			assert.NoError(t, err)
+
+			dependency, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "dependency", true, deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+			_, _, _, _, err = monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{dependency},
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 6) // We expect 4 resources + 2 providers
+
+	createResource = false
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "intentionally failed delete")
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::dependency"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[3].URN)
+}

@@ -196,6 +196,10 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 	}()
 
 	opts.trustDependencies = proj.TrustResourceDependencies()
+	if !opts.trustDependencies && opts.ContinueOnError {
+		return nil, errors.New("cannot use --continue-on-error without trusting the dependency graph")
+	}
+
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
@@ -319,6 +323,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
 			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
+			ContinueOnError:           deployment.Options.ContinueOnError,
 		}
 		newPlan, walkError = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
