@@ -4,6 +4,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 # gazelle:go_naming_convention import_alias
 #
 # gazelle:exclude sdk/proto/**/*
+# gazelle:exclude pkg/codegen/testing/test/testdata/**/*
 #
 # gazelle:proto package
 # gazelle:proto_group go_package

@@ -31,6 +31,7 @@ go_library(
 go_test(
     name = "test_test",
     srcs = ["program_driver_test.go"],
+    data = glob(["testdata/**"]),
     embed = [":test"],
     deps = ["@com_github_stretchr_testify//assert"],
 )
