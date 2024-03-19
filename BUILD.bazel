@@ -5,6 +5,8 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 #
 # gazelle:exclude sdk/proto/**/*
 # gazelle:exclude pkg/codegen/testing/test/testdata/**/*
+# gazelle:exclude tests/benchmarks/**/*
+# gazelle:exclude tests/integration/get_resource/**/*
 #
 # gazelle:proto package
 # gazelle:proto_group go_package
@@ -14,6 +16,12 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/proto/go/codegen //proto/pulumi/codegen:codegen_go_proto
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/proto/go/testing //proto/pulumi/testing:testing_go_proto
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/proto/go/testing //proto/pulumi/testing:testing_go_proto
+#
+# gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/apitype //sdk/go/common/apitype
+# gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/workspace //sdk/go/common/workspace
+# gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors //sdk/go/common/diag/colors
+# gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/backend/display //pkg/backend/display
+# gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/codegen/schema //pkg/codegen/schema
 gazelle(name = "gazelle")
 
 gazelle(
