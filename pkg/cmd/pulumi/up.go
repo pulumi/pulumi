@@ -76,6 +76,7 @@ func newUpCmd() *cobra.Command {
 	var showFullOutput bool
 	var suppressOutputs bool
 	var suppressProgress bool
+	var continueOnError bool
 	var suppressPermalink string
 	var yes bool
 	var secretsProvider string
@@ -160,8 +161,9 @@ func newUpCmd() *cobra.Command {
 			TargetDependents:          targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan: true,
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan:    true,
+			Experimental:    hasExperimentalCommands(),
+			ContinueOnError: continueOnError,
 		}
 
 		if planFilePath != "" {
@@ -378,8 +380,9 @@ func newUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan:    hasExperimentalCommands(),
+			Experimental:    hasExperimentalCommands(),
+			ContinueOnError: continueOnError,
 		}
 
 		// TODO for the URL case:
@@ -620,6 +623,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
+	cmd.PersistentFlags().BoolVar(
+		&continueOnError, "continue-on-error", false,
+		"Continue updating resources even if an error is encountered")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
