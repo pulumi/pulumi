@@ -136,6 +136,32 @@ def test_depends_on_typing_variations(dep_tracker) -> None:
         in enumerate(depends_on_variations(dep))
     ])
 
+@pulumi.runtime.test
+def test_depends_on_typechecks_sync():
+    # https://github.com/pulumi/pulumi/issues/13917
+    try:
+        res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=["hello"]))
+        assert False, "should of failed"
+    except TypeError as e:
+        assert str(e) == "'depends_on' was passed a value hello that was not a Resource."
+
+
+def test_depends_on_typechecks_async():
+    if not hasattr(asyncio, 'to_thread'):
+        # Old versions of Python don't have asyncio.to_thread, just skip the test in that case.
+        return
+
+    @pulumi.runtime.test
+    def test():
+        # https://github.com/pulumi/pulumi/issues/13917
+        dep = asyncio.to_thread(lambda: "goodbye")
+        res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=[dep]))
+
+    try:
+        test()
+        assert False, "should of failed"
+    except TypeError as e:
+        assert str(e) == "'depends_on' was passed a value goodbye that was not a Resource."
 
 @pulumi.runtime.test
 def test_component_resource_propagates_provider() -> None:
@@ -308,11 +334,17 @@ def test_complex_parent_child_dependencies():
 
 
 # Regression test for https://github.com/pulumi/pulumi/issues/13997
-@pulumi.runtime.test
 def test_bad_component_super_call():
     class C(pulumi.ComponentResource):
         def __init__(self, name: str, arg: int, opts=None):
             super().__init__("my:module:C", name, arg, opts)
 
-    with pytest.raises(TypeError):
+    @pulumi.runtime.test
+    def test():
         C("test", 4, None)
+
+    try:
+        test()
+        assert False, "should of failed"
+    except TypeError as e:
+        assert str(e) == "Expected resource properties to be a mapping"
