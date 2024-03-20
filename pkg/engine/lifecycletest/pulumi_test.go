@@ -5498,7 +5498,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 	})
 }
 
-func TestContinueOnError(t *testing.T) {
+func TestDestroyContinueOnError(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -5571,104 +5571,153 @@ func TestContinueOnError(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[3].URN)
 }
 
-// TestStackOutputsProgramError tests that previous stack outputs aren't deleted when an update fails because
-// of a program error.
-func TestStackOutputsProgramError(t *testing.T) {
+func TestUpContinueOnErrorCreate(t *testing.T) {
 	t.Parallel()
-
-	var step int
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
-		}),
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", nil, resource.StatusOK, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		resp, err := monitor.RegisterResource(resource.RootStackType, "test", false)
+		_, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		val := resource.NewProperty(fmt.Sprintf("step %v", step))
-
-		var outputs resource.PropertyMap
-
-		switch step {
-		case 0, 3:
-			outputs = resource.PropertyMap{
-				"first":  val,
-				"second": val,
-			}
-		case 1:
-			// If an error is raised between calling `pulumi.export("first", ...)` and `pulumi.export("second", ...)`
-			// in SDKs like Python and Go, the first export is still registered via RegisterResourceOutputs.
-			// This test simulates that by not including "second" when the program will error.
-			outputs = resource.PropertyMap{
-				"first": val,
-			}
-		case 2:
-			// The Node.js SDK is a bit different, when an error is thrown between module exports, none of the exports
-			// are included. An empty set of outputs is registered via RegisterResourceOutputs.
-			outputs = resource.PropertyMap{}
-		}
-
-		err = monitor.RegisterResourceOutputs(resp.URN, outputs)
+		respIndependent1, err := monitor.RegisterResource(
+			"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+		respIndependent2, err := monitor.RegisterResource(
+			"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{respIndependent1.URN},
+			})
+		assert.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{respIndependent2.URN},
+		})
 		assert.NoError(t, err)
 
-		if step == 1 || step == 2 {
-			return errors.New("program error")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+	assert.NotNil(t, snap)
+	assert.Equal(t, 5, len(snap.Resources)) // 3 resources + 2 providers
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
+}
+
+func TestUpContinueOnErrorUpdate(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(urn resource.URN, id resource.ID,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap,
+					timeout float64, ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
+					return nil, resource.StatusOK, errors.New("intentionally failed update")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	// update as opposed to create for the failing resource
+	update := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		if update {
+			respIndependent1, err := monitor.RegisterResource(
+				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+			respIndependent2, err := monitor.RegisterResource(
+				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
+					Dependencies: []resource.URN{respIndependent1.URN},
+				})
+			assert.NoError(t, err)
+			_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{respIndependent2.URN},
+			})
+			assert.NoError(t, err)
 		}
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
 	}
 
-	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
-		assert.Len(t, snap.Resources, expectedResourceCount)
-		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
-		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
-	}
+	project := p.GetProject()
 
-	// Run the initial update which sets some stack outputs.
-	snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
-	validateSnapshot(snap, 1, resource.PropertyMap{
-		"first":  resource.NewProperty("step 0"),
-		"second": resource.NewProperty("step 0"),
-	})
+	// Run an update to create the resource
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
 
-	// Run another update where the program fails before registering all of the stack outputs, simulating the behavior
-	// of returning an error after only the first output is set.
-	// Ensure the original stack outputs are preserved.
-	step = 1
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.ErrorContains(t, err, "program error")
-	validateSnapshot(snap, 1, resource.PropertyMap{
-		"first":  resource.NewProperty("step 1"),
-		"second": resource.NewProperty("step 0"), // Prior output is preserved
+	update = true
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
 	})
-
-	// Run another update that fails to update both stack updates.
-	// Ensure the prior stack outputs are preserved.
-	step = 2
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.ErrorContains(t, err, "program error")
-	validateSnapshot(snap, 1, resource.PropertyMap{
-		"first":  resource.NewProperty("step 1"), // Prior output is preserved
-		"second": resource.NewProperty("step 0"), // Prior output is preserved
-	})
-
-	// Run again, this time without erroring, to ensure the stack outputs are updated.
-	step = 3
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
-	validateSnapshot(snap, 1, resource.PropertyMap{
-		"first":  resource.NewProperty("step 3"),
-		"second": resource.NewProperty("step 3"),
-	})
+	// Run an update to create the resource
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed update")
+	assert.NotNil(t, snap)
+	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
+	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[5].Inputs["foo"])
 }
 
 // TestStackOutputsResourceError tests that previous stack outputs aren't deleted when an update fails
