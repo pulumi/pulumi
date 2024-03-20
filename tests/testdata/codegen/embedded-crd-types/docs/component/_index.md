@@ -15,7 +15,6803 @@ no_edit_this_page: true
 
 
 
-## Create Component Resource {#create}
+## Create Component Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var componentResource = new Foo.Component("componentResource", new()
+{
+    EniConfig = 
+    {
+        { "string", new Kubernetes.Crd.k8s.amazonaws.com.Inputs.ENIConfigSpecArgs
+        {
+            SecurityGroups = new[]
+            {
+                "string",
+            },
+            Subnet = "string",
+        } },
+    },
+    Pod = new Kubernetes.Core.Inputs.PodArgs
+    {
+        ApiVersion = "v1",
+        Kind = "Pod",
+        Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        {
+            Annotations = 
+            {
+                { "string", "string" },
+            },
+            ClusterName = "string",
+            CreationTimestamp = "string",
+            DeletionGracePeriodSeconds = 0,
+            DeletionTimestamp = "string",
+            Finalizers = new[]
+            {
+                "string",
+            },
+            GenerateName = "string",
+            Generation = 0,
+            Labels = 
+            {
+                { "string", "string" },
+            },
+            ManagedFields = new[]
+            {
+                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                {
+                    ApiVersion = "string",
+                    FieldsType = "string",
+                    FieldsV1 = "{}",
+                    Manager = "string",
+                    Operation = "string",
+                    Subresource = "string",
+                    Time = "string",
+                },
+            },
+            Name = "string",
+            Namespace = "string",
+            OwnerReferences = new[]
+            {
+                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                {
+                    ApiVersion = "string",
+                    Kind = "string",
+                    Name = "string",
+                    Uid = "string",
+                    BlockOwnerDeletion = false,
+                    Controller = false,
+                },
+            },
+            ResourceVersion = "string",
+            SelfLink = "string",
+            Uid = "string",
+        },
+        Spec = new Kubernetes.Core.Inputs.PodSpecArgs
+        {
+            Containers = new[]
+            {
+                new Kubernetes.Core.Inputs.ContainerArgs
+                {
+                    Name = "string",
+                    ReadinessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    ImagePullPolicy = "string",
+                    Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                    {
+                        Limits = 
+                        {
+                            { "string", "string" },
+                        },
+                        Requests = 
+                        {
+                            { "string", "string" },
+                        },
+                    },
+                    StartupProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    SecurityContext = new Kubernetes.Core.Inputs.SecurityContextArgs
+                    {
+                        AllowPrivilegeEscalation = false,
+                        Capabilities = new Kubernetes.Core.Inputs.CapabilitiesArgs
+                        {
+                            Add = new[]
+                            {
+                                "string",
+                            },
+                            Drop = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        Privileged = false,
+                        ProcMount = "string",
+                        ReadOnlyRootFilesystem = false,
+                        RunAsGroup = 0,
+                        RunAsNonRoot = false,
+                        RunAsUser = 0,
+                        SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                        {
+                            Level = "string",
+                            Role = "string",
+                            Type = "string",
+                            User = "string",
+                        },
+                        SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                        {
+                            Type = "string",
+                            LocalhostProfile = "string",
+                        },
+                        WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                        {
+                            GmsaCredentialSpec = "string",
+                            GmsaCredentialSpecName = "string",
+                            HostProcess = false,
+                            RunAsUserName = "string",
+                        },
+                    },
+                    Lifecycle = new Kubernetes.Core.Inputs.LifecycleArgs
+                    {
+                        PostStart = new Kubernetes.Core.Inputs.HandlerArgs
+                        {
+                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            {
+                                Command = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                                HttpHeaders = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    {
+                                        Name = "string",
+                                        Value = "string",
+                                    },
+                                },
+                                Path = "string",
+                                Scheme = "string",
+                            },
+                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                            },
+                        },
+                        PreStop = new Kubernetes.Core.Inputs.HandlerArgs
+                        {
+                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            {
+                                Command = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                                HttpHeaders = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    {
+                                        Name = "string",
+                                        Value = "string",
+                                    },
+                                },
+                                Path = "string",
+                                Scheme = "string",
+                            },
+                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                            },
+                        },
+                    },
+                    LivenessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    Command = new[]
+                    {
+                        "string",
+                    },
+                    Ports = new[]
+                    {
+                        new Kubernetes.Core.Inputs.ContainerPortArgs
+                        {
+                            ContainerPort = 0,
+                            HostIP = "string",
+                            HostPort = 0,
+                            Name = "string",
+                            Protocol = "string",
+                        },
+                    },
+                    Args = new[]
+                    {
+                        "string",
+                    },
+                    EnvFrom = new[]
+                    {
+                        new Kubernetes.Core.Inputs.EnvFromSourceArgs
+                        {
+                            ConfigMapRef = new Kubernetes.Core.Inputs.ConfigMapEnvSourceArgs
+                            {
+                                Name = "string",
+                                Optional = false,
+                            },
+                            Prefix = "string",
+                            SecretRef = new Kubernetes.Core.Inputs.SecretEnvSourceArgs
+                            {
+                                Name = "string",
+                                Optional = false,
+                            },
+                        },
+                    },
+                    Env = new[]
+                    {
+                        new Kubernetes.Core.Inputs.EnvVarArgs
+                        {
+                            Name = "string",
+                            Value = "string",
+                            ValueFrom = new Kubernetes.Core.Inputs.EnvVarSourceArgs
+                            {
+                                ConfigMapKeyRef = new Kubernetes.Core.Inputs.ConfigMapKeySelectorArgs
+                                {
+                                    Key = "string",
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                {
+                                    FieldPath = "string",
+                                    ApiVersion = "string",
+                                },
+                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                {
+                                    Resource = "string",
+                                    ContainerName = "string",
+                                    Divisor = "string",
+                                },
+                                SecretKeyRef = new Kubernetes.Core.Inputs.SecretKeySelectorArgs
+                                {
+                                    Key = "string",
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                            },
+                        },
+                    },
+                    Image = "string",
+                    Stdin = false,
+                    StdinOnce = false,
+                    TerminationMessagePath = "string",
+                    TerminationMessagePolicy = "string",
+                    Tty = false,
+                    VolumeDevices = new[]
+                    {
+                        new Kubernetes.Core.Inputs.VolumeDeviceArgs
+                        {
+                            DevicePath = "string",
+                            Name = "string",
+                        },
+                    },
+                    VolumeMounts = new[]
+                    {
+                        new Kubernetes.Core.Inputs.VolumeMountArgs
+                        {
+                            MountPath = "string",
+                            Name = "string",
+                            MountPropagation = "string",
+                            ReadOnly = false,
+                            SubPath = "string",
+                            SubPathExpr = "string",
+                        },
+                    },
+                    WorkingDir = "string",
+                },
+            },
+            NodeSelector = 
+            {
+                { "string", "string" },
+            },
+            HostAliases = new[]
+            {
+                new Kubernetes.Core.Inputs.HostAliasArgs
+                {
+                    Hostnames = new[]
+                    {
+                        "string",
+                    },
+                    Ip = "string",
+                },
+            },
+            Affinity = new Kubernetes.Core.Inputs.AffinityArgs
+            {
+                NodeAffinity = new Kubernetes.Core.Inputs.NodeAffinityArgs
+                {
+                    PreferredDuringSchedulingIgnoredDuringExecution = new[]
+                    {
+                        new Kubernetes.Core.Inputs.PreferredSchedulingTermArgs
+                        {
+                            Preference = new Kubernetes.Core.Inputs.NodeSelectorTermArgs
+                            {
+                                MatchExpressions = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                                MatchFields = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                            },
+                            Weight = 0,
+                        },
+                    },
+                    RequiredDuringSchedulingIgnoredDuringExecution = new Kubernetes.Core.Inputs.NodeSelectorArgs
+                    {
+                        NodeSelectorTerms = new[]
+                        {
+                            new Kubernetes.Core.Inputs.NodeSelectorTermArgs
+                            {
+                                MatchExpressions = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                                MatchFields = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                PodAffinity = new Kubernetes.Core.Inputs.PodAffinityArgs
+                {
+                    PreferredDuringSchedulingIgnoredDuringExecution = new[]
+                    {
+                        new Kubernetes.Core.Inputs.WeightedPodAffinityTermArgs
+                        {
+                            PodAffinityTerm = new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                            {
+                                TopologyKey = "string",
+                                LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                {
+                                    MatchExpressions = new[]
+                                    {
+                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        {
+                                            Key = "string",
+                                            Operator = "string",
+                                            Values = new[]
+                                            {
+                                                "string",
+                                            },
+                                        },
+                                    },
+                                    MatchLabels = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                },
+                                NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                {
+                                    MatchExpressions = new[]
+                                    {
+                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        {
+                                            Key = "string",
+                                            Operator = "string",
+                                            Values = new[]
+                                            {
+                                                "string",
+                                            },
+                                        },
+                                    },
+                                    MatchLabels = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                },
+                                Namespaces = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            Weight = 0,
+                        },
+                    },
+                    RequiredDuringSchedulingIgnoredDuringExecution = new[]
+                    {
+                        new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                        {
+                            TopologyKey = "string",
+                            LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            {
+                                MatchExpressions = new[]
+                                {
+                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                                MatchLabels = 
+                                {
+                                    { "string", "string" },
+                                },
+                            },
+                            NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            {
+                                MatchExpressions = new[]
+                                {
+                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                                MatchLabels = 
+                                {
+                                    { "string", "string" },
+                                },
+                            },
+                            Namespaces = new[]
+                            {
+                                "string",
+                            },
+                        },
+                    },
+                },
+                PodAntiAffinity = new Kubernetes.Core.Inputs.PodAntiAffinityArgs
+                {
+                    PreferredDuringSchedulingIgnoredDuringExecution = new[]
+                    {
+                        new Kubernetes.Core.Inputs.WeightedPodAffinityTermArgs
+                        {
+                            PodAffinityTerm = new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                            {
+                                TopologyKey = "string",
+                                LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                {
+                                    MatchExpressions = new[]
+                                    {
+                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        {
+                                            Key = "string",
+                                            Operator = "string",
+                                            Values = new[]
+                                            {
+                                                "string",
+                                            },
+                                        },
+                                    },
+                                    MatchLabels = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                },
+                                NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                {
+                                    MatchExpressions = new[]
+                                    {
+                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        {
+                                            Key = "string",
+                                            Operator = "string",
+                                            Values = new[]
+                                            {
+                                                "string",
+                                            },
+                                        },
+                                    },
+                                    MatchLabels = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                },
+                                Namespaces = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            Weight = 0,
+                        },
+                    },
+                    RequiredDuringSchedulingIgnoredDuringExecution = new[]
+                    {
+                        new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                        {
+                            TopologyKey = "string",
+                            LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            {
+                                MatchExpressions = new[]
+                                {
+                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                                MatchLabels = 
+                                {
+                                    { "string", "string" },
+                                },
+                            },
+                            NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            {
+                                MatchExpressions = new[]
+                                {
+                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    {
+                                        Key = "string",
+                                        Operator = "string",
+                                        Values = new[]
+                                        {
+                                            "string",
+                                        },
+                                    },
+                                },
+                                MatchLabels = 
+                                {
+                                    { "string", "string" },
+                                },
+                            },
+                            Namespaces = new[]
+                            {
+                                "string",
+                            },
+                        },
+                    },
+                },
+            },
+            DnsConfig = new Kubernetes.Core.Inputs.PodDNSConfigArgs
+            {
+                Nameservers = new[]
+                {
+                    "string",
+                },
+                Options = new[]
+                {
+                    new Kubernetes.Core.Inputs.PodDNSConfigOptionArgs
+                    {
+                        Name = "string",
+                        Value = "string",
+                    },
+                },
+                Searches = new[]
+                {
+                    "string",
+                },
+            },
+            Overhead = 
+            {
+                { "string", "string" },
+            },
+            EnableServiceLinks = false,
+            EphemeralContainers = new[]
+            {
+                new Kubernetes.Core.Inputs.EphemeralContainerArgs
+                {
+                    Name = "string",
+                    ReadinessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    EnvFrom = new[]
+                    {
+                        new Kubernetes.Core.Inputs.EnvFromSourceArgs
+                        {
+                            ConfigMapRef = new Kubernetes.Core.Inputs.ConfigMapEnvSourceArgs
+                            {
+                                Name = "string",
+                                Optional = false,
+                            },
+                            Prefix = "string",
+                            SecretRef = new Kubernetes.Core.Inputs.SecretEnvSourceArgs
+                            {
+                                Name = "string",
+                                Optional = false,
+                            },
+                        },
+                    },
+                    SecurityContext = new Kubernetes.Core.Inputs.SecurityContextArgs
+                    {
+                        AllowPrivilegeEscalation = false,
+                        Capabilities = new Kubernetes.Core.Inputs.CapabilitiesArgs
+                        {
+                            Add = new[]
+                            {
+                                "string",
+                            },
+                            Drop = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        Privileged = false,
+                        ProcMount = "string",
+                        ReadOnlyRootFilesystem = false,
+                        RunAsGroup = 0,
+                        RunAsNonRoot = false,
+                        RunAsUser = 0,
+                        SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                        {
+                            Level = "string",
+                            Role = "string",
+                            Type = "string",
+                            User = "string",
+                        },
+                        SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                        {
+                            Type = "string",
+                            LocalhostProfile = "string",
+                        },
+                        WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                        {
+                            GmsaCredentialSpec = "string",
+                            GmsaCredentialSpecName = "string",
+                            HostProcess = false,
+                            RunAsUserName = "string",
+                        },
+                    },
+                    Image = "string",
+                    ImagePullPolicy = "string",
+                    Lifecycle = new Kubernetes.Core.Inputs.LifecycleArgs
+                    {
+                        PostStart = new Kubernetes.Core.Inputs.HandlerArgs
+                        {
+                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            {
+                                Command = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                                HttpHeaders = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    {
+                                        Name = "string",
+                                        Value = "string",
+                                    },
+                                },
+                                Path = "string",
+                                Scheme = "string",
+                            },
+                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                            },
+                        },
+                        PreStop = new Kubernetes.Core.Inputs.HandlerArgs
+                        {
+                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            {
+                                Command = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                                HttpHeaders = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    {
+                                        Name = "string",
+                                        Value = "string",
+                                    },
+                                },
+                                Path = "string",
+                                Scheme = "string",
+                            },
+                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                            },
+                        },
+                    },
+                    LivenessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    Command = new[]
+                    {
+                        "string",
+                    },
+                    StartupProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    Args = new[]
+                    {
+                        "string",
+                    },
+                    WorkingDir = "string",
+                    Env = new[]
+                    {
+                        new Kubernetes.Core.Inputs.EnvVarArgs
+                        {
+                            Name = "string",
+                            Value = "string",
+                            ValueFrom = new Kubernetes.Core.Inputs.EnvVarSourceArgs
+                            {
+                                ConfigMapKeyRef = new Kubernetes.Core.Inputs.ConfigMapKeySelectorArgs
+                                {
+                                    Key = "string",
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                {
+                                    FieldPath = "string",
+                                    ApiVersion = "string",
+                                },
+                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                {
+                                    Resource = "string",
+                                    ContainerName = "string",
+                                    Divisor = "string",
+                                },
+                                SecretKeyRef = new Kubernetes.Core.Inputs.SecretKeySelectorArgs
+                                {
+                                    Key = "string",
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                            },
+                        },
+                    },
+                    Ports = new[]
+                    {
+                        new Kubernetes.Core.Inputs.ContainerPortArgs
+                        {
+                            ContainerPort = 0,
+                            HostIP = "string",
+                            HostPort = 0,
+                            Name = "string",
+                            Protocol = "string",
+                        },
+                    },
+                    Stdin = false,
+                    StdinOnce = false,
+                    TargetContainerName = "string",
+                    TerminationMessagePath = "string",
+                    TerminationMessagePolicy = "string",
+                    Tty = false,
+                    VolumeDevices = new[]
+                    {
+                        new Kubernetes.Core.Inputs.VolumeDeviceArgs
+                        {
+                            DevicePath = "string",
+                            Name = "string",
+                        },
+                    },
+                    VolumeMounts = new[]
+                    {
+                        new Kubernetes.Core.Inputs.VolumeMountArgs
+                        {
+                            MountPath = "string",
+                            Name = "string",
+                            MountPropagation = "string",
+                            ReadOnly = false,
+                            SubPath = "string",
+                            SubPathExpr = "string",
+                        },
+                    },
+                    Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                    {
+                        Limits = 
+                        {
+                            { "string", "string" },
+                        },
+                        Requests = 
+                        {
+                            { "string", "string" },
+                        },
+                    },
+                },
+            },
+            PreemptionPolicy = "string",
+            HostIPC = false,
+            Priority = 0,
+            HostPID = false,
+            Hostname = "string",
+            ImagePullSecrets = new[]
+            {
+                new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                {
+                    Name = "string",
+                },
+            },
+            InitContainers = new[]
+            {
+                new Kubernetes.Core.Inputs.ContainerArgs
+                {
+                    Name = "string",
+                    ReadinessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    ImagePullPolicy = "string",
+                    Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                    {
+                        Limits = 
+                        {
+                            { "string", "string" },
+                        },
+                        Requests = 
+                        {
+                            { "string", "string" },
+                        },
+                    },
+                    StartupProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    SecurityContext = new Kubernetes.Core.Inputs.SecurityContextArgs
+                    {
+                        AllowPrivilegeEscalation = false,
+                        Capabilities = new Kubernetes.Core.Inputs.CapabilitiesArgs
+                        {
+                            Add = new[]
+                            {
+                                "string",
+                            },
+                            Drop = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        Privileged = false,
+                        ProcMount = "string",
+                        ReadOnlyRootFilesystem = false,
+                        RunAsGroup = 0,
+                        RunAsNonRoot = false,
+                        RunAsUser = 0,
+                        SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                        {
+                            Level = "string",
+                            Role = "string",
+                            Type = "string",
+                            User = "string",
+                        },
+                        SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                        {
+                            Type = "string",
+                            LocalhostProfile = "string",
+                        },
+                        WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                        {
+                            GmsaCredentialSpec = "string",
+                            GmsaCredentialSpecName = "string",
+                            HostProcess = false,
+                            RunAsUserName = "string",
+                        },
+                    },
+                    Lifecycle = new Kubernetes.Core.Inputs.LifecycleArgs
+                    {
+                        PostStart = new Kubernetes.Core.Inputs.HandlerArgs
+                        {
+                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            {
+                                Command = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                                HttpHeaders = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    {
+                                        Name = "string",
+                                        Value = "string",
+                                    },
+                                },
+                                Path = "string",
+                                Scheme = "string",
+                            },
+                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                            },
+                        },
+                        PreStop = new Kubernetes.Core.Inputs.HandlerArgs
+                        {
+                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            {
+                                Command = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                                HttpHeaders = new[]
+                                {
+                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    {
+                                        Name = "string",
+                                        Value = "string",
+                                    },
+                                },
+                                Path = "string",
+                                Scheme = "string",
+                            },
+                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            {
+                                Port = 0,
+                                Host = "string",
+                            },
+                        },
+                    },
+                    LivenessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    {
+                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        {
+                            Command = new[]
+                            {
+                                "string",
+                            },
+                        },
+                        FailureThreshold = 0,
+                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                            HttpHeaders = new[]
+                            {
+                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                {
+                                    Name = "string",
+                                    Value = "string",
+                                },
+                            },
+                            Path = "string",
+                            Scheme = "string",
+                        },
+                        InitialDelaySeconds = 0,
+                        PeriodSeconds = 0,
+                        SuccessThreshold = 0,
+                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        {
+                            Port = 0,
+                            Host = "string",
+                        },
+                        TerminationGracePeriodSeconds = 0,
+                        TimeoutSeconds = 0,
+                    },
+                    Command = new[]
+                    {
+                        "string",
+                    },
+                    Ports = new[]
+                    {
+                        new Kubernetes.Core.Inputs.ContainerPortArgs
+                        {
+                            ContainerPort = 0,
+                            HostIP = "string",
+                            HostPort = 0,
+                            Name = "string",
+                            Protocol = "string",
+                        },
+                    },
+                    Args = new[]
+                    {
+                        "string",
+                    },
+                    EnvFrom = new[]
+                    {
+                        new Kubernetes.Core.Inputs.EnvFromSourceArgs
+                        {
+                            ConfigMapRef = new Kubernetes.Core.Inputs.ConfigMapEnvSourceArgs
+                            {
+                                Name = "string",
+                                Optional = false,
+                            },
+                            Prefix = "string",
+                            SecretRef = new Kubernetes.Core.Inputs.SecretEnvSourceArgs
+                            {
+                                Name = "string",
+                                Optional = false,
+                            },
+                        },
+                    },
+                    Env = new[]
+                    {
+                        new Kubernetes.Core.Inputs.EnvVarArgs
+                        {
+                            Name = "string",
+                            Value = "string",
+                            ValueFrom = new Kubernetes.Core.Inputs.EnvVarSourceArgs
+                            {
+                                ConfigMapKeyRef = new Kubernetes.Core.Inputs.ConfigMapKeySelectorArgs
+                                {
+                                    Key = "string",
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                {
+                                    FieldPath = "string",
+                                    ApiVersion = "string",
+                                },
+                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                {
+                                    Resource = "string",
+                                    ContainerName = "string",
+                                    Divisor = "string",
+                                },
+                                SecretKeyRef = new Kubernetes.Core.Inputs.SecretKeySelectorArgs
+                                {
+                                    Key = "string",
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                            },
+                        },
+                    },
+                    Image = "string",
+                    Stdin = false,
+                    StdinOnce = false,
+                    TerminationMessagePath = "string",
+                    TerminationMessagePolicy = "string",
+                    Tty = false,
+                    VolumeDevices = new[]
+                    {
+                        new Kubernetes.Core.Inputs.VolumeDeviceArgs
+                        {
+                            DevicePath = "string",
+                            Name = "string",
+                        },
+                    },
+                    VolumeMounts = new[]
+                    {
+                        new Kubernetes.Core.Inputs.VolumeMountArgs
+                        {
+                            MountPath = "string",
+                            Name = "string",
+                            MountPropagation = "string",
+                            ReadOnly = false,
+                            SubPath = "string",
+                            SubPathExpr = "string",
+                        },
+                    },
+                    WorkingDir = "string",
+                },
+            },
+            NodeName = "string",
+            ActiveDeadlineSeconds = 0,
+            DnsPolicy = "string",
+            AutomountServiceAccountToken = false,
+            HostNetwork = false,
+            PriorityClassName = "string",
+            ReadinessGates = new[]
+            {
+                new Kubernetes.Core.Inputs.PodReadinessGateArgs
+                {
+                    ConditionType = "string",
+                },
+            },
+            RestartPolicy = "string",
+            RuntimeClassName = "string",
+            SchedulerName = "string",
+            SecurityContext = new Kubernetes.Core.Inputs.PodSecurityContextArgs
+            {
+                FsGroup = 0,
+                FsGroupChangePolicy = "string",
+                RunAsGroup = 0,
+                RunAsNonRoot = false,
+                RunAsUser = 0,
+                SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                {
+                    Level = "string",
+                    Role = "string",
+                    Type = "string",
+                    User = "string",
+                },
+                SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                {
+                    Type = "string",
+                    LocalhostProfile = "string",
+                },
+                SupplementalGroups = new[]
+                {
+                    0,
+                },
+                Sysctls = new[]
+                {
+                    new Kubernetes.Core.Inputs.SysctlArgs
+                    {
+                        Name = "string",
+                        Value = "string",
+                    },
+                },
+                WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                {
+                    GmsaCredentialSpec = "string",
+                    GmsaCredentialSpecName = "string",
+                    HostProcess = false,
+                    RunAsUserName = "string",
+                },
+            },
+            ServiceAccount = "string",
+            ServiceAccountName = "string",
+            SetHostnameAsFQDN = false,
+            ShareProcessNamespace = false,
+            Subdomain = "string",
+            TerminationGracePeriodSeconds = 0,
+            Tolerations = new[]
+            {
+                new Kubernetes.Core.Inputs.TolerationArgs
+                {
+                    Effect = "string",
+                    Key = "string",
+                    Operator = "string",
+                    TolerationSeconds = 0,
+                    Value = "string",
+                },
+            },
+            TopologySpreadConstraints = new[]
+            {
+                new Kubernetes.Core.Inputs.TopologySpreadConstraintArgs
+                {
+                    MaxSkew = 0,
+                    TopologyKey = "string",
+                    WhenUnsatisfiable = "string",
+                    LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                    {
+                        MatchExpressions = new[]
+                        {
+                            new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                            {
+                                Key = "string",
+                                Operator = "string",
+                                Values = new[]
+                                {
+                                    "string",
+                                },
+                            },
+                        },
+                        MatchLabels = 
+                        {
+                            { "string", "string" },
+                        },
+                    },
+                },
+            },
+            Volumes = new[]
+            {
+                new Kubernetes.Core.Inputs.VolumeArgs
+                {
+                    Name = "string",
+                    GitRepo = new Kubernetes.Core.Inputs.GitRepoVolumeSourceArgs
+                    {
+                        Repository = "string",
+                        Directory = "string",
+                        Revision = "string",
+                    },
+                    ConfigMap = new Kubernetes.Core.Inputs.ConfigMapVolumeSourceArgs
+                    {
+                        DefaultMode = 0,
+                        Items = new[]
+                        {
+                            new Kubernetes.Core.Inputs.KeyToPathArgs
+                            {
+                                Key = "string",
+                                Path = "string",
+                                Mode = 0,
+                            },
+                        },
+                        Name = "string",
+                        Optional = false,
+                    },
+                    Glusterfs = new Kubernetes.Core.Inputs.GlusterfsVolumeSourceArgs
+                    {
+                        Endpoints = "string",
+                        Path = "string",
+                        ReadOnly = false,
+                    },
+                    Cinder = new Kubernetes.Core.Inputs.CinderVolumeSourceArgs
+                    {
+                        VolumeID = "string",
+                        FsType = "string",
+                        ReadOnly = false,
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                    },
+                    HostPath = new Kubernetes.Core.Inputs.HostPathVolumeSourceArgs
+                    {
+                        Path = "string",
+                        Type = "string",
+                    },
+                    Csi = new Kubernetes.Core.Inputs.CSIVolumeSourceArgs
+                    {
+                        Driver = "string",
+                        FsType = "string",
+                        NodePublishSecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                        ReadOnly = false,
+                        VolumeAttributes = 
+                        {
+                            { "string", "string" },
+                        },
+                    },
+                    DownwardAPI = new Kubernetes.Core.Inputs.DownwardAPIVolumeSourceArgs
+                    {
+                        DefaultMode = 0,
+                        Items = new[]
+                        {
+                            new Kubernetes.Core.Inputs.DownwardAPIVolumeFileArgs
+                            {
+                                Path = "string",
+                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                {
+                                    FieldPath = "string",
+                                    ApiVersion = "string",
+                                },
+                                Mode = 0,
+                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                {
+                                    Resource = "string",
+                                    ContainerName = "string",
+                                    Divisor = "string",
+                                },
+                            },
+                        },
+                    },
+                    EmptyDir = new Kubernetes.Core.Inputs.EmptyDirVolumeSourceArgs
+                    {
+                        Medium = "string",
+                        SizeLimit = "string",
+                    },
+                    Ephemeral = new Kubernetes.Core.Inputs.EphemeralVolumeSourceArgs
+                    {
+                        ReadOnly = false,
+                        VolumeClaimTemplate = new Kubernetes.Core.Inputs.PersistentVolumeClaimTemplateArgs
+                        {
+                            Spec = new Kubernetes.Core.Inputs.PersistentVolumeClaimSpecArgs
+                            {
+                                AccessModes = new[]
+                                {
+                                    "string",
+                                },
+                                DataSource = new Kubernetes.Core.Inputs.TypedLocalObjectReferenceArgs
+                                {
+                                    Kind = "string",
+                                    Name = "string",
+                                    ApiGroup = "string",
+                                },
+                                DataSourceRef = new Kubernetes.Core.Inputs.TypedLocalObjectReferenceArgs
+                                {
+                                    Kind = "string",
+                                    Name = "string",
+                                    ApiGroup = "string",
+                                },
+                                Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                                {
+                                    Limits = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                    Requests = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                },
+                                Selector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                {
+                                    MatchExpressions = new[]
+                                    {
+                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        {
+                                            Key = "string",
+                                            Operator = "string",
+                                            Values = new[]
+                                            {
+                                                "string",
+                                            },
+                                        },
+                                    },
+                                    MatchLabels = 
+                                    {
+                                        { "string", "string" },
+                                    },
+                                },
+                                StorageClassName = "string",
+                                VolumeMode = "string",
+                                VolumeName = "string",
+                            },
+                            Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+                            {
+                                Annotations = 
+                                {
+                                    { "string", "string" },
+                                },
+                                ClusterName = "string",
+                                CreationTimestamp = "string",
+                                DeletionGracePeriodSeconds = 0,
+                                DeletionTimestamp = "string",
+                                Finalizers = new[]
+                                {
+                                    "string",
+                                },
+                                GenerateName = "string",
+                                Generation = 0,
+                                Labels = 
+                                {
+                                    { "string", "string" },
+                                },
+                                ManagedFields = new[]
+                                {
+                                    new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                                    {
+                                        ApiVersion = "string",
+                                        FieldsType = "string",
+                                        FieldsV1 = "{}",
+                                        Manager = "string",
+                                        Operation = "string",
+                                        Subresource = "string",
+                                        Time = "string",
+                                    },
+                                },
+                                Name = "string",
+                                Namespace = "string",
+                                OwnerReferences = new[]
+                                {
+                                    new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                                    {
+                                        ApiVersion = "string",
+                                        Kind = "string",
+                                        Name = "string",
+                                        Uid = "string",
+                                        BlockOwnerDeletion = false,
+                                        Controller = false,
+                                    },
+                                },
+                                ResourceVersion = "string",
+                                SelfLink = "string",
+                                Uid = "string",
+                            },
+                        },
+                    },
+                    Fc = new Kubernetes.Core.Inputs.FCVolumeSourceArgs
+                    {
+                        FsType = "string",
+                        Lun = 0,
+                        ReadOnly = false,
+                        TargetWWNs = new[]
+                        {
+                            "string",
+                        },
+                        Wwids = new[]
+                        {
+                            "string",
+                        },
+                    },
+                    FlexVolume = new Kubernetes.Core.Inputs.FlexVolumeSourceArgs
+                    {
+                        Driver = "string",
+                        FsType = "string",
+                        Options = 
+                        {
+                            { "string", "string" },
+                        },
+                        ReadOnly = false,
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                    },
+                    Iscsi = new Kubernetes.Core.Inputs.ISCSIVolumeSourceArgs
+                    {
+                        Iqn = "string",
+                        Lun = 0,
+                        TargetPortal = "string",
+                        ChapAuthDiscovery = false,
+                        ChapAuthSession = false,
+                        FsType = "string",
+                        InitiatorName = "string",
+                        IscsiInterface = "string",
+                        Portals = new[]
+                        {
+                            "string",
+                        },
+                        ReadOnly = false,
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                    },
+                    GcePersistentDisk = new Kubernetes.Core.Inputs.GCEPersistentDiskVolumeSourceArgs
+                    {
+                        PdName = "string",
+                        FsType = "string",
+                        Partition = 0,
+                        ReadOnly = false,
+                    },
+                    AwsElasticBlockStore = new Kubernetes.Core.Inputs.AWSElasticBlockStoreVolumeSourceArgs
+                    {
+                        VolumeID = "string",
+                        FsType = "string",
+                        Partition = 0,
+                        ReadOnly = false,
+                    },
+                    Cephfs = new Kubernetes.Core.Inputs.CephFSVolumeSourceArgs
+                    {
+                        Monitors = new[]
+                        {
+                            "string",
+                        },
+                        Path = "string",
+                        ReadOnly = false,
+                        SecretFile = "string",
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                        User = "string",
+                    },
+                    AzureFile = new Kubernetes.Core.Inputs.AzureFileVolumeSourceArgs
+                    {
+                        SecretName = "string",
+                        ShareName = "string",
+                        ReadOnly = false,
+                    },
+                    Flocker = new Kubernetes.Core.Inputs.FlockerVolumeSourceArgs
+                    {
+                        DatasetName = "string",
+                        DatasetUUID = "string",
+                    },
+                    AzureDisk = new Kubernetes.Core.Inputs.AzureDiskVolumeSourceArgs
+                    {
+                        DiskName = "string",
+                        DiskURI = "string",
+                        CachingMode = "string",
+                        FsType = "string",
+                        Kind = "string",
+                        ReadOnly = false,
+                    },
+                    Nfs = new Kubernetes.Core.Inputs.NFSVolumeSourceArgs
+                    {
+                        Path = "string",
+                        Server = "string",
+                        ReadOnly = false,
+                    },
+                    PersistentVolumeClaim = new Kubernetes.Core.Inputs.PersistentVolumeClaimVolumeSourceArgs
+                    {
+                        ClaimName = "string",
+                        ReadOnly = false,
+                    },
+                    PhotonPersistentDisk = new Kubernetes.Core.Inputs.PhotonPersistentDiskVolumeSourceArgs
+                    {
+                        PdID = "string",
+                        FsType = "string",
+                    },
+                    PortworxVolume = new Kubernetes.Core.Inputs.PortworxVolumeSourceArgs
+                    {
+                        VolumeID = "string",
+                        FsType = "string",
+                        ReadOnly = false,
+                    },
+                    Projected = new Kubernetes.Core.Inputs.ProjectedVolumeSourceArgs
+                    {
+                        Sources = new[]
+                        {
+                            new Kubernetes.Core.Inputs.VolumeProjectionArgs
+                            {
+                                ConfigMap = new Kubernetes.Core.Inputs.ConfigMapProjectionArgs
+                                {
+                                    Items = new[]
+                                    {
+                                        new Kubernetes.Core.Inputs.KeyToPathArgs
+                                        {
+                                            Key = "string",
+                                            Path = "string",
+                                            Mode = 0,
+                                        },
+                                    },
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                                DownwardAPI = new Kubernetes.Core.Inputs.DownwardAPIProjectionArgs
+                                {
+                                    Items = new[]
+                                    {
+                                        new Kubernetes.Core.Inputs.DownwardAPIVolumeFileArgs
+                                        {
+                                            Path = "string",
+                                            FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                            {
+                                                FieldPath = "string",
+                                                ApiVersion = "string",
+                                            },
+                                            Mode = 0,
+                                            ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                            {
+                                                Resource = "string",
+                                                ContainerName = "string",
+                                                Divisor = "string",
+                                            },
+                                        },
+                                    },
+                                },
+                                Secret = new Kubernetes.Core.Inputs.SecretProjectionArgs
+                                {
+                                    Items = new[]
+                                    {
+                                        new Kubernetes.Core.Inputs.KeyToPathArgs
+                                        {
+                                            Key = "string",
+                                            Path = "string",
+                                            Mode = 0,
+                                        },
+                                    },
+                                    Name = "string",
+                                    Optional = false,
+                                },
+                                ServiceAccountToken = new Kubernetes.Core.Inputs.ServiceAccountTokenProjectionArgs
+                                {
+                                    Path = "string",
+                                    Audience = "string",
+                                    ExpirationSeconds = 0,
+                                },
+                            },
+                        },
+                        DefaultMode = 0,
+                    },
+                    Quobyte = new Kubernetes.Core.Inputs.QuobyteVolumeSourceArgs
+                    {
+                        Registry = "string",
+                        Volume = "string",
+                        Group = "string",
+                        ReadOnly = false,
+                        Tenant = "string",
+                        User = "string",
+                    },
+                    Rbd = new Kubernetes.Core.Inputs.RBDVolumeSourceArgs
+                    {
+                        Image = "string",
+                        Monitors = new[]
+                        {
+                            "string",
+                        },
+                        FsType = "string",
+                        Keyring = "string",
+                        Pool = "string",
+                        ReadOnly = false,
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                        User = "string",
+                    },
+                    ScaleIO = new Kubernetes.Core.Inputs.ScaleIOVolumeSourceArgs
+                    {
+                        Gateway = "string",
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                        System = "string",
+                        FsType = "string",
+                        ProtectionDomain = "string",
+                        ReadOnly = false,
+                        SslEnabled = false,
+                        StorageMode = "string",
+                        StoragePool = "string",
+                        VolumeName = "string",
+                    },
+                    Secret = new Kubernetes.Core.Inputs.SecretVolumeSourceArgs
+                    {
+                        DefaultMode = 0,
+                        Items = new[]
+                        {
+                            new Kubernetes.Core.Inputs.KeyToPathArgs
+                            {
+                                Key = "string",
+                                Path = "string",
+                                Mode = 0,
+                            },
+                        },
+                        Optional = false,
+                        SecretName = "string",
+                    },
+                    Storageos = new Kubernetes.Core.Inputs.StorageOSVolumeSourceArgs
+                    {
+                        FsType = "string",
+                        ReadOnly = false,
+                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        {
+                            Name = "string",
+                        },
+                        VolumeName = "string",
+                        VolumeNamespace = "string",
+                    },
+                    VsphereVolume = new Kubernetes.Core.Inputs.VsphereVirtualDiskVolumeSourceArgs
+                    {
+                        VolumePath = "string",
+                        FsType = "string",
+                        StoragePolicyID = "string",
+                        StoragePolicyName = "string",
+                    },
+                },
+            },
+        },
+        Status = new Kubernetes.Core.Inputs.PodStatusArgs
+        {
+            Conditions = new[]
+            {
+                new Kubernetes.Core.Inputs.PodConditionArgs
+                {
+                    Status = "string",
+                    Type = "string",
+                    LastProbeTime = "string",
+                    LastTransitionTime = "string",
+                    Message = "string",
+                    Reason = "string",
+                },
+            },
+            ContainerStatuses = new[]
+            {
+                new Kubernetes.Core.Inputs.ContainerStatusArgs
+                {
+                    Image = "string",
+                    ImageID = "string",
+                    Name = "string",
+                    Ready = false,
+                    RestartCount = 0,
+                    ContainerID = "string",
+                    LastState = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    {
+                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        {
+                            StartedAt = "string",
+                        },
+                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        {
+                            ExitCode = 0,
+                            ContainerID = "string",
+                            FinishedAt = "string",
+                            Message = "string",
+                            Reason = "string",
+                            Signal = 0,
+                            StartedAt = "string",
+                        },
+                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        {
+                            Message = "string",
+                            Reason = "string",
+                        },
+                    },
+                    Started = false,
+                    State = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    {
+                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        {
+                            StartedAt = "string",
+                        },
+                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        {
+                            ExitCode = 0,
+                            ContainerID = "string",
+                            FinishedAt = "string",
+                            Message = "string",
+                            Reason = "string",
+                            Signal = 0,
+                            StartedAt = "string",
+                        },
+                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        {
+                            Message = "string",
+                            Reason = "string",
+                        },
+                    },
+                },
+            },
+            EphemeralContainerStatuses = new[]
+            {
+                new Kubernetes.Core.Inputs.ContainerStatusArgs
+                {
+                    Image = "string",
+                    ImageID = "string",
+                    Name = "string",
+                    Ready = false,
+                    RestartCount = 0,
+                    ContainerID = "string",
+                    LastState = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    {
+                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        {
+                            StartedAt = "string",
+                        },
+                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        {
+                            ExitCode = 0,
+                            ContainerID = "string",
+                            FinishedAt = "string",
+                            Message = "string",
+                            Reason = "string",
+                            Signal = 0,
+                            StartedAt = "string",
+                        },
+                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        {
+                            Message = "string",
+                            Reason = "string",
+                        },
+                    },
+                    Started = false,
+                    State = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    {
+                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        {
+                            StartedAt = "string",
+                        },
+                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        {
+                            ExitCode = 0,
+                            ContainerID = "string",
+                            FinishedAt = "string",
+                            Message = "string",
+                            Reason = "string",
+                            Signal = 0,
+                            StartedAt = "string",
+                        },
+                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        {
+                            Message = "string",
+                            Reason = "string",
+                        },
+                    },
+                },
+            },
+            HostIP = "string",
+            InitContainerStatuses = new[]
+            {
+                new Kubernetes.Core.Inputs.ContainerStatusArgs
+                {
+                    Image = "string",
+                    ImageID = "string",
+                    Name = "string",
+                    Ready = false,
+                    RestartCount = 0,
+                    ContainerID = "string",
+                    LastState = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    {
+                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        {
+                            StartedAt = "string",
+                        },
+                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        {
+                            ExitCode = 0,
+                            ContainerID = "string",
+                            FinishedAt = "string",
+                            Message = "string",
+                            Reason = "string",
+                            Signal = 0,
+                            StartedAt = "string",
+                        },
+                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        {
+                            Message = "string",
+                            Reason = "string",
+                        },
+                    },
+                    Started = false,
+                    State = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    {
+                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        {
+                            StartedAt = "string",
+                        },
+                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        {
+                            ExitCode = 0,
+                            ContainerID = "string",
+                            FinishedAt = "string",
+                            Message = "string",
+                            Reason = "string",
+                            Signal = 0,
+                            StartedAt = "string",
+                        },
+                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        {
+                            Message = "string",
+                            Reason = "string",
+                        },
+                    },
+                },
+            },
+            Message = "string",
+            NominatedNodeName = "string",
+            Phase = "string",
+            PodIP = "string",
+            PodIPs = new[]
+            {
+                new Kubernetes.Core.Inputs.PodIPArgs
+                {
+                    Ip = "string",
+                },
+            },
+            QosClass = "string",
+            Reason = "string",
+            StartTime = "string",
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := foo.NewComponent(ctx, "componentResource", &foo.ComponentArgs{
+	EniConfig: v1alpha1.ENIConfigSpecMap{
+		"string": &v1alpha1.ENIConfigSpecArgs{
+			SecurityGroups: pulumi.StringArray{
+				pulumi.String("string"),
+			},
+			Subnet: pulumi.String("string"),
+		},
+	},
+	Pod: &corev1.PodTypeArgs{
+		ApiVersion: pulumi.String("v1"),
+		Kind:       pulumi.String("Pod"),
+		Metadata: &metav1.ObjectMetaArgs{
+			Annotations: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ClusterName:                pulumi.String("string"),
+			CreationTimestamp:          pulumi.String("string"),
+			DeletionGracePeriodSeconds: pulumi.Int(0),
+			DeletionTimestamp:          pulumi.String("string"),
+			Finalizers: pulumi.StringArray{
+				pulumi.String("string"),
+			},
+			GenerateName: pulumi.String("string"),
+			Generation:   pulumi.Int(0),
+			Labels: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ManagedFields: metav1.ManagedFieldsEntryArray{
+				&metav1.ManagedFieldsEntryArgs{
+					ApiVersion:  pulumi.String("string"),
+					FieldsType:  pulumi.String("string"),
+					FieldsV1:    pulumi.Any("{}"),
+					Manager:     pulumi.String("string"),
+					Operation:   pulumi.String("string"),
+					Subresource: pulumi.String("string"),
+					Time:        pulumi.String("string"),
+				},
+			},
+			Name:      pulumi.String("string"),
+			Namespace: pulumi.String("string"),
+			OwnerReferences: metav1.OwnerReferenceArray{
+				&metav1.OwnerReferenceArgs{
+					ApiVersion:         pulumi.String("string"),
+					Kind:               pulumi.String("string"),
+					Name:               pulumi.String("string"),
+					Uid:                pulumi.String("string"),
+					BlockOwnerDeletion: pulumi.Bool(false),
+					Controller:         pulumi.Bool(false),
+				},
+			},
+			ResourceVersion: pulumi.String("string"),
+			SelfLink:        pulumi.String("string"),
+			Uid:             pulumi.String("string"),
+		},
+		Spec: &corev1.PodSpecArgs{
+			Containers: corev1.ContainerArray{
+				&corev1.ContainerArgs{
+					Name: pulumi.String("string"),
+					ReadinessProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					ImagePullPolicy: pulumi.String("string"),
+					Resources: &corev1.ResourceRequirementsArgs{
+						Limits: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+						Requests: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+					},
+					StartupProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					SecurityContext: &corev1.SecurityContextArgs{
+						AllowPrivilegeEscalation: pulumi.Bool(false),
+						Capabilities: &corev1.CapabilitiesArgs{
+							Add: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+							Drop: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						Privileged:             pulumi.Bool(false),
+						ProcMount:              pulumi.String("string"),
+						ReadOnlyRootFilesystem: pulumi.Bool(false),
+						RunAsGroup:             pulumi.Int(0),
+						RunAsNonRoot:           pulumi.Bool(false),
+						RunAsUser:              pulumi.Int(0),
+						SeLinuxOptions: &corev1.SELinuxOptionsArgs{
+							Level: pulumi.String("string"),
+							Role:  pulumi.String("string"),
+							Type:  pulumi.String("string"),
+							User:  pulumi.String("string"),
+						},
+						SeccompProfile: &corev1.SeccompProfileArgs{
+							Type:             pulumi.String("string"),
+							LocalhostProfile: pulumi.String("string"),
+						},
+						WindowsOptions: &corev1.WindowsSecurityContextOptionsArgs{
+							GmsaCredentialSpec:     pulumi.String("string"),
+							GmsaCredentialSpecName: pulumi.String("string"),
+							HostProcess:            pulumi.Bool(false),
+							RunAsUserName:          pulumi.String("string"),
+						},
+					},
+					Lifecycle: &corev1.LifecycleArgs{
+						PostStart: &corev1.HandlerArgs{
+							Exec: &corev1.ExecActionArgs{
+								Command: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							HttpGet: &corev1.HTTPGetActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+								HttpHeaders: corev1.HTTPHeaderArray{
+									&corev1.HTTPHeaderArgs{
+										Name:  pulumi.String("string"),
+										Value: pulumi.String("string"),
+									},
+								},
+								Path:   pulumi.String("string"),
+								Scheme: pulumi.String("string"),
+							},
+							TcpSocket: &corev1.TCPSocketActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+							},
+						},
+						PreStop: &corev1.HandlerArgs{
+							Exec: &corev1.ExecActionArgs{
+								Command: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							HttpGet: &corev1.HTTPGetActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+								HttpHeaders: corev1.HTTPHeaderArray{
+									&corev1.HTTPHeaderArgs{
+										Name:  pulumi.String("string"),
+										Value: pulumi.String("string"),
+									},
+								},
+								Path:   pulumi.String("string"),
+								Scheme: pulumi.String("string"),
+							},
+							TcpSocket: &corev1.TCPSocketActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+							},
+						},
+					},
+					LivenessProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					Command: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					Ports: corev1.ContainerPortArray{
+						&corev1.ContainerPortArgs{
+							ContainerPort: pulumi.Int(0),
+							HostIP:        pulumi.String("string"),
+							HostPort:      pulumi.Int(0),
+							Name:          pulumi.String("string"),
+							Protocol:      pulumi.String("string"),
+						},
+					},
+					Args: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					EnvFrom: corev1.EnvFromSourceArray{
+						&corev1.EnvFromSourceArgs{
+							ConfigMapRef: &corev1.ConfigMapEnvSourceArgs{
+								Name:     pulumi.String("string"),
+								Optional: pulumi.Bool(false),
+							},
+							Prefix: pulumi.String("string"),
+							SecretRef: &corev1.SecretEnvSourceArgs{
+								Name:     pulumi.String("string"),
+								Optional: pulumi.Bool(false),
+							},
+						},
+					},
+					Env: corev1.EnvVarArray{
+						&corev1.EnvVarArgs{
+							Name:  pulumi.String("string"),
+							Value: pulumi.String("string"),
+							ValueFrom: &corev1.EnvVarSourceArgs{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelectorArgs{
+									Key:      pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+								FieldRef: &corev1.ObjectFieldSelectorArgs{
+									FieldPath:  pulumi.String("string"),
+									ApiVersion: pulumi.String("string"),
+								},
+								ResourceFieldRef: &corev1.ResourceFieldSelectorArgs{
+									Resource:      pulumi.String("string"),
+									ContainerName: pulumi.String("string"),
+									Divisor:       pulumi.String("string"),
+								},
+								SecretKeyRef: &corev1.SecretKeySelectorArgs{
+									Key:      pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+							},
+						},
+					},
+					Image:                    pulumi.String("string"),
+					Stdin:                    pulumi.Bool(false),
+					StdinOnce:                pulumi.Bool(false),
+					TerminationMessagePath:   pulumi.String("string"),
+					TerminationMessagePolicy: pulumi.String("string"),
+					Tty:                      pulumi.Bool(false),
+					VolumeDevices: corev1.VolumeDeviceArray{
+						&corev1.VolumeDeviceArgs{
+							DevicePath: pulumi.String("string"),
+							Name:       pulumi.String("string"),
+						},
+					},
+					VolumeMounts: corev1.VolumeMountArray{
+						&corev1.VolumeMountArgs{
+							MountPath:        pulumi.String("string"),
+							Name:             pulumi.String("string"),
+							MountPropagation: pulumi.String("string"),
+							ReadOnly:         pulumi.Bool(false),
+							SubPath:          pulumi.String("string"),
+							SubPathExpr:      pulumi.String("string"),
+						},
+					},
+					WorkingDir: pulumi.String("string"),
+				},
+			},
+			NodeSelector: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			HostAliases: corev1.HostAliasArray{
+				&corev1.HostAliasArgs{
+					Hostnames: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					Ip: pulumi.String("string"),
+				},
+			},
+			Affinity: &corev1.AffinityArgs{
+				NodeAffinity: &corev1.NodeAffinityArgs{
+					PreferredDuringSchedulingIgnoredDuringExecution: corev1.PreferredSchedulingTermArray{
+						&corev1.PreferredSchedulingTermArgs{
+							Preference: &corev1.NodeSelectorTermArgs{
+								MatchExpressions: corev1.NodeSelectorRequirementArray{
+									&corev1.NodeSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+								MatchFields: corev1.NodeSelectorRequirementArray{
+									&corev1.NodeSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+							},
+							Weight: pulumi.Int(0),
+						},
+					},
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelectorArgs{
+						NodeSelectorTerms: corev1.NodeSelectorTermArray{
+							&corev1.NodeSelectorTermArgs{
+								MatchExpressions: corev1.NodeSelectorRequirementArray{
+									&corev1.NodeSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+								MatchFields: corev1.NodeSelectorRequirementArray{
+									&corev1.NodeSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				PodAffinity: &corev1.PodAffinityArgs{
+					PreferredDuringSchedulingIgnoredDuringExecution: corev1.WeightedPodAffinityTermArray{
+						&corev1.WeightedPodAffinityTermArgs{
+							PodAffinityTerm: &corev1.PodAffinityTermArgs{
+								TopologyKey: pulumi.String("string"),
+								LabelSelector: &metav1.LabelSelectorArgs{
+									MatchExpressions: metav1.LabelSelectorRequirementArray{
+										&metav1.LabelSelectorRequirementArgs{
+											Key:      pulumi.String("string"),
+											Operator: pulumi.String("string"),
+											Values: pulumi.StringArray{
+												pulumi.String("string"),
+											},
+										},
+									},
+									MatchLabels: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+								},
+								NamespaceSelector: &metav1.LabelSelectorArgs{
+									MatchExpressions: metav1.LabelSelectorRequirementArray{
+										&metav1.LabelSelectorRequirementArgs{
+											Key:      pulumi.String("string"),
+											Operator: pulumi.String("string"),
+											Values: pulumi.StringArray{
+												pulumi.String("string"),
+											},
+										},
+									},
+									MatchLabels: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+								},
+								Namespaces: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							Weight: pulumi.Int(0),
+						},
+					},
+					RequiredDuringSchedulingIgnoredDuringExecution: corev1.PodAffinityTermArray{
+						&corev1.PodAffinityTermArgs{
+							TopologyKey: pulumi.String("string"),
+							LabelSelector: &metav1.LabelSelectorArgs{
+								MatchExpressions: metav1.LabelSelectorRequirementArray{
+									&metav1.LabelSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+								MatchLabels: pulumi.StringMap{
+									"string": pulumi.String("string"),
+								},
+							},
+							NamespaceSelector: &metav1.LabelSelectorArgs{
+								MatchExpressions: metav1.LabelSelectorRequirementArray{
+									&metav1.LabelSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+								MatchLabels: pulumi.StringMap{
+									"string": pulumi.String("string"),
+								},
+							},
+							Namespaces: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+					},
+				},
+				PodAntiAffinity: &corev1.PodAntiAffinityArgs{
+					PreferredDuringSchedulingIgnoredDuringExecution: corev1.WeightedPodAffinityTermArray{
+						&corev1.WeightedPodAffinityTermArgs{
+							PodAffinityTerm: &corev1.PodAffinityTermArgs{
+								TopologyKey: pulumi.String("string"),
+								LabelSelector: &metav1.LabelSelectorArgs{
+									MatchExpressions: metav1.LabelSelectorRequirementArray{
+										&metav1.LabelSelectorRequirementArgs{
+											Key:      pulumi.String("string"),
+											Operator: pulumi.String("string"),
+											Values: pulumi.StringArray{
+												pulumi.String("string"),
+											},
+										},
+									},
+									MatchLabels: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+								},
+								NamespaceSelector: &metav1.LabelSelectorArgs{
+									MatchExpressions: metav1.LabelSelectorRequirementArray{
+										&metav1.LabelSelectorRequirementArgs{
+											Key:      pulumi.String("string"),
+											Operator: pulumi.String("string"),
+											Values: pulumi.StringArray{
+												pulumi.String("string"),
+											},
+										},
+									},
+									MatchLabels: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+								},
+								Namespaces: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							Weight: pulumi.Int(0),
+						},
+					},
+					RequiredDuringSchedulingIgnoredDuringExecution: corev1.PodAffinityTermArray{
+						&corev1.PodAffinityTermArgs{
+							TopologyKey: pulumi.String("string"),
+							LabelSelector: &metav1.LabelSelectorArgs{
+								MatchExpressions: metav1.LabelSelectorRequirementArray{
+									&metav1.LabelSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+								MatchLabels: pulumi.StringMap{
+									"string": pulumi.String("string"),
+								},
+							},
+							NamespaceSelector: &metav1.LabelSelectorArgs{
+								MatchExpressions: metav1.LabelSelectorRequirementArray{
+									&metav1.LabelSelectorRequirementArgs{
+										Key:      pulumi.String("string"),
+										Operator: pulumi.String("string"),
+										Values: pulumi.StringArray{
+											pulumi.String("string"),
+										},
+									},
+								},
+								MatchLabels: pulumi.StringMap{
+									"string": pulumi.String("string"),
+								},
+							},
+							Namespaces: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+					},
+				},
+			},
+			DnsConfig: &corev1.PodDNSConfigArgs{
+				Nameservers: pulumi.StringArray{
+					pulumi.String("string"),
+				},
+				Options: corev1.PodDNSConfigOptionArray{
+					&corev1.PodDNSConfigOptionArgs{
+						Name:  pulumi.String("string"),
+						Value: pulumi.String("string"),
+					},
+				},
+				Searches: pulumi.StringArray{
+					pulumi.String("string"),
+				},
+			},
+			Overhead: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			EnableServiceLinks: pulumi.Bool(false),
+			EphemeralContainers: corev1.EphemeralContainerArray{
+				&corev1.EphemeralContainerArgs{
+					Name: pulumi.String("string"),
+					ReadinessProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					EnvFrom: corev1.EnvFromSourceArray{
+						&corev1.EnvFromSourceArgs{
+							ConfigMapRef: &corev1.ConfigMapEnvSourceArgs{
+								Name:     pulumi.String("string"),
+								Optional: pulumi.Bool(false),
+							},
+							Prefix: pulumi.String("string"),
+							SecretRef: &corev1.SecretEnvSourceArgs{
+								Name:     pulumi.String("string"),
+								Optional: pulumi.Bool(false),
+							},
+						},
+					},
+					SecurityContext: &corev1.SecurityContextArgs{
+						AllowPrivilegeEscalation: pulumi.Bool(false),
+						Capabilities: &corev1.CapabilitiesArgs{
+							Add: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+							Drop: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						Privileged:             pulumi.Bool(false),
+						ProcMount:              pulumi.String("string"),
+						ReadOnlyRootFilesystem: pulumi.Bool(false),
+						RunAsGroup:             pulumi.Int(0),
+						RunAsNonRoot:           pulumi.Bool(false),
+						RunAsUser:              pulumi.Int(0),
+						SeLinuxOptions: &corev1.SELinuxOptionsArgs{
+							Level: pulumi.String("string"),
+							Role:  pulumi.String("string"),
+							Type:  pulumi.String("string"),
+							User:  pulumi.String("string"),
+						},
+						SeccompProfile: &corev1.SeccompProfileArgs{
+							Type:             pulumi.String("string"),
+							LocalhostProfile: pulumi.String("string"),
+						},
+						WindowsOptions: &corev1.WindowsSecurityContextOptionsArgs{
+							GmsaCredentialSpec:     pulumi.String("string"),
+							GmsaCredentialSpecName: pulumi.String("string"),
+							HostProcess:            pulumi.Bool(false),
+							RunAsUserName:          pulumi.String("string"),
+						},
+					},
+					Image:           pulumi.String("string"),
+					ImagePullPolicy: pulumi.String("string"),
+					Lifecycle: &corev1.LifecycleArgs{
+						PostStart: &corev1.HandlerArgs{
+							Exec: &corev1.ExecActionArgs{
+								Command: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							HttpGet: &corev1.HTTPGetActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+								HttpHeaders: corev1.HTTPHeaderArray{
+									&corev1.HTTPHeaderArgs{
+										Name:  pulumi.String("string"),
+										Value: pulumi.String("string"),
+									},
+								},
+								Path:   pulumi.String("string"),
+								Scheme: pulumi.String("string"),
+							},
+							TcpSocket: &corev1.TCPSocketActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+							},
+						},
+						PreStop: &corev1.HandlerArgs{
+							Exec: &corev1.ExecActionArgs{
+								Command: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							HttpGet: &corev1.HTTPGetActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+								HttpHeaders: corev1.HTTPHeaderArray{
+									&corev1.HTTPHeaderArgs{
+										Name:  pulumi.String("string"),
+										Value: pulumi.String("string"),
+									},
+								},
+								Path:   pulumi.String("string"),
+								Scheme: pulumi.String("string"),
+							},
+							TcpSocket: &corev1.TCPSocketActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+							},
+						},
+					},
+					LivenessProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					Command: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					StartupProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					Args: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					WorkingDir: pulumi.String("string"),
+					Env: corev1.EnvVarArray{
+						&corev1.EnvVarArgs{
+							Name:  pulumi.String("string"),
+							Value: pulumi.String("string"),
+							ValueFrom: &corev1.EnvVarSourceArgs{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelectorArgs{
+									Key:      pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+								FieldRef: &corev1.ObjectFieldSelectorArgs{
+									FieldPath:  pulumi.String("string"),
+									ApiVersion: pulumi.String("string"),
+								},
+								ResourceFieldRef: &corev1.ResourceFieldSelectorArgs{
+									Resource:      pulumi.String("string"),
+									ContainerName: pulumi.String("string"),
+									Divisor:       pulumi.String("string"),
+								},
+								SecretKeyRef: &corev1.SecretKeySelectorArgs{
+									Key:      pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+							},
+						},
+					},
+					Ports: corev1.ContainerPortArray{
+						&corev1.ContainerPortArgs{
+							ContainerPort: pulumi.Int(0),
+							HostIP:        pulumi.String("string"),
+							HostPort:      pulumi.Int(0),
+							Name:          pulumi.String("string"),
+							Protocol:      pulumi.String("string"),
+						},
+					},
+					Stdin:                    pulumi.Bool(false),
+					StdinOnce:                pulumi.Bool(false),
+					TargetContainerName:      pulumi.String("string"),
+					TerminationMessagePath:   pulumi.String("string"),
+					TerminationMessagePolicy: pulumi.String("string"),
+					Tty:                      pulumi.Bool(false),
+					VolumeDevices: corev1.VolumeDeviceArray{
+						&corev1.VolumeDeviceArgs{
+							DevicePath: pulumi.String("string"),
+							Name:       pulumi.String("string"),
+						},
+					},
+					VolumeMounts: corev1.VolumeMountArray{
+						&corev1.VolumeMountArgs{
+							MountPath:        pulumi.String("string"),
+							Name:             pulumi.String("string"),
+							MountPropagation: pulumi.String("string"),
+							ReadOnly:         pulumi.Bool(false),
+							SubPath:          pulumi.String("string"),
+							SubPathExpr:      pulumi.String("string"),
+						},
+					},
+					Resources: &corev1.ResourceRequirementsArgs{
+						Limits: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+						Requests: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+					},
+				},
+			},
+			PreemptionPolicy: pulumi.String("string"),
+			HostIPC:          pulumi.Bool(false),
+			Priority:         pulumi.Int(0),
+			HostPID:          pulumi.Bool(false),
+			Hostname:         pulumi.String("string"),
+			ImagePullSecrets: corev1.LocalObjectReferenceArray{
+				&corev1.LocalObjectReferenceArgs{
+					Name: pulumi.String("string"),
+				},
+			},
+			InitContainers: corev1.ContainerArray{
+				&corev1.ContainerArgs{
+					Name: pulumi.String("string"),
+					ReadinessProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					ImagePullPolicy: pulumi.String("string"),
+					Resources: &corev1.ResourceRequirementsArgs{
+						Limits: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+						Requests: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+					},
+					StartupProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					SecurityContext: &corev1.SecurityContextArgs{
+						AllowPrivilegeEscalation: pulumi.Bool(false),
+						Capabilities: &corev1.CapabilitiesArgs{
+							Add: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+							Drop: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						Privileged:             pulumi.Bool(false),
+						ProcMount:              pulumi.String("string"),
+						ReadOnlyRootFilesystem: pulumi.Bool(false),
+						RunAsGroup:             pulumi.Int(0),
+						RunAsNonRoot:           pulumi.Bool(false),
+						RunAsUser:              pulumi.Int(0),
+						SeLinuxOptions: &corev1.SELinuxOptionsArgs{
+							Level: pulumi.String("string"),
+							Role:  pulumi.String("string"),
+							Type:  pulumi.String("string"),
+							User:  pulumi.String("string"),
+						},
+						SeccompProfile: &corev1.SeccompProfileArgs{
+							Type:             pulumi.String("string"),
+							LocalhostProfile: pulumi.String("string"),
+						},
+						WindowsOptions: &corev1.WindowsSecurityContextOptionsArgs{
+							GmsaCredentialSpec:     pulumi.String("string"),
+							GmsaCredentialSpecName: pulumi.String("string"),
+							HostProcess:            pulumi.Bool(false),
+							RunAsUserName:          pulumi.String("string"),
+						},
+					},
+					Lifecycle: &corev1.LifecycleArgs{
+						PostStart: &corev1.HandlerArgs{
+							Exec: &corev1.ExecActionArgs{
+								Command: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							HttpGet: &corev1.HTTPGetActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+								HttpHeaders: corev1.HTTPHeaderArray{
+									&corev1.HTTPHeaderArgs{
+										Name:  pulumi.String("string"),
+										Value: pulumi.String("string"),
+									},
+								},
+								Path:   pulumi.String("string"),
+								Scheme: pulumi.String("string"),
+							},
+							TcpSocket: &corev1.TCPSocketActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+							},
+						},
+						PreStop: &corev1.HandlerArgs{
+							Exec: &corev1.ExecActionArgs{
+								Command: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+							HttpGet: &corev1.HTTPGetActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+								HttpHeaders: corev1.HTTPHeaderArray{
+									&corev1.HTTPHeaderArgs{
+										Name:  pulumi.String("string"),
+										Value: pulumi.String("string"),
+									},
+								},
+								Path:   pulumi.String("string"),
+								Scheme: pulumi.String("string"),
+							},
+							TcpSocket: &corev1.TCPSocketActionArgs{
+								Port: pulumi.Any(0),
+								Host: pulumi.String("string"),
+							},
+						},
+					},
+					LivenessProbe: &corev1.ProbeArgs{
+						Exec: &corev1.ExecActionArgs{
+							Command: pulumi.StringArray{
+								pulumi.String("string"),
+							},
+						},
+						FailureThreshold: pulumi.Int(0),
+						HttpGet: &corev1.HTTPGetActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+							HttpHeaders: corev1.HTTPHeaderArray{
+								&corev1.HTTPHeaderArgs{
+									Name:  pulumi.String("string"),
+									Value: pulumi.String("string"),
+								},
+							},
+							Path:   pulumi.String("string"),
+							Scheme: pulumi.String("string"),
+						},
+						InitialDelaySeconds: pulumi.Int(0),
+						PeriodSeconds:       pulumi.Int(0),
+						SuccessThreshold:    pulumi.Int(0),
+						TcpSocket: &corev1.TCPSocketActionArgs{
+							Port: pulumi.Any(0),
+							Host: pulumi.String("string"),
+						},
+						TerminationGracePeriodSeconds: pulumi.Int(0),
+						TimeoutSeconds:                pulumi.Int(0),
+					},
+					Command: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					Ports: corev1.ContainerPortArray{
+						&corev1.ContainerPortArgs{
+							ContainerPort: pulumi.Int(0),
+							HostIP:        pulumi.String("string"),
+							HostPort:      pulumi.Int(0),
+							Name:          pulumi.String("string"),
+							Protocol:      pulumi.String("string"),
+						},
+					},
+					Args: pulumi.StringArray{
+						pulumi.String("string"),
+					},
+					EnvFrom: corev1.EnvFromSourceArray{
+						&corev1.EnvFromSourceArgs{
+							ConfigMapRef: &corev1.ConfigMapEnvSourceArgs{
+								Name:     pulumi.String("string"),
+								Optional: pulumi.Bool(false),
+							},
+							Prefix: pulumi.String("string"),
+							SecretRef: &corev1.SecretEnvSourceArgs{
+								Name:     pulumi.String("string"),
+								Optional: pulumi.Bool(false),
+							},
+						},
+					},
+					Env: corev1.EnvVarArray{
+						&corev1.EnvVarArgs{
+							Name:  pulumi.String("string"),
+							Value: pulumi.String("string"),
+							ValueFrom: &corev1.EnvVarSourceArgs{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelectorArgs{
+									Key:      pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+								FieldRef: &corev1.ObjectFieldSelectorArgs{
+									FieldPath:  pulumi.String("string"),
+									ApiVersion: pulumi.String("string"),
+								},
+								ResourceFieldRef: &corev1.ResourceFieldSelectorArgs{
+									Resource:      pulumi.String("string"),
+									ContainerName: pulumi.String("string"),
+									Divisor:       pulumi.String("string"),
+								},
+								SecretKeyRef: &corev1.SecretKeySelectorArgs{
+									Key:      pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+							},
+						},
+					},
+					Image:                    pulumi.String("string"),
+					Stdin:                    pulumi.Bool(false),
+					StdinOnce:                pulumi.Bool(false),
+					TerminationMessagePath:   pulumi.String("string"),
+					TerminationMessagePolicy: pulumi.String("string"),
+					Tty:                      pulumi.Bool(false),
+					VolumeDevices: corev1.VolumeDeviceArray{
+						&corev1.VolumeDeviceArgs{
+							DevicePath: pulumi.String("string"),
+							Name:       pulumi.String("string"),
+						},
+					},
+					VolumeMounts: corev1.VolumeMountArray{
+						&corev1.VolumeMountArgs{
+							MountPath:        pulumi.String("string"),
+							Name:             pulumi.String("string"),
+							MountPropagation: pulumi.String("string"),
+							ReadOnly:         pulumi.Bool(false),
+							SubPath:          pulumi.String("string"),
+							SubPathExpr:      pulumi.String("string"),
+						},
+					},
+					WorkingDir: pulumi.String("string"),
+				},
+			},
+			NodeName:                     pulumi.String("string"),
+			ActiveDeadlineSeconds:        pulumi.Int(0),
+			DnsPolicy:                    pulumi.String("string"),
+			AutomountServiceAccountToken: pulumi.Bool(false),
+			HostNetwork:                  pulumi.Bool(false),
+			PriorityClassName:            pulumi.String("string"),
+			ReadinessGates: corev1.PodReadinessGateArray{
+				&corev1.PodReadinessGateArgs{
+					ConditionType: pulumi.String("string"),
+				},
+			},
+			RestartPolicy:    pulumi.String("string"),
+			RuntimeClassName: pulumi.String("string"),
+			SchedulerName:    pulumi.String("string"),
+			SecurityContext: &corev1.PodSecurityContextArgs{
+				FsGroup:             pulumi.Int(0),
+				FsGroupChangePolicy: pulumi.String("string"),
+				RunAsGroup:          pulumi.Int(0),
+				RunAsNonRoot:        pulumi.Bool(false),
+				RunAsUser:           pulumi.Int(0),
+				SeLinuxOptions: &corev1.SELinuxOptionsArgs{
+					Level: pulumi.String("string"),
+					Role:  pulumi.String("string"),
+					Type:  pulumi.String("string"),
+					User:  pulumi.String("string"),
+				},
+				SeccompProfile: &corev1.SeccompProfileArgs{
+					Type:             pulumi.String("string"),
+					LocalhostProfile: pulumi.String("string"),
+				},
+				SupplementalGroups: pulumi.IntArray{
+					pulumi.Int(0),
+				},
+				Sysctls: corev1.SysctlArray{
+					&corev1.SysctlArgs{
+						Name:  pulumi.String("string"),
+						Value: pulumi.String("string"),
+					},
+				},
+				WindowsOptions: &corev1.WindowsSecurityContextOptionsArgs{
+					GmsaCredentialSpec:     pulumi.String("string"),
+					GmsaCredentialSpecName: pulumi.String("string"),
+					HostProcess:            pulumi.Bool(false),
+					RunAsUserName:          pulumi.String("string"),
+				},
+			},
+			ServiceAccount:                pulumi.String("string"),
+			ServiceAccountName:            pulumi.String("string"),
+			SetHostnameAsFQDN:             pulumi.Bool(false),
+			ShareProcessNamespace:         pulumi.Bool(false),
+			Subdomain:                     pulumi.String("string"),
+			TerminationGracePeriodSeconds: pulumi.Int(0),
+			Tolerations: corev1.TolerationArray{
+				&corev1.TolerationArgs{
+					Effect:            pulumi.String("string"),
+					Key:               pulumi.String("string"),
+					Operator:          pulumi.String("string"),
+					TolerationSeconds: pulumi.Int(0),
+					Value:             pulumi.String("string"),
+				},
+			},
+			TopologySpreadConstraints: corev1.TopologySpreadConstraintArray{
+				&corev1.TopologySpreadConstraintArgs{
+					MaxSkew:           pulumi.Int(0),
+					TopologyKey:       pulumi.String("string"),
+					WhenUnsatisfiable: pulumi.String("string"),
+					LabelSelector: &metav1.LabelSelectorArgs{
+						MatchExpressions: metav1.LabelSelectorRequirementArray{
+							&metav1.LabelSelectorRequirementArgs{
+								Key:      pulumi.String("string"),
+								Operator: pulumi.String("string"),
+								Values: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+							},
+						},
+						MatchLabels: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+					},
+				},
+			},
+			Volumes: corev1.VolumeArray{
+				&corev1.VolumeArgs{
+					Name: pulumi.String("string"),
+					GitRepo: &corev1.GitRepoVolumeSourceArgs{
+						Repository: pulumi.String("string"),
+						Directory:  pulumi.String("string"),
+						Revision:   pulumi.String("string"),
+					},
+					ConfigMap: &corev1.ConfigMapVolumeSourceArgs{
+						DefaultMode: pulumi.Int(0),
+						Items: corev1.KeyToPathArray{
+							&corev1.KeyToPathArgs{
+								Key:  pulumi.String("string"),
+								Path: pulumi.String("string"),
+								Mode: pulumi.Int(0),
+							},
+						},
+						Name:     pulumi.String("string"),
+						Optional: pulumi.Bool(false),
+					},
+					Glusterfs: &corev1.GlusterfsVolumeSourceArgs{
+						Endpoints: pulumi.String("string"),
+						Path:      pulumi.String("string"),
+						ReadOnly:  pulumi.Bool(false),
+					},
+					Cinder: &corev1.CinderVolumeSourceArgs{
+						VolumeID: pulumi.String("string"),
+						FsType:   pulumi.String("string"),
+						ReadOnly: pulumi.Bool(false),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+					},
+					HostPath: &corev1.HostPathVolumeSourceArgs{
+						Path: pulumi.String("string"),
+						Type: pulumi.String("string"),
+					},
+					Csi: &corev1.CSIVolumeSourceArgs{
+						Driver: pulumi.String("string"),
+						FsType: pulumi.String("string"),
+						NodePublishSecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+						ReadOnly: pulumi.Bool(false),
+						VolumeAttributes: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+					},
+					DownwardAPI: &corev1.DownwardAPIVolumeSourceArgs{
+						DefaultMode: pulumi.Int(0),
+						Items: corev1.DownwardAPIVolumeFileArray{
+							&corev1.DownwardAPIVolumeFileArgs{
+								Path: pulumi.String("string"),
+								FieldRef: &corev1.ObjectFieldSelectorArgs{
+									FieldPath:  pulumi.String("string"),
+									ApiVersion: pulumi.String("string"),
+								},
+								Mode: pulumi.Int(0),
+								ResourceFieldRef: &corev1.ResourceFieldSelectorArgs{
+									Resource:      pulumi.String("string"),
+									ContainerName: pulumi.String("string"),
+									Divisor:       pulumi.String("string"),
+								},
+							},
+						},
+					},
+					EmptyDir: &corev1.EmptyDirVolumeSourceArgs{
+						Medium:    pulumi.String("string"),
+						SizeLimit: pulumi.String("string"),
+					},
+					Ephemeral: &corev1.EphemeralVolumeSourceArgs{
+						ReadOnly: pulumi.Bool(false),
+						VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplateArgs{
+							Spec: &corev1.PersistentVolumeClaimSpecArgs{
+								AccessModes: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+								DataSource: &corev1.TypedLocalObjectReferenceArgs{
+									Kind:     pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									ApiGroup: pulumi.String("string"),
+								},
+								DataSourceRef: &corev1.TypedLocalObjectReferenceArgs{
+									Kind:     pulumi.String("string"),
+									Name:     pulumi.String("string"),
+									ApiGroup: pulumi.String("string"),
+								},
+								Resources: &corev1.ResourceRequirementsArgs{
+									Limits: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+									Requests: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+								},
+								Selector: &metav1.LabelSelectorArgs{
+									MatchExpressions: metav1.LabelSelectorRequirementArray{
+										&metav1.LabelSelectorRequirementArgs{
+											Key:      pulumi.String("string"),
+											Operator: pulumi.String("string"),
+											Values: pulumi.StringArray{
+												pulumi.String("string"),
+											},
+										},
+									},
+									MatchLabels: pulumi.StringMap{
+										"string": pulumi.String("string"),
+									},
+								},
+								StorageClassName: pulumi.String("string"),
+								VolumeMode:       pulumi.String("string"),
+								VolumeName:       pulumi.String("string"),
+							},
+							Metadata: &metav1.ObjectMetaArgs{
+								Annotations: pulumi.StringMap{
+									"string": pulumi.String("string"),
+								},
+								ClusterName:                pulumi.String("string"),
+								CreationTimestamp:          pulumi.String("string"),
+								DeletionGracePeriodSeconds: pulumi.Int(0),
+								DeletionTimestamp:          pulumi.String("string"),
+								Finalizers: pulumi.StringArray{
+									pulumi.String("string"),
+								},
+								GenerateName: pulumi.String("string"),
+								Generation:   pulumi.Int(0),
+								Labels: pulumi.StringMap{
+									"string": pulumi.String("string"),
+								},
+								ManagedFields: metav1.ManagedFieldsEntryArray{
+									&metav1.ManagedFieldsEntryArgs{
+										ApiVersion:  pulumi.String("string"),
+										FieldsType:  pulumi.String("string"),
+										FieldsV1:    pulumi.Any("{}"),
+										Manager:     pulumi.String("string"),
+										Operation:   pulumi.String("string"),
+										Subresource: pulumi.String("string"),
+										Time:        pulumi.String("string"),
+									},
+								},
+								Name:      pulumi.String("string"),
+								Namespace: pulumi.String("string"),
+								OwnerReferences: metav1.OwnerReferenceArray{
+									&metav1.OwnerReferenceArgs{
+										ApiVersion:         pulumi.String("string"),
+										Kind:               pulumi.String("string"),
+										Name:               pulumi.String("string"),
+										Uid:                pulumi.String("string"),
+										BlockOwnerDeletion: pulumi.Bool(false),
+										Controller:         pulumi.Bool(false),
+									},
+								},
+								ResourceVersion: pulumi.String("string"),
+								SelfLink:        pulumi.String("string"),
+								Uid:             pulumi.String("string"),
+							},
+						},
+					},
+					Fc: &corev1.FCVolumeSourceArgs{
+						FsType:   pulumi.String("string"),
+						Lun:      pulumi.Int(0),
+						ReadOnly: pulumi.Bool(false),
+						TargetWWNs: pulumi.StringArray{
+							pulumi.String("string"),
+						},
+						Wwids: pulumi.StringArray{
+							pulumi.String("string"),
+						},
+					},
+					FlexVolume: &corev1.FlexVolumeSourceArgs{
+						Driver: pulumi.String("string"),
+						FsType: pulumi.String("string"),
+						Options: pulumi.StringMap{
+							"string": pulumi.String("string"),
+						},
+						ReadOnly: pulumi.Bool(false),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+					},
+					Iscsi: &corev1.ISCSIVolumeSourceArgs{
+						Iqn:               pulumi.String("string"),
+						Lun:               pulumi.Int(0),
+						TargetPortal:      pulumi.String("string"),
+						ChapAuthDiscovery: pulumi.Bool(false),
+						ChapAuthSession:   pulumi.Bool(false),
+						FsType:            pulumi.String("string"),
+						InitiatorName:     pulumi.String("string"),
+						IscsiInterface:    pulumi.String("string"),
+						Portals: pulumi.StringArray{
+							pulumi.String("string"),
+						},
+						ReadOnly: pulumi.Bool(false),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+					},
+					GcePersistentDisk: &corev1.GCEPersistentDiskVolumeSourceArgs{
+						PdName:    pulumi.String("string"),
+						FsType:    pulumi.String("string"),
+						Partition: pulumi.Int(0),
+						ReadOnly:  pulumi.Bool(false),
+					},
+					AwsElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSourceArgs{
+						VolumeID:  pulumi.String("string"),
+						FsType:    pulumi.String("string"),
+						Partition: pulumi.Int(0),
+						ReadOnly:  pulumi.Bool(false),
+					},
+					Cephfs: &corev1.CephFSVolumeSourceArgs{
+						Monitors: pulumi.StringArray{
+							pulumi.String("string"),
+						},
+						Path:       pulumi.String("string"),
+						ReadOnly:   pulumi.Bool(false),
+						SecretFile: pulumi.String("string"),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+						User: pulumi.String("string"),
+					},
+					AzureFile: &corev1.AzureFileVolumeSourceArgs{
+						SecretName: pulumi.String("string"),
+						ShareName:  pulumi.String("string"),
+						ReadOnly:   pulumi.Bool(false),
+					},
+					Flocker: &corev1.FlockerVolumeSourceArgs{
+						DatasetName: pulumi.String("string"),
+						DatasetUUID: pulumi.String("string"),
+					},
+					AzureDisk: &corev1.AzureDiskVolumeSourceArgs{
+						DiskName:    pulumi.String("string"),
+						DiskURI:     pulumi.String("string"),
+						CachingMode: pulumi.String("string"),
+						FsType:      pulumi.String("string"),
+						Kind:        pulumi.String("string"),
+						ReadOnly:    pulumi.Bool(false),
+					},
+					Nfs: &corev1.NFSVolumeSourceArgs{
+						Path:     pulumi.String("string"),
+						Server:   pulumi.String("string"),
+						ReadOnly: pulumi.Bool(false),
+					},
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSourceArgs{
+						ClaimName: pulumi.String("string"),
+						ReadOnly:  pulumi.Bool(false),
+					},
+					PhotonPersistentDisk: &corev1.PhotonPersistentDiskVolumeSourceArgs{
+						PdID:   pulumi.String("string"),
+						FsType: pulumi.String("string"),
+					},
+					PortworxVolume: &corev1.PortworxVolumeSourceArgs{
+						VolumeID: pulumi.String("string"),
+						FsType:   pulumi.String("string"),
+						ReadOnly: pulumi.Bool(false),
+					},
+					Projected: &corev1.ProjectedVolumeSourceArgs{
+						Sources: corev1.VolumeProjectionArray{
+							&corev1.VolumeProjectionArgs{
+								ConfigMap: &corev1.ConfigMapProjectionArgs{
+									Items: corev1.KeyToPathArray{
+										&corev1.KeyToPathArgs{
+											Key:  pulumi.String("string"),
+											Path: pulumi.String("string"),
+											Mode: pulumi.Int(0),
+										},
+									},
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+								DownwardAPI: &corev1.DownwardAPIProjectionArgs{
+									Items: corev1.DownwardAPIVolumeFileArray{
+										&corev1.DownwardAPIVolumeFileArgs{
+											Path: pulumi.String("string"),
+											FieldRef: &corev1.ObjectFieldSelectorArgs{
+												FieldPath:  pulumi.String("string"),
+												ApiVersion: pulumi.String("string"),
+											},
+											Mode: pulumi.Int(0),
+											ResourceFieldRef: &corev1.ResourceFieldSelectorArgs{
+												Resource:      pulumi.String("string"),
+												ContainerName: pulumi.String("string"),
+												Divisor:       pulumi.String("string"),
+											},
+										},
+									},
+								},
+								Secret: &corev1.SecretProjectionArgs{
+									Items: corev1.KeyToPathArray{
+										&corev1.KeyToPathArgs{
+											Key:  pulumi.String("string"),
+											Path: pulumi.String("string"),
+											Mode: pulumi.Int(0),
+										},
+									},
+									Name:     pulumi.String("string"),
+									Optional: pulumi.Bool(false),
+								},
+								ServiceAccountToken: &corev1.ServiceAccountTokenProjectionArgs{
+									Path:              pulumi.String("string"),
+									Audience:          pulumi.String("string"),
+									ExpirationSeconds: pulumi.Int(0),
+								},
+							},
+						},
+						DefaultMode: pulumi.Int(0),
+					},
+					Quobyte: &corev1.QuobyteVolumeSourceArgs{
+						Registry: pulumi.String("string"),
+						Volume:   pulumi.String("string"),
+						Group:    pulumi.String("string"),
+						ReadOnly: pulumi.Bool(false),
+						Tenant:   pulumi.String("string"),
+						User:     pulumi.String("string"),
+					},
+					Rbd: &corev1.RBDVolumeSourceArgs{
+						Image: pulumi.String("string"),
+						Monitors: pulumi.StringArray{
+							pulumi.String("string"),
+						},
+						FsType:   pulumi.String("string"),
+						Keyring:  pulumi.String("string"),
+						Pool:     pulumi.String("string"),
+						ReadOnly: pulumi.Bool(false),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+						User: pulumi.String("string"),
+					},
+					ScaleIO: &corev1.ScaleIOVolumeSourceArgs{
+						Gateway: pulumi.String("string"),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+						System:           pulumi.String("string"),
+						FsType:           pulumi.String("string"),
+						ProtectionDomain: pulumi.String("string"),
+						ReadOnly:         pulumi.Bool(false),
+						SslEnabled:       pulumi.Bool(false),
+						StorageMode:      pulumi.String("string"),
+						StoragePool:      pulumi.String("string"),
+						VolumeName:       pulumi.String("string"),
+					},
+					Secret: &corev1.SecretVolumeSourceArgs{
+						DefaultMode: pulumi.Int(0),
+						Items: corev1.KeyToPathArray{
+							&corev1.KeyToPathArgs{
+								Key:  pulumi.String("string"),
+								Path: pulumi.String("string"),
+								Mode: pulumi.Int(0),
+							},
+						},
+						Optional:   pulumi.Bool(false),
+						SecretName: pulumi.String("string"),
+					},
+					Storageos: &corev1.StorageOSVolumeSourceArgs{
+						FsType:   pulumi.String("string"),
+						ReadOnly: pulumi.Bool(false),
+						SecretRef: &corev1.LocalObjectReferenceArgs{
+							Name: pulumi.String("string"),
+						},
+						VolumeName:      pulumi.String("string"),
+						VolumeNamespace: pulumi.String("string"),
+					},
+					VsphereVolume: &corev1.VsphereVirtualDiskVolumeSourceArgs{
+						VolumePath:        pulumi.String("string"),
+						FsType:            pulumi.String("string"),
+						StoragePolicyID:   pulumi.String("string"),
+						StoragePolicyName: pulumi.String("string"),
+					},
+				},
+			},
+		},
+		Status: &corev1.PodStatusArgs{
+			Conditions: corev1.PodConditionArray{
+				&corev1.PodConditionArgs{
+					Status:             pulumi.String("string"),
+					Type:               pulumi.String("string"),
+					LastProbeTime:      pulumi.String("string"),
+					LastTransitionTime: pulumi.String("string"),
+					Message:            pulumi.String("string"),
+					Reason:             pulumi.String("string"),
+				},
+			},
+			ContainerStatuses: corev1.ContainerStatusArray{
+				&corev1.ContainerStatusArgs{
+					Image:        pulumi.String("string"),
+					ImageID:      pulumi.String("string"),
+					Name:         pulumi.String("string"),
+					Ready:        pulumi.Bool(false),
+					RestartCount: pulumi.Int(0),
+					ContainerID:  pulumi.String("string"),
+					LastState: &corev1.ContainerStateArgs{
+						Running: &corev1.ContainerStateRunningArgs{
+							StartedAt: pulumi.String("string"),
+						},
+						Terminated: &corev1.ContainerStateTerminatedArgs{
+							ExitCode:    pulumi.Int(0),
+							ContainerID: pulumi.String("string"),
+							FinishedAt:  pulumi.String("string"),
+							Message:     pulumi.String("string"),
+							Reason:      pulumi.String("string"),
+							Signal:      pulumi.Int(0),
+							StartedAt:   pulumi.String("string"),
+						},
+						Waiting: &corev1.ContainerStateWaitingArgs{
+							Message: pulumi.String("string"),
+							Reason:  pulumi.String("string"),
+						},
+					},
+					Started: pulumi.Bool(false),
+					State: &corev1.ContainerStateArgs{
+						Running: &corev1.ContainerStateRunningArgs{
+							StartedAt: pulumi.String("string"),
+						},
+						Terminated: &corev1.ContainerStateTerminatedArgs{
+							ExitCode:    pulumi.Int(0),
+							ContainerID: pulumi.String("string"),
+							FinishedAt:  pulumi.String("string"),
+							Message:     pulumi.String("string"),
+							Reason:      pulumi.String("string"),
+							Signal:      pulumi.Int(0),
+							StartedAt:   pulumi.String("string"),
+						},
+						Waiting: &corev1.ContainerStateWaitingArgs{
+							Message: pulumi.String("string"),
+							Reason:  pulumi.String("string"),
+						},
+					},
+				},
+			},
+			EphemeralContainerStatuses: corev1.ContainerStatusArray{
+				&corev1.ContainerStatusArgs{
+					Image:        pulumi.String("string"),
+					ImageID:      pulumi.String("string"),
+					Name:         pulumi.String("string"),
+					Ready:        pulumi.Bool(false),
+					RestartCount: pulumi.Int(0),
+					ContainerID:  pulumi.String("string"),
+					LastState: &corev1.ContainerStateArgs{
+						Running: &corev1.ContainerStateRunningArgs{
+							StartedAt: pulumi.String("string"),
+						},
+						Terminated: &corev1.ContainerStateTerminatedArgs{
+							ExitCode:    pulumi.Int(0),
+							ContainerID: pulumi.String("string"),
+							FinishedAt:  pulumi.String("string"),
+							Message:     pulumi.String("string"),
+							Reason:      pulumi.String("string"),
+							Signal:      pulumi.Int(0),
+							StartedAt:   pulumi.String("string"),
+						},
+						Waiting: &corev1.ContainerStateWaitingArgs{
+							Message: pulumi.String("string"),
+							Reason:  pulumi.String("string"),
+						},
+					},
+					Started: pulumi.Bool(false),
+					State: &corev1.ContainerStateArgs{
+						Running: &corev1.ContainerStateRunningArgs{
+							StartedAt: pulumi.String("string"),
+						},
+						Terminated: &corev1.ContainerStateTerminatedArgs{
+							ExitCode:    pulumi.Int(0),
+							ContainerID: pulumi.String("string"),
+							FinishedAt:  pulumi.String("string"),
+							Message:     pulumi.String("string"),
+							Reason:      pulumi.String("string"),
+							Signal:      pulumi.Int(0),
+							StartedAt:   pulumi.String("string"),
+						},
+						Waiting: &corev1.ContainerStateWaitingArgs{
+							Message: pulumi.String("string"),
+							Reason:  pulumi.String("string"),
+						},
+					},
+				},
+			},
+			HostIP: pulumi.String("string"),
+			InitContainerStatuses: corev1.ContainerStatusArray{
+				&corev1.ContainerStatusArgs{
+					Image:        pulumi.String("string"),
+					ImageID:      pulumi.String("string"),
+					Name:         pulumi.String("string"),
+					Ready:        pulumi.Bool(false),
+					RestartCount: pulumi.Int(0),
+					ContainerID:  pulumi.String("string"),
+					LastState: &corev1.ContainerStateArgs{
+						Running: &corev1.ContainerStateRunningArgs{
+							StartedAt: pulumi.String("string"),
+						},
+						Terminated: &corev1.ContainerStateTerminatedArgs{
+							ExitCode:    pulumi.Int(0),
+							ContainerID: pulumi.String("string"),
+							FinishedAt:  pulumi.String("string"),
+							Message:     pulumi.String("string"),
+							Reason:      pulumi.String("string"),
+							Signal:      pulumi.Int(0),
+							StartedAt:   pulumi.String("string"),
+						},
+						Waiting: &corev1.ContainerStateWaitingArgs{
+							Message: pulumi.String("string"),
+							Reason:  pulumi.String("string"),
+						},
+					},
+					Started: pulumi.Bool(false),
+					State: &corev1.ContainerStateArgs{
+						Running: &corev1.ContainerStateRunningArgs{
+							StartedAt: pulumi.String("string"),
+						},
+						Terminated: &corev1.ContainerStateTerminatedArgs{
+							ExitCode:    pulumi.Int(0),
+							ContainerID: pulumi.String("string"),
+							FinishedAt:  pulumi.String("string"),
+							Message:     pulumi.String("string"),
+							Reason:      pulumi.String("string"),
+							Signal:      pulumi.Int(0),
+							StartedAt:   pulumi.String("string"),
+						},
+						Waiting: &corev1.ContainerStateWaitingArgs{
+							Message: pulumi.String("string"),
+							Reason:  pulumi.String("string"),
+						},
+					},
+				},
+			},
+			Message:           pulumi.String("string"),
+			NominatedNodeName: pulumi.String("string"),
+			Phase:             pulumi.String("string"),
+			PodIP:             pulumi.String("string"),
+			PodIPs: corev1.PodIPArray{
+				&corev1.PodIPArgs{
+					Ip: pulumi.String("string"),
+				},
+			},
+			QosClass:  pulumi.String("string"),
+			Reason:    pulumi.String("string"),
+			StartTime: pulumi.String("string"),
+		},
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+component_resource = foo.Component("componentResource",
+    eni_config={
+        "string": kubernetes.crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs(
+            security_groups=["string"],
+            subnet="string",
+        ),
+    },
+    pod=kubernetes.core.v1.PodArgs(
+        api_version="v1",
+        kind="Pod",
+        metadata=kubernetes.meta.v1.ObjectMetaArgs(
+            annotations={
+                "string": "string",
+            },
+            cluster_name="string",
+            creation_timestamp="string",
+            deletion_grace_period_seconds=0,
+            deletion_timestamp="string",
+            finalizers=["string"],
+            generate_name="string",
+            generation=0,
+            labels={
+                "string": "string",
+            },
+            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+                api_version="string",
+                fields_type="string",
+                fields_v1="{}",
+                manager="string",
+                operation="string",
+                subresource="string",
+                time="string",
+            )],
+            name="string",
+            namespace="string",
+            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+                api_version="string",
+                kind="string",
+                name="string",
+                uid="string",
+                block_owner_deletion=False,
+                controller=False,
+            )],
+            resource_version="string",
+            self_link="string",
+            uid="string",
+        ),
+        spec=kubernetes.core.v1.PodSpecArgs(
+            containers=[kubernetes.core.v1.ContainerArgs(
+                name="string",
+                readiness_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                image_pull_policy="string",
+                resources=kubernetes.core.v1.ResourceRequirementsArgs(
+                    limits={
+                        "string": "string",
+                    },
+                    requests={
+                        "string": "string",
+                    },
+                ),
+                startup_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                security_context=kubernetes.core.v1.SecurityContextArgs(
+                    allow_privilege_escalation=False,
+                    capabilities=kubernetes.core.v1.CapabilitiesArgs(
+                        add=["string"],
+                        drop=["string"],
+                    ),
+                    privileged=False,
+                    proc_mount="string",
+                    read_only_root_filesystem=False,
+                    run_as_group=0,
+                    run_as_non_root=False,
+                    run_as_user=0,
+                    se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
+                        level="string",
+                        role="string",
+                        type="string",
+                        user="string",
+                    ),
+                    seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
+                        type="string",
+                        localhost_profile="string",
+                    ),
+                    windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
+                        gmsa_credential_spec="string",
+                        gmsa_credential_spec_name="string",
+                        host_process=False,
+                        run_as_user_name="string",
+                    ),
+                ),
+                lifecycle=kubernetes.core.v1.LifecycleArgs(
+                    post_start=kubernetes.core.v1.HandlerArgs(
+                        exec_=kubernetes.core.v1.ExecActionArgs(
+                            command=["string"],
+                        ),
+                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                            port=0,
+                            host="string",
+                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                                name="string",
+                                value="string",
+                            )],
+                            path="string",
+                            scheme="string",
+                        ),
+                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                            port=0,
+                            host="string",
+                        ),
+                    ),
+                    pre_stop=kubernetes.core.v1.HandlerArgs(
+                        exec_=kubernetes.core.v1.ExecActionArgs(
+                            command=["string"],
+                        ),
+                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                            port=0,
+                            host="string",
+                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                                name="string",
+                                value="string",
+                            )],
+                            path="string",
+                            scheme="string",
+                        ),
+                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                            port=0,
+                            host="string",
+                        ),
+                    ),
+                ),
+                liveness_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                command=["string"],
+                ports=[kubernetes.core.v1.ContainerPortArgs(
+                    container_port=0,
+                    host_ip="string",
+                    host_port=0,
+                    name="string",
+                    protocol="string",
+                )],
+                args=["string"],
+                env_from=[kubernetes.core.v1.EnvFromSourceArgs(
+                    config_map_ref=kubernetes.core.v1.ConfigMapEnvSourceArgs(
+                        name="string",
+                        optional=False,
+                    ),
+                    prefix="string",
+                    secret_ref=kubernetes.core.v1.SecretEnvSourceArgs(
+                        name="string",
+                        optional=False,
+                    ),
+                )],
+                env=[kubernetes.core.v1.EnvVarArgs(
+                    name="string",
+                    value="string",
+                    value_from=kubernetes.core.v1.EnvVarSourceArgs(
+                        config_map_key_ref=kubernetes.core.v1.ConfigMapKeySelectorArgs(
+                            key="string",
+                            name="string",
+                            optional=False,
+                        ),
+                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                            field_path="string",
+                            api_version="string",
+                        ),
+                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
+                            resource="string",
+                            container_name="string",
+                            divisor="string",
+                        ),
+                        secret_key_ref=kubernetes.core.v1.SecretKeySelectorArgs(
+                            key="string",
+                            name="string",
+                            optional=False,
+                        ),
+                    ),
+                )],
+                image="string",
+                stdin=False,
+                stdin_once=False,
+                termination_message_path="string",
+                termination_message_policy="string",
+                tty=False,
+                volume_devices=[kubernetes.core.v1.VolumeDeviceArgs(
+                    device_path="string",
+                    name="string",
+                )],
+                volume_mounts=[kubernetes.core.v1.VolumeMountArgs(
+                    mount_path="string",
+                    name="string",
+                    mount_propagation="string",
+                    read_only=False,
+                    sub_path="string",
+                    sub_path_expr="string",
+                )],
+                working_dir="string",
+            )],
+            node_selector={
+                "string": "string",
+            },
+            host_aliases=[kubernetes.core.v1.HostAliasArgs(
+                hostnames=["string"],
+                ip="string",
+            )],
+            affinity=kubernetes.core.v1.AffinityArgs(
+                node_affinity=kubernetes.core.v1.NodeAffinityArgs(
+                    preferred_during_scheduling_ignored_during_execution=[kubernetes.core.v1.PreferredSchedulingTermArgs(
+                        preference=kubernetes.core.v1.NodeSelectorTermArgs(
+                            match_expressions=[kubernetes.core.v1.NodeSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                            match_fields=[kubernetes.core.v1.NodeSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                        ),
+                        weight=0,
+                    )],
+                    required_during_scheduling_ignored_during_execution=kubernetes.core.v1.NodeSelectorArgs(
+                        node_selector_terms=[kubernetes.core.v1.NodeSelectorTermArgs(
+                            match_expressions=[kubernetes.core.v1.NodeSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                            match_fields=[kubernetes.core.v1.NodeSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                        )],
+                    ),
+                ),
+                pod_affinity=kubernetes.core.v1.PodAffinityArgs(
+                    preferred_during_scheduling_ignored_during_execution=[kubernetes.core.v1.WeightedPodAffinityTermArgs(
+                        pod_affinity_term=kubernetes.core.v1.PodAffinityTermArgs(
+                            topology_key="string",
+                            label_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                    key="string",
+                                    operator="string",
+                                    values=["string"],
+                                )],
+                                match_labels={
+                                    "string": "string",
+                                },
+                            ),
+                            namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                    key="string",
+                                    operator="string",
+                                    values=["string"],
+                                )],
+                                match_labels={
+                                    "string": "string",
+                                },
+                            ),
+                            namespaces=["string"],
+                        ),
+                        weight=0,
+                    )],
+                    required_during_scheduling_ignored_during_execution=[kubernetes.core.v1.PodAffinityTermArgs(
+                        topology_key="string",
+                        label_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                            match_labels={
+                                "string": "string",
+                            },
+                        ),
+                        namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                            match_labels={
+                                "string": "string",
+                            },
+                        ),
+                        namespaces=["string"],
+                    )],
+                ),
+                pod_anti_affinity=kubernetes.core.v1.PodAntiAffinityArgs(
+                    preferred_during_scheduling_ignored_during_execution=[kubernetes.core.v1.WeightedPodAffinityTermArgs(
+                        pod_affinity_term=kubernetes.core.v1.PodAffinityTermArgs(
+                            topology_key="string",
+                            label_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                    key="string",
+                                    operator="string",
+                                    values=["string"],
+                                )],
+                                match_labels={
+                                    "string": "string",
+                                },
+                            ),
+                            namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                    key="string",
+                                    operator="string",
+                                    values=["string"],
+                                )],
+                                match_labels={
+                                    "string": "string",
+                                },
+                            ),
+                            namespaces=["string"],
+                        ),
+                        weight=0,
+                    )],
+                    required_during_scheduling_ignored_during_execution=[kubernetes.core.v1.PodAffinityTermArgs(
+                        topology_key="string",
+                        label_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                            match_labels={
+                                "string": "string",
+                            },
+                        ),
+                        namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                key="string",
+                                operator="string",
+                                values=["string"],
+                            )],
+                            match_labels={
+                                "string": "string",
+                            },
+                        ),
+                        namespaces=["string"],
+                    )],
+                ),
+            ),
+            dns_config=kubernetes.core.v1.PodDNSConfigArgs(
+                nameservers=["string"],
+                options=[kubernetes.core.v1.PodDNSConfigOptionArgs(
+                    name="string",
+                    value="string",
+                )],
+                searches=["string"],
+            ),
+            overhead={
+                "string": "string",
+            },
+            enable_service_links=False,
+            ephemeral_containers=[kubernetes.core.v1.EphemeralContainerArgs(
+                name="string",
+                readiness_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                env_from=[kubernetes.core.v1.EnvFromSourceArgs(
+                    config_map_ref=kubernetes.core.v1.ConfigMapEnvSourceArgs(
+                        name="string",
+                        optional=False,
+                    ),
+                    prefix="string",
+                    secret_ref=kubernetes.core.v1.SecretEnvSourceArgs(
+                        name="string",
+                        optional=False,
+                    ),
+                )],
+                security_context=kubernetes.core.v1.SecurityContextArgs(
+                    allow_privilege_escalation=False,
+                    capabilities=kubernetes.core.v1.CapabilitiesArgs(
+                        add=["string"],
+                        drop=["string"],
+                    ),
+                    privileged=False,
+                    proc_mount="string",
+                    read_only_root_filesystem=False,
+                    run_as_group=0,
+                    run_as_non_root=False,
+                    run_as_user=0,
+                    se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
+                        level="string",
+                        role="string",
+                        type="string",
+                        user="string",
+                    ),
+                    seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
+                        type="string",
+                        localhost_profile="string",
+                    ),
+                    windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
+                        gmsa_credential_spec="string",
+                        gmsa_credential_spec_name="string",
+                        host_process=False,
+                        run_as_user_name="string",
+                    ),
+                ),
+                image="string",
+                image_pull_policy="string",
+                lifecycle=kubernetes.core.v1.LifecycleArgs(
+                    post_start=kubernetes.core.v1.HandlerArgs(
+                        exec_=kubernetes.core.v1.ExecActionArgs(
+                            command=["string"],
+                        ),
+                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                            port=0,
+                            host="string",
+                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                                name="string",
+                                value="string",
+                            )],
+                            path="string",
+                            scheme="string",
+                        ),
+                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                            port=0,
+                            host="string",
+                        ),
+                    ),
+                    pre_stop=kubernetes.core.v1.HandlerArgs(
+                        exec_=kubernetes.core.v1.ExecActionArgs(
+                            command=["string"],
+                        ),
+                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                            port=0,
+                            host="string",
+                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                                name="string",
+                                value="string",
+                            )],
+                            path="string",
+                            scheme="string",
+                        ),
+                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                            port=0,
+                            host="string",
+                        ),
+                    ),
+                ),
+                liveness_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                command=["string"],
+                startup_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                args=["string"],
+                working_dir="string",
+                env=[kubernetes.core.v1.EnvVarArgs(
+                    name="string",
+                    value="string",
+                    value_from=kubernetes.core.v1.EnvVarSourceArgs(
+                        config_map_key_ref=kubernetes.core.v1.ConfigMapKeySelectorArgs(
+                            key="string",
+                            name="string",
+                            optional=False,
+                        ),
+                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                            field_path="string",
+                            api_version="string",
+                        ),
+                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
+                            resource="string",
+                            container_name="string",
+                            divisor="string",
+                        ),
+                        secret_key_ref=kubernetes.core.v1.SecretKeySelectorArgs(
+                            key="string",
+                            name="string",
+                            optional=False,
+                        ),
+                    ),
+                )],
+                ports=[kubernetes.core.v1.ContainerPortArgs(
+                    container_port=0,
+                    host_ip="string",
+                    host_port=0,
+                    name="string",
+                    protocol="string",
+                )],
+                stdin=False,
+                stdin_once=False,
+                target_container_name="string",
+                termination_message_path="string",
+                termination_message_policy="string",
+                tty=False,
+                volume_devices=[kubernetes.core.v1.VolumeDeviceArgs(
+                    device_path="string",
+                    name="string",
+                )],
+                volume_mounts=[kubernetes.core.v1.VolumeMountArgs(
+                    mount_path="string",
+                    name="string",
+                    mount_propagation="string",
+                    read_only=False,
+                    sub_path="string",
+                    sub_path_expr="string",
+                )],
+                resources=kubernetes.core.v1.ResourceRequirementsArgs(
+                    limits={
+                        "string": "string",
+                    },
+                    requests={
+                        "string": "string",
+                    },
+                ),
+            )],
+            preemption_policy="string",
+            host_ipc=False,
+            priority=0,
+            host_pid=False,
+            hostname="string",
+            image_pull_secrets=[kubernetes.core.v1.LocalObjectReferenceArgs(
+                name="string",
+            )],
+            init_containers=[kubernetes.core.v1.ContainerArgs(
+                name="string",
+                readiness_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                image_pull_policy="string",
+                resources=kubernetes.core.v1.ResourceRequirementsArgs(
+                    limits={
+                        "string": "string",
+                    },
+                    requests={
+                        "string": "string",
+                    },
+                ),
+                startup_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                security_context=kubernetes.core.v1.SecurityContextArgs(
+                    allow_privilege_escalation=False,
+                    capabilities=kubernetes.core.v1.CapabilitiesArgs(
+                        add=["string"],
+                        drop=["string"],
+                    ),
+                    privileged=False,
+                    proc_mount="string",
+                    read_only_root_filesystem=False,
+                    run_as_group=0,
+                    run_as_non_root=False,
+                    run_as_user=0,
+                    se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
+                        level="string",
+                        role="string",
+                        type="string",
+                        user="string",
+                    ),
+                    seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
+                        type="string",
+                        localhost_profile="string",
+                    ),
+                    windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
+                        gmsa_credential_spec="string",
+                        gmsa_credential_spec_name="string",
+                        host_process=False,
+                        run_as_user_name="string",
+                    ),
+                ),
+                lifecycle=kubernetes.core.v1.LifecycleArgs(
+                    post_start=kubernetes.core.v1.HandlerArgs(
+                        exec_=kubernetes.core.v1.ExecActionArgs(
+                            command=["string"],
+                        ),
+                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                            port=0,
+                            host="string",
+                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                                name="string",
+                                value="string",
+                            )],
+                            path="string",
+                            scheme="string",
+                        ),
+                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                            port=0,
+                            host="string",
+                        ),
+                    ),
+                    pre_stop=kubernetes.core.v1.HandlerArgs(
+                        exec_=kubernetes.core.v1.ExecActionArgs(
+                            command=["string"],
+                        ),
+                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                            port=0,
+                            host="string",
+                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                                name="string",
+                                value="string",
+                            )],
+                            path="string",
+                            scheme="string",
+                        ),
+                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                            port=0,
+                            host="string",
+                        ),
+                    ),
+                ),
+                liveness_probe=kubernetes.core.v1.ProbeArgs(
+                    exec_=kubernetes.core.v1.ExecActionArgs(
+                        command=["string"],
+                    ),
+                    failure_threshold=0,
+                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
+                        port=0,
+                        host="string",
+                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
+                            name="string",
+                            value="string",
+                        )],
+                        path="string",
+                        scheme="string",
+                    ),
+                    initial_delay_seconds=0,
+                    period_seconds=0,
+                    success_threshold=0,
+                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
+                        port=0,
+                        host="string",
+                    ),
+                    termination_grace_period_seconds=0,
+                    timeout_seconds=0,
+                ),
+                command=["string"],
+                ports=[kubernetes.core.v1.ContainerPortArgs(
+                    container_port=0,
+                    host_ip="string",
+                    host_port=0,
+                    name="string",
+                    protocol="string",
+                )],
+                args=["string"],
+                env_from=[kubernetes.core.v1.EnvFromSourceArgs(
+                    config_map_ref=kubernetes.core.v1.ConfigMapEnvSourceArgs(
+                        name="string",
+                        optional=False,
+                    ),
+                    prefix="string",
+                    secret_ref=kubernetes.core.v1.SecretEnvSourceArgs(
+                        name="string",
+                        optional=False,
+                    ),
+                )],
+                env=[kubernetes.core.v1.EnvVarArgs(
+                    name="string",
+                    value="string",
+                    value_from=kubernetes.core.v1.EnvVarSourceArgs(
+                        config_map_key_ref=kubernetes.core.v1.ConfigMapKeySelectorArgs(
+                            key="string",
+                            name="string",
+                            optional=False,
+                        ),
+                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                            field_path="string",
+                            api_version="string",
+                        ),
+                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
+                            resource="string",
+                            container_name="string",
+                            divisor="string",
+                        ),
+                        secret_key_ref=kubernetes.core.v1.SecretKeySelectorArgs(
+                            key="string",
+                            name="string",
+                            optional=False,
+                        ),
+                    ),
+                )],
+                image="string",
+                stdin=False,
+                stdin_once=False,
+                termination_message_path="string",
+                termination_message_policy="string",
+                tty=False,
+                volume_devices=[kubernetes.core.v1.VolumeDeviceArgs(
+                    device_path="string",
+                    name="string",
+                )],
+                volume_mounts=[kubernetes.core.v1.VolumeMountArgs(
+                    mount_path="string",
+                    name="string",
+                    mount_propagation="string",
+                    read_only=False,
+                    sub_path="string",
+                    sub_path_expr="string",
+                )],
+                working_dir="string",
+            )],
+            node_name="string",
+            active_deadline_seconds=0,
+            dns_policy="string",
+            automount_service_account_token=False,
+            host_network=False,
+            priority_class_name="string",
+            readiness_gates=[kubernetes.core.v1.PodReadinessGateArgs(
+                condition_type="string",
+            )],
+            restart_policy="string",
+            runtime_class_name="string",
+            scheduler_name="string",
+            security_context=kubernetes.core.v1.PodSecurityContextArgs(
+                fs_group=0,
+                fs_group_change_policy="string",
+                run_as_group=0,
+                run_as_non_root=False,
+                run_as_user=0,
+                se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
+                    level="string",
+                    role="string",
+                    type="string",
+                    user="string",
+                ),
+                seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
+                    type="string",
+                    localhost_profile="string",
+                ),
+                supplemental_groups=[0],
+                sysctls=[kubernetes.core.v1.SysctlArgs(
+                    name="string",
+                    value="string",
+                )],
+                windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
+                    gmsa_credential_spec="string",
+                    gmsa_credential_spec_name="string",
+                    host_process=False,
+                    run_as_user_name="string",
+                ),
+            ),
+            service_account="string",
+            service_account_name="string",
+            set_hostname_as_fqdn=False,
+            share_process_namespace=False,
+            subdomain="string",
+            termination_grace_period_seconds=0,
+            tolerations=[kubernetes.core.v1.TolerationArgs(
+                effect="string",
+                key="string",
+                operator="string",
+                toleration_seconds=0,
+                value="string",
+            )],
+            topology_spread_constraints=[kubernetes.core.v1.TopologySpreadConstraintArgs(
+                max_skew=0,
+                topology_key="string",
+                when_unsatisfiable="string",
+                label_selector=kubernetes.meta.v1.LabelSelectorArgs(
+                    match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                        key="string",
+                        operator="string",
+                        values=["string"],
+                    )],
+                    match_labels={
+                        "string": "string",
+                    },
+                ),
+            )],
+            volumes=[kubernetes.core.v1.VolumeArgs(
+                name="string",
+                git_repo=kubernetes.core.v1.GitRepoVolumeSourceArgs(
+                    repository="string",
+                    directory="string",
+                    revision="string",
+                ),
+                config_map=kubernetes.core.v1.ConfigMapVolumeSourceArgs(
+                    default_mode=0,
+                    items=[kubernetes.core.v1.KeyToPathArgs(
+                        key="string",
+                        path="string",
+                        mode=0,
+                    )],
+                    name="string",
+                    optional=False,
+                ),
+                glusterfs=kubernetes.core.v1.GlusterfsVolumeSourceArgs(
+                    endpoints="string",
+                    path="string",
+                    read_only=False,
+                ),
+                cinder=kubernetes.core.v1.CinderVolumeSourceArgs(
+                    volume_id="string",
+                    fs_type="string",
+                    read_only=False,
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                ),
+                host_path=kubernetes.core.v1.HostPathVolumeSourceArgs(
+                    path="string",
+                    type="string",
+                ),
+                csi=kubernetes.core.v1.CSIVolumeSourceArgs(
+                    driver="string",
+                    fs_type="string",
+                    node_publish_secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                    read_only=False,
+                    volume_attributes={
+                        "string": "string",
+                    },
+                ),
+                downward_api=kubernetes.core.v1.DownwardAPIVolumeSourceArgs(
+                    default_mode=0,
+                    items=[kubernetes.core.v1.DownwardAPIVolumeFileArgs(
+                        path="string",
+                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                            field_path="string",
+                            api_version="string",
+                        ),
+                        mode=0,
+                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
+                            resource="string",
+                            container_name="string",
+                            divisor="string",
+                        ),
+                    )],
+                ),
+                empty_dir=kubernetes.core.v1.EmptyDirVolumeSourceArgs(
+                    medium="string",
+                    size_limit="string",
+                ),
+                ephemeral=kubernetes.core.v1.EphemeralVolumeSourceArgs(
+                    read_only=False,
+                    volume_claim_template=kubernetes.core.v1.PersistentVolumeClaimTemplateArgs(
+                        spec=kubernetes.core.v1.PersistentVolumeClaimSpecArgs(
+                            access_modes=["string"],
+                            data_source=kubernetes.core.v1.TypedLocalObjectReferenceArgs(
+                                kind="string",
+                                name="string",
+                                api_group="string",
+                            ),
+                            data_source_ref=kubernetes.core.v1.TypedLocalObjectReferenceArgs(
+                                kind="string",
+                                name="string",
+                                api_group="string",
+                            ),
+                            resources=kubernetes.core.v1.ResourceRequirementsArgs(
+                                limits={
+                                    "string": "string",
+                                },
+                                requests={
+                                    "string": "string",
+                                },
+                            ),
+                            selector=kubernetes.meta.v1.LabelSelectorArgs(
+                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
+                                    key="string",
+                                    operator="string",
+                                    values=["string"],
+                                )],
+                                match_labels={
+                                    "string": "string",
+                                },
+                            ),
+                            storage_class_name="string",
+                            volume_mode="string",
+                            volume_name="string",
+                        ),
+                        metadata=kubernetes.meta.v1.ObjectMetaArgs(
+                            annotations={
+                                "string": "string",
+                            },
+                            cluster_name="string",
+                            creation_timestamp="string",
+                            deletion_grace_period_seconds=0,
+                            deletion_timestamp="string",
+                            finalizers=["string"],
+                            generate_name="string",
+                            generation=0,
+                            labels={
+                                "string": "string",
+                            },
+                            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+                                api_version="string",
+                                fields_type="string",
+                                fields_v1="{}",
+                                manager="string",
+                                operation="string",
+                                subresource="string",
+                                time="string",
+                            )],
+                            name="string",
+                            namespace="string",
+                            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+                                api_version="string",
+                                kind="string",
+                                name="string",
+                                uid="string",
+                                block_owner_deletion=False,
+                                controller=False,
+                            )],
+                            resource_version="string",
+                            self_link="string",
+                            uid="string",
+                        ),
+                    ),
+                ),
+                fc=kubernetes.core.v1.FCVolumeSourceArgs(
+                    fs_type="string",
+                    lun=0,
+                    read_only=False,
+                    target_wwns=["string"],
+                    wwids=["string"],
+                ),
+                flex_volume=kubernetes.core.v1.FlexVolumeSourceArgs(
+                    driver="string",
+                    fs_type="string",
+                    options={
+                        "string": "string",
+                    },
+                    read_only=False,
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                ),
+                iscsi=kubernetes.core.v1.ISCSIVolumeSourceArgs(
+                    iqn="string",
+                    lun=0,
+                    target_portal="string",
+                    chap_auth_discovery=False,
+                    chap_auth_session=False,
+                    fs_type="string",
+                    initiator_name="string",
+                    iscsi_interface="string",
+                    portals=["string"],
+                    read_only=False,
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                ),
+                gce_persistent_disk=kubernetes.core.v1.GCEPersistentDiskVolumeSourceArgs(
+                    pd_name="string",
+                    fs_type="string",
+                    partition=0,
+                    read_only=False,
+                ),
+                aws_elastic_block_store=kubernetes.core.v1.AWSElasticBlockStoreVolumeSourceArgs(
+                    volume_id="string",
+                    fs_type="string",
+                    partition=0,
+                    read_only=False,
+                ),
+                cephfs=kubernetes.core.v1.CephFSVolumeSourceArgs(
+                    monitors=["string"],
+                    path="string",
+                    read_only=False,
+                    secret_file="string",
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                    user="string",
+                ),
+                azure_file=kubernetes.core.v1.AzureFileVolumeSourceArgs(
+                    secret_name="string",
+                    share_name="string",
+                    read_only=False,
+                ),
+                flocker=kubernetes.core.v1.FlockerVolumeSourceArgs(
+                    dataset_name="string",
+                    dataset_uuid="string",
+                ),
+                azure_disk=kubernetes.core.v1.AzureDiskVolumeSourceArgs(
+                    disk_name="string",
+                    disk_uri="string",
+                    caching_mode="string",
+                    fs_type="string",
+                    kind="string",
+                    read_only=False,
+                ),
+                nfs=kubernetes.core.v1.NFSVolumeSourceArgs(
+                    path="string",
+                    server="string",
+                    read_only=False,
+                ),
+                persistent_volume_claim=kubernetes.core.v1.PersistentVolumeClaimVolumeSourceArgs(
+                    claim_name="string",
+                    read_only=False,
+                ),
+                photon_persistent_disk=kubernetes.core.v1.PhotonPersistentDiskVolumeSourceArgs(
+                    pd_id="string",
+                    fs_type="string",
+                ),
+                portworx_volume=kubernetes.core.v1.PortworxVolumeSourceArgs(
+                    volume_id="string",
+                    fs_type="string",
+                    read_only=False,
+                ),
+                projected=kubernetes.core.v1.ProjectedVolumeSourceArgs(
+                    sources=[kubernetes.core.v1.VolumeProjectionArgs(
+                        config_map=kubernetes.core.v1.ConfigMapProjectionArgs(
+                            items=[kubernetes.core.v1.KeyToPathArgs(
+                                key="string",
+                                path="string",
+                                mode=0,
+                            )],
+                            name="string",
+                            optional=False,
+                        ),
+                        downward_api=kubernetes.core.v1.DownwardAPIProjectionArgs(
+                            items=[kubernetes.core.v1.DownwardAPIVolumeFileArgs(
+                                path="string",
+                                field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                                    field_path="string",
+                                    api_version="string",
+                                ),
+                                mode=0,
+                                resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
+                                    resource="string",
+                                    container_name="string",
+                                    divisor="string",
+                                ),
+                            )],
+                        ),
+                        secret=kubernetes.core.v1.SecretProjectionArgs(
+                            items=[kubernetes.core.v1.KeyToPathArgs(
+                                key="string",
+                                path="string",
+                                mode=0,
+                            )],
+                            name="string",
+                            optional=False,
+                        ),
+                        service_account_token=kubernetes.core.v1.ServiceAccountTokenProjectionArgs(
+                            path="string",
+                            audience="string",
+                            expiration_seconds=0,
+                        ),
+                    )],
+                    default_mode=0,
+                ),
+                quobyte=kubernetes.core.v1.QuobyteVolumeSourceArgs(
+                    registry="string",
+                    volume="string",
+                    group="string",
+                    read_only=False,
+                    tenant="string",
+                    user="string",
+                ),
+                rbd=kubernetes.core.v1.RBDVolumeSourceArgs(
+                    image="string",
+                    monitors=["string"],
+                    fs_type="string",
+                    keyring="string",
+                    pool="string",
+                    read_only=False,
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                    user="string",
+                ),
+                scale_io=kubernetes.core.v1.ScaleIOVolumeSourceArgs(
+                    gateway="string",
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                    system="string",
+                    fs_type="string",
+                    protection_domain="string",
+                    read_only=False,
+                    ssl_enabled=False,
+                    storage_mode="string",
+                    storage_pool="string",
+                    volume_name="string",
+                ),
+                secret=kubernetes.core.v1.SecretVolumeSourceArgs(
+                    default_mode=0,
+                    items=[kubernetes.core.v1.KeyToPathArgs(
+                        key="string",
+                        path="string",
+                        mode=0,
+                    )],
+                    optional=False,
+                    secret_name="string",
+                ),
+                storageos=kubernetes.core.v1.StorageOSVolumeSourceArgs(
+                    fs_type="string",
+                    read_only=False,
+                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
+                        name="string",
+                    ),
+                    volume_name="string",
+                    volume_namespace="string",
+                ),
+                vsphere_volume=kubernetes.core.v1.VsphereVirtualDiskVolumeSourceArgs(
+                    volume_path="string",
+                    fs_type="string",
+                    storage_policy_id="string",
+                    storage_policy_name="string",
+                ),
+            )],
+        ),
+        status=kubernetes.core.v1.PodStatusArgs(
+            conditions=[kubernetes.core.v1.PodConditionArgs(
+                status="string",
+                type="string",
+                last_probe_time="string",
+                last_transition_time="string",
+                message="string",
+                reason="string",
+            )],
+            container_statuses=[kubernetes.core.v1.ContainerStatusArgs(
+                image="string",
+                image_id="string",
+                name="string",
+                ready=False,
+                restart_count=0,
+                container_id="string",
+                last_state=kubernetes.core.v1.ContainerStateArgs(
+                    running=kubernetes.core.v1.ContainerStateRunningArgs(
+                        started_at="string",
+                    ),
+                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
+                        exit_code=0,
+                        container_id="string",
+                        finished_at="string",
+                        message="string",
+                        reason="string",
+                        signal=0,
+                        started_at="string",
+                    ),
+                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
+                        message="string",
+                        reason="string",
+                    ),
+                ),
+                started=False,
+                state=kubernetes.core.v1.ContainerStateArgs(
+                    running=kubernetes.core.v1.ContainerStateRunningArgs(
+                        started_at="string",
+                    ),
+                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
+                        exit_code=0,
+                        container_id="string",
+                        finished_at="string",
+                        message="string",
+                        reason="string",
+                        signal=0,
+                        started_at="string",
+                    ),
+                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
+                        message="string",
+                        reason="string",
+                    ),
+                ),
+            )],
+            ephemeral_container_statuses=[kubernetes.core.v1.ContainerStatusArgs(
+                image="string",
+                image_id="string",
+                name="string",
+                ready=False,
+                restart_count=0,
+                container_id="string",
+                last_state=kubernetes.core.v1.ContainerStateArgs(
+                    running=kubernetes.core.v1.ContainerStateRunningArgs(
+                        started_at="string",
+                    ),
+                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
+                        exit_code=0,
+                        container_id="string",
+                        finished_at="string",
+                        message="string",
+                        reason="string",
+                        signal=0,
+                        started_at="string",
+                    ),
+                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
+                        message="string",
+                        reason="string",
+                    ),
+                ),
+                started=False,
+                state=kubernetes.core.v1.ContainerStateArgs(
+                    running=kubernetes.core.v1.ContainerStateRunningArgs(
+                        started_at="string",
+                    ),
+                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
+                        exit_code=0,
+                        container_id="string",
+                        finished_at="string",
+                        message="string",
+                        reason="string",
+                        signal=0,
+                        started_at="string",
+                    ),
+                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
+                        message="string",
+                        reason="string",
+                    ),
+                ),
+            )],
+            host_ip="string",
+            init_container_statuses=[kubernetes.core.v1.ContainerStatusArgs(
+                image="string",
+                image_id="string",
+                name="string",
+                ready=False,
+                restart_count=0,
+                container_id="string",
+                last_state=kubernetes.core.v1.ContainerStateArgs(
+                    running=kubernetes.core.v1.ContainerStateRunningArgs(
+                        started_at="string",
+                    ),
+                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
+                        exit_code=0,
+                        container_id="string",
+                        finished_at="string",
+                        message="string",
+                        reason="string",
+                        signal=0,
+                        started_at="string",
+                    ),
+                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
+                        message="string",
+                        reason="string",
+                    ),
+                ),
+                started=False,
+                state=kubernetes.core.v1.ContainerStateArgs(
+                    running=kubernetes.core.v1.ContainerStateRunningArgs(
+                        started_at="string",
+                    ),
+                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
+                        exit_code=0,
+                        container_id="string",
+                        finished_at="string",
+                        message="string",
+                        reason="string",
+                        signal=0,
+                        started_at="string",
+                    ),
+                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
+                        message="string",
+                        reason="string",
+                    ),
+                ),
+            )],
+            message="string",
+            nominated_node_name="string",
+            phase="string",
+            pod_ip="string",
+            pod_ips=[kubernetes.core.v1.PodIPArgs(
+                ip="string",
+            )],
+            qos_class="string",
+            reason="string",
+            start_time="string",
+        ),
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const componentResource = new foo.Component("componentResource", {
+    eniConfig: {
+        string: {
+            securityGroups: ["string"],
+            subnet: "string",
+        },
+    },
+    pod: {
+        apiVersion: "v1",
+        kind: "Pod",
+        metadata: {
+            annotations: {
+                string: "string",
+            },
+            clusterName: "string",
+            creationTimestamp: "string",
+            deletionGracePeriodSeconds: 0,
+            deletionTimestamp: "string",
+            finalizers: ["string"],
+            generateName: "string",
+            generation: 0,
+            labels: {
+                string: "string",
+            },
+            managedFields: [{
+                apiVersion: "string",
+                fieldsType: "string",
+                fieldsV1: "{}",
+                manager: "string",
+                operation: "string",
+                subresource: "string",
+                time: "string",
+            }],
+            name: "string",
+            namespace: "string",
+            ownerReferences: [{
+                apiVersion: "string",
+                kind: "string",
+                name: "string",
+                uid: "string",
+                blockOwnerDeletion: false,
+                controller: false,
+            }],
+            resourceVersion: "string",
+            selfLink: "string",
+            uid: "string",
+        },
+        spec: {
+            containers: [{
+                name: "string",
+                readinessProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                imagePullPolicy: "string",
+                resources: {
+                    limits: {
+                        string: "string",
+                    },
+                    requests: {
+                        string: "string",
+                    },
+                },
+                startupProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                securityContext: {
+                    allowPrivilegeEscalation: false,
+                    capabilities: {
+                        add: ["string"],
+                        drop: ["string"],
+                    },
+                    privileged: false,
+                    procMount: "string",
+                    readOnlyRootFilesystem: false,
+                    runAsGroup: 0,
+                    runAsNonRoot: false,
+                    runAsUser: 0,
+                    seLinuxOptions: {
+                        level: "string",
+                        role: "string",
+                        type: "string",
+                        user: "string",
+                    },
+                    seccompProfile: {
+                        type: "string",
+                        localhostProfile: "string",
+                    },
+                    windowsOptions: {
+                        gmsaCredentialSpec: "string",
+                        gmsaCredentialSpecName: "string",
+                        hostProcess: false,
+                        runAsUserName: "string",
+                    },
+                },
+                lifecycle: {
+                    postStart: {
+                        exec: {
+                            command: ["string"],
+                        },
+                        httpGet: {
+                            port: 0,
+                            host: "string",
+                            httpHeaders: [{
+                                name: "string",
+                                value: "string",
+                            }],
+                            path: "string",
+                            scheme: "string",
+                        },
+                        tcpSocket: {
+                            port: 0,
+                            host: "string",
+                        },
+                    },
+                    preStop: {
+                        exec: {
+                            command: ["string"],
+                        },
+                        httpGet: {
+                            port: 0,
+                            host: "string",
+                            httpHeaders: [{
+                                name: "string",
+                                value: "string",
+                            }],
+                            path: "string",
+                            scheme: "string",
+                        },
+                        tcpSocket: {
+                            port: 0,
+                            host: "string",
+                        },
+                    },
+                },
+                livenessProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                command: ["string"],
+                ports: [{
+                    containerPort: 0,
+                    hostIP: "string",
+                    hostPort: 0,
+                    name: "string",
+                    protocol: "string",
+                }],
+                args: ["string"],
+                envFrom: [{
+                    configMapRef: {
+                        name: "string",
+                        optional: false,
+                    },
+                    prefix: "string",
+                    secretRef: {
+                        name: "string",
+                        optional: false,
+                    },
+                }],
+                env: [{
+                    name: "string",
+                    value: "string",
+                    valueFrom: {
+                        configMapKeyRef: {
+                            key: "string",
+                            name: "string",
+                            optional: false,
+                        },
+                        fieldRef: {
+                            fieldPath: "string",
+                            apiVersion: "string",
+                        },
+                        resourceFieldRef: {
+                            resource: "string",
+                            containerName: "string",
+                            divisor: "string",
+                        },
+                        secretKeyRef: {
+                            key: "string",
+                            name: "string",
+                            optional: false,
+                        },
+                    },
+                }],
+                image: "string",
+                stdin: false,
+                stdinOnce: false,
+                terminationMessagePath: "string",
+                terminationMessagePolicy: "string",
+                tty: false,
+                volumeDevices: [{
+                    devicePath: "string",
+                    name: "string",
+                }],
+                volumeMounts: [{
+                    mountPath: "string",
+                    name: "string",
+                    mountPropagation: "string",
+                    readOnly: false,
+                    subPath: "string",
+                    subPathExpr: "string",
+                }],
+                workingDir: "string",
+            }],
+            nodeSelector: {
+                string: "string",
+            },
+            hostAliases: [{
+                hostnames: ["string"],
+                ip: "string",
+            }],
+            affinity: {
+                nodeAffinity: {
+                    preferredDuringSchedulingIgnoredDuringExecution: [{
+                        preference: {
+                            matchExpressions: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                            matchFields: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                        },
+                        weight: 0,
+                    }],
+                    requiredDuringSchedulingIgnoredDuringExecution: {
+                        nodeSelectorTerms: [{
+                            matchExpressions: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                            matchFields: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                        }],
+                    },
+                },
+                podAffinity: {
+                    preferredDuringSchedulingIgnoredDuringExecution: [{
+                        podAffinityTerm: {
+                            topologyKey: "string",
+                            labelSelector: {
+                                matchExpressions: [{
+                                    key: "string",
+                                    operator: "string",
+                                    values: ["string"],
+                                }],
+                                matchLabels: {
+                                    string: "string",
+                                },
+                            },
+                            namespaceSelector: {
+                                matchExpressions: [{
+                                    key: "string",
+                                    operator: "string",
+                                    values: ["string"],
+                                }],
+                                matchLabels: {
+                                    string: "string",
+                                },
+                            },
+                            namespaces: ["string"],
+                        },
+                        weight: 0,
+                    }],
+                    requiredDuringSchedulingIgnoredDuringExecution: [{
+                        topologyKey: "string",
+                        labelSelector: {
+                            matchExpressions: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                            matchLabels: {
+                                string: "string",
+                            },
+                        },
+                        namespaceSelector: {
+                            matchExpressions: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                            matchLabels: {
+                                string: "string",
+                            },
+                        },
+                        namespaces: ["string"],
+                    }],
+                },
+                podAntiAffinity: {
+                    preferredDuringSchedulingIgnoredDuringExecution: [{
+                        podAffinityTerm: {
+                            topologyKey: "string",
+                            labelSelector: {
+                                matchExpressions: [{
+                                    key: "string",
+                                    operator: "string",
+                                    values: ["string"],
+                                }],
+                                matchLabels: {
+                                    string: "string",
+                                },
+                            },
+                            namespaceSelector: {
+                                matchExpressions: [{
+                                    key: "string",
+                                    operator: "string",
+                                    values: ["string"],
+                                }],
+                                matchLabels: {
+                                    string: "string",
+                                },
+                            },
+                            namespaces: ["string"],
+                        },
+                        weight: 0,
+                    }],
+                    requiredDuringSchedulingIgnoredDuringExecution: [{
+                        topologyKey: "string",
+                        labelSelector: {
+                            matchExpressions: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                            matchLabels: {
+                                string: "string",
+                            },
+                        },
+                        namespaceSelector: {
+                            matchExpressions: [{
+                                key: "string",
+                                operator: "string",
+                                values: ["string"],
+                            }],
+                            matchLabels: {
+                                string: "string",
+                            },
+                        },
+                        namespaces: ["string"],
+                    }],
+                },
+            },
+            dnsConfig: {
+                nameservers: ["string"],
+                options: [{
+                    name: "string",
+                    value: "string",
+                }],
+                searches: ["string"],
+            },
+            overhead: {
+                string: "string",
+            },
+            enableServiceLinks: false,
+            ephemeralContainers: [{
+                name: "string",
+                readinessProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                envFrom: [{
+                    configMapRef: {
+                        name: "string",
+                        optional: false,
+                    },
+                    prefix: "string",
+                    secretRef: {
+                        name: "string",
+                        optional: false,
+                    },
+                }],
+                securityContext: {
+                    allowPrivilegeEscalation: false,
+                    capabilities: {
+                        add: ["string"],
+                        drop: ["string"],
+                    },
+                    privileged: false,
+                    procMount: "string",
+                    readOnlyRootFilesystem: false,
+                    runAsGroup: 0,
+                    runAsNonRoot: false,
+                    runAsUser: 0,
+                    seLinuxOptions: {
+                        level: "string",
+                        role: "string",
+                        type: "string",
+                        user: "string",
+                    },
+                    seccompProfile: {
+                        type: "string",
+                        localhostProfile: "string",
+                    },
+                    windowsOptions: {
+                        gmsaCredentialSpec: "string",
+                        gmsaCredentialSpecName: "string",
+                        hostProcess: false,
+                        runAsUserName: "string",
+                    },
+                },
+                image: "string",
+                imagePullPolicy: "string",
+                lifecycle: {
+                    postStart: {
+                        exec: {
+                            command: ["string"],
+                        },
+                        httpGet: {
+                            port: 0,
+                            host: "string",
+                            httpHeaders: [{
+                                name: "string",
+                                value: "string",
+                            }],
+                            path: "string",
+                            scheme: "string",
+                        },
+                        tcpSocket: {
+                            port: 0,
+                            host: "string",
+                        },
+                    },
+                    preStop: {
+                        exec: {
+                            command: ["string"],
+                        },
+                        httpGet: {
+                            port: 0,
+                            host: "string",
+                            httpHeaders: [{
+                                name: "string",
+                                value: "string",
+                            }],
+                            path: "string",
+                            scheme: "string",
+                        },
+                        tcpSocket: {
+                            port: 0,
+                            host: "string",
+                        },
+                    },
+                },
+                livenessProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                command: ["string"],
+                startupProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                args: ["string"],
+                workingDir: "string",
+                env: [{
+                    name: "string",
+                    value: "string",
+                    valueFrom: {
+                        configMapKeyRef: {
+                            key: "string",
+                            name: "string",
+                            optional: false,
+                        },
+                        fieldRef: {
+                            fieldPath: "string",
+                            apiVersion: "string",
+                        },
+                        resourceFieldRef: {
+                            resource: "string",
+                            containerName: "string",
+                            divisor: "string",
+                        },
+                        secretKeyRef: {
+                            key: "string",
+                            name: "string",
+                            optional: false,
+                        },
+                    },
+                }],
+                ports: [{
+                    containerPort: 0,
+                    hostIP: "string",
+                    hostPort: 0,
+                    name: "string",
+                    protocol: "string",
+                }],
+                stdin: false,
+                stdinOnce: false,
+                targetContainerName: "string",
+                terminationMessagePath: "string",
+                terminationMessagePolicy: "string",
+                tty: false,
+                volumeDevices: [{
+                    devicePath: "string",
+                    name: "string",
+                }],
+                volumeMounts: [{
+                    mountPath: "string",
+                    name: "string",
+                    mountPropagation: "string",
+                    readOnly: false,
+                    subPath: "string",
+                    subPathExpr: "string",
+                }],
+                resources: {
+                    limits: {
+                        string: "string",
+                    },
+                    requests: {
+                        string: "string",
+                    },
+                },
+            }],
+            preemptionPolicy: "string",
+            hostIPC: false,
+            priority: 0,
+            hostPID: false,
+            hostname: "string",
+            imagePullSecrets: [{
+                name: "string",
+            }],
+            initContainers: [{
+                name: "string",
+                readinessProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                imagePullPolicy: "string",
+                resources: {
+                    limits: {
+                        string: "string",
+                    },
+                    requests: {
+                        string: "string",
+                    },
+                },
+                startupProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                securityContext: {
+                    allowPrivilegeEscalation: false,
+                    capabilities: {
+                        add: ["string"],
+                        drop: ["string"],
+                    },
+                    privileged: false,
+                    procMount: "string",
+                    readOnlyRootFilesystem: false,
+                    runAsGroup: 0,
+                    runAsNonRoot: false,
+                    runAsUser: 0,
+                    seLinuxOptions: {
+                        level: "string",
+                        role: "string",
+                        type: "string",
+                        user: "string",
+                    },
+                    seccompProfile: {
+                        type: "string",
+                        localhostProfile: "string",
+                    },
+                    windowsOptions: {
+                        gmsaCredentialSpec: "string",
+                        gmsaCredentialSpecName: "string",
+                        hostProcess: false,
+                        runAsUserName: "string",
+                    },
+                },
+                lifecycle: {
+                    postStart: {
+                        exec: {
+                            command: ["string"],
+                        },
+                        httpGet: {
+                            port: 0,
+                            host: "string",
+                            httpHeaders: [{
+                                name: "string",
+                                value: "string",
+                            }],
+                            path: "string",
+                            scheme: "string",
+                        },
+                        tcpSocket: {
+                            port: 0,
+                            host: "string",
+                        },
+                    },
+                    preStop: {
+                        exec: {
+                            command: ["string"],
+                        },
+                        httpGet: {
+                            port: 0,
+                            host: "string",
+                            httpHeaders: [{
+                                name: "string",
+                                value: "string",
+                            }],
+                            path: "string",
+                            scheme: "string",
+                        },
+                        tcpSocket: {
+                            port: 0,
+                            host: "string",
+                        },
+                    },
+                },
+                livenessProbe: {
+                    exec: {
+                        command: ["string"],
+                    },
+                    failureThreshold: 0,
+                    httpGet: {
+                        port: 0,
+                        host: "string",
+                        httpHeaders: [{
+                            name: "string",
+                            value: "string",
+                        }],
+                        path: "string",
+                        scheme: "string",
+                    },
+                    initialDelaySeconds: 0,
+                    periodSeconds: 0,
+                    successThreshold: 0,
+                    tcpSocket: {
+                        port: 0,
+                        host: "string",
+                    },
+                    terminationGracePeriodSeconds: 0,
+                    timeoutSeconds: 0,
+                },
+                command: ["string"],
+                ports: [{
+                    containerPort: 0,
+                    hostIP: "string",
+                    hostPort: 0,
+                    name: "string",
+                    protocol: "string",
+                }],
+                args: ["string"],
+                envFrom: [{
+                    configMapRef: {
+                        name: "string",
+                        optional: false,
+                    },
+                    prefix: "string",
+                    secretRef: {
+                        name: "string",
+                        optional: false,
+                    },
+                }],
+                env: [{
+                    name: "string",
+                    value: "string",
+                    valueFrom: {
+                        configMapKeyRef: {
+                            key: "string",
+                            name: "string",
+                            optional: false,
+                        },
+                        fieldRef: {
+                            fieldPath: "string",
+                            apiVersion: "string",
+                        },
+                        resourceFieldRef: {
+                            resource: "string",
+                            containerName: "string",
+                            divisor: "string",
+                        },
+                        secretKeyRef: {
+                            key: "string",
+                            name: "string",
+                            optional: false,
+                        },
+                    },
+                }],
+                image: "string",
+                stdin: false,
+                stdinOnce: false,
+                terminationMessagePath: "string",
+                terminationMessagePolicy: "string",
+                tty: false,
+                volumeDevices: [{
+                    devicePath: "string",
+                    name: "string",
+                }],
+                volumeMounts: [{
+                    mountPath: "string",
+                    name: "string",
+                    mountPropagation: "string",
+                    readOnly: false,
+                    subPath: "string",
+                    subPathExpr: "string",
+                }],
+                workingDir: "string",
+            }],
+            nodeName: "string",
+            activeDeadlineSeconds: 0,
+            dnsPolicy: "string",
+            automountServiceAccountToken: false,
+            hostNetwork: false,
+            priorityClassName: "string",
+            readinessGates: [{
+                conditionType: "string",
+            }],
+            restartPolicy: "string",
+            runtimeClassName: "string",
+            schedulerName: "string",
+            securityContext: {
+                fsGroup: 0,
+                fsGroupChangePolicy: "string",
+                runAsGroup: 0,
+                runAsNonRoot: false,
+                runAsUser: 0,
+                seLinuxOptions: {
+                    level: "string",
+                    role: "string",
+                    type: "string",
+                    user: "string",
+                },
+                seccompProfile: {
+                    type: "string",
+                    localhostProfile: "string",
+                },
+                supplementalGroups: [0],
+                sysctls: [{
+                    name: "string",
+                    value: "string",
+                }],
+                windowsOptions: {
+                    gmsaCredentialSpec: "string",
+                    gmsaCredentialSpecName: "string",
+                    hostProcess: false,
+                    runAsUserName: "string",
+                },
+            },
+            serviceAccount: "string",
+            serviceAccountName: "string",
+            setHostnameAsFQDN: false,
+            shareProcessNamespace: false,
+            subdomain: "string",
+            terminationGracePeriodSeconds: 0,
+            tolerations: [{
+                effect: "string",
+                key: "string",
+                operator: "string",
+                tolerationSeconds: 0,
+                value: "string",
+            }],
+            topologySpreadConstraints: [{
+                maxSkew: 0,
+                topologyKey: "string",
+                whenUnsatisfiable: "string",
+                labelSelector: {
+                    matchExpressions: [{
+                        key: "string",
+                        operator: "string",
+                        values: ["string"],
+                    }],
+                    matchLabels: {
+                        string: "string",
+                    },
+                },
+            }],
+            volumes: [{
+                name: "string",
+                gitRepo: {
+                    repository: "string",
+                    directory: "string",
+                    revision: "string",
+                },
+                configMap: {
+                    defaultMode: 0,
+                    items: [{
+                        key: "string",
+                        path: "string",
+                        mode: 0,
+                    }],
+                    name: "string",
+                    optional: false,
+                },
+                glusterfs: {
+                    endpoints: "string",
+                    path: "string",
+                    readOnly: false,
+                },
+                cinder: {
+                    volumeID: "string",
+                    fsType: "string",
+                    readOnly: false,
+                    secretRef: {
+                        name: "string",
+                    },
+                },
+                hostPath: {
+                    path: "string",
+                    type: "string",
+                },
+                csi: {
+                    driver: "string",
+                    fsType: "string",
+                    nodePublishSecretRef: {
+                        name: "string",
+                    },
+                    readOnly: false,
+                    volumeAttributes: {
+                        string: "string",
+                    },
+                },
+                downwardAPI: {
+                    defaultMode: 0,
+                    items: [{
+                        path: "string",
+                        fieldRef: {
+                            fieldPath: "string",
+                            apiVersion: "string",
+                        },
+                        mode: 0,
+                        resourceFieldRef: {
+                            resource: "string",
+                            containerName: "string",
+                            divisor: "string",
+                        },
+                    }],
+                },
+                emptyDir: {
+                    medium: "string",
+                    sizeLimit: "string",
+                },
+                ephemeral: {
+                    readOnly: false,
+                    volumeClaimTemplate: {
+                        spec: {
+                            accessModes: ["string"],
+                            dataSource: {
+                                kind: "string",
+                                name: "string",
+                                apiGroup: "string",
+                            },
+                            dataSourceRef: {
+                                kind: "string",
+                                name: "string",
+                                apiGroup: "string",
+                            },
+                            resources: {
+                                limits: {
+                                    string: "string",
+                                },
+                                requests: {
+                                    string: "string",
+                                },
+                            },
+                            selector: {
+                                matchExpressions: [{
+                                    key: "string",
+                                    operator: "string",
+                                    values: ["string"],
+                                }],
+                                matchLabels: {
+                                    string: "string",
+                                },
+                            },
+                            storageClassName: "string",
+                            volumeMode: "string",
+                            volumeName: "string",
+                        },
+                        metadata: {
+                            annotations: {
+                                string: "string",
+                            },
+                            clusterName: "string",
+                            creationTimestamp: "string",
+                            deletionGracePeriodSeconds: 0,
+                            deletionTimestamp: "string",
+                            finalizers: ["string"],
+                            generateName: "string",
+                            generation: 0,
+                            labels: {
+                                string: "string",
+                            },
+                            managedFields: [{
+                                apiVersion: "string",
+                                fieldsType: "string",
+                                fieldsV1: "{}",
+                                manager: "string",
+                                operation: "string",
+                                subresource: "string",
+                                time: "string",
+                            }],
+                            name: "string",
+                            namespace: "string",
+                            ownerReferences: [{
+                                apiVersion: "string",
+                                kind: "string",
+                                name: "string",
+                                uid: "string",
+                                blockOwnerDeletion: false,
+                                controller: false,
+                            }],
+                            resourceVersion: "string",
+                            selfLink: "string",
+                            uid: "string",
+                        },
+                    },
+                },
+                fc: {
+                    fsType: "string",
+                    lun: 0,
+                    readOnly: false,
+                    targetWWNs: ["string"],
+                    wwids: ["string"],
+                },
+                flexVolume: {
+                    driver: "string",
+                    fsType: "string",
+                    options: {
+                        string: "string",
+                    },
+                    readOnly: false,
+                    secretRef: {
+                        name: "string",
+                    },
+                },
+                iscsi: {
+                    iqn: "string",
+                    lun: 0,
+                    targetPortal: "string",
+                    chapAuthDiscovery: false,
+                    chapAuthSession: false,
+                    fsType: "string",
+                    initiatorName: "string",
+                    iscsiInterface: "string",
+                    portals: ["string"],
+                    readOnly: false,
+                    secretRef: {
+                        name: "string",
+                    },
+                },
+                gcePersistentDisk: {
+                    pdName: "string",
+                    fsType: "string",
+                    partition: 0,
+                    readOnly: false,
+                },
+                awsElasticBlockStore: {
+                    volumeID: "string",
+                    fsType: "string",
+                    partition: 0,
+                    readOnly: false,
+                },
+                cephfs: {
+                    monitors: ["string"],
+                    path: "string",
+                    readOnly: false,
+                    secretFile: "string",
+                    secretRef: {
+                        name: "string",
+                    },
+                    user: "string",
+                },
+                azureFile: {
+                    secretName: "string",
+                    shareName: "string",
+                    readOnly: false,
+                },
+                flocker: {
+                    datasetName: "string",
+                    datasetUUID: "string",
+                },
+                azureDisk: {
+                    diskName: "string",
+                    diskURI: "string",
+                    cachingMode: "string",
+                    fsType: "string",
+                    kind: "string",
+                    readOnly: false,
+                },
+                nfs: {
+                    path: "string",
+                    server: "string",
+                    readOnly: false,
+                },
+                persistentVolumeClaim: {
+                    claimName: "string",
+                    readOnly: false,
+                },
+                photonPersistentDisk: {
+                    pdID: "string",
+                    fsType: "string",
+                },
+                portworxVolume: {
+                    volumeID: "string",
+                    fsType: "string",
+                    readOnly: false,
+                },
+                projected: {
+                    sources: [{
+                        configMap: {
+                            items: [{
+                                key: "string",
+                                path: "string",
+                                mode: 0,
+                            }],
+                            name: "string",
+                            optional: false,
+                        },
+                        downwardAPI: {
+                            items: [{
+                                path: "string",
+                                fieldRef: {
+                                    fieldPath: "string",
+                                    apiVersion: "string",
+                                },
+                                mode: 0,
+                                resourceFieldRef: {
+                                    resource: "string",
+                                    containerName: "string",
+                                    divisor: "string",
+                                },
+                            }],
+                        },
+                        secret: {
+                            items: [{
+                                key: "string",
+                                path: "string",
+                                mode: 0,
+                            }],
+                            name: "string",
+                            optional: false,
+                        },
+                        serviceAccountToken: {
+                            path: "string",
+                            audience: "string",
+                            expirationSeconds: 0,
+                        },
+                    }],
+                    defaultMode: 0,
+                },
+                quobyte: {
+                    registry: "string",
+                    volume: "string",
+                    group: "string",
+                    readOnly: false,
+                    tenant: "string",
+                    user: "string",
+                },
+                rbd: {
+                    image: "string",
+                    monitors: ["string"],
+                    fsType: "string",
+                    keyring: "string",
+                    pool: "string",
+                    readOnly: false,
+                    secretRef: {
+                        name: "string",
+                    },
+                    user: "string",
+                },
+                scaleIO: {
+                    gateway: "string",
+                    secretRef: {
+                        name: "string",
+                    },
+                    system: "string",
+                    fsType: "string",
+                    protectionDomain: "string",
+                    readOnly: false,
+                    sslEnabled: false,
+                    storageMode: "string",
+                    storagePool: "string",
+                    volumeName: "string",
+                },
+                secret: {
+                    defaultMode: 0,
+                    items: [{
+                        key: "string",
+                        path: "string",
+                        mode: 0,
+                    }],
+                    optional: false,
+                    secretName: "string",
+                },
+                storageos: {
+                    fsType: "string",
+                    readOnly: false,
+                    secretRef: {
+                        name: "string",
+                    },
+                    volumeName: "string",
+                    volumeNamespace: "string",
+                },
+                vsphereVolume: {
+                    volumePath: "string",
+                    fsType: "string",
+                    storagePolicyID: "string",
+                    storagePolicyName: "string",
+                },
+            }],
+        },
+        status: {
+            conditions: [{
+                status: "string",
+                type: "string",
+                lastProbeTime: "string",
+                lastTransitionTime: "string",
+                message: "string",
+                reason: "string",
+            }],
+            containerStatuses: [{
+                image: "string",
+                imageID: "string",
+                name: "string",
+                ready: false,
+                restartCount: 0,
+                containerID: "string",
+                lastState: {
+                    running: {
+                        startedAt: "string",
+                    },
+                    terminated: {
+                        exitCode: 0,
+                        containerID: "string",
+                        finishedAt: "string",
+                        message: "string",
+                        reason: "string",
+                        signal: 0,
+                        startedAt: "string",
+                    },
+                    waiting: {
+                        message: "string",
+                        reason: "string",
+                    },
+                },
+                started: false,
+                state: {
+                    running: {
+                        startedAt: "string",
+                    },
+                    terminated: {
+                        exitCode: 0,
+                        containerID: "string",
+                        finishedAt: "string",
+                        message: "string",
+                        reason: "string",
+                        signal: 0,
+                        startedAt: "string",
+                    },
+                    waiting: {
+                        message: "string",
+                        reason: "string",
+                    },
+                },
+            }],
+            ephemeralContainerStatuses: [{
+                image: "string",
+                imageID: "string",
+                name: "string",
+                ready: false,
+                restartCount: 0,
+                containerID: "string",
+                lastState: {
+                    running: {
+                        startedAt: "string",
+                    },
+                    terminated: {
+                        exitCode: 0,
+                        containerID: "string",
+                        finishedAt: "string",
+                        message: "string",
+                        reason: "string",
+                        signal: 0,
+                        startedAt: "string",
+                    },
+                    waiting: {
+                        message: "string",
+                        reason: "string",
+                    },
+                },
+                started: false,
+                state: {
+                    running: {
+                        startedAt: "string",
+                    },
+                    terminated: {
+                        exitCode: 0,
+                        containerID: "string",
+                        finishedAt: "string",
+                        message: "string",
+                        reason: "string",
+                        signal: 0,
+                        startedAt: "string",
+                    },
+                    waiting: {
+                        message: "string",
+                        reason: "string",
+                    },
+                },
+            }],
+            hostIP: "string",
+            initContainerStatuses: [{
+                image: "string",
+                imageID: "string",
+                name: "string",
+                ready: false,
+                restartCount: 0,
+                containerID: "string",
+                lastState: {
+                    running: {
+                        startedAt: "string",
+                    },
+                    terminated: {
+                        exitCode: 0,
+                        containerID: "string",
+                        finishedAt: "string",
+                        message: "string",
+                        reason: "string",
+                        signal: 0,
+                        startedAt: "string",
+                    },
+                    waiting: {
+                        message: "string",
+                        reason: "string",
+                    },
+                },
+                started: false,
+                state: {
+                    running: {
+                        startedAt: "string",
+                    },
+                    terminated: {
+                        exitCode: 0,
+                        containerID: "string",
+                        finishedAt: "string",
+                        message: "string",
+                        reason: "string",
+                        signal: 0,
+                        startedAt: "string",
+                    },
+                    waiting: {
+                        message: "string",
+                        reason: "string",
+                    },
+                },
+            }],
+            message: "string",
+            nominatedNodeName: "string",
+            phase: "string",
+            podIP: "string",
+            podIPs: [{
+                ip: "string",
+            }],
+            qosClass: "string",
+            reason: "string",
+            startTime: "string",
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Component {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

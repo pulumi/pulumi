@@ -15,7 +15,162 @@ no_edit_this_page: true
 
 
 
-## Create Resource Resource {#create}
+## Create Resource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var resourceResource = new Mypkg.Resource("resourceResource", new()
+{
+    Config = new Mypkg.Inputs.ConfigArgs
+    {
+        Foo = "string",
+    },
+    ConfigArray = new[]
+    {
+        new Mypkg.Inputs.ConfigArgs
+        {
+            Foo = "string",
+        },
+    },
+    ConfigMap = 
+    {
+        { "string", new Mypkg.Inputs.ConfigArgs
+        {
+            Foo = "string",
+        } },
+    },
+    Foo = "string",
+    FooArray = new[]
+    {
+        "string",
+    },
+    FooMap = 
+    {
+        { "string", "string" },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := mypkg.NewResource(ctx, "resourceResource", &mypkg.ResourceArgs{
+	Config: &mypkg.ConfigArgs{
+		Foo: pulumi.String("string"),
+	},
+	ConfigArray: mypkg.ConfigArray{
+		&mypkg.ConfigArgs{
+			Foo: pulumi.String("string"),
+		},
+	},
+	ConfigMap: mypkg.ConfigMap{
+		"string": &mypkg.ConfigArgs{
+			Foo: pulumi.String("string"),
+		},
+	},
+	Foo: pulumi.String("string"),
+	FooArray: pulumi.StringArray{
+		pulumi.String("string"),
+	},
+	FooMap: pulumi.StringMap{
+		"string": pulumi.String("string"),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+resource_resource = mypkg.Resource("resourceResource",
+    config=mypkg.ConfigArgs(
+        foo="string",
+    ),
+    config_array=[mypkg.ConfigArgs(
+        foo="string",
+    )],
+    config_map={
+        "string": mypkg.ConfigArgs(
+            foo="string",
+        ),
+    },
+    foo="string",
+    foo_array=["string"],
+    foo_map={
+        "string": "string",
+    })
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const resourceResource = new mypkg.Resource("resourceResource", {
+    config: {
+        foo: "string",
+    },
+    configArray: [{
+        foo: "string",
+    }],
+    configMap: {
+        string: {
+            foo: "string",
+        },
+    },
+    foo: "string",
+    fooArray: ["string"],
+    fooMap: {
+        string: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

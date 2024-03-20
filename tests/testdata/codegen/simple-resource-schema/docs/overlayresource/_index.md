@@ -15,7 +15,100 @@ no_edit_this_page: true
 
 
 
-## Create OverlayResource Resource {#create}
+## Create OverlayResource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var overlayResourceResource = new Example.OverlayResource("overlayResourceResource", new()
+{
+    Bar = Example.EnumOverlay.SomeEnumValue,
+    Foo = new Example.Inputs.ConfigMapOverlayArgs
+    {
+        Config = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewOverlayResource(ctx, "overlayResourceResource", &example.OverlayResourceArgs{
+	Bar: example.EnumOverlaySomeEnumValue,
+	Foo: &example.ConfigMapOverlayArgs{
+		Config: pulumi.String("string"),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+overlay_resource_resource = example.OverlayResource("overlayResourceResource",
+    bar=example.EnumOverlay.SOME_ENUM_VALUE,
+    foo=example.ConfigMapOverlayArgs(
+        config="string",
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const overlayResourceResource = new example.OverlayResource("overlayResourceResource", {
+    bar: example.EnumOverlay.SomeEnumValue,
+    foo: {
+        config: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of OverlayResource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

@@ -15,7 +15,97 @@ no_edit_this_page: true
 
 
 
-## Create Example_resource Resource {#create}
+## Create Example_resource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := legacy_names.Newexample_resource(ctx, "example_resourceResource", &legacy_names.example_resourceArgs{
+	Map_enum: legacy_names.Enum_XYZMapArray{
+		legacy_names.Enum_XYZMap{
+			"string": legacy_names.Enum_XYZPlain,
+		},
+	},
+	Request_HTTP: &http_module.RequestArgs{
+		URL:          pulumi.String("string"),
+		Content_body: pulumi.String("string"),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const example_resourceResource = new legacy_names.Example_resource("example_resourceResource", {
+    map_enum: [{
+        string: legacy_names.Enum_XYZ.Plain,
+    }],
+    request_HTTP: {
+        URL: "string",
+        content_body: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Example_resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

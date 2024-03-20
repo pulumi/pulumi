@@ -25,14 +25,17 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"go/format"
 	"html"
 	"html/template"
 	"path"
 	"sort"
 	"strings"
 
-	"github.com/golang/glog"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 
+	"github.com/golang/glog"
 	"github.com/pgavlin/goldmark"
 
 	"github.com/pulumi/pulumi-java/pkg/codegen/java"
@@ -160,6 +163,38 @@ func titleLookup(shortName string) (string, bool) {
 // property and language (e.g. property~lang).
 const propertyLangSeparator = "_"
 
+type languageConstructorSyntax struct {
+	resources map[string]string
+	invokes   map[string]string
+}
+
+type constructorSyntaxData struct {
+	typescript *languageConstructorSyntax
+	python     *languageConstructorSyntax
+	golang     *languageConstructorSyntax
+	csharp     *languageConstructorSyntax
+	java       *languageConstructorSyntax
+	yaml       *languageConstructorSyntax
+}
+
+func emptyLanguageConstructorSyntax() *languageConstructorSyntax {
+	return &languageConstructorSyntax{
+		resources: map[string]string{},
+		invokes:   map[string]string{},
+	}
+}
+
+func newConstructorSyntaxData() *constructorSyntaxData {
+	return &constructorSyntaxData{
+		typescript: emptyLanguageConstructorSyntax(),
+		python:     emptyLanguageConstructorSyntax(),
+		golang:     emptyLanguageConstructorSyntax(),
+		csharp:     emptyLanguageConstructorSyntax(),
+		java:       emptyLanguageConstructorSyntax(),
+		yaml:       emptyLanguageConstructorSyntax(),
+	}
+}
+
 type docGenContext struct {
 	internalModMap map[string]*modContext
 
@@ -180,6 +215,8 @@ type docGenContext struct {
 
 	// Maps a *modContext, *schema.Resource, or *schema.Function to the link that was assigned to it.
 	moduleConflictLinkMap map[interface{}]string
+
+	constructorSyntaxData *constructorSyntaxData
 }
 
 // modules is a map of a module name and information
@@ -324,6 +361,11 @@ type resourceDocArgs struct {
 	// resource. By default, the language chooser will show all languages supported
 	// by Pulumi for all resources.
 	LangChooserLanguages string
+
+	// CreationExampleSyntax is a map from language to the rendered HTML for the
+	// creation example syntax where the key is the language name and the value is
+	// a piece of code that shows how to create a new instance of the resource with default placeholder values.
+	CreationExampleSyntax map[string]string
 
 	// Comment represents the introductory resource comment.
 	Comment            string
@@ -1677,8 +1719,55 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	}
 
 	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
-
 	stateParam := name + "State"
+	creationExampleSyntax := map[string]string{}
+	if !r.IsProvider && err == nil {
+		if example, found := dctx.constructorSyntaxData.typescript.resources[r.Token]; found {
+			if strings.Contains(example, "notImplemented") || strings.Contains(example, "PANIC") {
+				example = "Coming soon!"
+			}
+			creationExampleSyntax["typescript"] = example
+		} else {
+			creationExampleSyntax["typescript"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.python.resources[r.Token]; found {
+			if strings.Contains(example, "not_implemented") || strings.Contains(example, "PANIC") {
+				example = "Coming soon!"
+			}
+			creationExampleSyntax["python"] = example
+		} else {
+			creationExampleSyntax["python"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.csharp.resources[r.Token]; found {
+			if strings.Contains(example, "NotImplemented") || strings.Contains(example, "PANIC") {
+				example = "Coming soon!"
+			}
+			creationExampleSyntax["csharp"] = example
+		} else {
+			creationExampleSyntax["csharp"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.golang.resources[r.Token]; found {
+			modified := strings.ReplaceAll(example, "_, err =", "example, err :=")
+			modified = strings.ReplaceAll(modified, "_, err :=", "example, err :=")
+			if strings.Contains(modified, "notImplemented") || strings.Contains(modified, "PANIC") {
+				modified = "Coming soon!"
+			}
+			creationExampleSyntax["go"] = modified
+		} else {
+			creationExampleSyntax["go"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.java.resources[r.Token]; found {
+			creationExampleSyntax["java"] = example
+		} else {
+			creationExampleSyntax["java"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.yaml.resources[r.Token]; found {
+			creationExampleSyntax["yaml"] = example
+		} else {
+			creationExampleSyntax["yaml"] = "Coming soon!"
+		}
+
+	}
 
 	docInfo := dctx.decomposeDocstring(r.Comment)
 	data := resourceDocArgs{
@@ -1686,11 +1775,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 		Tool: mod.tool,
 
-		Comment:            docInfo.description,
-		DeprecationMessage: r.DeprecationMessage,
-		ExamplesSection:    docInfo.examples,
-		ImportDocs:         docInfo.importDetails,
-
+		Comment:                docInfo.description,
+		DeprecationMessage:     r.DeprecationMessage,
+		ExamplesSection:        docInfo.examples,
+		ImportDocs:             docInfo.importDetails,
+		CreationExampleSyntax:  creationExampleSyntax,
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,
 
@@ -2155,6 +2244,119 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 	return modules
 }
 
+// generateModules generates constructor syntax examples for all resources of the input the package in the given
+// input languages. We first generate a PCL program from the resource definitions, then for each language
+// we call `GenerateProgram` to generate a language program that has all resources with their inputs being default
+// values. After that, we extract the resource declarations from each program into a structured map.
+//
+// The reason we generate a full program a schema with all the resources is that if we did every resource separately,
+// it would take too long to generate the programs and the rest of the docs. That is why we batch generate them and
+// split the resource declarations by comment delimiters.
+func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *constructorSyntaxData {
+	loader := NewStaticSchemaLoader(pkg)
+	constructorGenerator := &constructorSyntaxGenerator{
+		indentSize:             0,
+		requiredPropertiesOnly: false,
+	}
+
+	schemaProgram := constructorGenerator.generateAll(pkg, generateAllOptions{
+		includeResources: true,
+		includeFunctions: false,
+		resourcesToSkip: []string{
+			// Skipping problematic resources which block example generation
+			"aws:wafv2/ruleGroup:RuleGroup",
+			"aws:wafv2/webAcl:WebAcl",
+		},
+	})
+
+	packagesToSkip := map[string]codegen.StringSet{
+		"aws-native": codegen.NewStringSet("python", "typescript", "go", "csharp"),
+	}
+
+	type ProgramGenerator = func(program *pcl.Program) (files map[string][]byte, diags hcl.Diagnostics, err error)
+
+	constructorSyntax := newConstructorSyntaxData()
+	for _, lang := range languages {
+		if skippedLanguages, ok := packagesToSkip[pkg.Name]; ok && skippedLanguages.Has(lang) {
+			continue
+		}
+
+		boundProgram, err := constructorGenerator.bindProgram(loader, schemaProgram)
+		if err != nil {
+			continue
+		}
+
+		safeExtract := func(generator ProgramGenerator) (files map[string][]byte, diags hcl.Diagnostics, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("panic: %v", r)
+					files = map[string][]byte{}
+				}
+			}()
+			return generator(boundProgram)
+		}
+
+		switch lang {
+		case "nodejs":
+			files, diags, err := safeExtract(nodejs.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["index.ts"])
+				constructorSyntax.typescript = extractConstructorSyntaxExamples(
+					program, /* program */
+					"",      /* indentation to trim */
+					"//",    /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(line, "});") })
+			}
+		case "python":
+			files, diags, err := safeExtract(python.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["__main__.py"])
+				constructorSyntax.python = extractConstructorSyntaxExamples(
+					program, /* program */
+					"",      /* indentation to trim */
+					"#",     /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(line, ")") })
+			}
+		case "csharp":
+			files, diags, err := safeExtract(dotnet.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				exampleEnd := func(line string) bool {
+					return strings.HasSuffix(line, "});") || strings.HasSuffix(line, `");`)
+				}
+				program := string(files["Program.cs"])
+				constructorSyntax.csharp = extractConstructorSyntaxExamples(
+					program, /* program */
+					"    ",  /* indentation to trim */
+					"//",    /* comment prefix */
+					exampleEnd)
+			}
+		case "go":
+			files, diags, err := safeExtract(go_gen.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				var program string
+				content := files["main.go"]
+				if formatted, err := format.Source(content); err == nil {
+					program = string(formatted)
+				} else {
+					program = string(content)
+				}
+
+				constructorSyntax.golang = extractConstructorSyntaxExamples(
+					program, /* program */
+					"\t\t",  /* indentation to trim */
+					"//",    /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(strings.TrimSpace(line), ")") })
+			}
+		case "java":
+			// TODO: implement java constructor syntax generation
+		case "yaml":
+			// TODO: implement yaml constructor syntax generation
+		}
+	}
+
+	return constructorSyntax
+}
+
 func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 	dctx.templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
@@ -2194,6 +2396,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 		glog.Fatalf("initializing templates: %v", err)
 	}
 
+	dctx.constructorSyntaxData = generateConstructorSyntaxData(pkg, dctx.supportedLanguages)
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
 	dctx.setModules(dctx.generateModulesFromSchemaPackage(tool, pkg))

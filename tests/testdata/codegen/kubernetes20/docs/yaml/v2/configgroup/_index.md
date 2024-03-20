@@ -17,7 +17,99 @@ A non-overlay component resource.
 
 
 
-## Create ConfigGroup Resource {#create}
+## Create ConfigGroup Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var configGroupResource = new Kubernetes.Yaml.V2.ConfigGroup("configGroupResource", new()
+{
+    Files = "string",
+    Objs = null,
+    ResourcePrefix = "string",
+    Yaml = "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := yamlv2.NewConfigGroup(ctx, "configGroupResource", &yamlv2.ConfigGroupArgs{
+Files: pulumi.Any("string"),
+Objs: nil,
+ResourcePrefix: pulumi.String("string"),
+Yaml: pulumi.Any("string"),
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+config_group_resource = kubernetes.yaml.v2.ConfigGroup("configGroupResource",
+    files="string",
+    objs=None,
+    resource_prefix="string",
+    yaml="string")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const configGroupResource = new kubernetes.yaml.v2.ConfigGroup("configGroupResource", {
+    files: "string",
+    objs: undefined,
+    resourcePrefix: "string",
+    yaml: "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ConfigGroup {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

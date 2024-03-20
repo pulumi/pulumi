@@ -15,7 +15,105 @@ no_edit_this_page: true
 
 
 
-## Create Person Resource {#create}
+## Create Person Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var personResource = new Example.Person("personResource", new()
+{
+    Name = "string",
+    Pets = new[]
+    {
+        new Example.Inputs.PetArgs
+        {
+            Name = "string",
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewPerson(ctx, "personResource", &example.PersonArgs{
+	Name: pulumi.String("string"),
+	Pets: example.PetTypeArray{
+		&example.PetTypeArgs{
+			Name: pulumi.String("string"),
+		},
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+person_resource = example.Person("personResource",
+    name="string",
+    pets=[example.PetArgs(
+        name="string",
+    )])
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const personResource = new example.Person("personResource", {
+    name: "string",
+    pets: [{
+        name: "string",
+    }],
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Person {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

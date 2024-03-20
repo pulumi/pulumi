@@ -15,7 +15,79 @@ no_edit_this_page: true
 
 
 
-## Create FOOEncryptedBarClass Resource {#create}
+## Create FOOEncryptedBarClass Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var fooencryptedBarClassResource = new FooBar.Submodule1.FOOEncryptedBarClass("fooencryptedBarClassResource");
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := submodule1.NewFOOEncryptedBarClass(ctx, "fooencryptedBarClassResource", nil)
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+fooencrypted_bar_class_resource = foo_bar.submodule1.FOOEncryptedBarClass("fooencryptedBarClassResource")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const fooencryptedBarClassResource = new foo_bar.submodule1.FOOEncryptedBarClass("fooencryptedBarClassResource", {});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of FOOEncryptedBarClass {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

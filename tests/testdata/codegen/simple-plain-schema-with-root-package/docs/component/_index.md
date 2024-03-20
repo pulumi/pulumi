@@ -15,7 +15,211 @@ no_edit_this_page: true
 
 
 
-## Create Component Resource {#create}
+## Create Component Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var componentResource = new Example.Component("componentResource", new()
+{
+    A = false,
+    C = 0,
+    E = "string",
+    B = false,
+    Bar = new Example.Inputs.FooArgs
+    {
+        A = false,
+        C = 0,
+        E = "string",
+        B = false,
+        D = 0,
+        F = "string",
+    },
+    Baz = new()
+    {
+        new Example.Inputs.FooArgs
+        {
+            A = false,
+            C = 0,
+            E = "string",
+            B = false,
+            D = 0,
+            F = "string",
+        },
+    },
+    D = 0,
+    F = "string",
+    Foo = new Example.Inputs.FooArgs
+    {
+        A = false,
+        C = 0,
+        E = "string",
+        B = false,
+        D = 0,
+        F = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewComponent(ctx, "componentResource", &example.ComponentArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+Bar: &.FooArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+Baz: [].FooArgs{
+{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+},
+D: 0,
+F: "string",
+Foo: &.FooArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+component_resource = example.Component("componentResource",
+    a=False,
+    c=0,
+    e="string",
+    b=False,
+    bar=example.FooArgs(
+        a=False,
+        c=0,
+        e="string",
+        b=False,
+        d=0,
+        f="string",
+    ),
+    baz=[example.FooArgs(
+        a=False,
+        c=0,
+        e="string",
+        b=False,
+        d=0,
+        f="string",
+    )],
+    d=0,
+    f="string",
+    foo=example.FooArgs(
+        a=False,
+        c=0,
+        e="string",
+        b=False,
+        d=0,
+        f="string",
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const componentResource = new example.Component("componentResource", {
+    a: false,
+    c: 0,
+    e: "string",
+    b: false,
+    bar: {
+        a: false,
+        c: 0,
+        e: "string",
+        b: false,
+        d: 0,
+        f: "string",
+    },
+    baz: [{
+        a: false,
+        c: 0,
+        e: "string",
+        b: false,
+        d: 0,
+        f: "string",
+    }],
+    d: 0,
+    f: "string",
+    foo: {
+        a: false,
+        c: 0,
+        e: "string",
+        b: false,
+        d: 0,
+        f: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Component {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -33,12 +237,12 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
               <span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+              <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
+              <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
               <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
               <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">,</span>
               <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[Sequence[FooArgs]]</span> = None<span class="p">,</span>
-              <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
-              <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
               <span class="nx">f</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
               <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>

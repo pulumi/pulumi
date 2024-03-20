@@ -15,7 +15,148 @@ no_edit_this_page: true
 
 
 
-## Create ModuleTest Resource {#create}
+## Create ModuleTest Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var moduleTestResource = new Example.ModuleTest("moduleTestResource", new()
+{
+    Mod1 = new Example.Mod1.Inputs.TypArgs
+    {
+        Val = "string",
+    },
+    Val = new Example.Inputs.TypArgs
+    {
+        Mod1 = new Example.Mod1.Inputs.TypArgs
+        {
+            Val = "string",
+        },
+        Mod2 = new Example.Mod2.Inputs.TypArgs
+        {
+            Mod1 = new Example.Mod1.Inputs.TypArgs
+            {
+                Val = "string",
+            },
+            Val = "string",
+        },
+        Val = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewmoduleTest(ctx, "moduleTestResource", &example.moduleTestArgs{
+Mod1: &mod1.TypArgs{
+Val: pulumi.String("string"),
+},
+Val: &example.TypArgs{
+Mod1: &mod1.TypArgs{
+Val: pulumi.String("string"),
+},
+Mod2: &mod2.TypArgs{
+Mod1: &mod1.TypArgs{
+Val: pulumi.String("string"),
+},
+Val: pulumi.String("string"),
+},
+Val: pulumi.String("string"),
+},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+module_test_resource = example.ModuleTest("moduleTestResource",
+    mod1=example.mod1.TypArgs(
+        val="string",
+    ),
+    val=example.TypArgs(
+        mod1=example.mod1.TypArgs(
+            val="string",
+        ),
+        mod2=example.mod2.TypArgs(
+            mod1=example.mod1.TypArgs(
+                val="string",
+            ),
+            val="string",
+        ),
+        val="string",
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const moduleTestResource = new example.ModuleTest("moduleTestResource", {
+    mod1: {
+        val: "string",
+    },
+    val: {
+        mod1: {
+            val: "string",
+        },
+        mod2: {
+            mod1: {
+                val: "string",
+            },
+            val: "string",
+        },
+        val: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ModuleTest {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

@@ -17,7 +17,336 @@ A Kubernetes list resource.
 
 
 
-## Create ConfigMapList Resource {#create}
+## Create ConfigMapList Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var configMapListResource = new Kubernetes.Core.V1.ConfigMapList("configMapListResource", new()
+{
+    Items = new[]
+    {
+        new Kubernetes.Types.Inputs.Core.V1.ConfigMapArgs
+        {
+            ApiVersion = "v1",
+            BinaryData = 
+            {
+                { "string", "string" },
+            },
+            Data = 
+            {
+                { "string", "string" },
+            },
+            Immutable = false,
+            Kind = "ConfigMap",
+            Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+            {
+                Annotations = 
+                {
+                    { "string", "string" },
+                },
+                ClusterName = "string",
+                CreationTimestamp = "string",
+                DeletionGracePeriodSeconds = 0,
+                DeletionTimestamp = "string",
+                Finalizers = new[]
+                {
+                    "string",
+                },
+                GenerateName = "string",
+                Generation = 0,
+                Labels = 
+                {
+                    { "string", "string" },
+                },
+                ManagedFields = new[]
+                {
+                    new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
+                    {
+                        ApiVersion = "string",
+                        FieldsType = "string",
+                        FieldsV1 = "{}",
+                        Manager = "string",
+                        Operation = "string",
+                        Subresource = "string",
+                        Time = "string",
+                    },
+                },
+                Name = "string",
+                Namespace = "string",
+                OwnerReferences = new[]
+                {
+                    new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
+                    {
+                        ApiVersion = "string",
+                        Kind = "string",
+                        Name = "string",
+                        Uid = "string",
+                        BlockOwnerDeletion = false,
+                        Controller = false,
+                    },
+                },
+                ResourceVersion = "string",
+                SelfLink = "string",
+                Uid = "string",
+            },
+        },
+    },
+    ApiVersion = "string",
+    Kind = "string",
+    Metadata = new Kubernetes.Types.Inputs.Meta.V1.ListMetaArgs
+    {
+        Continue = "string",
+        RemainingItemCount = 0,
+        ResourceVersion = "string",
+        SelfLink = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := corev1.NewConfigMapList(ctx, "configMapListResource", &corev1.ConfigMapListArgs{
+Items: corev1.ConfigMapTypeArray{
+interface{}{
+ApiVersion: pulumi.String("v1"),
+BinaryData: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+Data: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+Immutable: pulumi.Bool(false),
+Kind: pulumi.String("ConfigMap"),
+Metadata: &metav1.ObjectMetaArgs{
+Annotations: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+ClusterName: pulumi.String("string"),
+CreationTimestamp: pulumi.String("string"),
+DeletionGracePeriodSeconds: pulumi.Int(0),
+DeletionTimestamp: pulumi.String("string"),
+Finalizers: pulumi.StringArray{
+pulumi.String("string"),
+},
+GenerateName: pulumi.String("string"),
+Generation: pulumi.Int(0),
+Labels: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+ManagedFields: metav1.ManagedFieldsEntryArray{
+&metav1.ManagedFieldsEntryArgs{
+ApiVersion: pulumi.String("string"),
+FieldsType: pulumi.String("string"),
+FieldsV1: pulumi.Any("{}"),
+Manager: pulumi.String("string"),
+Operation: pulumi.String("string"),
+Subresource: pulumi.String("string"),
+Time: pulumi.String("string"),
+},
+},
+Name: pulumi.String("string"),
+Namespace: pulumi.String("string"),
+OwnerReferences: metav1.OwnerReferenceArray{
+&metav1.OwnerReferenceArgs{
+ApiVersion: pulumi.String("string"),
+Kind: pulumi.String("string"),
+Name: pulumi.String("string"),
+Uid: pulumi.String("string"),
+BlockOwnerDeletion: pulumi.Bool(false),
+Controller: pulumi.Bool(false),
+},
+},
+ResourceVersion: pulumi.String("string"),
+SelfLink: pulumi.String("string"),
+Uid: pulumi.String("string"),
+},
+},
+},
+ApiVersion: pulumi.String("string"),
+Kind: pulumi.String("string"),
+Metadata: &metav1.ListMetaArgs{
+Continue: pulumi.String("string"),
+RemainingItemCount: pulumi.Int(0),
+ResourceVersion: pulumi.String("string"),
+SelfLink: pulumi.String("string"),
+},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+config_map_list_resource = kubernetes.core.v1.ConfigMapList("configMapListResource",
+    items=[kubernetes.core.v1.ConfigMapArgs(
+        api_version="v1",
+        binary_data={
+            "string": "string",
+        },
+        data={
+            "string": "string",
+        },
+        immutable=False,
+        kind="ConfigMap",
+        metadata=kubernetes.meta.v1.ObjectMetaArgs(
+            annotations={
+                "string": "string",
+            },
+            cluster_name="string",
+            creation_timestamp="string",
+            deletion_grace_period_seconds=0,
+            deletion_timestamp="string",
+            finalizers=["string"],
+            generate_name="string",
+            generation=0,
+            labels={
+                "string": "string",
+            },
+            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+                api_version="string",
+                fields_type="string",
+                fields_v1="{}",
+                manager="string",
+                operation="string",
+                subresource="string",
+                time="string",
+            )],
+            name="string",
+            namespace="string",
+            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+                api_version="string",
+                kind="string",
+                name="string",
+                uid="string",
+                block_owner_deletion=False,
+                controller=False,
+            )],
+            resource_version="string",
+            self_link="string",
+            uid="string",
+        ),
+    )],
+    api_version="string",
+    kind="string",
+    metadata=kubernetes.meta.v1.ListMetaArgs(
+        continue_="string",
+        remaining_item_count=0,
+        resource_version="string",
+        self_link="string",
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const configMapListResource = new kubernetes.core.v1.ConfigMapList("configMapListResource", {
+    items: [{
+        apiVersion: "v1",
+        binaryData: {
+            string: "string",
+        },
+        data: {
+            string: "string",
+        },
+        immutable: false,
+        kind: "ConfigMap",
+        metadata: {
+            annotations: {
+                string: "string",
+            },
+            clusterName: "string",
+            creationTimestamp: "string",
+            deletionGracePeriodSeconds: 0,
+            deletionTimestamp: "string",
+            finalizers: ["string"],
+            generateName: "string",
+            generation: 0,
+            labels: {
+                string: "string",
+            },
+            managedFields: [{
+                apiVersion: "string",
+                fieldsType: "string",
+                fieldsV1: "{}",
+                manager: "string",
+                operation: "string",
+                subresource: "string",
+                time: "string",
+            }],
+            name: "string",
+            namespace: "string",
+            ownerReferences: [{
+                apiVersion: "string",
+                kind: "string",
+                name: "string",
+                uid: "string",
+                blockOwnerDeletion: false,
+                controller: false,
+            }],
+            resourceVersion: "string",
+            selfLink: "string",
+            uid: "string",
+        },
+    }],
+    apiVersion: "string",
+    kind: "string",
+    metadata: {
+        "continue": "string",
+        remainingItemCount: 0,
+        resourceVersion: "string",
+        selfLink: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ConfigMapList {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

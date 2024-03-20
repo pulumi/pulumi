@@ -15,7 +15,79 @@ no_edit_this_page: true
 
 
 
-## Create ModuleResource Resource {#create}
+## Create ModuleResource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ModuleResource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -32,20 +104,20 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-                   <span class="nx">optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-                   <span class="nx">optional_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
-                   <span class="nx">optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
-                   <span class="nx">optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-                   <span class="nx">plain_optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-                   <span class="nx">plain_optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
-                   <span class="nx">plain_optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                    <span class="nx">plain_required_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-                   <span class="nx">plain_required_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
-                   <span class="nx">plain_required_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-                   <span class="nx">required_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-                   <span class="nx">required_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
+                   <span class="nx">required_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                    <span class="nx">required_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
-                   <span class="nx">required_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">)</span>
+                   <span class="nx">required_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
+                   <span class="nx">required_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+                   <span class="nx">plain_required_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+                   <span class="nx">plain_required_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+                   <span class="nx">plain_optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+                   <span class="nx">plain_optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
+                   <span class="nx">plain_optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p">,</span>

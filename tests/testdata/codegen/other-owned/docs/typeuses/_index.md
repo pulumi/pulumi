@@ -15,7 +15,194 @@ no_edit_this_page: true
 
 
 
-## Create TypeUses Resource {#create}
+## Create TypeUses Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var typeUsesResource = new Example.TypeUses("typeUsesResource", new()
+{
+    Bar = new Example.Inputs.SomeOtherObjectArgs
+    {
+        Baz = "string",
+    },
+    Baz = new Example.Inputs.ObjectWithNodeOptionalInputsArgs
+    {
+        Foo = "string",
+        Bar = 0,
+    },
+    Foo = new Example.Inputs.ObjectArgs
+    {
+        Bar = "string",
+        Configs = new[]
+        {
+            new Example.Inputs.ConfigMapArgs
+            {
+                Config = "string",
+            },
+        },
+        Others = new[]
+        {
+            new[]
+            {
+                new Example.Inputs.SomeOtherObjectArgs
+                {
+                    Baz = "string",
+                },
+            },
+        },
+        StillOthers = 
+        {
+            { "string", new[]
+            {
+                new Example.Inputs.SomeOtherObjectArgs
+                {
+                    Baz = "string",
+                },
+            } },
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewTypeUses(ctx, "typeUsesResource", &example.TypeUsesArgs{
+	Bar: &example.SomeOtherObjectArgs{
+		Baz: pulumi.String("string"),
+	},
+	Baz: &example.ObjectWithNodeOptionalInputsArgs{
+		Foo: pulumi.String("string"),
+		Bar: pulumi.Int(0),
+	},
+	Foo: &example.ObjectArgs{
+		Bar: pulumi.String("string"),
+		Configs: example.ConfigMapArray{
+			&example.ConfigMapArgs{
+				Config: pulumi.String("string"),
+			},
+		},
+		Others: example.SomeOtherObjectArrayArray{
+			example.SomeOtherObjectArray{
+				&example.SomeOtherObjectArgs{
+					Baz: pulumi.String("string"),
+				},
+			},
+		},
+		StillOthers: example.SomeOtherObjectArrayMap{
+			"string": example.SomeOtherObjectArray{
+				&example.SomeOtherObjectArgs{
+					Baz: pulumi.String("string"),
+				},
+			},
+		},
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+type_uses_resource = example.TypeUses("typeUsesResource",
+    bar=example.SomeOtherObjectArgs(
+        baz="string",
+    ),
+    baz=example.ObjectWithNodeOptionalInputsArgs(
+        foo="string",
+        bar=0,
+    ),
+    foo=example.ObjectArgs(
+        bar="string",
+        configs=[example.ConfigMapArgs(
+            config="string",
+        )],
+        others=[[example.SomeOtherObjectArgs(
+            baz="string",
+        )]],
+        still_others={
+            "string": [example.SomeOtherObjectArgs(
+                baz="string",
+            )],
+        },
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const typeUsesResource = new example.TypeUses("typeUsesResource", {
+    bar: {
+        baz: "string",
+    },
+    baz: {
+        foo: "string",
+        bar: 0,
+    },
+    foo: {
+        bar: "string",
+        configs: [{
+            config: "string",
+        }],
+        others: [[{
+            baz: "string",
+        }]],
+        stillOthers: {
+            string: [{
+                baz: "string",
+            }],
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of TypeUses {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

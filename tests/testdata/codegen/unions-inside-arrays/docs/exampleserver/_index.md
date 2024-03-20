@@ -15,7 +15,102 @@ no_edit_this_page: true
 
 
 
-## Create ExampleServer Resource {#create}
+## Create ExampleServer Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var exampleServerResource = new Example.ExampleServer("exampleServerResource", new()
+{
+    PropertiesCollection = new[]
+    {
+        new Example.Inputs.ServerPropertiesForReplicaArgs
+        {
+            CreateMode = "Replica",
+            Version = "string",
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewExampleServer(ctx, "exampleServerResource", &example.ExampleServerArgs{
+	PropertiesCollection: pulumi.Array{
+		example.ServerPropertiesForReplica{
+			CreateMode: "Replica",
+			Version:    "string",
+		},
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+example_server_resource = example.ExampleServer("exampleServerResource", properties_collection=[example.ServerPropertiesForReplicaArgs(
+    create_mode="Replica",
+    version="string",
+)])
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const exampleServerResource = new example.ExampleServer("exampleServerResource", {propertiesCollection: [{
+    createMode: "Replica",
+    version: "string",
+}]});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ExampleServer {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

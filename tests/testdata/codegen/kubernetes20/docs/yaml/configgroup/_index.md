@@ -17,7 +17,108 @@ An overlay component resource.
 
 
 
-## Create ConfigGroup Resource {#create}
+## Create ConfigGroup Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var kubernetesConfigGroupResource = new Kubernetes.Yaml.ConfigGroup("kubernetesConfigGroupResource", new()
+{
+    Files = "string",
+    Objs = null,
+    ResourcePrefix = "string",
+    Transformations = new[]
+    {
+        "any",
+    },
+    Yaml = "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := yaml.NewConfigGroup(ctx, "kubernetesConfigGroupResource", &yaml.ConfigGroupArgs{
+Files: pulumi.Any("string"),
+Objs: nil,
+ResourcePrefix: pulumi.String("string"),
+Transformations: pulumi.Array{
+pulumi.Any("any"),
+},
+Yaml: pulumi.Any("string"),
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+kubernetes_config_group_resource = kubernetes.yaml.ConfigGroup("kubernetesConfigGroupResource",
+    files="string",
+    objs=None,
+    resource_prefix="string",
+    transformations=["any"],
+    yaml="string")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const kubernetesConfigGroupResource = new kubernetes.yaml.ConfigGroup("kubernetesConfigGroupResource", {
+    files: "string",
+    objs: undefined,
+    resourcePrefix: "string",
+    transformations: ["any"],
+    yaml: "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ConfigGroup {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

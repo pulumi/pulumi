@@ -15,7 +15,116 @@ no_edit_this_page: true
 
 
 
-## Create Cat Resource {#create}
+## Create Cat Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var catResource = new Example.Cat("catResource", new()
+{
+    Age = 0,
+    Pet = new Example.Inputs.PetArgs
+    {
+        RequiredNameArray = new() { },
+        RequiredNameMap = null,
+        Age = 0,
+        NameArray = new() { },
+        NameMap = null,
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewCat(ctx, "catResource", &example.CatArgs{
+	Age: pulumi.Int(0),
+	Pet: &example.PetArgs{
+		RequiredNameArray: random.RandomPetArray{},
+		RequiredNameMap:   nil,
+		Age:               pulumi.Int(0),
+		NameArray:         random.RandomPetArray{},
+		NameMap:           nil,
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+cat_resource = example.Cat("catResource",
+    age=0,
+    pet=example.PetArgs(
+        required_name_array=[],
+        required_name_map={},
+        age=0,
+        name_array=[],
+        name_map={},
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const catResource = new example.Cat("catResource", {
+    age: 0,
+    pet: {
+        requiredNameArray: [],
+        requiredNameMap: {},
+        age: 0,
+        nameArray: [],
+        nameMap: {},
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Cat {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
