@@ -903,6 +903,34 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
+			// We need to check that we have the provider for this resource.
+			if old.Provider != "" {
+				ref, err := providers.ParseReference(old.Provider)
+				if err != nil {
+					return nil, err
+				}
+				_, has := sg.deployment.GetProvider(ref)
+				if !has {
+					// This provider hasn't been registered yet. This happens when a user changes the default
+					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15704
+					// for more information.
+					var providerResource *resource.State
+					for _, r := range sg.deployment.olds {
+						if r.URN == ref.URN() && r.ID == ref.ID() {
+							providerResource = r
+							break
+						}
+					}
+					if providerResource == nil {
+						return nil, fmt.Errorf("could not find provider %v in old state", ref)
+					}
+					// Return a more friendly error to the user explaining this isn't supported.
+					return nil, fmt.Errorf("provider %s for resource %s has not been registered yet, this is "+
+						"due to a change of providers mixed with --target. "+
+						"Change your program back to the original providers", ref, urn)
+				}
+			}
+
 			sg.sames[urn] = true
 			return []Step{NewSameStep(sg.deployment, event, old, old)}, nil
 		}

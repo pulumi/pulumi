@@ -2146,3 +2146,143 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
 	})
 }
+
+func TestTargetChangeProviderVersion(t *testing.T) {
+	// This test is a regression test for https://github.com/pulumi/pulumi/issues/15704
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+
+	providerVersion := "1.0.0"
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
+			Inputs:  inputs,
+			Version: providerVersion,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := TestUpdateOptions{HostF: hostF}
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Create all resources.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Check we have 5 resources in the stack (stack, provider A, target, provider B, unrelated)
+	require.Equal(t, 5, len(snap.Resources))
+
+	// Run an update to target the target, that also happens to change the unrelated provider version.
+	providerVersion = "2.0.0"
+	inputs = resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	options.UpdateOptions = UpdateOptions{
+		Targets: deploy.NewUrnTargets([]string{
+			"**target**",
+		}),
+	}
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err,
+		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
+	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
+	assert.Equal(t, 6, len(snap.Resources))
+}
+
+func TestTargetChangeAndSameProviderVersion(t *testing.T) {
+	// This test is a regression test for https://github.com/pulumi/pulumi/issues/15704
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{}
+
+	providerVersion := "1.0.0"
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgB:index:typA", "unrelated1", true, deploytest.ResourceOptions{
+			Inputs:  inputs,
+			Version: providerVersion,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgB:index:typA", "unrelated2", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+			// This one always uses 1.0.0
+			Version: "1.0.0",
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := TestUpdateOptions{HostF: hostF}
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Create all resources.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Check we have 6 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2)
+	require.Equal(t, 6, len(snap.Resources))
+
+	// Run an update to target the target, that also happens to change the unrelated provider version.
+	providerVersion = "2.0.0"
+	inputs = resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	options.UpdateOptions = UpdateOptions{
+		Targets: deploy.NewUrnTargets([]string{
+			"**target**",
+		}),
+	}
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err,
+		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated1 has not been registered yet")
+	// Check we have 7 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2, new
+	// provider B)
+	assert.Equal(t, 7, len(snap.Resources))
+}
