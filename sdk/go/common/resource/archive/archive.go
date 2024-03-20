@@ -107,9 +107,24 @@ func FromURI(uri string) (*Archive, error) {
 	return a, err
 }
 
-func (a *Archive) IsAssets() bool { return a.Assets != nil }
-func (a *Archive) IsPath() bool   { return a.Path != "" }
-func (a *Archive) IsURI() bool    { return a.URI != "" }
+func (a *Archive) IsAssets() bool {
+	if a.IsPath() || a.IsURI() {
+		return false
+	}
+	if len(a.Assets) > 0 {
+		return true
+	}
+	// We can't easily tell the difference between an Archive that really is empty and one that has no contents at all.
+	// If we have a hash we can check if that's the "zero hash" and if so then we know the assets is just empty. If the
+	// hash does not equal the empty hash then we know this is a _placeholder_ archive where the contents are just
+	// currently not known. If we don't have a hash then we can't tell the difference and assume it's just empty.
+	if a.Hash == "" || a.Hash == "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef" {
+		return true
+	}
+	return false
+}
+func (a *Archive) IsPath() bool { return a.Path != "" }
+func (a *Archive) IsURI() bool  { return a.URI != "" }
 
 func (a *Archive) GetAssets() (map[string]interface{}, bool) {
 	if a.IsAssets() {

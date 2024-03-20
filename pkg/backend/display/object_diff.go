@@ -596,9 +596,10 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 			p.writeWithIndentNoPrefix("}")
 		} else if path, has := a.GetPath(); has {
 			p.write("asset(file:%s) { %s }", shortHash(a.Hash), path)
+		} else if uri, has := a.GetURI(); has {
+			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), uri)
 		} else {
-			contract.Assertf(a.IsURI(), "asset is not a text, file, or URI")
-			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), a.URI)
+			p.write("asset(unknown:%s) { }", shortHash(a.Hash))
 		}
 	case v.IsArchive():
 		a := v.ArchiveValue()
@@ -892,10 +893,7 @@ func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
 			p.write("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
-	} else {
-		contract.Assertf(oldArchive.IsAssets(), "old archive is not a path, URI, or a group of assets")
-		oldAssets, _ := oldArchive.GetAssets()
-
+	} else if oldAssets, has := oldArchive.GetAssets(); has {
 		if newAssets, has := newArchive.GetAssets(); has {
 			titleFunc(p)
 			p.write("archive(assets:%s) {\n", hashChange)
@@ -1039,10 +1037,7 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 			p.write("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
-	} else {
-		contract.Assertf(oldAsset.IsURI(), "old asset is not text, path, or URI")
-
-		oldURI, _ := oldAsset.GetURI()
+	} else if oldURI, has := oldAsset.GetURI(); has {
 		if newURI, has := newAsset.GetURI(); has {
 			titleFunc(p)
 			p.write("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))

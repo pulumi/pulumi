@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Handle that Assets & Archives can be returned from providers without content.
