@@ -28,6 +28,7 @@ from ..resource import (
 )
 from ._callbacks import _CallbackServicer
 from .settings import (
+    SETTINGS,
     _get_callbacks,
     _get_rpc_manager,
     _load_monitor_feature_support,
@@ -43,15 +44,6 @@ from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .. import Output
-
-
-def _get_running_tasks() -> List[asyncio.Task]:
-    pending = []
-    for task in asyncio.all_tasks():
-        # Don't kill ourselves, that would be silly.
-        if not task == asyncio.current_task():
-            pending.append(task)
-    return pending
 
 
 async def run_pulumi_func(func: Callable[[], None]):
@@ -104,36 +96,23 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # If the RPCs have successfully completed, now await all remaining outstanding tasks.
         if await_all_outstanding_tasks:
-            outstanding_tasks = _get_running_tasks()
-            if len(outstanding_tasks) == 0:
-                log.debug("No outstanding tasks to complete")
-            else:
+            while len(SETTINGS.outputs) > 0:
+                await asyncio.sleep(0)
                 log.debug(
-                    f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete"
+                    f"waiting for quiescence; {len(SETTINGS.outputs)} outputs outstanding"
                 )
+                task = SETTINGS.outputs.popleft()
+                # check if the task is ready yet, else just add it back to the queue. This is so if a long running task
+                # is added to the queue first, then a short running task that fails is added to the queue we quickly see
+                # that short running failure and exit, not waiting for the long running task to complete.
+                if task.done():
+                    await task
+                else:
+                    SETTINGS.outputs.append(task)
 
-                done, pending = await asyncio.wait(
-                    outstanding_tasks, return_when="FIRST_EXCEPTION"
-                )
+            log.debug("All outstanding outputs completed.")
 
-                if len(pending) > 0:
-                    # If there are any pending tasks, it's because an exception was thrown.
-                    # Cancel any pending tasks.
-                    log.debug(f"Cancelling {len(pending)} remaining tasks.")
-                    for task in pending:
-                        task.cancel()
-
-                for task in done:
-                    exception = task.exception()
-                    if exception is not None:
-                        log.debug(
-                            "A future resolved in an exception, raising exception."
-                        )
-                        raise exception
-
-                log.debug("All outstanding tasks completed.")
-
-        # Check to see if any more RPCs have been scheduled, and repeat the cycle if so.
+        # Check to see if any more RPCs or outputs have been scheduled, and repeat the cycle if so.
         # Break if no RPCs remain.
         if len(rpc_manager.rpcs) == 0:
             break

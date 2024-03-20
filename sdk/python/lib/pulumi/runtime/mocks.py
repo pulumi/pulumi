@@ -51,6 +51,7 @@ def test(fn):
         from .. import Output  # pylint: disable=import-outside-toplevel
 
         SETTINGS.rpc_manager.clear()
+        SETTINGS.outputs.clear()
 
         _sync_await(
             run_pulumi_func(

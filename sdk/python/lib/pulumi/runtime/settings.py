@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections import deque
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -60,6 +61,7 @@ class Settings:
         organization: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
+        self.outputs = deque()
 
         # Save the metadata information.
         self.project = project
@@ -103,6 +105,9 @@ class Settings:
     def rpc_manager(self) -> RPCManager:  # type: ignore
         # The contextproperty decorator will fill the body of this method in, but mypy doesn't know that.
         ...
+
+    @contextproperty
+    def outputs(self) -> deque[asyncio.Task]: ...  # type: ignore
 
     @contextproperty
     def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]: ...

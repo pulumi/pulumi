@@ -270,7 +270,6 @@ This function may throw in a future version of Pulumi.""")
 
 class OutputApplyTests(unittest.TestCase):
 
-    @pulumi_test
     async def test_apply_always_sets_is_secret_and_is_known(self):
         """Regressing a convoluted situation where apply created an Output
         with incomplete is_secret, is_known future, manifesting in
@@ -282,14 +281,22 @@ class OutputApplyTests(unittest.TestCase):
         state.
 
         """
-        bad = asyncio.Future()
-        bad.set_exception(Exception('!'))
-        ok = asyncio.Future()
-        ok.set_result('ok')
-        bad_output = Output(resources=set(), future=ok, is_known=bad)
-        test_output = Output.from_input('anything').apply(lambda _: bad_output)
-        self.assertEqual(await test_output.is_secret(), False)
-        self.assertEqual(await test_output.is_known(), False)
+
+        @pulumi_test
+        async def test():
+            bad = asyncio.Future()
+            bad.set_exception(Exception('!'))
+            ok = asyncio.Future()
+            ok.set_result('ok')
+            bad_output = Output(resources=set(), future=ok, is_known=bad)
+            test_output = Output.from_input('anything').apply(lambda _: bad_output)
+            self.assertEqual(await test_output.is_secret(), False)
+            self.assertEqual(await test_output.is_known(), False)
+
+        with self.assertRaises(Exception):
+            # The overall test will fail with ! because pulumi_test awaits all outputs
+            test()
+
 
 class OutputAllTests(unittest.TestCase):
     @pulumi_test

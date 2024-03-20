@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1166,6 +1167,37 @@ func TestPythonAwaitOutputs(t *testing.T) {
 				assert.True(t, sawPrinted)
 				assert.True(t, sawFoo)
 				assert.False(t, sawNotPrinted)
+			},
+		})
+	})
+
+	// This checks we await outputs but not asyncio.tasks
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("AsyncioTasks", func(t *testing.T) {
+		// Skip if python is < 3.9
+		version, err := exec.Command("python3", "--version").Output()
+		require.NoError(t, err)
+		if strings.Contains(string(version), "3.8") {
+			t.Skip("Skipping test as Python version is < 3.9")
+		}
+
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "asyncio_tasks"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			Quick: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "PRINT: 42") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
 			},
 		})
 	})
