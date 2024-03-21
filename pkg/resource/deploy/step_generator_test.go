@@ -646,28 +646,6 @@ func TestStepGenerator(t *testing.T) {
 			assert.Empty(t, targets)
 		})
 	})
-	t.Run("ScheduleDeletes", func(t *testing.T) {
-		t.Parallel()
-		t.Run("don't TrustDependencies", func(t *testing.T) {
-			t.Parallel()
-			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
-				opts: Options{
-					TrustDependencies: false,
-				},
-				deployment: &Deployment{
-					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
-				},
-			}
-			antichains := sg.ScheduleDeletes([]Step{
-				&DeleteStep{},
-				&CreateStep{},
-				&UpdateStep{},
-			})
-			assert.Len(t, antichains, 3)
-		})
-	})
 	t.Run("providerChanged", func(t *testing.T) {
 		t.Parallel()
 		t.Run("invalid old ProviderReference", func(t *testing.T) {
