@@ -93,11 +93,11 @@ type incomingChain struct {
 // resolved, we (the engine) can assume that any chain given to us by the step generator is already
 // ready to execute.
 type stepExecutor struct {
-	deployment      *Deployment // The deployment currently being executed.
-	opts            Options     // The options for this current deployment.
-	preview         bool        // Whether or not we are doing a preview.
-	pendingNews     sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
-	continueOnError bool        // True if we want to continue the deployment after a step error.
+	deployment   *Deployment // The deployment currently being executed.
+	opts         Options     // The options for this current deployment.
+	preview      bool        // Whether or not we are doing a preview.
+	pendingNews  sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
+	ignoreErrors bool        // True if we want to ignore any errors and continue executing steps.
 
 	// Lock protecting the running of workers. This can be used to synchronize with step executor.
 	workerLock sync.RWMutex
@@ -111,6 +111,9 @@ type stepExecutor struct {
 	// async promise indicating an error seen by the step executor, if multiple errors are seen this will only
 	// record the first.
 	sawError promise.CompletionSource[struct{}]
+
+	erroredStepLock sync.RWMutex
+	erroredSteps    []Step
 }
 
 //
@@ -143,6 +146,12 @@ func (se *stepExecutor) Lock() {
 // Unlocks the step executor to allow it to execute more steps. This is used to synchronize with the step executor.
 func (se *stepExecutor) Unlock() {
 	se.workerLock.Unlock()
+}
+
+func (se *stepExecutor) GetErroredSteps() []Step {
+	se.erroredStepLock.RLock()
+	defer se.erroredStepLock.RUnlock()
+	return se.erroredSteps
 }
 
 // ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
@@ -231,7 +240,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			outErr := fmt.Errorf("resource complete event returned an error: %w", eventerr)
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
 			se.deployment.Diag().Errorf(diagMsg)
-			se.cancelDueToError(eventerr)
+			se.cancelDueToError(eventerr, nil)
 			return nil
 		}
 	}
@@ -287,7 +296,7 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 
 		if err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
-			se.cancelDueToError(err)
+			se.cancelDueToError(err, step)
 
 			var saf StepApplyFailed
 			if !errors.As(err, &saf) {
@@ -304,12 +313,17 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 	}
 }
 
-func (se *stepExecutor) cancelDueToError(err error) {
+func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	set := se.sawError.Reject(err)
 	if !set {
 		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
 	}
-	if !se.continueOnError {
+	if se.opts.ContinueOnError {
+		// Record the failure, but allow the deployment to continue.
+		se.erroredStepLock.Lock()
+		defer se.erroredStepLock.Unlock()
+		se.erroredSteps = append(se.erroredSteps, step)
+	} else if !se.ignoreErrors {
 		se.cancel()
 	}
 }
@@ -506,16 +520,17 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 }
 
 func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment *Deployment, opts Options,
-	preview, continueOnError bool,
+	preview, ignoreErrors bool,
 ) *stepExecutor {
+	contract.Assertf(!(ignoreErrors && opts.ContinueOnError), "ignoreErrors and ContinueOnError are mutually exclusive")
 	exec := &stepExecutor{
-		deployment:      deployment,
-		opts:            opts,
-		preview:         preview,
-		continueOnError: continueOnError,
-		incomingChains:  make(chan incomingChain),
-		ctx:             ctx,
-		cancel:          cancel,
+		deployment:     deployment,
+		opts:           opts,
+		preview:        preview,
+		ignoreErrors:   ignoreErrors,
+		incomingChains: make(chan incomingChain),
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions

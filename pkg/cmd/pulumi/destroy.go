@@ -71,6 +71,7 @@ func newDestroyCmd() *cobra.Command {
 	var targets *[]string
 	var targetDependents bool
 	var excludeProtected bool
+	var continueOnError bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if remoteSupported() {
@@ -278,6 +279,7 @@ func newDestroyCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
 				Experimental:              hasExperimentalCommands(),
+				ContinueOnError:           continueOnError,
 			}
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{
@@ -387,6 +389,9 @@ func newDestroyCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	cmd.PersistentFlags().BoolVar(
+		&continueOnError, "continue-on-error", false,
+		"Continue to perform the destroy operation despite the occurrence of errors")
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
