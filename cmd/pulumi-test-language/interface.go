@@ -19,19 +19,15 @@ import (
 	"context"
 	b64 "encoding/base64"
 	"fmt"
-	"io"
-	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/blang/semver"
-	"github.com/hexops/gotextdiff"
-	"github.com/hexops/gotextdiff/myers"
-	"github.com/hexops/gotextdiff/span"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -44,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -194,166 +189,6 @@ func makeTestResponse(msg string) *testingrpc.RunLanguageTestResponse {
 	}
 }
 
-func copyDirectory(fs iofs.FS, src string, dst string) error {
-	return iofs.WalkDir(fs, src, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relativePath, err := filepath.Rel(src, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, src)
-
-		srcPath := filepath.Join(src, relativePath)
-		dstPath := filepath.Join(dst, relativePath)
-		contract.Assertf(srcPath == path, "srcPath %s should be equal to path %s", srcPath, path)
-
-		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0o700)
-		}
-
-		srcFile, err := fs.Open(srcPath)
-		if err != nil {
-			return fmt.Errorf("open file %s: %w", srcPath, err)
-		}
-		defer srcFile.Close()
-
-		dstFile, err := os.Create(dstPath)
-		if err != nil {
-			return fmt.Errorf("create file %s: %w", dstPath, err)
-		}
-		defer dstFile.Close()
-
-		_, err = io.Copy(dstFile, srcFile)
-		if err != nil {
-			return fmt.Errorf("copy file %s->%s: %w", srcPath, dstPath, err)
-		}
-
-		return nil
-	})
-}
-
-// compareDirectories compares two directories, returning a list of validation failures where files had
-// different contents, or we only present in on of the directories. If allowNewFiles is true then it's ok to
-// have extra files in the actual directory, we use this for checking building SDKs doesn't mutate any files,
-// but doing so might add new build files (which would then normally be .gitignored).
-func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]string, error) {
-	var validations []string
-	// Check that every file in expected is also in actual with the same content
-	err := filepath.WalkDir(expectedDir, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// No need to check directories, just recurse into them
-		if d.IsDir() {
-			return nil
-		}
-
-		relativePath, err := filepath.Rel(expectedDir, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, expectedDir)
-
-		// Check that the file is present in the expected directory and has the same contents
-		expectedContents, err := os.ReadFile(filepath.Join(expectedDir, relativePath))
-		if err != nil {
-			return fmt.Errorf("read expected file: %w", err)
-		}
-
-		actualPath := filepath.Join(actualDir, relativePath)
-		actualContents, err := os.ReadFile(actualPath)
-		// An error here is a test failure rather than an error, add this to the validation list
-		if err != nil {
-			validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
-			// Move on to the next file
-			return nil
-		}
-
-		if !bytes.Equal(actualContents, expectedContents) {
-			edits := myers.ComputeEdits(
-				span.URIFromPath("expected"), string(expectedContents), string(actualContents),
-			)
-			diff := gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits)
-
-			validations = append(validations, fmt.Sprintf(
-				"expected file %s does not match actual file:\n\n%s", relativePath, diff),
-			)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("walk expected dir: %w", err)
-	}
-
-	// Now walk the actual directory and check every file found is present in the expected directory, i.e.
-	// there aren't any new files that aren't expected. We've already done contents checking so we just need
-	// existence checks.
-	if !allowNewFiles {
-		err = filepath.WalkDir(actualDir, func(path string, d iofs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// No need to check directories
-			if d.IsDir() {
-				return nil
-			}
-
-			relativePath, err := filepath.Rel(actualDir, path)
-			contract.AssertNoErrorf(err, "path %s should be relative to %s", path, actualDir)
-
-			// Just need to see if this file exists in expected, if it doesn't return add a validation failure.
-			_, err = os.Stat(filepath.Join(expectedDir, relativePath))
-			if err == nil {
-				// File exists in expected, we've already done a contents check so just move on to
-				// the next file.
-				return nil
-			}
-
-			// Check if this was a NotFound error in which case add a validation failure, else return the error
-			if os.IsNotExist(err) {
-				validations = append(validations, fmt.Sprintf("file %s is not expected", relativePath))
-				return nil
-			}
-
-			return err
-		})
-		if err != nil {
-			return nil, fmt.Errorf("walk actual dir: %w", err)
-		}
-	}
-
-	return validations, nil
-}
-
-// Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
-// write the new files instead.
-func doSnapshot(disableSnapshotWriting bool, sourceDirectory, snapshotDirectory string) ([]string, error) {
-	if !disableSnapshotWriting && cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
-		// Write files
-		err := os.RemoveAll(snapshotDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("remove snapshot dir: %w", err)
-		}
-		err = os.MkdirAll(snapshotDirectory, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create snapshot dir: %w", err)
-		}
-		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("copy snapshot dir: %w", err)
-		}
-		return nil, nil
-	}
-	// Validate files, we need to walk twice to get this correct because we need to check all expected
-	// files are present, but also that no unexpected files are present.
-	validations, err := compareDirectories(sourceDirectory, snapshotDirectory, false /* allowNewFiles */)
-	if err != nil {
-		return nil, err
-	}
-
-	return validations, nil
-}
-
 type testHost struct {
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
@@ -467,12 +302,25 @@ func (h *testHost) Close() error {
 	return nil
 }
 
+type replacement struct {
+	Path        string
+	Pattern     string
+	Replacement string
+}
+
+type compiledReplacement struct {
+	Path        *regexp.Regexp
+	Pattern     *regexp.Regexp
+	Replacement string
+}
+
 type testToken struct {
 	LanguagePluginName   string
 	LanguagePluginTarget string
 	TemporaryDirectory   string
 	SnapshotDirectory    string
 	CoreArtifact         string
+	SnapshotEdits        []replacement
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -545,12 +393,22 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("pack core SDK: %w", err)
 	}
 
+	edits := []replacement{}
+	for _, replace := range req.SnapshotEdits {
+		edits = append(edits, replacement{
+			Path:        replace.Path,
+			Pattern:     replace.Pattern,
+			Replacement: replace.Replacement,
+		})
+	}
+
 	tokenBytes, err := json.Marshal(&testToken{
 		LanguagePluginName:   req.LanguagePluginName,
 		LanguagePluginTarget: req.LanguagePluginTarget,
 		TemporaryDirectory:   req.TemporaryDirectory,
 		SnapshotDirectory:    req.SnapshotDirectory,
 		CoreArtifact:         coreArtifact,
+		SnapshotEdits:        edits,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -593,6 +451,24 @@ func (eng *languageTestServer) RunLanguageTest(
 	err = json.Unmarshal(tokenBytes, &token)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	// If the language defines any snapshot edits compile those regexs to apply now
+	snapshotEdits := []compiledReplacement{}
+	for _, replace := range token.SnapshotEdits {
+		pathRegex, err := regexp.Compile(replace.Path)
+		if err != nil {
+			return nil, fmt.Errorf("invalid path regex %s: %w", replace.Path, err)
+		}
+		editRegex, err := regexp.Compile(replace.Pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid edit regex %s: %w", replace.Pattern, err)
+		}
+		snapshotEdits = append(snapshotEdits, compiledReplacement{
+			Path:        pathRegex,
+			Pattern:     editRegex,
+			Replacement: replace.Replacement,
+		})
 	}
 
 	// Create a diagnostics sink for the test
@@ -712,7 +588,18 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir)
+		sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+		// If we made a snapshot edit we can clean it up now
+		if sdkSnapshotDir != sdkTempDir {
+			err := os.RemoveAll(sdkSnapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
 		}
@@ -731,7 +618,19 @@ func (eng *languageTestServer) RunLanguageTest(
 		localDependencies[pkg] = sdkArtifact
 
 		// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-		validations, err = compareDirectories(sdkTempDir, snapshotDir, true /* allowNewFiles */)
+		// Again we need to make a snapshot edit for this.
+		sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+		}
+		validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
+		// If we made a snapshot edit we can clean it up now
+		if sdkSnapshotDir != sdkTempDir {
+			err := os.RemoveAll(sdkSnapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg, err)
 		}
@@ -759,7 +658,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir)
+		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
@@ -796,12 +695,23 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.runs) > 1 {
 			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 		}
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
+		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("program snapshot creation: %w", err)
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
 		if err != nil {
 			return nil, fmt.Errorf("program snapshot validation: %w", err)
 		}
 		if len(validations) > 0 {
 			return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
+		}
+		// If we made a snapshot edit we can clean it up now
+		if projectDirSnapshot != projectDir {
+			err = os.RemoveAll(projectDirSnapshot)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
 		}
 
 		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))

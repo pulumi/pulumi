@@ -401,3 +401,49 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 		"expected no error, got Error: unexpected required plugins: "+
 			"actual Set{language-mock@<nil>}, expected Set{language-mock@<nil>, resource-simple@2.0.0}")
 }
+
+// Run a simple successful test with a mocked runtime that edits the snapshot files.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
+func TestL2ResourceSnapshotEdit(t *testing.T) {
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	engine := &languageTestServer{}
+	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
+		LanguagePluginName:   "mock",
+		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:   tempDir,
+		SnapshotDirectory:    "./testdata/snapshots_edit",
+		CoreSdkDirectory:     "sdk/dir",
+		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+			{
+				Path:        "test.txt",
+				Pattern:     "testing",
+				Replacement: "replaced",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, prepareResponse.Token)
+
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
+		Token: prepareResponse.Token,
+		Test:  "l2-resource-simple",
+	})
+	require.NoError(t, err)
+	t.Logf("stdout: %s", runResponse.Stdout)
+	t.Logf("stderr: %s", runResponse.Stderr)
+	assert.Empty(t, runResponse.Messages)
+	assert.True(t, runResponse.Success)
+}
