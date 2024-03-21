@@ -15,7 +15,79 @@ no_edit_this_page: true
 
 
 
-## Create NoRecursive Resource {#create}
+## Create NoRecursive Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var noRecursiveResource = new Example.NoRecursive("noRecursiveResource");
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewNoRecursive(ctx, "noRecursiveResource", nil)
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+no_recursive_resource = example.NoRecursive("noRecursiveResource")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const noRecursiveResource = new example.NoRecursive("noRecursiveResource", {});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of NoRecursive {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

@@ -17,7 +17,91 @@ It's fine to use urn and id as input properties
 
 
 
-## Create Res Resource {#create}
+## Create Res Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var resResource = new Urnid.Res("resResource", new()
+{
+    Id = "string",
+    Urn = "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := urnid.NewRes(ctx, "resResource", &urnid.ResArgs{
+	Id:  pulumi.String("string"),
+	Urn: pulumi.String("string"),
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+res_resource = urnid.Res("resResource",
+    id="string",
+    urn="string")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const resResource = new urnid.Res("resResource", {
+    id: "string",
+    urn: "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of Res {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

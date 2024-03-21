@@ -15,7 +15,93 @@ no_edit_this_page: true
 
 
 
-## Create ModuleResource Resource {#create}
+## Create ModuleResource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var moduleResourceResource = new FooBar.Submodule1.ModuleResource("moduleResourceResource", new()
+{
+    Thing = new FooBar.Inputs.TopLevelArgs
+    {
+        Buzz = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := submodule1.NewModuleResource(ctx, "moduleResourceResource", &submodule1.ModuleResourceArgs{
+	Thing: &foo.TopLevelArgs{
+		Buzz: pulumi.String("string"),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+module_resource_resource = foo_bar.submodule1.ModuleResource("moduleResourceResource", thing=foo_bar.TopLevelArgs(
+    buzz="string",
+))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const moduleResourceResource = new foo_bar.submodule1.ModuleResource("moduleResourceResource", {thing: {
+    buzz: "string",
+}});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of ModuleResource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

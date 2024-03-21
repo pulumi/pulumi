@@ -15,7 +15,79 @@ no_edit_this_page: true
 
 
 
-## Create RubberTree Resource {#create}
+## Create RubberTree Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of RubberTree {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -32,11 +104,11 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-               <span class="nx">container</span><span class="p">:</span> <span class="nx">Optional[_root_inputs.ContainerArgs]</span> = None<span class="p">,</span>
                <span class="nx">diameter</span><span class="p">:</span> <span class="nx">Optional[Diameter]</span> = None<span class="p">,</span>
+               <span class="nx">type</span><span class="p">:</span> <span class="nx">Optional[RubberTreeVariety]</span> = None<span class="p">,</span>
+               <span class="nx">container</span><span class="p">:</span> <span class="nx">Optional[_root_inputs.ContainerArgs]</span> = None<span class="p">,</span>
                <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[Farm, str]]</span> = None<span class="p">,</span>
-               <span class="nx">size</span><span class="p">:</span> <span class="nx">Optional[TreeSize]</span> = None<span class="p">,</span>
-               <span class="nx">type</span><span class="p">:</span> <span class="nx">Optional[RubberTreeVariety]</span> = None<span class="p">)</span>
+               <span class="nx">size</span><span class="p">:</span> <span class="nx">Optional[TreeSize]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span>

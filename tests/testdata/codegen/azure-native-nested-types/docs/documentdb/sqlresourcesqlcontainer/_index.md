@@ -347,7 +347,79 @@ Coming soon!
 
 
 
-## Create SqlResourceSqlContainer Resource {#create}
+## Create SqlResourceSqlContainer Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var sqlResourceSqlContainerResource = new AzureNative.DocumentDB.SqlResourceSqlContainer("sqlResourceSqlContainerResource");
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := documentdb.NewSqlResourceSqlContainer(ctx, "sqlResourceSqlContainerResource", nil)
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+sql_resource_sql_container_resource = azure_native.documentdb.SqlResourceSqlContainer("sqlResourceSqlContainerResource")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const sqlResourceSqlContainerResource = new azure_native.documentdb.SqlResourceSqlContainer("sqlResourceSqlContainerResource", {});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of SqlResourceSqlContainer {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

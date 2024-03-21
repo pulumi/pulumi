@@ -15,7 +15,97 @@ no_edit_this_page: true
 
 
 
-## Create IamResource Resource {#create}
+## Create IamResource Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := myModule.NewIamResource(ctx, "iamResourceResource", &myModule.IamResourceArgs{
+	Config: &iam.AuditConfigArgs{
+		AuditLogConfigs: iam.AuditLogConfigArray{
+			&iam.AuditLogConfigArgs{
+				ExemptedMembers: pulumi.StringArray{
+					pulumi.String("string"),
+				},
+				LogType: iam / v1.AuditLogConfigLogTypeLogTypeUnspecified,
+			},
+		},
+		Service: pulumi.String("string"),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const iamResourceResource = new example.mymodule.IamResource("iamResourceResource", {config: {
+    auditLogConfigs: [{
+        exemptedMembers: ["string"],
+        logType: google_native.iam.v1.AuditLogConfigLogType.LogTypeUnspecified,
+    }],
+    service: "string",
+}});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of IamResource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

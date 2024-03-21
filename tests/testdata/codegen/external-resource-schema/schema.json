@@ -151,7 +151,8 @@
     },
     "go": {
       "generateResourceContainerTypes": true,
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "external-resource-schema/example"
     },
     "nodejs": {
       "dependencies": {

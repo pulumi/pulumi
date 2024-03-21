@@ -7,9 +7,9 @@ import (
 	"context"
 	"reflect"
 
+	"external-resource-schema/example/internal"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"internal"
 )
 
 type Workload struct {

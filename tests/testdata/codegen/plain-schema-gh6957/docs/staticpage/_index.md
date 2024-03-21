@@ -15,7 +15,100 @@ no_edit_this_page: true
 
 
 
-## Create StaticPage Resource {#create}
+## Create StaticPage Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var staticPageResource = new Xyz.StaticPage("staticPageResource", new()
+{
+    IndexContent = "string",
+    Foo = new Xyz.Inputs.FooArgs
+    {
+        A = false,
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := xyz.NewStaticPage(ctx, "staticPageResource", &xyz.StaticPageArgs{
+	IndexContent: pulumi.String("string"),
+	Foo: &xyz.FooArgs{
+		A: pulumi.Bool(false),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+static_page_resource = xyz.StaticPage("staticPageResource",
+    index_content="string",
+    foo=xyz.FooArgs(
+        a=False,
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const staticPageResource = new xyz.StaticPage("staticPageResource", {
+    indexContent: "string",
+    foo: {
+        a: false,
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of StaticPage {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -32,8 +125,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">StaticPage</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-               <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">,</span>
-               <span class="nx">index_content</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">)</span>
+               <span class="nx">index_content</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+               <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">StaticPage</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">StaticPageArgs</a></span><span class="p">,</span>

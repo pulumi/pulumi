@@ -15,7 +15,84 @@ no_edit_this_page: true
 
 
 
-## Create BasicResourceV2 Resource {#create}
+## Create BasicResourceV2 Resource
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var basicResourceV2Resource = new Example.BasicResourceV2("basicResourceV2Resource", new()
+{
+    Bar = "string",
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewBasicResourceV2(ctx, "basicResourceV2Resource", &example.BasicResourceV2Args{
+	Bar: pulumi.String("string"),
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+basic_resource_v2_resource = example.BasicResourceV2("basicResourceV2Resource", bar="string")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const basicResourceV2Resource = new example.BasicResourceV2("basicResourceV2Resource", {bar: "string"});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+Coming soon!
+```
+
+</pulumi-choosable>
+</div>
+
+
+## Definition of BasicResourceV2 {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
