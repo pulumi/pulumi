@@ -398,6 +398,17 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 
 		testPluginsAndDependencies(t, progDir)
 	})
+
+	t.Run("gowork", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		require.NoError(t,
+			fsutil.CopyFile(root, filepath.Join("testdata", "sample"), nil),
+			"copy test data")
+
+		testPluginsAndDependencies(t, filepath.Join(root, "prog-gowork", "prog"))
+	})
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {

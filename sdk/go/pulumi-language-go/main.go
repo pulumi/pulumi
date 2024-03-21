@@ -617,6 +617,9 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 	//
 	// See 'go help list' for the full definition.
 	cmd := exec.Command(gobin, "list", "-m", "-f", "{{.GoMod}}")
+	// Disable GOWORK, we only want the one module found in this (or a parent) directory. Workspaces being
+	// enabled will cause "list -m" to list every module in the workspace.
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	cmd.Dir = programDir
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
