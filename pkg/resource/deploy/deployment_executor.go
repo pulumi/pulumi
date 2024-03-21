@@ -23,12 +23,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
+
+var UseParallelStepGen = false
 
 // deploymentExecutor is responsible for taking a deployment and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
@@ -50,8 +53,10 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 
 	olds := ex.deployment.olds
 	var news map[resource.URN]bool
+	// Step generator may not have been initialized yet, in which case the news
+	// set will be empty anyway
 	if ex.stepGen != nil {
-		news = ex.stepGen.urns
+		news = ex.stepGen.GetURNs()
 	}
 
 	hasUnknownTarget := false
@@ -170,7 +175,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment, opts, opts.Targets, opts.ReplaceTargets)
+	ex.stepGen = newStepGenerator(ex.deployment, opts)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -211,6 +216,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+		var workerPool *workerPool
+		// Use a pool of workers to run step generation in parallel if the env
+		// variable PULUMI_PARALLEL_STEP_GEN is truthy.
+		if UseParallelStepGen || env.ParallelStepGeneration.Value() {
+			if opts.InfiniteParallelism() {
+				workerPool = newWorkerPool(0, cancel)
+			} else {
+				workerPool = newWorkerPool(opts.DegreeOfParallelism(), cancel)
+			}
+			logging.V(4).Infof("deploymentExecutor.Execute(...): using %d workers", workerPool.numWorkers)
+		}
+
 		for {
 			select {
 			case event := <-incomingEvents:
@@ -228,6 +245,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				}
 
 				if event.Event == nil {
+					if workerPool != nil {
+						// Wait for all currently pending and executing workers to
+						// complete. Then check if any worker had an error.
+						poolErr := workerPool.Wait(true)
+						if poolErr != nil {
+							cancel()
+							return false, result.BailError(poolErr)
+						}
+					}
+
 					// Check targets before performDeletes mutates the initial Snapshot.
 					targetErr := ex.checkTargets(opts.Targets)
 
@@ -247,15 +274,34 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					return false, nil
 				}
 
-				if err := ex.handleSingleEvent(event.Event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+				singleEventWorker := func() error {
+					if err := ex.handleSingleEvent(event.Event); err != nil {
+						if !result.IsBail(err) {
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+						}
+						return err
 					}
-					cancel()
-					return false, result.BailError(err)
+					return nil
+				}
+
+				if workerPool != nil {
+					// Handle the event within the worker pool
+					workerPool.AddWorker(singleEventWorker)
+				} else {
+					if err := singleEventWorker(); err != nil {
+						cancel()
+						return false, result.BailError(err)
+					}
 				}
 			case <-ctx.Done():
+				if workerPool != nil {
+					if err := workerPool.Wait(true); err != nil {
+						cancel()
+						return false, result.BailError(err)
+					}
+				}
+
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated

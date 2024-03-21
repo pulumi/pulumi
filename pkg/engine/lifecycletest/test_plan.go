@@ -148,24 +148,42 @@ func (op TestOp) runWithContext(
 		return plan, nil, errors.Join(errs...)
 	}
 
-	entries := journal.Entries()
-	// Check that each possible snapshot we could have created is valid
 	var snap *deploy.Snapshot
-	for i := 0; i <= len(entries); i++ {
-		var err error
-		snap, err = entries[0:i].Snap(target.Snapshot)
+	entries := journal.Entries()
+	if opts.OnlyVerifyCompleteSnapshot {
+		// Only validate the complete snapshot. This test option is used for tests that
+		// are run to benchmark performance and are sensitive to the quadratic nature of testing each sequence
+		snap, err = entries.Snap(target.Snapshot)
 		if err != nil {
-			// if any snapshot fails to create just return this error, don't keep going
+			// if the snapshot fails to create just return this error, don't keep going
 			errs = append(errs, err)
 			snap = nil
-			break
+		} else {
+			err = snap.VerifyIntegrity()
+			if err != nil {
+				// Likewise as soon as one snapshot fails to validate stop checking
+				errs = append(errs, err)
+				snap = nil
+			}
 		}
-		err = snap.VerifyIntegrity()
-		if err != nil {
-			// Likewise as soon as one snapshot fails to validate stop checking
-			errs = append(errs, err)
-			snap = nil
-			break
+	} else {
+		// Check that each possible snapshot we could have created is valid
+		for i := 0; i <= len(entries); i++ {
+			var err error
+			snap, err = entries[0:i].Snap(target.Snapshot)
+			if err != nil {
+				// if any snapshot fails to create just return this error, don't keep going
+				errs = append(errs, err)
+				snap = nil
+				break
+			}
+			err = snap.VerifyIntegrity()
+			if err != nil {
+				// Likewise as soon as one snapshot fails to validate stop checking
+				errs = append(errs, err)
+				snap = nil
+				break
+			}
 		}
 	}
 
@@ -197,6 +215,9 @@ type TestUpdateOptions struct {
 	UpdateOptions
 	// a factory to produce a plugin host for an update operation.
 	HostF deploytest.PluginHostFactory
+	// Only call VerifyIntegerity for the complete snapshot, don't verify each step.
+	// This prevents an N^2 cost when creating large numbers of resources
+	OnlyVerifyCompleteSnapshot bool
 }
 
 // Options produces UpdateOptions for an update operation.

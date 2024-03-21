@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -43,6 +44,9 @@ import (
 type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
 	opts       Options     // options for this step generator
+
+	generatorMutex sync.Mutex
+	urnLock        *resourceLock
 
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
@@ -88,9 +92,9 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 	}
 
 	if ref := res.Provider; ref != "" {
-		proivderRef, err := providers.ParseReference(ref)
+		providerRef, err := providers.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		providerURN := proivderRef.URN()
+		providerURN := providerRef.URN()
 		if sg.targetsActual.Contains(providerURN) {
 			return true
 		}
@@ -114,7 +118,17 @@ func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
 }
 
 func (sg *stepGenerator) Errored() bool {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
 	return sg.sawError
+}
+
+func (sg *stepGenerator) GetURNs() map[resource.URN]bool {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
+	return sg.urns
 }
 
 // checkParent checks that the parent given is valid for the given resource type, and returns a default parent
@@ -159,7 +173,7 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 }
 
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
-func (sg *stepGenerator) bailDaig(diag *diag.Diag, args ...interface{}) error {
+func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...interface{}) error {
 	sg.deployment.Diag().Errorf(diag, args...)
 	return result.BailErrorf(diag.Message, args...)
 }
@@ -172,7 +186,7 @@ func (sg *stepGenerator) generateURN(
 	urn := sg.deployment.generateURN(parent, ty, name)
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		return "", sg.bailDaig(diag.GetDuplicateResourceURNError(urn), urn)
+		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 	sg.urns[urn] = true
 	return urn, nil
@@ -181,6 +195,9 @@ func (sg *stepGenerator) generateURN(
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
 	// Some event settings are based on the parent settings so make sure our parent is correct.
 	parent, err := sg.checkParent(event.Parent(), event.Type())
 	if err != nil {
@@ -191,6 +208,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if err != nil {
 		return nil, err
 	}
+	sg.urnLock.LockResource(urn)
+	defer sg.urnLock.UnlockResource(urn)
 
 	newState := resource.NewState(event.Type(),
 		urn,
@@ -262,6 +281,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
 func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, error) {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
 	steps, err := sg.generateSteps(event)
 	if err != nil {
 		contract.Assertf(len(steps) == 0, "expected no steps if there is an error")
@@ -491,6 +513,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		return nil, err
 	}
 
+	sg.urnLock.LockResource(urn)
+	defer sg.urnLock.UnlockResource(urn)
+
 	// Generate the aliases for this resource.
 	aliases := sg.generateAliases(goal)
 
@@ -662,13 +687,26 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	if prov != nil {
 		var failures []plugin.CheckFailure
 
-		checkInputs := prov.Check
+		var checkInputs func(urn resource.URN, olds, news resource.PropertyMap,
+			allowUnknowns bool, randomSeed []byte,
+		) (resource.PropertyMap, []plugin.CheckFailure, error)
+
 		if !isTargeted {
 			// If not targeted, stub out the provider check and use the old inputs directly.
 			checkInputs = func(urn resource.URN, olds, news resource.PropertyMap,
 				allowUnknowns bool, randomSeed []byte,
 			) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return oldInputs, nil, nil
+			}
+		} else {
+			checkInputs = func(urn resource.URN, olds, news resource.PropertyMap,
+				allowUnknowns bool, randomSeed []byte,
+			) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				contract.Assertf(!sg.generatorMutex.TryLock(), "expecting mutex to always be locked here")
+				sg.generatorMutex.Unlock()
+				defer sg.generatorMutex.Lock()
+
+				return prov.Check(urn, olds, news, allowUnknowns, randomSeed)
 			}
 		}
 
@@ -1056,14 +1094,20 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
-				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+				err = sg.urnLock.InvertLock(func() error {
+					var failures []plugin.CheckFailure
+					inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+					if err != nil {
+						return err
+					} else if issueCheckErrors(sg.deployment, new, urn, failures) {
+						return result.BailErrorf("resource %v has check errors: %v", urn, failures)
+					}
+					new.Inputs = inputs
+					return nil
+				})
 				if err != nil {
 					return nil, err
-				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
-					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
 				}
-				new.Inputs = inputs
 			}
 
 			if logging.V(7) {
@@ -1107,6 +1151,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					if err != nil {
 						return nil, err
 					}
+					defer sg.urnLock.UnlockDependentReplaces(toReplace)
 
 					// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 					// order, so we iterate in reverse.
@@ -1192,6 +1237,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 }
 
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -1417,6 +1465,8 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
 			resourcesToDelete[dep.res.URN] = true
 		}
+
+		sg.urnLock.UnlockDependentReplaces(deps)
 	}
 
 	if logging.V(7) {
@@ -1456,6 +1506,9 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the deployment executor for safe execution.
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
 	var antichains []antichain                    // the list of parallelizable steps we intend to return.
 	dg := sg.deployment.depGraph                  // the current deployment's dependency graph.
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
@@ -1639,6 +1692,10 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
+	contract.Assertf(!sg.generatorMutex.TryLock(), "expecting mutex to always be locked")
+	sg.generatorMutex.Unlock()
+	defer sg.generatorMutex.Lock()
+
 	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
 }
 
@@ -1741,15 +1798,15 @@ func (sg *stepGenerator) loadResourceProvider(
 	contract.Assertf(provider != "", "must have a provider for custom resource %v", urn)
 	ref, refErr := providers.ParseReference(provider)
 	if refErr != nil {
-		return nil, sg.bailDaig(diag.GetBadProviderError(urn), provider, urn, refErr)
+		return nil, sg.bailDiag(diag.GetBadProviderError(urn), provider, urn, refErr)
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
 		pkg := providers.GetDeniedDefaultProviderPkg(ref)
-		return nil, sg.bailDaig(diag.GetDefaultProviderDenied(urn), pkg, urn)
+		return nil, sg.bailDiag(diag.GetDefaultProviderDenied(urn), pkg, urn)
 	}
 	p, ok := sg.deployment.GetProvider(ref)
 	if !ok {
-		return nil, sg.bailDaig(diag.GetUnknownProviderError(urn), provider, urn)
+		return nil, sg.bailDiag(diag.GetUnknownProviderError(urn), provider, urn)
 	}
 	return p, nil
 }
@@ -1897,10 +1954,15 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// be due to a property from A being used as the input to a property of B that does not require
 	// B to be replaced upon a change. In these cases, neither B nor D would need to be deleted
 	// before A could be deleted.
+
 	var toReplace []dependentReplace
 	replaceSet := map[resource.URN]bool{root.URN: true}
 
 	requiresReplacement := func(r *resource.State) (bool, []resource.PropertyKey, error) {
+		contract.Assertf(!sg.generatorMutex.TryLock(), "expecting the mutex to always be locked")
+		sg.generatorMutex.Unlock()
+		defer sg.generatorMutex.Lock()
+
 		// Neither component nor external resources require replacement.
 		if !r.Custom || r.External {
 			return false, nil, nil
@@ -1982,14 +2044,20 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
-	impossibleDependents := sg.urns
-	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents, false) {
+	dependents := sg.urnLock.LockResources(func() []*resource.State {
+		return sg.deployment.depGraph.DependingOn(root, sg.urns, false)
+	})
+	for i, d := range dependents {
 		replace, keys, err := requiresReplacement(d)
 		if err != nil {
+			sg.urnLock.UnlockDependentReplaces(toReplace)
+			sg.urnLock.UnlockResources(dependents[i:])
 			return nil, err
 		}
 		if replace {
 			toReplace, replaceSet[d.URN] = append(toReplace, dependentReplace{res: d, keys: keys}), true
+		} else {
+			sg.urnLock.UnlockResource(d.URN)
 		}
 	}
 
@@ -1998,6 +2066,9 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {
+	sg.generatorMutex.Lock()
+	defer sg.generatorMutex.Unlock()
+
 	var resources []plugin.AnalyzerStackResource
 	sg.deployment.news.mapRange(func(urn resource.URN, v *resource.State) bool {
 		goal, ok := sg.deployment.goals.get(urn)
@@ -2069,10 +2140,8 @@ func (sg *stepGenerator) AnalyzeResources() error {
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
-func newStepGenerator(
-	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt UrnTargets,
-) *stepGenerator {
-	return &stepGenerator{
+func newStepGenerator(deployment *Deployment, opts Options) *stepGenerator {
+	sg := &stepGenerator{
 		deployment:           deployment,
 		opts:                 opts,
 		urns:                 make(map[resource.URN]bool),
@@ -2090,4 +2159,6 @@ func newStepGenerator(
 		aliases:              make(map[resource.URN]resource.URN),
 		targetsActual:        opts.Targets.Clone(),
 	}
+	sg.urnLock = newResourceLock(&sg.generatorMutex)
+	return sg
 }

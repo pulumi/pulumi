@@ -125,12 +125,14 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 func TestMain(m *testing.M) {
 	grpcDefault := flag.Bool("grpc-plugins", false, "enable or disable gRPC providers by default")
+	parallelStepGen := flag.Bool("parallel-step-gen", false, "enable or disable parallel step generation")
 
 	flag.Parse()
 
 	if *grpcDefault {
 		deploytest.UseGrpcPluginsByDefault = true
 	}
+	deploy.UseParallelStepGen = *parallelStepGen
 
 	os.Exit(m.Run())
 }
