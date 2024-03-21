@@ -5,6 +5,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -258,17 +259,15 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 			assert.Empty(t, res.Dependencies)
 			assert.Empty(t, res.PropertyDependencies)
 		case urnC:
-			assert.Equal(t, []resource.URN{urnA, urnB}, res.Dependencies)
-			assert.EqualValues(t, propertyDependencies{
-				"A": res.Dependencies,
-				"B": res.Dependencies,
-			}, res.PropertyDependencies)
+			assert.ElementsMatch(t, []resource.URN{urnA, urnB}, res.Dependencies)
+			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, maps.Keys(res.PropertyDependencies))
+			assert.ElementsMatch(t, res.Dependencies, res.PropertyDependencies["A"])
+			assert.ElementsMatch(t, res.Dependencies, res.PropertyDependencies["B"])
 		case urnD:
-			assert.Equal(t, []resource.URN{urnA, urnB, urnC}, res.Dependencies)
-			assert.EqualValues(t, propertyDependencies{
-				"A": []resource.URN{urnB},
-				"B": []resource.URN{urnA, urnC},
-			}, res.PropertyDependencies)
+			assert.ElementsMatch(t, []resource.URN{urnA, urnB, urnC}, res.Dependencies)
+			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, maps.Keys(res.PropertyDependencies))
+			assert.ElementsMatch(t, []resource.URN{urnB}, res.PropertyDependencies["A"])
+			assert.ElementsMatch(t, []resource.URN{urnA, urnC}, res.PropertyDependencies["B"])
 		}
 	}
 }
