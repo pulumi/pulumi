@@ -519,13 +519,6 @@ func (proj *Project) Validate() error {
 	return nil
 }
 
-// TrustResourceDependencies returns whether this project's runtime can be trusted to accurately report
-// dependencies. All languages supported by Pulumi today do this correctly. This option remains useful when bringing
-// up new Pulumi languages.
-func (proj *Project) TrustResourceDependencies() bool {
-	return true
-}
-
 // Save writes a project definition to a file.
 func (proj *Project) Save(path string) error {
 	contract.Requiref(path != "", "path", "must not be empty")

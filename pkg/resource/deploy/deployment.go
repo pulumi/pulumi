@@ -58,7 +58,6 @@ type Options struct {
 	Targets                   UrnTargets // If specified, only operate on specified resources.
 	ReplaceTargets            UrnTargets // If specified, mark the specified resources for replacement.
 	TargetDependents          bool       // true if we're allowing things to proceed, even with unspecified targets
-	TrustDependencies         bool       // whether or not to trust the resource dependency graph.
 	UseLegacyDiff             bool       // whether or not to use legacy diffing behavior.
 	DisableResourceReferences bool       // true to disable resource reference support.
 	DisableOutputValues       bool       // true to disable output value support.
