@@ -62,6 +62,7 @@ type Options struct {
 	DisableResourceReferences bool       // true to disable resource reference support.
 	DisableOutputValues       bool       // true to disable output value support.
 	GeneratePlan              bool       // true to enable plan generation.
+	Pwd                       string
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
