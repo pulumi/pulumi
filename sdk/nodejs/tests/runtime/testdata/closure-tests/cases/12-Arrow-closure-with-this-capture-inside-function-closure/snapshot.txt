@@ -1,0 +1,11 @@
+exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function () { () => { console.log(this); }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

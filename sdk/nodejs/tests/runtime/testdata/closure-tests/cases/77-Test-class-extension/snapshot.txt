@@ -1,0 +1,94 @@
+exports.handler = __f0;
+
+var __f2_prototype = {};
+Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f2_prototype, "dMethod", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__f2_prototype, "dVirtual", { configurable: true, writable: true, value: __f4 });
+Object.defineProperty(__f2, "prototype", { value: __f2_prototype });
+var __f1_prototype = Object.create(__f2_prototype);
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "cMethod", { configurable: true, writable: true, value: __f5 });
+Object.defineProperty(__f1_prototype, "dVirtual", { configurable: true, writable: true, value: __f6 });
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+Object.setPrototypeOf(__f1, __f2);
+
+function __f2(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*constructor*/(n) {
+        this.n = n;
+        console.log("DConstructor");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*dMethod*/(x) { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*dVirtual*/() { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1(__0) {
+  return (function() {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n + 1);
+    console.log("CConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f5() {
+  return (function() {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
+
+return function /*cMethod*/() {
+    return "" +
+        __super.prototype.dMethod + __super.prototype["dMethod"] +
+        __super.prototype.dMethod.call(this, 1) + __super.prototype["dMethod"].call(this, 2) +
+        __super.prototype.dMethod.call(this, __super.prototype.dMethod.call(this, 3));
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6() {
+  return (function() {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
+
+return function /*dVirtual*/() { return 3; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

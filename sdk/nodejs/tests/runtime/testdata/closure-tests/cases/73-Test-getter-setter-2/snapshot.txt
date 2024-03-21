@@ -1,0 +1,47 @@
+exports.handler = __f0;
+
+Object.defineProperty(__f1, "foo", { configurable: true, get: __f2, set: __f3 });
+
+function __f1() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*foo*/() {
+        throw new Error("This getter function should not be evaluated while closure serialization.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*foo*/(v) {
+        throw new Error("This setter function should not be evaluated while closure serialization.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

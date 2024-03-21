@@ -1,0 +1,15 @@
+exports.handler = __f;
+
+var __f_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
+Object.defineProperty(__f, "prototype", { writable: true, value: __f_prototype });
+Object.setPrototypeOf(__f, Object.getPrototypeOf(function*(){}));
+
+function __f() {
+  return (function() {
+    with({ f: __f, this: undefined, arguments: undefined }) {
+
+return function* /*f*/() { yield 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

@@ -1,0 +1,24 @@
+exports.handler = __f0;
+
+var __x_proto = {x: __f1};
+var __x = Object.create(__x_proto);
+
+function __f1() {
+  return (function() {
+    with({ v: __f0, this: undefined, arguments: undefined }) {
+
+return function /*x*/() { return v; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ x: __x, this: undefined, arguments: undefined }) {
+
+return () => { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
