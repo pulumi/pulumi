@@ -1,0 +1,2 @@
+../../artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+../../artifacts/pulumi_simple-2.0.0-py3-none-any.whl
