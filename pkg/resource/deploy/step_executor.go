@@ -367,7 +367,7 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
 	}
 	if se.opts.ContinueOnError {
-		step.Done()
+		step.Fail()
 		// Record the failure, but allow the deployment to continue.
 		se.erroredStepLock.Lock()
 		defer se.erroredStepLock.Unlock()
