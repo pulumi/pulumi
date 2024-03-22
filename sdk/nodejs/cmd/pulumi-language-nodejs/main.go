@@ -1356,22 +1356,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 	}
 
-	// Mutate the package.json to replace version with the version we've been given.
-	packageJSONPath := filepath.Join(req.PackageDirectory, "bin", "package.json")
-	packageJSON, err = readPackageJSON(packageJSONPath)
-	if err != nil {
-		return nil, err
-	}
-	packageJSON["version"] = req.Version
-	packageJSONData, err := json.Marshal(packageJSON)
-	if err != nil {
-		return nil, fmt.Errorf("marshal package.json: %w", err)
-	}
-	err = os.WriteFile(packageJSONPath, packageJSONData, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("write package.json: %w", err)
-	}
-
 	err = writeString("$ npm pack\n")
 	if err != nil {
 		return nil, fmt.Errorf("write to output: %w", err)

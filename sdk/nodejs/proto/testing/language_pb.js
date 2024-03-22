@@ -432,7 +432,7 @@ proto.pulumirpc.testing.GetLanguageTestsResponse.prototype.clearTestsList = func
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.testing.PrepareLanguageTestsRequest.repeatedFields_ = [6];
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.repeatedFields_ = [7];
 
 
 
@@ -470,6 +470,7 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.toObject = function(includeI
     snapshotDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
     temporaryDirectory: jspb.Message.getFieldWithDefault(msg, 4, ""),
     coreSdkDirectory: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    coreSdkVersion: jspb.Message.getFieldWithDefault(msg, 6, ""),
     snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
     proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject, includeInstance)
   };
@@ -529,6 +530,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
       msg.setCoreSdkDirectory(value);
       break;
     case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCoreSdkVersion(value);
+      break;
+    case 7:
       var value = new proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement;
       reader.readMessage(value,proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.deserializeBinaryFromReader);
       msg.addSnapshotEdits(value);
@@ -597,10 +602,17 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
       f
     );
   }
+  f = message.getCoreSdkVersion();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
+      f
+    );
+  }
   f = message.getSnapshotEditsList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
-      6,
+      7,
       f,
       proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.serializeBinaryToWriter
     );
@@ -889,12 +901,30 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setCoreSdkDirector
 
 
 /**
- * repeated Replacement snapshot_edits = 6;
+ * optional string core_sdk_version = 6;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getCoreSdkVersion = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setCoreSdkVersion = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * repeated Replacement snapshot_edits = 7;
  * @return {!Array<!proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement>}
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getSnapshotEditsList = function() {
   return /** @type{!Array<!proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement, 6));
+    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement, 7));
 };
 
 
@@ -903,7 +933,7 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getSnapshotEditsLi
  * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
 */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setSnapshotEditsList = function(value) {
-  return jspb.Message.setRepeatedWrapperField(this, 6, value);
+  return jspb.Message.setRepeatedWrapperField(this, 7, value);
 };
 
 
@@ -913,7 +943,7 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setSnapshotEditsLi
  * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement}
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.addSnapshotEdits = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 6, opt_value, proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 7, opt_value, proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement, opt_index);
 };
 
 

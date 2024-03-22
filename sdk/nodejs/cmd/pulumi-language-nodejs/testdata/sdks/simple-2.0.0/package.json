@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/simple",
-    "version": "${VERSION}",
+    "version": "2.0.0",
     "scripts": {
         "build": "tsc"
     },
@@ -13,6 +13,7 @@
     },
     "pulumi": {
         "resource": true,
-        "name": "simple"
+        "name": "simple",
+        "version": "2.0.0"
     }
 }

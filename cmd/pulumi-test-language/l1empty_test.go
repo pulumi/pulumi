@@ -54,10 +54,6 @@ func (h *L1EmptyLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.1" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
 	if h.failPack {
 		return nil, fmt.Errorf("boom")
 	}
@@ -196,6 +192,7 @@ func TestL1Empty(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -321,6 +318,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots_bad",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -365,6 +363,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)

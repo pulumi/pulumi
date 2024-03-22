@@ -2352,7 +2352,11 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
+	packageJSON, err := genNPMPackageMetadata(pkg, info)
+	if err != nil {
+		return err
+	}
+	fs.Add("package.json", []byte(packageJSON))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
 	return nil
 }
@@ -2373,7 +2377,7 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		packageName = "@pulumi/" + pkg.Name
@@ -2392,6 +2396,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	if pkg.Version != nil && info.RespectSchemaVersion {
 		version = pkg.Version.String()
 		pluginVersion = version
+	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		pluginVersion = pkg.Version.String()
+		version = pluginVersion
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2455,7 +2466,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	// Now write out the serialized form.
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
-	return string(npmjson) + "\n"
+	return string(npmjson) + "\n", nil
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {

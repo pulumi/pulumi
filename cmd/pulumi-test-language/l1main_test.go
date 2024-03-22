@@ -51,10 +51,6 @@ func (h *L1MainLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReques
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.1" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
 	return &pulumirpc.PackResponse{
 		ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 	}, nil
@@ -211,6 +207,7 @@ func TestL1Main(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)

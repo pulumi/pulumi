@@ -525,9 +525,9 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 }
 
 func (h *langhost) Pack(
-	packageDirectory string, version semver.Version, destinationDirectory string,
+	packageDirectory string, destinationDirectory string,
 ) (string, error) {
-	label := fmt.Sprintf("langhost[%v].Pack(%s, %s, %s)", h.runtime, packageDirectory, version, destinationDirectory)
+	label := fmt.Sprintf("langhost[%v].Pack(%s, %s)", h.runtime, packageDirectory, destinationDirectory)
 	logging.V(7).Infof("%s executing", label)
 
 	// Always send absolute paths to the plugin, as it may be running in a different working directory.
@@ -542,7 +542,6 @@ func (h *langhost) Pack(
 
 	req, err := h.client.Pack(h.ctx.Request(), &pulumirpc.PackRequest{
 		PackageDirectory:     packageDirectory,
-		Version:              version.String(),
 		DestinationDirectory: destinationDirectory,
 	})
 	if err != nil {

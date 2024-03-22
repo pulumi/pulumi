@@ -220,10 +220,8 @@ message GeneratePackageResponse {
 message PackRequest {
     // the directory of a package to pack.
     string package_directory = 1;
-    // the version to tag the artifact with.
-    string version = 2;
     // the directory to write the packed artifact to.
-    string destination_directory = 3;
+    string destination_directory = 2;
 }
 
 message PackResponse {

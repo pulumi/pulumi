@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "${VERSION}",
+    "version": "3.111.2",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {

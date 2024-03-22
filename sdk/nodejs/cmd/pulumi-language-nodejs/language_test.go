@@ -23,6 +23,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
@@ -170,6 +171,14 @@ func TestLanguage(t *testing.T) {
 		TemporaryDirectory:   rootDir,
 		SnapshotDirectory:    "./testdata",
 		CoreSdkDirectory:     "../..",
+		CoreSdkVersion:       sdk.Version.String(),
+		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+			{
+				Path:        "package.json",
+				Pattern:     fmt.Sprintf("pulumi-pulumi-%s.tgz", sdk.Version.String()),
+				Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+			},
+		},
 	})
 	require.NoError(t, err)
 

@@ -53,16 +53,10 @@ func (h *L2ResourceSimpleLanguageHost) Pack(
 	}
 
 	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
-		if req.Version != "2.0.0" {
-			return nil, fmt.Errorf("unexpected version %s", req.Version)
-		}
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-2.0.0.sdk"),
 		}, nil
 	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
-		if req.Version != "1.0.1" {
-			return nil, fmt.Errorf("unexpected version %s", req.Version)
-		}
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 		}, nil
@@ -256,6 +250,7 @@ func TestL2ResourceSimple(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -295,6 +290,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots_bad",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -339,6 +335,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -383,6 +380,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
