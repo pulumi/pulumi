@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tokens",
+    srcs = [
+        "names.go",
+        "project.go",
+        "stack_name.go",
+        "stack_type.go",
+        "tokens.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/tokens",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/env",
+        "//sdk/go/common/util/contract",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":tokens",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "tokens_test",
+    srcs = [
+        "names_test.go",
+        "project_test.go",
+        "stack_name_test.go",
+        "tokens_test.go",
+    ],
+    embed = [":tokens"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

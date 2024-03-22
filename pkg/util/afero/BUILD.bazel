@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "afero",
+    srcs = ["afero.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/afero",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_spf13_afero//:afero"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":afero",
+    visibility = ["//visibility:public"],
+)

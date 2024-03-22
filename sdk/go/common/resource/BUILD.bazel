@@ -1,0 +1,69 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "resource",
+    srcs = [
+        "alias.go",
+        "asset.go",
+        "custom_timeouts.go",
+        "errors.go",
+        "properties.go",
+        "properties_diff.go",
+        "properties_path.go",
+        "property_compatibility.go",
+        "resource_goal.go",
+        "resource_id.go",
+        "resource_operation.go",
+        "resource_state.go",
+        "stack.go",
+        "status.go",
+        "urn.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource/archive",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/sig",
+        "//sdk/go/common/resource/urn",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/mapper",
+        "//sdk/go/property",
+        "@com_lukechampine_frand//:frand",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":resource",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "resource_test",
+    srcs = [
+        "alias_test.go",
+        "asset_test.go",
+        "mapper_test.go",
+        "properties_diff_test.go",
+        "properties_path_test.go",
+        "properties_test.go",
+        "property_compatibility_test.go",
+        "resource_id_test.go",
+    ],
+    embed = [":resource"],
+    deps = [
+        "//sdk/go/common/resource/archive",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/deepcopy",
+        "//sdk/go/common/util/mapper",
+        "//sdk/go/property/testing",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)

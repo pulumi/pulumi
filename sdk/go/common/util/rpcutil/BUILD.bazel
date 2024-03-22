@@ -1,0 +1,92 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "rpcutil",
+    srcs = [
+        "health.go",
+        "interceptor.go",
+        "pty.go",
+        "pty_windows.go",
+        "serve.go",
+        "writer.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "@com_github_grpc_ecosystem_grpc_opentracing//go/otgrpc",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_github_opentracing_opentracing_go//:opentracing-go",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//health",
+        "@org_golang_google_grpc//health/grpc_health_v1",
+        "@org_golang_google_grpc//reflection",
+        "@org_golang_google_grpc//status",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:aix": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:android": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:illumos": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:js": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:plan9": [
+            "@com_github_pkg_term//termios",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "@com_github_pkg_term//termios",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":rpcutil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "rpcutil_test",
+    srcs = ["writer_test.go"],
+    embed = [":rpcutil"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "@com_github_stretchr_testify//assert",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_x_term//:term",
+    ],
+)

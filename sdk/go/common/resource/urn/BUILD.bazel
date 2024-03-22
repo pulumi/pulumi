@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "urn",
+    srcs = ["urn.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":urn",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "urn_test",
+    srcs = ["urn_test.go"],
+    deps = [
+        ":urn",
+        "//sdk/go/common/tokens",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,66 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "stack",
+    srcs = [
+        "checkpoint.go",
+        "deployment.go",
+        "doc.go",
+        "plan.go",
+        "secrets.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/stack",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/display",
+        "//pkg/resource/deploy",
+        "//pkg/secrets",
+        "//pkg/secrets/cloud",
+        "//pkg/secrets/passphrase",
+        "//pkg/secrets/service",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/apitype/migrate",
+        "//sdk/go/common/encoding",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/archive",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@com_github_santhosh_tekuri_jsonschema_v5//:jsonschema",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":stack",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "stack_test",
+    srcs = [
+        "checkpoint_test.go",
+        "deployment_test.go",
+        "secrets_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":stack"],
+    deps = [
+        "//pkg/resource/deploy",
+        "//pkg/secrets",
+        "//pkg/secrets/b64",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/encoding",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/resource/testing",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)

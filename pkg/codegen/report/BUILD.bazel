@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "report",
+    srcs = ["report.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/report",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/version",
+        "//sdk/go/common/util/env",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":report",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "report_test",
+    srcs = ["report_test.go"],
+    deps = [
+        ":report",
+        "//pkg/codegen/dotnet",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/nodejs",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/testing/utils",
+        "//pkg/version",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

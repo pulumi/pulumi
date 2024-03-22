@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "tests_test",
+    srcs = [
+        "about_test.go",
+        "config_test.go",
+        "history_test.go",
+        "login_test.go",
+        "main_test.go",
+        "policy_new_test.go",
+        "preview_only_test.go",
+        "remote_test.go",
+        "roundtrip_test.go",
+        "smoke_test.go",
+        "stack_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    deps = [
+        "//pkg/codegen/schema",
+        "//pkg/resource/stack",
+        "//pkg/testing/integration",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/workspace",
+        "@com_github_hexops_autogold//:autogold",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@in_gopkg_yaml_v2//:yaml_v2",
+    ],
+)

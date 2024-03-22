@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "archive",
+    srcs = ["archive.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/sig",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/httputil",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":archive",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "archive_test",
+    srcs = ["archive_test.go"],
+    embed = [":archive"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

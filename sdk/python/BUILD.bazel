@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "python",
+    srcs = [
+        "python.go",
+        "shim_unix.go",
+        "shim_windows.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/python",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/contract"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":python",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "python_test",
+    srcs = ["python_test.go"],
+    embed = [":python"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

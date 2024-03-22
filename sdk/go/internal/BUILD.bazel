@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "internal",
+    srcs = [
+        "resource.go",
+        "rpc.go",
+        "state.go",
+        "types.go",
+        "workgroup.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/internal",
+    visibility = ["//sdk/go:__subpackages__"],
+    deps = [
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":internal",
+    visibility = ["//sdk/go:__subpackages__"],
+)
+
+go_test(
+    name = "internal_test",
+    srcs = [
+        "rpc_test.go",
+        "state_test.go",
+        "types_test.go",
+        "workgroup_test.go",
+    ],
+    embed = [":internal"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

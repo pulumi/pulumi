@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "filestate",
+    srcs = ["backend.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/filestate",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/backend/diy"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":filestate",
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cancel",
+    srcs = ["context.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/cancel",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/contract"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":cancel",
+    visibility = ["//visibility:public"],
+)

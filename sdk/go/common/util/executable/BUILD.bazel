@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "executable",
+    srcs = ["executable.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/executable",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/logging"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":executable",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "executable_test",
+    srcs = ["executable_test.go"],
+    embed = [":executable"],
+)

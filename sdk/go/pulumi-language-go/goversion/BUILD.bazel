@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "goversion",
+    srcs = ["version.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/goversion",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_hashicorp_go_version//:go-version"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":goversion",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "goversion_test",
+    srcs = ["version_test.go"],
+    embed = [":goversion"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

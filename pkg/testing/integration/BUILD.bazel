@@ -1,0 +1,59 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "integration",
+    srcs = [
+        "command.go",
+        "doc.go",
+        "program.go",
+        "pulumi.go",
+        "s3reporter.go",
+        "util.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/testing/integration",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/engine",
+        "//pkg/operations",
+        "//pkg/resource/stack",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/tools",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/retry",
+        "//sdk/go/common/workspace",
+        "//sdk/nodejs/npm",
+        "@com_github_aws_aws_sdk_go//aws",
+        "@com_github_aws_aws_sdk_go//aws/session",
+        "@com_github_aws_aws_sdk_go//service/s3",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_tweekmonster_luser//:luser",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+        "@org_golang_x_mod//modfile",
+        "@org_golang_x_mod//module",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":integration",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "integration_test",
+    srcs = ["program_test.go"],
+    embed = [":integration"],
+    deps = [
+        "//sdk/go/common/testing/iotest",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

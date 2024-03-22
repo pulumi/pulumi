@@ -1,0 +1,58 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "client",
+    srcs = [
+        "api.go",
+        "api_endpoints.go",
+        "client.go",
+        "doc.go",
+        "marshal_post_1.20.go",
+        "marshal_pre_1.20.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/engine",
+        "//pkg/util/tracing",
+        "//pkg/util/validation",
+        "//pkg/version",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/httputil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_google_go_querystring//query",
+        "@com_github_gorilla_mux//:mux",
+        "@com_github_json_iterator_go//:go",
+        "@com_github_opentracing_opentracing_go//:opentracing-go",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":client",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "client_test",
+    srcs = [
+        "api_test.go",
+        "client_test.go",
+    ],
+    embed = [":client"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

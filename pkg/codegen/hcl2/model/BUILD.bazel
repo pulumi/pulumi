@@ -1,0 +1,71 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "model",
+    srcs = [
+        "attribute.go",
+        "binder_expression.go",
+        "block.go",
+        "body.go",
+        "diagnostics.go",
+        "expression.go",
+        "functions.go",
+        "printer.go",
+        "scope.go",
+        "traversable.go",
+        "type.go",
+        "type_collection.go",
+        "type_const.go",
+        "type_enum.go",
+        "type_eventuals.go",
+        "type_list.go",
+        "type_map.go",
+        "type_none.go",
+        "type_object.go",
+        "type_opaque.go",
+        "type_output.go",
+        "type_promise.go",
+        "type_scope.go",
+        "type_set.go",
+        "type_tuple.go",
+        "type_union.go",
+        "utilities.go",
+        "visitor.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen/hcl2/model/pretty",
+        "//pkg/codegen/hcl2/syntax",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_zclconf_go_cty//cty",
+        "@com_github_zclconf_go_cty//cty/convert",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":model",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "model_test",
+    srcs = [
+        "binder_expression_test.go",
+        "print_test.go",
+        "type_opaque_test.go",
+        "type_test.go",
+        "type_union_test.go",
+    ],
+    embed = [":model"],
+    deps = [
+        "//pkg/codegen/hcl2/syntax",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)

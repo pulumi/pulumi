@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "gen_program_test_lib",
+    srcs = ["generate.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/gen_program_test",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "gen_program_test",
+    embed = [":gen_program_test_lib"],
+    visibility = ["//visibility:public"],
+)

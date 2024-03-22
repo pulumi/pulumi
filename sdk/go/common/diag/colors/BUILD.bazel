@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "colors",
+    srcs = [
+        "colors.go",
+        "diag.go",
+        "windows.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "@com_github_rivo_uniseg//:uniseg",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@org_golang_x_sys//windows/registry",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":colors",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "colors_test",
+    srcs = ["colors_test.go"],
+    embed = [":colors"],
+    deps = [
+        "@com_github_rivo_uniseg//:uniseg",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

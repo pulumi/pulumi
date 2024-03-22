@@ -1,0 +1,41 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "syntax",
+    srcs = [
+        "comments.go",
+        "parser.go",
+        "tokens.go",
+        "utilities.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":syntax",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "syntax_test",
+    srcs = ["comments_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":syntax"],
+    deps = [
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_zclconf_go_cty//cty",
+        "@com_github_zclconf_go_cty//cty/convert",
+    ],
+)

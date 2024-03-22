@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tstypes",
+    srcs = ["tstypes.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/tstypes",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":tstypes",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "tstypes_test",
+    srcs = ["tstypes_test.go"],
+    embed = [":tstypes"],
+    deps = [
+        "@com_github_davecgh_go_spew//spew",
+        "@com_github_stretchr_testify//assert",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)

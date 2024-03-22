@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "migrate",
+    srcs = [
+        "checkpoint.go",
+        "deployment.go",
+        "doc.go",
+        "operation.go",
+        "resource.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":migrate",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "migrate_test",
+    srcs = [
+        "checkpoint_test.go",
+        "deployment_test.go",
+        "resource_test.go",
+    ],
+    embed = [":migrate"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/tokens",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

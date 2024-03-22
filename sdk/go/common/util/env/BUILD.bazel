@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "env",
+    srcs = ["env.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/env",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":env",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "env_test",
+    srcs = ["env_test.go"],
+    deps = [
+        ":env",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "utils",
+    srcs = ["host.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/resource/deploy/deploytest",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":utils",
+    visibility = ["//visibility:public"],
+)

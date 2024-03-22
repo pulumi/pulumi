@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "provider",
+    srcs = [
+        "component_provider.go",
+        "doc.go",
+        "host.go",
+        "main.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/provider",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/go/pulumi/provider",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//grpclog",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_x_net//context",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":provider",
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "display",
+    srcs = ["json.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/display",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":display",
+    visibility = ["//visibility:public"],
+)

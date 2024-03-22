@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "diag",
+    srcs = [
+        "diag.go",
+        "errors.go",
+        "sink.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/diag",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":diag",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "diag_test",
+    srcs = ["sink_test.go"],
+    embed = [":diag"],
+    deps = [
+        "//sdk/go/common/diag/colors",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

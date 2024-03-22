@@ -1,0 +1,70 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "deploytest",
+    srcs = [
+        "analyzer.go",
+        "backendclient.go",
+        "callbacks.go",
+        "languageruntime.go",
+        "pluginhost.go",
+        "provider.go",
+        "resourcemonitor.go",
+        "sink.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_gofrs_uuid//:uuid",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":deploytest",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "deploytest_test",
+    srcs = [
+        "analyzer_test.go",
+        "languageruntime_test.go",
+        "pluginhost_test.go",
+        "provider_test.go",
+        "resourcemonitor_test.go",
+    ],
+    embed = [":deploytest"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

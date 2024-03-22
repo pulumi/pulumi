@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "workspace",
+    srcs = [
+        "plugin.go",
+        "templates.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/workspace",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/util",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":workspace",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "workspace_test",
+    srcs = [
+        "plugin_test.go",
+        "templates_test.go",
+    ],
+    embed = [":workspace"],
+    deps = [
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

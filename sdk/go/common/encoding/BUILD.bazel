@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "encoding",
+    srcs = [
+        "init.go",
+        "marshal.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/encoding",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/yamlutil",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":encoding",
+    visibility = ["//visibility:public"],
+)

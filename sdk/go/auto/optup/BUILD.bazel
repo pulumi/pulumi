@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "optup",
+    srcs = ["optup.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/optup",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/auto/debug",
+        "//sdk/go/auto/events",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":optup",
+    visibility = ["//visibility:public"],
+)

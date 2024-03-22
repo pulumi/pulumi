@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "npm",
+    srcs = [
+        "manager.go",
+        "npm.go",
+        "pnpm.go",
+        "workspaces.go",
+        "yarn.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":npm",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "npm_test",
+    srcs = [
+        "manager_test.go",
+        "npm_test.go",
+        "workspaces_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":npm"],
+    deps = [
+        "//sdk/go/common/testing",
+        "//sdk/go/common/testing/iotest",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

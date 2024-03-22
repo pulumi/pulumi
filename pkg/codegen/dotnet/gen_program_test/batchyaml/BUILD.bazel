@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "batchyaml_test",
+    srcs = ["gen_program_test.go"],
+    deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/dotnet",
+        "//pkg/codegen/testing/test",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

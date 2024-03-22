@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "ciutil",
+    srcs = [
+        "az_pipelines.go",
+        "bitbucket_pipelines.go",
+        "buildkite.go",
+        "circleci.go",
+        "codefresh.go",
+        "detect.go",
+        "generic.go",
+        "github_actions.go",
+        "gitlab.go",
+        "jenkins.go",
+        "systems.go",
+        "travis.go",
+        "vars.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":ciutil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "ciutil_test",
+    srcs = ["vars_test.go"],
+    embed = [":ciutil"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)
