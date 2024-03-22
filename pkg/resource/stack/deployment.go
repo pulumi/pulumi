@@ -471,7 +471,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
 			var ciphertext string
 			if cachingCrypter, ok := enc.(*cachingCrypter); ok {
-				ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
+				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
 			} else {
 				ciphertext, err = enc.EncryptValue(ctx, plaintext)
 			}
