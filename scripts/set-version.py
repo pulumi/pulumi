@@ -26,6 +26,11 @@ def main():
     with open("sdk/nodejs/package.json", "w") as f:
         f.write("".join(node))
 
+    node = open("sdk/nodejs/version.ts").readlines()
+    replace_line(node, "export const version = ", f'export const version = "{version}";\n')
+    with open("sdk/nodejs/version.ts", "w") as f:
+        f.write("".join(node))
+
     python = open("sdk/python/lib/setup.py").readlines()
     replace_line(python, "VERSION = ", f'VERSION = "{version}"\n')
     with open("sdk/python/lib/setup.py", "w") as f:

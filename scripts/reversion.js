@@ -13,4 +13,8 @@ var version = process.argv[3];
 if (version && version[0] === "v") {
     version = version.substring(1);
 }
-fs.writeFileSync(file, data.replace(/\${VERSION}/g, version));
+
+var versionPath = __dirname + "/../sdk/.version";
+var versionToReplace = fs.readFileSync(versionPath).toString("utf8").trim();
+var regexp = new RegExp(versionToReplace, "g");
+fs.writeFileSync(file, data.replace(regexp, version));
