@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -86,13 +87,16 @@ func runEngine(t *testing.T) string {
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
-	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../cmd/pulumi-test-language", "-o", binary)
-	output, err := cmd.CombinedOutput()
-	t.Logf("build output: %s", output)
-	require.NoError(t, err)
+	binary, ok := bazel.FindBinary("cmd/pulumi-test-language", "pulumi-test-language")
+	if !ok {
+		binary := t.TempDir() + "/pulumi-test-language"
+		cmd := exec.Command("go", "build", "-C", "../../../../cmd/pulumi-test-language", "-o", binary)
+		output, err := cmd.CombinedOutput()
+		t.Logf("build output: %s", output)
+		require.NoError(t, err)
+	}
 
-	cmd = exec.Command(binary)
+	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()

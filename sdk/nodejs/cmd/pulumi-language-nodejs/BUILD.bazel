@@ -57,7 +57,7 @@ go_test(
         "language_test.go",
         "main_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + ["//cmd/pulumi-test-language"],  # TODO: depend on //sdk/nodejs, need to include node stuff first
     embed = [":pulumi-language-nodejs_lib"],
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",
@@ -68,6 +68,7 @@ go_test(
         "@com_github_blang_semver//:semver",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_protobuf//types/known/emptypb",
