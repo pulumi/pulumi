@@ -59,7 +59,6 @@
         "eslint-plugin-header": "^3.1.1",
         "eslint-plugin-import": "^2.23.4",
         "mocha": "^9.0.0",
-        "mockpackage": "file:tests/mockpackage",
         "nyc": "^15.1.0",
         "rome": "^12.1.0",
         "sinon": "^14.0.0"
