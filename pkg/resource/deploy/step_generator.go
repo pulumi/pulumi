@@ -1484,7 +1484,7 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 			// it can't be deleted this round.
 		}
 
-		// For all reosurces that are to be deleted in this round, remove them from the graph.
+		// For all resources that are to be deleted in this round, remove them from the graph.
 		for _, step := range steps {
 			condemned.Remove(step.Res())
 		}
