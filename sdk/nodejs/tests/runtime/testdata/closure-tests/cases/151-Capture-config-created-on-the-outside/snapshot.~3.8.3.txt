@@ -42,7 +42,7 @@ function __f2(__0) {
     with({ runtimeConfig_1: __runtimeConfig_1, this: undefined, arguments: undefined }) {
 
 return function /*get*/(key) {
-        const v = (0, runtimeConfig_1.getConfig)(this.fullKey(key));
+        const v = runtimeConfig_1.getConfig(this.fullKey(key));
         if (v === undefined) {
             return undefined;
         }

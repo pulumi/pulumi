@@ -1,14 +1,13 @@
 exports.handler = __f0;
 
-var __testConfig_proto = {};
-Object.defineProperty(__f1, "prototype", { value: __testConfig_proto });
-Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-var __config = {["test:TestingKey1"]: "TestingValue1"};
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __config = {["test:TestingKey2"]: "TestingValue2"};
 var __runtimeConfig_1 = {getConfig: __getConfig};
-Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f3 });
-var __testConfig = Object.create(__testConfig_proto);
-__testConfig.name = "test";
+Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+var __deploymentOnlyModule = {Config: __f1};
 
 function __f1(__0) {
   return (function() {
@@ -42,7 +41,7 @@ function __f2(__0) {
     with({ runtimeConfig_1: __runtimeConfig_1, this: undefined, arguments: undefined }) {
 
 return function /*get*/(key) {
-        const v = (0, runtimeConfig_1.getConfig)(this.fullKey(key));
+        const v = runtimeConfig_1.getConfig(this.fullKey(key));
         if (v === undefined) {
             return undefined;
         }
@@ -67,9 +66,9 @@ return function /*fullKey*/(key) {
 
 function __f0() {
   return (function() {
-    with({ testConfig: __testConfig, this: undefined, arguments: undefined }) {
+    with({ deploymentOnlyModule: __deploymentOnlyModule, this: undefined, arguments: undefined }) {
 
-return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
+return function () { const v = new deploymentOnlyModule.Config("test").get("TestingKey2"); console.log(v); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
