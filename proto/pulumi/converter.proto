@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-import "pulumi/codegen/hcl.proto";
+import "proto/pulumi/codegen/hcl.proto";
 
 package pulumirpc;
 

@@ -30,7 +30,7 @@ import (
 )
 
 type providerServer struct {
-	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
+	pulumirpc.UnimplementedResourceProviderServer // opt out of forward compat
 
 	provider      Provider
 	keepSecrets   bool

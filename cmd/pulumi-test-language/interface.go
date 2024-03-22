@@ -94,7 +94,7 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 
 // languageTestServer is the server side of the language testing RPC machinery.
 type languageTestServer struct {
-	testingrpc.UnsafeLanguageTestServer
+	testingrpc.UnimplementedLanguageTestServer
 
 	ctx    context.Context
 	cancel chan bool

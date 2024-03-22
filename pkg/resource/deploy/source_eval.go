@@ -550,7 +550,7 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	pulumirpc.UnsafeResourceMonitorServer
+	pulumirpc.UnimplementedResourceMonitorServer
 
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.

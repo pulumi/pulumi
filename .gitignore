@@ -21,6 +21,9 @@ venv/
 /go.work
 /go.work.sum
 
+# Ignore bazel files
+/bazel-*
+
 **/.idea/
 *.iml
 .yarn

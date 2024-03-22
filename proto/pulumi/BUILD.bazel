@@ -1,6 +1,4 @@
-# gazelle:proto package
-# gazelle:proto_group go_package
-
+# gazelle:prefix github.com/pulumi/pulumi/sdk/v3/proto/go
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -21,8 +19,7 @@ proto_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//pulumi:pulumi_proto",
-        "//pulumi/codegen:codegen_proto",
+        "//proto/pulumi/codegen:codegen_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:struct_proto",
     ],
@@ -34,12 +31,5 @@ go_proto_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/proto/go",
     proto = ":pulumirpc_proto",
     visibility = ["//visibility:public"],
-    deps = [
-        "//pulumi:alias_proto",
-        "//pulumi:callback_proto",
-        "//pulumi:plugin_proto",
-        "//pulumi:provider_proto",
-        "//pulumi:source_proto",
-        "//pulumi/codegen:hcl_proto",
-    ],
+    deps = ["//proto/pulumi/codegen:codegen_go_proto"],
 )

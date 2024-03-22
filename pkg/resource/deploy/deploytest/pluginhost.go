@@ -195,7 +195,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 }
 
 type hostEngine struct {
-	pulumirpc.UnsafeEngineServer // opt out of forward compat
+	pulumirpc.UnimplementedEngineServer // opt out of forward compat
 
 	sink       diag.Sink
 	statusSink diag.Sink

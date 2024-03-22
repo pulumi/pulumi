@@ -48,7 +48,7 @@ func NewCallbacksServer() (*CallbackServer, error) {
 }
 
 type CallbackServer struct {
-	pulumirpc.UnsafeCallbacksServer
+	pulumirpc.UnimplementedCallbacksServer
 
 	stop      chan bool
 	handle    rpcutil.ServeHandle

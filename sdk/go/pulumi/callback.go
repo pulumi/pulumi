@@ -29,7 +29,7 @@ import (
 type callbackFunction = func(ctx context.Context, req []byte) (proto.Message, error)
 
 type callbackServer struct {
-	pulumirpc.UnsafeCallbacksServer
+	pulumirpc.UnimplementedCallbacksServer
 
 	stop      chan bool
 	handle    rpcutil.ServeHandle

@@ -31,7 +31,7 @@ import (
 
 // hostServer is the server side of the host RPC machinery.
 type hostServer struct {
-	pulumirpc.UnsafeEngineServer // opt out of forward compat
+	pulumirpc.UnimplementedEngineServer // opt out of forward compat
 
 	host   Host         // the host for this RPC server.
 	ctx    *Context     // the associated plugin context.

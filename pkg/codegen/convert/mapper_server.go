@@ -24,7 +24,7 @@ import (
 )
 
 type mapperServer struct {
-	codegenrpc.UnsafeMapperServer // opt out of forward compat
+	codegenrpc.UnimplementedMapperServer // opt out of forward compat
 
 	mapper Mapper
 }

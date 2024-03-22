@@ -23,7 +23,7 @@ import (
 )
 
 type converterServer struct {
-	pulumirpc.UnsafeConverterServer // opt out of forward compat
+	pulumirpc.UnimplementedConverterServer // opt out of forward compat
 
 	converter Converter
 }

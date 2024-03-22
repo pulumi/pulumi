@@ -27,7 +27,7 @@ import (
 )
 
 type loaderServer struct {
-	codegenrpc.UnsafeLoaderServer // opt out of forward compat
+	codegenrpc.UnimplementedLoaderServer // opt out of forward compat
 
 	loader ReferenceLoader
 }
