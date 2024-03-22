@@ -1,0 +1,1 @@
+build --spawn_strategy=local

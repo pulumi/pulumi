@@ -180,7 +180,7 @@ func TestRemoveWithForce(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -260,7 +260,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -373,7 +373,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1330,7 +1330,7 @@ func TestConfigFlagLike(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1365,7 +1365,7 @@ func TestConfigWithOptions(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1544,7 +1544,7 @@ func TestConfigAllWithOptions(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1651,7 +1651,7 @@ func TestNestedConfig(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, "nested_config", "dev")
 
 	// initialize
-	pDir := filepath.Join(".", "test", "nested_config")
+	pDir := filepath.Join(".", "testdata", "nested_config")
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1715,7 +1715,7 @@ func TestEnvFunctions(t *testing.T) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
-	pDir := filepath.Join(".", "test", pName)
+	pDir := filepath.Join(".", "testdata", pName)
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err, "failed to initialize stack, err: %v", err)
 
@@ -1779,7 +1779,7 @@ func TestTagFunctions(t *testing.T) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1839,7 +1839,7 @@ func TestStructuredOutput(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -2171,7 +2171,7 @@ func TestProjectSettingsRespected(t *testing.T) {
 	badProjectName := "project_was_overwritten"
 	stack, err := NewStackInlineSource(ctx, stackName, badProjectName, func(ctx *pulumi.Context) error {
 		return nil
-	}, WorkDir(filepath.Join(".", "test", pName)))
+	}, WorkDir(filepath.Join(".", "testdata", pName)))
 
 	defer func() {
 		// -- pulumi stack rm --
@@ -2692,7 +2692,7 @@ func TestWhoAmIDetailed(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)

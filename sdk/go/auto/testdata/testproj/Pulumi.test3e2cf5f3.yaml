@@ -1,0 +1,4 @@
+config:
+  testproj:bar: abc
+  testproj:buzz:
+    secure: AAABAMKSU9Z3eRuLMFuFUIR8Qo2nYPG/ngwS8yyIuxvAwQidN9Y=

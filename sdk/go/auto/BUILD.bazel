@@ -73,6 +73,7 @@ go_test(
         "remote_workspace_test.go",
         "stack_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":auto"],
     deps = [
         "//sdk",
