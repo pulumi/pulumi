@@ -46,7 +46,7 @@ func TestPclConvert(t *testing.T) {
 	tmp := t.TempDir()
 
 	result := runConvert(
-		env.Global(), []string{}, "pcl_convert_testdata",
+		env.Global(), []string{}, filepath.Join("testdata", "pcl_convert"),
 		[]string{}, "pcl", "pcl", tmp, true, true)
 	assert.Nil(t, result)
 
