@@ -201,28 +201,6 @@ func decryptAES256GCM(ciphertext []byte, key []byte, nonce []byte) (string, erro
 	return string(msg), err
 }
 
-// Crypter that just adds a prefix to the plaintext string when encrypting,
-// and removes the prefix from the ciphertext when decrypting, for use in tests.
-type prefixCrypter struct {
-	prefix string
-}
-
-func newPrefixCrypter(prefix string) Crypter {
-	return prefixCrypter{prefix: prefix}
-}
-
-func (c prefixCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	return strings.TrimPrefix(ciphertext, c.prefix), nil
-}
-
-func (c prefixCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
-	return c.prefix + plaintext, nil
-}
-
-func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
-	return DefaultBulkDecrypt(ctx, c, ciphertexts)
-}
-
 // DefaultBulkDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted individually. The returned
 // map maps from ciphertext to plaintext. This should only be used by implementers of Decrypter to implement
 // their BulkDecrypt method in cases where they can't do more efficient than just individual decryptions.
