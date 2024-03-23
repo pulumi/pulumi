@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: build
+  description: Make running tests less dependent on users env
