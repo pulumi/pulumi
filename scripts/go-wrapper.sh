@@ -36,13 +36,22 @@ case "$1" in
             fi
         fi
 
+        RACE=
+        CGO_ENABLED=0
+        if [ "$PULUMI_ENABLE_RACE_DETECTION" = "true" ]; then
+            RACE='-race'
+            CGO_ENABLED=1
+        fi
+        export CGO_ENABLED
+
         case "$MODE" in
             normal)
-                go "$@"
+                shift
+                go build ${RACE} "$@"
                 ;;
             coverage)
                 shift
-                go build -cover -coverpkg "$COVERPKG" "$@"
+                go build ${RACE} -cover -coverpkg "$COVERPKG" "$@"
                 ;;
             *)
                 echo "unknown build mode: $MODE"
