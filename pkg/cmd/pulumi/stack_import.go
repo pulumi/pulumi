@@ -145,7 +145,7 @@ func saveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 
 		snapshot.PendingOperations = nil
 	}
-	sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false /* showSecrets */)
+	sdp, err := stack.SerializeDeployment(snapshot, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("constructing deployment for upload: %w", err)
 	}

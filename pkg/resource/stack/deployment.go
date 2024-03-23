@@ -101,17 +101,13 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
+func SerializeDeployment(snap *deploy.Snapshot, showSecrets bool) (*apitype.DeploymentV3, error) {
 	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	// Capture the version information into a manifest.
 	manifest := snap.Manifest.Serialize()
 
-	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
-	if sm == nil {
-		sm = snap.SecretsManager
-	}
-
+	sm := snap.SecretsManager
 	var enc config.Encrypter
 	if sm != nil {
 		e, err := sm.Encrypter()

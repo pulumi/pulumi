@@ -39,7 +39,7 @@ type jsonSnapshotEncoder struct{}
 var _ snapshotEncoder = &jsonSnapshotEncoder{}
 
 func (se *jsonSnapshotEncoder) SnapshotToText(snap *deploy.Snapshot) (snapshotText, error) {
-	dep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false)
+	dep, err := stack.SerializeDeployment(snap, false)
 	if err != nil {
 		return nil, err
 	}
