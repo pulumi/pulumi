@@ -166,6 +166,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
+		Directory:   "using-object-as-input-for-any",
+		Description: "Tests using object as input for a property of type 'any'",
+	},
+	{
 		Directory:   "kubernetes-operator",
 		Description: "K8s Operator",
 	},

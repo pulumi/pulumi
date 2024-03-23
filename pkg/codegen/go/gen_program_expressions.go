@@ -478,7 +478,24 @@ func (g *generator) genObjectConsExpression(
 		}
 	}
 
+	if schemaType, ok := g.toSchemaType(destType); ok {
+		if codegen.ResolvedType(schemaType) == schema.AnyType {
+			g.Fgenf(w, "pulumi.Any(")
+			g.genObjectConsExpressionWithTypeName(w, expr, destType, "map[string]interface{}")
+			g.Fgenf(w, ")")
+			return
+		}
+	}
+
 	g.genObjectConsExpressionWithTypeName(w, expr, destType, typeName)
+}
+
+func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
+	schemaType, ok := pcl.GetSchemaForType(destType)
+	if !ok {
+		return nil, false
+	}
+	return codegen.UnwrapType(schemaType), true
 }
 
 func (g *generator) genObjectConsExpressionWithTypeName(
