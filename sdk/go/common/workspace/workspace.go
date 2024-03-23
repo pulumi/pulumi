@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/rogpeppe/go-internal/lockedfile"
 )
 
 // W offers functionality for interacting with Pulumi workspaces.
@@ -139,11 +140,11 @@ func (pw *projectWorkspace) Save() error {
 	if err != nil {
 		return err
 	}
-	return atomicWriteFile(settingsFile, b)
+	return lockedWriteFile(settingsFile, b)
 }
 
-// atomicWriteFile provides a rename based atomic write through a temporary file.
-func atomicWriteFile(path string, b []byte) error {
+// lockedWriteFile provides a safe way to write a file to disk taking a lock.
+func lockedWriteFile(path string, b []byte) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file %s: %w", path, err)
@@ -162,13 +163,35 @@ func atomicWriteFile(path string, b []byte) error {
 	if err = tmp.Close(); err != nil {
 		return err
 	}
+
+	fileLock := lockedfile.MutexAt(path + ".lock")
+	defer func() { contract.Ignore(os.Remove(path + ".lock")) }()
+	unlock, err := fileLock.Lock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	return os.Rename(tmp.Name(), path)
+}
+
+// lockedFileRead provides a safe way to read a file from disk taking a lock.
+func lockedFileRead(path string) ([]byte, error) {
+	fileLock := lockedfile.MutexAt(path + ".lock")
+	defer func() { contract.Ignore(os.Remove(path + ".lock")) }()
+	unlock, err := fileLock.Lock()
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+
+	return os.ReadFile(path)
 }
 
 func (pw *projectWorkspace) readSettings() error {
 	settingsPath := pw.settingsPath()
 
-	b, err := os.ReadFile(settingsPath)
+	b, err := lockedFileRead(settingsPath)
 	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
 		pw.settings = &Settings{}
