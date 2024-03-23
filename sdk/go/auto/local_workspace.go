@@ -56,6 +56,7 @@ type LocalWorkspace struct {
 	remoteEnvVars                 map[string]EnvVarValue
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
+	remoteInheritSettings         bool
 	pulumiCommand                 PulumiCommand
 	remoteExecutorImage           *ExecutorImage
 }
@@ -968,6 +969,8 @@ type localWorkspaceOptions struct {
 	RemoteSkipInstallDependencies bool
 	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
 	RemoteExecutorImage *ExecutorImage
+	// RemoteInheritSettings bool
+	RemoteInheritSettings bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
