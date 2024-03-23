@@ -327,6 +327,8 @@ func NewPulumiCmd() *cobra.Command {
 				newDestroyCmd(),
 				newPreviewCmd(),
 				newCancelCmd(),
+				newInstallCmd(),
+				newUninstallCmd(),
 			},
 		},
 		{
