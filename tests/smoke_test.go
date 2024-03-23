@@ -10,7 +10,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -422,4 +424,42 @@ func TestRelativePluginPath(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "test")
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "preview")
+}
+
+// Small integration test for default provider version overrides. This manually registers a resource without a version
+// to check the default provider version is used.
+func TestDefaultProviderVersion(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	e.ImportDirectory("testdata/default_plugin_node")
+
+	// Make sure random is installed, this is the version from Pulumi.yaml not package.json
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.15.0")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "up", "--yes")
+	e.RunCommand("pulumi", "stack", "export", "--file", "export.json")
+	// Read the export.json and check the provider got the version 4.15
+	exportBytes, err := os.ReadFile(filepath.Join(e.CWD, "export.json"))
+	require.NoError(t, err)
+	var export apitype.UntypedDeployment
+	err = json.Unmarshal(exportBytes, &export)
+	require.NoError(t, err)
+
+	var deployment apitype.DeploymentV3
+	err = json.Unmarshal(export.Deployment, &deployment)
+	require.NoError(t, err)
+
+	resources := deployment.Resources
+	assert.Len(t, resources, 3)
+	resource := resources[1]
+	assert.Equal(t, tokens.Type("pulumi:providers:random"), resource.Type)
+	assert.Equal(t, map[string]interface{}{
+		"version": "4.15.0",
+	}, resource.Inputs)
 }
