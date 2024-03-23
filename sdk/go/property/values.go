@@ -21,13 +21,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type (
-	MapKey  tokens.Name
 	Array   = []Value
-	Map     = map[MapKey]Value
+	Map     = map[string]Value
 	Asset   = *asset.Asset
 	Archive = *archive.Archive
 )
