@@ -174,9 +174,14 @@ func TestLanguage(t *testing.T) {
 		CoreSdkVersion:       sdk.Version.String(),
 		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 			{
-				Path:        "package.json",
-				Pattern:     fmt.Sprintf("pulumi-pulumi-%s.tgz", sdk.Version.String()),
+				Path:        "package\\.json",
+				Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
 				Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+			},
+			{
+				Path:        "package\\.json",
+				Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
+				Replacement: "ROOT/artifacts",
 			},
 		},
 	})

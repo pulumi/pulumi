@@ -189,9 +189,14 @@ func TestLanguage(t *testing.T) {
 			CoreSdkVersion:       sdk.Version.String(),
 			SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 				{
-					Path:        "requirements.txt",
+					Path:        "requirements\\.txt",
 					Pattern:     fmt.Sprintf("pulumi-%s-py3-none-any.whl", sdk.Version.String()),
 					Replacement: "pulumi-CORE.VERSION-py3-none-any.whl",
+				},
+				{
+					Path:        "requirements\\.txt",
+					Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
+					Replacement: "ROOT/artifacts",
 				},
 			},
 		})
