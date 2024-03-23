@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Addes `pulumi stack ls --all --json` command to go auto api
