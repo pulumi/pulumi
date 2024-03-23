@@ -1082,7 +1082,6 @@ func TestPythonAwaitOutputs(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonTranslation(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{

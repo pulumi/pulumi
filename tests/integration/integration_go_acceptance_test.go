@@ -49,7 +49,6 @@ func TestEmptyGo(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferenceGo(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}

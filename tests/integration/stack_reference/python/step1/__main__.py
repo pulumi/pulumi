@@ -1,13 +1,16 @@
 # Copyright 2020, Pulumi Corporation.  All rights reserved.
-
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import pulumi
 
-slug = f"{pulumi.get_organization()}/{pulumi.get_project()}/{pulumi.get_stack()}"
-a = pulumi.StackReference(slug)
-
-oldVal = pulumi.runtime.sync_await(a.get_output_details('val')).value
-
-if len(oldVal) != 2 or oldVal[0] != 'a' or oldVal[1] != 'b':
-    raise Exception('Invalid result')
-
-pulumi.export('val2', pulumi.Output.secret(['a', 'b']))
+pulumi.export('val', ["a", "b"])
