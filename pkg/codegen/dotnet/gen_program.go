@@ -297,7 +297,12 @@ func GenerateProject(
 		if langInfo, found := p.Language["csharp"]; found {
 			csharpInfo, ok := langInfo.(CSharpPackageInfo)
 			if ok {
-				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+				pkgName := p.Name
+				if name := csharpInfo.PackageName; name != "" {
+					pkgName = name
+				}
+
+				namespace := namespaceName(csharpInfo.Namespaces, pkgName)
 				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
 			}
 		}
