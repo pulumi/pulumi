@@ -37,9 +37,13 @@ describe("automation/cmd", () => {
     describe("CLI installation", () => {
         it("installs the requested version", async () => {
             const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
+            let path = upath.join(tmpDir.name, "bin", "pulumi");
+            if (process.platform === "win32") {
+                path += ".exe";
+            }
             try {
                 const cmd = await PulumiCommand.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
-                assert.doesNotThrow(() => fs.statSync(upath.join(tmpDir.name, "bin", "pulumi")));
+                assert.doesNotThrow(() => fs.statSync(path));
                 const { stdout } = await cmd.run(["version"], ".", {});
                 assert.strictEqual(stdout.trim(), "3.97.0");
             } finally {
@@ -49,11 +53,15 @@ describe("automation/cmd", () => {
 
         it("does not re-install the version if it already exists", async () => {
             const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
+            let path = upath.join(tmpDir.name, "bin", "pulumi");
+            if (process.platform === "win32") {
+                path += ".exe";
+            }
             try {
                 await PulumiCommand.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
-                const binary1 = fs.statSync(upath.join(tmpDir.name, "bin", "pulumi"));
+                const binary1 = fs.statSync(path);
                 await PulumiCommand.install({ root: tmpDir.name, version: new semver.SemVer("3.97.0") });
-                const binary2 = fs.statSync(upath.join(tmpDir.name, "bin", "pulumi"));
+                const binary2 = fs.statSync(path);
                 assert.strictEqual(binary1.ino, binary2.ino);
             } finally {
                 tmpDir.removeCallback();
@@ -63,9 +71,11 @@ describe("automation/cmd", () => {
         it("defaults to $HOME/.pulumi/versions/$VERSION if no root is provided", async () => {
             const version = new semver.SemVer("3.97.0");
             const cmd = await PulumiCommand.install({ version });
-            assert.doesNotThrow(() =>
-                fs.statSync(upath.join(os.homedir(), ".pulumi", "versions", `${version}`, "bin", "pulumi")),
-            );
+            let path = upath.join(os.homedir(), ".pulumi", "versions", `${version}`, "bin", "pulumi");
+            if (process.platform === "win32") {
+                path += ".exe";
+            }
+            assert.doesNotThrow(() => fs.statSync(path));
             const { stdout } = await cmd.run(["version"], ".", {});
             assert.strictEqual(stdout.trim(), `${version}`);
         });

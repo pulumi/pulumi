@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import platform
 import subprocess
 import tempfile
 import unittest
@@ -25,13 +26,17 @@ from pulumi.automation import InvalidVersionError, PulumiCommand
 from pulumi.automation._cmd import _fixup_path, _parse_and_validate_pulumi_version
 
 
+def append_exe_on_windows(path: str) -> str:
+    return path + ".exe" if platform.system() == "Windows" else path
+
+
 def test_install_default_root():
     requested_version = VersionInfo.parse("3.101.0")
 
     p = PulumiCommand.install(version=requested_version)
 
     pulumiBin = (
-        Path.home() / ".pulumi" / "versions" / str(requested_version) / "bin" / "pulumi"
+        Path.home() / ".pulumi" / "versions" / str(requested_version) / "bin" / append_exe_on_windows("pulumi")
     )
     try:
         pulumiBin.stat()
@@ -45,7 +50,7 @@ def test_install_default_root():
 def test_install_twice():
     with tempfile.TemporaryDirectory(prefix="automation-test-") as root:
         requested_version = VersionInfo.parse("3.101.0")
-        pulumiBin = Path(root) / "bin" / "pulumi"
+        pulumiBin = Path(root) / "bin" / append_exe_on_windows("pulumi")
 
         PulumiCommand.install(version=requested_version, root=root)
         stat1 = pulumiBin.stat()
