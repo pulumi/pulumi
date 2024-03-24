@@ -241,10 +241,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip: codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
 	{
-		Directory:   "discriminated-union",
-		Description: "Discriminated Unions for choosing an input type",
-		Skip:        codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi#10834]
+		Directory:   "basic-unions",
+		Description: "Tests program generation of fields of type union",
+		SkipCompile: allProgLanguages, // because the schema is synthetic
 	},
 	{
 		Directory:   "traverse-union-repro",
