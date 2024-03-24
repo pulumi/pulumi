@@ -89,6 +89,44 @@ The tests in this repository do not create any real cloud resources as part of t
 
 Numerous tests use baselines that need to be regenerated from time to time. For instance, `pkg/backend/display/testdata` contains the corresponding CLI output for various engine event streams. To regenerate these baselines, run the corresponding test with the `PULUMI_ACCEPT=true` environment variable. For instance, `PULUMI_ACCEPT=true make test_all` from the root. Alternatively, you can generate them individually, for example, running `PULUMI_ACCEPT=true go test ./...` from the `pkg/backend/display` directory.
 
+### Building Providers
+
+When making changes to Pulumi's code generation tooling, you may want to test your changes by regenerating a Pulumi provider. This section describes how to regenerate a provider using a local version of this repository. As an example, we use [`@pulumi/command`](https://github.com/pulumi/pulumi-command).
+
+1. Clone this repository and make local changes to codegen. Assume the absolute path to this repo is `/Users/platypus/pulumi`.
+
+2. Clone pulumi-command and change into the directory.
+
+```bash
+$ git clone https://github.com/pulumi/pulumi-command /Users/platypus/pulumi-command
+$ cd /Users/platypus/pulumi-command
+```
+
+3. Pulumi provider repos have a top-level directory `provider` which contains a `go.mod` for a Go executable used in provider generation. In this next steps, you will edit the `go.mod` file to point to your local copy of the Pulumi source code.
+First, open the `go.mod` file.
+
+```bash
+$ vim provider/go.mod
+```
+
+4. Add two "replace directives" above the first `require` block redirecting the Go compiler to use your local Pulumi code generator.
+```go.mod
+require github.com/pulumi/pulumi/pkg/v3 => /Users/platypus/pulumi/pkg
+
+require github.com/pulumi/pulumi/sdk/v3 => /Users/platypus/pulumi/sdk
+```
+
+5. Then, you can rebuild the provider following the instructions in the README.md of that provider's repository.
+
+For example:
+
+```bash
+$ cd /Users/platypus/pulumi-command
+$ make ensure
+$ make build
+$ make install
+```
+
 ### Debugging
 
 The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
