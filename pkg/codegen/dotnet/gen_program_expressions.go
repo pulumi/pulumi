@@ -20,6 +20,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -805,6 +807,13 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	if len(expr.Items) == 0 {
 		g.Fgenf(w, "null")
 		return
+	}
+
+	if schemaType, ok := g.toSchemaType(destType); ok {
+		if codegen.ResolvedType(schemaType) == schema.AnyType {
+			g.genDictionaryOrTuple(w, expr)
+			return
+		}
 	}
 
 	destTypeName := g.argumentTypeName(expr, destType)
