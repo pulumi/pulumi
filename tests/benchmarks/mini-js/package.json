@@ -1,0 +1,8 @@
+{
+    "name": "mini-js",
+    "main": "index.js",
+    "dependencies": {
+        "@pulumi/pulumi": "=3.6.0"
+    },
+    "license": "Apache-2.0"
+}

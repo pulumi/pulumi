@@ -1,0 +1,6 @@
+name: mini-js
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+description: A minimal JavaScript Pulumi program
