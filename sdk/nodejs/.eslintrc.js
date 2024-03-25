@@ -17,6 +17,8 @@ module.exports = {
         "tests/automation/data/tcfg/*.ts",
         "tests/sxs_ts_test/*.ts",
         "tests/mockpackage/**/*.ts",
+        "tests/runtime/testdata/closure-tests/**/*.ts",
+        "tests/runtime/testdata/closure-tests/**/*.js",
     ],
     rules: {
         "header/header": [

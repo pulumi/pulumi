@@ -1,0 +1,25 @@
+exports.handler = __f0;
+
+var __defaultsForThing = {};
+var __defaultsForThing_config = {y: "y"};
+__defaultsForThing.config = __defaultsForThing_config;
+
+function __getAll() {
+  return (function() {
+    with({ defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
+
+return function /*getAll*/() { return { y: defaultsForThing.config.y }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
+
+return function () { console.log(getAll()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

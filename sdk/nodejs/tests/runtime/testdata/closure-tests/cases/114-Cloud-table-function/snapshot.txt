@@ -1,0 +1,51 @@
+exports.handler = __testScanReturnsAllValues;
+
+var __table1 = {insert: __f1, primaryKey: 1};
+
+function __f0(__0, __1, __2, __3) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return () => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __testScanReturnsAllValues() {
+  return (function() {
+    with({ __awaiter: __f0, table1: __table1, testScanReturnsAllValues: __testScanReturnsAllValues, this: undefined, arguments: undefined }) {
+
+return function /*testScanReturnsAllValues*/() {
+    return __awaiter(this, void 0, void 0, function* () {
+        yield table1.insert({ [table1.primaryKey.get()]: "val1", value1: 1, value2: "1" });
+        yield table1.insert({ [table1.primaryKey.get()]: "val2", value1: 2, value2: "2" });
+        const values = null;
+        // @ts-ignore
+        const value1 = values.find(v => v[table1.primaryKey.get()] === "val1");
+        // @ts-ignore
+        const value2 = values.find(v => v[table1.primaryKey.get()] === "val2");
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

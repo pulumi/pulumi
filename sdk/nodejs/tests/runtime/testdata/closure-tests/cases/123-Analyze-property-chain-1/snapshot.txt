@@ -1,0 +1,15 @@
+exports.handler = __f0;
+
+var __o = {};
+var __o_b = {c: 2};
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o, this: undefined, arguments: undefined }) {
+
+return function () { console.log(o.b.c); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
