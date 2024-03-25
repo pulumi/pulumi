@@ -95,7 +95,7 @@ func newStackExportCmd() *cobra.Command {
 					return checkDeploymentVersionError(err, stackName)
 				}
 
-				serializedDeployment, err := stack.SerializeDeployment(snap, snap.SecretsManager, true)
+				serializedDeployment, err := stack.SerializeDeployment(snap, true)
 				if err != nil {
 					return err
 				}

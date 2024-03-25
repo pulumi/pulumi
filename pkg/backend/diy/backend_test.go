@@ -171,7 +171,7 @@ func makeUntypedDeploymentTimestamp(
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
+	sdep, err := stack.SerializeDeployment(snap, false /* showSecrets */)
 	if err != nil {
 		return nil, err
 	}
@@ -532,7 +532,7 @@ func TestHtmlEscaping(t *testing.T) {
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
+	sdep, err := stack.SerializeDeployment(snap, false /* showSecrets */)
 	assert.NoError(t, err)
 
 	data, err := encoding.JSON.Marshal(sdep)

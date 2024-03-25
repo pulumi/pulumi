@@ -294,7 +294,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
+	sdep, err := stack.SerializeDeployment(snap, false /* showSecrets */)
 	assert.NoError(t, err)
 
 	data, err := encoding.JSON.Marshal(sdep)

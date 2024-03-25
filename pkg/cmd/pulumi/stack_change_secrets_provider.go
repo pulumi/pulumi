@@ -196,7 +196,8 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
-	reserializedDeployment, err := stack.SerializeDeployment(snap, newSecretsManager, false /*showSecrets*/)
+	snap.SecretsManager = newSecretsManager
+	reserializedDeployment, err := stack.SerializeDeployment(snap, false /*showSecrets*/)
 	if err != nil {
 		return err
 	}
