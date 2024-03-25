@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix the engine trying to delete a protected resource caught in a replace chain
