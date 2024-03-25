@@ -698,14 +698,15 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	pulumiUp := func() { e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview") }
 
 	// Test "pulumi up" with gzip compression on and off.
-	// Running "pulumi up" 2 times is important because normally, first the
-	// `.json` becomes `.json.gz`, then the `.json.bak` becomes `.json.gz.bak`.
 	// Default is no gzip compression
 	switchGzipOff()
 	assertPlainFileFormat()
 
 	// Enable Gzip compression
 	switchGzipOn()
+	pulumiUp()
+	// Running "pulumi up" 2 times is important because normally, first the
+	// `.json` becomes `.json.gz`, then the `.json.bak` becomes `.json.gz.bak`.
 	pulumiUp()
 	assertGzipFileFormat()
 
@@ -726,7 +727,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	if err := json.Unmarshal([]byte(rawHistory), &history); err != nil {
 		t.Fatalf("Can't unmarshall history json")
 	}
-	assert.Equal(t, 5, len(history), "Stack history doesn't match reality")
+	assert.Equal(t, 6, len(history), "Stack history doesn't match reality")
 }
 
 func getFileNames(infos []os.DirEntry) []string {

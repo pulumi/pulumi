@@ -107,9 +107,10 @@ func TestStepExecutor(t *testing.T) {
 				},
 				pendingNews: sync.Map{},
 			}
-			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
+			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
 			assert.ErrorContains(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
-				urn: "not-in-plan",
+				urn: notInPlan,
 			}), "no plan for resource")
 		})
 		t.Run("resource should already have a plan", func(t *testing.T) {
@@ -124,9 +125,10 @@ func TestStepExecutor(t *testing.T) {
 				},
 				pendingNews: sync.Map{},
 			}
-			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
+			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
 			assert.ErrorContains(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
-				urn: "not-in-plan",
+				urn: notInPlan,
 			}), "resource should already have a plan")
 		})
 		t.Run("error in resource outputs", func(t *testing.T) {
@@ -151,10 +153,11 @@ func TestStepExecutor(t *testing.T) {
 				},
 				pendingNews: sync.Map{},
 			}
-			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
+			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
 			// Does not error.
 			assert.NoError(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
-				urn: "not-in-plan",
+				urn: notInPlan,
 			}))
 			assert.True(t, cancelCalled)
 		})
