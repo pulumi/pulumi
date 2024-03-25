@@ -1120,7 +1120,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 						g.Fgenf(&result, "\n%s\"%.v\",", g.Indent, v)
 					}
 				})
-				g.Fgenf(&result, "\n%s}", g.Indent)
+				g.Fgenf(&result, "\n%s},", g.Indent)
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
@@ -1132,6 +1132,22 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 				} else {
 					g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 				}
+			} else {
+				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+			}
+		} else if name == "DependsOn" {
+			// depends on need to be special cased
+			// because new [] { resourceA, resourceB } cannot be implicitly casted to InputList<Resource>
+			// use syntax DependsOn = { resourceA, resourceB } instead
+			if resourcesList, isTuple := value.(*model.TupleConsExpression); isTuple {
+				g.Fgenf(&result, "\n%sDependsOn =", g.Indent)
+				g.Fgenf(&result, "\n%s{", g.Indent)
+				g.Indented(func() {
+					for _, resource := range resourcesList.Expressions {
+						g.Fgenf(&result, "\n%s%v, ", g.Indent, resource)
+					}
+				})
+				g.Fgenf(&result, "\n%s},", g.Indent)
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}

@@ -287,6 +287,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Generate RetainOnDelete option",
 	},
 	{
+		Directory:   "depends-on-array",
+		Description: "Using DependsOn resource option with an array of resources",
+	},
+	{
 		Directory:   "multiline-string",
 		Description: "Multiline string literals",
 	},

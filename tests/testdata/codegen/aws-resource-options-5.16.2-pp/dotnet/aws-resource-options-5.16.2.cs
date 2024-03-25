@@ -15,16 +15,16 @@ return await Deployment.RunAsync(() =>
     }, new CustomResourceOptions
     {
         Provider = provider,
-        DependsOn = new[]
+        DependsOn =
         {
-            provider,
+            provider, 
         },
         Protect = true,
         IgnoreChanges =
         {
             "bucket",
             "lifecycleRules[0]",
-        }
+        },
     });
 
 });

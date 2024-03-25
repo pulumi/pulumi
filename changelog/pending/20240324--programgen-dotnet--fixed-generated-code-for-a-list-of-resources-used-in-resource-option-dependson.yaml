@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet
+  description: Fixes generated code for a list of resources used in resource option DependsOn
