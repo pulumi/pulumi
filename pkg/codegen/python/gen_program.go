@@ -334,25 +334,6 @@ func GenerateProject(
 		return err
 	}
 
-	// The local dependencies map is a map of package name to the path to the package, the path could be
-	// absolute or a relative path but we want to ensure we emit relative paths in the requirments.txt.
-	for k, v := range localDependencies {
-		absPath := v
-		if !filepath.IsAbs(v) {
-			absPath, err = filepath.Abs(v)
-			if err != nil {
-				return fmt.Errorf("absolute path of %s: %w", v, err)
-			}
-		}
-
-		relPath, err := filepath.Rel(directory, absPath)
-		if err != nil {
-			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
-		}
-
-		localDependencies[k] = relPath
-	}
-
 	// Build a requirements.txt based on the packages used by program
 	var requirementsTxt bytes.Buffer
 	if path, ok := localDependencies["pulumi"]; ok {
