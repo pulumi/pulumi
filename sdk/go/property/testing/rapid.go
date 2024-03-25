@@ -44,12 +44,6 @@ func Primitive() *rapid.Generator[property.Value] {
 	)
 }
 
-func MapKey() *rapid.Generator[property.MapKey] {
-	return rapid.Map(rapid.String(), func(s string) property.MapKey {
-		return property.MapKey(s)
-	})
-}
-
 func String() *rapid.Generator[property.Value] {
 	return rapid.Map(rapid.String(), property.New[string])
 }
@@ -83,7 +77,7 @@ func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.V
 func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
 	return rapid.Custom(func(t *rapid.T) property.Value {
 		return property.New(rapid.MapOf(
-			MapKey(),
+			rapid.String(),
 			value,
 		).Draw(t, "V"))
 	})

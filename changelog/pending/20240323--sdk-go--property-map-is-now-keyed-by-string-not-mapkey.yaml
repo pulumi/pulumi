@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Make `property.Map` keyed by `string` not `MapKey`

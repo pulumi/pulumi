@@ -105,7 +105,7 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		vMap := v.ObjectValue()
 		rMap := make(property.Map, len(vMap))
 		for k, v := range vMap {
-			rMap[property.MapKey(k)] = FromResourcePropertyValue(v)
+			rMap[string(k)] = FromResourcePropertyValue(v)
 		}
 		return property.New(rMap)
 	case v.IsAsset():
