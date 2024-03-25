@@ -1136,6 +1136,18 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					if dependentResource.Delete {
 						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource))
 					} else {
+						// Check if the resource is protected, if it is we can't do this replacement chain.
+						if dependentResource.Protect {
+							message := fmt.Sprintf("unable to replace resource %q as part of replacing %q "+
+								"as it is currently marked for protection. To unprotect the resource, "+
+								"remove the `protect` flag from the resource in your Pulumi "+
+								"program and run `pulumi up`, or use the command:\n"+
+								"`pulumi state unprotect %q`",
+								dependentResource.URN, urn, dependentResource.URN)
+							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+							sg.sawError = true
+							return nil, result.BailErrorf(message)
+						}
 						steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true))
 					}
 					// Mark the condemned resource as deleted. We won't know until later in the deployment whether

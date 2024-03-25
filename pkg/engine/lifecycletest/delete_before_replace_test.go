@@ -5,6 +5,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -591,4 +592,85 @@ func TestDependencyChangeDBR(t *testing.T) {
 		},
 	}
 	p.Run(t, snap)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/15763. Check that if a resource gets implicated in a
+// replacement chain that it fails if the resource is protected.
+func TestDBRProtect(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					if !oldOutputs["B"].DeepEquals(newInputs["B"]) {
+						return plugin.DiffResult{
+							Changes: plugin.DiffSome,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resType = "pkgA:index:typ"
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urnA, _, _, _, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		assert.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
+		_, _, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+			Inputs:       inputsB,
+			Dependencies: []resource.URN{urnA},
+			PropertyDeps: inputDepsB,
+			Protect:      true,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := TestUpdateOptions{HostF: hostF}
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// First update just create the two resources.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+
+	// Update A to trigger a replace this should error because of the protect flag on B.
+	inputsA["A"] = resource.NewStringProperty("bar")
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "unable to replace resource \"urn:pulumi:test::test::pkgA:index:typ::resB\""+
+		" as part of replacing \"urn:pulumi:test::test::pkgA:index:typ::resA\" as it is currently marked for protection.")
+
+	// Remove the protect flag and try again
+	assert.Equal(t, snap.Resources[2].Protect, true)
+	snap.Resources[2].Protect = false
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
 }
