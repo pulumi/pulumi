@@ -16,6 +16,7 @@ venv/
 .envrc
 # Ignore VSCode created solution file
 /pulumi.sln
+.mono
 
 # Ignore user-provided go.work files.
 /go.work
