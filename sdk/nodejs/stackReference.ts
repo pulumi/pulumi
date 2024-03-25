@@ -42,7 +42,7 @@ export class StackReference extends CustomResource {
      *
      * @param name The _unique_ name of the stack reference.
      * @param args The arguments to use to populate this resource's properties.
-     * @Param opts A bag of options that control this resource's behavior.
+     * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: StackReferenceArgs, opts?: CustomResourceOptions) {
         args = args || {};

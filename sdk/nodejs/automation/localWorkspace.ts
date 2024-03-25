@@ -729,7 +729,6 @@ export class LocalWorkspace implements Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
-     * @param kind the kind of plugin, defaults to "resource"
      * @param server the server to install the plugin from
      */
     async installPluginFromServer(name: string, version: string, server: string): Promise<void> {

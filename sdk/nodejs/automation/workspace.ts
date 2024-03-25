@@ -238,7 +238,7 @@ export interface Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
-     * @param kind the kind of plugin e.g. "resource"
+     * @param server the server to install the plugin into
      */
     installPluginFromServer(name: string, version: string, server: string): Promise<void>;
     /**
@@ -246,7 +246,7 @@ export interface Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
-     * @param server the server to install the plugin into
+     * @param kind the kind of plugin e.g. "resource"
      */
     installPlugin(name: string, version: string, kind?: string): Promise<void>;
     /**
