@@ -566,7 +566,7 @@ class ResourceOptions:
         if isinstance(deps, list):
             for dep in deps:
                 if _is_prompt(dep) and not isinstance(dep, Resource):
-                    raise Exception(
+                    raise TypeError(
                         f"'depends_on' was passed a value {dep} that was not a Resource."
                     )
 
