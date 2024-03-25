@@ -14,32 +14,8 @@
 {{- end }}
 
 <!-- Create resource -->
-{{ if ne (len .CreationExampleSyntax) 0 }}## Create {{ .Header.Title }} Resource
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
-<div>
-<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
-</div>
-{{- end }}
-
-{{ range $lang, $code := .CreationExampleSyntax }}
-<div>
-{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $lang }}{{ htmlSafe "\">" }}
-
-```{{ $lang }}
-{{ htmlSafe $code }}
-```
-
-</pulumi-choosable>
-</div>
-
-{{ end }}
-## Definition of {{ .Header.Title }} {#create}{{ else }}
 ## Create {{ .Header.Title }} Resource {#create}
-{{- end }}
+<!-- insert description text for definition syntax here -->
 {{- if eq .LangChooserLanguages "" }}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
@@ -128,6 +104,31 @@
 {{ template "constructor_args" .ConstructorParamsTyped.java }}
 </pulumi-choosable>
 </div>
+{{ if ne (len .CreationExampleSyntax) 0 }}
+<!-- insert description text for new syntax here -->
+{{- if eq .LangChooserLanguages "" }}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+{{- else }}
+<div>
+<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+</div>
+{{- end }}
+
+{{ range $lang, $code := .CreationExampleSyntax }}
+<div>
+{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $lang }}{{ htmlSafe "\">" }}
+
+```{{ $lang }}
+{{ htmlSafe $code }}
+```
+
+</pulumi-choosable>
+</div>
+
+{{ end }}
+{{- end }}
 
 ## {{ .Header.Title }} Resource Properties {#properties}
 
