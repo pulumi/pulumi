@@ -106,6 +106,10 @@ MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
     {"name": "sdk/python test_fast", "run": "cd sdk/python && ../../scripts/retry make test_fast", "eta": 3},
 ]
 
+MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
+    {"name": "sdk/nodejs test_closure", "run": "cd sdk/nodejs && ../../scripts/retry make test_closure", "eta": 3},
+]
+
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
 ]
@@ -378,7 +382,7 @@ def get_matrix(
     elif kind == JobKind.UNIT_TEST:
         makefile_tests = MAKEFILE_UNIT_TESTS
     elif kind == JobKind.ACCEPTANCE_TEST:
-        makefile_tests = []
+        makefile_tests = MAKEFILE_ACCEPTANCE_TESTS
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
     else:
