@@ -18,7 +18,9 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -134,4 +136,34 @@ func TestUpdatePlans(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestAlwaysReadsCompleteLine(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	tmpFile := tmpDir + "/test.txt"
+	go func() {
+		f, err := os.Create(tmpFile)
+		require.NoError(t, err)
+		defer f.Close()
+		parts := []string{`{"stdoutEvent": `, ` {"message": "hello", "color": "blue"}}` + "\n", `{"stdoutEvent": {"message":`, ` "world", "color": "red"}}` + "\n"}
+		for _, part := range parts {
+			_, err = f.WriteString(part)
+			require.NoError(t, err)
+			time.Sleep(300 * time.Millisecond)
+		}
+	}()
+	engineEvents := make(chan events.EngineEvent, 20)
+	watcher, err := watchFile(tmpFile, []chan<- events.EngineEvent{engineEvents})
+	require.NoError(t, err)
+	defer watcher.Close()
+	event1 := <-engineEvents
+	require.NoError(t, event1.Error)
+	assert.Equal(t, "hello", event1.StdoutEvent.Message)
+	assert.Equal(t, "blue", event1.StdoutEvent.Color)
+	event2 := <-engineEvents
+	require.NoError(t, event2.Error)
+	assert.Equal(t, "world", event2.StdoutEvent.Message)
+	assert.Equal(t, "red", event2.StdoutEvent.Color)
 }

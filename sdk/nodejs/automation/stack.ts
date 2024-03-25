@@ -123,9 +123,17 @@ export class Stack {
         });
         await eventLogTail.start();
         const lineSplitter = readline.createInterface({ input: eventLogTail });
+        let partialLine = '';
         lineSplitter.on("line", (line) => {
             let event: EngineEvent;
             try {
+                if (!line.endsWith('\n')) {
+                    partialLine += line;
+                    return;
+                } else {
+                    line = partialLine + line;
+                    partialLine = '';
+                }
                 event = JSON.parse(line);
                 callback(event);
             } catch (e) {
