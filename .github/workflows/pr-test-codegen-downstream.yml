@@ -39,7 +39,7 @@ jobs:
           with:
             token: ${{ secrets.PULUMI_BOT_TOKEN }}
             repository: pulumi/pulumi-${{ matrix.provider }}
-            event-type: upgrade-bridge
+            event-type: upgrade-bridge-test
             client-payload: |-
               {
                  "target-pulumi-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
