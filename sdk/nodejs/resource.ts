@@ -1052,7 +1052,7 @@ export class ComponentResource<TData = any> extends Resource {
      * list of other resources that this resource depends on, controlling the order in which we
      * perform resource operations.
      *
-     * @param t The type of the resource.
+     * @param type The type of the resource.
      * @param name The _unique_ name of the resource.
      * @param args Information passed to [initialize] method.
      * @param opts A bag of options that control this resource's behavior.

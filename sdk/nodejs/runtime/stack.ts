@@ -64,7 +64,7 @@ export class Stack extends ComponentResource<Inputs> {
      * runInit invokes the given init callback with this resource set as the root resource. The return value of init is
      * used as the stack's output properties.
      *
-     * @param init The callback to run in the context of this Pulumi stack
+     * @param args.init The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
         await setRootResource(this);
