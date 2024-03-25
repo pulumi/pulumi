@@ -169,9 +169,9 @@ return await Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions
     {
-        DependsOn = new[]
+        DependsOn =
         {
-            webListener,
+            webListener, 
         },
     });
 
