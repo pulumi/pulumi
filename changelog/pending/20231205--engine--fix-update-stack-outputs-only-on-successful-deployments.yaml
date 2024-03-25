@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: "Fix: Don't delete stack outputs on failed deployments"
+  description: "Don't delete stack outputs on failed deployments"
