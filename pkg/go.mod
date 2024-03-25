@@ -45,7 +45,6 @@ require (
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.13.2
-	// DO NOT UPDATE gocloud.dev until https://github.com/pulumi/pulumi/issues/11986 is resolved
 	gocloud.dev v0.36.0
 	gocloud.dev/secrets/hashivault v0.27.0
 	golang.org/x/crypto v0.21.0 // indirect
