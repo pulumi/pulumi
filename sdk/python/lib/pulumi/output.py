@@ -39,6 +39,7 @@ from typing import (
 from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
+from .runtime.settings import SETTINGS
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -99,6 +100,8 @@ class Output(Generic[T_co]):
     ) -> None:
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
+        # keep track of all created outputs so we can check they resolve
+        SETTINGS.outputs.append(future)
 
         async def is_value_known() -> bool:
             return await is_known and not contains_unknowns(await future)

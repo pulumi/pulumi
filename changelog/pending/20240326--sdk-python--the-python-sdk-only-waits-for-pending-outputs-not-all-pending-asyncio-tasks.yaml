@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Wait only for pending outputs in the Python SDK, not all pending asyncio tasks
