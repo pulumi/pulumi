@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,15 +24,11 @@ func TestProcessDescription(t *testing.T) {
 		t.Run(tt.prefix, func(t *testing.T) {
 			t.Parallel()
 
-			inputFile := filepath.Join("test_data", tt.prefix+"-in.md")
-			expectedFile := filepath.Join("test_data", tt.prefix+"-out.md")
+			input := readFile(t, filepath.Join("testdata", tt.prefix+".md"))
 
-			input, expected := readFile(t, inputFile), readFile(t, expectedFile)
+			actual := newDocGenContext().processDescription(input).description
 
-			docInfo := newDocGenContext().processDescription(input)
-			actual := docInfo.description
-
-			assert.Equal(t, expected, actual)
+			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
 	}
 }
@@ -52,15 +48,11 @@ func TestDecomposeDocstringDescription(t *testing.T) {
 		t.Run(tt.prefix, func(t *testing.T) {
 			t.Parallel()
 
-			inputFile := filepath.Join("test_data", tt.prefix+"-in.md")
-			expectedFile := filepath.Join("test_data", tt.prefix+"-out.md")
+			input := readFile(t, filepath.Join("testdata", tt.prefix+".md"))
 
-			input, expected := readFile(t, inputFile), readFile(t, expectedFile)
+			actual := newDocGenContext().decomposeDocstring(input).description
 
-			docInfo := newDocGenContext().decomposeDocstring(input)
-			actual := docInfo.description
-
-			assert.Equal(t, expected, actual)
+			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
 	}
 }
