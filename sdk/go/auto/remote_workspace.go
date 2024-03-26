@@ -158,6 +158,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 
 	localOpts := []LocalWorkspaceOption{
 		remote(true),
+		remoteInheritSettings(remoteOpts.InheritSettings),
 		remoteEnvVars(remoteOpts.EnvVars),
 		preRunCommands(remoteOpts.PreRunCommands...),
 		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
@@ -168,6 +169,8 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 }
 
 type remoteWorkspaceOptions struct {
+	// InheritSettings sets whether to inherit deployment settings from the stack.
+	InheritSettings bool
 	// EnvVars is a map of environment values scoped to the workspace.
 	// These values will be passed to all Workspace and Stack level commands.
 	EnvVars map[string]EnvVarValue

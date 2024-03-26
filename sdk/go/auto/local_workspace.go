@@ -969,7 +969,7 @@ type localWorkspaceOptions struct {
 	RemoteSkipInstallDependencies bool
 	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
 	RemoteExecutorImage *ExecutorImage
-	// RemoteInheritSettings bool
+	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
 	RemoteInheritSettings bool
 }
 
@@ -1133,6 +1133,12 @@ func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceO
 func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteExecutorImage = image
+	})
+}
+
+func remoteInheritSettings(inheritSettings bool) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteInheritSettings = inheritSettings
 	})
 }
 
