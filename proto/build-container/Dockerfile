@@ -35,7 +35,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache \
 COPY /scripts/install-python.sh /build-scripts/
 RUN --mount=target=/var/lib/apt/lists,type=cache \
     --mount=target=/var/cache/apt,type=cache \
-    PYTHON_VERSION=3.7 \
+    PYTHON_VERSION=3.8 \
     PIPENV_VERSION=2018.11.26 \
     AWSCLI_VERSION=1.17.9 \
     WHEEL_VERSION=0.34.2 \
@@ -56,6 +56,6 @@ RUN PROTOC_VERSION=3.20.1 \
     NODEJS_GRPC_VERSION=1.24.2 \
     NODEJS_GRPC_TOOLS_VERSION=1.12.4 \
     NODEJS_TS_PROTOC_GEN_VERSION=5.3.3 \
-    PYTHON_GRPCIO_VERSION=1.50.0 \
-    PYTHON_GRPCIO_TOOLS_VERSION=1.50.0 \
+    PYTHON_GRPCIO_VERSION=1.60.1 \
+    PYTHON_GRPCIO_TOOLS_VERSION=1.60.1 \
     /build-scripts/install-protobuf-tools.sh
