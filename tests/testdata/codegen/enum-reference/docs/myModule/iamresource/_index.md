@@ -371,7 +371,7 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig">pulumi_<wbr>google_<wbr>native.iam.v1.<wbr>Audit<wbr>Config<wbr>Args</a></span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>

@@ -118,3 +118,18 @@ func isExternalType(t schema.Type, pkg schema.PackageReference) (isExternal bool
 	}
 	return
 }
+
+// Iterate character by character and remove underscores if that underscore
+// is at the very front of an identifier, follows a special character, and is not a delimeter
+// within an identifier.
+func removeLeadingUnderscores(s string) string {
+	var sb strings.Builder
+	lastChar := ' '
+	for _, ch := range s {
+		if ch != '_' || (unicode.IsLetter(lastChar)) {
+			sb.WriteRune(ch)
+		}
+		lastChar = ch
+	}
+	return sb.String()
+}

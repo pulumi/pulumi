@@ -412,7 +412,7 @@ The Example_resource resource accepts the following [input](/docs/intro/concepts
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#request__http_python" style="color: inherit; text-decoration: inherit;">request__<wbr>http</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#request">Request<wbr>Args</a></span>
+        <span class="property-type"><a href="#request">http_<wbr>module.<wbr>Request<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
