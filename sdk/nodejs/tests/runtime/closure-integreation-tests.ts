@@ -52,7 +52,7 @@ async function writePackageJSON(
             "@types/semver": "^7.5.6",
             mocha: "^9.0.0",
             "mocha-suppress-logs": "^0.5.1",
-            mockpackage: "file:mockpackage",
+            mockpackage: "file:mockpackage-src",
             semver: "^7.5.4",
             "ts-node": "^7.0.1",
             typescript: typescriptVersion,

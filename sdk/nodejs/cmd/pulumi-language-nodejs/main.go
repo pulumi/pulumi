@@ -1278,35 +1278,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
 
-		// Safely remove mockpackage dependency see [pulumi/pulumi#9026]
-		// Need to copy in the yarn.lock to do this
-		err = fsutil.CopyFile(
-			filepath.Join(req.PackageDirectory, "bin", "yarn.lock"),
-			filepath.Join(req.PackageDirectory, "yarn.lock"),
-			nil)
-		if err != nil {
-			return nil, fmt.Errorf("copy yarn.lock: %w", err)
-		}
-
-		err = writeString("$ yarn remove mockpackage\n")
-		if err != nil {
-			return nil, fmt.Errorf("write to output: %w", err)
-		}
-		yarnRmCmd := exec.Command(yarn, "remove", "mockpackage")
-		yarnRmCmd.Dir = filepath.Join(req.PackageDirectory, "bin")
-		yarnRmCmd.Stdout = os.Stdout
-		yarnRmCmd.Stderr = os.Stderr
-		err = yarnRmCmd.Run()
-		if err != nil {
-			return nil, fmt.Errorf("yarn remove mockpackage: %w", err)
-		}
-
-		// Cleanup the lock file, it's not needed anymore except for this mockpackage hackery
-		err = os.Remove(filepath.Join(req.PackageDirectory, "bin", "yarn.lock"))
-		if err != nil {
-			return nil, fmt.Errorf("remove yarn.lock: %w", err)
-		}
-
 		// "tsc" doesn't copy in the "proto" directory of .js files.
 		err = fsutil.CopyFile(
 			filepath.Join(req.PackageDirectory, "bin", "proto"),

@@ -102,7 +102,6 @@
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/registrations.spec.ts",
         "tests/runtime/closure-integreation-tests.ts",
-        "tests/runtime/package.spec.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/settings.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
