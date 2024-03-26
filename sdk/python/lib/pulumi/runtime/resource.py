@@ -1022,7 +1022,7 @@ def register_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call() -> (
+            async def do_rpc_call() -> (
                 Optional[Union[RegisterResponse, resource_pb2.RegisterResourceResponse]]
             ):
                 if monitor is None:
@@ -1033,12 +1033,12 @@ def register_resource(
 
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
-                    return monitor.RegisterResource(req)
+                    return await monitor.RegisterResource.future(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
                     return None
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            resp = await do_rpc_call()
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
