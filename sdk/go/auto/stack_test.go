@@ -147,11 +147,16 @@ func TestAlwaysReadsCompleteLine(t *testing.T) {
 		f, err := os.Create(tmpFile)
 		require.NoError(t, err)
 		defer f.Close()
-		parts := []string{`{"stdoutEvent": `, ` {"message": "hello", "color": "blue"}}` + "\n", `{"stdoutEvent": {"message":`, ` "world", "color": "red"}}` + "\n"}
+		parts := []string{
+			`{"stdoutEvent": `,
+			` {"message": "hello", "color": "blue"}}` + "\n",
+			`{"stdoutEvent": {"message":`,
+			` "world", "color": "red"}}` + "\n",
+		}
 		for _, part := range parts {
 			_, err = f.WriteString(part)
 			require.NoError(t, err)
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}()
 	engineEvents := make(chan events.EngineEvent, 20)

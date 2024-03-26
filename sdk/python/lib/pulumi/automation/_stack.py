@@ -951,7 +951,7 @@ def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
 
 
 def _watch_logs(filename: str, callback: OnEvent):
-    partial_line = ''
+    partial_line = ""
     with open(filename, encoding="utf-8") as f:
         while True:
             line = f.readline()
@@ -962,13 +962,13 @@ def _watch_logs(filename: str, callback: OnEvent):
                 continue
 
             # we don't have a complete line yet.  sleep and try again.
-            if line[-1] != '\n':
-                partiall_line += line
+            if line[-1] != "\n":
+                partial_line += line
                 time.sleep(0.1)
                 continue
-            else:
-                line = partial_line + line
-                partial_line = ''
+
+            line = partial_line + line
+            partial_line = ""
 
             event = EngineEvent.from_json(json.loads(line))
             callback(event)
