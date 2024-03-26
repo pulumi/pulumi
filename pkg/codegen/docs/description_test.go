@@ -16,6 +16,7 @@ func TestProcessDescription(t *testing.T) {
 		prefix string
 	}{
 		{"lambda-description"},
+		{"scaleway-k8s-cluster-description"}, // Repro: https://github.com/pulumi/registry/issues/4202
 	}
 
 	for _, tt := range tests {
