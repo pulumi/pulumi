@@ -169,6 +169,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -190,7 +191,12 @@ func GenerateProject(
 	}
 
 	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	project.Runtime = workspace.NewProjectRuntimeInfo("nodejs", nil)
+	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
+	if forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err

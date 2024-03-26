@@ -1,0 +1,5 @@
+name: l2-engine-update-options
+runtime:
+  name: nodejs
+  options:
+    typescript: false

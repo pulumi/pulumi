@@ -130,7 +130,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing)
+			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -178,6 +178,9 @@ type nodeLanguageHost struct {
 
 	engineAddress string
 	tracing       string
+
+	// used by language conformance tests to force TSC usage
+	forceTsc bool
 }
 
 type nodeOptions struct {
@@ -223,11 +226,12 @@ func parseOptions(root string, options map[string]interface{}) (nodeOptions, err
 }
 
 func newLanguageHost(
-	engineAddress, tracing string,
+	engineAddress, tracing string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		forceTsc:      forceTsc,
 	}
 }
 
@@ -569,7 +573,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin)
+	// If we're forcing tsc the program directory for running is actually ./bin
+	programDirectory := req.Info.ProgramDirectory
+	if host.forceTsc {
+		req.Info.ProgramDirectory = filepath.Join(programDirectory, "bin")
+	}
+
+	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
@@ -825,6 +835,19 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if host.forceTsc {
+		// If we're forcing tsc for conformance testing this is our chance to run it before actually running the program.
+		// We probably want to see about making something like this an explicit "pulumi build" step, but for now shim'ing this
+		// in here works well enough for conformance testing.
+		tscCmd := exec.Command("npx", "tsc")
+		tscCmd.Dir = req.Info.ProgramDirectory
+		tscCmd.Stdout = stdout
+		tscCmd.Stderr = stderr
+		if err := tscCmd.Run(); err != nil {
+			return fmt.Errorf("failed to run tsc: %w", err)
+		}
+	}
 
 	return closer.Close()
 }
@@ -1093,7 +1116,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.forceTsc)
 	if err != nil {
 		return nil, err
 	}
