@@ -127,21 +127,13 @@ export class Stack {
         lineSplitter.on("line", (line) => {
             let event: EngineEvent;
             try {
-                if (!line.endsWith("\n")) {
-                    partialLine += line;
-                    return;
-                } else {
-                    line = partialLine + line;
-                    partialLine = "";
-                }
+                line = partialLine + line;
+                partialLine = "";
                 event = JSON.parse(line);
                 callback(event);
             } catch (e) {
-                log.warn(`Failed to parse engine event
-If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
-details about your environment.
-
-Event: ${line}\n${e.toString()}`);
+                partialLine += line;
+                return;
             }
         });
 
