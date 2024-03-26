@@ -475,14 +475,16 @@ func (h *langhost) GenerateProject(
 }
 
 func (h *langhost) GeneratePackage(
-	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+	directory string, schema string, extraFiles map[string][]byte,
+	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
 	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
-		Directory:    directory,
-		Schema:       schema,
-		ExtraFiles:   extraFiles,
-		LoaderTarget: loaderTarget,
+		Directory:         directory,
+		Schema:            schema,
+		ExtraFiles:        extraFiles,
+		LoaderTarget:      loaderTarget,
+		LocalDependencies: localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
