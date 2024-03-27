@@ -86,6 +86,9 @@ func (g *constructorSyntaxGenerator) writeValue(
 		write("fileArchive(\"./path/to/archive\")")
 	case schema.AssetType:
 		write("stringAsset(\"content\")")
+	case schema.AnyResourceType:
+		// Constructors are language specific - just "resource?"
+		write("resource")
 	}
 
 	switch valueType := valueType.(type) {

@@ -389,6 +389,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "A schema with assets and archives",
 	},
 	{
+		Directory:   "any-resource",
+		Description: "A schema with arbitrary resources",
+	},
+	{
 		Directory:   "regress-py-14012",
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
 		Skip:        allLanguages.Except("python/any"),

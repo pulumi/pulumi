@@ -1342,6 +1342,8 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 			return TypeSpec{Ref: "pulumi.json#/Asset"}
 		case JSONType:
 			return TypeSpec{Ref: "pulumi.json#/Json"}
+		case AnyResourceType:
+			return TypeSpec{Ref: "pulumi.json#/Resource"}
 		default:
 			panic(fmt.Errorf("unexepcted type %v (%T)", t, t))
 		}

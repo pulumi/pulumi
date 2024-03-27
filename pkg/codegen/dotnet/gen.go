@@ -475,6 +475,8 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			return "AssetOrArchive"
 		case schema.JSONType:
 			return "System.Text.Json.JsonElement"
+		case schema.AnyResourceType:
+			return "Pulumi.Resource"
 		case schema.AnyType:
 			return "object"
 		}

@@ -353,6 +353,8 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 			fallthrough
 		case schema.AnyType:
 			return tstypes.Identifier("any")
+		case schema.AnyResourceType:
+			return tstypes.Identifier("pulumi.Resource")
 		}
 	}
 	panic(fmt.Errorf("unexpected type %T", t))

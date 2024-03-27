@@ -405,6 +405,8 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 			fallthrough
 		case schema.AnyType:
 			return model.DynamicType
+		case schema.AnyResourceType:
+			return ResourceType
 		default:
 			return model.NoneType
 		}
