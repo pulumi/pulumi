@@ -14,6 +14,7 @@ run:
 linters:
   enable-all: false
   enable:
+    - errcheck
     - exhaustive
     - prealloc
     - gofumpt
@@ -31,6 +32,10 @@ linters:
     - perfsprint
     - depguard
     - importas
+    - gocritic
+    - gosimple
+    - gomd
+    - gofmt
 
 linters-settings:
   nakedret:
