@@ -15,8 +15,11 @@ import (
 type ResourceWithResources struct {
 	pulumi.CustomResourceState
 
-	Nested   TypeWithResourcesPtrOutput `pulumi:"nested"`
-	Resource pulumi.ResourceOutput      `pulumi:"resource"`
+	Nested           TypeWithResourcesPtrOutput `pulumi:"nested"`
+	OptionalResource pulumi.ResourceOutput      `pulumi:"optionalResource"`
+	Resource         pulumi.ResourceOutput      `pulumi:"resource"`
+	ResourceList     pulumi.ResourceArrayOutput `pulumi:"resourceList"`
+	ResourceMap      pulumi.ResourceMapOutput   `pulumi:"resourceMap"`
 }
 
 // NewResourceWithResources registers a new resource with the given unique name, arguments, and options.
@@ -113,8 +116,20 @@ func (o ResourceWithResourcesOutput) Nested() TypeWithResourcesPtrOutput {
 	return o.ApplyT(func(v *ResourceWithResources) TypeWithResourcesPtrOutput { return v.Nested }).(TypeWithResourcesPtrOutput)
 }
 
+func (o ResourceWithResourcesOutput) OptionalResource() pulumi.ResourceOutput {
+	return o.ApplyT(func(v *ResourceWithResources) pulumi.ResourceOutput { return v.OptionalResource }).(pulumi.ResourceOutput)
+}
+
 func (o ResourceWithResourcesOutput) Resource() pulumi.ResourceOutput {
 	return o.ApplyT(func(v *ResourceWithResources) pulumi.ResourceOutput { return v.Resource }).(pulumi.ResourceOutput)
+}
+
+func (o ResourceWithResourcesOutput) ResourceList() pulumi.ResourceArrayOutput {
+	return o.ApplyT(func(v *ResourceWithResources) pulumi.ResourceArrayOutput { return v.ResourceList }).(pulumi.ResourceArrayOutput)
+}
+
+func (o ResourceWithResourcesOutput) ResourceMap() pulumi.ResourceMapOutput {
+	return o.ApplyT(func(v *ResourceWithResources) pulumi.ResourceMapOutput { return v.ResourceMap }).(pulumi.ResourceMapOutput)
 }
 
 func init() {

@@ -95,7 +95,10 @@ class ResourceWithResources(pulumi.CustomResource):
             if source is None and not opts.urn:
                 raise TypeError("Missing required property 'source'")
             __props__.__dict__["source"] = source
+            __props__.__dict__["optional_resource"] = None
             __props__.__dict__["resource"] = None
+            __props__.__dict__["resource_list"] = None
+            __props__.__dict__["resource_map"] = None
         super(ResourceWithResources, __self__).__init__(
             'example:index:ResourceWithResources',
             resource_name,
@@ -119,7 +122,10 @@ class ResourceWithResources(pulumi.CustomResource):
         __props__ = ResourceWithResourcesArgs.__new__(ResourceWithResourcesArgs)
 
         __props__.__dict__["nested"] = None
+        __props__.__dict__["optional_resource"] = None
         __props__.__dict__["resource"] = None
+        __props__.__dict__["resource_list"] = None
+        __props__.__dict__["resource_map"] = None
         return ResourceWithResources(resource_name, opts=opts, __props__=__props__)
 
     @property
@@ -128,7 +134,22 @@ class ResourceWithResources(pulumi.CustomResource):
         return pulumi.get(self, "nested")
 
     @property
+    @pulumi.getter(name="optionalResource")
+    def optional_resource(self) -> pulumi.Output[Optional[pulumi.Resource]]:
+        return pulumi.get(self, "optional_resource")
+
+    @property
     @pulumi.getter
     def resource(self) -> pulumi.Output[pulumi.Resource]:
         return pulumi.get(self, "resource")
+
+    @property
+    @pulumi.getter(name="resourceList")
+    def resource_list(self) -> pulumi.Output[Optional[Sequence[pulumi.Resource]]]:
+        return pulumi.get(self, "resource_list")
+
+    @property
+    @pulumi.getter(name="resourceMap")
+    def resource_map(self) -> pulumi.Output[Optional[Mapping[str, pulumi.Resource]]]:
+        return pulumi.get(self, "resource_map")
 

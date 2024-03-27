@@ -49,12 +49,17 @@ type builtin struct {
 	InnerElementType string
 
 	Strategy string
+
+	InputComment string
 }
 
-const AssetOrArchiveType = "AssetOrArchive"
+const (
+	AssetOrArchiveType = "AssetOrArchive"
+	ResourceType       = "Resource"
+)
 
 func (b builtin) DefineInputType() bool {
-	return b.inputType == "" && b.Type != AssetOrArchiveType
+	return b.inputType == "" && b.Type != AssetOrArchiveType && b.Type != ResourceType
 }
 
 func (b builtin) DefinePtrType() bool {
@@ -66,7 +71,7 @@ func (b builtin) PtrType() string {
 }
 
 func (b builtin) DefineInputMethods() bool {
-	return b.Type != AssetOrArchiveType
+	return b.Type != AssetOrArchiveType && b.Type != ResourceType
 }
 
 func (b builtin) ImplementsPtrType() bool {
@@ -187,6 +192,11 @@ var builtins = makeBuiltins([]*builtin{
 	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0", elemExample: "42", RegisterInput: true, defaultValue: "Int(0)"},
 	{Name: "String", Type: "string", Example: "String(\"foo\")", elemExample: "\"foo\"", RegisterInput: true, defaultValue: "String(\"\")"},
 	{Name: "URN", Type: "URN", inputType: "URN", implements: []string{"String"}, Example: "URN(\"foo\")", RegisterInput: true, defaultValue: "URN(\"\")"},
+	{
+		Name: ResourceType, Type: ResourceType, Example: "newSimpleResource(URN(\"urnA\"), ID(\"idA\"))",
+		InputComment: "Unfortunately `Resource` values do not implement `ResourceInput` in the current version. " +
+			"Use `NewResourceInput` instead.",
+	},
 })
 
 func unexported(s string) string {
@@ -221,7 +231,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			name = p.Name
 		}
 		switch name {
-		case "Archive", "Asset", AssetOrArchiveType, "":
+		case "Archive", "Asset", AssetOrArchiveType, ResourceType, "":
 			// do nothing
 		default:
 			builtins = append(builtins, &builtin{
