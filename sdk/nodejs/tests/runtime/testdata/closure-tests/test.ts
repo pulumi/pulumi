@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import execa from "execa";
 import * as fs from "fs/promises";
 import { readdirSync } from "fs";
 import * as path from "path";
@@ -42,6 +43,17 @@ async function getSnapshot(testCase: string, typescriptVersion: string): Promise
     return fs.readFile(path.join("cases", testCase, "snapshot.txt"), "utf-8");
 }
 
+// This test validates that the typescript version used by the closure tests
+// is the same as the one used by the pulumi package and that we are testing
+// what we think we are testing ...
+it(`resolve to the correct typescript version within the pulumi package`,
+    async function () {
+        const { stdout } = await execa("npm", ["ls", "typescript", "--json"], { cwd: __dirname, reject: false });
+        const deps = JSON.parse(stdout);
+        const version = deps.dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+        assert.strictEqual(version, typescript.version);
+    });
+
 describe(`closure tests (TypeScript ${typescript.version})`, function () {
     const cases = readdirSync("cases"); // describe does not support async functions
     for (const testCase of cases) {
@@ -61,7 +73,8 @@ describe(`closure tests (TypeScript ${typescript.version})`, function () {
                         isFactoryFunction: isFactoryFunction ?? false,
                     });
                 }, err => {
-                    assert.strictEqual((<Error>err).message, expectedError);
+                    const actual = anonymizeFunctionNames((<Error>err).message);
+                    assert.strictEqual(actual, expectedError);
                     return true;
                 });
             } else {
@@ -81,6 +94,10 @@ describe(`closure tests (TypeScript ${typescript.version})`, function () {
         });
     }
 });
+
+function anonymizeFunctionNames(text: string): string {
+    return text.replace(/function '.+'/g, "function '<anonymous>'");
+}
 
 describe("mock package", () => {
     describe("module", () => {

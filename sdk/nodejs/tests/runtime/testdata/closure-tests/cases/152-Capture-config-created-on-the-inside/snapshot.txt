@@ -1,5 +1,6 @@
 exports.handler = __f0;
 
+var __deploymentOnlyModule = {};
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 var __config = {["test:TestingKey2"]: "TestingValue2"};
@@ -7,7 +8,10 @@ var __runtimeConfig_1 = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f3 });
 Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
-var __deploymentOnlyModule = {Config: __f1};
+var __m = {};
+Object.defineProperty(__m, "__esModule", { value: true });
+__m.Config = __f1;
+Object.defineProperty(__deploymentOnlyModule, "Config", { enumerable: true, get: __f4 });
 
 function __f1(__0) {
   return (function() {
@@ -41,7 +45,7 @@ function __f2(__0) {
     with({ runtimeConfig_1: __runtimeConfig_1, this: undefined, arguments: undefined }) {
 
 return function /*get*/(key) {
-        const v = runtimeConfig_1.getConfig(this.fullKey(key));
+        const v = (0, runtimeConfig_1.getConfig)(this.fullKey(key));
         if (v === undefined) {
             return undefined;
         }
@@ -59,6 +63,16 @@ function __f3(__0) {
 return function /*fullKey*/(key) {
         return this.name + ":" + key;
     };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ m: __m, k: "Config", this: undefined, arguments: undefined }) {
+
+return function () { return m[k]; };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

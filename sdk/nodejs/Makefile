@@ -61,7 +61,7 @@ install:: install_package install_plugin
 unit_tests:: $(TEST_ALL_DEPS)
 	yarn run nyc -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
-		--exclude 'bin/tests/runtime/closure-integreation-tests.js' \
+		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
 		'bin/tests/**/*.spec.js'
 	yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
@@ -69,7 +69,7 @@ test_auto:: $(TEST_ALL_DEPS)
 	yarn run nyc -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
 
 test_closure:: $(TEST_ALL_DEPS)
-	node 'bin/tests/runtime/closure-integreation-tests.js'
+	node 'bin/tests/runtime/closure-integration-tests.js'
 
 TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4
 
