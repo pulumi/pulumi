@@ -373,7 +373,6 @@ jobs:
         with:
           path: ${{ env.TEST_STATUS_FILE }}
       - name: Summarize Test Time by Package
-        continue-on-error: true
         env:
           RUNNER_OS: ${{ runner.os }}
         run: |
