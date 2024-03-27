@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -36,19 +35,22 @@ func (p *echoResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest)
 }
 
 func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
+	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
+		KeepUnknowns: true, SkipNulls: true, KeepResources: true, KeepSecrets: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
+	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+		KeepUnknowns: true, SkipNulls: true, KeepResources: true, KeepSecrets: true,
+	})
 	if err != nil {
 		return nil, err
 	}
-
 	d := olds.Diff(news)
 	changes := rpc.DiffResponse_DIFF_NONE
-	if d.Changed("echo") {
+	if d != nil && d.Changed("echo") {
 		changes = rpc.DiffResponse_DIFF_SOME
 	}
 
@@ -60,20 +62,15 @@ func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (
 
 func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		KeepUnknowns: true,
-		SkipNulls:    true,
+		KeepUnknowns: true, SkipNulls: true, KeepResources: true, KeepSecrets: true,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	outputs := map[string]interface{}{
-		"echo": inputs["echo"],
-	}
-
 	outputProperties, err := plugin.MarshalProperties(
-		resource.NewPropertyMapFromMap(outputs),
-		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
+		inputs,
+		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true, KeepResources: true, KeepSecrets: true},
 	)
 	if err != nil {
 		return nil, err
