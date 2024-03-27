@@ -390,7 +390,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	},
 	{
 		Directory:   "any-resource",
-		Description: "A schema with arbitrary resources",
+		Description: "A schema with arbitrary resource-typed inputs and outputs",
 	},
 	{
 		Directory:   "regress-py-14012",

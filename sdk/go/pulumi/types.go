@@ -323,45 +323,7 @@ func convert(v interface{}, to reflect.Type) interface{} {
 	return rv.Convert(to).Interface()
 }
 
-// ResourceOutput is an Output that returns Resource values.
-// TODO: ResourceOutput and the init() should probably be code generated.
-type ResourceOutput struct{ *OutputState }
-
 var _ pulumix.Input[Resource] = ResourceOutput{}
-
-func (ResourceOutput) MarshalJSON() ([]byte, error) {
-	return nil, errors.New("Outputs can not be marshaled to JSON")
-}
-
-// ElementType returns the element type of this Output (Resource).
-func (ResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil)).Elem()
-}
-
-func (o ResourceOutput) ToOutput(context.Context) pulumix.Output[Resource] {
-	return pulumix.Output[Resource]{
-		OutputState: o.OutputState,
-	}
-}
-
-func (o ResourceOutput) ToResourceOutput() ResourceOutput {
-	return o
-}
-
-func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
-	return o
-}
-
-// ResourceInput is an Input type carrying Resource values.
-//
-// Unfortunately `Resource` values do not implement `ResourceInput` in
-// the current version. Use `NewResourceInput` instead.
-type ResourceInput interface {
-	Input
-
-	ToResourceOutput() ResourceOutput
-	ToResourceOutputWithContext(context.Context) ResourceOutput
-}
 
 func NewResourceInput(resource Resource) ResourceInput {
 	return NewResourceOutput(resource)
@@ -373,81 +335,9 @@ func NewResourceOutput(resource Resource) ResourceOutput {
 
 var _ ResourceInput = &ResourceOutput{}
 
-var resourceArrayType = reflect.TypeOf((*[]Resource)(nil)).Elem()
-
-// ResourceArrayInput is an input type that accepts ResourceArray and ResourceArrayOutput values.
-type ResourceArrayInput interface {
-	Input
-
-	ToResourceArrayOutput() ResourceArrayOutput
-	ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput
-}
-
-// ResourceArray is an input type for []ResourceInput values.
-type ResourceArray []ResourceInput
-
 var _ pulumix.Input[[]Resource] = ResourceArray{}
 
-// ElementType returns the element type of this Input ([]Resource).
-func (ResourceArray) ElementType() reflect.Type {
-	return resourceArrayType
-}
-
-func (in ResourceArray) ToOutput(ctx context.Context) pulumix.Output[[]Resource] {
-	return pulumix.Output[[]Resource]{
-		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
-	}
-}
-
-func (in ResourceArray) ToResourceArrayOutput() ResourceArrayOutput {
-	return ToOutput(in).(ResourceArrayOutput)
-}
-
-func (in ResourceArray) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
-	return ToOutputWithContext(ctx, in).(ResourceArrayOutput)
-}
-
-// ResourceArrayOutput is an Output that returns []Resource values.
-type ResourceArrayOutput struct{ *OutputState }
-
 var _ pulumix.Input[[]Resource] = ResourceArrayOutput{}
-
-func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, errors.New("Outputs can not be marshaled to JSON")
-}
-
-// ElementType returns the element type of this Output ([]Resource).
-func (ResourceArrayOutput) ElementType() reflect.Type {
-	return resourceArrayType
-}
-
-func (o ResourceArrayOutput) ToOutput(context.Context) pulumix.Output[[]Resource] {
-	return pulumix.Output[[]Resource]{
-		OutputState: o.OutputState,
-	}
-}
-
-func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {
-	return o
-}
-
-func (o ResourceArrayOutput) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
-	return o
-}
-
-// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
-// type if the index is out of bounds.
-func (o ResourceArrayOutput) Index(i IntInput) ResourceOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) Resource {
-		arr := vs[0].([]Resource)
-		idx := vs[1].(int)
-		var ret Resource
-		if idx >= 0 && idx < len(arr) {
-			ret = arr[idx]
-		}
-		return ret
-	}).(ResourceOutput)
-}
 
 func ToResourceArray(in []Resource) ResourceArray {
 	return NewResourceArray(in...)
@@ -471,12 +361,6 @@ func NewResourceArrayOutput(in ...ResourceOutput) ResourceArrayOutput {
 		a[i] = v
 	}
 	return a.ToResourceArrayOutput()
-}
-
-func init() {
-	RegisterInputType(reflect.TypeOf((*ResourceArrayInput)(nil)).Elem(), ResourceArray{})
-	RegisterOutputType(ResourceOutput{})
-	RegisterOutputType(ResourceArrayOutput{})
 }
 
 // coerceTypeConversion assigns src to dst, performing deep type coercion as necessary.

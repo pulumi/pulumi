@@ -34,7 +34,10 @@ export class ResourceWithResources extends pulumi.CustomResource {
     }
 
     public readonly nested!: pulumi.Output<outputs.TypeWithResources | undefined>;
+    public /*out*/ readonly optionalResource!: pulumi.Output<pulumi.Resource | undefined>;
     public /*out*/ readonly resource!: pulumi.Output<pulumi.Resource>;
+    public /*out*/ readonly resourceList!: pulumi.Output<pulumi.Resource[] | undefined>;
+    public /*out*/ readonly resourceMap!: pulumi.Output<{[key: string]: pulumi.Resource} | undefined>;
 
     /**
      * Create a ResourceWithResources resource with the given unique name, arguments, and options.
@@ -52,10 +55,16 @@ export class ResourceWithResources extends pulumi.CustomResource {
             }
             resourceInputs["nested"] = args ? args.nested : undefined;
             resourceInputs["source"] = args ? args.source : undefined;
+            resourceInputs["optionalResource"] = undefined /*out*/;
             resourceInputs["resource"] = undefined /*out*/;
+            resourceInputs["resourceList"] = undefined /*out*/;
+            resourceInputs["resourceMap"] = undefined /*out*/;
         } else {
             resourceInputs["nested"] = undefined /*out*/;
+            resourceInputs["optionalResource"] = undefined /*out*/;
             resourceInputs["resource"] = undefined /*out*/;
+            resourceInputs["resourceList"] = undefined /*out*/;
+            resourceInputs["resourceMap"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(ResourceWithResources.__pulumiType, name, resourceInputs, opts);

@@ -472,6 +472,30 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Resource</span>
     </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="optionalresource_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalresource_csharp" style="color: inherit; text-decoration: inherit;">Optional<wbr>Resource</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Pulumi.<wbr>Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcelist_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcelist_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>List</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;Pulumi.<wbr>Resource&gt;</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcemap_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcemap_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Resource&gt;</span>
+    </dt>
     <dd></dd></dl>
 </pulumi-choosable>
 </div>
@@ -493,6 +517,30 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi.<wbr>Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="optionalresource_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalresource_go" style="color: inherit; text-decoration: inherit;">Optional<wbr>Resource</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">pulumi.<wbr>Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcelist_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcelist_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>List</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcemap_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcemap_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -516,6 +564,30 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="optionalresource_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalresource_java" style="color: inherit; text-decoration: inherit;">optional<wbr>Resource</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcelist_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcelist_java" style="color: inherit; text-decoration: inherit;">resource<wbr>List</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;Resource&gt;</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcemap_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcemap_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Map&lt;String,Resource&gt;</span>
+    </dt>
     <dd></dd></dl>
 </pulumi-choosable>
 </div>
@@ -537,6 +609,30 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi.<wbr>Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="optionalresource_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalresource_nodejs" style="color: inherit; text-decoration: inherit;">optional<wbr>Resource</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">pulumi.<wbr>Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcelist_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcelist_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>List</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">pulumi<wbr>Resource[]</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcemap_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcemap_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">{[key: string]: pulumi<wbr>Resource}</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -560,6 +656,30 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi.<wbr>Resource</span>
     </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="optional_resource_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_resource_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>resource</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">pulumi.<wbr>Resource</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resource_list_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_list_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>list</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource]</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resource_map_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_map_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource]</span>
+    </dt>
     <dd></dd></dl>
 </pulumi-choosable>
 </div>
@@ -581,6 +701,30 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="optionalresource_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optionalresource_yaml" style="color: inherit; text-decoration: inherit;">optional<wbr>Resource</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcelist_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcelist_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>List</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;&gt;</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="resourcemap_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcemap_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Map&lt;&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

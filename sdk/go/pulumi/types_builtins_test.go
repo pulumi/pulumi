@@ -592,6 +592,48 @@ func TestOutputApply(t *testing.T) {
 			assert.True(t, ok)
 		})
 
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) Resource { return *new(Resource) }).(ResourceOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []Resource { return *new([]Resource) }).(ResourceArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]Resource { return *new(map[string]Resource) }).(ResourceMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][]Resource { return *new(map[string][]Resource) }).(ResourceArrayMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceMapArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) []map[string]Resource { return *new([]map[string]Resource) }).(ResourceMapArrayOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]Resource { return *new(map[string]map[string]Resource) }).(ResourceMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::ResourceArrayArrayOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) [][]Resource { return *new([][]Resource) }).(ResourceArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
 	}
 	// Test some chained applies.
 	{
@@ -2217,6 +2259,146 @@ func TestToOutputURNArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(URNArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResource(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(newSimpleResource(URN("urnA"), ID("idA")))
+	_, ok := out.(ResourceInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResourceArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))})
+	_, ok := out.(ResourceArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResourceMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))})
+	_, ok := out.(ResourceMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResourceArrayMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ResourceArrayMap{"baz": ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}})
+	_, ok := out.(ResourceArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResourceMapArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ResourceMapArray{ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}})
+	_, ok := out.(ResourceMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceMapArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResourceMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ResourceMapMap{"baz": ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}})
+	_, ok := out.(ResourceMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputResourceArrayArray(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(ResourceArrayArray{ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}})
+	_, ok := out.(ResourceArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ResourceArrayArrayInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -4506,6 +4688,216 @@ func TestToURNArrayArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestToResourceOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceInput(newSimpleResource(URN("urnA"), ID("idA")))
+
+	out := in.ToResourceOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToResourceArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceArrayInput(ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))})
+
+	out := in.ToResourceArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToResourceMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceMapInput(ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))})
+
+	out := in.ToResourceMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToResourceArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceArrayMapInput(ResourceArrayMap{"baz": ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}})
+
+	out := in.ToResourceArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToResourceMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceMapArrayInput(ResourceMapArray{ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}})
+
+	out := in.ToResourceMapArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceMapArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceMapArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToResourceMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceMapMapInput(ResourceMapMap{"baz": ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}})
+
+	out := in.ToResourceMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToResourceArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	in := ResourceArrayArrayInput(ResourceArrayArray{ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}})
+
+	out := in.ToResourceArrayArrayOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceArrayArrayOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToResourceArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToResourceArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
 func TestBuiltinConversions(t *testing.T) {
 	t.Parallel()
@@ -6131,6 +6523,66 @@ func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
 	assert.EqualValues(t, av.([][]URN)[0], iv)
 }
 
+func TestResourceArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}).ToResourceArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.([]Resource)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestResourceMapArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ResourceMapArray{ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}}).ToResourceMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.([]map[string]Resource)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestResourceArrayArrayIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ResourceArrayArray{ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}}).ToResourceArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.([][]Resource)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
 // Test map indexers.
 
 func TestArchiveMapIndex(t *testing.T) {
@@ -7649,6 +8101,66 @@ func TestTopLevelToURNMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 }
 
+func TestResourceMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}).ToResourceMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]Resource)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestResourceArrayMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ResourceArrayMap{"baz": ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}}).ToResourceArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][]Resource)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestResourceMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (ResourceMapMap{"baz": ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}}).ToResourceMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]Resource)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
 // Test AnyOutput `To*Output` functions
 
 func TestAnyOutputAsArchiveOutput(t *testing.T) {
@@ -8931,6 +9443,125 @@ func TestAnyOutputAsURNArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(URNArrayArray{URNArray{URN("foo")}})
 	out := anyout.AsURNArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(newSimpleResource(URN("urnA"), ID("idA")))
+	out := anyout.AsResourceOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))})
+	out := anyout.AsResourceArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))})
+	out := anyout.AsResourceMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ResourceArrayMap{"baz": ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}})
+	out := anyout.AsResourceArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ResourceMapArray{ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}})
+	out := anyout.AsResourceMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ResourceMapMap{"baz": ResourceMap{"baz": newSimpleResource(URN("urnA"), ID("idA"))}})
+	out := anyout.AsResourceMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsResourceArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ResourceArrayArray{ResourceArray{newSimpleResource(URN("urnA"), ID("idA"))}})
+	out := anyout.AsResourceArrayArrayOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)

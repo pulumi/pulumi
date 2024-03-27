@@ -31,6 +31,10 @@ import (
 var {{.Name | Unexported}}Type = reflect.TypeOf((*{{.ElementType}})(nil)).Elem()
 
 // {{.Name}}Input is an input type that accepts {{.Name}} and {{.Name}}Output values.
+{{ if .InputComment -}}
+//
+// {{.InputComment }}
+{{ end -}}
 type {{.Name}}Input interface {
 	Input
 

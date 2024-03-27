@@ -26,6 +26,7 @@ import (
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,6 +55,17 @@ func newSimpleCustomResource(ctx *Context, urn URN, id ID) CustomResource {
 	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
 	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
 	return &res
+}
+
+func newSimpleResource(urn URN, id ID) ResourceInput {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	contract.AssertNoErrorf(err, "expected to create a new context: %v", err)
+	var res simpleCustomResource
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
+	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
+	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
+	return NewResourceInput(&res)
 }
 
 type simpleProviderResource struct {

@@ -15,8 +15,17 @@ namespace Pulumi.Example
         [Output("nested")]
         public Output<Outputs.TypeWithResources?> Nested { get; private set; } = null!;
 
+        [Output("optionalResource")]
+        public Output<Pulumi.Resource?> OptionalResource { get; private set; } = null!;
+
         [Output("resource")]
         public Output<Pulumi.Resource> Resource { get; private set; } = null!;
+
+        [Output("resourceList")]
+        public Output<ImmutableArray<Pulumi.Resource>> ResourceList { get; private set; } = null!;
+
+        [Output("resourceMap")]
+        public Output<ImmutableDictionary<string, Pulumi.Resource>?> ResourceMap { get; private set; } = null!;
 
 
         /// <summary>

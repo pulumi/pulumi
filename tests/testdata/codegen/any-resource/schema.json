@@ -26,6 +26,21 @@
         },
         "nested": {
           "$ref": "#/types/example:index:TypeWithResources"
+        },
+        "resourceList": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Resource"
+          }
+        },
+        "resourceMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Resource"
+          }
+        },
+        "optionalResource": {
+          "$ref": "pulumi.json#/Resource"
         }
       },
       "required": [
