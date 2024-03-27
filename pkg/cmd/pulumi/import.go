@@ -580,7 +580,7 @@ func newImportCmd() *cobra.Command {
 			"\n" +
 			"    pulumi import 'aws:iam/user:User' name id\n" +
 			"\n" +
-			"The type token and property used for resource lookup are available in the Import section of" +
+			"The type token and property used for resource lookup are available in the Import section of\n" +
 			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
 			"\n" +
 			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +

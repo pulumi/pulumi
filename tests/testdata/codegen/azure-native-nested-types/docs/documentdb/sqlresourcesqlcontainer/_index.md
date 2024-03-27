@@ -1128,6 +1128,8 @@ $ pulumi import azure-native:documentdb:SqlResourceSqlContainer containerName /s
 ```
 
 
+To learn more about importing existing cloud resources, see [Importing resources](/docs/using-pulumi/adopting-pulumi/import/).
+
 
 
 
