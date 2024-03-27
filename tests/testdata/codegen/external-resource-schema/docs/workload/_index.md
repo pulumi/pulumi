@@ -47,7 +47,7 @@ example, err := example.NewWorkload(ctx, "workloadResource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var workloadResource = new Workload("workloadResource");
 ```
 
 </pulumi-choosable>

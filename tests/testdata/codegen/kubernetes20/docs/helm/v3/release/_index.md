@@ -68,7 +68,11 @@ Values: pulumi.Map{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var releaseResource = new Release("releaseResource", ReleaseArgs.builder()        
+    .chart("string")
+    .valueYamlFiles(new StringAsset("content"))
+    .values(Map.of("string", "any"))
+    .build());
 ```
 
 </pulumi-choosable>

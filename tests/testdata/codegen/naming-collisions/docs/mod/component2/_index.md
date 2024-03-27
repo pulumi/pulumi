@@ -47,7 +47,7 @@ example, err := mod.NewComponent2(ctx, "component2Resource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var component2Resource = new Component2("component2Resource");
 ```
 
 </pulumi-choosable>
@@ -80,7 +80,8 @@ const component2Resource = new example.mod.Component2("component2Resource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:mod:Component2
+properties: {}
 ```
 
 </pulumi-choosable>

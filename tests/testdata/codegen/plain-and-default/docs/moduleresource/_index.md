@@ -47,7 +47,25 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var moduleResourceResource = new ModuleResource("moduleResourceResource", ModuleResourceArgs.builder()        
+    .plainRequiredBool(false)
+    .requiredString("string")
+    .requiredNumber(0)
+    .requiredEnum("Four")
+    .requiredBool(false)
+    .plainRequiredString("string")
+    .plainRequiredNumber(0)
+    .plainRequiredConst("string")
+    .optionalString("string")
+    .plainOptionalString("string")
+    .plainOptionalNumber(0)
+    .plainOptionalConst("string")
+    .plainOptionalBool(false)
+    .optionalBool(false)
+    .optionalNumber(0)
+    .optionalEnum("Four")
+    .optionalConst("string")
+    .build());
 ```
 
 </pulumi-choosable>

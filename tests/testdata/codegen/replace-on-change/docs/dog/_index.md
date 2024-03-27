@@ -47,7 +47,7 @@ example, err := example.NewDog(ctx, "dogResource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var dogResource = new Dog("dogResource");
 ```
 
 </pulumi-choosable>

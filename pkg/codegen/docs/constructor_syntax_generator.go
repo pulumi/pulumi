@@ -91,25 +91,22 @@ func (g *constructorSyntaxGenerator) writeValue(
 	switch valueType := valueType.(type) {
 	case *schema.ArrayType:
 		write("[")
-		if !isResourceType(valueType.ElementType) {
-			writeValue(valueType.ElementType)
-		}
+		writeValue(valueType.ElementType)
 		write("]")
 	case *schema.MapType:
 		write("{\n")
 		g.indented(func() {
 			g.indent(buffer)
-			if !isResourceType(valueType.ElementType) {
-				write("\"string\" = ")
-				writeValue(valueType.ElementType)
-				write("\n")
-			}
+			write("\"string\" = ")
+			writeValue(valueType.ElementType)
+			write("\n")
 		})
 		g.indent(buffer)
 		write("}")
 	case *schema.ObjectType:
 		if seenTypes.Has(valueType.Token) && objectTypeHasRecursiveReference(valueType) {
-			write("notImplemented(%q)", valueType.Token)
+			_, _, objectName, _ := pcl.DecomposeToken(valueType.Token, hcl.Range{})
+			write("%s", camelCase(objectName))
 			return
 		}
 
@@ -123,11 +120,6 @@ func (g *constructorSyntaxGenerator) writeValue(
 				}
 
 				if g.requiredPropertiesOnly && !p.IsRequired() {
-					continue
-				}
-
-				if isResourceType(p.Type) {
-					// skip properties that have type resource
 					continue
 				}
 
@@ -151,7 +143,11 @@ func (g *constructorSyntaxGenerator) writeValue(
 		g.indent(buffer)
 		write("}")
 	case *schema.ResourceType:
-		write("notImplemented(%q)", valueType.Token)
+		// when a resource type is encountered
+		// emit an identifier with the name of the resource
+		// usually this gives invalid code but the binder allows for unbound variables
+		_, _, resourceNameFromToken, _ := pcl.DecomposeToken(valueType.Token, hcl.Range{})
+		write("%s", camelCase(resourceNameFromToken))
 	case *schema.EnumType:
 		cases := make([]string, len(valueType.Elements))
 		for index, c := range valueType.Elements {
@@ -284,20 +280,6 @@ func (g *constructorSyntaxGenerator) bindProgram(loader schema.ReferenceLoader, 
 
 func camelCase(s string) string {
 	return cgstrings.Camel(s)
-}
-
-func isResourceType(t schema.Type) bool {
-	if optional, ok := t.(*schema.OptionalType); ok {
-		return isResourceType(optional.ElementType)
-	}
-	if inputType, ok := t.(*schema.InputType); ok {
-		return isResourceType(inputType.ElementType)
-	}
-	if tokenType, isTokenType := t.(*schema.TokenType); isTokenType {
-		return isResourceType(tokenType.UnderlyingType)
-	}
-	_, isResource := t.(*schema.ResourceType)
-	return isResource
 }
 
 func cleanModuleName(moduleName string) string {

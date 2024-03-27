@@ -59,7 +59,12 @@ example, err := xyz.NewStaticPage(ctx, "staticPageResource", &xyz.StaticPageArgs
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var staticPageResource = new StaticPage("staticPageResource", StaticPageArgs.builder()        
+    .indexContent("string")
+    .foo(FooArgs.builder()
+        .a(false)
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

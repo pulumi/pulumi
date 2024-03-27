@@ -166,7 +166,46 @@ Uid: pulumi.String("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var configMapResource = new ConfigMap("configMapResource", ConfigMapArgs.builder()        
+    .apiVersion("string")
+    .binaryData(Map.of("string", "string"))
+    .data(Map.of("string", "string"))
+    .immutable(false)
+    .kind("string")
+    .metadata(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

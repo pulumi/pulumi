@@ -25,7 +25,14 @@ no_edit_this_page: true
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var otherResourceResource = new Example.OtherResource("otherResourceResource", new()
+{
+    Bar = new()
+    {
+        "string",
+    },
+    Foo = resource,
+});
 ```
 
 </pulumi-choosable>
@@ -36,7 +43,12 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := example.NewOtherResource(ctx, "otherResourceResource", &example.OtherResourceArgs{
+	Bar: []pulumi.String{
+		pulumi.String("string"),
+	},
+	Foo: pulumi.Any(resource),
+})
 ```
 
 </pulumi-choosable>
@@ -47,7 +59,10 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var otherResourceResource = new OtherResource("otherResourceResource", OtherResourceArgs.builder()        
+    .bar("string")
+    .foo(resource)
+    .build());
 ```
 
 </pulumi-choosable>
@@ -58,7 +73,9 @@ Coming soon!
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+other_resource_resource = example.OtherResource("otherResourceResource",
+    bar=["string"],
+    foo=resource)
 ```
 
 </pulumi-choosable>
@@ -69,7 +86,10 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const otherResourceResource = new example.OtherResource("otherResourceResource", {
+    bar: ["string"],
+    foo: resource,
+});
 ```
 
 </pulumi-choosable>
@@ -80,7 +100,11 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:OtherResource
+properties:
+    bar:
+        - string
+    foo: ${resource}
 ```
 
 </pulumi-choosable>

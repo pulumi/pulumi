@@ -97,7 +97,18 @@ example, err := mypkg.NewResource(ctx, "resourceResource", &mypkg.ResourceArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var resourceResource = new Resource("resourceResource", ResourceArgs.builder()        
+    .config(ConfigArgs.builder()
+        .foo("string")
+        .build())
+    .configArray(ConfigArgs.builder()
+        .foo("string")
+        .build())
+    .configMap(Map.of("string", Map.of("foo", "string")))
+    .foo("string")
+    .fooArray("string")
+    .fooMap(Map.of("string", "string"))
+    .build());
 ```
 
 </pulumi-choosable>

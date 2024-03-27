@@ -25,7 +25,11 @@ no_edit_this_page: true
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var componentResource = new Example.Mod.Component("componentResource", new()
+{
+    Local = component2,
+    Main = mainComponent,
+});
 ```
 
 </pulumi-choosable>
@@ -36,7 +40,10 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := mod.NewComponent(ctx, "componentResource", &mod.ComponentArgs{
+	Local: pulumi.Any(component2),
+	Main:  pulumi.Any(mainComponent),
+})
 ```
 
 </pulumi-choosable>
@@ -47,7 +54,10 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var componentResource = new Component("componentResource", ComponentArgs.builder()        
+    .local(component2)
+    .main(mainComponent)
+    .build());
 ```
 
 </pulumi-choosable>
@@ -58,7 +68,9 @@ Coming soon!
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+component_resource = example.mod.Component("componentResource",
+    local=component2,
+    main=main_component)
 ```
 
 </pulumi-choosable>
@@ -69,7 +81,10 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const componentResource = new example.mod.Component("componentResource", {
+    local: component2,
+    main: mainComponent,
+});
 ```
 
 </pulumi-choosable>
@@ -80,7 +95,10 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:mod:Component
+properties:
+    local: ${component2}
+    main: ${mainComponent}
 ```
 
 </pulumi-choosable>

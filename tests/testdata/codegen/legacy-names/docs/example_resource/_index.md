@@ -57,7 +57,13 @@ example, err := legacy_names.Newexample_resource(ctx, "example_resourceResource"
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var example_resourceResource = new Example_resource("example_resourceResource", Example_resourceArgs.builder()        
+    .map_enum(Map.of("string", "A"))
+    .request_HTTP(RequestArgs.builder()
+        .uRL("string")
+        .content_body("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

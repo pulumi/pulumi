@@ -60,7 +60,12 @@ Yaml: pulumi.Any("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var configGroupResource = new ConfigGroup("configGroupResource", ConfigGroupArgs.builder()        
+    .files("string")
+    .objs(null)
+    .resourcePrefix("string")
+    .yaml("string")
+    .build());
 ```
 
 </pulumi-choosable>

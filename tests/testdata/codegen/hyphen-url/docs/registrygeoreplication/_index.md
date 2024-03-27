@@ -25,7 +25,10 @@ no_edit_this_page: true
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var registryGeoReplicationResource = new Registrygeoreplication.RegistryGeoReplication("registryGeoReplicationResource", new()
+{
+    ResourceGroup = resourceGroup,
+});
 ```
 
 </pulumi-choosable>
@@ -36,7 +39,9 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := registrygeoreplication.NewRegistryGeoReplication(ctx, "registryGeoReplicationResource", &registrygeoreplication.RegistryGeoReplicationArgs{
+	ResourceGroup: pulumi.Any(resourceGroup),
+})
 ```
 
 </pulumi-choosable>
@@ -47,7 +52,9 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var registryGeoReplicationResource = new RegistryGeoReplication("registryGeoReplicationResource", RegistryGeoReplicationArgs.builder()        
+    .resourceGroup(resourceGroup)
+    .build());
 ```
 
 </pulumi-choosable>
@@ -58,7 +65,7 @@ Coming soon!
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+registry_geo_replication_resource = registrygeoreplication.RegistryGeoReplication("registryGeoReplicationResource", resource_group=resource_group)
 ```
 
 </pulumi-choosable>
@@ -69,7 +76,7 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const registryGeoReplicationResource = new registrygeoreplication.RegistryGeoReplication("registryGeoReplicationResource", {resourceGroup: resourceGroup});
 ```
 
 </pulumi-choosable>
@@ -80,7 +87,9 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: registrygeoreplication:RegistryGeoReplication
+properties:
+    resourceGroup: ${resourceGroup}
 ```
 
 </pulumi-choosable>

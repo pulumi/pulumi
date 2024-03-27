@@ -47,7 +47,10 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var componentResource = new Component("componentResource", ComponentArgs.builder()        
+    .localEnum("pi")
+    .remoteEnum("MANAGEMENT_UNSPECIFIED")
+    .build());
 ```
 
 </pulumi-choosable>

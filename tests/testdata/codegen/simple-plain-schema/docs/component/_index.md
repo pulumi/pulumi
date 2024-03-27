@@ -140,7 +140,46 @@ F: "string",
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var componentResource = new Component("componentResource", ComponentArgs.builder()        
+    .a(false)
+    .c(0)
+    .e("string")
+    .b(false)
+    .bar(FooArgs.builder()
+        .a(false)
+        .c(0)
+        .e("string")
+        .b(false)
+        .d(0)
+        .f("string")
+        .build())
+    .baz(FooArgs.builder()
+        .a(false)
+        .c(0)
+        .e("string")
+        .b(false)
+        .d(0)
+        .f("string")
+        .build())
+    .bazMap(Map.of("string", Map.ofEntries(
+        Map.entry("a", false),
+        Map.entry("c", 0),
+        Map.entry("e", "string"),
+        Map.entry("b", false),
+        Map.entry("d", 0),
+        Map.entry("f", "string")
+    )))
+    .d(0)
+    .f("string")
+    .foo(FooArgs.builder()
+        .a(false)
+        .c(0)
+        .e("string")
+        .b(false)
+        .d(0)
+        .f("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

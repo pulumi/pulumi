@@ -64,7 +64,10 @@ Sizes: treev1.TreeSizeMap{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var nurseryResource = new Nursery("nurseryResource", NurseryArgs.builder()        
+    .varieties("Burgundy")
+    .sizes(Map.of("string", "small"))
+    .build());
 ```
 
 </pulumi-choosable>

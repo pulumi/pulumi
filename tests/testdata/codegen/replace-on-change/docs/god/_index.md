@@ -47,7 +47,7 @@ example, err := example.NewGod(ctx, "godResource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var godResource = new God("godResource");
 ```
 
 </pulumi-choosable>

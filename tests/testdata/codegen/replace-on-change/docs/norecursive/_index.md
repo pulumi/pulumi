@@ -47,7 +47,7 @@ example, err := example.NewNoRecursive(ctx, "noRecursiveResource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var noRecursiveResource = new NoRecursive("noRecursiveResource");
 ```
 
 </pulumi-choosable>

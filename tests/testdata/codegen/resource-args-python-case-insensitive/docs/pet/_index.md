@@ -52,7 +52,9 @@ example, err := example.NewPet(ctx, "petResource", &example.PetArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var petResource = new Pet("petResource", PetArgs.builder()        
+    .name("string")
+    .build());
 ```
 
 </pulumi-choosable>

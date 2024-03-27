@@ -2269,7 +2269,7 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 	})
 
 	packagesToSkip := map[string]codegen.StringSet{
-		"aws-native": codegen.NewStringSet("python", "typescript", "go", "csharp"),
+		"aws-native": codegen.NewStringSet("python", "typescript", "go", "csharp", "yaml", "java"),
 	}
 
 	type ProgramGenerator = func(program *pcl.Program) (files map[string][]byte, diags hcl.Diagnostics, err error)
@@ -2353,8 +2353,15 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 				constructorSyntax.yaml = extractConstructorSyntaxExamplesFromYAML(program)
 			}
 		case "java":
-			// TODO: implement java constructor syntax generation
-
+			files, diags, err := safeExtract(java.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["MyStack.java"])
+				constructorSyntax.java = extractConstructorSyntaxExamples(
+					program,    /* program */
+					"        ", /* indentation to trim */
+					"//",       /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(line, ");") })
+			}
 		}
 	}
 
