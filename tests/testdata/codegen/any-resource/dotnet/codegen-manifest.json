@@ -1,0 +1,14 @@
+{
+  "emittedFiles": [
+    "GetResources.cs",
+    "Inputs/TypeWithResourcesArgs.cs",
+    "Outputs/TypeWithResources.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "ResourceWithResources.cs",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

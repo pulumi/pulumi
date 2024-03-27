@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
@@ -144,20 +145,26 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 	if alreadyHaveGoMod {
 		t.Logf("Found an existing go.mod, leaving as is")
 	} else {
-		test.RunCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
+		runCommandWithGoWorkOff(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
 		replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
-		test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
+		runCommandWithGoWorkOff(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
 	}
 
-	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
-	test.RunCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+	runCommandWithGoWorkOff(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
+	runCommandWithGoWorkOff(t, "go_build", codeDir, goExe, "build", "-v", "all")
 }
 
 func testGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	test.RunCommand(t, "go-test", codeDir, goExe, "test", inferModuleName(codeDir)+"/...")
+	runCommandWithGoWorkOff(t, "go-test", codeDir, goExe, "test", inferModuleName(codeDir)+"/...")
+}
+
+func runCommandWithGoWorkOff(t *testing.T, name string, cwd string, exec string, args ...string) {
+	test.RunCommandWithOptions(t, &integration.ProgramTestOptions{
+		Env: []string{"GOWORK=off"},
+	}, name, cwd, exec, args...)
 }
 
 func TestGenerateTypeNames(t *testing.T) {

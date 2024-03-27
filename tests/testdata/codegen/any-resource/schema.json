@@ -1,0 +1,81 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example:index:TypeWithResources": {
+      "properties": {
+        "plainResource": {
+          "$ref": "pulumi.json#/Resource",
+          "plain": true
+        },
+        "resource": {
+          "$ref": "pulumi.json#/Resource"
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example:index:ResourceWithResources": {
+      "properties": {
+        "resource": {
+          "$ref": "pulumi.json#/Resource"
+        },
+        "nested": {
+          "$ref": "#/types/example:index:TypeWithResources"
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "inputProperties": {
+        "source": {
+          "$ref": "pulumi.json#/Resource"
+        },
+        "nested": {
+          "$ref": "#/types/example:index:TypeWithResources"
+        }
+      },
+      "requiredInputs": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "functions": {
+    "example::GetResources": {
+      "inputs": {
+        "properties": {
+          "source": {
+            "$ref": "pulumi.json#/Resource"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "type": "object"
+      },
+      "outputs": {
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "$ref": "pulumi.json#/Resource"
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "any-resource/example",
+      "generateExtraInputTypes": true,
+      "generics": "none"
+    }
+  }
+}
