@@ -123,17 +123,16 @@ export class Stack {
         });
         await eventLogTail.start();
         const lineSplitter = readline.createInterface({ input: eventLogTail });
-        let partialLine = "";
         lineSplitter.on("line", (line) => {
             let event: EngineEvent;
             try {
-                line = partialLine + line;
-                partialLine = "";
                 event = JSON.parse(line);
                 callback(event);
             } catch (e) {
-                partialLine += line;
-                return;
+                log.warn(`Failed to parse engine event
+If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
+details about your environment.
+Event: ${line}\n${e.toString()}`);
             }
         });
 

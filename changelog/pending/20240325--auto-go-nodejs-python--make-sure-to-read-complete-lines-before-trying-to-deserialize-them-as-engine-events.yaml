@@ -1,4 +1,4 @@
 changes:
 - type: fix
-  scope: auto/go,nodejs,python
+  scope: auto/go,python
   description: Make sure to read complete lines before trying to deserialize them as engine events
