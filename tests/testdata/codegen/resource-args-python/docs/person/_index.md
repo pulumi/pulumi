@@ -106,7 +106,11 @@ const personResource = new example.Person("personResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Person
+properties:
+    name: string
+    pets:
+        - name: string
 ```
 
 </pulumi-choosable>

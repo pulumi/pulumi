@@ -85,7 +85,9 @@ const exampleOverlayResource = new example.overlay.Overlay("exampleOverlayResour
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:overlay:Overlay
+properties:
+    bar: string
 ```
 
 </pulumi-choosable>

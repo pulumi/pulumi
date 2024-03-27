@@ -85,7 +85,9 @@ const providerResource = new providerType.submod.Provider("providerResource", {a
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: providerType:submod:provider
+properties:
+    a: false
 ```
 
 </pulumi-choosable>

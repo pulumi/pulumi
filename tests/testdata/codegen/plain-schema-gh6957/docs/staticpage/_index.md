@@ -101,7 +101,11 @@ const staticPageResource = new xyz.StaticPage("staticPageResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: xyz:StaticPage
+properties:
+    foo:
+        a: false
+    indexContent: string
 ```
 
 </pulumi-choosable>

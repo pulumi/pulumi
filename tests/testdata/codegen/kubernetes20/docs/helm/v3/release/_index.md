@@ -112,7 +112,13 @@ const releaseResource = new kubernetes.helm.v3.Release("releaseResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: kubernetes:helm.sh/v3:Release
+properties:
+    chart: string
+    valueYamlFiles:
+        - fn::StringAsset: content
+    values:
+        string: any
 ```
 
 </pulumi-choosable>

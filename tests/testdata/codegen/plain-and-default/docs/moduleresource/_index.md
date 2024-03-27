@@ -80,7 +80,25 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: foobar:ModuleResource
+properties:
+    optionalBool: false
+    optionalConst: string
+    optionalEnum: Four
+    optionalNumber: 0
+    optionalString: string
+    plainOptionalBool: false
+    plainOptionalConst: string
+    plainOptionalNumber: 0
+    plainOptionalString: string
+    plainRequiredBool: false
+    plainRequiredConst: string
+    plainRequiredNumber: 0
+    plainRequiredString: string
+    requiredBool: false
+    requiredEnum: Four
+    requiredNumber: 0
+    requiredString: string
 ```
 
 </pulumi-choosable>

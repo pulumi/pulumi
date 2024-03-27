@@ -163,7 +163,20 @@ const resourceResource = new mypkg.Resource("resourceResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: mypkg:Resource
+properties:
+    config:
+        foo: string
+    configArray:
+        - foo: string
+    configMap:
+        string:
+            foo: string
+    foo: string
+    fooArray:
+        - string
+    fooMap:
+        string: string
 ```
 
 </pulumi-choosable>

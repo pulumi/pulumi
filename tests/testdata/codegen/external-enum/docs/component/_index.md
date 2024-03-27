@@ -80,7 +80,10 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Component
+properties:
+    localEnum: pi
+    remoteEnum: MANAGEMENT_UNSPECIFIED
 ```
 
 </pulumi-choosable>

@@ -117,7 +117,15 @@ const catResource = new example.Cat("catResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Cat
+properties:
+    age: 0
+    pet:
+        age: 0
+        nameArray: []
+        nameMap: {}
+        requiredNameArray: []
+        requiredNameMap: {}
 ```
 
 </pulumi-choosable>

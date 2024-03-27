@@ -80,7 +80,8 @@ const dogResource = new example.Dog("dogResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Dog
+properties: {}
 ```
 
 </pulumi-choosable>

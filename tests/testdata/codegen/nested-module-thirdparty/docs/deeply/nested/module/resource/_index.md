@@ -85,7 +85,9 @@ const resourceResource = new foo_bar.deeply.nested.module.Resource("resourceReso
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: foo-bar:deeply/nested/module:Resource
+properties:
+    baz: string
 ```
 
 </pulumi-choosable>

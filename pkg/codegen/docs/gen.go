@@ -1761,12 +1761,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		} else {
 			creationExampleSyntax["java"] = "Coming soon!"
 		}
-		if example, found := dctx.constructorSyntaxData.yaml.resources[r.Token]; found {
+		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
 			creationExampleSyntax["yaml"] = example
 		} else {
 			creationExampleSyntax["yaml"] = "Coming soon!"
 		}
-
 	}
 
 	docInfo := dctx.decomposeDocstring(r.Comment)
@@ -2347,14 +2346,55 @@ func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *con
 					"//",    /* comment prefix */
 					func(line string) bool { return strings.HasSuffix(strings.TrimSpace(line), ")") })
 			}
+		case "yaml":
+			files, diags, err := safeExtract(yaml.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["Main.yaml"])
+				constructorSyntax.yaml = extractConstructorSyntaxExamplesFromYAML(program)
+			}
 		case "java":
 			// TODO: implement java constructor syntax generation
-		case "yaml":
-			// TODO: implement yaml constructor syntax generation
+
 		}
 	}
 
 	return constructorSyntax
+}
+
+// collapseToken converts an exact token to a token more suitable for
+// display. For example, it converts
+//
+//	  fizz:index/buzz:Buzz => fizz:Buzz
+//	  fizz:mode/buzz:Buzz  => fizz:mode:Buzz
+//		 foo:index:Bar	      => foo:Bar
+//		 foo::Bar             => foo:Bar
+//		 fizz:mod:buzz        => fizz:mod:buzz
+func collapseYAMLToken(token string) string {
+	tokenParts := strings.Split(token, ":")
+
+	if len(tokenParts) == 3 {
+		title := func(s string) string {
+			r := []rune(s)
+			if len(r) == 0 {
+				return ""
+			}
+			return strings.ToTitle(string(r[0])) + string(r[1:])
+		}
+		if mod := strings.Split(tokenParts[1], "/"); len(mod) == 2 && title(mod[1]) == tokenParts[2] {
+			// aws:s3/bucket:Bucket => aws:s3:Bucket
+			// We handle the case foo:index/bar:Bar => foo:index:Bar
+			tokenParts = []string{tokenParts[0], mod[0], tokenParts[2]}
+		}
+
+		if tokenParts[1] == "index" || tokenParts[1] == "" {
+			// foo:index:Bar => foo:Bar
+			// or
+			// foo::Bar => foo:Bar
+			tokenParts = []string{tokenParts[0], tokenParts[2]}
+		}
+	}
+
+	return strings.Join(tokenParts, ":")
 }
 
 func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {

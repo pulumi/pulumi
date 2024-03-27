@@ -117,7 +117,21 @@ const resourceWithAssetsResource = new example.ResourceWithAssets("resourceWithA
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:ResourceWithAssets
+properties:
+    archive:
+        fn::FileArchive: ./path/to/archive
+    nested:
+        archive:
+            fn::FileArchive: ./path/to/archive
+        asset:
+            fn::StringAsset: content
+        plainArchive:
+            fn::FileArchive: ./path/to/archive
+        plainAsset:
+            fn::StringAsset: content
+    source:
+        fn::StringAsset: content
 ```
 
 </pulumi-choosable>

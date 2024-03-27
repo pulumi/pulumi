@@ -80,7 +80,8 @@ const fooResource = new example.Foo("fooResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Foo
+properties: {}
 ```
 
 </pulumi-choosable>

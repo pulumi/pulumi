@@ -94,7 +94,10 @@ const resResource = new urnid.Res("resResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: urnid:Res
+properties:
+    id: string
+    urn: string
 ```
 
 </pulumi-choosable>

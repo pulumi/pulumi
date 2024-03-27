@@ -80,7 +80,8 @@ const catResource = new example.Cat("catResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Cat
+properties: {}
 ```
 
 </pulumi-choosable>

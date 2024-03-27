@@ -85,7 +85,9 @@ const petResource = new example.Pet("petResource", {name: "string"});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Pet
+properties:
+    name: string
 ```
 
 </pulumi-choosable>
