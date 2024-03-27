@@ -80,7 +80,8 @@ const recResource = new example.Rec("recResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Rec
+properties: {}
 ```
 
 </pulumi-choosable>

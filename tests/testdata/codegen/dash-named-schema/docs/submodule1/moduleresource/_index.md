@@ -94,7 +94,10 @@ const moduleResourceResource = new foo_bar.submodule1.ModuleResource("moduleReso
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: foo-bar:submodule1:ModuleResource
+properties:
+    thing:
+        buzz: string
 ```
 
 </pulumi-choosable>

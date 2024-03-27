@@ -98,7 +98,13 @@ const example_resourceResource = new legacy_names.Example_resource("example_reso
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: legacy_names:example_resource
+properties:
+    map_enum:
+        - string: A
+    request_HTTP:
+        URL: string
+        content_body: string
 ```
 
 </pulumi-choosable>

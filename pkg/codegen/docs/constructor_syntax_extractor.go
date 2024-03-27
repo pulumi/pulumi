@@ -17,6 +17,8 @@ package docs
 import (
 	"fmt"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 func extractConstructorSyntaxExamples(
@@ -69,6 +71,40 @@ func extractConstructorSyntaxExamples(
 			currentToken = ""
 			readingResource = false
 			readingInvoke = false
+		}
+	}
+
+	return &languageConstructorSyntax{
+		resources: resources,
+		invokes:   invokes,
+	}
+}
+
+func extractConstructorSyntaxExamplesFromYAML(programText string) *languageConstructorSyntax {
+	resources := map[string]string{}
+	invokes := map[string]string{}
+
+	type resource struct {
+		Type       string                 `yaml:"type"`
+		Properties map[string]interface{} `yaml:"properties"`
+	}
+
+	type yamlProgram struct {
+		Resources map[string]resource `yaml:"resources"`
+	}
+
+	var program yamlProgram
+	err := yaml.Unmarshal([]byte(programText), &program)
+	if err != nil {
+		return &languageConstructorSyntax{
+			resources: resources,
+			invokes:   invokes,
+		}
+	}
+
+	for _, resourceDefinition := range program.Resources {
+		if serializedResource, err := yaml.Marshal(resourceDefinition); err == nil {
+			resources[resourceDefinition.Type] = strings.TrimSuffix(string(serializedResource), "\n")
 		}
 	}
 

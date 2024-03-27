@@ -254,7 +254,43 @@ const componentResource = new example.Component("componentResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Component
+properties:
+    a: false
+    b: false
+    bar:
+        a: false
+        b: false
+        c: 0
+        d: 0
+        e: string
+        f: string
+    baz:
+        - a: false
+          b: false
+          c: 0
+          d: 0
+          e: string
+          f: string
+    bazMap:
+        string:
+            a: false
+            b: false
+            c: 0
+            d: 0
+            e: string
+            f: string
+    c: 0
+    d: 0
+    e: string
+    f: string
+    foo:
+        a: false
+        b: false
+        c: 0
+        d: 0
+        e: string
+        f: string
 ```
 
 </pulumi-choosable>

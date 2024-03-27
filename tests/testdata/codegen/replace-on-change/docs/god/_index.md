@@ -80,7 +80,8 @@ const godResource = new example.God("godResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:God
+properties: {}
 ```
 
 </pulumi-choosable>

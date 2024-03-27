@@ -80,7 +80,8 @@ const toyStoreResource = new example.ToyStore("toyStoreResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:ToyStore
+properties: {}
 ```
 
 </pulumi-choosable>

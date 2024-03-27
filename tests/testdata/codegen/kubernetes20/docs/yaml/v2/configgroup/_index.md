@@ -102,7 +102,12 @@ const configGroupResource = new kubernetes.yaml.v2.ConfigGroup("configGroupResou
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: kubernetes:yaml/v2:ConfigGroup
+properties:
+    files: string
+    objs: null
+    resourcePrefix: string
+    yaml: string
 ```
 
 </pulumi-choosable>

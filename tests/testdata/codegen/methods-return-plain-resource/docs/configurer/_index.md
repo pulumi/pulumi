@@ -85,7 +85,9 @@ const configurerResource = new metaprovider.Configurer("configurerResource", {tl
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: metaprovider:Configurer
+properties:
+    tlsProxy: string
 ```
 
 </pulumi-choosable>

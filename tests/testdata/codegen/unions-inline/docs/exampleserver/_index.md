@@ -98,7 +98,11 @@ const exampleServerResource = new example.ExampleServer("exampleServerResource",
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:ExampleServer
+properties:
+    properties:
+        createMode: Replica
+        version: string
 ```
 
 </pulumi-choosable>

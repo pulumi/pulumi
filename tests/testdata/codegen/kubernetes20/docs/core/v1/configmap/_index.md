@@ -292,7 +292,48 @@ const configMapResource = new kubernetes.core.v1.ConfigMap("configMapResource", 
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: kubernetes:core/v1:ConfigMap
+properties:
+    apiVersion: string
+    binaryData:
+        string: string
+    data:
+        string: string
+    immutable: false
+    kind: string
+    metadata:
+        annotations:
+            string: string
+        clusterName: string
+        creationTimestamp: string
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: string
+        finalizers:
+            - string
+        generateName: string
+        generation: 0
+        labels:
+            string: string
+        managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+        name: string
+        namespace: string
+        ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+        resourceVersion: string
+        selfLink: string
+        uid: string
 ```
 
 </pulumi-choosable>

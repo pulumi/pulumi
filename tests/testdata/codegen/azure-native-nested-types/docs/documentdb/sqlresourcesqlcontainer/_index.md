@@ -412,7 +412,8 @@ const sqlResourceSqlContainerResource = new azure_native.documentdb.SqlResourceS
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: azure-native:documentdb:SqlResourceSqlContainer
+properties: {}
 ```
 
 </pulumi-choosable>

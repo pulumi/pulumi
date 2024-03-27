@@ -80,7 +80,8 @@ const noRecursiveResource = new example.NoRecursive("noRecursiveResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:NoRecursive
+properties: {}
 ```
 
 </pulumi-choosable>

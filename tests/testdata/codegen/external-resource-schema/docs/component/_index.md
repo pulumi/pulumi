@@ -1120,7 +1120,208 @@ const componentResource = new example.Component("componentResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Component
+properties:
+    metadata:
+        annotations:
+            string: string
+        clusterName: string
+        creationTimestamp: string
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: string
+        finalizers:
+            - string
+        generateName: string
+        generation: 0
+        labels:
+            string: string
+        managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+        name: string
+        namespace: string
+        ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+        resourceVersion: string
+        selfLink: string
+        uid: string
+    metadataArray:
+        - annotations:
+            string: string
+          clusterName: string
+          creationTimestamp: string
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: string
+          finalizers:
+            - string
+          generateName: string
+          generation: 0
+          labels:
+            string: string
+          managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+          name: string
+          namespace: string
+          ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+          resourceVersion: string
+          selfLink: string
+          uid: string
+    metadataMap:
+        string:
+            annotations:
+                string: string
+            clusterName: string
+            creationTimestamp: string
+            deletionGracePeriodSeconds: 0
+            deletionTimestamp: string
+            finalizers:
+                - string
+            generateName: string
+            generation: 0
+            labels:
+                string: string
+            managedFields:
+                - apiVersion: string
+                  fieldsType: string
+                  fieldsV1: '{}'
+                  manager: string
+                  operation: string
+                  subresource: string
+                  time: string
+            name: string
+            namespace: string
+            ownerReferences:
+                - apiVersion: string
+                  blockOwnerDeletion: false
+                  controller: false
+                  kind: string
+                  name: string
+                  uid: string
+            resourceVersion: string
+            selfLink: string
+            uid: string
+    requiredMetadata:
+        annotations:
+            string: string
+        clusterName: string
+        creationTimestamp: string
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: string
+        finalizers:
+            - string
+        generateName: string
+        generation: 0
+        labels:
+            string: string
+        managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+        name: string
+        namespace: string
+        ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+        resourceVersion: string
+        selfLink: string
+        uid: string
+    requiredMetadataArray:
+        - annotations:
+            string: string
+          clusterName: string
+          creationTimestamp: string
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: string
+          finalizers:
+            - string
+          generateName: string
+          generation: 0
+          labels:
+            string: string
+          managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+          name: string
+          namespace: string
+          ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+          resourceVersion: string
+          selfLink: string
+          uid: string
+    requiredMetadataMap:
+        string:
+            annotations:
+                string: string
+            clusterName: string
+            creationTimestamp: string
+            deletionGracePeriodSeconds: 0
+            deletionTimestamp: string
+            finalizers:
+                - string
+            generateName: string
+            generation: 0
+            labels:
+                string: string
+            managedFields:
+                - apiVersion: string
+                  fieldsType: string
+                  fieldsV1: '{}'
+                  manager: string
+                  operation: string
+                  subresource: string
+                  time: string
+            name: string
+            namespace: string
+            ownerReferences:
+                - apiVersion: string
+                  blockOwnerDeletion: false
+                  controller: false
+                  kind: string
+                  name: string
+                  uid: string
+            resourceVersion: string
+            selfLink: string
+            uid: string
 ```
 
 </pulumi-choosable>

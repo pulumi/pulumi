@@ -106,7 +106,12 @@ const nurseryResource = new plant.tree.v1.Nursery("nurseryResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: plant:tree/v1:Nursery
+properties:
+    sizes:
+        string: small
+    varieties:
+        - Burgundy
 ```
 
 </pulumi-choosable>

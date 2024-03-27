@@ -80,7 +80,8 @@ const fooencryptedBarClassResource = new foo_bar.submodule1.FOOEncryptedBarClass
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: foo-bar:submodule1:FOOEncryptedBarClass
+properties: {}
 ```
 
 </pulumi-choosable>

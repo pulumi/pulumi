@@ -80,7 +80,8 @@ const workloadResource = new example.Workload("workloadResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Workload
+properties: {}
 ```
 
 </pulumi-choosable>

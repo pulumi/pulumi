@@ -147,4 +147,24 @@ _, err = test.NewSecond(ctx, "secondResource", &test.SecondArgs{
 	equalPrograms(constructorSyntax.golang, "test:index:NoInputs", `
 _, err = test.NewNoInputs(ctx, "noInputsResource", nil)
 `)
+
+	assert.Equal(t, expectedResources, len(constructorSyntax.yaml.resources))
+	equalPrograms(constructorSyntax.yaml, "test:First", `
+type: test:First
+properties:
+    fooBool: false
+    fooInt: 0
+    fooString: string
+`)
+
+	equalPrograms(constructorSyntax.yaml, "test:Second", `
+type: test:Second
+properties:
+    barString: string
+`)
+
+	equalPrograms(constructorSyntax.yaml, "test:NoInputs", `
+type: test:NoInputs
+properties: {}
+`)
 }

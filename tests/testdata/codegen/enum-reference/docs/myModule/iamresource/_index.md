@@ -98,7 +98,14 @@ const iamResourceResource = new example.mymodule.IamResource("iamResourceResourc
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:myModule:IamResource
+properties:
+    config:
+        auditLogConfigs:
+            - exemptedMembers:
+                - string
+              logType: LOG_TYPE_UNSPECIFIED
+        service: string
 ```
 
 </pulumi-choosable>

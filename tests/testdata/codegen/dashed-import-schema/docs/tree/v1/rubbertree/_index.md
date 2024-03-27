@@ -80,7 +80,17 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: plant:tree/v1:RubberTree
+properties:
+    container:
+        brightness: ZeroPointOne
+        color: red
+        material: string
+        size: FourInch
+    diameter: sixinch
+    farm: Pulumi Planters Inc.
+    size: small
+    type: Burgundy
 ```
 
 </pulumi-choosable>

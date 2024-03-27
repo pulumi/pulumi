@@ -85,7 +85,9 @@ const basicResourceV3Resource = new example.BasicResourceV3("basicResourceV3Reso
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:BasicResourceV3
+properties:
+    bar: string
 ```
 
 </pulumi-choosable>
