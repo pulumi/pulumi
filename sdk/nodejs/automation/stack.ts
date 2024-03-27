@@ -117,23 +117,23 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
-        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 }).on("tail_error", (err) => {
+    /** @internal */
+    async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
+        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 100 }).on("tail_error", (err) => {
             throw err;
         });
         await eventLogTail.start();
         const lineSplitter = readline.createInterface({ input: eventLogTail });
-        let partialLine = "";
         lineSplitter.on("line", (line) => {
             let event: EngineEvent;
             try {
-                line = partialLine + line;
-                partialLine = "";
                 event = JSON.parse(line);
                 callback(event);
             } catch (e) {
-                partialLine += line;
-                return;
+                log.warn(`Failed to parse engine event
+If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
+details about your environment.
+Event: ${line}\n${e.toString()}`);
             }
         });
 

@@ -111,6 +111,7 @@
         "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
         "tests/automation/remoteWorkspace.spec.ts",
+        "tests/automation/stack.spec.ts",
         "tests/automation/util.ts",
 
         "tests_with_mocks/mocks.spec.ts",
