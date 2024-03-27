@@ -117,9 +117,8 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    /** @internal */
-    async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
-        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 100 }).on("tail_error", (err) => {
+    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
+        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 }).on("tail_error", (err) => {
             throw err;
         });
         await eventLogTail.start();
