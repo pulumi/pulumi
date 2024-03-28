@@ -941,7 +941,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				}
 			}
 
-			sg.sames[urn] = true
+			g.sames.Store(urn, true)
 			return []Step{NewSameStep(sg.deployment, event, old, old)}, nil
 		}
 		updateSteps, err := sg.generateStepsFromDiff(
