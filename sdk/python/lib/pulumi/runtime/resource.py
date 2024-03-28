@@ -1022,23 +1022,26 @@ def register_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            async def do_rpc_call() -> (
-                Optional[Union[RegisterResponse, resource_pb2.RegisterResourceResponse]]
-            ):
-                if monitor is None:
-                    # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None, None
-                    )
-
+            resp: Optional[RegisterResponse] = None
+            if monitor is None:
+                # If no monitor is available, we'll need to fake up a response, for testing.
+                resp = RegisterResponse(
+                    mock_urn or "", None, resolver.serialized_props, None
+                )
+            else:
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
-                    return await monitor.RegisterResource.future(req)
+                    # The actual monitor interface supports asyncio.
+                    if hasattr(monitor.RegisterResource, "future"):
+                        resp = await monitor.RegisterResource.future(req)
+                    else:
+                        # But mocks don't, so we need to run them in a thread for backwards compatibility.
+                        resp = await asyncio.get_event_loop().run_in_executor(
+                            None, monitor.RegisterResource, req
+                        )
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-                    return None
 
-            resp = await do_rpc_call()
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
