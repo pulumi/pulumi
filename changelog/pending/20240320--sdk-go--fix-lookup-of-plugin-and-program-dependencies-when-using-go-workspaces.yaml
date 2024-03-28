@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Fix lookup of plugin and program dependencies when using Go workspaces

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Make function serialization work with typescript 4 and 5
