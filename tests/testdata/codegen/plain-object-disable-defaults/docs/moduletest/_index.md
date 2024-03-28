@@ -482,7 +482,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_python" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type"><a href="#typ">mod1.<wbr>Typ<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -751,7 +751,7 @@ Typ<pulumi-choosable type="language" values="python,go" class="inline">, Typ<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_python" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ</a></span>
+        <span class="property-type"><a href="#typ">mod1.<wbr>Typ</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -759,7 +759,7 @@ Typ<pulumi-choosable type="language" values="python,go" class="inline">, Typ<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod2_python" style="color: inherit; text-decoration: inherit;">mod2</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ</a></span>
+        <span class="property-type"><a href="#typ">mod2.<wbr>Typ</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -991,7 +991,7 @@ Typ<pulumi-choosable type="language" values="python,go" class="inline">, Typ<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_python" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ</a></span>
+        <span class="property-type"><a href="#typ">mod1.<wbr>Typ</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

@@ -323,7 +323,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secret_sandwiches_python" style="color: inherit; text-decoration: inherit;">secret_<wbr>sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">Sandwich<wbr>Args]</a></span>
+        <span class="property-type"><a href="#sandwich">Sequence[config.<wbr>Sandwich<wbr>Args]</a></span>
     </dt>
     <dd>Super duper secret sandwiches.</dd></dl>
 </pulumi-choosable>

@@ -37,3 +37,24 @@ func TestWbr(t *testing.T) {
 	assert.Equal(t, wbr("fooBar"), "foo<wbr>Bar")
 	assert.Equal(t, wbr("fooBarBaz"), "foo<wbr>Bar<wbr>Baz")
 }
+
+func TestRemoveLeadingUnderscores(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{input: "", expected: ""},
+		{input: "root", expected: "root"},
+		{input: "pulumi_azure_native", expected: "pulumi_azure_native"},
+		{input: "_root.FooBuzz", expected: "root.FooBuzz"},
+		{input: "_pulumi_random.sub_module.Type", expected: "pulumi_random.sub_module.Type"},
+		{input: "Optional[Sequence[_meta.v1.module_name.FooBar]]", expected: "Optional[Sequence[meta.v1.module_name.FooBar]]"},
+	}
+
+	for _, test := range tests {
+		result := removeLeadingUnderscores(test.input)
+		assert.Equal(t, test.expected, result)
+	}
+}

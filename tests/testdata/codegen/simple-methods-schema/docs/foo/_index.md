@@ -845,7 +845,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_required_python" style="color: inherit; text-decoration: inherit;">baz_<wbr>required</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Baz</a></span>
+        <span class="property-type"><a href="#baz">nested.<wbr>Baz</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -861,7 +861,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_required_python" style="color: inherit; text-decoration: inherit;">name_<wbr>required</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
@@ -877,7 +877,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_python" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Baz</a></span>
+        <span class="property-type"><a href="#baz">nested.<wbr>Baz</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -885,7 +885,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_plain_python" style="color: inherit; text-decoration: inherit;">baz_<wbr>plain</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Baz</a></span>
+        <span class="property-type"><a href="#baz">nested.<wbr>Baz</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -909,7 +909,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
@@ -917,7 +917,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_plain_python" style="color: inherit; text-decoration: inherit;">name_<wbr>plain</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">

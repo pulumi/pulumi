@@ -392,7 +392,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_enum_python" style="color: inherit; text-decoration: inherit;">local_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type"><a href="#myenum">local.<wbr>My<wbr>Enum</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -400,7 +400,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remote_enum_python" style="color: inherit; text-decoration: inherit;">remote_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">pulumi_<wbr>google_<wbr>native.accesscontextmanager.v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/google-native">Google Cloud Native</a> package.</dd></dl>
 </pulumi-choosable>

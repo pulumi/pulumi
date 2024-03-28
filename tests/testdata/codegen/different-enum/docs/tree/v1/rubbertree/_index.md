@@ -1127,7 +1127,7 @@ Container<pulumi-choosable type="language" values="python,go" class="inline">, C
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
+        <span class="property-type"><a href="#containersize">root_<wbr>enums.<wbr>Container<wbr>Size</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -1135,7 +1135,7 @@ Container<pulumi-choosable type="language" values="python,go" class="inline">, C
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_python" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
+        <span class="property-type"><a href="#containerbrightness">root_<wbr>enums.<wbr>Container<wbr>Brightness</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -1143,7 +1143,7 @@ Container<pulumi-choosable type="language" values="python,go" class="inline">, C
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | str</span>
+        <span class="property-type"><a href="#containercolor">root_<wbr>enums.<wbr>Container<wbr>Color</a> | str</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

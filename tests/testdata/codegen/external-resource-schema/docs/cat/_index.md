@@ -929,7 +929,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
@@ -937,7 +937,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Sequence[pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -945,7 +945,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -961,7 +961,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
@@ -969,7 +969,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_array_python" style="color: inherit; text-decoration: inherit;">name_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Sequence[pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -977,7 +977,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_map_python" style="color: inherit; text-decoration: inherit;">name_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -164,7 +164,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd></dl>
 </pulumi-choosable>

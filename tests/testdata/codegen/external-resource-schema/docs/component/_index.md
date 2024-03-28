@@ -1958,7 +1958,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
@@ -1966,7 +1966,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type"><a href="#objectmeta">Sequence[pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -1974,7 +1974,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -1982,7 +1982,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_python" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
@@ -1990,7 +1990,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_array_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type"><a href="#objectmeta">Sequence[pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -1998,7 +1998,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_map_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -2233,7 +2233,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#security_group_python" style="color: inherit; text-decoration: inherit;">security_<wbr>group</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Security<wbr>Group</span>
+        <span class="property-type">pulumi_<wbr>aws.ec2.<wbr>Security<wbr>Group</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
@@ -2241,7 +2241,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_python" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Provider</span>
+        <span class="property-type">pulumi_<wbr>kubernetes.<wbr>Provider</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
@@ -2249,7 +2249,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storage_classes_python" style="color: inherit; text-decoration: inherit;">storage_<wbr>classes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Storage<wbr>Class]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>kubernetes.storage.v1.<wbr>Storage<wbr>Class]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

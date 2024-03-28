@@ -620,7 +620,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#objectMix_result_provider_python" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Provider</span>
+        <span class="property-type">pulumi_<wbr>tls.<wbr>Provider</span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd></dl>
 </pulumi-choosable>
