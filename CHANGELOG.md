@@ -1,5 +1,83 @@
 # Changelog
 
+## 3.112.0 (2024-03-27)
+
+
+### Features
+
+- [docs] Implement constructor syntax examples for every resource in typescript, python, csharp and go
+  [#15624](https://github.com/pulumi/pulumi/pull/15624)
+
+- [docs] Implement YAML constructor syntax examples in the docs
+  [#15791](https://github.com/pulumi/pulumi/pull/15791)
+
+- [engine] Send output values with property dependency information to transform functions
+  [#15637](https://github.com/pulumi/pulumi/pull/15637)
+
+- [engine] Add a --continue-on-error flag to pulumi destroy
+  [#15727](https://github.com/pulumi/pulumi/pull/15727)
+
+- [sdk/go] Make `property.Map` keyed by `string` not `MapKey`
+  [#15767](https://github.com/pulumi/pulumi/pull/15767)
+
+- [sdk/nodejs] Make function serialization work with typescript 4 and 5
+  [#15761](https://github.com/pulumi/pulumi/pull/15761)
+
+- [sdk/python] Improve the error message when depends_on is passed objects of the wrong type
+  [#15737](https://github.com/pulumi/pulumi/pull/15737)
+
+
+### Bug Fixes
+
+- [auto/{go,python}] Make sure to read complete lines before trying to deserialize them as engine events
+  [#15778](https://github.com/pulumi/pulumi/pull/15778)
+  [#15798](https://github.com/pulumi/pulumi/pull/15798)
+
+- [auto/{go,python}] Use the full path when running pulumi from a custom CLI install
+  [#15802](https://github.com/pulumi/pulumi/pull/15802)
+
+- [cli/plugin] Fix installing local language plugins on Windows
+  [#15715](https://github.com/pulumi/pulumi/pull/15715)
+
+- [engine] Don't delete stack outputs on failed deployments
+  [#15754](https://github.com/pulumi/pulumi/pull/15754)
+
+- [engine] Fix a panic when updating provider version in a run using --target
+  [#15716](https://github.com/pulumi/pulumi/pull/15716)
+
+- [engine] Handle that Assets & Archives can be returned from providers without content.
+  [#15736](https://github.com/pulumi/pulumi/pull/15736)
+
+- [engine] Fix the engine trying to delete a protected resource caught in a replace chain
+  [#15776](https://github.com/pulumi/pulumi/pull/15776)
+
+- [sdkgen/docs] Add missing newline for `Coming soon!`
+  [#15783](https://github.com/pulumi/pulumi/pull/15783)
+
+- [programgen/dotnet] Fix generated code for a list of resources used in resource option DependsOn
+  [#15773](https://github.com/pulumi/pulumi/pull/15773)
+
+- [programgen/{dotnet,go}] Fixes emitted code for object expressions assigned to properties of type Any
+  [#15770](https://github.com/pulumi/pulumi/pull/15770)
+
+- [sdk/go] Fix lookup of plugin and program dependencies when using Go workspaces
+  [#15743](https://github.com/pulumi/pulumi/pull/15743)
+
+- [sdk/nodejs] Export automation.tag.TagMap type
+  [#15774](https://github.com/pulumi/pulumi/pull/15774)
+
+- [sdk/python] Wait only for pending outputs in the Python SDK, not all pending asyncio tasks
+  [#15744](https://github.com/pulumi/pulumi/pull/15744)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Reorganize function serialization tests
+  [#15753](https://github.com/pulumi/pulumi/pull/15753)
+
+- [sdk/nodejs] Move mockpackage tests to closure integration tests
+  [#15757](https://github.com/pulumi/pulumi/pull/15757)
+
 ## 3.111.1 (2024-03-15)
 
 
