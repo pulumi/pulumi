@@ -295,9 +295,11 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
 	eventsDone := make(chan bool)
+	errs := make([]error, 0)
 	go func() {
 		for {
 			event, ok := <-eventChannel
+			fmt.Println("event, ok", event, ok)
 			if !ok {
 				close(eventsDone)
 				return
@@ -306,8 +308,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
 			if event.Error != nil {
-				// Log the error
-				fmt.Println(event.Error)
+				errs = append(errs, event.Error)
 			}
 		}
 	}()
@@ -337,7 +338,11 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	<-eventsDone
 
 	if len(summaryEvents) == 0 {
-		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
+		errStr := ""
+		for _, err := range errs {
+			errStr = errStr + err.Error() + ";"
+		}
+		return res, newAutoError(fmt.Errorf("failed to get preview summary, %s", errStr), stdout, stderr, code)
 	}
 	if len(summaryEvents) > 1 {
 		return res, newAutoError(errors.New("got multiple preview summaries"), stdout, stderr, code)
@@ -494,6 +499,7 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 	go func() {
 		for {
 			event, ok := <-eventChannel
+			fmt.Printf("event, ok: %v, %v\n", event, ok)
 			if !ok {
 				close(eventsDone)
 				return
@@ -1406,6 +1412,8 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 	done := make(chan bool)
 	go func(tailedLog *tail.Tail) {
 		for line := range tailedLog.Lines {
+			fmt.Println("line", line.Text)
+			fmt.Println("line", []byte(line.Text))
 			if line.Err != nil {
 				for _, r := range receivers {
 					r <- events.EngineEvent{Error: line.Err}
@@ -1421,10 +1429,12 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 				continue
 			}
 			for _, r := range receivers {
+				fmt.Printf("sending event: %v\n", e)
 				r <- events.EngineEvent{EngineEvent: e}
 			}
 		}
 		for _, r := range receivers {
+			fmt.Println("closing receivers")
 			close(r)
 		}
 		close(done)
