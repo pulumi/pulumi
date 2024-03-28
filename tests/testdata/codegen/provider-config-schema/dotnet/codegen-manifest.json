@@ -5,7 +5,6 @@
     "Configstation.Pulumi.Configstation.csproj",
     "Configstation/Enums.cs",
     "Configstation/FuncWithAllOptionalInputs.cs",
-    "Configstation/Outputs/Child.cs",
     "Configstation/Provider.cs",
     "Configstation/README.md",
     "Utilities.cs",

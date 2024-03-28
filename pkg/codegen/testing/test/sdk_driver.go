@@ -284,6 +284,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("docs/any"),
 	},
 	{
+		Directory:   "using-shared-types-in-config",
+		Description: "Tests that shared types can be used in config.",
+	},
+	{
 		Directory:   "other-owned",
 		Description: "CSharp rootNamespaces",
 		// We only test in dotnet, because we are testing a change in a dotnet
