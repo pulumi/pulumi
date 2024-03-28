@@ -151,59 +151,76 @@ func TestLanguage(t *testing.T) {
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	// Run the language plugin
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, "")
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
-	})
-	require.NoError(t, err)
-
-	// Create a temp project dir for the test to run in
-	rootDir := t.TempDir()
-
-	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
-		LanguagePluginName:   "nodejs",
-		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-		TemporaryDirectory:   rootDir,
-		SnapshotDirectory:    "./testdata",
-		CoreSdkDirectory:     "../..",
-		CoreSdkVersion:       sdk.Version.String(),
-		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-			{
-				Path:        "package\\.json",
-				Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
-				Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
-			},
-			{
-				Path:        "package\\.json",
-				Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
-				Replacement: "ROOT/artifacts",
-			},
-		},
-	})
-	require.NoError(t, err)
-
-	// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
 	//nolint:paralleltest // These aren't yet safe to run in parallel
-	for _, tt := range tests.Tests {
-		tt := tt
-		t.Run(tt, func(t *testing.T) {
-			result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
-				Token: prepare.Token,
-				Test:  tt,
-			})
+	for _, forceTsc := range []bool{false, true} {
+		cancel := make(chan bool)
 
-			require.NoError(t, err)
-			for _, msg := range result.Messages {
-				t.Log(msg)
-			}
-			t.Logf("stdout: %s", result.Stdout)
-			t.Logf("stderr: %s", result.Stderr)
-			assert.True(t, result.Success)
+		// Run the language plugin
+		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+			Init: func(srv *grpc.Server) error {
+				host := newLanguageHost(engineAddress, "", forceTsc)
+				pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+				return nil
+			},
+			Cancel: cancel,
 		})
+		require.NoError(t, err)
+
+		// Create a temp project dir for the test to run in
+		rootDir := t.TempDir()
+
+		snapshotDir := "./testdata/"
+		if forceTsc {
+			snapshotDir += "tsc"
+		} else {
+			snapshotDir += "tsnode"
+		}
+
+		// Prepare to run the tests
+		prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+			LanguagePluginName:   "nodejs",
+			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+			TemporaryDirectory:   rootDir,
+			SnapshotDirectory:    snapshotDir,
+			CoreSdkDirectory:     "../..",
+			CoreSdkVersion:       sdk.Version.String(),
+			SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+				{
+					Path:        "package\\.json",
+					Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
+					Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+				},
+				{
+					Path:        "package\\.json",
+					Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
+					Replacement: "ROOT/artifacts",
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+		//nolint:paralleltest // These aren't yet safe to run in parallel
+		for _, tt := range tests.Tests {
+			tt := tt
+			t.Run(tt, func(t *testing.T) {
+				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+					Token: prepare.Token,
+					Test:  tt,
+				})
+
+				require.NoError(t, err)
+				for _, msg := range result.Messages {
+					t.Log(msg)
+				}
+				t.Logf("stdout: %s", result.Stdout)
+				t.Logf("stderr: %s", result.Stderr)
+				assert.True(t, result.Success)
+			})
+		}
+
+		close(cancel)
+		assert.NoError(t, <-handle.Done)
 	}
 }
