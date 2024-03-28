@@ -66,7 +66,7 @@ jobs:
         with:
           go-version: ${{ fromJson(needs.matrix.outputs.version-set).go }}
       - name: Install Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
       - name: Install Python

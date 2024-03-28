@@ -85,7 +85,7 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         if: ${{ matrix.language == 'nodejs' }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           registry-url: https://registry.npmjs.org
