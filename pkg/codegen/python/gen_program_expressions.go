@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/big"
 	"strings"
+	"unicode"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -439,6 +440,15 @@ type runeWriter interface {
 	WriteRune(c rune) (int, error)
 }
 
+func escapeRune(c rune) string {
+	if c < 0xFF {
+		return fmt.Sprintf("\\x%02x", c)
+	} else if c < 0xFFFF {
+		return fmt.Sprintf("\\u%04x", c)
+	}
+	return fmt.Sprintf("\\U%08x", c)
+}
+
 //nolint:errcheck
 func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, escapeBraces bool) {
 	for _, c := range v {
@@ -446,18 +456,35 @@ func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, esc
 		case '\n':
 			if escapeNewlines {
 				w.WriteRune('\\')
-				c = 'n'
+				w.WriteRune('n')
+			} else {
+				w.WriteRune(c)
 			}
+			continue
 		case '"', '\\':
 			if escapeNewlines {
 				w.WriteRune('\\')
+				w.WriteRune(c)
+				continue
 			}
 		case '{', '}':
 			if escapeBraces {
 				w.WriteRune(c)
+				w.WriteRune(c)
+				continue
 			}
 		}
-		w.WriteRune(c)
+
+		if unicode.IsPrint(c) {
+			w.WriteRune(c)
+			continue
+		}
+
+		// This is a non-printable character. We'll emit a Python escape sequence for it.
+		codepoint := escapeRune(c)
+		for _, r := range codepoint {
+			w.WriteRune(r)
+		}
 	}
 }
 
