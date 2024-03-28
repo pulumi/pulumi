@@ -21,10 +21,24 @@ import (
 	"errors"
 	"fmt"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func init() {
+	providerSchema.Resources["testprovider:index:FailsOnDelete"] = pschema.ResourceSpec{
+		IsComponent: false,
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			IsOverlay:   false,
+			Description: "A test resource fails on delete.",
+			Properties:  map[string]pschema.PropertySpec{},
+			Type:        "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{},
+	}
+}
 
 type failsOnDeleteResourceProvider struct {
 	id int

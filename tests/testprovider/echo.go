@@ -20,12 +20,40 @@ import (
 	"context"
 	"fmt"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func init() {
+	providerSchema.Resources["testprovider:index:Echo"] = pschema.ResourceSpec{
+		IsComponent: false,
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			IsOverlay:   false,
+			Description: "A test resource that echoes its input.",
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Ref: "pulumi.json#/Resource",
+					},
+					Description: "A resource to echo.",
+				},
+			},
+			Type: "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{
+			"echo": {
+				TypeSpec: pschema.TypeSpec{
+					Ref: "pulumi.json#/Resource",
+				},
+				Description: "An echoed resource.",
+			},
+		},
+	}
+}
 
 type echoResourceProvider struct {
 	id int
