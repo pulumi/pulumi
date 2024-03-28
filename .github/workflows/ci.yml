@@ -88,7 +88,7 @@ jobs:
           CACHE_KEY: "matrix-setup"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - name: Setup Go Caching
-        uses: actions/setup-go@v3 # only used by gotestsum
+        uses: actions/setup-go@v5 # only used by gotestsum
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
           cache: true
