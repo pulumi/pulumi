@@ -390,7 +390,7 @@ func isNilType(t schema.Type) bool {
 		}
 	default:
 		switch t {
-		case schema.ArchiveType, schema.AssetType, schema.JSONType, schema.AnyType:
+		case schema.ArchiveType, schema.AssetType, schema.JSONType, schema.AnyType, schema.AnyResourceType:
 			return true
 		}
 	}
@@ -453,6 +453,8 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 			fallthrough
 		case schema.AnyType:
 			return "pulumi.Input"
+		case schema.AnyResourceType:
+			return "pulumi.ResourceInput"
 		}
 	}
 
@@ -618,6 +620,8 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 			fallthrough
 		case schema.AnyType:
 			return "pulumi.Any"
+		case schema.AnyResourceType:
+			return "pulumi.Resource"
 		}
 	}
 
@@ -712,6 +716,8 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 			fallthrough
 		case schema.AnyType:
 			return "interface{}"
+		case schema.AnyResourceType:
+			return "pulumi.Resource"
 		}
 	}
 
@@ -928,6 +934,8 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 			fallthrough
 		case schema.AnyType:
 			return "pulumi.AnyOutput"
+		case schema.AnyResourceType:
+			return "pulumi.ResourceOutput"
 		}
 	}
 
@@ -957,6 +965,8 @@ func (pkg *pkgContext) genericElementType(schemaType schema.Type) (string, bool)
 		return "pulumi.Archive", true
 	case schema.AssetType:
 		return "pulumi.AssetOrArchive", true
+	case schema.AnyResourceType:
+		return "pulumi.Resource", true
 	default:
 		switch schemaType := schemaType.(type) {
 		case *schema.ObjectType:

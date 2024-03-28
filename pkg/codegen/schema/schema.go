@@ -44,14 +44,15 @@ type Type interface {
 type primitiveType int
 
 const (
-	boolType    primitiveType = 1
-	intType     primitiveType = 2
-	numberType  primitiveType = 3
-	stringType  primitiveType = 4
-	archiveType primitiveType = 5
-	assetType   primitiveType = 6
-	anyType     primitiveType = 7
-	jsonType    primitiveType = 8
+	boolType              primitiveType = 1
+	intType               primitiveType = 2
+	numberType            primitiveType = 3
+	stringType            primitiveType = 4
+	archiveType           primitiveType = 5
+	assetType             primitiveType = 6
+	anyType               primitiveType = 7
+	jsonType              primitiveType = 8
+	anyResourceType       primitiveType = 9
 )
 
 func (t primitiveType) String() string {
@@ -69,6 +70,8 @@ func (t primitiveType) String() string {
 	case assetType:
 		return "pulumi:pulumi:Asset"
 	case jsonType:
+		fallthrough
+	case anyResourceType:
 		fallthrough
 	case anyType:
 		return "pulumi:pulumi:Any"
@@ -103,6 +106,8 @@ var (
 	JSONType Type = jsonType
 	// AnyType represents the complete set of values.
 	AnyType Type = anyType
+	// AnyResourceType represents any Pulumi resource - custom or component
+	AnyResourceType Type = anyResourceType
 )
 
 // An InvalidType represents an invalid type with associated diagnostics.
@@ -1337,6 +1342,8 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 			return TypeSpec{Ref: "pulumi.json#/Asset"}
 		case JSONType:
 			return TypeSpec{Ref: "pulumi.json#/Json"}
+		case AnyResourceType:
+			return TypeSpec{Ref: "pulumi.json#/Resource"}
 		default:
 			panic(fmt.Errorf("unexepcted type %v (%T)", t, t))
 		}

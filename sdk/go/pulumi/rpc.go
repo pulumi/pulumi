@@ -796,10 +796,13 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			return false, err
 		}
 		resV := reflect.ValueOf(res).Elem()
-		if !resV.Type().AssignableTo(dest.Type()) {
+		if resV.Type().AssignableTo(dest.Type()) {
+			dest.Set(resV)
+		} else if resV.Addr().Type().Implements(dest.Type()) {
+			dest.Set(resV.Addr())
+		} else {
 			return false, fmt.Errorf("expected a %s, got a resource of type %s", dest.Type(), resV.Type())
 		}
-		dest.Set(resV)
 		return secret, nil
 	case v.IsOutput():
 		if _, err := unmarshalOutput(ctx, v.OutputValue().Element, dest); err != nil {
@@ -918,6 +921,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			return secret, nil
 		}
 
+		// TODO: pulumi.Resource is a non-empty interface type
 		if !anyType.Implements(typ) {
 			return false, fmt.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
 		}
