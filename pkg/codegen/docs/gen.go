@@ -596,6 +596,14 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 	}
 
 	cleanPythonName := func(objModName string) string {
+		// SDK codegen aliases imported top-level inputs as _root_inputs and _root_enums, e.g.
+		// from .. import _inputs as _root_inputs
+		// This is our implementation detail, so we shouldn't show this prefix
+		// in end-user documentation. Remove them here.
+		// Top-level arg types will be displayed without any module prefix.
+		objModName = strings.Replace(objModName, "root_enums.", "", 1)
+		objModName = strings.Replace(objModName, "root_inputs.", "", 1)
+
 		// SDK codegen aliases imported modules with underscored names, e.g.
 		// from ... import meta as _meta
 		// Therefore, type references for Python all have _ before module names.
