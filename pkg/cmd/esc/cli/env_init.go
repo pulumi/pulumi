@@ -34,9 +34,12 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, args, err := env.getEnvName(args)
+			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
+			}
+			if revisionOrTag != "" {
+				return fmt.Errorf("the init command does not accept revisions or tags")
 			}
 			_ = args
 

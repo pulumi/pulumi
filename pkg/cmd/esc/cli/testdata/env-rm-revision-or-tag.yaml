@@ -1,0 +1,12 @@
+run: |
+  (esc env rm dup:1 -y || exit 0)
+  esc env rm dup:foo -y
+error: exit status 1
+stdout: |
+  > esc env rm dup:1 -y
+  > esc env rm dup:foo -y
+stderr: |
+  > esc env rm dup:1 -y
+  Error: the rm command does not accept revisions or tags
+  > esc env rm dup:foo -y
+  Error: the rm command does not accept revisions or tags

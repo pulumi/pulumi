@@ -69,7 +69,13 @@ type Client interface {
 	//
 	// The etag returned by GetEnvironment can be passed to UpdateEnvironment in order to avoid RMW issues
 	// when editing envirionments.
-	GetEnvironment(ctx context.Context, orgName, envName string, decrypt bool) (yaml []byte, etag string, err error)
+	GetEnvironment(
+		ctx context.Context,
+		orgName string,
+		envName string,
+		revisionOrTag string,
+		decrypt bool,
+	) (yaml []byte, etag string, err error)
 
 	// UpdateEnvironment updates the YAML for the environment envName in org orgName.
 	//
@@ -98,6 +104,7 @@ type Client interface {
 		ctx context.Context,
 		orgName string,
 		envName string,
+		revisionOrTag string,
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
@@ -255,6 +262,28 @@ func (pc *client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 	return pc.apiUser, pc.apiOrgs, pc.tokenInfo, nil
 }
 
+// resolveEnvironmentPath resolves an environment and revision or tag to its API path.
+//
+// If revisionOrTag begins with a digit, it is treated as a revision number. Otherwise, it is trated as a tag. If
+// no revision or tag is present, the "latest" tag is used.
+func (pc *client) resolveEnvironmentPath(ctx context.Context, orgName, envName, revisionOrTag string) (string, error) {
+	if revisionOrTag == "" {
+		return fmt.Sprintf("/api/preview/environments/%v/%v", orgName, envName), nil
+	}
+
+	if revisionOrTag[0] >= '0' && revisionOrTag[0] <= '9' {
+		return fmt.Sprintf("/api/preview/environments/%v/%v/revisions/%v", orgName, envName, revisionOrTag), nil
+	}
+
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, revisionOrTag)
+
+	var resp EnvironmentRevisionTag
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return "", fmt.Errorf("resolving tag %q: %w", revisionOrTag, err)
+	}
+	return fmt.Sprintf("/api/preview/environments/%v/%v/revisions/%v", orgName, envName, resp.Revision), nil
+}
+
 func (pc *client) ListEnvironments(
 	ctx context.Context,
 	orgName string,
@@ -281,8 +310,17 @@ func (pc *client) CreateEnvironment(ctx context.Context, orgName, envName string
 	return pc.restCall(ctx, http.MethodPost, path, nil, nil, nil)
 }
 
-func (pc *client) GetEnvironment(ctx context.Context, orgName, envName string, decrypt bool) ([]byte, string, error) {
-	path := fmt.Sprintf("/api/preview/environments/%v/%v", orgName, envName)
+func (pc *client) GetEnvironment(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	revisionOrTag string,
+	decrypt bool,
+) ([]byte, string, error) {
+	path, err := pc.resolveEnvironmentPath(ctx, orgName, envName, revisionOrTag)
+	if err != nil {
+		return nil, "", err
+	}
 	if decrypt {
 		path += "/decrypt"
 	}
@@ -336,8 +374,15 @@ func (pc *client) OpenEnvironment(
 	ctx context.Context,
 	orgName string,
 	envName string,
+	revisionOrTag string,
 	duration time.Duration,
 ) (string, []EnvironmentDiagnostic, error) {
+	path, err := pc.resolveEnvironmentPath(ctx, orgName, envName, revisionOrTag)
+	if err != nil {
+		return "", nil, err
+	}
+	path += "/open"
+
 	queryObj := struct {
 		Duration string `url:"duration"`
 	}{
@@ -348,8 +393,7 @@ func (pc *client) OpenEnvironment(
 		ID string `json:"id"`
 	}
 	var errResp EnvironmentErrorResponse
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/open", orgName, envName)
-	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
+	err = pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, nil, &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {

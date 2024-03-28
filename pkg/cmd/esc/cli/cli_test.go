@@ -238,12 +238,22 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, envName string) 
 	if !ok {
 		return nil, nil, errors.New("not found")
 	}
-	return env.yaml, rot128{}, nil
+	return env.latest().yaml, rot128{}, nil
+}
+
+type testEnvironmentRevision struct {
+	number int
+	yaml   []byte
+	tag    string
 }
 
 type testEnvironment struct {
-	yaml []byte
-	tag  string
+	revisions []*testEnvironmentRevision
+	tags      map[string]int
+}
+
+func (env *testEnvironment) latest() *testEnvironmentRevision {
+	return env.revisions[len(env.revisions)-1]
 }
 
 type testPulumiClient struct {
@@ -325,6 +335,34 @@ func mapDiags(diags syntax.Diagnostics) []client.EnvironmentDiagnostic {
 		}
 	}
 	return out
+}
+
+func (c *testPulumiClient) getEnvironment(orgName, envName, revisionOrTag string) (*testEnvironment, *testEnvironmentRevision, error) {
+	name := path.Join(orgName, envName)
+
+	env, ok := c.environments[name]
+	if !ok {
+		return nil, nil, errors.New("not found")
+	}
+
+	var revision int
+	if revisionOrTag == "" || revisionOrTag == "latest" {
+		revision = len(env.revisions) - 1
+	} else if revisionOrTag[0] >= '0' && revisionOrTag[0] <= '9' {
+		rev, err := strconv.ParseInt(revisionOrTag, 10, 0)
+		if err != nil || rev < 0 || rev >= int64(len(env.revisions)) {
+			return nil, nil, errors.New("not found")
+		}
+		revision = int(rev)
+	} else {
+		rev, ok := env.tags[revisionOrTag]
+		if !ok {
+			return nil, nil, errors.New("not found")
+		}
+		revision = rev
+	}
+
+	return env, env.revisions[revision], nil
 }
 
 func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envName string, yaml []byte) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
@@ -438,15 +476,23 @@ func (c *testPulumiClient) CreateEnvironment(ctx context.Context, orgName, envNa
 	if _, ok := c.environments[name]; ok {
 		return errors.New("already exists")
 	}
-	c.environments[name] = &testEnvironment{}
+	c.environments[name] = &testEnvironment{
+		revisions: []*testEnvironmentRevision{{}},
+		tags:      map[string]int{"latest": 0},
+	}
 	return nil
 }
 
-func (c *testPulumiClient) GetEnvironment(ctx context.Context, orgName, envName string, showSecrets bool) ([]byte, string, error) {
-	name := path.Join(orgName, envName)
-	env, ok := c.environments[name]
-	if !ok {
-		return nil, "", errors.New("not found")
+func (c *testPulumiClient) GetEnvironment(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	revisionOrTag string,
+	showSecrets bool,
+) ([]byte, string, error) {
+	_, env, err := c.getEnvironment(orgName, envName, revisionOrTag)
+	if err != nil {
+		return nil, "", err
 	}
 
 	yaml := env.yaml
@@ -468,12 +514,11 @@ func (c *testPulumiClient) UpdateEnvironment(
 	yaml []byte,
 	tag string,
 ) ([]client.EnvironmentDiagnostic, error) {
-	name := path.Join(orgName, envName)
-	env, ok := c.environments[name]
-	if !ok {
-		return nil, errors.New("not found")
+	env, latest, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return nil, err
 	}
-	if tag != "" && tag != env.tag {
+	if tag != "" && tag != latest.tag {
 		return nil, errors.New("tag mismatch")
 	}
 
@@ -487,8 +532,13 @@ func (c *testPulumiClient) UpdateEnvironment(
 			return nil, err
 		}
 
-		env.yaml = yaml
-		env.tag = base64.StdEncoding.EncodeToString(h.Sum(nil))
+		revisionNumber := len(env.revisions)
+		env.revisions = append(env.revisions, &testEnvironmentRevision{
+			number: revisionNumber,
+			yaml:   yaml,
+			tag:    base64.StdEncoding.EncodeToString(h.Sum(nil)),
+		})
+		env.tags["latest"] = revisionNumber
 	}
 
 	return diags, err
@@ -507,12 +557,12 @@ func (c *testPulumiClient) OpenEnvironment(
 	ctx context.Context,
 	orgName string,
 	envName string,
+	revisionOrTag string,
 	duration time.Duration,
 ) (string, []client.EnvironmentDiagnostic, error) {
-	name := path.Join(orgName, envName)
-	env, ok := c.environments[name]
-	if !ok {
-		return "", nil, errors.New("not found")
+	_, env, err := c.getEnvironment(orgName, envName, revisionOrTag)
+	if err != nil {
+		return "", nil, err
 	}
 
 	return c.openEnvironment(ctx, orgName, envName, env.yaml)
@@ -671,6 +721,15 @@ type cliTestcaseProcess struct {
 	Commands map[string]string `yaml:"commands,omitempty"`
 }
 
+type cliTestcaseRevision struct {
+	YAML yaml.Node `yaml:"yaml"`
+	Tag  string    `yaml:"tag,omitempty"`
+}
+
+type cliTestcaseRevisions struct {
+	Revisions []cliTestcaseRevision `yaml:"revisions,omitempty"`
+}
+
 type cliTestcaseYAML struct {
 	Parent string `yaml:"parent,omitempty"`
 
@@ -722,12 +781,38 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 
 	environments := map[string]*testEnvironment{}
 	for k, env := range testcase.Environments {
-		bytes, err := yaml.Marshal(env)
-		if err != nil {
-			return nil, nil, err
+		var revisions cliTestcaseRevisions
+		if err := env.Decode(&revisions); err != nil || len(revisions.Revisions) == 0 {
+			revisions = cliTestcaseRevisions{Revisions: []cliTestcaseRevision{{YAML: env}}}
 		}
 
-		environments[k] = &testEnvironment{yaml: bytes}
+		envRevisions := []*testEnvironmentRevision{{}}
+		tags := map[string]int{}
+		for _, rev := range revisions.Revisions {
+			bytes, err := yaml.Marshal(rev.YAML)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			revisionNumber := len(envRevisions)
+			envRevisions = append(envRevisions, &testEnvironmentRevision{
+				number: revisionNumber,
+				yaml:   bytes,
+			})
+
+			if rev.Tag != "" {
+				if _, ok := tags[rev.Tag]; ok || rev.Tag == "latest" {
+					return nil, nil, fmt.Errorf("duplicate tag %q", rev.Tag)
+				}
+				tags[rev.Tag] = revisionNumber
+			}
+		}
+		tags["latest"] = len(envRevisions) - 1
+
+		environments[k] = &testEnvironment{
+			revisions: envRevisions,
+			tags:      tags,
+		}
 	}
 
 	creds := workspace.Credentials{

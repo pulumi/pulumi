@@ -1,24 +1,36 @@
-run: esc env get test
+run: |
+  esc env get test
+  esc env get test:latest
+  esc env get test:stable
+  esc env get test:0
+  esc env get test:1
+  esc env get test:2
 environments:
   test-user/a: {}
   test-user/b: {}
   test-user/test:
-    imports:
-      - a
-      - b
-    values:
-      # comment
-      "null": null
-      boolean: true
-      number: 42
-      string: esc
-      array: [hello, world]
-      object: {hello: world}
-      open:
-        fn::open::test: echo
-      secret:
-        fn::secret:
-          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+    revisions:
+      - yaml:
+          values:
+            string: hello, world!
+        tag: stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 stdout: |+
   > esc env get test
   # Value
@@ -60,5 +72,119 @@ stdout: |+
 
   ```
 
+  > esc env get test:latest
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "boolean": true,
+    "null": null,
+    "number": 42,
+    "object": {
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "secret": "[secret]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    # comment
+    "null": null
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test: echo
+    secret:
+      fn::secret:
+        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+
+  ```
+
+  > esc env get test:stable
+  # Value
+  ```json
+  {
+    "string": "hello, world!"
+  }
+  ```
+  # Definition
+  ```yaml
+  values:
+    string: hello, world!
+
+  ```
+
+  > esc env get test:0
+  > esc env get test:1
+  # Value
+  ```json
+  {
+    "string": "hello, world!"
+  }
+  ```
+  # Definition
+  ```yaml
+  values:
+    string: hello, world!
+
+  ```
+
+  > esc env get test:2
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "boolean": true,
+    "null": null,
+    "number": 42,
+    "object": {
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "secret": "[secret]",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    # comment
+    "null": null
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test: echo
+    secret:
+      fn::secret:
+        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+
+  ```
+
 stderr: |
   > esc env get test
+  > esc env get test:latest
+  > esc env get test:stable
+  > esc env get test:0
+  > esc env get test:1
+  > esc env get test:2

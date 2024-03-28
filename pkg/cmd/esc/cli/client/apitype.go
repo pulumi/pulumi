@@ -17,6 +17,7 @@ package client
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pulumi/esc"
 )
@@ -58,6 +59,34 @@ func diagsErrorString(envDiags []EnvironmentDiagnostic) string {
 	return diags.String()
 }
 
+type EnvironmentRevision struct {
+	Number       int       `json:"number"`
+	Created      time.Time `json:"created"`
+	CreatorLogin string    `json:"creatorLogin"`
+	CreatorName  string    `json:"creatorName"`
+}
+
+type CreateEnvironmentRevisionTagRequest struct {
+	Revision *int `json:"revision,omitempty"`
+}
+
+type UpdateEnvironmentRevisionTagRequest struct {
+	Revision *int `json:"revision,omitempty"`
+}
+
+type EnvironmentRevisionTag struct {
+	Name        string    `json:"name"`
+	Revision    int       `json:"revision"`
+	Created     time.Time `json:"created"`
+	Modified    time.Time `json:"modified"`
+	EditorLogin string    `json:"editorLogin"`
+	EditorName  string    `json:"editorName"`
+}
+
+type ListEnvironmentRevisionTagsResponse struct {
+	Tags      []EnvironmentRevisionTag `json:"tags"`
+	NextToken string                   `json:"nextToken"`
+}
 type OrgEnvironment struct {
 	Organization string `json:"organization,omitempty"`
 	Name         string `json:"name,omitempty"`

@@ -1,10 +1,22 @@
-run: esc open test --format json
+run: |
+  esc open test --format json
+  esc open test:stable
+  esc open test:latest
+  esc open test:0
+  esc open test:1
+  esc open test:2
 environments:
   test-user/test:
-    imports:
-      - test-2
-    values:
-      foo: bar
+    revisions:
+      - yaml:
+          values:
+            foo: bar
+        tag: stable
+      - yaml:
+          imports:
+            - test-2
+          values:
+            foo: bar
   test-user/test-2:
     values:
       foo: baz
@@ -15,5 +27,29 @@ stdout: |
     "foo": "bar",
     "hello": "world"
   }
+  > esc open test:stable
+  {
+    "foo": "bar"
+  }
+  > esc open test:latest
+  {
+    "foo": "bar",
+    "hello": "world"
+  }
+  > esc open test:0
+  > esc open test:1
+  {
+    "foo": "bar"
+  }
+  > esc open test:2
+  {
+    "foo": "bar",
+    "hello": "world"
+  }
 stderr: |
   > esc open test --format json
+  > esc open test:stable
+  > esc open test:latest
+  > esc open test:0
+  > esc open test:1
+  > esc open test:2

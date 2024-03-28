@@ -1,0 +1,12 @@
+run: |
+  (esc env set test:1 string foo || exit 0)
+  esc env set test:foo string foo
+error: exit status 1
+stdout: |
+  > esc env set test:1 string foo
+  > esc env set test:foo string foo
+stderr: |
+  > esc env set test:1 string foo
+  Error: the set command does not accept revisions or tags
+  > esc env set test:foo string foo
+  Error: the set command does not accept revisions or tags

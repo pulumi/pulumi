@@ -28,7 +28,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 	get := &envGetCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "get [<org-name>/]<environment-name> <path>",
+		Use:   "get [<org-name>/]<environment-name>[:<revision-or-tag>] <path>",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Get a value within an environment.",
 		Long: "Get a value within an environment\n" +
@@ -44,7 +44,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, args, err := env.getEnvName(args)
+			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
 			}
@@ -61,22 +61,22 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 			case "":
 				// OK
 			case "detailed", "json", "string":
-				return get.showValue(ctx, orgName, envName, path, value, showSecrets)
+				return get.showValue(ctx, orgName, envName, revisionOrTag, path, value, showSecrets)
 			case "dotenv":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, orgName, envName, path, value, showSecrets)
+				return get.showValue(ctx, orgName, envName, revisionOrTag, path, value, showSecrets)
 			case "shell":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, orgName, envName, path, value, showSecrets)
+				return get.showValue(ctx, orgName, envName, revisionOrTag, path, value, showSecrets)
 			default:
 				return fmt.Errorf("unknown output format %q", value)
 			}
 
-			def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, showSecrets)
+			def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, revisionOrTag, showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -141,11 +141,12 @@ func (get *envGetCommand) showValue(
 	ctx context.Context,
 	orgName string,
 	envName string,
+	revisionOrTag string,
 	path resource.PropertyPath,
 	format string,
 	showSecrets bool,
 ) error {
-	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, showSecrets)
+	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, revisionOrTag, showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting environment definition: %w", err)
 	}

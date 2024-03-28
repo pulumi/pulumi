@@ -61,10 +61,10 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	return cmd
 }
 
-func (cmd *envCommand) getEnvName(args []string) (org, env string, rest []string, err error) {
+func (cmd *envCommand) getEnvName(args []string) (org, env, revisionOrTag string, rest []string, err error) {
 	if cmd.envNameFlag == "" {
 		if len(args) == 0 {
-			return "", "", nil, fmt.Errorf("no environment name specified")
+			return "", "", "", nil, fmt.Errorf("no environment name specified")
 		}
 		cmd.envNameFlag, args = args[0], args[1:]
 	}
@@ -73,7 +73,10 @@ func (cmd *envCommand) getEnvName(args []string) (org, env string, rest []string
 	if !hasOrgName {
 		orgName, envName = cmd.esc.account.DefaultOrg, orgName
 	}
-	return orgName, envName, args, nil
+
+	envName, revisionOrTag, _ = strings.Cut(envName, ":")
+
+	return orgName, envName, revisionOrTag, args, nil
 }
 
 func sortEnvironmentDiagnostics(diags []client.EnvironmentDiagnostic) {

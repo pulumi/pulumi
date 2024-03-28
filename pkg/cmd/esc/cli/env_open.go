@@ -21,7 +21,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	var format string
 
 	cmd := &cobra.Command{
-		Use:   "open [<org-name>/]<environment-name> [property path]",
+		Use:   "open [<org-name>/]<environment-name>[:<revision-or-tag>] [property path]",
 		Args:  cobra.MaximumNArgs(2),
 		Short: "Open the environment with the given name.",
 		Long: "Open the environment with the given name and return the result\n" +
@@ -36,7 +36,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, args, err := envcmd.getEnvName(args)
+			orgName, envName, revisionOrTag, args, err := envcmd.getEnvName(args)
 			if err != nil {
 				return err
 			}
@@ -62,7 +62,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			env, diags, err := envcmd.openEnvironment(ctx, orgName, envName, duration)
+			env, diags, err := envcmd.openEnvironment(ctx, orgName, envName, revisionOrTag, duration)
 			if err != nil {
 				return err
 			}
@@ -163,9 +163,10 @@ func (env *envCommand) openEnvironment(
 	ctx context.Context,
 	orgName string,
 	envName string,
+	revisionOrTag string,
 	duration time.Duration,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
-	envID, diags, err := env.esc.client.OpenEnvironment(ctx, orgName, envName, duration)
+	envID, diags, err := env.esc.client.OpenEnvironment(ctx, orgName, envName, revisionOrTag, duration)
 	if err != nil {
 		return nil, nil, err
 	}

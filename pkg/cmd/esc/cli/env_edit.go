@@ -57,13 +57,16 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, args, err := edit.env.getEnvName(args)
+			orgName, envName, revisionOrTag, args, err := edit.env.getEnvName(args)
 			if err != nil {
 				return err
 			}
+			if revisionOrTag != "" {
+				return fmt.Errorf("the edit command does not accept revisions or tags")
+			}
 			_ = args
 
-			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, orgName, envName, showSecrets)
+			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, orgName, envName, "", showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}

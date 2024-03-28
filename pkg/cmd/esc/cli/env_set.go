@@ -36,9 +36,12 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, args, err := env.getEnvName(args)
+			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
+			}
+			if revisionOrTag != "" {
+				return fmt.Errorf("the set command does not accept revisions or tags")
 			}
 			if len(args) < 2 {
 				return fmt.Errorf("expected a path and a value")
@@ -78,7 +81,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				yamlValue = *yamlValue.Content[0]
 			}
 
-			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, false)
+			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, "", false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}

@@ -38,9 +38,12 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, args, err := env.getEnvName(args)
+			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
+			}
+			if revisionOrTag != "" {
+				return fmt.Errorf("the rm command does not accept revisions or tags")
 			}
 
 			// Are we removing the entire environment?
@@ -69,7 +72,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("invalid path: %w", err)
 			}
 
-			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, false)
+			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, "", false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}

@@ -1,0 +1,12 @@
+run: |
+  (esc env init test-env:1 || exit 0)
+  esc env init test-env:foo
+error: exit status 1
+stdout: |
+  > esc env init test-env:1
+  > esc env init test-env:foo
+stderr: |
+  > esc env init test-env:1
+  Error: the init command does not accept revisions or tags
+  > esc env init test-env:foo
+  Error: the init command does not accept revisions or tags
