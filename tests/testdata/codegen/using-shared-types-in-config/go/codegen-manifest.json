@@ -1,0 +1,14 @@
+{
+  "emittedFiles": [
+    "credentials/config/config.go",
+    "credentials/doc.go",
+    "credentials/init.go",
+    "credentials/internal/pulumiUtilities.go",
+    "credentials/internal/pulumiVersion.go",
+    "credentials/provider.go",
+    "credentials/pulumi-plugin.json",
+    "credentials/pulumiEnums.go",
+    "credentials/pulumiTypes.go",
+    "credentials/user.go"
+  ]
+}

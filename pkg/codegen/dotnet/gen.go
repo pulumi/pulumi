@@ -1838,7 +1838,8 @@ func (mod *modContext) genHeader(w io.Writer, using []string) {
 func (mod *modContext) getConfigProperty(schemaType schema.Type) (string, string) {
 	schemaType = codegen.UnwrapType(schemaType)
 
-	propertyType := mod.typeString(schemaType, "Types", false, false, false /*requireInitializers*/)
+	qualifier := "Types"
+	propertyType := mod.typeString(schemaType, qualifier, false, false, false /*requireInitializers*/)
 
 	var getFunc string
 	nullableSigil := "?"
@@ -1932,17 +1933,19 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "\n")
 	}
 
+	// generate config-friendly object types used in config
+	// regardless of whether they are defined inline or from a shared type
+	var usedObjectTypes []*schema.ObjectType
+	visitObjectTypes(variables, func(objectType *schema.ObjectType) {
+		usedObjectTypes = append(usedObjectTypes, objectType)
+	})
+
 	// Emit any nested types.
-	if len(mod.types) > 0 {
+	if len(usedObjectTypes) > 0 {
 		fmt.Fprintf(w, "        public static class Types\n")
 		fmt.Fprintf(w, "        {\n")
 
-		for _, typ := range mod.types {
-			// Ignore input-shaped types.
-			if typ.IsInputShape() {
-				continue
-			}
-
+		for _, typ := range usedObjectTypes {
 			fmt.Fprintf(w, "\n")
 
 			// Open the class.
@@ -2390,10 +2393,6 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		cfg := getMod("config", pkg.Reference())
 		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.RootNamespace(), namespaceName(infos[pkg].Namespaces, pkg.Name))
 	}
-
-	visitObjectTypes(pkg.Config, func(t *schema.ObjectType) {
-		getModFromToken(t.Token, pkg.Reference()).details(t).outputType = true
-	})
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
