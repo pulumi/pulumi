@@ -19,6 +19,7 @@ package ints
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -254,6 +255,17 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		defer func() {
 			if !t.Failed() {
 				e.DeleteEnvironment()
+			} else {
+				if strings.HasSuffix(dir, "-with-main") {
+					stdOut, stdErr := e.RunCommand("ls", "-l", path.Join(e.RootPath, "infra"))
+					t.Logf("\n%s\n%s\n", stdOut, stdErr)
+					reqs, err := os.ReadFile(filepath.Join(e.RootPath, "infra", "requirements.txt"))
+					if err != nil {
+						t.Logf("failed to read requirements.txt: %v", err)
+					} else {
+						t.Logf("requirements.txt:\n%s\n", string(reqs))
+					}
+				}
 			}
 		}()
 
