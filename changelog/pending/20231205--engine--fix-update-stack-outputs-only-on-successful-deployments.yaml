@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: "Don't delete stack outputs on failed deployments"

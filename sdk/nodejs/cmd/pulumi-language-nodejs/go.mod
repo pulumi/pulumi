@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pulumi/pulumi/pkg/v3 v3.98.0
-	github.com/pulumi/pulumi/sdk/v3 v3.111.1
+	github.com/pulumi/pulumi/sdk/v3 v3.112.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.33.0

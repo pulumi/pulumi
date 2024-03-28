@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Send output values with property dependency information to transform functions

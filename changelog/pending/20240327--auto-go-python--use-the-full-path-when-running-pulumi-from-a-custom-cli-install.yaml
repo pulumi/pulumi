@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go,python
-  description: Use the full path when running pulumi from a custom CLI install
