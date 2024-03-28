@@ -30,11 +30,25 @@ var catResource = new Example.Cat("catResource", new()
     Age = 0,
     Pet = new Example.Inputs.PetArgs
     {
-        RequiredNameArray = new() { },
-        RequiredNameMap = null,
+        RequiredName = randomPet,
+        RequiredNameArray = new[]
+        {
+            randomPet,
+        },
+        RequiredNameMap = 
+        {
+            { "string", randomPet },
+        },
         Age = 0,
-        NameArray = new() { },
-        NameMap = null,
+        Name = randomPet,
+        NameArray = new[]
+        {
+            randomPet,
+        },
+        NameMap = 
+        {
+            { "string", randomPet },
+        },
     },
 });
 ```
@@ -50,11 +64,21 @@ var catResource = new Example.Cat("catResource", new()
 example, err := example.NewCat(ctx, "catResource", &example.CatArgs{
 	Age: pulumi.Int(0),
 	Pet: &example.PetArgs{
-		RequiredNameArray: random.RandomPetArray{},
-		RequiredNameMap:   nil,
-		Age:               pulumi.Int(0),
-		NameArray:         random.RandomPetArray{},
-		NameMap:           nil,
+		RequiredName: pulumi.Any(randomPet),
+		RequiredNameArray: random.RandomPetArray{
+			randomPet,
+		},
+		RequiredNameMap: random.RandomPetMap{
+			"string": pulumi.Any(randomPet),
+		},
+		Age:  pulumi.Int(0),
+		Name: pulumi.Any(randomPet),
+		NameArray: random.RandomPetArray{
+			randomPet,
+		},
+		NameMap: random.RandomPetMap{
+			"string": pulumi.Any(randomPet),
+		},
 	},
 })
 ```
@@ -67,7 +91,18 @@ example, err := example.NewCat(ctx, "catResource", &example.CatArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var catResource = new Cat("catResource", CatArgs.builder()        
+    .age(0)
+    .pet(PetArgs.builder()
+        .requiredName(randomPet)
+        .requiredNameArray(randomPet)
+        .requiredNameMap(Map.of("string", randomPet))
+        .age(0)
+        .name(randomPet)
+        .nameArray(randomPet)
+        .nameMap(Map.of("string", randomPet))
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>
@@ -81,11 +116,17 @@ Coming soon!
 cat_resource = example.Cat("catResource",
     age=0,
     pet=example.PetArgs(
-        required_name_array=[],
-        required_name_map={},
+        required_name=random_pet,
+        required_name_array=[random_pet],
+        required_name_map={
+            "string": random_pet,
+        },
         age=0,
-        name_array=[],
-        name_map={},
+        name=random_pet,
+        name_array=[random_pet],
+        name_map={
+            "string": random_pet,
+        },
     ))
 ```
 
@@ -100,11 +141,17 @@ cat_resource = example.Cat("catResource",
 const catResource = new example.Cat("catResource", {
     age: 0,
     pet: {
-        requiredNameArray: [],
-        requiredNameMap: {},
+        requiredName: randomPet,
+        requiredNameArray: [randomPet],
+        requiredNameMap: {
+            string: randomPet,
+        },
         age: 0,
-        nameArray: [],
-        nameMap: {},
+        name: randomPet,
+        nameArray: [randomPet],
+        nameMap: {
+            string: randomPet,
+        },
     },
 });
 ```
@@ -122,10 +169,16 @@ properties:
     age: 0
     pet:
         age: 0
-        nameArray: []
-        nameMap: {}
-        requiredNameArray: []
-        requiredNameMap: {}
+        name: ${randomPet}
+        nameArray:
+            - ${randomPet}
+        nameMap:
+            string: ${randomPet}
+        requiredName: ${randomPet}
+        requiredNameArray:
+            - ${randomPet}
+        requiredNameMap:
+            string: ${randomPet}
 ```
 
 </pulumi-choosable>

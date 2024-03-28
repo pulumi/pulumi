@@ -47,7 +47,18 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.builder()        
+    .diameter("sixinch")
+    .type("Burgundy")
+    .container(ContainerArgs.builder()
+        .size("FourInch")
+        .brightness("ZeroPointOne")
+        .color("red")
+        .material("string")
+        .build())
+    .farm("Pulumi Planters Inc.")
+    .size("small")
+    .build());
 ```
 
 </pulumi-choosable>

@@ -47,7 +47,7 @@ example, err := submodule1.NewFOOEncryptedBarClass(ctx, "fooencryptedBarClassRes
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var fooencryptedBarClassResource = new FOOEncryptedBarClass("fooencryptedBarClassResource");
 ```
 
 </pulumi-choosable>

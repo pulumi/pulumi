@@ -85,7 +85,23 @@ Val: pulumi.String("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var moduleTestResource = new ModuleTest("moduleTestResource", ModuleTestArgs.builder()        
+    .mod1(TypArgs.builder()
+        .val("string")
+        .build())
+    .val(TypArgs.builder()
+        .mod1(TypArgs.builder()
+            .val("string")
+            .build())
+        .mod2(TypArgs.builder()
+            .mod1(TypArgs.builder()
+                .val("string")
+                .build())
+            .val("string")
+            .build())
+        .val("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>
@@ -149,7 +165,18 @@ const moduleTestResource = new example.ModuleTest("moduleTestResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:moduleTest
+properties:
+    mod1:
+        val: string
+    val:
+        mod1:
+            val: string
+        mod2:
+            mod1:
+                val: string
+            val: string
+        val: string
 ```
 
 </pulumi-choosable>

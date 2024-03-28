@@ -56,7 +56,10 @@ example, err := urnid.NewRes(ctx, "resResource", &urnid.ResArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var resResource = new Res("resResource", ResArgs.builder()        
+    .id("string")
+    .urn("string")
+    .build());
 ```
 
 </pulumi-choosable>

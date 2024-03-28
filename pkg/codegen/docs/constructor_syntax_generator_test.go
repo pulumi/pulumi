@@ -167,4 +167,23 @@ properties:
 type: test:NoInputs
 properties: {}
 `)
+
+	assert.Equal(t, expectedResources, len(constructorSyntax.java.resources))
+	equalPrograms(constructorSyntax.java, "test:index:First", `
+var firstResource = new First("firstResource", FirstArgs.builder()        
+    .fooBool(false)
+    .fooInt(0)
+    .fooString("string")
+    .build());
+`)
+
+	equalPrograms(constructorSyntax.java, "test:index:Second", `
+var secondResource = new Second("secondResource", SecondArgs.builder()        
+    .barString("string")
+    .build());
+`)
+
+	equalPrograms(constructorSyntax.java, "test:index:NoInputs", `
+var noInputsResource = new NoInputs("noInputsResource");
+`)
 }

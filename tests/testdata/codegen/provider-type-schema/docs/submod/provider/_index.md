@@ -52,7 +52,9 @@ example, err := submod.Newprovider(ctx, "providerResource", &submod.providerArgs
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var providerResource = new Provider("providerResource", ProviderArgs.builder()        
+    .a(false)
+    .build());
 ```
 
 </pulumi-choosable>

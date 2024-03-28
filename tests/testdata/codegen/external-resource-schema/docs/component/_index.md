@@ -634,7 +634,206 @@ example, err := example.NewComponent(ctx, "componentResource", &example.Componen
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var componentResource = new Component("componentResource", ComponentArgs.builder()        
+    .requiredMetadata(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .requiredMetadataArray(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .requiredMetadataMap(Map.of("string", Map.ofEntries(
+        Map.entry("annotations", Map.of("string", "string")),
+        Map.entry("clusterName", "string"),
+        Map.entry("creationTimestamp", "string"),
+        Map.entry("deletionGracePeriodSeconds", 0),
+        Map.entry("deletionTimestamp", "string"),
+        Map.entry("finalizers", "string"),
+        Map.entry("generateName", "string"),
+        Map.entry("generation", 0),
+        Map.entry("labels", Map.of("string", "string")),
+        Map.entry("managedFields", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("fieldsType", "string"),
+            Map.entry("fieldsV1", "{}"),
+            Map.entry("manager", "string"),
+            Map.entry("operation", "string"),
+            Map.entry("subresource", "string"),
+            Map.entry("time", "string")
+        )),
+        Map.entry("name", "string"),
+        Map.entry("namespace", "string"),
+        Map.entry("ownerReferences", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("kind", "string"),
+            Map.entry("name", "string"),
+            Map.entry("uid", "string"),
+            Map.entry("blockOwnerDeletion", false),
+            Map.entry("controller", false)
+        )),
+        Map.entry("resourceVersion", "string"),
+        Map.entry("selfLink", "string"),
+        Map.entry("uid", "string")
+    )))
+    .metadata(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .metadataArray(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .metadataMap(Map.of("string", Map.ofEntries(
+        Map.entry("annotations", Map.of("string", "string")),
+        Map.entry("clusterName", "string"),
+        Map.entry("creationTimestamp", "string"),
+        Map.entry("deletionGracePeriodSeconds", 0),
+        Map.entry("deletionTimestamp", "string"),
+        Map.entry("finalizers", "string"),
+        Map.entry("generateName", "string"),
+        Map.entry("generation", 0),
+        Map.entry("labels", Map.of("string", "string")),
+        Map.entry("managedFields", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("fieldsType", "string"),
+            Map.entry("fieldsV1", "{}"),
+            Map.entry("manager", "string"),
+            Map.entry("operation", "string"),
+            Map.entry("subresource", "string"),
+            Map.entry("time", "string")
+        )),
+        Map.entry("name", "string"),
+        Map.entry("namespace", "string"),
+        Map.entry("ownerReferences", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("kind", "string"),
+            Map.entry("name", "string"),
+            Map.entry("uid", "string"),
+            Map.entry("blockOwnerDeletion", false),
+            Map.entry("controller", false)
+        )),
+        Map.entry("resourceVersion", "string"),
+        Map.entry("selfLink", "string"),
+        Map.entry("uid", "string")
+    )))
+    .build());
 ```
 
 </pulumi-choosable>

@@ -67,7 +67,13 @@ Yaml: pulumi.Any("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var kubernetesConfigGroupResource = new ConfigGroup("kubernetesConfigGroupResource", ConfigGroupArgs.builder()        
+    .files("string")
+    .objs(null)
+    .resourcePrefix("string")
+    .transformations("any")
+    .yaml("string")
+    .build());
 ```
 
 </pulumi-choosable>

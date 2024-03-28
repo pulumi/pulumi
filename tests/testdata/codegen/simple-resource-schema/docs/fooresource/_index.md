@@ -25,7 +25,10 @@ no_edit_this_page: true
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var fooResourceResource = new Foo.FooResource("fooResourceResource", new()
+{
+    Foo = resource,
+});
 ```
 
 </pulumi-choosable>
@@ -36,7 +39,9 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := foo.NewFooResource(ctx, "fooResourceResource", &foo.FooResourceArgs{
+	Foo: resource,
+})
 ```
 
 </pulumi-choosable>
@@ -47,7 +52,9 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var fooResourceResource = new FooResource("fooResourceResource", FooResourceArgs.builder()        
+    .foo(resource)
+    .build());
 ```
 
 </pulumi-choosable>
@@ -58,7 +65,7 @@ Coming soon!
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+foo_resource_resource = foo.FooResource("fooResourceResource", foo=resource)
 ```
 
 </pulumi-choosable>
@@ -69,7 +76,7 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const fooResourceResource = new foo.FooResource("fooResourceResource", {foo: resource});
 ```
 
 </pulumi-choosable>
@@ -80,7 +87,9 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: foo:FooResource
+properties:
+    foo: ${resource}
 ```
 
 </pulumi-choosable>

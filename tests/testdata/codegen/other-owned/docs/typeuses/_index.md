@@ -46,6 +46,7 @@ var typeUsesResource = new Example.TypeUses("typeUsesResource", new()
                 Config = "string",
             },
         },
+        Foo = resource,
         Others = new[]
         {
             new[]
@@ -93,6 +94,7 @@ example, err := example.NewTypeUses(ctx, "typeUsesResource", &example.TypeUsesAr
 				Config: pulumi.String("string"),
 			},
 		},
+		Foo: pulumi.Any(resource),
 		Others: example.SomeOtherObjectArrayArray{
 			example.SomeOtherObjectArray{
 				&example.SomeOtherObjectArgs{
@@ -119,7 +121,26 @@ example, err := example.NewTypeUses(ctx, "typeUsesResource", &example.TypeUsesAr
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()        
+    .bar(SomeOtherObjectArgs.builder()
+        .baz("string")
+        .build())
+    .baz(ObjectWithNodeOptionalInputsArgs.builder()
+        .foo("string")
+        .bar(0)
+        .build())
+    .foo(ObjectArgs.builder()
+        .bar("string")
+        .configs(ConfigMapArgs.builder()
+            .config("string")
+            .build())
+        .foo(resource)
+        .others(SomeOtherObjectArgs.builder()
+            .baz("string")
+            .build())
+        .stillOthers(Map.of("string", Map.of("baz", "string")))
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>
@@ -143,6 +164,7 @@ type_uses_resource = example.TypeUses("typeUsesResource",
         configs=[example.ConfigMapArgs(
             config="string",
         )],
+        foo=resource,
         others=[[example.SomeOtherObjectArgs(
             baz="string",
         )]],
@@ -175,6 +197,7 @@ const typeUsesResource = new example.TypeUses("typeUsesResource", {
         configs: [{
             config: "string",
         }],
+        foo: resource,
         others: [[{
             baz: "string",
         }]],
@@ -195,7 +218,23 @@ const typeUsesResource = new example.TypeUses("typeUsesResource", {
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:TypeUses
+properties:
+    bar:
+        baz: string
+    baz:
+        bar: 0
+        foo: string
+    foo:
+        bar: string
+        configs:
+            - config: string
+        foo: ${resource}
+        others:
+            - - baz: string
+        stillOthers:
+            string:
+                - baz: string
 ```
 
 </pulumi-choosable>

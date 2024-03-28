@@ -59,7 +59,15 @@ example, err := myModule.NewIamResource(ctx, "iamResourceResource", &myModule.Ia
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var iamResourceResource = new IamResource("iamResourceResource", IamResourceArgs.builder()        
+    .config(AuditConfigArgs.builder()
+        .auditLogConfigs(AuditLogConfigArgs.builder()
+            .exemptedMembers("string")
+            .logType("LOG_TYPE_UNSPECIFIED")
+            .build())
+        .service("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

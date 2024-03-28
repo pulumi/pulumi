@@ -64,7 +64,12 @@ example, err := example.NewPerson(ctx, "personResource", &example.PersonArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var personResource = new Person("personResource", PersonArgs.builder()        
+    .name("string")
+    .pets(PetArgs.builder()
+        .name("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

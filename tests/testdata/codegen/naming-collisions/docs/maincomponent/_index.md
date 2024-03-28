@@ -47,7 +47,7 @@ example, err := example.NewMainComponent(ctx, "mainComponentResource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var mainComponentResource = new MainComponent("mainComponentResource");
 ```
 
 </pulumi-choosable>
@@ -80,7 +80,8 @@ const mainComponentResource = new example.MainComponent("mainComponentResource",
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:MainComponent
+properties: {}
 ```
 
 </pulumi-choosable>

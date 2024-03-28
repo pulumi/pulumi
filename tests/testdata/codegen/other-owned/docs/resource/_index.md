@@ -52,7 +52,9 @@ example, err := example.NewResource(ctx, "resourceResource", &example.ResourceAr
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var resourceResource = new Resource("resourceResource", ResourceArgs.builder()        
+    .bar("string")
+    .build());
 ```
 
 </pulumi-choosable>
@@ -85,7 +87,9 @@ const resourceResource = new example.Resource("resourceResource", {bar: "string"
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Resource
+properties:
+    bar: string
 ```
 
 </pulumi-choosable>

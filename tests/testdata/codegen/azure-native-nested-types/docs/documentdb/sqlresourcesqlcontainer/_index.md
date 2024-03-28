@@ -379,7 +379,7 @@ example, err := documentdb.NewSqlResourceSqlContainer(ctx, "sqlResourceSqlContai
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var sqlResourceSqlContainerResource = new SqlResourceSqlContainer("sqlResourceSqlContainerResource");
 ```
 
 </pulumi-choosable>

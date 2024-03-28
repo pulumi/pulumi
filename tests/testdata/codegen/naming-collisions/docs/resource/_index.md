@@ -47,7 +47,7 @@ example, err := example.NewResource(ctx, "resourceResource", nil)
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var resourceResource = new Resource("resourceResource");
 ```
 
 </pulumi-choosable>
@@ -80,7 +80,8 @@ const resourceResource = new example.Resource("resourceResource", {});
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Resource
+properties: {}
 ```
 
 </pulumi-choosable>

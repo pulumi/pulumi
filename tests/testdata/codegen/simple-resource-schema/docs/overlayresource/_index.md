@@ -59,7 +59,12 @@ example, err := example.NewOverlayResource(ctx, "overlayResourceResource", &exam
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var overlayResourceResource = new OverlayResource("overlayResourceResource", OverlayResourceArgs.builder()        
+    .bar("SOME_ENUM_VALUE")
+    .foo(ConfigMapOverlayArgs.builder()
+        .config("string")
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>
@@ -101,7 +106,11 @@ const overlayResourceResource = new example.OverlayResource("overlayResourceReso
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:OverlayResource
+properties:
+    bar: SOME_ENUM_VALUE
+    foo:
+        config: string
 ```
 
 </pulumi-choosable>

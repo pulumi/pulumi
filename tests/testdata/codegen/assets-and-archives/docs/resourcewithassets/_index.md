@@ -67,7 +67,16 @@ example, err := example.NewResourceWithAssets(ctx, "resourceWithAssetsResource",
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var resourceWithAssetsResource = new ResourceWithAssets("resourceWithAssetsResource", ResourceWithAssetsArgs.builder()        
+    .source(new StringAsset("content"))
+    .archive(new FileArchive("./path/to/archive"))
+    .nested(TypeWithAssetsArgs.builder()
+        .asset(new StringAsset("content"))
+        .plainArchive(new FileArchive("./path/to/archive"))
+        .archive(new FileArchive("./path/to/archive"))
+        .plainAsset(new StringAsset("content"))
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>

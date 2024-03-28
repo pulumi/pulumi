@@ -52,7 +52,9 @@ example, err := nested.NewResource(ctx, "resourceResource", &nested.ResourceArgs
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var resourceResource = new Resource("resourceResource", ResourceArgs.builder()        
+    .bar("string")
+    .build());
 ```
 
 </pulumi-choosable>

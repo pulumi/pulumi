@@ -27,7 +27,36 @@ test new feature with resoruces
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var fooResource = new Example.Foo("fooResource", new()
+{
+    BackupKubeClientSettings = new Example.Inputs.KubeClientSettingsArgs
+    {
+        Burst = 0,
+        Qps = 0,
+        RecTest = kubeClientSettings,
+    },
+    Argument = "string",
+    KubeClientSettings = kubeClientSettings,
+    Settings = new Example.Inputs.LayeredTypeArgs
+    {
+        Other = new Example.Inputs.HelmReleaseSettingsArgs
+        {
+            RequiredArg = "string",
+            Driver = "string",
+            PluginsPath = "string",
+        },
+        Thinker = "string",
+        Answer = 0,
+        PlainOther = 
+        {
+            { "requiredArg", "string" },
+            { "driver", "string" },
+            { "pluginsPath", "string" },
+        },
+        Question = "string",
+        Recursive = layeredType,
+    },
+});
 ```
 
 </pulumi-choosable>
@@ -38,7 +67,31 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := example.NewFoo(ctx, "fooResource", &example.FooArgs{
+BackupKubeClientSettings: &example.KubeClientSettingsArgs{
+Burst: pulumi.Int(0),
+Qps: pulumi.Float64(0),
+RecTest: pulumi.Any(kubeClientSettings),
+},
+Argument: "string",
+KubeClientSettings: pulumi.Any(kubeClientSettings),
+Settings: &example.LayeredTypeArgs{
+Other: &example.HelmReleaseSettingsArgs{
+RequiredArg: pulumi.String("string"),
+Driver: pulumi.String("string"),
+PluginsPath: pulumi.String("string"),
+},
+Thinker: pulumi.String("string"),
+Answer: pulumi.Float64(0),
+PlainOther: interface{}{
+RequiredArg: pulumi.String("string"),
+Driver: pulumi.String("string"),
+PluginsPath: pulumi.String("string"),
+},
+Question: pulumi.String("string"),
+Recursive: pulumi.Any(layeredType),
+},
+})
 ```
 
 </pulumi-choosable>
@@ -49,7 +102,31 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-Coming soon!
+var fooResource = new Foo("fooResource", FooArgs.builder()        
+    .backupKubeClientSettings(KubeClientSettingsArgs.builder()
+        .burst(0)
+        .qps(0)
+        .recTest(kubeClientSettings)
+        .build())
+    .argument("string")
+    .kubeClientSettings(kubeClientSettings)
+    .settings(LayeredTypeArgs.builder()
+        .other(HelmReleaseSettingsArgs.builder()
+            .requiredArg("string")
+            .driver("string")
+            .pluginsPath("string")
+            .build())
+        .thinker("string")
+        .answer(0)
+        .plainOther(HelmReleaseSettingsArgs.builder()
+            .requiredArg("string")
+            .driver("string")
+            .pluginsPath("string")
+            .build())
+        .question("string")
+        .recursive(layeredType)
+        .build())
+    .build());
 ```
 
 </pulumi-choosable>
@@ -60,7 +137,30 @@ Coming soon!
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+foo_resource = example.Foo("fooResource",
+    backup_kube_client_settings=example.KubeClientSettingsArgs(
+        burst=0,
+        qps=0,
+        rec_test=kube_client_settings,
+    ),
+    argument="string",
+    kube_client_settings=kube_client_settings,
+    settings=example.LayeredTypeArgs(
+        other=example.HelmReleaseSettingsArgs(
+            required_arg="string",
+            driver="string",
+            plugins_path="string",
+        ),
+        thinker="string",
+        answer=0,
+        plain_other={
+            "requiredArg": "string",
+            "driver": "string",
+            "pluginsPath": "string",
+        },
+        question="string",
+        recursive=layered_type,
+    ))
 ```
 
 </pulumi-choosable>
@@ -71,7 +171,31 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const fooResource = new example.Foo("fooResource", {
+    backupKubeClientSettings: {
+        burst: 0,
+        qps: 0,
+        recTest: kubeClientSettings,
+    },
+    argument: "string",
+    kubeClientSettings: kubeClientSettings,
+    settings: {
+        other: {
+            requiredArg: "string",
+            driver: "string",
+            pluginsPath: "string",
+        },
+        thinker: "string",
+        answer: 0,
+        plainOther: {
+            requiredArg: "string",
+            driver: "string",
+            pluginsPath: "string",
+        },
+        question: "string",
+        recursive: layeredType,
+    },
+});
 ```
 
 </pulumi-choosable>
@@ -82,7 +206,27 @@ Coming soon!
 <pulumi-choosable type="language" values="yaml">
 
 ```yaml
-Coming soon!
+type: example:Foo
+properties:
+    argument: string
+    backupKubeClientSettings:
+        burst: 0
+        qps: 0
+        recTest: ${kubeClientSettings}
+    kubeClientSettings: ${kubeClientSettings}
+    settings:
+        answer: 0
+        other:
+            driver: string
+            pluginsPath: string
+            requiredArg: string
+        plainOther:
+            driver: string
+            pluginsPath: string
+            requiredArg: string
+        question: string
+        recursive: ${layeredType}
+        thinker: string
 ```
 
 </pulumi-choosable>
