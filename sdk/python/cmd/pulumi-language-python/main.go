@@ -96,6 +96,7 @@ func main() {
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.String("virtualenv", "", "[obsolete] Virtual environment path to use")
 	flag.String("root", "", "[obsolete] Project root path to use")
+	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -185,11 +186,24 @@ type pythonLanguageHost struct {
 	useToml bool
 }
 
+type typeChecker int
+
+const (
+	// TypeCheckerNone is the default typeChecker
+	TypeCheckerNone typeChecker = iota
+	// TypeCheckerMypy is the mypy typeChecker
+	TypeCheckerMypy
+	// TypeCheckerPyright is the pyright typeChecker
+	TypeCheckerPyright
+)
+
 type pythonOptions struct {
 	// Virtual environment path to use.
 	virtualenv string
 	// The resolved virtual environment path.
 	virtualenvPath string
+	// Use a typechecker to type check
+	typechecker typeChecker
 }
 
 func parseOptions(root string, options map[string]interface{}) (pythonOptions, error) {
@@ -204,6 +218,21 @@ func parseOptions(root string, options map[string]interface{}) (pythonOptions, e
 
 	// Resolve virtualenv path relative to root.
 	pythonOptions.virtualenvPath = resolveVirtualEnvironmentPath(root, pythonOptions.virtualenv)
+
+	if typechecker, ok := options["typechecker"]; ok {
+		if typechecker, ok := typechecker.(string); ok {
+			switch typechecker {
+			case "mypy":
+				pythonOptions.typechecker = TypeCheckerMypy
+			case "pyright":
+				pythonOptions.typechecker = TypeCheckerPyright
+			default:
+				return pythonOptions, fmt.Errorf("unsupported typechecker option: %s", typechecker)
+			}
+		} else {
+			return pythonOptions, errors.New("typechecker option must be a string")
+		}
+	}
 
 	return pythonOptions, nil
 }
@@ -761,28 +790,31 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	var errResult string
-	var cmd *exec.Cmd
-	var virtualenv string
-	if opts.virtualenv != "" {
-		virtualenv = opts.virtualenvPath
-		if !python.IsVirtualEnv(virtualenv) {
-			return nil, python.NewVirtualEnvError(opts.virtualenv, virtualenv)
+	mkCmd := func(args []string) (*exec.Cmd, error) {
+		if opts.virtualenv != "" {
+			virtualenv := opts.virtualenvPath
+			if !python.IsVirtualEnv(virtualenv) {
+				return nil, python.NewVirtualEnvError(opts.virtualenv, virtualenv)
+			}
+			return python.VirtualEnvCommand(virtualenv, "python", args...), nil
 		}
-		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
-	} else {
-		cmd, err = python.Command(ctx, args...)
+		cmd, err := python.Command(ctx, args...)
 		if err != nil {
 			return nil, err
 		}
+		return cmd, nil
 	}
 
+	cmd, err := mkCmd(args)
+	if err != nil {
+		return nil, err
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if virtualenv != "" || config != "" || configSecretKeys != "" {
+	if opts.virtualenvPath != "" || config != "" || configSecretKeys != "" {
 		env := os.Environ()
-		if virtualenv != "" {
-			env = python.ActivateVirtualEnv(env, virtualenv)
+		if opts.virtualenvPath != "" {
+			env = python.ActivateVirtualEnv(env, opts.virtualenvPath)
 		}
 		if config != "" {
 			env = append(env, pulumiConfigVar+"="+config)
@@ -792,6 +824,34 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		cmd.Env = env
 	}
+	// Before running the command, we might need to run typechecker first
+	var typechecker string
+	switch opts.typechecker {
+	case TypeCheckerNone:
+		break
+	case TypeCheckerMypy:
+		typechecker = "mypy"
+	case TypeCheckerPyright:
+		typechecker = "pyright"
+	}
+
+	if typechecker != "" {
+		typecheckerCmd, err := mkCmd([]string{"-m", typechecker, req.Info.ProgramDirectory})
+		if err != nil {
+			return nil, err
+		}
+		env := os.Environ()
+		if opts.virtualenvPath != "" {
+			env = python.ActivateVirtualEnv(env, opts.virtualenvPath)
+		}
+		typecheckerCmd.Env = env
+		typecheckerCmd.Stdout = os.Stdout
+		typecheckerCmd.Stderr = os.Stderr
+		if err := typecheckerCmd.Run(); err != nil {
+			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
+		}
+	}
+	var errResult string
 	if err := cmd.Run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
 		// need to explicitly flush our output streams so that, when we exit, the engine picks up the child Python
