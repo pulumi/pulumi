@@ -119,13 +119,15 @@ jobs:
       - name: Check for changes
         id: check-changes
         run: |
-          if ! git diff --exit-code master...HEAD sdk/nodejs; then
+          # We need to fetch one more commit to compare to
+          git fetch --deepen 1
+          if ! git diff --exit-code HEAD~...HEAD sdk/nodejs; then
             echo "nodejs-release=true" >>"${GITHUB_OUTPUT}"
           else
             echo "nodejs-release=false" >>"${GITHUB_OUTPUT}"
           fi
 
-          if ! git diff --exit-code master...HEAD sdk/python; then
+          if ! git diff --exit-code HEAD~...HEAD sdk/python; then
             echo "python-release=true" >>"${GITHUB_OUTPUT}"
           else
             echo "python-release=false" >>"${GITHUB_OUTPUT}"
@@ -137,7 +139,7 @@ jobs:
   nodejs-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
-    if: ${{ needs.sdk-check-release.outputs.nodejs-release }}
+    if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -181,7 +183,7 @@ jobs:
   python-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release]
     runs-on: ubuntu-latest
-    if: ${{ needs.sdk-check-release.outputs.python-release }}
+    if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
