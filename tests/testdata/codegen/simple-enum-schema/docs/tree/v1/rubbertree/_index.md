@@ -501,7 +501,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_python" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">root_<wbr>inputs.<wbr>Container<wbr>Args</a></span>
+        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
