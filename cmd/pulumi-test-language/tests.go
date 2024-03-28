@@ -16,6 +16,7 @@ package main
 
 import (
 	"embed"
+	"math"
 	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -83,6 +84,29 @@ var languageTests = map[string]languageTest{
 
 					assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
 					assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+				},
+			},
+		},
+	},
+	"l1-output-number": {
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					// Check we have two outputs in the stack for true and false
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 5, "expected 5 outputs")
+					assertPropertyMapMember(l, outputs, "zero", resource.NewNumberProperty(0))
+					assertPropertyMapMember(l, outputs, "one", resource.NewNumberProperty(1))
+					assertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
+					assertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
+					assertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
 				},
 			},
 		},
