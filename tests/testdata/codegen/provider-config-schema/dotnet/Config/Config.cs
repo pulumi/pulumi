@@ -95,6 +95,12 @@ namespace Configstation.Pulumi.Configstation
                 public string? Bread { get; set; } = null!;
                 public ImmutableArray<string> Veggies { get; set; }
             }
+
+             public class Child
+             {
+                public int? Age { get; set; }
+                public string? Name { get; set; } = null!;
+            }
         }
     }
 }

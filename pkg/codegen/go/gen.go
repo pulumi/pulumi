@@ -3786,7 +3786,6 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config": "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":        "",
 	}
-	pkg.getImports(variables, importsAndAliases)
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	pkg.genHeader(w, nil, importsAndAliases, false /* isUtil */)
 
