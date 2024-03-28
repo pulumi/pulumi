@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from typing import Awaitable, TypeVar
+from typing import Any, Awaitable, Callable, Dict, Tuple, TypeVar
 
 T = TypeVar("T")
 
@@ -75,3 +75,19 @@ def _ensure_event_loop():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop
+
+def blocking_call(func: Callable[[Any], T], *args: Tuple[Any], **kwargs: Dict[str, Any]) -> T:
+    """
+    Run function *func* on another thread and wait for the result
+
+    This allows the call to be synchronous in the calling context while allowing
+    the async event loop on the calling thread to keep pumping.
+
+    :param Callable[[Any], T] func: A function that will be called on a new thread.
+    :param Tuple[Any] *args: The arguments list if any to pass to *func*
+    :param Dict[str, Any] **kwargs: The keyword arguments that will be passed to *func*
+    :return: The result of *func*.
+    :rtype: T
+    """
+    coro = asyncio.to_thread(func, *args, **kwargs)
+    return _sync_await(asyncio.ensure_future(coro))
