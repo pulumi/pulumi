@@ -19,11 +19,14 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -1574,7 +1577,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetArgs
 		{
 			name:  "AssetArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1584,7 +1587,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetInputArgs
 		{
 			name:  "AssetInputArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1594,7 +1597,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// ArchiveArgs
 		{
 			name:  "ArchiveArgs no deps",
-			input: resource.NewArchiveProperty(&resource.Archive{Path: "path"}),
+			input: resource.NewArchiveProperty(&rarchive.Archive{Path: "path"}),
 			args:  &ArchiveArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewFileArchive("path"), actual)
@@ -1604,7 +1607,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// ArchiveInputArgs
 		{
 			name:  "ArchiveInputArgs no deps",
-			input: resource.NewArchiveProperty(&resource.Archive{Path: "path"}),
+			input: resource.NewArchiveProperty(&rarchive.Archive{Path: "path"}),
 			args:  &ArchiveInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewFileArchive("path"), actual)
@@ -1614,7 +1617,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetOrArchiveArgs
 		{
 			name:  "AssetOrArchiveArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1624,7 +1627,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetOrArchiveInputArgs
 		{
 			name:  "AssetOrArchiveInputArgs no deps",
-			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
+			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
@@ -1932,5 +1935,173 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 			RetainOnDelete: true,
 		})
 		assert.True(t, snap.RetainOnDelete, "retainOnDelete was not set")
+	})
+}
+
+func TestConstruct_await(t *testing.T) {
+	t.Parallel()
+
+	// Runs Construct to initiate some async RPCs and/or to produce some outputs.
+	// Note: a given output may or may not be associated with the Pulumi context, depending on how it's made,
+	// meaning that it may or may not be tracked by the context's waitgroup.
+	constructWithState := func(t *testing.T, req *pulumirpc.ConstructRequest, stateF func(ctx *Context, state Map)) error {
+		// Keep test cases simple:
+		req.Stack = "mystack"
+		req.Project = "myproject"
+
+		ctx := context.Background()
+		_, err := construct(ctx, req, nil, func(
+			ctx *Context,
+			typ, name string,
+			inputs map[string]interface{},
+			opts ResourceOption,
+		) (URNInput, Input, error) {
+			urn := resource.NewURN(
+				tokens.QName(ctx.Stack()),
+				tokens.PackageName(ctx.Project()),
+				"", // parent
+				tokens.Type(typ),
+				name,
+			)
+			state := make(Map)
+			stateF(ctx, state)
+			return URN(urn), state, nil
+		})
+		return err
+	}
+
+	t.Run("outstanding rpc", func(t *testing.T) {
+		t.Parallel()
+
+		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
+			// begin an outstanding RPC call that will complete after constructF returns,
+			// and don't emit any output properties to keep it pure.
+			err := ctx.beginRPC()
+			require.NoError(t, err, "failed to begin RPC")
+			go func() {
+				time.Sleep(1 * time.Second)
+				ctx.endRPC(nil)
+			}()
+		})
+		require.NoError(t, err, "failed to construct")
+	})
+
+	t.Run("associated output", func(t *testing.T) {
+		t.Parallel()
+
+		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
+			// return an output property, derived from the context, that will complete after constructF returns.
+			a, resolve, reject := ctx.NewOutput()
+			go func() {
+				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
+				err := ctx.beginRPC()
+				if err != nil {
+					reject(err)
+					return
+				}
+				ctx.endRPC(nil)
+				resolve(42)
+			}()
+			state["a"] = a
+		})
+		require.NoError(t, err, "failed to construct")
+	})
+
+	t.Run("unassociated output", func(t *testing.T) {
+		t.Parallel()
+
+		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
+			// return an output property, not derived from the context, that will complete after constructF returns.
+			state["b"] = String("b").ToStringOutput().ApplyT(func(v interface{}) (interface{}, error) {
+				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
+				err := ctx.beginRPC()
+				if err != nil {
+					return nil, err
+				}
+				ctx.endRPC(nil)
+				return v.(string), nil
+			})
+		})
+		require.NoError(t, err, "failed to construct")
+	})
+}
+
+func TestCall_await(t *testing.T) {
+	t.Parallel()
+
+	// Runs Call to initiate some async RPCs and/or to produce some results.
+	// Note: a given result may or may not be associated with the Pulumi context, depending on how it's made,
+	// meaning that it may or may not be tracked by the context's waitgroup.
+	callWithResult := func(t *testing.T, req *pulumirpc.CallRequest, resultF func(ctx *Context, state Map)) error {
+		// Keep test cases simple:
+		req.Stack = "mystack"
+		req.Project = "myproject"
+
+		ctx := context.Background()
+		_, err := call(ctx, req, nil, func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error) {
+			result := make(Map)
+			resultF(ctx, result)
+			return result, nil, nil
+		})
+		return err
+	}
+
+	t.Run("outstanding rpc", func(t *testing.T) {
+		t.Parallel()
+
+		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
+			// begin an outstanding RPC call that will complete after callF returns,
+			// and don't emit any output properties to keep it pure.
+			err := ctx.beginRPC()
+			require.NoError(t, err, "failed to begin RPC")
+			go func() {
+				time.Sleep(1 * time.Second)
+				ctx.endRPC(nil)
+			}()
+		})
+		require.NoError(t, err, "failed to call")
+	})
+
+	t.Run("associated output", func(t *testing.T) {
+		t.Parallel()
+
+		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
+			// return an output property, derived from the context, that will complete after callF returns.
+			a, resolve, reject := ctx.NewOutput()
+			go func() {
+				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
+				err := ctx.beginRPC()
+				if err != nil {
+					reject(err)
+					return
+				}
+				ctx.endRPC(nil)
+				resolve(42)
+			}()
+			result["a"] = a
+		})
+		require.NoError(t, err, "failed to call")
+	})
+
+	t.Run("unassociated output", func(t *testing.T) {
+		t.Parallel()
+
+		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
+			// return an output property, not derived from the context, that will complete after callF returns.
+			result["b"] = String("b").ToStringOutput().ApplyT(func(v interface{}) (interface{}, error) {
+				time.Sleep(1 * time.Second)
+				// verify that the context is still open by making an RPC call.
+				err := ctx.beginRPC()
+				if err != nil {
+					return nil, err
+				}
+				ctx.endRPC(nil)
+				return v.(string), nil
+			})
+		})
+		require.NoError(t, err, "failed to call")
 	})
 }

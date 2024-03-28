@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Send resource inputs as inputs and state for Reads.

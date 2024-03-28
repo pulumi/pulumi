@@ -82,9 +82,7 @@ func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
 
-func (host *testPluginHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 
@@ -102,7 +100,7 @@ func (host *testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
 	return nil
 }
 
-func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
+func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginInfo, error) {
 	return nil, nil
@@ -796,4 +794,105 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			assert.Nil(t, inputs)
 		}(i)
 	}
+}
+
+func TestRegistry(t *testing.T) {
+	t.Parallel()
+	t.Run("Close", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Nil(t, r.Close())
+		// Ensure idempotent.
+		assert.Nil(t, r.Close())
+	})
+	t.Run("Pkg", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Equal(t, tokens.Package("pulumi"), r.Pkg())
+	})
+	t.Run("GetSchema", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _ = r.GetSchema((0))
+		})
+	})
+	t.Run("GetMapping", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _, _ = r.GetMapping("", "")
+		})
+	})
+	t.Run("GetMappings", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _ = r.GetMappings("")
+		})
+	})
+	t.Run("CheckConfig", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _, _ = r.CheckConfig("", resource.PropertyMap{}, resource.PropertyMap{}, true)
+		})
+	})
+	t.Run("DiffConfig", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _ = r.DiffConfig("", resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{}, true, nil)
+		})
+	})
+	t.Run("Configure", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_ = r.Configure(resource.PropertyMap{})
+		})
+	})
+	t.Run("Read", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		_, _, err := r.Read("", "", resource.PropertyMap{}, resource.PropertyMap{})
+		assert.ErrorContains(t, err, "provider resources may not be read")
+	})
+	t.Run("Construct", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		_, err := r.Construct(plugin.ConstructInfo{}, "", "", "", resource.PropertyMap{}, plugin.ConstructOptions{})
+		assert.ErrorContains(t, err, "provider resources may not be constructed")
+	})
+	t.Run("Invoke", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _, _ = r.Invoke("", resource.PropertyMap{})
+		})
+	})
+	t.Run("StreamInvoke", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		_, err := r.StreamInvoke("", resource.PropertyMap{}, nil)
+		assert.ErrorContains(t, err, "the provider registry does not implement streaming invokes")
+	})
+	t.Run("Call", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Panics(t, func() {
+			_, _ = r.Call("", resource.PropertyMap{}, plugin.CallInfo{}, plugin.CallOptions{})
+		})
+	})
+	t.Run("GetPluginInfo", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		_, err := r.GetPluginInfo()
+		assert.ErrorContains(t, err, "the provider registry does not report plugin info")
+	})
+	t.Run("SignalCancellation", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		assert.Nil(t, r.SignalCancellation())
+	})
 }

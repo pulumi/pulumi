@@ -107,7 +107,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
-			return fmt.Errorf("failed to open URL: %s", err)
+			return fmt.Errorf("failed to open URL: %w", err)
 		}
 	}
 	return nil
@@ -121,7 +121,7 @@ func newSearchAICmd() *cobra.Command {
 		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return scmd.Run(ctx, args)
 		},
 		),

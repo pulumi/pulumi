@@ -172,7 +172,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	}
 	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
 	if err != nil {
-		return fmt.Errorf("table rendering error: %s", err)
+		return fmt.Errorf("table rendering error: %w", err)
 	}
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
@@ -191,7 +191,7 @@ func newSearchCmd() *cobra.Command {
 		Long:  "Search for resources in Pulumi Cloud.",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			if len(scmd.queryParams) == 0 {
 				return cmd.Help()
 			}

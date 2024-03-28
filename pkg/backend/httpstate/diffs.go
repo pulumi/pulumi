@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -71,7 +72,7 @@ func (dds *deploymentDiffState) ShouldDiff(new deployment) bool {
 
 func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment) (deploymentDiff, error) {
 	if !dds.CanDiff() {
-		return deploymentDiff{}, fmt.Errorf("Diff() cannot be called before Saved()")
+		return deploymentDiff{}, errors.New("Diff() cannot be called before Saved()")
 	}
 
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "Diff")
@@ -86,12 +87,12 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 
 	delta, err := dds.computeEdits(childCtx, dds.lastSavedDeployment, deployment)
 	if err != nil {
-		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
+		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %w", err)
 	}
 
 	checkpointHash, err := checkpointHashPromise.Result(ctx)
 	if err != nil {
-		return deploymentDiff{}, fmt.Errorf("Cannot compute the checkpoint hash: %v", err)
+		return deploymentDiff{}, fmt.Errorf("Cannot compute the checkpoint hash: %w", err)
 	}
 
 	tracingSpan.SetTag("before", len(before))

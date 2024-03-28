@@ -69,10 +69,11 @@ func TestGitClone(t *testing.T) {
 	assert.NoError(t, err)
 
 	type testcase struct {
-		branchName   string
-		commitHash   string
-		testName     string // use when supplying a hash, for a stable name
-		expectedHead plumbing.Hash
+		branchName    string
+		commitHash    string
+		testName      string // use when supplying a hash, for a stable name
+		expectedHead  plumbing.Hash
+		expectedError string
 	}
 
 	for _, tc := range []testcase{
@@ -123,11 +124,32 @@ func TestGitClone(t *testing.T) {
 
 	// test that these result in errors
 	for _, tc := range []testcase{
-		{testName: "simple branch doesn't exist", branchName: "doesnotexist"},
-		{testName: "full branch doesn't exist", branchName: "refs/heads/doesnotexist"},
-		{testName: "malformed branch name", branchName: "refs/notathing/default"},
-		{testName: "simple tag name won't work", branchName: "v1.0.0"},
-		{testName: "wrong remote", branchName: "refs/remotes/upstream/default"},
+		{
+			testName:      "simple branch doesn't exist",
+			branchName:    "doesnotexist",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:      "full branch doesn't exist",
+			branchName:    "refs/heads/doesnotexist",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:      "malformed branch name",
+			branchName:    "refs/notathing/default",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:      "simple tag name won't work",
+			branchName:    "v1.0.0",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:   "wrong remote",
+			branchName: "refs/remotes/upstream/default",
+			expectedError: "a remote ref must begin with 'refs/remote/origin/', " +
+				"but got \"refs/remotes/upstream/default\"",
+		},
 	} {
 		tc := tc
 		if tc.testName == "" {
@@ -145,7 +167,7 @@ func TestGitClone(t *testing.T) {
 			assert.NoError(t, err)
 
 			_, err = setupGitRepo(context.Background(), tmp, repo)
-			assert.Error(t, err)
+			assert.EqualError(t, err, tc.expectedError)
 		})
 	}
 }

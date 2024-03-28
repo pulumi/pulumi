@@ -59,12 +59,12 @@ import (
 func parseResourceSpec(spec string) (string, resource.URN, error) {
 	equals := strings.Index(spec, "=")
 	if equals == -1 {
-		return "", "", fmt.Errorf("spec must be of the form name=URN")
+		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
 	name, urn := spec[:equals], resource.URN(spec[equals+1:])
 	if name == "" || urn == "" {
-		return "", "", fmt.Errorf("spec must be of the form name=URN")
+		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
 	if !urn.IsValid() {
@@ -87,7 +87,9 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			ID:                resource.ID(res.ID),
 			Version:           res.Version,
 			PluginDownloadURL: res.PluginDownloadURL,
-			// TODO(https://github.com/pulumi/pulumi/issues/14532): Add Component and Remote to ResourceImport
+			Component:         res.IsComponent,
+			Remote:            res.IsRemote,
+			LogicalName:       res.LogicalName,
 		}
 	}
 
@@ -154,11 +156,14 @@ type importSpec struct {
 	Properties        []string    `json:"properties,omitempty"`
 	Component         bool        `json:"component,omitempty"`
 	Remote            bool        `json:"remote,omitempty"`
+
+	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
+	LogicalName string `json:"logicalName,omitempty"`
 }
 
 type importFile struct {
 	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
-	Resources []importSpec            `json:"resources"`
+	Resources []importSpec            `json:"resources,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
@@ -208,37 +213,12 @@ func parseImportFile(
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
 	takenNames := map[string]bool{}
-	// Prefill takenNames with all the resource names so we can do quick uniqness checks below
+	// takenURNs simply tracks that a URN is used, it's not possible for a URN to be ambiguous. We fill this
+	// later because it requires parents to be resolved.
+	takenURNs := map[resource.URN]struct{}{}
+	// Prefill takenNames with all the resource names so we can do quick uniqueness checks below
 	for _, spec := range f.Resources {
 		takenNames[spec.Name] = false
-	}
-	// A remapping by index from the resource list to it's final unique name.
-	nameMapping := make([]string, 0, len(f.Resources))
-	for i, spec := range f.Resources {
-		// Check if any earlier resource has this name, if so mark it as ambiguous
-		for j, other := range f.Resources {
-			if i > j && spec.Name == other.Name {
-				takenNames[spec.Name] = true
-			}
-		}
-
-		if !takenNames[spec.Name] {
-			// This name isn't ambiguous so we can use it as is
-			nameMapping = append(nameMapping, spec.Name)
-		} else {
-			// This names already used so we need to make it unique
-			newName := spec.Name
-			for suffix := 1; ; suffix++ {
-				if _, exists := takenNames[newName]; !exists {
-					break
-				}
-				newName = fmt.Sprintf("%s_%d", spec.Name, suffix)
-			}
-			// At this point newName is unique and can't clash with other names, but need to ensure nothing
-			// else tries to now use it.
-			takenNames[newName] = false
-			nameMapping = append(nameMapping, newName)
-		}
 	}
 
 	// TODO: When Go 1.21 is released, switch to errors.Join.
@@ -275,23 +255,70 @@ func parseImportFile(
 		return sb.String()
 	}
 
+	for i, spec := range f.Resources {
+		// We default LogicalName and Name to each other if either is missing.
+		if spec.LogicalName == "" {
+			f.Resources[i].LogicalName = spec.Name
+		}
+		if spec.Name == "" {
+			f.Resources[i].Name = spec.LogicalName
+		}
+	}
+
+	// Sanity check some basic constraints that names and types etc are filled in.
+	for i, spec := range f.Resources {
+		if spec.Type == "" {
+			pusherrf("%v has no type", describeResource(i, spec))
+		}
+		if spec.Name == "" {
+			pusherrf("%v has no name", describeResource(i, spec))
+		}
+		if !spec.Component && spec.ID == "" {
+			pusherrf("%v has no ID", describeResource(i, spec))
+		} else if spec.Component && spec.ID != "" {
+			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
+		}
+		if spec.Remote && !spec.Component {
+			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
+		}
+
+		// Check if any earlier resource has this name, if so mark it as ambiguous this is only an error if
+		// something tries to use it (checked later on).
+		for j, other := range f.Resources {
+			if i > j && spec.Name == other.Name {
+				takenNames[spec.Name] = true
+			}
+		}
+	}
+
+	// If we've got errors already just exit
+	if errs != nil {
+		return nil, nil, errs
+	}
+
 	// A mapping from name to URN, prefilled with emptys and what was in the name table so we can do existence checks
 	// for expected names.
 	urnMapping := make(map[string]resource.URN)
+	// The opposite of urnMapping, a mapping from URN to name.
+	names := importer.NameTable{}
 	for name, urn := range f.NameTable {
+		names[urn] = name
 		urnMapping[name] = urn
+		// We can add these URNs to the taken set, it's not an error to add them twice at this point.
+		takenURNs[urn] = struct{}{}
 	}
 	for _, spec := range f.Resources {
 		urnMapping[spec.Name] = ""
 	}
 
-	// We need to keep going till all the URNs are filled in or we have an error.
+	// We need to keep going till all the resources are resolved.
+	dones := make([]bool, len(f.Resources))
 	done := func() bool {
 		if errs != nil {
 			return true
 		}
-		for _, urn := range urnMapping {
-			if urn == "" {
+		for _, done := range dones {
+			if !done {
 				return false
 			}
 		}
@@ -301,7 +328,7 @@ func parseImportFile(
 	for !done() {
 		for i, spec := range f.Resources {
 			// If we've already done this URN no need to do it again
-			if urnMapping[spec.Name] != "" {
+			if dones[i] {
 				continue
 			}
 
@@ -339,8 +366,18 @@ func parseImportFile(
 				}
 			}
 
-			actualName := nameMapping[i]
-			urnMapping[spec.Name] = resource.NewURN(stack.Q(), proj, parentType, spec.Type, actualName)
+			urn := resource.NewURN(stack.Q(), proj, parentType, spec.Type, spec.LogicalName)
+			// Check if this URN is unique and if not add an error
+			if _, ok := takenURNs[urn]; ok {
+				pusherrf("%v has an ambiguous URN, set name (or logical name) to be unique", describeResource(i, spec))
+			}
+			urnMapping[spec.Name] = urn
+			takenURNs[urn] = struct{}{}
+			// This might clash with earlier entries in the name table (unique urn, but duplicate name) that's
+			// fine and the code generators should deal with it.
+			names[urn] = spec.Name
+			// Mark this resource as done
+			dones[i] = true
 		}
 	}
 
@@ -351,24 +388,9 @@ func parseImportFile(
 
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
-		if spec.Type == "" {
-			pusherrf("%v has no type", describeResource(i, spec))
-		}
-		if spec.Name == "" {
-			pusherrf("%v has no name", describeResource(i, spec))
-		}
-		if !spec.Component && spec.ID == "" {
-			pusherrf("%v has no ID", describeResource(i, spec))
-		} else if spec.Component && spec.ID != "" {
-			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
-		}
-		if spec.Remote && !spec.Component {
-			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
-		}
-
 		imp := deploy.Import{
 			Type:              spec.Type,
-			Name:              nameMapping[i],
+			Name:              spec.LogicalName,
 			ID:                spec.ID,
 			Protect:           protectResources,
 			Properties:        spec.Properties,
@@ -410,12 +432,6 @@ func parseImportFile(
 		}
 
 		imports[i] = imp
-	}
-
-	// Build the name table.
-	names := importer.NameTable{}
-	for name, urn := range urnMapping {
-		names[urn] = name
 	}
 
 	return imports, names, errs
@@ -530,9 +546,11 @@ func newImportCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
+	var previewOnly bool
 	var showConfig bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var suppressPermalink string
 	var yes bool
 	var protectResources bool
@@ -557,12 +575,15 @@ func newImportCmd() *cobra.Command {
 			"A single resource may be specified in the command line arguments or a set of\n" +
 			"resources may be specified by a JSON file.\n" +
 			"\n" +
-			"If using the command line args directly, the type, name, id and optional flags\n" +
+			"If using the command line args directly, the type token, name, id and optional flags\n" +
 			"must be provided.  For example:\n" +
 			"\n" +
 			"    pulumi import 'aws:iam/user:User' name id\n" +
 			"\n" +
-			"Or to fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"The type token and property used for resource lookup are available in the Import section of\n" +
+			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
+			"\n" +
+			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
@@ -586,7 +607,11 @@ func newImportCmd() *cobra.Command {
 			"                \"parent\": \"optional-parent-name\",\n" +
 			"                \"provider\": \"optional-provider-name\",\n" +
 			"                \"version\": \"optional-provider-version\",\n" +
+			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
+			"                \"logicalName\": \"optionalLogicalName\",\n" +
 			"                \"properties\": [\"optional-property-names\"],\n" +
+			"                \"component\": false,\n" +
+			"                \"remote\": false,\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -608,6 +633,12 @@ func newImportCmd() *cobra.Command {
 			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n" +
 			"\n" +
+			"A resource can define a logical name as well as its name for the name table.\n" +
+			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
+			"\n" +
+			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
+			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
+			"\n" +
 			"Each resource may specify which input properties to import with;\n" +
 			"\n" +
 			"If a resource does not specify any properties the default behaviour is to\n" +
@@ -618,7 +649,7 @@ func newImportCmd() *cobra.Command {
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -758,12 +789,13 @@ func newImportCmd() *cobra.Command {
 
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
-			if !interactive && !yes {
+			if !interactive && !yes && !previewOnly {
 				return result.FromError(
-					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
+					errors.New("--yes or --skip-preview or --preview-only" +
+						" must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -774,13 +806,14 @@ func newImportCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:           cmdutil.GetGlobalColorization(),
-				ShowConfig:      showConfig,
-				SuppressOutputs: suppressOutputs,
-				IsInteractive:   interactive,
-				Type:            displayType,
-				EventLogPath:    eventLogPath,
-				Debug:           debug,
+				Color:            cmdutil.GetGlobalColorization(),
+				ShowConfig:       showConfig,
+				SuppressOutputs:  suppressOutputs,
+				SuppressProgress: suppressProgress,
+				IsInteractive:    interactive,
+				Type:             displayType,
+				EventLogPath:     eventLogPath,
+				Debug:            debug,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -791,14 +824,14 @@ func newImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			filestateBackend, err := isFilestateBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			// by default, we are going to suppress the permalink when using self-managed backends
+			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
@@ -844,8 +877,8 @@ func newImportCmd() *cobra.Command {
 						return nil, nil, err
 					}
 					defer contract.IgnoreClose(pCtx.Host)
-
-					languagePlugin, err := ctx.Host.LanguageRuntime(cwd, cwd, proj.Runtime.Name(), nil)
+					programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 					if err != nil {
 						return nil, nil, err
 					}
@@ -1009,13 +1042,19 @@ func newImportCmd() *cobra.Command {
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
+	cmd.PersistentFlags().BoolVar(
+		&previewOnly, "preview-only", false,
+		"Only show a preview of the import, but don't perform the import itself")
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not calculate a preview before performing the import")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")

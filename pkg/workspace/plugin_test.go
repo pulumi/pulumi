@@ -106,7 +106,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.ExpectedError, tt.Err.Error())
+			assert.EqualError(t, &tt.Err, tt.ExpectedError)
 		})
 	}
 }

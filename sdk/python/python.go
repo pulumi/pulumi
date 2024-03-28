@@ -145,7 +145,7 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
 // directory.
 func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 	if runtime.GOOS == windows {
-		name = fmt.Sprintf("%s.exe", name)
+		name = name + ".exe"
 	}
 	cmdPath := filepath.Join(virtualEnvDir, virtualEnvBinDirName(), name)
 	return exec.Command(cmdPath, arg...)
@@ -155,7 +155,7 @@ func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 func IsVirtualEnv(dir string) bool {
 	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
 	if runtime.GOOS == windows {
-		pyBin = fmt.Sprintf("%s.exe", pyBin)
+		pyBin = pyBin + ".exe"
 	}
 	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
 		return true
@@ -213,7 +213,7 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 		}
 	}
 	if !hasPath {
-		path := fmt.Sprintf("PATH=%s", virtualEnvBin)
+		path := "PATH=" + virtualEnvBin
 		result = append(result, path)
 	}
 	return result
@@ -249,7 +249,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 			if len(output) > 0 {
 				fmt.Fprintf(errorWriter, "%s\n", string(output))
 			}
-			return fmt.Errorf("creating virtual environment at %s: %w", venvDir, err)
+			return fmt.Errorf("creating virtual environment at '%s': %w", venvDir, err)
 		}
 
 		printmsg("Finished creating virtual environment")
@@ -295,6 +295,8 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	}
 
 	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
+
+	// activate virtual environment
 
 	err := runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
 	if err != nil {

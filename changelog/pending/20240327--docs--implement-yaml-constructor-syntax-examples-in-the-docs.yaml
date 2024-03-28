@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: docs
+  description: Implement YAML constructor syntax examples in the docs

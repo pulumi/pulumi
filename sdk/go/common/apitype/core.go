@@ -390,6 +390,8 @@ const (
 	ProjectRuntimeTag StackTagName = "pulumi:runtime"
 	// ProjectDescriptionTag is a tag that represents the description of a project (Pulumi.yaml's `description`).
 	ProjectDescriptionTag StackTagName = "pulumi:description"
+	// ProjectTemplateTag is a tag that represents the template that was used to create a project.
+	ProjectTemplateTag StackTagName = "pulumi:template"
 	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
@@ -409,6 +411,12 @@ const (
 	// VCSRepositoryRootTag is a tag that represents the root directory of the repository on the cloud VCS that
 	// this stack may be associated with (pulled from git by the CLI)
 	VCSRepositoryRootTag StackTagName = "vcs:root"
+)
+
+const (
+	// PulumiTagsConfigKey sets additional tags for a stack on a deployment. This is additive to any
+	// tags that are already set on the stack.
+	PulumiTagsConfigKey string = "pulumi:tags"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.

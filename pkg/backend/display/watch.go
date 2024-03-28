@@ -45,8 +45,12 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
+		case engine.CancelEvent:
+			// Pacify linter.  This event is handled earlier
+			continue
 		// Events occurring early:
-		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent, engine.PolicyLoadEvent:
+		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent,
+			engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
 			// Ignore it
 			continue
 		case engine.PolicyViolationEvent:

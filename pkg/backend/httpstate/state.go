@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -302,11 +303,16 @@ func persistEngineEvents(
 		close(done)
 	}()
 
+	// Need to filter the engine events here to exclude any internal events.
+	events = channel.FilterRead(events, func(e engine.Event) bool {
+		return !e.Internal()
+	})
+
 	var eventBatch []engine.Event
 	maxDelayTicker := time.NewTicker(maxTransmissionDelay)
 
 	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
-	// ensure events can be reconstructured in the same order they were emitted. (And not
+	// ensure events can be reconstructed in the same order they were emitted. (And not
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
 

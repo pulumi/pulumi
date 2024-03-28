@@ -34,15 +34,15 @@ import (
 
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
-	// this stack's identity.
+	// Ref returns this stack's identity.
 	Ref() StackReference
-	// the latest deployment snapshot.
+	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	// the backend this stack belongs to.
+	// Backend returns the backend this stack belongs to.
 	Backend() Backend
-	// the stack's existing tags.
+	// Tags return the stack's existing tags.
 	Tags() map[apitype.StackTagName]string
-	// Preview changes to this stack.
+	// Preview changes to this stack if an Update was run.
 	Preview(
 		ctx context.Context, op UpdateOperation, events chan<- engine.Event,
 	) (*deploy.Plan, display.ResourceChanges, result.Result)
@@ -52,24 +52,23 @@ type Stack interface {
 	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (display.ResourceChanges, result.Result)
 	// Refresh this stack's state from the cloud provider.
 	Refresh(ctx context.Context, op UpdateOperation) (display.ResourceChanges, result.Result)
-	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (display.ResourceChanges, result.Result)
 	// Watch this stack.
 	Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result
 
-	// remove this stack.
+	// Remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
-	// rename this stack.
+	// Rename this stack.
 	Rename(ctx context.Context, newName tokens.QName) (StackReference, error)
-	// list log entries for this stack.
+	// GetLogs lists log entries for this stack.
 	GetLogs(ctx context.Context, secretsProvider secrets.Provider,
 		cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
-	// export this stack's deployment.
+	// ExportDeployment exports this stack's deployment.
 	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
-	// import the given deployment into this stack.
+	// ImportDeployment imports the given deployment into this stack.
 	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 
-	// Return the default secrets manager to use for this stack.
+	// DefaultSecretManager returns the default secrets manager to use for this stack.
 	DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
@@ -194,22 +193,22 @@ func GetEnvironmentTagsForCurrentStack(root string,
 	}
 
 	// Grab any `pulumi:tag` config values and use those to update the stack's tags.
-	configTags, has, err := cfg.Get(config.MustMakeKey("pulumi", "tags"), false)
-	contract.AssertNoErrorf(err, "Config.Get(\"pulumi:tags\") failed unexpectedly")
+	configTags, has, err := cfg.Get(config.MustParseKey(apitype.PulumiTagsConfigKey), false)
+	contract.AssertNoErrorf(err, "Config.Get(\"%s\") failed unexpectedly", apitype.PulumiTagsConfigKey)
 	if has {
 		configTagInterface, err := configTags.ToObject()
 		if err != nil {
-			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
 		configTagObject, ok := configTagInterface.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
 
 		for name, value := range configTagObject {
 			stringValue, ok := value.(string)
 			if !ok {
-				return nil, fmt.Errorf("pulumi:tags[%s] must be a string", name)
+				return nil, fmt.Errorf("%s[%s] must be a string", apitype.PulumiTagsConfigKey, name)
 			}
 
 			tags[name] = stringValue

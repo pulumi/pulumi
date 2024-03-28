@@ -16,12 +16,14 @@ package auto
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +39,7 @@ func TestGetPermalink(t *testing.T) {
 		want   string
 		err    error
 	}{
-		"successful parsing": {testee: fmt.Sprintf("%s\n", testPermalink), want: "https://gotest"},
+		"successful parsing": {testee: testPermalink + "\n", want: "https://gotest"},
 		"failed parsing":     {testee: testPermalink, err: ErrParsePermalinkFailed},
 	}
 
@@ -65,7 +67,7 @@ func TestUpdatePlans(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	sName := randomStackName()
+	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	opts := []LocalWorkspaceOption{
@@ -134,4 +136,39 @@ func TestUpdatePlans(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestAlwaysReadsCompleteLine(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	tmpFile := tmpDir + "/test.txt"
+	go func() {
+		f, err := os.Create(tmpFile)
+		require.NoError(t, err)
+		defer f.Close()
+		parts := []string{
+			`{"stdoutEvent": `,
+			` {"message": "hello", "color": "blue"}}` + "\n",
+			`{"stdoutEvent": {"message":`,
+			` "world", "color": "red"}}` + "\n",
+		}
+		for _, part := range parts {
+			_, err = f.WriteString(part)
+			require.NoError(t, err)
+			time.Sleep(200 * time.Millisecond)
+		}
+	}()
+	engineEvents := make(chan events.EngineEvent, 20)
+	watcher, err := watchFile(tmpFile, []chan<- events.EngineEvent{engineEvents})
+	require.NoError(t, err)
+	defer watcher.Close()
+	event1 := <-engineEvents
+	require.NoError(t, event1.Error)
+	assert.Equal(t, "hello", event1.StdoutEvent.Message)
+	assert.Equal(t, "blue", event1.StdoutEvent.Color)
+	event2 := <-engineEvents
+	require.NoError(t, event2.Error)
+	assert.Equal(t, "world", event2.StdoutEvent.Message)
+	assert.Equal(t, "red", event2.StdoutEvent.Color)
 }

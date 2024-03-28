@@ -18,8 +18,6 @@
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var pulumi_codegen_mapper_pb = require('../codegen/mapper_pb.js');
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
 function serialize_codegen_GetMappingRequest(arg) {
   if (!(arg instanceof pulumi_codegen_mapper_pb.GetMappingRequest)) {

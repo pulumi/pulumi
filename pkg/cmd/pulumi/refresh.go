@@ -21,8 +21,8 @@ import (
 	"os"
 	"strings"
 
-	survey "github.com/AlecAivazis/survey/v2"
-	terminal "github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -54,11 +54,13 @@ func newRefreshCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
+	var previewOnly bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var suppressPermalink string
 	var yes bool
 	var targets *[]string
@@ -87,7 +89,7 @@ func newRefreshCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -96,12 +98,13 @@ func newRefreshCmd() *cobra.Command {
 
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
-			if !interactive && !yes {
+			if !interactive && !yes && !previewOnly {
 				return result.FromError(
-					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
+					errors.New("--yes or --skip-preview or --preview-only " +
+						"must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -117,6 +120,7 @@ func newRefreshCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
+				SuppressProgress:     suppressProgress,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
@@ -148,14 +152,14 @@ func newRefreshCmd() *cobra.Command {
 				return runDeployment(ctx, opts.Display, apitype.Refresh, stackName, args[0], remoteArgs)
 			}
 
-			filestateBackend, err := isFilestateBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			// by default, we are going to suppress the permalink when using self-managed backends
+			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
@@ -201,8 +205,7 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			if skipPendingCreates && clearPendingCreates {
-				return result.FromError(fmt.Errorf(
-					"cannot set both --skip-pending-creates and --clear-pending-creates"))
+				return result.FromError(errors.New("cannot set both --skip-pending-creates and --clear-pending-creates"))
 			}
 
 			// First we handle explicit create->imports we were given
@@ -318,7 +321,10 @@ func newRefreshCmd() *cobra.Command {
 		"Serialize the refresh diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
+	cmd.PersistentFlags().BoolVar(
+		&previewOnly, "preview-only", false,
+		"Only show a preview of the refresh, but don't perform the refresh itself")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
@@ -331,6 +337,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
@@ -381,7 +390,7 @@ func filterMapPendingCreates(
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
-				return fmt.Errorf("found operation without resource")
+				return errors.New("found operation without resource")
 			}
 			if op.Type != resource.OperationTypeCreating {
 				pending = append(pending, op)

@@ -45,7 +45,7 @@ func (spiller *inlineInvokeSpiller) spillExpression(
 			_, _, fn, _ := g.functionName(expr.Args[0])
 			tempName := fmt.Sprintf("invoke%s%d", fn, spiller.count)
 			if spiller.count == 0 {
-				tempName = fmt.Sprintf("invoke%s", fn)
+				tempName = "invoke" + fn
 			}
 			temp := &inlineInvokeTemp{
 				Name:  tempName,

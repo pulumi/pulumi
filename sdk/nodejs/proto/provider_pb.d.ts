@@ -8,7 +8,6 @@ import * as jspb from "google-protobuf";
 import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
-import * as pulumi_source_pb from "./source_pb";
 
 export class GetSchemaRequest extends jspb.Message { 
     getVersion(): number;
@@ -231,15 +230,6 @@ export class CallRequest extends jspb.Message {
 
     getArgdependenciesMap(): jspb.Map<string, CallRequest.ArgumentDependencies>;
     clearArgdependenciesMap(): void;
-    getProvider(): string;
-    setProvider(value: string): CallRequest;
-    getVersion(): string;
-    setVersion(value: string): CallRequest;
-    getPlugindownloadurl(): string;
-    setPlugindownloadurl(value: string): CallRequest;
-
-    getPluginchecksumsMap(): jspb.Map<string, Uint8Array | string>;
-    clearPluginchecksumsMap(): void;
     getProject(): string;
     setProject(value: string): CallRequest;
     getStack(): string;
@@ -259,11 +249,8 @@ export class CallRequest extends jspb.Message {
     setMonitorendpoint(value: string): CallRequest;
     getOrganization(): string;
     setOrganization(value: string): CallRequest;
-
-    hasSourceposition(): boolean;
-    clearSourceposition(): void;
-    getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
-    setSourceposition(value?: pulumi_source_pb.SourcePosition): CallRequest;
+    getAcceptsOutputValues(): boolean;
+    setAcceptsOutputValues(value: boolean): CallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CallRequest.AsObject;
@@ -281,11 +268,6 @@ export namespace CallRequest {
         args?: google_protobuf_struct_pb.Struct.AsObject,
 
         argdependenciesMap: Array<[string, CallRequest.ArgumentDependencies.AsObject]>,
-        provider: string,
-        version: string,
-        plugindownloadurl: string,
-
-        pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         project: string,
         stack: string,
 
@@ -295,7 +277,7 @@ export namespace CallRequest {
         parallel: number,
         monitorendpoint: string,
         organization: string,
-        sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        acceptsOutputValues: boolean,
     }
 
 
@@ -908,6 +890,8 @@ export class ConstructRequest extends jspb.Message {
     addReplaceonchanges(value: string, index?: number): string;
     getRetainondelete(): boolean;
     setRetainondelete(value: boolean): ConstructRequest;
+    getAcceptsOutputValues(): boolean;
+    setAcceptsOutputValues(value: boolean): ConstructRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
@@ -948,6 +932,7 @@ export namespace ConstructRequest {
         ignorechangesList: Array<string>,
         replaceonchangesList: Array<string>,
         retainondelete: boolean,
+        acceptsOutputValues: boolean,
     }
 
 

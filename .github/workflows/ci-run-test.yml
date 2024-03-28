@@ -56,7 +56,6 @@ on:
         default: false
         type: boolean
 
-
 defaults:
   run:
     shell: bash
@@ -69,7 +68,6 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
-  PULUMI_TEST_PYTHON_SHARED_VENV: "true"
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
   PYTHON: python
@@ -161,8 +159,10 @@ jobs:
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         id: setup-go
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           cache: true
@@ -170,7 +170,7 @@ jobs:
             pkg/go.sum
             .gocache.tmp
       - name: Prime Go cache
-        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
+        if: ${{ ! steps.setup-go.outputs.cache-hit }}
         # Compile every test to ensure we populate a good cache entry.
         run: |
           ( cd sdk && go test -run "_________" ./... )
@@ -182,7 +182,7 @@ jobs:
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
           dotnet-quality: ga
@@ -208,9 +208,9 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
-      - name: Install yarn
+      - name: Install yarn and pnpm
         run: |
-          npm install -g yarn
+          npm install -g yarn pnpm
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -328,12 +328,20 @@ jobs:
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
-      - name: run tests
+      - name: Create GCP service account key file
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+      - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}
         env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |

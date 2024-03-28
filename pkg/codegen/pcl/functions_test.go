@@ -15,7 +15,7 @@ func TestSingleOrNoneErrorsWithoutArguments(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
 	assert.Nil(t, program, "The program doesn't bind")
-	assert.Contains(t, err.Error(), "'singleOrNone' only expects one argument")
+	assert.ErrorContains(t, err, "'singleOrNone' only expects one argument")
 }
 
 func TestSingleOrNoneErrorsWithManyArguments(t *testing.T) {
@@ -24,7 +24,7 @@ func TestSingleOrNoneErrorsWithManyArguments(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
 	assert.Nil(t, program, "The program doesn't bind")
-	assert.Contains(t, err.Error(), "'singleOrNone' only expects one argument")
+	assert.ErrorContains(t, err, "'singleOrNone' only expects one argument")
 }
 
 func TestSingleOrNoneErrorsWhenFirstArgumentIsNotListOrTuple(t *testing.T) {
@@ -33,7 +33,7 @@ func TestSingleOrNoneErrorsWhenFirstArgumentIsNotListOrTuple(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	contract.Ignore(diags)
 	assert.Nil(t, program, "The program doesn't bind")
-	assert.Contains(t, err.Error(), "the first argument to 'singleOrNone' must be a list or tuple")
+	assert.ErrorContains(t, err, "the first argument to 'singleOrNone' must be a list or tuple")
 }
 
 func TestSingleOrNoneBindsCorrectlyWhenFirstArgumentIsList(t *testing.T) {
@@ -53,4 +53,20 @@ func TestSingleOrNoneBindsCorrectlyWhenFirstArgumentIsList(t *testing.T) {
 	assert.True(t, model.IsOptionalType(variableType), "the type is an optional")
 	elementType := pcl.UnwrapOption(variableType)
 	assert.True(t, model.IsConstType(elementType), "element type must the type of one element in the list")
+}
+
+func TestBindingInvokeThatReturnsRecursiveType(t *testing.T) {
+	t.Parallel()
+	source := `value = invoke("recursive:index:getRecursiveType", { name = "foo" })`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "The program doesn't bind")
+	assert.Nil(t, err, "There is no bind error")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
+	assert.True(t, ok, "first node is a local variable variable")
+	assert.Equal(t, localVariable.Name(), "value")
+	variableType := localVariable.Type()
+	_, isPromise := variableType.(*model.PromiseType)
+	assert.True(t, isPromise, "the type is a promise")
 }

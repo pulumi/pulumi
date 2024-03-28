@@ -19,14 +19,17 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections import deque
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 import grpc
 
+from .. import log
 from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
+from ._callbacks import _CallbackServicer
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
@@ -58,6 +61,7 @@ class Settings:
         organization: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
+        self.outputs = deque()
 
         # Save the metadata information.
         self.project = project
@@ -81,6 +85,8 @@ class Settings:
                 )
             else:
                 self.monitor = monitor
+
+            self.callbacks = _CallbackServicer(self.monitor)
         else:
             self.monitor = None
         if engine:
@@ -93,46 +99,45 @@ class Settings:
         else:
             self.engine = None
 
+        self.callbacks = None
+
     @contextproperty
     def rpc_manager(self) -> RPCManager:  # type: ignore
         # The contextproperty decorator will fill the body of this method in, but mypy doesn't know that.
         ...
 
     @contextproperty
-    def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
-        ...
+    def outputs(self) -> deque[asyncio.Task]: ...  # type: ignore
 
     @contextproperty
-    def engine(self) -> Optional[engine_pb2_grpc.EngineStub]:
-        ...
+    def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]: ...
 
     @contextproperty
-    def organization(self) -> Optional[str]:
-        ...
+    def engine(self) -> Optional[engine_pb2_grpc.EngineStub]: ...
 
     @contextproperty
-    def project(self) -> Optional[str]:
-        ...
+    def organization(self) -> Optional[str]: ...
 
     @contextproperty
-    def stack(self) -> Optional[str]:
-        ...
+    def project(self) -> Optional[str]: ...
 
     @contextproperty
-    def parallel(self) -> Optional[bool]:
-        ...
+    def stack(self) -> Optional[str]: ...
 
     @contextproperty
-    def dry_run(self) -> Optional[bool]:
-        ...
+    def parallel(self) -> Optional[bool]: ...
 
     @contextproperty
-    def legacy_apply_enabled(self) -> Optional[bool]:
-        ...
+    def dry_run(self) -> Optional[bool]: ...
 
     @contextproperty
-    def feature_support(self) -> Optional[dict]:
-        ...
+    def legacy_apply_enabled(self) -> Optional[bool]: ...
+
+    @contextproperty
+    def feature_support(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def callbacks(self) -> Optional[_CallbackServicer]: ...
 
     def __repr__(self):
         return f"<class Settings[engine={self.engine.__repr__()} monitor={self.monitor.__repr__()} project={self.project.__repr__()} stack={self.stack.__repr__()}>"
@@ -225,6 +230,29 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
+def _get_callbacks() -> Optional[_CallbackServicer]:
+    """
+    Returns the current callbacks for RPC communications.
+    """
+    callbacks = SETTINGS.callbacks
+    if callbacks is not None:
+        return callbacks
+
+    monitor = SETTINGS.monitor
+    if monitor is None or not isinstance(
+        monitor, resource_pb2_grpc.ResourceMonitorStub
+    ):
+        return None
+
+    callbacks = _CallbackServicer(monitor)
+    SETTINGS.callbacks = callbacks
+    return callbacks
+
+
+def _shutdown_callbacks():
+    _CallbackServicer.shutdown()
+
+
 def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
@@ -248,21 +276,7 @@ async def monitor_supports_feature(feature: str) -> bool:
         if not monitor:
             return False
 
-        req = resource_pb2.SupportsFeatureRequest(id=feature)
-
-        def do_rpc_call():
-            try:
-                resp = monitor.SupportsFeature(req)
-                return resp.hasSupport
-            except grpc.RpcError as exn:
-                if (
-                    exn.code()  # pylint: disable=no-member
-                    != grpc.StatusCode.UNIMPLEMENTED
-                ):
-                    handle_grpc_error(exn)
-                return False
-
-        result = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        result = await _monitor_supports_feature(monitor, feature)
         SETTINGS.feature_support[feature] = result
 
     return SETTINGS.feature_support[feature]
@@ -309,6 +323,12 @@ async def monitor_supports_alias_specs() -> bool:
     return await monitor_supports_feature("aliasSpecs")
 
 
+def _sync_monitor_supports_transforms() -> bool:
+    if "transforms" not in SETTINGS.feature_support:
+        return False
+    return SETTINGS.feature_support["transforms"]
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
@@ -332,4 +352,33 @@ def reset_options(
             dry_run=preview,
             organization=organization,
         )
+    )
+
+
+async def _monitor_supports_feature(
+    monitor: resource_pb2_grpc.ResourceMonitorStub, feature: str
+) -> bool:
+    req = resource_pb2.SupportsFeatureRequest(id=feature)
+
+    def do_rpc_call():
+        try:
+            resp = monitor.SupportsFeature(req)
+            return resp.hasSupport
+        except grpc.RpcError as exn:
+            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:  # pylint: disable=no-member
+                handle_grpc_error(exn)
+            return False
+
+    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+
+
+async def _load_monitor_feature_support():
+    # Prime the feature support cache.
+    await asyncio.gather(
+        monitor_supports_feature("secrets"),
+        monitor_supports_feature("resourceReferences"),
+        monitor_supports_feature("outputValues"),
+        monitor_supports_feature("deletedWith"),
+        monitor_supports_feature("aliasSpecs"),
+        monitor_supports_feature("transforms"),
     )

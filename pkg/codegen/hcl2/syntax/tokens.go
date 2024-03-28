@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"strconv"
 	"unicode"
 	"unicode/utf8"
 
@@ -207,6 +208,7 @@ type TemplateDelimiter struct {
 // template delimiter, this function will panic.
 func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
 	var s string
+	//nolint:exhaustive // Only some tokens are template delimiters.
 	switch typ {
 	case hclsyntax.TokenTemplateInterp:
 		s = "${"
@@ -860,7 +862,7 @@ func rawLiteralValueToken(value cty.Value) hclsyntax.Token {
 		bf := value.AsBigFloat()
 		i, acc := bf.Int64()
 		if acc == big.Exact {
-			rawText = fmt.Sprintf("%v", i)
+			rawText = strconv.FormatInt(i, 10)
 		} else {
 			d, _ := bf.Float64()
 			rawText = fmt.Sprintf("%g", d)

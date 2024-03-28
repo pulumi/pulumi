@@ -293,6 +293,8 @@ func buildEnumValue(v interface{}) cty.Value {
 		return cty.BoolVal(v)
 	case int:
 		return cty.NumberIntVal(int64(v))
+	case int32:
+		return cty.NumberIntVal(int64(v))
 	case int64:
 		return cty.NumberIntVal(v)
 	case float64:

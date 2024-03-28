@@ -18,10 +18,13 @@ func TestNodejsTransformations(t *testing.T) {
 		d := filepath.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:                    d,
-				Dependencies:           []string{"@pulumi/pulumi"},
+				Dir:          d,
+				Dependencies: []string{"@pulumi/pulumi"},
+				LocalProviders: []integration.LocalDependency{
+					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+				},
 				Quick:                  true,
-				ExtraRuntimeValidation: Validator("nodejs"),
+				ExtraRuntimeValidation: Validator,
 			})
 		})
 	}

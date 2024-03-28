@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -41,7 +41,7 @@ type resourceProvider interface {
 	Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error)
 	Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error)
 	Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error)
-	Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error)
+	Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error)
 }
 
 var resourceProviders = map[string]resourceProvider{
@@ -164,7 +164,7 @@ func (k *testproviderProvider) Update(ctx context.Context, req *rpc.UpdateReques
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed
 // to still exist.
-func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
+func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -178,14 +178,14 @@ func (k *testproviderProvider) Construct(_ context.Context, _ *rpc.ConstructRequ
 }
 
 // GetPluginInfo returns generic information about this plugin, like its version.
-func (k *testproviderProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*rpc.PluginInfo, error) {
+func (k *testproviderProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*rpc.PluginInfo, error) {
 	return &rpc.PluginInfo{
 		Version: k.version,
 	}, nil
 }
 
-func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
@@ -200,8 +200,8 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 // to the host to decide how long to wait after Cancel is called before (e.g.)
 // hard-closing any gRPC connection.
-func (k *testproviderProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (k *testproviderProvider) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (k *testproviderProvider) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {

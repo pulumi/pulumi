@@ -15,8 +15,8 @@
 import json
 import os
 import unittest
-from semver import VersionInfo
 from typing import List, Optional
+import asyncio
 
 import pytest
 
@@ -28,47 +28,22 @@ from pulumi.automation import (
     ConfigMap,
     ConfigValue,
     EngineEvent,
-    InvalidVersionError,
     LocalWorkspace,
     LocalWorkspaceOptions,
     OpType,
     PluginInfo,
     ProjectSettings,
+    PulumiCommand,
     StackSummary,
     Stack,
     StackSettings,
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
 
 from .test_utils import get_test_org, get_test_suffix, stack_namer
 
 extensions = ["json", "yaml", "yml"]
-
-MAJOR = "Major version mismatch."
-MINIMAL = "Minimum version requirement failed."
-PARSE = "Could not parse the Pulumi CLI"
-version_tests = [
-    # current_version, expected_error regex, opt_out
-    ("100.0.0", MAJOR, False),
-    ("1.0.0", MINIMAL, False),
-    ("2.22.0", None, False),
-    ("2.1.0", MINIMAL, False),
-    ("2.21.2", None, False),
-    ("2.21.1", None, False),
-    ("2.21.0", MINIMAL, False),
-    # Note that prerelease < release so this case will error
-    ("2.21.1-alpha.1234", MINIMAL, False),
-    # Test opting out of version check
-    ("2.20.0", None, True),
-    ("2.22.0", None, True),
-    # Test invalid version
-    ("invalid", PARSE, False),
-    ("invalid", None, True),
-]
-test_min_version = VersionInfo.parse("2.21.1")
-
 
 def get_test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
@@ -218,6 +193,51 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(Stack.select(stack_name, ws).name, stack_name)
         # Stack.create_or_select succeeds
         self.assertEqual(Stack.create_or_select(stack_name, ws).name, stack_name)
+        ws.remove_stack(stack_name)
+
+    def test_config_env_functions(self):
+        if get_test_org() != "moolumi":
+            self.skipTest("Skipping test because the required environments are in the moolumi org.")
+        project_name = "python_env_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        # Ensure an env that doesn't exist errors
+        self.assertRaises(CommandError, stack.add_environments, "non-existent-env")
+
+        # Ensure envs that do exist can be added
+        stack.add_environments("automation-api-test-env", "automation-api-test-env-2")
+
+        # Ensure envs can be listed
+        envs = stack.list_environments()
+        self.assertListEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"])
+
+        # Check that we can access config from each env.
+        config = stack.get_all_config()
+        self.assertEqual(config[f"{project_name}:new_key"].value, "test_value")
+        self.assertEqual(config[f"{project_name}:also"].value, "business")
+
+        # Ensure envs can be removed
+        stack.remove_environment("automation-api-test-env-2")
+
+        # Check that only one env remains
+        envs = stack.list_environments()
+        self.assertListEqual(envs, ["automation-api-test-env"])
+
+        # Check that we can still access config from the remaining env,
+        # and that the config from the removed env is no longer present.
+        self.assertEqual(stack.get_config("new_key").value, "test_value")
+        self.assertRaises(CommandError, stack.get_config, "also")
+
+        stack.remove_environment("automation-api-test-env")
+        self.assertRaises(CommandError, stack.get_config, "new_key")
+
+        # Check that no envs remain
+        envs = stack.list_environments()
+        self.assertEqual(len(envs), 0)
+
         ws.remove_stack(stack_name)
 
     def test_config_functions(self):
@@ -429,25 +449,28 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(all_config["python_test:secret-key"].value, "-value")
         ws.remove_stack(stack_name)
 
+    # This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
+    # config from the file. This means we can't remove the stack at the end of the test.
+    # We should also not include secrets in this config, because the secret encryption is only valid within
+    # the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     def test_nested_config(self):
-        if get_test_org() != "pulumi-test":
-            return
-        stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
-        project_dir = get_test_path("data", "nested_config")
+        project_name = "nested_config"
+        stack_name = fully_qualified_stack_name(get_test_org(), project_name, "dev")
+        project_dir = get_test_path("data", project_name)
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
 
         all_config = stack.get_all_config()
         outer_val = all_config["nested_config:outer"]
-        self.assertTrue(outer_val.secret)
-        self.assertEqual(outer_val.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}")
+        self.assertFalse(outer_val.secret)
+        self.assertEqual(outer_val.value, "{\"inner\":\"my_value\",\"other\":\"something_else\"}")
 
         list_val = all_config["nested_config:myList"]
         self.assertFalse(list_val.secret)
         self.assertEqual(list_val.value, "[\"one\",\"two\",\"three\"]")
 
         outer = stack.get_config("outer")
-        self.assertTrue(outer.secret)
-        self.assertEqual(outer_val.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}")
+        self.assertFalse(outer.secret)
+        self.assertEqual(outer_val.value, "{\"inner\":\"my_value\",\"other\":\"something_else\"}")
 
         arr = stack.get_config("myList")
         self.assertFalse(arr.secret)
@@ -578,6 +601,48 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+
+    def test_stack_lifecycle_async_inline_program(self):
+        project_name = "async_inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(stack_name, program=async_pulumi_program, project_name=project_name)
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True)
+        }
+
+        try:
+            stack.set_all_config(stack_config)
+
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            preview_result = stack.preview()
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_supports_stack_outputs(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
@@ -626,19 +691,13 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace()
         self.assertIsNotNone(ws.pulumi_version)
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
-
-    def test_validate_pulumi_version(self):
-        for current_version, expected_error, opt_out in version_tests:
-            with self.subTest():
-                if expected_error:
-                    with self.assertRaisesRegex(
-                            InvalidVersionError,
-                            expected_error,
-                            msg=f"min_version:{test_min_version}, current_version:{current_version}"
-                    ):
-                        _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
-                else:
-                    _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
+    
+    def test_pulumi_command(self):
+        p = PulumiCommand()
+        ws = LocalWorkspace(pulumi_command=p)
+        self.assertIsNotNone(ws.pulumi_version)
+        self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
+        self.assertEqual(p.version, ws.pulumi_command.version)
 
     def test_project_settings_respected(self):
         project_name = "correct_project"
@@ -826,6 +885,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.set_all_config(stack_config)
 
             events: List[str] = []
+
             def find_diagnostic_events(event: EngineEvent):
                 if event.diagnostic_event and event.diagnostic_event.severity == "warning":
                     events.append(event.diagnostic_event.message)
@@ -907,18 +967,31 @@ def pulumi_program():
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
 
+
+async def async_pulumi_program():
+    await asyncio.sleep(1)
+    config = Config()
+    export("exp_static", "foo")
+    export("exp_cfg", config.get("bar"))
+    export("exp_secret", config.get_secret("buzz"))
+
+
 @pytest.mark.parametrize("key,default", [("string", None), ("bar", "baz"), ("doesnt-exist", None)])
 def test_config_get_with_defaults(key, default, mock_config, config_settings):
     assert mock_config.get(key, default) == config_settings.get(f"test-config:{key}", default)
 
+
 def test_config_get_int(mock_config, config_settings):
     assert mock_config.get_int("int") == int(config_settings.get("test-config:int"))
+
 
 def test_config_get_bool(mock_config):
     assert mock_config.get_bool("bool") is False
 
+
 def test_config_get_object(mock_config, config_settings):
     assert mock_config.get_object("object") == json.loads(config_settings.get("test-config:object"))
+
 
 def test_config_get_float(mock_config, config_settings):
     assert mock_config.get_float("float") == float(config_settings.get("test-config:float"))

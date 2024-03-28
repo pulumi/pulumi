@@ -8,13 +8,38 @@
 {{- end }}
 
 {{ htmlSafe .Comment }}
+
 {{- if ne (len .ExamplesSection) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
 <!-- Create resource -->
-## Create {{ .Header.Title }} Resource {#create}
+{{ if ne (len .CreationExampleSyntax) 0 }}## Create {{ .Header.Title }} Resource
+{{- if eq .LangChooserLanguages "" }}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+{{- else }}
+<div>
+<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+</div>
+{{- end }}
 
+{{ range $lang, $code := .CreationExampleSyntax }}
+<div>
+{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $lang }}{{ htmlSafe "\">" }}
+
+```{{ $lang }}
+{{ htmlSafe $code }}
+```
+
+</pulumi-choosable>
+</div>
+
+{{ end }}
+## Definition of {{ .Header.Title }} {#create}{{ else }}
+## Create {{ .Header.Title }} Resource {#create}
+{{- end }}
 {{- if eq .LangChooserLanguages "" }}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
@@ -318,6 +343,8 @@ Only the first 200 types are included in this documentation.
 ## Import
 
 {{ htmlSafe .ImportDocs }}
+
+To learn more about importing existing cloud resources, see [Importing resources](/docs/using-pulumi/adopting-pulumi/import/).
 
 {{ end }}
 

@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "outDir": "bin",
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true
+    },
+    "files": [
+        "core/index.ts",
+        "core/v1/configMap.ts",
+        "core/v1/configMapList.ts",
+        "core/v1/index.ts",
+        "helm/index.ts",
+        "helm/v3/index.ts",
+        "helm/v3/release.ts",
+        "index.ts",
+        "provider.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
+        "utilities.ts",
+        "yaml/index.ts",
+        "yaml/v2/configGroup.ts",
+        "yaml/v2/index.ts"
+    ]
+}

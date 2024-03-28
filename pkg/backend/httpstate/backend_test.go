@@ -15,8 +15,6 @@ package httpstate
 
 import (
 	"context"
-	cryptorand "crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -24,10 +22,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,13 +135,6 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
-func randomStackName() string {
-	b := make([]byte, 4)
-	_, err := cryptorand.Read(b)
-	contract.AssertNoErrorf(err, "failed to generate random stack name")
-	return "test" + hex.EncodeToString(b)
-}
-
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
@@ -158,7 +149,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
-	stackName := randomStackName()
+	stackName := ptesting.RandomStackName()
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
 
@@ -188,13 +179,13 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	require.NoError(t, err)
 
 	backend.DisableIntegrityChecking = false
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.ErrorContains(t, err,
 		"child resource urn:pulumi:stack::proj::type::name1's parent urn:pulumi:stack::proj::type::name2 comes after it")
 	assert.Nil(t, snap)
 
 	backend.DisableIntegrityChecking = true
-	snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 }

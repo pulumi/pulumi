@@ -66,9 +66,10 @@ func newWatchCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 
-			opts, err := updateFlagsToOptions(false /* interactive */, true /* skippreview*/, true /* autoapprove*/)
+			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
+				false /* previewOnly */)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -79,6 +80,7 @@ func newWatchCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      true,
+				SuppressProgress:     true,
 				SuppressPermalink:    true,
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
@@ -206,7 +208,7 @@ func newWatchCmd() *cobra.Command {
 		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVarP(
 		&refresh, "refresh", "r", false,
 		"Refresh the state of the stack's resources before each update")

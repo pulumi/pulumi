@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -478,7 +479,7 @@ func TestRemoteComponent(t *testing.T) {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
 			case "pkg:index:MyRemoteComponent":
-				outprop := resource.NewStringProperty(fmt.Sprintf("output: %s", args.Inputs["inprop"].StringValue()))
+				outprop := resource.NewStringProperty("output: " + args.Inputs["inprop"].StringValue())
 				return args.Name + "_id", resource.PropertyMap{
 					"inprop":  args.Inputs["inprop"],
 					"outprop": outprop,
@@ -836,7 +837,7 @@ func TestWaitRecursiveApply(t *testing.T) {
 
 		var res testResource2
 		err := ctx.RegisterResource("test:resource:type", fmt.Sprintf("res%d", n), &testResource2Inputs{
-			Foo: String(fmt.Sprintf("%d", n)),
+			Foo: String(strconv.Itoa(n)),
 		}, &res)
 		assert.NoError(t, err)
 

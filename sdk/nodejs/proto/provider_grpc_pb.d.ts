@@ -9,7 +9,6 @@ import * as pulumi_provider_pb from "./provider_pb";
 import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
-import * as pulumi_source_pb from "./source_pb";
 
 interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     getSchema: IResourceProviderService_IGetSchema;

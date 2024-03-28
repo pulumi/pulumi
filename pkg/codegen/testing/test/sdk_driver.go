@@ -2,7 +2,6 @@ package test
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,8 +51,8 @@ func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 	// Obey SkipCompileCheck to skip compile and test targets.
 	if tt.SkipCompileCheck != nil &&
 		tt.SkipCompileCheck.Has(language) &&
-		(test == fmt.Sprintf("%s/compile", language) ||
-			test == fmt.Sprintf("%s/test", language)) {
+		(test == language+"/compile" ||
+			test == language+"/test") {
 		return true
 	}
 
@@ -228,10 +227,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Ensure that we can still compile safely when defaults are disabled",
 	},
 	{
-		Directory:   "plain-additional-items",
-		Description: "Ensure that we can compile maps where the element type is a plain object",
-	},
-	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
 		SkipCompileCheck: codegen.NewStringSet(python),
@@ -270,6 +265,13 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "regress-go-12971",
 		Description: "Regress pulumi/pulumi#12971 affecting Go",
 		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "regress-go-15478",
+		Description: "Regress pulumi/pulumi#15478 affecting Go ensuring SDK-gen doesn't panic",
+		Skip:        allLanguages.Except("go/any"),
+		// skipping the compile step because the generated code emits nested types that are not supported by the Go SDK
+		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
 		Directory:   "regress-py-12546",
@@ -425,6 +427,25 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "urn-id-properties",
 		Description: "Testing urn and id properties in valid locations",
+	},
+	{
+		Directory:   "regress-py-12980",
+		Description: "Import resources across modules",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "unions-inline",
+		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
+	},
+	{
+		Directory:   "legacy-names",
+		Description: "Testing the use of snake_case names and tokens.",
+		Skip:        codegen.NewStringSet("go/test"),
+	},
+	{
+		Directory:   "kubernetes20",
+		Description: "Testing the kubernetes20 compatibility mode.",
+		Skip:        codegen.NewStringSet("go/test"),
 	},
 }
 

@@ -28,7 +28,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	skipToJSONWhenRewritingApplies := true
+	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
@@ -205,6 +206,7 @@ var functionImports = map[string][]string{
 	"stack":            {"pulumi"},
 	"project":          {"pulumi"},
 	"cwd":              {"os"},
+	"mimeType":         {"mimetypes"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -241,10 +243,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
 			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
-			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
-				pkg += "." + m
-			}
 			enumName := tokenToName(to.Token)
+			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
+				modParts := strings.Split(m, "/")
+				if len(modParts) == 2 && strings.EqualFold(modParts[1], enumName) {
+					m = modParts[0]
+				}
+				pkg += "." + strings.ReplaceAll(m, "/", ".")
+			}
 
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
@@ -300,6 +306,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
+	case "mimeType":
+		g.Fgenf(w, "mimetypes.guess_type(%v)[0]", expr.Args[0])
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
@@ -316,7 +324,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
-			name = fmt.Sprintf("%s_output", name)
+			name = name + "_output"
 		}
 
 		if len(expr.Args) == 1 {
@@ -401,7 +409,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "base64.b64decode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
-		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgenf(w, "pulumi.Output.json_dumps(%.v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+		}
 	case "sha1":
 		g.Fgenf(w, "hashlib.sha1(%v.encode()).hexdigest()", expr.Args[0])
 	case "project":
@@ -496,6 +508,22 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	g.genObjectConsExpression(w, expr, expr.Type())
 }
 
+func objectKey(item model.ObjectConsItem) string {
+	switch key := item.Key.(type) {
+	case *model.LiteralValueExpression:
+		return key.Value.AsString()
+	case *model.TemplateExpression:
+		// assume a template expression has one constant part that is a LiteralValueExpression
+		if len(key.Parts) == 1 {
+			if literal, ok := key.Parts[0].(*model.LiteralValueExpression); ok {
+				return literal.Value.AsString()
+			}
+		}
+	}
+
+	return ""
+}
+
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
 	if typeName != "" {
@@ -507,8 +535,8 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			g.Indented(func() {
 				for _, item := range expr.Items {
 					g.Fgenf(w, "%s", g.Indent)
-					lit := item.Key.(*model.LiteralValueExpression)
-					g.Fprint(w, PyName(lit.Value.AsString()))
+					propertyKey := objectKey(item)
+					g.Fprint(w, PyName(propertyKey))
 					g.Fgenf(w, "=%.v,\n", item.Value)
 				}
 			})

@@ -21,8 +21,3 @@ class EmptyTests(LanghostTest):
             program=path.join(self.base_path(), "empty"),
             expected_resource_count=0)
 
-    def test_empty_pwd(self):
-        self.run_test(
-            pwd=path.join(self.base_path(), "empty"),
-            expected_resource_count=0,
-            program="./")

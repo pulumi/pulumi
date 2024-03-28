@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -75,7 +76,8 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 	assert.NotEmpty(t, text)
 
 	// Convert the text back to a snapshot.
-	roundTrippedSnapshot, err := encoder.TextToSnapshot(text)
+	ctx := context.Background()
+	roundTrippedSnapshot, err := encoder.TextToSnapshot(ctx, text)
 	require.NoError(t, err)
 
 	// Convert the snapshot back to text.

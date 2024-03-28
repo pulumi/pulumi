@@ -323,7 +323,8 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	}
 
 	installPlugin := func(pkg tokens.Package) *semver.Version {
-		// This will want to install the "gcp" package, but we're calling the pulumi name "pulumiProviderGcp" for this test.
+		// This will want to install the "gcp" package, but we're calling the pulumi name "pulumiProviderGcp"
+		// for this test.
 		assert.Equal(t, "gcp", string(pkg))
 		return nil
 	}
@@ -567,4 +568,56 @@ func TestPluginMapper_GetMappingIsntCalledOnValidMappings(t *testing.T) {
 	data, err = mapper.GetMapping(ctx, "aws", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
+}
+
+func TestPluginMapper_InfiniteLoopRegression(t *testing.T) {
+	t.Parallel()
+
+	// Test that the mapping loop doesn't end up in an infinite loop in some cases where no mapping is found.
+
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "pulumiProviderAws",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+	testProviderAws := &testProvider{
+		pkg: tokens.Package("pulumiProviderAws"),
+		mapping: func(key, provider string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			assert.Equal(t, "aws", provider)
+			return []byte("dataaws"), "aws", nil
+		},
+		mappings: func(key string) ([]string, error) {
+			assert.Equal(t, "key", key)
+			return []string{"aws"}, nil
+		},
+	}
+
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		if pkg == testProviderAws.pkg {
+			return testProviderAws, nil
+		}
+		assert.Fail(t, "unexpected package %s", pkg)
+		return nil, fmt.Errorf("unexpected package %s", pkg)
+	}
+
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		assert.Contains(t, []string{"gcp"}, string(pkg))
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	ctx := context.Background()
+
+	// Get the mapping for the GCP provider, which we don't have a plugin for.
+	data, err := mapper.GetMapping(ctx, "gcp", "")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{}, data)
 }

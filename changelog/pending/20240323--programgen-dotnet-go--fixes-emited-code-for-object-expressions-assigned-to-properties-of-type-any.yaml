@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet,go
+  description: Fixes emitted code for object expressions assigned to properties of type Any

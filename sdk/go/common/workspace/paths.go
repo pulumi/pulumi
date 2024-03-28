@@ -254,6 +254,10 @@ func GetPulumiHomeDir() (string, error) {
 		return "", fmt.Errorf("getting current user: %w", err)
 	}
 
+	if user == nil || user.HomeDir == "" {
+		return "", fmt.Errorf("could not find user home directory, set %s", PulumiHomeEnvVar)
+	}
+
 	return filepath.Join(user.HomeDir, BookkeepingDir), nil
 }
 

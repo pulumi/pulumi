@@ -36,7 +36,7 @@ import {
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { invoke } from "./invoke";
-import { monitorSupportsDeletedWith } from "./settings";
+import { getStore } from "./state";
 
 import { isGrpcError } from "../errors";
 import {
@@ -51,12 +51,13 @@ import {
     transferProperties,
 } from "./rpc";
 import {
+    awaitStackRegistrations,
     excessiveDebugOutput,
+    getCallbacks,
     getMonitor,
     getStack,
     isDryRun,
     isLegacyApplyEnabled,
-    monitorSupportsAliasSpecs,
     rpcKeepAlive,
     serialize,
     terminateRpcs,
@@ -65,6 +66,7 @@ import {
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as aliasproto from "../proto/alias_pb";
+import { Callback } from "../proto/callback_pb";
 import * as provproto from "../proto/provider_pb";
 import * as resproto from "../proto/resource_pb";
 import * as sourceproto from "../proto/source_pb";
@@ -361,9 +363,12 @@ function getParentURN(parent?: Resource | Input<string>) {
     return output(parent);
 }
 
-function mapAliasesForRequest(aliases: (URN | Alias)[] | undefined, parentURN?: URN) {
+export function mapAliasesForRequest(
+    aliases: (URN | Alias)[] | undefined,
+    parentURN?: URN,
+): Promise<aliasproto.Alias[]> {
     if (aliases === undefined) {
-        return [];
+        return Promise.resolve([]);
     }
 
     return Promise.all(
@@ -444,6 +449,24 @@ export function registerResource(
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
 
+            await awaitStackRegistrations();
+
+            const callbacks: Callback[] = [];
+            if (opts.xTransforms !== undefined && opts.xTransforms.length > 0) {
+                if (!getStore().supportsTransforms) {
+                    throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
+                }
+
+                const callbackServer = getCallbacks();
+                if (callbackServer === undefined) {
+                    throw new Error("Callback server could not initialize");
+                }
+
+                for (const transform of opts.xTransforms) {
+                    callbacks.push(await callbackServer.registerTransform(transform));
+                }
+            }
+
             const req = new resproto.RegisterResourceRequest();
             req.setType(t);
             req.setName(name);
@@ -481,8 +504,9 @@ export function registerResource(
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
+            req.setTransformsList(callbacks);
 
-            if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
+            if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.",
                 );
@@ -811,7 +835,7 @@ export async function prepareResource(
             propertyToDirectDependencyURNs.set(propertyName, urns);
         }
 
-        const monitorSupportsStructuredAliases = await monitorSupportsAliasSpecs();
+        const monitorSupportsStructuredAliases = getStore().supportsAliasSpecs;
         let computedAliases;
         if (!monitorSupportsStructuredAliases && parent) {
             computedAliases = allAliases(opts.aliases || [], name!, type!, parent, parent.__name!);
@@ -993,7 +1017,7 @@ async function resolveOutputs(
     t: string,
     name: string,
     props: Inputs,
-    outputs: any,
+    outputs: gstruct.Struct | undefined,
     deps: Record<string, Resource[]>,
     resolvers: OutputResolvers,
     err?: Error,

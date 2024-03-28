@@ -15,6 +15,8 @@
 package pcl
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -55,11 +57,22 @@ func annotateAttributeValue(expr model.Expression, attributeType schema.Type) mo
 			}
 
 			for _, item := range attrValue.Items {
+				// annotate the nested object properties
+				// here when the key is a literal such as { key = <inner value> }
 				keyLiteral, isLit := item.Key.(*model.LiteralValueExpression)
 				if isLit {
 					correspondingSchemaType, ok := schemaProperties[keyLiteral.Value.AsString()]
 					if ok {
 						item.Value = annotateAttributeValue(item.Value, correspondingSchemaType)
+					}
+				}
+
+				// here when the key is a quoted literal such as { "key" = <inner value> }
+				if templateExpression, ok := item.Key.(*model.TemplateExpression); ok && len(templateExpression.Parts) == 1 {
+					if literalValue, ok := templateExpression.Parts[0].(*model.LiteralValueExpression); ok {
+						if correspondingSchemaType, ok := schemaProperties[literalValue.Value.AsString()]; ok {
+							item.Value = annotateAttributeValue(item.Value, correspondingSchemaType)
+						}
 					}
 				}
 			}
@@ -451,6 +464,13 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		}
 	}
 
+	resourceProperties := make(map[string]schema.Type)
+	if node.Schema != nil {
+		for _, property := range node.Schema.Properties {
+			resourceProperties[property.Name] = property.Type
+		}
+	}
+
 	// Typecheck the attributes.
 	if objectType, ok := node.InputType.(*model.ObjectType); ok {
 		diag := func(d *hcl.Diagnostic) {
@@ -466,7 +486,17 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 			if typ, ok := objectType.Properties[attr.Name]; ok {
 				conversion := typ.ConversionFrom(attr.Value.Type())
 				if !conversion.Exists() {
-					diag(model.ExprNotConvertible(typ, attr.Value))
+					if propertyType, ok := resourceProperties[attr.Name]; ok {
+						attributeRange := attr.Value.SyntaxNode().Range()
+						diag(&hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Subject:  &attributeRange,
+							Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
+								attr.Value.Type().Pretty().String(),
+								propertyType.String(),
+								node.Token),
+						})
+					}
 				}
 			} else {
 				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))

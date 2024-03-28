@@ -23,6 +23,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	pbempty "google.golang.org/protobuf/types/known/emptypb"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -32,6 +36,53 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+type hostEngine struct {
+	pulumirpc.UnimplementedEngineServer
+	t *testing.T
+}
+
+func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+	var sev diag.Severity
+	switch req.Severity {
+	case pulumirpc.LogSeverity_DEBUG:
+		sev = diag.Debug
+	case pulumirpc.LogSeverity_INFO:
+		sev = diag.Info
+	case pulumirpc.LogSeverity_WARNING:
+		sev = diag.Warning
+	case pulumirpc.LogSeverity_ERROR:
+		sev = diag.Error
+	default:
+		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
+	}
+
+	if req.StreamId != 0 {
+		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, req.Message)
+	} else {
+		e.t.Logf("%s[%s]: %s", sev, req.Urn, req.Message)
+	}
+	return &pbempty.Empty{}, nil
+}
+
+func runEngine(t *testing.T) string {
+	// Run a gRPC server that implements the Pulumi engine RPC interface. But all we do is forward logs on to T.
+	engine := &hostEngine{t: t}
+	stop := make(chan bool)
+	t.Cleanup(func() {
+		close(stop)
+	})
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: stop,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterEngineServer(srv, engine)
+			return nil
+		},
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
+	require.NoError(t, err)
+	return fmt.Sprintf("127.0.0.1:%v", handle.Port)
+}
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
@@ -88,7 +139,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 		contract.IgnoreError(cmd.Wait())
 	})
 
-	return address, client
+	engineAddress := runEngine(t)
+	return engineAddress, client
 }
 
 func TestLanguage(t *testing.T) {
@@ -102,7 +154,7 @@ func TestLanguage(t *testing.T) {
 	// Run the language plugin
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, "", true, "", "")
+			host := newLanguageHost(engineAddress, "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -119,6 +171,19 @@ func TestLanguage(t *testing.T) {
 		TemporaryDirectory:   rootDir,
 		SnapshotDirectory:    "./testdata",
 		CoreSdkDirectory:     "../..",
+		CoreSdkVersion:       sdk.Version.String(),
+		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+			{
+				Path:        "package\\.json",
+				Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
+				Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
+			},
+			{
+				Path:        "package\\.json",
+				Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
+				Replacement: "ROOT/artifacts",
+			},
+		},
 	})
 	require.NoError(t, err)
 

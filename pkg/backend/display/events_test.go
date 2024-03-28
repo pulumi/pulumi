@@ -17,7 +17,11 @@ package display
 // Note: to regenerate the baselines for these tests, run `go test` with `PULUMI_ACCEPT=true`.
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
@@ -38,4 +42,24 @@ func TestRemoveANSI(t *testing.T) {
 	res, err := ConvertEngineEvent(e, false /* showSecrets */)
 	assert.NoError(t, err, "unable to convert engine event")
 	assert.Equal(t, expected, res.DiagnosticEvent.Message)
+}
+
+func TestEmptyDetailedDiff(t *testing.T) {
+	t.Parallel()
+	expected := `{"sequence":0,"timestamp":0,"resOutputsEvent":{"metadata":{"op":"import","urn":"urn:pul:resource:type::name","type":"urn:pul:resource:type","old":null,"new":null,"detailedDiff":{},"provider":""}}}` //nolint:lll
+	e := engine.NewEvent(
+		engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				Op:           deploy.OpImport,
+				URN:          "urn:pul:resource:type::name",
+				Type:         "urn:pul:resource:type",
+				DetailedDiff: map[string]plugin.PropertyDiff{},
+			},
+		},
+	)
+	res, err := ConvertEngineEvent(e, false /* showSecrets */)
+	assert.NoError(t, err, "unable to convert engine event")
+	jsonEvent, err := json.Marshal(res)
+	assert.NoError(t, err, "unable to marshal to json")
+	assert.Equal(t, expected, string(jsonEvent))
 }

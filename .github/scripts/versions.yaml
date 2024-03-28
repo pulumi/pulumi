@@ -1,6 +1,6 @@
 replacements:
   - type: file
-    file: .version
+    file: ./sdk/.version
     fileFormat: sed
     updatePath: .*
     versionFormat: ${SEMVER}

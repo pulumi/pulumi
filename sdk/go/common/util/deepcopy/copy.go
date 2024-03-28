@@ -96,6 +96,8 @@ func deepCopy(v reflect.Value) reflect.Value {
 			}
 		}
 		return rv
+	case reflect.Invalid, reflect.UnsafePointer:
+		panic("unexpected kind " + typ.Kind().String())
 	default:
 		panic("unexpected kind " + typ.Kind().String())
 	}

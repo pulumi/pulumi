@@ -6,9 +6,6 @@
 
 import * as jspb from "google-protobuf";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
-import * as pulumi_plugin_pb from "./plugin_pb";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class ConvertStateRequest extends jspb.Message { 
     getMapperTarget(): string;
@@ -46,6 +43,12 @@ export class ResourceImport extends jspb.Message {
     setVersion(value: string): ResourceImport;
     getPlugindownloadurl(): string;
     setPlugindownloadurl(value: string): ResourceImport;
+    getLogicalName(): string;
+    setLogicalName(value: string): ResourceImport;
+    getIsComponent(): boolean;
+    setIsComponent(value: boolean): ResourceImport;
+    getIsRemote(): boolean;
+    setIsRemote(value: boolean): ResourceImport;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -64,6 +67,9 @@ export namespace ResourceImport {
         id: string,
         version: string,
         plugindownloadurl: string,
+        logicalName: string,
+        isComponent: boolean,
+        isRemote: boolean,
     }
 }
 

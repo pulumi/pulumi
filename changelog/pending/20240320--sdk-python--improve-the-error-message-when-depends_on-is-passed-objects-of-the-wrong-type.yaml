@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Improve the error message when depends_on is passed objects of the wrong type

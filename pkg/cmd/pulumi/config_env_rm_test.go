@@ -34,14 +34,13 @@ runtime: yaml`
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", nil, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", nil, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent}
-		err := rm.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY  VALUE
@@ -59,13 +58,12 @@ Save? Yes
 	t.Run("no imports, yes", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		var newStackYAML string
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, nil, &stdout, projectYAML, "", nil, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", nil, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent, yes: true}
-		err := rm.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
 		const expectedOut = "KEY  VALUE\n"
@@ -80,8 +78,6 @@ Save? Yes
 	t.Run("one import", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		const stackYAML = `environment:
   - env
 `
@@ -89,9 +85,10 @@ Save? Yes
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, nil, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, nil, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent, yes: true}
-		err := rm.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
 		const expectedOut = "KEY  VALUE\n"
@@ -106,8 +103,6 @@ Save? Yes
 	t.Run("effects -> no effects", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		const stackYAML = `environment:
   - env
   - env2
@@ -118,9 +113,10 @@ Save? Yes
 		var newStackYAML string
 		stdin := strings.NewReader("n")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent}
-		err := rm.run(nil, []string{"env2"})
+		ctx := context.Background()
+		err := rm.run(ctx, []string{"env2"})
 		require.Error(t, err)
 
 		const expectedOut = "KEY  VALUE\n" +
@@ -133,8 +129,6 @@ Save? Yes
 
 	t.Run("two imports, secrets", func(t *testing.T) {
 		t.Parallel()
-
-		ctx := context.Background()
 
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
@@ -153,9 +147,10 @@ Save? Yes
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent}
-		err := rm.run(nil, []string{"env2"})
+		ctx := context.Background()
+		err := rm.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY           VALUE
@@ -177,8 +172,6 @@ Save? Yes
 	t.Run("two imports, secrets", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -196,9 +189,10 @@ Save? Yes
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent, showSecrets: true}
-		err := rm.run(nil, []string{"env2"})
+		ctx := context.Background()
+		err := rm.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY           VALUE

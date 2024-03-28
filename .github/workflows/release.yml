@@ -57,7 +57,8 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-  PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  PYPI_USERNAME: __token__
+  PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
 
 jobs:
   sdks:
@@ -182,6 +183,7 @@ jobs:
   update-homebrew-tap:
     name: Update Homebrew Tap
     if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
+    needs: [dispatch]
     uses: ./.github/workflows/release-homebrew-tap.yml
     permissions:
       contents: read

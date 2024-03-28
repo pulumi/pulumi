@@ -70,11 +70,10 @@ jobs:
           git add -A
           git commit -m "chore: post-release go.mod updates"
 
-          # Publish pkg module on another tag.
-          git tag "pkg/v${PULUMI_VERSION}"
-          git push origin "pkg/v${PULUMI_VERSION}"
           git push -u origin HEAD
 
+          # Note that the title of the PR is used in the on-push workflow.  If the title needs to
+          # change here, please also check on-push.yml
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
 
           if [ "${QUEUE_MERGE}" = "true" ]; then

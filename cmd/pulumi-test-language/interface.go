@@ -19,10 +19,10 @@ import (
 	"context"
 	b64 "encoding/base64"
 	"fmt"
-	"io"
-	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -30,18 +30,16 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -97,6 +95,9 @@ type languageTestServer struct {
 	cancel chan bool
 	done   chan error
 	addr   string
+
+	// Used by _bad snapshot_ tests to disable snapshot writing.
+	DisableSnapshotWriting bool
 }
 
 func (eng *languageTestServer) Address() string {
@@ -188,160 +189,6 @@ func makeTestResponse(msg string) *testingrpc.RunLanguageTestResponse {
 	}
 }
 
-func copyDirectory(fs iofs.FS, src string, dst string) error {
-	return iofs.WalkDir(fs, src, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relativePath, err := filepath.Rel(src, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, src)
-
-		srcPath := filepath.Join(src, relativePath)
-		dstPath := filepath.Join(dst, relativePath)
-		contract.Assertf(srcPath == path, "srcPath %s should be equal to path %s", srcPath, path)
-
-		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0o700)
-		}
-
-		srcFile, err := fs.Open(srcPath)
-		if err != nil {
-			return fmt.Errorf("open file %s: %w", srcPath, err)
-		}
-		defer srcFile.Close()
-
-		dstFile, err := os.Create(dstPath)
-		if err != nil {
-			return fmt.Errorf("create file %s: %w", dstPath, err)
-		}
-		defer dstFile.Close()
-
-		_, err = io.Copy(dstFile, srcFile)
-		if err != nil {
-			return fmt.Errorf("copy file %s->%s: %w", srcPath, dstPath, err)
-		}
-
-		return nil
-	})
-}
-
-// compareDirectories compares two directories, returning a list of validation failures where files had
-// different contents, or we only present in on of the directories. If allowNewFiles is true then it's ok to
-// have extra files in the actual directory, we use this for checking building SDKs doesn't mutate any files,
-// but doing so might add new build files (which would then normally be .gitignored).
-func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]string, error) {
-	var validations []string
-	// Check that every file in expected is also in actual with the same content
-	err := filepath.WalkDir(expectedDir, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// No need to check directories, just recurse into them
-		if d.IsDir() {
-			return nil
-		}
-
-		relativePath, err := filepath.Rel(expectedDir, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, expectedDir)
-
-		// Check that the file is present in the expected directory and has the same contents
-		expectedContents, err := os.ReadFile(filepath.Join(expectedDir, relativePath))
-		if err != nil {
-			return fmt.Errorf("read expected file: %w", err)
-		}
-
-		actualPath := filepath.Join(actualDir, relativePath)
-		actualContents, err := os.ReadFile(actualPath)
-		// An error here is a test failure rather than an error, add this to the validation list
-		if err != nil {
-			validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
-			// Move on to the next file
-			return nil
-		}
-
-		if !bytes.Equal(actualContents, expectedContents) {
-			// TODO(https://github.com/pulumi/pulumi/issues/13943): Find a way to show better diffs here
-			validations = append(validations, fmt.Sprintf("expected file %s does not match actual file", relativePath))
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("walk expected dir: %w", err)
-	}
-
-	// Now walk the actual directory and check every file found is present in the expected directory, i.e.
-	// there aren't any new files that aren't expected. We've already done contents checking so we just need
-	// existence checks.
-	if !allowNewFiles {
-		err = filepath.WalkDir(actualDir, func(path string, d iofs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// No need to check directories
-			if d.IsDir() {
-				return nil
-			}
-
-			relativePath, err := filepath.Rel(actualDir, path)
-			contract.AssertNoErrorf(err, "path %s should be relative to %s", path, actualDir)
-
-			// Just need to see if this file exists in expected, if it doesn't return add a validation failure.
-			_, err = os.Stat(filepath.Join(expectedDir, relativePath))
-			if err == nil {
-				// File exists in expected, we've already done a contents check so just move on to
-				// the next file.
-				return nil
-			}
-
-			// Check if this was a NotFound error in which case add a validation failure, else return the error
-			if os.IsNotExist(err) {
-				validations = append(validations, fmt.Sprintf("file %s is not expected", relativePath))
-				return nil
-			}
-
-			return err
-		})
-		if err != nil {
-			return nil, fmt.Errorf("walk actual dir: %w", err)
-		}
-	}
-
-	return validations, nil
-}
-
-// Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
-// write the new files instead.
-func doSnapshot(sourceDirectory, snapshotDirectory string) ([]string, error) {
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
-		// Write files
-		err := os.RemoveAll(snapshotDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("remove snapshot dir: %w", err)
-		}
-		err = os.MkdirAll(snapshotDirectory, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create snapshot dir: %w", err)
-		}
-		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("copy snapshot dir: %w", err)
-		}
-		return nil, nil
-	}
-	// Validate files, we need to walk twice to get this correct because we need to check all expected
-	// files are present, but also that no unexpected files are present.
-	validations, err := compareDirectories(sourceDirectory, snapshotDirectory, false /* allowNewFiles */)
-	if err != nil {
-		return nil, err
-	}
-
-	return validations, nil
-}
-
 type testHost struct {
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
@@ -397,9 +244,12 @@ func (h *testHost) CloseProvider(provider plugin.Provider) error {
 	return nil
 }
 
-func (h *testHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+// LanguageRuntime returns the language runtime initialized by the test host.
+// ProgramInfo is only used here for compatibility reasons and will be removed from this function.
+func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+	if runtime != h.runtimeName {
+		return nil, fmt.Errorf("unexpected runtime %s", runtime)
+	}
 	return h.runtime, nil
 }
 
@@ -452,12 +302,26 @@ func (h *testHost) Close() error {
 	return nil
 }
 
+type replacement struct {
+	Path        string
+	Pattern     string
+	Replacement string
+}
+
+type compiledReplacement struct {
+	Path        *regexp.Regexp
+	Pattern     *regexp.Regexp
+	Replacement string
+}
+
 type testToken struct {
 	LanguagePluginName   string
 	LanguagePluginTarget string
 	TemporaryDirectory   string
 	SnapshotDirectory    string
 	CoreArtifact         string
+	CoreVersion          string
+	SnapshotEdits        []replacement
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -522,12 +386,20 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("create artifacts directory: %w", err)
 	}
 
-	// Build the core SDK
-	version := semver.MustParse("1.0.0")
+	// Build the core SDK, use a slightly odd version so we can test dependencies later.
 	coreArtifact, err := languageClient.Pack(
-		req.CoreSdkDirectory, version, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 	if err != nil {
 		return nil, fmt.Errorf("pack core SDK: %w", err)
+	}
+
+	edits := []replacement{}
+	for _, replace := range req.SnapshotEdits {
+		edits = append(edits, replacement{
+			Path:        replace.Path,
+			Pattern:     replace.Pattern,
+			Replacement: replace.Replacement,
+		})
 	}
 
 	tokenBytes, err := json.Marshal(&testToken{
@@ -536,6 +408,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		TemporaryDirectory:   req.TemporaryDirectory,
 		SnapshotDirectory:    req.SnapshotDirectory,
 		CoreArtifact:         coreArtifact,
+		CoreVersion:          req.CoreSdkVersion,
+		SnapshotEdits:        edits,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -578,6 +452,24 @@ func (eng *languageTestServer) RunLanguageTest(
 	err = json.Unmarshal(tokenBytes, &token)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	// If the language defines any snapshot edits compile those regexs to apply now
+	snapshotEdits := []compiledReplacement{}
+	for _, replace := range token.SnapshotEdits {
+		pathRegex, err := regexp.Compile(replace.Path)
+		if err != nil {
+			return nil, fmt.Errorf("invalid path regex %s: %w", replace.Path, err)
+		}
+		editRegex, err := regexp.Compile(replace.Pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid edit regex %s: %w", replace.Pattern, err)
+		}
+		snapshotEdits = append(snapshotEdits, compiledReplacement{
+			Path:        pathRegex,
+			Pattern:     editRegex,
+			Replacement: replace.Replacement,
+		})
 	}
 
 	// Create a diagnostics sink for the test
@@ -640,17 +532,6 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
-		version, err := getProviderVersion(provider)
-		if err != nil {
-			return nil, err
-		}
-
-		sdkName := fmt.Sprintf("%s-%s", pkg, version)
-		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		err = os.MkdirAll(sdkTempDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create temp sdks dir: %w", err)
-		}
 
 		schemaBytes, err := provider.GetSchema(0)
 		if err != nil {
@@ -670,13 +551,34 @@ func (eng *languageTestServer) RunLanguageTest(
 		if diags.HasErrors() {
 			return nil, fmt.Errorf("bind schema for provider %s: %v", pkg, diags)
 		}
+		// Unconditionally set SupportPack
+		boundSpec.SupportPack = true
+
+		sdkName := fmt.Sprintf("%s-%s", pkg, spec.Version)
+		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+		_, err = os.Stat(sdkTempDir)
+		if err == nil {
+			// If the directory already exists then we don't need to regenerate the SDK
+			sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
+			if err != nil {
+				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
+			}
+			localDependencies[pkg] = sdkArtifact
+			continue
+		}
+
+		err = os.MkdirAll(sdkTempDir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create temp sdks dir: %w", err)
+		}
 
 		schemaBytes, err = boundSpec.MarshalJSON()
 		if err != nil {
 			return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
 		}
 
-		diags, err = languageClient.GeneratePackage(sdkTempDir, string(schemaBytes), nil, grpcServer.Addr())
+		diags, err = languageClient.GeneratePackage(
+			sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
 		}
@@ -686,7 +588,18 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-		validations, err := doSnapshot(sdkTempDir, snapshotDir)
+		sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+		// If we made a snapshot edit we can clean it up now
+		if sdkSnapshotDir != sdkTempDir {
+			err := os.RemoveAll(sdkSnapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
 		}
@@ -698,14 +611,26 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 		// any intermediate build files don't end up getting captured in the snapshot folder.
-		sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
+		sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
 		if err != nil {
 			return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
 		}
 		localDependencies[pkg] = sdkArtifact
 
 		// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-		validations, err = compareDirectories(sdkTempDir, snapshotDir, true /* allowNewFiles */)
+		// Again we need to make a snapshot edit for this.
+		sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+		}
+		validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
+		// If we made a snapshot edit we can clean it up now
+		if sdkSnapshotDir != sdkTempDir {
+			err := os.RemoveAll(sdkSnapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg, err)
 		}
@@ -716,132 +641,244 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	// Create a source directory for the test
-	sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-	err = os.MkdirAll(sourceDir, 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("create source dir: %w", err)
-	}
-
-	// Find and copy the tests PCL code to the source dir
-	err = copyDirectory(languageTestdata, filepath.Join("testdata", req.Test), sourceDir)
-	if err != nil {
-		return nil, fmt.Errorf("copy source test data: %w", err)
-	}
-
-	// Create a directory for the project
-	projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-	err = os.MkdirAll(projectDir, 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("create project dir: %w", err)
-	}
-
-	// Generate the project and read in the Pulumi.yaml
-	projectJSON := fmt.Sprintf(`{"name": "%s"}`, req.Test)
-
-	// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
-	diagnostics, err := languageClient.GenerateProject(
-		sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
-	}
-	if diagnostics.HasErrors() {
-		return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
-	}
-
-	snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-	validations, err := doSnapshot(projectDir, snapshotDir)
-	if err != nil {
-		return nil, fmt.Errorf("program snapshot validation: %w", err)
-	}
-	if len(validations) > 0 {
-		return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
-	}
-
-	// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
-	// plugin, so we can't show it back to the test.
-	err = languageClient.InstallDependencies(projectDir)
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
-	}
-	// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
-
-	project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
-	}
-
-	// Create a temp dir for the a filestate backend to run in for the test
-	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
-	err = os.MkdirAll(backendDir, 0o755)
-	if err != nil {
-		return nil, fmt.Errorf("create temp backend dir: %w", err)
-	}
-	testBackend, err := filestate.New(ctx, snk, "file://"+backendDir, project)
-	if err != nil {
-		return nil, fmt.Errorf("create filestate backend: %w", err)
-	}
-
-	// Create a new stack for the test
-	stackReference, err := testBackend.ParseStackReference("test")
-	if err != nil {
-		return nil, fmt.Errorf("parse test stack reference: %w", err)
-	}
-	s, err := testBackend.CreateStack(ctx, stackReference, projectDir, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create test stack: %w", err)
-	}
-
-	// Set up the stack and engine configuration
-	opts := backend.UpdateOptions{
-		AutoApprove: true,
-		SkipPreview: true,
-		Display: backendDisplay.Options{
-			Color:  colors.Never,
-			Stdout: stdout,
-			Stderr: stderr,
-		},
-		Engine: engine.UpdateOptions{
-			Host: pctx.Host,
-		},
-	}
-	sm := b64secrets.NewBase64SecretsManager()
-	dec, err := sm.Decrypter()
-	contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
-
-	cfg := backend.StackConfiguration{
-		Config:    test.config,
-		Decrypter: dec,
-	}
-
-	changes, res := s.Update(ctx, backend.UpdateOperation{
-		Proj:               project,
-		Root:               projectDir,
-		Opts:               opts,
-		M:                  &backend.UpdateMetadata{},
-		StackConfiguration: cfg,
-		SecretsManager:     sm,
-		SecretsProvider:    stack.DefaultSecretsProvider,
-		Scopes:             backend.CancellationScopes,
-	})
-
-	var snap *deploy.Snapshot
-	if res == nil {
-		// Refetch the stack so we can get the snapshot
-		s, err = testBackend.GetStack(ctx, stackReference)
+	var result LResult
+	for i, run := range test.runs {
+		// Create a source directory for the test
+		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
+		if len(test.runs) > 1 {
+			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
+		}
+		err = os.MkdirAll(sourceDir, 0o700)
 		if err != nil {
-			return nil, fmt.Errorf("get stack: %w", err)
+			return nil, fmt.Errorf("create source dir: %w", err)
 		}
 
-		snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+		// Find and copy the tests PCL code to the source dir
+		pclDir := filepath.Join("testdata", req.Test)
+		if len(test.runs) > 1 {
+			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
+		}
+		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil)
 		if err != nil {
-			return nil, fmt.Errorf("snapshot: %w", err)
+			return nil, fmt.Errorf("copy source test data: %w", err)
+		}
+
+		// Create a directory for the project
+		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
+		if len(test.runs) > 1 {
+			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
+		}
+		err = os.MkdirAll(projectDir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create project dir: %w", err)
+		}
+
+		// Generate the project and read in the Pulumi.yaml
+		projectJSON := func() string {
+			if run.main == "" {
+				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+			}
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
+		}()
+
+		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
+		diagnostics, err := languageClient.GenerateProject(
+			sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
+		}
+		if diagnostics.HasErrors() {
+			return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
+		}
+
+		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+		if len(test.runs) > 1 {
+			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+		}
+		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("program snapshot creation: %w", err)
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+		if err != nil {
+			return nil, fmt.Errorf("program snapshot validation: %w", err)
+		}
+		if len(validations) > 0 {
+			return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
+		}
+		// If we made a snapshot edit we can clean it up now
+		if projectDirSnapshot != projectDir {
+			err = os.RemoveAll(projectDirSnapshot)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
+
+		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("load project: %v", err)), nil
+		}
+
+		info := &engine.Projinfo{Proj: project, Root: projectDir}
+		pwd, main, err := info.GetPwdMain()
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
+		}
+
+		programInfo := plugin.NewProgramInfo(
+			projectDir, /* rootDirectory */
+			pwd,        /* programDirectory */
+			main,
+			project.Runtime.Options())
+
+		// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
+		// plugin, so we can't show it back to the test.
+		err = languageClient.InstallDependencies(programInfo)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
+		}
+		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
+
+		// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
+		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
+		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
+		// well.
+		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
+		}
+		expectedDependencies := []plugin.DependencyInfo{}
+		if token.CoreVersion != "" {
+			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+				Name: "pulumi", Version: token.CoreVersion,
+			})
+		}
+		for _, provider := range test.providers {
+			pkg := string(provider.Pkg())
+			version, err := getProviderVersion(provider)
+			if err != nil {
+				return nil, err
+			}
+			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+				Name:    pkg,
+				Version: version.String(),
+			})
+		}
+		for _, expectedDependency := range expectedDependencies {
+			// We have to do some fuzzy matching by name here because the language plugin returns the name of the
+			// library, which is generally _not_ just the plugin name. e.g. "@pulumi/aws" for the nodejs aws library.
+
+			// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
+			// so this is just to give better error messages. For our main dependencies we should have a different version
+			// for every package, so the fuzzy check by name then exact check by version should be unique.
+			var found *string
+			for _, actual := range dependencies {
+				actual := actual
+				if strings.Contains(strings.ToLower(actual.Name), strings.ToLower(expectedDependency.Name)) {
+					found = &actual.Version
+					if expectedDependency.Version == actual.Version {
+						break
+					}
+				}
+			}
+
+			if found == nil {
+				return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
+			} else if expectedDependency.Version != *found {
+				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
+					expectedDependency.Name, *found, expectedDependency.Version)), nil
+			}
+		}
+
+		// Create a temp dir for the a diy backend to run in for the test
+		backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
+		err = os.MkdirAll(backendDir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create temp backend dir: %w", err)
+		}
+		testBackend, err := diy.New(ctx, snk, "file://"+backendDir, project)
+		if err != nil {
+			return nil, fmt.Errorf("create diy backend: %w", err)
+		}
+
+		// Create a new stack for the test
+		stackReference, err := testBackend.ParseStackReference("test")
+		if err != nil {
+			return nil, fmt.Errorf("parse test stack reference: %w", err)
+		}
+		var s backend.Stack
+		if i == 0 {
+			s, err = testBackend.CreateStack(ctx, stackReference, projectDir, nil)
+			if err != nil {
+				return nil, fmt.Errorf("create test stack: %w", err)
+			}
+		} else {
+			s, err = testBackend.GetStack(ctx, stackReference)
+			if err != nil {
+				return nil, fmt.Errorf("get test stack: %w", err)
+			}
+		}
+
+		updateOptions := run.updateOptions
+		updateOptions.Host = pctx.Host
+
+		// Set up the stack and engine configuration
+		opts := backend.UpdateOptions{
+			AutoApprove: true,
+			SkipPreview: true,
+			Display: backendDisplay.Options{
+				Color:  colors.Never,
+				Stdout: stdout,
+				Stderr: stderr,
+			},
+			Engine: updateOptions,
+		}
+		sm := b64secrets.NewBase64SecretsManager()
+		dec, err := sm.Decrypter()
+		contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
+
+		cfg := backend.StackConfiguration{
+			Config:    run.config,
+			Decrypter: dec,
+		}
+
+		changes, res := s.Update(ctx, backend.UpdateOperation{
+			Proj:               project,
+			Root:               projectDir,
+			Opts:               opts,
+			M:                  &backend.UpdateMetadata{},
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			SecretsProvider:    b64secrets.Base64SecretsProvider,
+			Scopes:             backend.CancellationScopes,
+		})
+
+		var snap *deploy.Snapshot
+		if res == nil {
+			// Refetch the stack so we can get the snapshot
+			s, err = testBackend.GetStack(ctx, stackReference)
+			if err != nil {
+				return nil, fmt.Errorf("get stack: %w", err)
+			}
+
+			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+			if err != nil {
+				return nil, fmt.Errorf("snapshot: %w", err)
+			}
+		}
+
+		result = WithL(func(l *L) {
+			run.assert(l, res, snap, changes)
+		})
+		if result.Failed {
+			return &testingrpc.RunLanguageTestResponse{
+				Success:  !result.Failed,
+				Messages: result.Messages,
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+			}, nil
 		}
 	}
-
-	result := WithL(func(l *L) {
-		test.assert(l, res, snap, changes)
-	})
 
 	return &testingrpc.RunLanguageTestResponse{
 		Success:  !result.Failed,

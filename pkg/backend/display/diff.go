@@ -53,7 +53,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
 	if stdout == os.Stdout && stderr == os.Stderr {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/, opts.SuppressProgress)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -206,7 +206,7 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 
 	// The message may span multiple lines, so we massage it so it will be indented properly.
 	message := strings.TrimSuffix(payload.Message, "\n")
-	message = strings.ReplaceAll(message, "\n", fmt.Sprintf("\n%s", linePrefix))
+	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
 	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
 	return opts.Color.Colorize(policyLine + "\n")
 }

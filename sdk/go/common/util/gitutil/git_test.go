@@ -84,11 +84,6 @@ func TestParseGitRepoURL(t *testing.T) {
 	test(exp, "", pre)
 	test(exp, "", pre+"/")
 
-	testError := func(rawurl string) {
-		_, _, err := ParseGitRepoURL(rawurl)
-		assert.Error(t, err)
-	}
-
 	// GitLab.
 	pre = "https://gitlab.com/my-org/proj/subproj/doot.git/poc/waka-waka"
 	exp = "https://gitlab.com/my-org/proj/subproj/doot.git"
@@ -141,25 +136,30 @@ func TestParseGitRepoURL(t *testing.T) {
 	test(exp, "somewhere/in/there/is/a/website", pre)
 	test(exp, "somewhere/in/there/is/a/website", pre+"/")
 
+	testError := func(rawurl string, expectedError string) {
+		_, _, err := ParseGitRepoURL(rawurl)
+		assert.EqualError(t, err, expectedError)
+	}
+
 	// No owner.
-	testError("https://github.com")
-	testError("https://github.com/")
-	testError("git@github.com")
-	testError("git@github.com/")
-	testError("ssh://git@github.com")
-	testError("ssh://git@github.com/")
+	testError("https://github.com", "invalid Git URL")
+	testError("https://github.com/", "invalid Git URL")
+	testError("git@github.com", "invalid URL scheme: ")
+	testError("git@github.com/", "invalid URL scheme: ")
+	testError("ssh://git@github.com", "invalid Git URL")
+	testError("ssh://git@github.com/", "invalid Git URL")
 
 	// No repo.
-	testError("https://github.com/pulumi")
-	testError("https://github.com/pulumi/")
-	testError("git@github.com:pulumi")
-	testError("git@github.com:pulumi/")
-	testError("ssh://git@github.com/pulumi")
-	testError("ssh://git@github.com/pulumi/")
+	testError("https://github.com/pulumi", "invalid Git URL")
+	testError("https://github.com/pulumi/", "invalid Git URL; no repository")
+	testError("git@github.com:pulumi", "invalid Git URL")
+	testError("git@github.com:pulumi/", "invalid Git URL; no repository")
+	testError("ssh://git@github.com/pulumi", "invalid Git URL")
+	testError("ssh://git@github.com/pulumi/", "invalid Git URL; no repository")
 
 	// Not HTTPS.
-	testError("http://github.com/pulumi/templates.git")
-	testError("http://github.com/pulumi/templates")
+	testError("http://github.com/pulumi/templates.git", "invalid URL scheme: http")
+	testError("http://github.com/pulumi/templates", "invalid URL scheme: http")
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
@@ -247,33 +247,33 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	test("my/content", "foo", "tree/my/content/foo")
 	test("my/content", "foo", "tree/my/content/foo/")
 
-	testError := func(urlPath string) {
+	testError := func(urlPath string, expectedError string) {
 		_, _, _, err := GetGitReferenceNameOrHashAndSubDirectory(repoPath, urlPath)
-		assert.Error(t, err)
+		assert.EqualError(t, err, expectedError)
 	}
 
 	// No ref specified.
-	testError("tree")
-	testError("tree/")
+	testError("tree", "invalid Git URL")
+	testError("tree/", "invalid Git URL")
 
 	// Invalid casing.
-	testError("tree/Master")
-	testError("tree/head")
-	testError("tree/My")
+	testError("tree/Master", "invalid Git URL")
+	testError("tree/head", "invalid Git URL")
+	testError("tree/My", "invalid Git URL")
 
 	// Path components cannot contain "." or "..".
-	testError(".")
-	testError("./")
-	testError("..")
-	testError("../")
-	testError("foo/.")
-	testError("foo/./")
-	testError("foo/..")
-	testError("foo/../")
-	testError("content/./foo")
-	testError("content/./foo/")
-	testError("content/../foo")
-	testError("content/../foo/")
+	testError(".", "invalid Git URL")
+	testError("./", "invalid Git URL")
+	testError("..", "invalid Git URL")
+	testError("../", "invalid Git URL")
+	testError("foo/.", "invalid Git URL")
+	testError("foo/./", "invalid Git URL")
+	testError("foo/..", "invalid Git URL")
+	testError("foo/../", "invalid Git URL")
+	testError("content/./foo", "invalid Git URL")
+	testError("content/./foo/", "invalid Git URL")
+	testError("content/../foo", "invalid Git URL")
+	testError("content/../foo/", "invalid Git URL")
 }
 
 func createTestRepo(e *ptesting.Environment) {

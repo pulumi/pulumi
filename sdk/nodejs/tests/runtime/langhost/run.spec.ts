@@ -35,8 +35,8 @@ interface RunCase {
     only?: boolean;
     project?: string;
     stack?: string;
-    pwd?: string;
-    program?: string;
+    pwd: string;
+    main?: string;
     args?: string[];
     config?: { [key: string]: any };
     expectError?: string;
@@ -126,24 +126,24 @@ describe("rpc", () => {
     const cases: { [key: string]: RunCase } = {
         // An empty program.
         empty: {
-            program: path.join(base, "000.empty"),
+            pwd: path.join(base, "000.empty"),
             expectResourceCount: 0,
         },
         // The same thing, just using pwd rather than an absolute program path.
         "empty.pwd": {
             pwd: path.join(base, "000.empty"),
-            program: "./",
+            main: "./",
             expectResourceCount: 0,
         },
         // The same thing, just using pwd and the filename rather than an absolute program path.
         "empty.pwd.index.js": {
             pwd: path.join(base, "000.empty"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 0,
         },
         // A program that allocates a single resource.
         one_resource: {
-            program: path.join(base, "001.one_resource"),
+            pwd: path.join(base, "001.one_resource"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -153,7 +153,7 @@ describe("rpc", () => {
         },
         // A program that allocates ten simple resources.
         ten_resources: {
-            program: path.join(base, "002.ten_resources"),
+            pwd: path.join(base, "002.ten_resources"),
             expectResourceCount: 10,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -176,7 +176,7 @@ describe("rpc", () => {
         },
         // A program that allocates a complex resource with lots of input and output properties.
         one_complex_resource: {
-            program: path.join(base, "003.one_complex_resource"),
+            pwd: path.join(base, "003.one_complex_resource"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -208,7 +208,7 @@ describe("rpc", () => {
         },
         // A program that allocates 10 complex resources with lots of input and output properties.
         ten_complex_resources: {
-            program: path.join(base, "004.ten_complex_resources"),
+            pwd: path.join(base, "004.ten_complex_resources"),
             expectResourceCount: 10,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -255,7 +255,7 @@ describe("rpc", () => {
         },
         // A program that allocates a single resource.
         resource_thens: {
-            program: path.join(base, "005.resource_thens"),
+            pwd: path.join(base, "005.resource_thens"),
             expectResourceCount: 2,
             registerResource: (ctx, dryrun, t, name, res, dependencies) => {
                 let id: ID | undefined;
@@ -332,7 +332,7 @@ describe("rpc", () => {
         },
         // A program that allocates ten simple resources that use dependsOn to depend on one another, 10 different ways.
         ten_depends_on_resources: {
-            program: path.join(base, "008.ten_depends_on_resources"),
+            pwd: path.join(base, "008.ten_depends_on_resources"),
             expectResourceCount: 100,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -355,7 +355,7 @@ describe("rpc", () => {
         },
         // A simple test of the invocation RPC pathways.
         invoke: {
-            program: path.join(base, "009.invoke"),
+            pwd: path.join(base, "009.invoke"),
             expectResourceCount: 0,
             invoke: (ctx: any, tok: string, args: any, version: string, provider: string) => {
                 assert.strictEqual(provider, "");
@@ -383,12 +383,12 @@ describe("rpc", () => {
                 "myBag:A": "42",
                 "myBag:bbbb": "a string o' b's",
             },
-            program: path.join(base, "010.runtime_settings"),
+            pwd: path.join(base, "010.runtime_settings"),
             expectResourceCount: 0,
         },
         // A program that throws an ordinary unhandled error.
         unhandled_error: {
-            program: path.join(base, "011.unhandled_error"),
+            pwd: path.join(base, "011.unhandled_error"),
             expectResourceCount: 0,
             expectError: "",
             expectBail: true,
@@ -409,7 +409,7 @@ describe("rpc", () => {
         },
         // A program that creates one resource that contains an assets archive.
         assets_archive: {
-            program: path.join(base, "012.assets_archive"),
+            pwd: path.join(base, "012.assets_archive"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.deepStrictEqual(res, {
@@ -451,7 +451,7 @@ describe("rpc", () => {
         },
         // A program that contains an unhandled promise rejection.
         unhandled_promise_rejection: {
-            program: path.join(base, "013.unhandled_promise_rejection"),
+            pwd: path.join(base, "013.unhandled_promise_rejection"),
             expectResourceCount: 0,
             expectError: "",
             expectBail: true,
@@ -472,7 +472,7 @@ describe("rpc", () => {
         },
         // A simple test of the read resource behavior.
         read_resource: {
-            program: path.join(base, "014.read_resource"),
+            pwd: path.join(base, "014.read_resource"),
             expectResourceCount: 0,
             readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
                 assert.strictEqual(t, "test:read:resource");
@@ -494,7 +494,7 @@ describe("rpc", () => {
         },
         // Test that the runtime can be loaded twice.
         runtime_sxs: {
-            program: path.join(base, "015.runtime_sxs"),
+            pwd: path.join(base, "015.runtime_sxs"),
             config: {
                 "sxs:message": "SxS config works!",
             },
@@ -513,17 +513,17 @@ describe("rpc", () => {
         },
         // Test that leaked debuggable promises fail the deployment.
         promise_leak: {
-            program: path.join(base, "016.promise_leak"),
+            pwd: path.join(base, "016.promise_leak"),
             expectError: "Program exited with non-zero exit code: 1",
         },
         // A test of parent default behaviors.
         parent_defaults: {
-            program: path.join(base, "017.parent_defaults"),
+            pwd: path.join(base, "017.parent_defaults"),
             expectResourceCount: 240,
             registerResource: parentDefaultsRegisterResource,
         },
         logging: {
-            program: path.join(base, "018.logging"),
+            pwd: path.join(base, "018.logging"),
             expectResourceCount: 1,
             expectedLogs: {
                 count: 5,
@@ -565,7 +565,7 @@ describe("rpc", () => {
         },
         // Test stack outputs via exports.
         stack_exports: {
-            program: path.join(base, "019.stack_exports"),
+            pwd: path.join(base, "019.stack_exports"),
             expectResourceCount: 1,
             showRootResourceRegistration: true,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
@@ -599,7 +599,7 @@ describe("rpc", () => {
             },
         },
         root_resource: {
-            program: path.join(base, "001.one_resource"),
+            pwd: path.join(base, "001.one_resource"),
             expectResourceCount: 2,
             showRootResourceRegistration: true,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
@@ -615,7 +615,7 @@ describe("rpc", () => {
             },
         },
         backcompat_root_resource: {
-            program: path.join(base, "001.one_resource"),
+            pwd: path.join(base, "001.one_resource"),
             expectResourceCount: 2,
             skipRootResourceEndpoints: true,
             showRootResourceRegistration: true,
@@ -632,7 +632,7 @@ describe("rpc", () => {
             },
         },
         property_dependencies: {
-            program: path.join(base, "020.property_dependencies"),
+            pwd: path.join(base, "020.property_dependencies"),
             expectResourceCount: 5,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent, provider, propertyDeps) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -679,7 +679,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies: {
             pwd: path.join(base, "021.parent_child_dependencies"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 2,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -697,7 +697,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies_2: {
             pwd: path.join(base, "022.parent_child_dependencies_2"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 3,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -718,13 +718,13 @@ describe("rpc", () => {
         },
         parent_child_dependencies_3: {
             pwd: path.join(base, "023.parent_child_dependencies_3"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 1,
             expectError: "Program exited with non-zero exit code: 1",
         },
         parent_child_dependencies_4: {
             pwd: path.join(base, "024.parent_child_dependencies_4"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 3,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -745,7 +745,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies_5: {
             pwd: path.join(base, "025.parent_child_dependencies_5"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 4,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -772,7 +772,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies_6: {
             pwd: path.join(base, "026.parent_child_dependencies_6"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 6,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -806,7 +806,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies_7: {
             pwd: path.join(base, "027.parent_child_dependencies_7"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 10,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -855,7 +855,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies_8: {
             pwd: path.join(base, "028.parent_child_dependencies_8"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 6,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -885,7 +885,7 @@ describe("rpc", () => {
         },
         parent_child_dependencies_9: {
             pwd: path.join(base, "029.parent_child_dependencies_9"),
-            program: "./index.js",
+            main: "./index.js",
             expectResourceCount: 3,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
@@ -905,24 +905,24 @@ describe("rpc", () => {
             },
         },
         run_error: {
-            program: path.join(base, "040.run_error"),
+            pwd: path.join(base, "040.run_error"),
             expectResourceCount: 0,
             // We should get the error message saying that a message was reported and the
             // host should bail.
             expectBail: true,
         },
         component_opt_single_provider: {
-            program: path.join(base, "041.component_opt_single_provider"),
+            pwd: path.join(base, "041.component_opt_single_provider"),
             expectResourceCount: 240,
             registerResource: parentDefaultsRegisterResource,
         },
         component_opt_providers_array: {
-            program: path.join(base, "042.component_opt_providers_array"),
+            pwd: path.join(base, "042.component_opt_providers_array"),
             expectResourceCount: 240,
             registerResource: parentDefaultsRegisterResource,
         },
         depends_on_non_resource: {
-            program: path.join(base, "043.depends_on_non_resource"),
+            pwd: path.join(base, "043.depends_on_non_resource"),
             expectResourceCount: 0,
             // We should get the error message saying that a message was reported and the
             // host should bail.
@@ -940,7 +940,7 @@ describe("rpc", () => {
             },
         },
         ignore_changes: {
-            program: path.join(base, "045.ignore_changes"),
+            pwd: path.join(base, "045.ignore_changes"),
             expectResourceCount: 1,
             registerResource: (
                 ctx: any,
@@ -967,7 +967,7 @@ describe("rpc", () => {
             },
         },
         versions: {
-            program: path.join(base, "044.versions"),
+            pwd: path.join(base, "044.versions"),
             expectResourceCount: 3,
             registerResource: (
                 ctx: any,
@@ -1044,7 +1044,7 @@ describe("rpc", () => {
         },
         // A program that imports a single resource.
         import_resource: {
-            program: path.join(base, "030.import_resource"),
+            pwd: path.join(base, "030.import_resource"),
             expectResourceCount: 1,
             registerResource: (
                 ctx,
@@ -1070,7 +1070,7 @@ describe("rpc", () => {
         },
         // Test stack outputs via exports.
         recursive_stack_exports: {
-            program: path.join(base, "046.recursive_stack_exports"),
+            pwd: path.join(base, "046.recursive_stack_exports"),
             expectResourceCount: 1,
             showRootResourceRegistration: true,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
@@ -1102,7 +1102,7 @@ describe("rpc", () => {
             },
         },
         exported_function: {
-            program: path.join(base, "047.exported_function"),
+            pwd: path.join(base, "047.exported_function"),
             expectResourceCount: 1,
             showRootResourceRegistration: true,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
@@ -1136,7 +1136,7 @@ describe("rpc", () => {
             },
         },
         exported_promise_function: {
-            program: path.join(base, "048.exported_promise_function"),
+            pwd: path.join(base, "048.exported_promise_function"),
             expectResourceCount: 1,
             showRootResourceRegistration: true,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
@@ -1170,7 +1170,7 @@ describe("rpc", () => {
             },
         },
         exported_async_function: {
-            program: path.join(base, "049.exported_async_function"),
+            pwd: path.join(base, "049.exported_async_function"),
             expectResourceCount: 1,
             showRootResourceRegistration: true,
             registerResource: (ctx, dryrun, t, name, res, deps, custom, protect, parent) => {
@@ -1204,7 +1204,7 @@ describe("rpc", () => {
             },
         },
         resource_creation_in_function: {
-            program: path.join(base, "050.resource_creation_in_function"),
+            pwd: path.join(base, "050.resource_creation_in_function"),
             expectResourceCount: 2,
             showRootResourceRegistration: true,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
@@ -1230,7 +1230,7 @@ describe("rpc", () => {
             },
         },
         resource_creation_in_function_with_result: {
-            program: path.join(base, "051.resource_creation_in_function_with_result"),
+            pwd: path.join(base, "051.resource_creation_in_function_with_result"),
             expectResourceCount: 2,
             showRootResourceRegistration: true,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
@@ -1256,7 +1256,7 @@ describe("rpc", () => {
             },
         },
         resource_creation_in_async_function_with_result: {
-            program: path.join(base, "052.resource_creation_in_async_function_with_result"),
+            pwd: path.join(base, "052.resource_creation_in_async_function_with_result"),
             expectResourceCount: 2,
             showRootResourceRegistration: true,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
@@ -1282,7 +1282,7 @@ describe("rpc", () => {
             },
         },
         provider_invokes: {
-            program: path.join(base, "060.provider_invokes"),
+            pwd: path.join(base, "060.provider_invokes"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
@@ -1301,7 +1301,7 @@ describe("rpc", () => {
             },
         },
         provider_in_parent_invokes: {
-            program: path.join(base, "061.provider_in_parent_invokes"),
+            pwd: path.join(base, "061.provider_in_parent_invokes"),
             expectResourceCount: 2,
             registerResource: (
                 ctx: any,
@@ -1331,7 +1331,7 @@ describe("rpc", () => {
             },
         },
         providerref_invokes: {
-            program: path.join(base, "062.providerref_invokes"),
+            pwd: path.join(base, "062.providerref_invokes"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name === "p" ? "1" : undefined, props: undefined };
@@ -1350,7 +1350,7 @@ describe("rpc", () => {
             },
         },
         providerref_in_parent_invokes: {
-            program: path.join(base, "063.providerref_in_parent_invokes"),
+            pwd: path.join(base, "063.providerref_in_parent_invokes"),
             expectResourceCount: 2,
             registerResource: (
                 ctx: any,
@@ -1384,7 +1384,7 @@ describe("rpc", () => {
             },
         },
         async_components: {
-            program: path.join(base, "064.async_components"),
+            pwd: path.join(base, "064.async_components"),
             expectResourceCount: 5,
             registerResource: (
                 ctx: any,
@@ -1411,7 +1411,7 @@ describe("rpc", () => {
         },
         // Create a resource with a large string to test grpcMaxMessageSize increase.
         large_resource: {
-            program: path.join(base, "065.large_resource"),
+            pwd: path.join(base, "065.large_resource"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 const longString = "a".repeat(1024 * 1024 * 5);
@@ -1428,7 +1428,7 @@ describe("rpc", () => {
             },
         },
         replace_on_changes: {
-            program: path.join(base, "066.replace_on_changes"),
+            pwd: path.join(base, "066.replace_on_changes"),
             expectResourceCount: 1,
             registerResource: (
                 ctx: any,
@@ -1460,7 +1460,8 @@ describe("rpc", () => {
         // A program that allocates a single resource using a native ES module
         native_es_module: {
             // Dynamic import won't automatically resolve to /index.js on a directory, specifying explicitly
-            program: path.join(base, "067.native_es_module/index.js"),
+            pwd: path.join(base, "067.native_es_module"),
+            main: "./index.js",
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
@@ -1469,7 +1470,7 @@ describe("rpc", () => {
             },
         },
         remote_component_providers: {
-            program: path.join(base, "068.remote_component_providers"),
+            pwd: path.join(base, "068.remote_component_providers"),
             expectResourceCount: 8,
             registerResource: (
                 ctx: any,
@@ -1501,7 +1502,7 @@ describe("rpc", () => {
             },
         },
         ambiguous_entrypoints: {
-            program: path.join(base, "069.ambiguous_entrypoints"),
+            pwd: path.join(base, "069.ambiguous_entrypoints"),
             expectResourceCount: 1,
             expectedLogs: {
                 count: 1,
@@ -1516,28 +1517,28 @@ describe("rpc", () => {
             },
         },
         unusual_alias_names: {
-            program: path.join(base, "070.unusual_alias_names"),
+            pwd: path.join(base, "070.unusual_alias_names"),
             expectResourceCount: 4,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         large_alias_counts: {
-            program: path.join(base, "071.large_alias_counts"),
+            pwd: path.join(base, "071.large_alias_counts"),
             expectResourceCount: 1,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         large_alias_lineage_chains: {
-            program: path.join(base, "072.large_alias_lineage_chains"),
+            pwd: path.join(base, "072.large_alias_lineage_chains"),
             expectResourceCount: 3,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         component_dependencies: {
-            program: path.join(base, "073.component_dependencies"),
+            pwd: path.join(base, "073.component_dependencies"),
             expectResourceCount: 4,
             registerResource: (
                 ctx: any,
@@ -1555,7 +1556,7 @@ describe("rpc", () => {
             },
         },
         source_position: {
-            program: path.join(base, "074.source_position"),
+            pwd: path.join(base, "074.source_position"),
             expectResourceCount: 2,
             registerResource: (
                 ctx: any,
@@ -1608,7 +1609,7 @@ describe("rpc", () => {
 
         const testFn = opts.only ? it.only : it;
 
-        testFn(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, async () => {
+        testFn(`run test: ${casename} (pwd=${opts.pwd},main=${opts.main})`, async () => {
             // For each test case, run it twice: first to preview and then to update.
             for (const dryrun of [true, false]) {
                 // console.log(dryrun ? "PREVIEW:" : "UPDATE:");
@@ -1904,10 +1905,8 @@ function mockRun(
         runReq.setMonitorAddress(monitor);
         runReq.setProject(opts.project || "project");
         runReq.setStack(opts.stack || "stack");
-        if (opts.pwd) {
-            runReq.setPwd(opts.pwd);
-        }
-        runReq.setProgram(opts.program);
+        runReq.setPwd(opts.pwd);
+        runReq.setProgram(opts.main || ".");
         if (opts.args) {
             runReq.setArgsList(opts.args);
         }
@@ -1917,9 +1916,28 @@ function mockRun(
                 cfgmap.set(cfgkey, opts.config[cfgkey]);
             }
         }
+
+        const info = new langproto.ProgramInfo();
+        info.setEntryPoint(opts.main || ".");
+        info.setRootDirectory(opts.pwd);
+        info.setProgramDirectory(opts.pwd);
+        runReq.setInfo(info);
+
         runReq.setDryrun(dryrun);
         langHostClient.run(runReq, (err: Error, res: any) => {
-            if (err) {
+            if (err && err.message.indexOf("UNAVAILABLE") !== 0) {
+                // Sometimes it takes a little bit until the engine is ready to accept connections.  We'll
+                // retry after a short delay.
+                setTimeout(() => {
+                    langHostClient.run(runReq, (e: Error, r: any) => {
+                        if (e) {
+                            reject(e);
+                        } else {
+                            resolve([r.getError(), r.getBail()]);
+                        }
+                    });
+                }, 200);
+            } else if (err) {
                 reject(err);
             } else {
                 // The response has a single field, the error, if any, that occurred (blank means success).
@@ -1980,8 +1998,6 @@ async function createMockEngineAsync(
             }
         });
     });
-
-    server.start();
 
     cleanup(async () => server.forceShutdown());
 

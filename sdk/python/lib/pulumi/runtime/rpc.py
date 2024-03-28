@@ -35,6 +35,8 @@ from typing import (
     Set,
     Union,
     cast,
+    get_args,
+    get_origin,
 )
 
 import six
@@ -126,7 +128,7 @@ except ImportError:
 
 # New versions of protobuf have moved the above import to api_implementation
 try:
-    from google.protobuf.pyext import (
+    from google.protobuf.pyext import (  # type: ignore
         cpp_message,
     )  # pylint: disable-msg=E0611
 
@@ -157,9 +159,9 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
     # If typ is a list, get the type for its values, to pass
     # along for each item.
-    origin = _types.get_origin(typ)
+    origin = get_origin(typ)
     if typ is list or origin in [list, List, Sequence, abc.Sequence]:
-        args = _types.get_args(typ)
+        args = get_args(typ)
         if len(args) == 1:
             return args[0]
 
@@ -263,6 +265,12 @@ async def _add_dependency(
     * Comp2 because it is a non-remote component resoruce
     * Comp3 and Cust5 because Comp3 is a child of a remote component resource
     """
+    from ..resource import Resource  # pylint: disable=import-outside-toplevel
+
+    if not isinstance(res, Resource):
+        raise TypeError(
+            f"'depends_on' was passed a value {res} that was not a Resource."
+        )
 
     # Exit early if there are cycles to avoid hangs.
     no_cycles = declare_dependency(from_resource, res) if from_resource else True
@@ -535,9 +543,9 @@ async def serialize_property(
                 get_type = types.get
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
-                origin = _types.get_origin(typ)
+                origin = get_origin(typ)
                 if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
-                    args = _types.get_args(typ)
+                    args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         # pylint: disable=C3001
                         get_type = lambda k: args[1]
@@ -811,13 +819,15 @@ result in the exception being re-thrown.
 """
 
 
-def transfer_properties(res: "Resource", props: "Inputs") -> Dict[str, Resolver]:
+def transfer_properties(
+    res: "Resource", props: "Inputs", custom: bool
+) -> Dict[str, Resolver]:
     from .. import Output  # pylint: disable=import-outside-toplevel
 
     resolvers: Dict[str, Resolver] = {}
 
     for name in props:
-        if name in ["id", "urn"]:
+        if name == "urn" or (name == "id" and custom):
             # these properties are handled specially elsewhere.
             continue
 
@@ -963,9 +973,9 @@ def translate_output_properties(
                 return _types.output_type_from_dict(typ, translated_values)
 
             # If typ is a dict, get the type for its values, to pass along for each key.
-            origin = _types.get_origin(typ)
+            origin = get_origin(typ)
             if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
-                args = _types.get_args(typ)
+                args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     # pylint: disable=C3001
                     get_type = lambda k: args[1]
@@ -1095,6 +1105,7 @@ def resolve_outputs(
     outputs: struct_pb2.Struct,
     deps: Mapping[str, Set["Resource"]],
     resolvers: Dict[str, Resolver],
+    custom: bool,
     transform_using_type_metadata: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
@@ -1158,17 +1169,20 @@ def resolve_outputs(
                     return_none_on_dict_type_mismatch=True,
                 )
 
-    resolve_properties(resolvers, all_properties, translated_deps)
+    resolve_properties(resolvers, all_properties, translated_deps, custom)
 
 
 def resolve_properties(
     resolvers: Dict[str, Resolver],
     all_properties: Dict[str, Any],
     deps: Mapping[str, Set["Resource"]],
+    custom: bool,
 ):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
-        if key in ["id", "urn"]:
+        # Only skip ID if this is a custom resource, meaning non-component resource.
+        # For component resources, using ID as output property is allowed.
+        if key == "urn" or (key == "id" and custom):
             continue
 
         # Otherwise, unmarshal the value, and store it on the resource object.

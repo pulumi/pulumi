@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,6 +37,8 @@ type stackChangeSecretsProviderCmd struct {
 	stdout io.Writer
 
 	stack string
+
+	secretsProvider secrets.Provider
 }
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
@@ -63,7 +66,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return scspcmd.Run(ctx, args)
 		}),
 	}
@@ -79,6 +82,9 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	stdout := cmd.stdout
 	if stdout == nil {
 		stdout = os.Stdout
+	}
+	if cmd.secretsProvider == nil {
+		cmd.secretsProvider = stack.DefaultSecretsProvider
 	}
 
 	opts := display.Options{
@@ -132,10 +138,12 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 
 	// Fixup the checkpoint
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
-	return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentProjectStack, decrypter)
+	return migrateOldConfigAndCheckpointToNewSecretsProvider(
+		ctx, cmd.secretsProvider, project, currentStack, currentProjectStack, decrypter)
 }
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
+	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
 	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
@@ -147,7 +155,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	}
 
 	// Get the newly created secrets manager for the stack
-	newSecretsManager, needsSave, err := getStackSecretsManager(currentStack, reloadedProjectStack)
+	newSecretsManager, needsSave, err := getStackSecretsManager(currentStack, reloadedProjectStack, nil)
 	if err != nil {
 		return err
 	}
@@ -182,13 +190,14 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, secretsProvider)
 	if err != nil {
 		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
-	reserializedDeployment, err := stack.SerializeDeployment(snap, newSecretsManager, false /*showSecrets*/)
+	snap.SecretsManager = newSecretsManager
+	reserializedDeployment, err := stack.SerializeDeployment(snap, false /*showSecrets*/)
 	if err != nil {
 		return err
 	}

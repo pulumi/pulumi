@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type echoResourceProvider struct {
@@ -97,6 +97,6 @@ func (p *echoResourceProvider) Update(ctx context.Context, req *rpc.UpdateReques
 	panic("Update not implemented")
 }
 
-func (p *echoResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *echoResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }

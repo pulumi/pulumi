@@ -75,6 +75,8 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				doneOps[e.Step.Old()] = true
 			}
+		case JournalEntryOutputs:
+			// We do nothing for outputs, since they don't affect the snapshot.
 		}
 
 		// Now mark resources done as necessary.
@@ -168,7 +170,7 @@ type Journal struct {
 	done    chan bool
 }
 
-func (j *Journal) Entries() []JournalEntry {
+func (j *Journal) Entries() JournalEntries {
 	<-j.done
 
 	return j.entries

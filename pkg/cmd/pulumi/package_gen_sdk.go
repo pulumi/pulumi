@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -140,8 +141,8 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
 			defer contract.IgnoreClose(pCtx.Host)
-
-			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
+			programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 			if err != nil {
 				return err
 			}
@@ -154,7 +155,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			}
 			defer contract.IgnoreClose(grpcServer)
 
-			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr())
+			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil)
 			if err != nil {
 				return err
 			}
@@ -165,7 +166,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			if diags.HasErrors() {
 				// If we've got error diagnostics then package generation failed, we've printed the error above so
 				// just return a plain message here.
-				return fmt.Errorf("generation failed")
+				return errors.New("generation failed")
 			}
 
 			return nil

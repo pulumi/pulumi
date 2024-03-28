@@ -54,13 +54,11 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	// Test lack of name
 	proj := Project{}
 	err = proj.Validate()
-	assert.Error(t, err)
-	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
+	assert.EqualError(t, err, "project is missing a 'name' attribute")
 	// Test lack of runtime
 	proj.Name = "a project"
 	err = proj.Validate()
-	assert.Error(t, err)
-	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
+	assert.EqualError(t, err, "project is missing a 'runtime' attribute")
 
 	// Test success
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
@@ -81,8 +79,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 
 	project.Config = invalidConfig
 	err := project.Validate()
-	assert.Contains(t,
-		err.Error(),
+	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
 
 	invalidValues := make([]interface{}, 0)
@@ -104,9 +101,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	}
 	project.Config = invalidConfigWithArray
 	err = project.Validate()
-	assert.Error(t, err, "There is a validation error")
-	assert.Contains(t,
-		err.Error(),
+	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'values' is not of the expected type 'array<array<string>>'")
 }
 
@@ -166,19 +161,19 @@ func TestProjectLoadJSON(t *testing.T) {
 
 	// Test wrong type
 	_, err := writeAndLoad("\"hello  \"")
-	assert.Contains(t, err.Error(), "expected project to be an object, was 'string'")
+	assert.ErrorContains(t, err, "expected project to be an object, was 'string'")
 
 	// Test lack of name
 	_, err = writeAndLoad("{}")
-	assert.Contains(t, err.Error(), "project is missing a 'name' attribute")
+	assert.ErrorContains(t, err, "project is missing a 'name' attribute")
 
 	// Test bad name
 	_, err = writeAndLoad("{\"name\": \"\"}")
-	assert.Contains(t, err.Error(), "project is missing a non-empty string 'name' attribute")
+	assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
 
 	// Test missing runtime
 	_, err = writeAndLoad("{\"name\": \"project\"}")
-	assert.Contains(t, err.Error(), "project is missing a 'runtime' attribute")
+	assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
 
 	// Test other schema errors
 	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": 4}")
@@ -190,7 +185,7 @@ func TestProjectLoadJSON(t *testing.T) {
 		"* #/runtime: expected object, but got number",
 	}
 	for _, e := range expected {
-		assert.Contains(t, err.Error(), e)
+		assert.ErrorContains(t, err, e)
 	}
 
 	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}")
@@ -200,7 +195,7 @@ func TestProjectLoadJSON(t *testing.T) {
 		"* #/backend: expected object or null, but got number",
 	}
 	for _, e := range expected {
-		assert.Contains(t, err.Error(), e)
+		assert.ErrorContains(t, err, e)
 	}
 
 	// Test success
@@ -596,7 +591,7 @@ config:
       region: us-west-1`
 
 	_, projectError := loadProjectFromText(t, projectYaml)
-	assert.Contains(t, projectError.Error(),
+	assert.ErrorContains(t, projectError,
 		"Configuration key 'aws:region' is not namespaced by the project and should not define a type")
 }
 
@@ -612,7 +607,7 @@ config:
     value: t4.large`
 
 	_, projectError := loadProjectFromText(t, projectYaml)
-	assert.Contains(t, projectError.Error(),
+	assert.ErrorContains(t, projectError,
 		"project config 'instanceSize' cannot have both a 'default' and 'value' attribute")
 }
 
@@ -627,7 +622,7 @@ config:
     default: [t3.micro, t4.large]`
 
 	_, projectError := loadProjectFromText(t, projectYaml)
-	assert.Contains(t, projectError.Error(),
+	assert.ErrorContains(t, projectError,
 		"The configuration key 'instanceSize' declares an array "+
 			"but does not specify the underlying type via the 'items' attribute")
 }
@@ -642,9 +637,9 @@ config:
     default: us-west-1`
 
 	_, projectError := loadProjectFromText(t, projectYaml)
-	assert.Contains(t, projectError.Error(),
+	assert.ErrorContains(t, projectError,
 		"Configuration key 'aws:region' is not namespaced by the project and should not define a default value")
-	assert.Contains(t, projectError.Error(),
+	assert.ErrorContains(t, projectError,
 		"Did you mean to use the 'value' attribute instead of 'default'?")
 }
 
@@ -712,8 +707,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t, configError.Error(), "Stack 'dev' with configuration key 'values' must be of type 'array<string>'")
+	assert.ErrorContains(t, configError, "Stack 'dev' with configuration key 'values' must be of type 'array<string>'")
 }
 
 func TestLoadingConfigIsRewrittenToStackConfigDir(t *testing.T) {
@@ -739,8 +733,7 @@ stackConfigDir: ./some/other/path`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
 	assert.Nil(t, project, "Should NOT be able to load the project")
-	assert.NotNil(t, projectError, "There is a project error")
-	assert.Contains(t, projectError.Error(), "Should not use both config and stackConfigDir")
+	assert.ErrorContains(t, projectError, "Should not use both config and stackConfigDir")
 }
 
 func TestConfigObjectAndStackConfigDirSuccessfullyLoadProject(t *testing.T) {
@@ -802,9 +795,7 @@ config:
 		invalidStackConfig.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t,
-		configError.Error(),
+	assert.ErrorContains(t, configError,
 		"Stack 'dev' with configuration key 'importantNumber' must be of type 'integer'")
 }
 
@@ -832,8 +823,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration value 'values'")
+	assert.ErrorContains(t, configError, "Stack 'dev' is missing configuration value 'values'")
 }
 
 func TestStackConfigErrorsWhenMissingTwoStackValueForConfigTypeWithNoDefault(t *testing.T) {
@@ -862,8 +852,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'another' and 'values'")
+	assert.ErrorContains(t, configError, "Stack 'dev' is missing configuration values 'another' and 'values'")
 }
 
 func TestStackConfigErrorsWhenMissingMultipleStackValueForConfigTypeWithNoDefault(t *testing.T) {
@@ -894,8 +883,7 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'hello', 'values' and 'world'")
+	assert.ErrorContains(t, configError, "Stack 'dev' is missing configuration values 'hello', 'values' and 'world'")
 }
 
 func TestStackConfigDoesNotErrorWhenProjectHasNotDefinedConfig(t *testing.T) {
@@ -972,9 +960,7 @@ config:
 		invalidStackConfig.Config,
 		crypter,
 		crypter)
-	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t,
-		configError.Error(),
+	assert.ErrorContains(t, configError,
 		"Stack 'dev' with configuration key 'importantNumber' must be encrypted as it's secret")
 }
 
@@ -1051,27 +1037,27 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test wrong type
 	_, err := loadProjectFromText(t, "\"hello\"")
-	assert.Contains(t, err.Error(), "expected project to be an object")
+	assert.ErrorContains(t, err, "expected project to be an object")
 
 	// Test bad key
 	_, err = loadProjectFromText(t, "4: hello")
-	assert.Contains(t, err.Error(), "expected only string keys, got '%!s(int=4)'")
+	assert.ErrorContains(t, err, "expected only string keys, got '%!s(int=4)'")
 
 	// Test nested bad key
 	_, err = loadProjectFromText(t, "hello:\n    6: bad")
-	assert.Contains(t, err.Error(), "project is missing a 'name' attribute")
+	assert.ErrorContains(t, err, "project is missing a 'name' attribute")
 
 	// Test lack of name
 	_, err = loadProjectFromText(t, "{}")
-	assert.Contains(t, err.Error(), "project is missing a 'name' attribute")
+	assert.ErrorContains(t, err, "project is missing a 'name' attribute")
 
 	// Test bad name
 	_, err = loadProjectFromText(t, "name:")
-	assert.Contains(t, err.Error(), "project is missing a non-empty string 'name' attribute")
+	assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
 
 	// Test missing runtime
 	_, err = loadProjectFromText(t, "name: project")
-	assert.Contains(t, err.Error(), "project is missing a 'runtime' attribute")
+	assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
 
 	// Test other schema errors
 	_, err = loadProjectFromText(t, "name: project\nruntime: 4")
@@ -1083,7 +1069,7 @@ func TestProjectLoadYAML(t *testing.T) {
 		"* #/runtime: expected object, but got number",
 	}
 	for _, e := range expected {
-		assert.Contains(t, err.Error(), e)
+		assert.ErrorContains(t, err, e)
 	}
 
 	_, err = loadProjectFromText(t, "name: project\nruntime: test\nbackend: 4\nmain: {}")
@@ -1093,7 +1079,7 @@ func TestProjectLoadYAML(t *testing.T) {
 		"* #/backend: expected object or null, but got number",
 	}
 	for _, e := range expected {
-		assert.Contains(t, err.Error(), e)
+		assert.ErrorContains(t, err, e)
 	}
 
 	// Test success

@@ -54,7 +54,7 @@ func TestSanitizeArchivePath(t *testing.T) {
 			t.Parallel()
 			_, err := sanitizeArchivePath(tt.dir, tt.fileName)
 			if tt.shouldFail {
-				assert.Error(t, err)
+				assert.ErrorContains(t, err, "content filepath is tainted")
 			} else {
 				assert.NoError(t, err)
 			}
@@ -130,7 +130,7 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 		writer := zip.NewWriter(buf)
 		data := []byte("foo")
 		fileDirPathParts := strings.Split(fileDirName, "/")
-		_, err := writer.Create(fmt.Sprintf("%s/", strings.Join(fileDirPathParts[:len(fileDirPathParts)-1], "/")))
+		_, err := writer.Create(strings.Join(fileDirPathParts[:len(fileDirPathParts)-1], "/") + "/")
 		if err != nil {
 			t.Errorf("Failed to create directory in zip archive: %s", err)
 		}
@@ -160,22 +160,27 @@ func TestRetrieveZIPTemplates(t *testing.T) {
 	}))
 	defer server.Close()
 	tests := []struct {
-		testName    string
-		templateURL string
-		shouldFail  bool
+		testName      string
+		templateURL   string
+		expectedError string
 	}{
 		{
 			testName:    "valid_zip_url",
-			templateURL: fmt.Sprintf("%s/foo.zip", server.URL),
-			shouldFail:  false,
+			templateURL: server.URL + "/foo.zip",
+		},
+		{
+			testName:    "invalid_zip_url",
+			templateURL: "not a url",
+			expectedError: "failed to retrieve zip archive: " +
+				"invalid template URL: not%20a%20url",
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			_, err := retrieveZIPTemplates(tt.templateURL)
-			if tt.shouldFail {
-				assert.Error(t, err)
+			if tt.expectedError != "" {
+				assert.EqualError(t, err, tt.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}

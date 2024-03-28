@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,12 @@ import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
-import { debuggablePromise, errorString, debugPromiseLeaks } from "./debuggable";
-import {
-    excessiveDebugOutput,
-    isDryRun,
-    monitorSupportsOutputValues,
-    monitorSupportsResourceReferences,
-    monitorSupportsSecrets,
-} from "./settings";
+import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./resource";
+import { excessiveDebugOutput, isDryRun } from "./settings";
+import { getStore } from "./state";
 
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as semver from "semver";
 
 export type OutputResolvers = Record<
@@ -190,9 +186,9 @@ export async function serializePropertiesReturnDeps(label: string, props: Inputs
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  */
-export function deserializeProperties(outputsStruct: any): any {
-    const props: any = {};
-    const outputs: any = outputsStruct.toJavaScript();
+export function deserializeProperties(outputsStruct: gstruct.Struct): Inputs {
+    const props: Inputs = {};
+    const outputs = outputsStruct.toJavaScript();
     for (const k of Object.keys(outputs)) {
         // We treat properties with undefined values as if they do not exist.
         if (outputs[k] !== undefined) {
@@ -401,7 +397,7 @@ export async function serializeProperty(
             dependentResources.add(resource);
         }
 
-        if (opts?.keepOutputValues && (await monitorSupportsOutputValues())) {
+        if (opts?.keepOutputValues && getStore().supportsOutputValues) {
             const urnDeps = new Set<Resource>();
             for (const resource of propResources) {
                 await serializeProperty(`${ctx} dependency`, resource.urn, urnDeps, {
@@ -434,7 +430,7 @@ export async function serializeProperty(
         if (!isKnown) {
             return unknownValue;
         }
-        if (isSecret && (await monitorSupportsSecrets())) {
+        if (isSecret && getStore().supportsSecrets) {
             return {
                 [specialSigKey]: specialSecretSig,
                 // coerce 'undefined' to 'null' as required by the protobuf system.
@@ -458,7 +454,7 @@ export async function serializeProperty(
             keepOutputValues: false,
         });
 
-        if (await monitorSupportsResourceReferences()) {
+        if (getStore().supportsResourceReferences) {
             // If we are keeping resources, emit a stronly typed wrapper over the URN
             const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
                 keepOutputValues: false,
@@ -492,7 +488,7 @@ export async function serializeProperty(
             log.debug(`Serialize property [${ctx}]: component resource urn`);
         }
 
-        if (await monitorSupportsResourceReferences()) {
+        if (getStore().supportsResourceReferences) {
             // If we are keeping resources, emit a strongly typed wrapper over the URN
             const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
                 keepOutputValues: false,
@@ -773,7 +769,7 @@ export function register<T extends { readonly version?: string }>(
 export function getRegistration<T extends { readonly version?: string }>(
     source: Map<string, T[]>,
     key: string,
-    version: string,
+    version: string | undefined,
 ): T | undefined {
     const ver = version ? new semver.SemVer(version) : undefined;
 
@@ -815,7 +811,7 @@ export function registerResourcePackage(pkg: string, resourcePackage: ResourcePa
     register(resourcePackages, "package", pkg, resourcePackage);
 }
 
-export function getResourcePackage(pkg: string, version: string): ResourcePackage | undefined {
+export function getResourcePackage(pkg: string, version: string | undefined): ResourcePackage | undefined {
     return getRegistration(resourcePackages, pkg, version);
 }
 
@@ -847,7 +843,7 @@ export function registerResourceModule(pkg: string, mod: string, module: Resourc
     register(resourceModules, "module", key, module);
 }
 
-export function getResourceModule(pkg: string, mod: string, version: string): ResourceModule | undefined {
+export function getResourceModule(pkg: string, mod: string, version: string | undefined): ResourceModule | undefined {
     const key = moduleKey(pkg, mod);
     return getRegistration(resourceModules, key, version);
 }

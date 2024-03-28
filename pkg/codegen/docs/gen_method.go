@@ -74,7 +74,7 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 				return name == "__self__"
 			}
 			props := mod.getPropertiesWithIDPrefixAndExclude(f.Inputs.Properties, lang, true, false, false,
-				fmt.Sprintf("%s_arg_", m.Name), exclude)
+				m.Name+"_arg_", exclude)
 			if len(props) > 0 {
 				inputProps[lang] = props
 			}
@@ -82,7 +82,7 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 		if f.ReturnType != nil {
 			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 				outputProps[lang] = mod.getPropertiesWithIDPrefixAndExclude(objectType.Properties, lang, false, false, false,
-					fmt.Sprintf("%s_result_", m.Name), nil)
+					m.Name+"_result_", nil)
 			}
 		}
 	}

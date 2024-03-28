@@ -663,6 +663,7 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 			trivia = append(trivia, Whitespace{rng: rng, bytes: triviaBytes})
 		}
 
+		//nolint:exhaustive // Only some types need special casing, the rest are handled by the default case.
 		switch raw.Type {
 		case hclsyntax.TokenComment:
 			trivia = append(trivia, Comment{Lines: processComment(raw.Bytes), rng: raw.Range, bytes: raw.Bytes})

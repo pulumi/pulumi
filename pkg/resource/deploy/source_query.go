@@ -16,11 +16,12 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 
@@ -141,7 +142,12 @@ func (src *querySource) forkRun() {
 func runLangPlugin(src *querySource) error {
 	rt := src.runinfo.Proj.Runtime.Name()
 	rtopts := src.runinfo.Proj.Runtime.Options()
-	langhost, err := src.plugctx.Host.LanguageRuntime(src.plugctx.Root, src.plugctx.Pwd, rt, rtopts)
+	programInfo := plugin.NewProgramInfo(
+		/* rootDirectory */ src.runinfo.ProjectRoot,
+		/* programDirectory */ src.runinfo.Pwd,
+		/* entryPoint */ src.runinfo.Program,
+		/* options */ rtopts)
+	langhost, err := src.plugctx.Host.LanguageRuntime(rt, programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 	}
@@ -168,13 +174,13 @@ func runLangPlugin(src *querySource) error {
 		Stack:          name,
 		Project:        string(src.runinfo.Proj.Name),
 		Pwd:            src.runinfo.Pwd,
-		Program:        src.runinfo.Program,
 		Args:           src.runinfo.Args,
 		Config:         config,
 		DryRun:         true,
 		QueryMode:      true,
 		Parallel:       math.MaxInt32,
 		Organization:   organization,
+		Info:           programInfo,
 	})
 
 	// Check if we were asked to Bail.  This a special random constant used for that
@@ -438,7 +444,7 @@ func (rm *queryResmon) StreamInvoke(
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
-func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Call(%s)", tok)
 
@@ -517,22 +523,22 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 func (rm *queryResmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest,
 ) (*pulumirpc.ReadResourceResponse, error) {
-	return nil, fmt.Errorf("Query mode does not support reading resources")
+	return nil, errors.New("Query mode does not support reading resources")
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *queryResmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
-	return nil, fmt.Errorf("Query mode does not support creating, updating, or deleting resources")
+	return nil, errors.New("Query mode does not support creating, updating, or deleting resources")
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
 func (rm *queryResmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*pbempty.Empty, error) {
-	return nil, fmt.Errorf("Query mode does not support registering resource operations")
+) (*emptypb.Empty, error) {
+	return nil, errors.New("Query mode does not support registering resource operations")
 }
 
 // SupportsFeature the query resmon is able to have secrets passed to it, which may be arguments to invoke calls.

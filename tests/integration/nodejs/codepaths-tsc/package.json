@@ -1,0 +1,16 @@
+{
+    "name": "test-codepaths-tsc",
+    "description": "Test case for codepaths using tsc to pre-compile",
+    "main": "bin/index.js",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "latest",
+        "typescript": "^3.8.3",
+        "semver": "^7.6.0"
+    },
+    "devDependencies": {
+        "@types/node": "^14.14.20"
+    }
+}

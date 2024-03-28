@@ -53,7 +53,7 @@ func TestNewUniqueHexMaxLen2(t *testing.T) {
 	randlen := 8
 	maxlen := 13
 	_, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "name 'prefix' plus 8 random chars is longer than maximum length 13")
 }
 
 func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
@@ -150,7 +150,7 @@ func TestNewUniqueHexV2MaxLen2(t *testing.T) {
 	randlen := 8
 	maxlen := 13
 	_, err := NewUniqueHexV2(urn, sequenceNumber, prefix, randlen, maxlen)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "name 'prefix' plus 8 random chars is longer than maximum length 13")
 }
 
 func TestNewUniqueHexV2EnsureRandomness2(t *testing.T) {

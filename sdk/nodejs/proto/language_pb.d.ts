@@ -10,6 +10,38 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
+export class ProgramInfo extends jspb.Message { 
+    getRootDirectory(): string;
+    setRootDirectory(value: string): ProgramInfo;
+    getProgramDirectory(): string;
+    setProgramDirectory(value: string): ProgramInfo;
+    getEntryPoint(): string;
+    setEntryPoint(value: string): ProgramInfo;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): google_protobuf_struct_pb.Struct | undefined;
+    setOptions(value?: google_protobuf_struct_pb.Struct): ProgramInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ProgramInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: ProgramInfo): ProgramInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ProgramInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProgramInfo;
+    static deserializeBinaryFromReader(message: ProgramInfo, reader: jspb.BinaryReader): ProgramInfo;
+}
+
+export namespace ProgramInfo {
+    export type AsObject = {
+        rootDirectory: string,
+        programDirectory: string,
+        entryPoint: string,
+        options?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
 export class AboutResponse extends jspb.Message { 
     getExecutable(): string;
     setExecutable(value: string): AboutResponse;
@@ -48,6 +80,11 @@ export class GetProgramDependenciesRequest extends jspb.Message {
     getTransitivedependencies(): boolean;
     setTransitivedependencies(value: boolean): GetProgramDependenciesRequest;
 
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): GetProgramDependenciesRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetProgramDependenciesRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GetProgramDependenciesRequest): GetProgramDependenciesRequest.AsObject;
@@ -64,6 +101,7 @@ export namespace GetProgramDependenciesRequest {
         pwd: string,
         program: string,
         transitivedependencies: boolean,
+        info?: ProgramInfo.AsObject,
     }
 }
 
@@ -120,6 +158,11 @@ export class GetRequiredPluginsRequest extends jspb.Message {
     getProgram(): string;
     setProgram(value: string): GetRequiredPluginsRequest;
 
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): GetRequiredPluginsRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetRequiredPluginsRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GetRequiredPluginsRequest): GetRequiredPluginsRequest.AsObject;
@@ -135,6 +178,7 @@ export namespace GetRequiredPluginsRequest {
         project: string,
         pwd: string,
         program: string,
+        info?: ProgramInfo.AsObject,
     }
 }
 
@@ -196,6 +240,11 @@ export class RunRequest extends jspb.Message {
     getConfigpropertymap(): google_protobuf_struct_pb.Struct | undefined;
     setConfigpropertymap(value?: google_protobuf_struct_pb.Struct): RunRequest;
 
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): RunRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RunRequest): RunRequest.AsObject;
@@ -222,6 +271,7 @@ export namespace RunRequest {
         configsecretkeysList: Array<string>,
         organization: string,
         configpropertymap?: google_protobuf_struct_pb.Struct.AsObject,
+        info?: ProgramInfo.AsObject,
     }
 }
 
@@ -254,6 +304,11 @@ export class InstallDependenciesRequest extends jspb.Message {
     getIsTerminal(): boolean;
     setIsTerminal(value: boolean): InstallDependenciesRequest;
 
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): InstallDependenciesRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InstallDependenciesRequest.AsObject;
     static toObject(includeInstance: boolean, msg: InstallDependenciesRequest): InstallDependenciesRequest.AsObject;
@@ -268,6 +323,7 @@ export namespace InstallDependenciesRequest {
     export type AsObject = {
         directory: string,
         isTerminal: boolean,
+        info?: ProgramInfo.AsObject,
     }
 }
 
@@ -312,6 +368,11 @@ export class RunPluginRequest extends jspb.Message {
     setEnvList(value: Array<string>): RunPluginRequest;
     addEnv(value: string, index?: number): string;
 
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): RunPluginRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunPluginRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RunPluginRequest): RunPluginRequest.AsObject;
@@ -328,6 +389,7 @@ export namespace RunPluginRequest {
         program: string,
         argsList: Array<string>,
         envList: Array<string>,
+        info?: ProgramInfo.AsObject,
     }
 }
 
@@ -502,6 +564,9 @@ export class GeneratePackageRequest extends jspb.Message {
     getLoaderTarget(): string;
     setLoaderTarget(value: string): GeneratePackageRequest;
 
+    getLocalDependenciesMap(): jspb.Map<string, string>;
+    clearLocalDependenciesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GeneratePackageRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GeneratePackageRequest): GeneratePackageRequest.AsObject;
@@ -519,10 +584,16 @@ export namespace GeneratePackageRequest {
 
         extraFilesMap: Array<[string, Uint8Array | string]>,
         loaderTarget: string,
+
+        localDependenciesMap: Array<[string, string]>,
     }
 }
 
 export class GeneratePackageResponse extends jspb.Message { 
+    clearDiagnosticsList(): void;
+    getDiagnosticsList(): Array<pulumi_codegen_hcl_pb.Diagnostic>;
+    setDiagnosticsList(value: Array<pulumi_codegen_hcl_pb.Diagnostic>): GeneratePackageResponse;
+    addDiagnostics(value?: pulumi_codegen_hcl_pb.Diagnostic, index?: number): pulumi_codegen_hcl_pb.Diagnostic;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GeneratePackageResponse.AsObject;
@@ -536,14 +607,13 @@ export class GeneratePackageResponse extends jspb.Message {
 
 export namespace GeneratePackageResponse {
     export type AsObject = {
+        diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
     }
 }
 
 export class PackRequest extends jspb.Message { 
     getPackageDirectory(): string;
     setPackageDirectory(value: string): PackRequest;
-    getVersion(): string;
-    setVersion(value: string): PackRequest;
     getDestinationDirectory(): string;
     setDestinationDirectory(value: string): PackRequest;
 
@@ -560,7 +630,6 @@ export class PackRequest extends jspb.Message {
 export namespace PackRequest {
     export type AsObject = {
         packageDirectory: string,
-        version: string,
         destinationDirectory: string,
     }
 }

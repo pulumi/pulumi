@@ -76,7 +76,6 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
-	contract.Assertf(inputs != nil, "inputs was non-nil")
 
 	s := &State{
 		Type:                    t,

@@ -23,6 +23,10 @@ on:
         default: ubuntu-latest
         description: 'Build platform (i.e.: runs-on) for job'
         type: string
+      dev-version:
+        required: false
+        description: "Dev version to bake into the binary"
+        type: string
       version:
         required: true
         description: "Version to produce"
@@ -43,15 +47,11 @@ defaults:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  PULUMI_VERSION: ${{ inputs.version }}
 
 jobs:
   build:
     name: ${{ inputs.os }}-${{ inputs.arch }}
     runs-on: ${{ inputs.build-platform }}
-
-    env:
-      PULUMI_VERSION: ${{ inputs.version }}
 
     permissions:
       id-token: write
@@ -115,6 +115,7 @@ jobs:
         shell: bash
         env:
           GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+          PULUMI_VERSION: ${{ inputs.dev-version || inputs.version }}
           PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && 'coverage' || 'normal' }}
         run: |
           set -euxo pipefail
@@ -122,7 +123,7 @@ jobs:
           # shellcheck disable=SC2002
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
-            | goreleaser release -f - -p 5 --skip-validate --rm-dist --snapshot
+            | goreleaser release -f - -p 5 --skip-validate --clean --snapshot
       - uses: actions/upload-artifact@v2
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}

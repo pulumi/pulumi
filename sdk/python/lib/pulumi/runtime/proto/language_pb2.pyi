@@ -33,6 +33,46 @@ else:
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing_extensions.final
+class ProgramInfo(google.protobuf.message.Message):
+    """ProgramInfo are the common set of options that a language runtime needs to execute or query a program. This
+    is filled in by the engine based on where the `Pulumi.yaml` file was, the `runtime.options` property, and
+    the `main` property.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
+    PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    ENTRY_POINT_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    root_directory: builtins.str
+    """the root of the project, where the `Pulumi.yaml` file is located."""
+    program_directory: builtins.str
+    """the absolute path to the directory of the program to execute. Generally, but not required to be,
+    underneath the root directory.
+    """
+    entry_point: builtins.str
+    """the entry point of the program, normally '.' meaning to just use the program directory, but can also be
+    a filename inside the program directory. How that filename is interpreted, if at all, is language
+    specific.
+    """
+    @property
+    def options(self) -> google.protobuf.struct_pb2.Struct:
+        """JSON style options from the `Pulumi.yaml` runtime options section."""
+    def __init__(
+        self,
+        *,
+        root_directory: builtins.str = ...,
+        program_directory: builtins.str = ...,
+        entry_point: builtins.str = ...,
+        options: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["options", b"options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["entry_point", b"entry_point", "options", b"options", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+
+global___ProgramInfo = ProgramInfo
+
+@typing_extensions.final
 class AboutResponse(google.protobuf.message.Message):
     """AboutResponse returns runtime information about the language."""
 
@@ -83,14 +123,18 @@ class GetProgramDependenciesRequest(google.protobuf.message.Message):
     PWD_FIELD_NUMBER: builtins.int
     PROGRAM_FIELD_NUMBER: builtins.int
     TRANSITIVEDEPENDENCIES_FIELD_NUMBER: builtins.int
+    INFO_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """the project name."""
+    """the project name, the engine always sets this to "deprecated" now."""
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str
     """the path to the program."""
     transitiveDependencies: builtins.bool
     """if transitive dependencies should be included in the result."""
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use to calculate dependencies."""
     def __init__(
         self,
         *,
@@ -98,8 +142,10 @@ class GetProgramDependenciesRequest(google.protobuf.message.Message):
         pwd: builtins.str = ...,
         program: builtins.str = ...,
         transitiveDependencies: builtins.bool = ...,
+        info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["program", b"program", "project", b"project", "pwd", b"pwd", "transitiveDependencies", b"transitiveDependencies"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["info", b"info", "program", b"program", "project", b"project", "pwd", b"pwd", "transitiveDependencies", b"transitiveDependencies"]) -> None: ...
 
 global___GetProgramDependenciesRequest = GetProgramDependenciesRequest
 
@@ -147,20 +193,26 @@ class GetRequiredPluginsRequest(google.protobuf.message.Message):
     PROJECT_FIELD_NUMBER: builtins.int
     PWD_FIELD_NUMBER: builtins.int
     PROGRAM_FIELD_NUMBER: builtins.int
+    INFO_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """the project name."""
+    """the project name, the engine always sets this to "deprecated" now."""
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str
     """the path to the program."""
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use to calculate plugins."""
     def __init__(
         self,
         *,
         project: builtins.str = ...,
         pwd: builtins.str = ...,
         program: builtins.str = ...,
+        info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["program", b"program", "project", b"project", "pwd", b"pwd"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["info", b"info", "program", b"program", "project", b"project", "pwd", b"pwd"]) -> None: ...
 
 global___GetRequiredPluginsRequest = GetRequiredPluginsRequest
 
@@ -216,6 +268,7 @@ class RunRequest(google.protobuf.message.Message):
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     CONFIGPROPERTYMAP_FIELD_NUMBER: builtins.int
+    INFO_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -246,6 +299,9 @@ class RunRequest(google.protobuf.message.Message):
     @property
     def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
         """the configuration variables to apply before running."""
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use to execute the program."""
     def __init__(
         self,
         *,
@@ -262,9 +318,10 @@ class RunRequest(google.protobuf.message.Message):
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
         configPropertyMap: google.protobuf.struct_pb2.Struct | None = ...,
+        info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 
@@ -299,17 +356,23 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
 
     DIRECTORY_FIELD_NUMBER: builtins.int
     IS_TERMINAL_FIELD_NUMBER: builtins.int
+    INFO_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the program's working directory."""
     is_terminal: builtins.bool
     """if we are running in a terminal and should use ANSI codes"""
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use to execute the plugin."""
     def __init__(
         self,
         *,
         directory: builtins.str = ...,
         is_terminal: builtins.bool = ...,
+        info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "is_terminal", b"is_terminal"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal"]) -> None: ...
 
 global___InstallDependenciesRequest = InstallDependenciesRequest
 
@@ -341,6 +404,7 @@ class RunPluginRequest(google.protobuf.message.Message):
     PROGRAM_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     ENV_FIELD_NUMBER: builtins.int
+    INFO_FIELD_NUMBER: builtins.int
     pwd: builtins.str
     """the program's working directory."""
     program: builtins.str
@@ -351,6 +415,9 @@ class RunPluginRequest(google.protobuf.message.Message):
     @property
     def env(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """any environment variables to set as part of the program."""
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use to execute the plugin."""
     def __init__(
         self,
         *,
@@ -358,8 +425,10 @@ class RunPluginRequest(google.protobuf.message.Message):
         program: builtins.str = ...,
         args: collections.abc.Iterable[builtins.str] | None = ...,
         env: collections.abc.Iterable[builtins.str] | None = ...,
+        info: global___ProgramInfo | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "env", b"env", "program", b"program", "pwd", b"pwd"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "env", b"env", "info", b"info", "program", b"program", "pwd", b"pwd"]) -> None: ...
 
 global___RunPluginRequest = RunPluginRequest
 
@@ -556,10 +625,27 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class LocalDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     DIRECTORY_FIELD_NUMBER: builtins.int
     SCHEMA_FIELD_NUMBER: builtins.int
     EXTRA_FILES_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the directory to generate the package in."""
     schema: builtins.str
@@ -569,6 +655,11 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         """extra files to copy to the package output."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    @property
+    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """local dependencies to use instead of using the package system. This is a map of package name to a local
+        path of a language specific artifact to use for the SDK for that package.
+        """
     def __init__(
         self,
         *,
@@ -576,8 +667,9 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         schema: builtins.str = ...,
         extra_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         loader_target: builtins.str = ...,
+        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "schema", b"schema"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "schema", b"schema"]) -> None: ...
 
 global___GeneratePackageRequest = GeneratePackageRequest
 
@@ -603,22 +695,18 @@ class PackRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGE_DIRECTORY_FIELD_NUMBER: builtins.int
-    VERSION_FIELD_NUMBER: builtins.int
     DESTINATION_DIRECTORY_FIELD_NUMBER: builtins.int
     package_directory: builtins.str
     """the directory of a package to pack."""
-    version: builtins.str
-    """the version to tag the artifact with."""
     destination_directory: builtins.str
     """the directory to write the packed artifact to."""
     def __init__(
         self,
         *,
         package_directory: builtins.str = ...,
-        version: builtins.str = ...,
         destination_directory: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory"]) -> None: ...
 
 global___PackRequest = PackRequest
 

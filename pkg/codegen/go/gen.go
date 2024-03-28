@@ -264,12 +264,8 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
-	if pkg == nil {
-		panic(fmt.Errorf("pkg is nil. token %s", tok))
-	}
-	if pkg.pkg == nil {
-		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
-	}
+	contract.Assertf(pkg != nil, "pkg is nil. token %s", tok)
+	contract.Assertf(pkg.pkg != nil, "pkg.pkg is nil. token %s", tok)
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
@@ -318,7 +314,7 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
-		return fmt.Sprintf("%s.Provider", components[2])
+		return components[2] + ".Provider"
 	}
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
@@ -473,13 +469,13 @@ func (pkg *pkgContext) genericInputTypeImpl(t schema.Type) string {
 		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		elementType := pkg.genericInputTypeImpl(t.ElementType)
-		return fmt.Sprintf("[]%s", elementType)
+		return "[]" + elementType
 	case *schema.MapType:
 		elementType := pkg.genericInputTypeImpl(t.ElementType)
-		return fmt.Sprintf("map[string]%s", elementType)
+		return "map[string]" + elementType
 	case *schema.ObjectType:
 		elementType := pkg.resolveObjectType(t)
-		return fmt.Sprintf("*%s", elementType)
+		return "*" + elementType
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the input instead
@@ -790,19 +786,13 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 
 	if !isExternal {
 		name := pkg.tokenToType(t.Token)
-		objectTypeDetails := pkg.detailsForType(t)
-		if t.IsInputShape() && objectTypeDetails.input {
+		if t.IsInputShape() {
 			return name + "Args"
 		}
 		return name
 	}
-	extPkg, externalTypeDetails := pkg.contextForExternalReference(t)
-	typeName := extPkg.tokenToType(t.Token)
-	if t.IsInputShape() && externalTypeDetails.input {
-		return typeName + "Args"
-	}
-
-	return typeName
+	extPkg, _ := pkg.contextForExternalReference(t)
+	return extPkg.typeString(t)
 }
 
 func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, typeDetails) {
@@ -979,10 +969,10 @@ func (pkg *pkgContext) genericElementType(schemaType schema.Type) (string, bool)
 			return pkg.genericElementType(schemaType.UnderlyingType)
 		case *schema.ArrayType:
 			elementType, _ := pkg.genericElementType(schemaType.ElementType)
-			return fmt.Sprintf("[]%s", elementType), false
+			return "[]" + elementType, false
 		case *schema.MapType:
 			elementType, _ := pkg.genericElementType(schemaType.ElementType)
-			return fmt.Sprintf("map[string]%s", elementType), false
+			return "map[string]" + elementType, false
 		case *schema.UnionType:
 			for _, e := range schemaType.ElementTypes {
 				if enumType, ok := e.(*schema.EnumType); ok {
@@ -1138,12 +1128,38 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 		if lines > 0 {
 			fmt.Fprintf(w, "//\n")
 		}
-		printComment(w, fmt.Sprintf("Deprecated: %s", deprecationMessage), indent)
+		printComment(w, "Deprecated: "+deprecationMessage, indent)
 	}
 }
 
 func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
 	printComment(w, pkg.getInputUsage(name), false)
+	fmt.Fprintf(w, "type %sInput interface {\n", name)
+	fmt.Fprintf(w, "\tpulumi.Input\n\n")
+	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
+	fmt.Fprintf(w, "\tTo%sOutputWithContext(context.Context) %sOutput\n", Title(name), name)
+	fmt.Fprintf(w, "}\n\n")
+}
+
+func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType *schema.EnumType) {
+	enumCases := []string{}
+	for _, enumCase := range enumType.Elements {
+		if enumCase.DeprecationMessage != "" {
+			// skip deprecated enum cases
+			continue
+		}
+		enumCases = append(enumCases, fmt.Sprintf("\t\t%s", enumCase.Name))
+	}
+
+	enumUsage := strings.Join([]string{
+		fmt.Sprintf("%sInput is an input type that accepts values of the %s enum", name, name),
+		fmt.Sprintf("A concrete instance of `%sInput` can be one of the following:", name),
+		"",
+		strings.Join(enumCases, "\n"),
+		" ",
+	}, "\n")
+
+	printComment(w, enumUsage, false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
@@ -1432,6 +1448,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 		contract.Assertf(!modPkg.names.Has(e.Name), "Name collision for enum constant: %s for %s",
 			e.Name, enumType.Token)
 
+		//nolint:exhaustive // Default case handles the rest of the values
 		switch reflect.TypeOf(e.Value).Kind() {
 		case reflect.String:
 			fmt.Fprintf(w, "%s = %s(%q)\n", e.Name, name, e.Value)
@@ -1532,8 +1549,8 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementArgsType, el
 }
 
 func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *schema.EnumType, elementGoType string) {
-	pkg.genInputInterface(w, name)
-
+	pkg.genEnumInputInterface(w, name, enumType)
+	goPkgInfo := goPackageInfo(pkg.pkg)
 	typeName := cgstrings.Camel(name)
 	fmt.Fprintf(w, "var %sPtrType = reflect.TypeOf((**%s)(nil)).Elem()\n", typeName, name)
 	fmt.Fprintln(w)
@@ -1568,12 +1585,14 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	// ToOutput implementation for pulumix.Input.
-	fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
-	fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
-	fmt.Fprintf(w, "\t\tOutputState: in.To%sPtrOutputWithContext(ctx).OutputState,\n", name)
-	fmt.Fprintf(w, "\t}\n")
-	fmt.Fprintf(w, "}\n\n")
+	if goPkgInfo.Generics != GenericsSettingNone {
+		// ToOutput implementation for pulumix.Input.
+		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
+		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
+		fmt.Fprintf(w, "\t\tOutputState: in.To%sPtrOutputWithContext(ctx).OutputState,\n", name)
+		fmt.Fprintf(w, "\t}\n")
+		fmt.Fprintf(w, "}\n\n")
+	}
 }
 
 func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementArgsType, inputType, asFuncName string) {
@@ -1955,6 +1974,7 @@ func goPrimitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // Only a subset of types have a default value.
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {
@@ -2039,15 +2059,15 @@ func (pkg *pkgContext) setDefaultValue(
 	parser, typ := "nil", "string"
 	switch codegen.UnwrapType(t).(type) {
 	case *schema.ArrayType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvStringArray", pkg.internalModuleName), "pulumi.StringArray"
+		parser, typ = pkg.internalModuleName+".ParseEnvStringArray", "pulumi.StringArray"
 	}
 	switch t {
 	case schema.BoolType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvBool", pkg.internalModuleName), "bool"
+		parser, typ = pkg.internalModuleName+".ParseEnvBool", "bool"
 	case schema.IntType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvInt", pkg.internalModuleName), "int"
+		parser, typ = pkg.internalModuleName+".ParseEnvInt", "int"
 	case schema.NumberType:
-		parser, typ = fmt.Sprintf("%s.ParseEnvFloat", pkg.internalModuleName), "float64"
+		parser, typ = pkg.internalModuleName+".ParseEnvFloat", "float64"
 	}
 
 	if val == "" {
@@ -2707,6 +2727,9 @@ func goPackageInfo(packageReference schema.PackageReference) GoPackageInfo {
 	contract.AssertNoErrorf(def.ImportLanguages(map[string]schema.Language{"go": Importer}),
 		"Could not import languages")
 	if info, ok := def.Language["go"].(GoPackageInfo); ok {
+		if info.Generics == "" {
+			info.Generics = GenericsSettingNone
+		}
 		return info
 	}
 	return GoPackageInfo{}
@@ -2885,12 +2908,12 @@ func (pkg *pkgContext) functionName(f *schema.Function) string {
 
 func (pkg *pkgContext) functionArgsTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
-	return fmt.Sprintf("%sArgs", name)
+	return name + "Args"
 }
 
 func (pkg *pkgContext) functionResultTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
-	return fmt.Sprintf("%sResult", name)
+	return name + "Result"
 }
 
 func genericTypeNeedsExplicitCasting(outputType string) bool {
@@ -2905,7 +2928,7 @@ func (pkg *pkgContext) genFunctionOutputGenericVersion(w io.Writer, f *schema.Fu
 	originalName := pkg.functionName(f)
 	name := originalName + "Output"
 	originalResultTypeName := pkg.functionResultTypeName(f)
-	resultTypeName := fmt.Sprintf("%sOutput", originalResultTypeName)
+	resultTypeName := originalResultTypeName + "Output"
 
 	code := ""
 
@@ -3263,6 +3286,21 @@ type nestedTypeInfo struct {
 	names               map[string]bool
 }
 
+func innerMostType(t schema.Type) schema.Type {
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		return innerMostType(t.ElementType)
+	case *schema.MapType:
+		return innerMostType(t.ElementType)
+	case *schema.OptionalType:
+		return innerMostType(t.ElementType)
+	case *schema.InputType:
+		return innerMostType(t.ElementType)
+	default:
+		return t
+	}
+}
+
 // collectNestedCollectionTypes builds a deduped mapping of element types -> associated collection types.
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
@@ -3272,7 +3310,7 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 	switch t := typ.(type) {
 	case *schema.ArrayType:
 		// Builtins already cater to primitive arrays
-		if schema.IsPrimitiveType(t.ElementType) {
+		if schema.IsPrimitiveType(innerMostType(t.ElementType)) {
 			return
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
@@ -3286,7 +3324,7 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
 	case *schema.MapType:
 		// Builtins already cater to primitive maps
-		if schema.IsPrimitiveType(t.ElementType) {
+		if schema.IsPrimitiveType(innerMostType(t.ElementType)) {
 			return
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
@@ -4173,7 +4211,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		}
 
 		if !canGenerate {
-			panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping resource: %s", rawResourceName(r)))
+			panic("unable to generate Go SDK, schema has unresolvable overlapping resource: " + rawResourceName(r))
 		}
 
 		names := getNames(suffix)
@@ -4253,7 +4291,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 
 			if !canGenerate {
-				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
+				panic("unable to generate Go SDK, schema has unresolvable overlapping type: " + name)
 			}
 
 			names := getNames(name, suffix)
@@ -4298,7 +4336,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 
 			if !canGenerate {
-				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
+				panic("unable to generate Go SDK, schema has unresolvable overlapping type: " + name)
 			}
 
 			names := getNames(name, suffix)
@@ -4585,7 +4623,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			versionFilePath := fmt.Sprintf("%s/pulumiVersion.go", pkg.internalModuleName)
+			versionFilePath := pkg.internalModuleName + "/pulumiVersion.go"
 			setFile(path.Join(mod, versionFilePath), versionBuf.String())
 			if emitOnlyGenericVariant {
 				setGenericVariantFile(path.Join(mod, versionFilePath), versionBuf.String())
@@ -4688,7 +4726,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
+				if goPkgInfo.Generics != GenericsSettingNone {
+					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
+				}
 			}
 
 			buffer := &bytes.Buffer{}
@@ -4811,7 +4851,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			utilFilePath := fmt.Sprintf("%s/pulumiUtilities.go", pkg.internalModuleName)
+			utilFilePath := pkg.internalModuleName + "/pulumiUtilities.go"
 			setFile(path.Join(mod, utilFilePath), buffer.String())
 			if emitOnlyGenericVariant {
 				setGenericVariantFile(path.Join(mod, utilFilePath), buffer.String())

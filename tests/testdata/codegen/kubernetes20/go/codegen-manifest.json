@@ -1,0 +1,22 @@
+{
+  "emittedFiles": [
+    "kubernetes/config/config.go",
+    "kubernetes/core/v1/configMap.go",
+    "kubernetes/core/v1/configMapList.go",
+    "kubernetes/core/v1/init.go",
+    "kubernetes/core/v1/pulumiTypes.go",
+    "kubernetes/doc.go",
+    "kubernetes/helm/v3/init.go",
+    "kubernetes/helm/v3/release.go",
+    "kubernetes/init.go",
+    "kubernetes/meta/v1/pulumiTypes.go",
+    "kubernetes/pkg/version/pulumiTypes.go",
+    "kubernetes/provider.go",
+    "kubernetes/pulumi-plugin.json",
+    "kubernetes/pulumiTypes.go",
+    "kubernetes/utilities/pulumiUtilities.go",
+    "kubernetes/utilities/pulumiVersion.go",
+    "kubernetes/yaml/v2/configGroup.go",
+    "kubernetes/yaml/v2/init.go"
+  ]
+}

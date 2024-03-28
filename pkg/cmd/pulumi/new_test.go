@@ -27,12 +27,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockBackendInstance sets the backendInstance for the test and cleans it up after.
+func mockBackendInstance(t *testing.T, b backend.Backend) {
+	t.Cleanup(func() {
+		backendInstance = nil
+	})
+	backendInstance = b
+}
 
 //nolint:paralleltest // changes directory for process
 func TestFailInInteractiveWithoutYes(t *testing.T) {
@@ -203,18 +212,18 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-	}
+	})
 
 	args := newArgs{
 		interactive:       false,
@@ -226,22 +235,21 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project with this name already exists")
+	assert.ErrorContains(t, err, "project with this name already exists")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
-	}
+	})
 
 	args := newArgs{
 		interactive:       true,
@@ -251,22 +259,21 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Try again")
+	assert.ErrorContains(t, err, "Try again")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
@@ -286,18 +293,18 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
@@ -354,18 +361,18 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	removeStack(t, tempdir, stackName)
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
@@ -379,22 +386,21 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	}
 
 	err := runNew(context.Background(), args)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project names may only contain")
+	assert.ErrorContains(t, err, "project names may only contain")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
-	}
+	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	err := runNew(context.Background(), newArgs{
@@ -404,8 +410,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project names may only contain")
+	assert.ErrorContains(t, err, "project names may only contain")
 
 	err = runNew(context.Background(), newArgs{
 		generateOnly:      true,
@@ -414,8 +419,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project names may not be empty")
+	assert.ErrorContains(t, err, "project names may not be empty")
 }
 
 //nolint:paralleltest // changes directory for process
@@ -431,12 +435,11 @@ func TestInvalidTemplateName(t *testing.T) {
 			yes:               true,
 			secretsProvider:   "default",
 			templateNameOrURL: "",
+			templateMode:      true,
 		}
 
 		err := runNew(context.Background(), args)
-		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "no template selected")
+		assert.ErrorContains(t, err, "no template selected")
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
@@ -454,9 +457,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "not found")
+		assert.ErrorContains(t, err, "not found")
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
@@ -475,9 +476,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(context.Background(), args)
-		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "not found")
+		assert.ErrorContains(t, err, "not found")
 	})
 }
 
@@ -1051,4 +1050,72 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 			},
 		))
 	assert.Truef(t, called, "expected resolution to be called with duplicate name")
+}
+
+//nolint:paralleltest // changes directory for process
+func TestPulumiNewSetsTemplateTag(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			"typescript",
+			"typescript",
+		},
+		{
+			"https://github.com/pulumi/templates/tree/master/yaml?foo=bar",
+			"https://github.com/pulumi/templates/tree/master/yaml",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			tempdir := tempProjectDir(t)
+			chdir(t, tempdir)
+
+			args := newArgs{
+				interactive:       false,
+				generateOnly:      true,
+				yes:               true,
+				name:              projectName,
+				prompt:            promptForValue,
+				secretsProvider:   "default",
+				templateNameOrURL: tt.input,
+			}
+
+			err := runNew(context.Background(), args)
+			assert.NoError(t, err)
+
+			proj := loadProject(t, tempdir)
+			require.NoError(t, err)
+			tagsValue, has := proj.Config[apitype.PulumiTagsConfigKey]
+			assert.True(t, has)
+			tagsObject, ok := tagsValue.Value.(map[string]interface{})
+			assert.True(t, ok)
+			assert.Equal(t, tt.expected, tagsObject[apitype.ProjectTemplateTag])
+		})
+	}
+}
+
+func TestSanitizeTemplate(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"https://user:pass@example.com/path?param=value", "https://example.com/path"},
+		{"https://user:pass@example.com", "https://example.com"},
+		{"https://example.com/path?param=value", "https://example.com/path"},
+		{"ssh://user@hostname/project/repo", "ssh://hostname/project/repo"},
+		{"typescript", "typescript"},
+		{"aws-typescript", "aws-typescript"},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+			result := sanitizeTemplate(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }

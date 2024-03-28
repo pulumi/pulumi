@@ -200,7 +200,6 @@ class LanghostTest(unittest.TestCase):
                  project=None,
                  stack=None,
                  program=None,
-                 pwd=None,
                  args=None,
                  config=None,
                  expected_resource_count=None,
@@ -218,7 +217,6 @@ class LanghostTest(unittest.TestCase):
         :param project: The name of the project in which the program will run.
         :param stack: The name of the stack in which the program will run.
         :param program: The path to the program the langhost should execute.
-        :param pwd: The working directory the langhost should use when running the program.
         :param args: Arguments to the program.
         :param config: Configuration keys for the program.
         :param expected_resource_count: The number of resources this program is expected to create.
@@ -242,7 +240,7 @@ class LanghostTest(unittest.TestCase):
                 grpc.channel_ready_future(channel).result()
                 stub = language_pb2_grpc.LanguageRuntimeStub(channel)
                 result = self._run_program(stub, monitor, project, stack,
-                                           program, pwd, args, config, dryrun, organization)
+                                           program, args, config, dryrun, organization)
 
             # Tear down the language host process we just spun up.
             langhost.process.kill()
@@ -363,22 +361,27 @@ class LanghostTest(unittest.TestCase):
             print(stderr)
             raise
 
-    def _run_program(self, stub, monitor, project, stack, program, pwd, args,
+    def _run_program(self, stub, monitor, project, stack, program, args,
                      config, dryrun, organization):
+
         args = {}
+
+        # Assume program is the path to the project, i.e. root, program directory, and pwd.
+        args["info"] = proto.ProgramInfo(root_directory=program, program_directory=program, entry_point=".")
+
         args["monitor_address"] = "localhost:%d" % monitor.port
         args["project"] = project or "project"
         args["stack"] = stack or "stack"
-        args["program"] = program
+        args["program"] = "."
         args["organization"] = organization
-        if pwd:
-            args["pwd"] = pwd
+        args["pwd"] = program
 
         if args:
             args["args"] = args
 
         if config:
             args["config"] = config
+
 
         args["dryRun"] = dryrun
         request = proto.RunRequest(**args)

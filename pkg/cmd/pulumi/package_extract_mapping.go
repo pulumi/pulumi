@@ -60,7 +60,7 @@ func newExtractMappingCommand() *cobra.Command {
 
 			err = os.WriteFile(out, data, 0o600)
 			if err != nil {
-				return fmt.Errorf("write mapping data file: %s", err)
+				return fmt.Errorf("write mapping data file: %w", err)
 			}
 
 			return nil

@@ -101,7 +101,7 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	}
 	if !cmd.disableAutoSubmit {
 		if len(args) == 0 {
-			return fmt.Errorf("prompt must be provided when auto-submit is enabled")
+			return errors.New("prompt must be provided when auto-submit is enabled")
 		}
 		query.Set("autoSubmit", "true")
 	}
@@ -142,7 +142,7 @@ by passing the --no-auto-submit flag.
 `,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
 		},
 		),

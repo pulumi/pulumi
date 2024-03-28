@@ -22,8 +22,7 @@ import typing
 # Empty function definitions.
 
 
-def _empty():
-    ...
+def _empty(): ...
 
 
 def _empty_doc():

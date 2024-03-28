@@ -53,16 +53,16 @@ func TestResourceReferences(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		urnA, _, _, err = monitor.RegisterResource("component", "resA", false)
+		urnA, _, _, _, err = monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		urnB, idB, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
-		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+		_, _, props, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"resA": resource.MakeComponentResourceReference(urnA, ""),
 				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
@@ -128,16 +128,16 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	opts := deploytest.ResourceOptions{DisableResourceReferences: true}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		urnA, _, _, err = monitor.RegisterResource("component", "resA", false, opts)
+		urnA, _, _, _, err = monitor.RegisterResource("component", "resA", false, opts)
 		assert.NoError(t, err)
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
+		urnB, idB, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
 		assert.NoError(t, err)
 
-		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
+		_, _, props, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
 		assert.NoError(t, err)
 
 		assert.Equal(t, resource.NewStringProperty(string(urnA)), props["resA"])
@@ -196,17 +196,17 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		urnA, _, _, err = monitor.RegisterResource("component", "resA", false)
+		urnA, _, _, _, err = monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		urnB, idB, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
 		refB = resource.MakeCustomResourceReference(urnB, idB, "")
-		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+		_, _, props, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"resA": resource.MakeComponentResourceReference(urnA, ""),
 				"resB": refB,
@@ -260,11 +260,11 @@ func TestResourceReferences_GetResource(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnChild, idChild, _, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
+		urnChild, idChild, _, _, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
 		assert.NoError(t, err)
 
 		refChild := resource.MakeCustomResourceReference(urnChild, idChild, "")
-		urnContainer, idContainer, _, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
+		urnContainer, idContainer, _, _, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
 			deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
 					"child": refChild,

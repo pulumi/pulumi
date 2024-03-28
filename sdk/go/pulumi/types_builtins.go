@@ -19,7 +19,7 @@ package pulumi
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -67,7 +67,7 @@ func (in *archive) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetO
 type ArchiveOutput struct{ *OutputState }
 
 func (ArchiveOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveOutput) ToOutput(ctx context.Context) pulumix.Output[Archive] {
@@ -135,7 +135,7 @@ func (in ArchiveArray) ToArchiveArrayOutputWithContext(ctx context.Context) Arch
 type ArchiveArrayOutput struct{ *OutputState }
 
 func (ArchiveArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Archive] {
@@ -223,7 +223,7 @@ func (in ArchiveMap) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveM
 type ArchiveMapOutput struct{ *OutputState }
 
 func (ArchiveMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Archive] {
@@ -304,7 +304,7 @@ func (in ArchiveArrayMap) ToArchiveArrayMapOutputWithContext(ctx context.Context
 type ArchiveArrayMapOutput struct{ *OutputState }
 
 func (ArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]Archive] {
@@ -385,7 +385,7 @@ func (in ArchiveMapArray) ToArchiveMapArrayOutputWithContext(ctx context.Context
 type ArchiveMapArrayOutput struct{ *OutputState }
 
 func (ArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Archive] {
@@ -473,7 +473,7 @@ func (in ArchiveMapMap) ToArchiveMapMapOutputWithContext(ctx context.Context) Ar
 type ArchiveMapMapOutput struct{ *OutputState }
 
 func (ArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Archive] {
@@ -554,7 +554,7 @@ func (in ArchiveArrayArray) ToArchiveArrayArrayOutputWithContext(ctx context.Con
 type ArchiveArrayArrayOutput struct{ *OutputState }
 
 func (ArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArchiveArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]Archive] {
@@ -647,7 +647,7 @@ func (in *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrA
 type AssetOutput struct{ *OutputState }
 
 func (AssetOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOutput) ToOutput(ctx context.Context) pulumix.Output[Asset] {
@@ -715,7 +715,7 @@ func (in AssetArray) ToAssetArrayOutputWithContext(ctx context.Context) AssetArr
 type AssetArrayOutput struct{ *OutputState }
 
 func (AssetArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Asset] {
@@ -803,7 +803,7 @@ func (in AssetMap) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutp
 type AssetMapOutput struct{ *OutputState }
 
 func (AssetMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Asset] {
@@ -884,7 +884,7 @@ func (in AssetArrayMap) ToAssetArrayMapOutputWithContext(ctx context.Context) As
 type AssetArrayMapOutput struct{ *OutputState }
 
 func (AssetArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]Asset] {
@@ -965,7 +965,7 @@ func (in AssetMapArray) ToAssetMapArrayOutputWithContext(ctx context.Context) As
 type AssetMapArrayOutput struct{ *OutputState }
 
 func (AssetMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Asset] {
@@ -1053,7 +1053,7 @@ func (in AssetMapMap) ToAssetMapMapOutputWithContext(ctx context.Context) AssetM
 type AssetMapMapOutput struct{ *OutputState }
 
 func (AssetMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Asset] {
@@ -1134,7 +1134,7 @@ func (in AssetArrayArray) ToAssetArrayArrayOutputWithContext(ctx context.Context
 type AssetArrayArrayOutput struct{ *OutputState }
 
 func (AssetArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]Asset] {
@@ -1200,7 +1200,7 @@ type AssetOrArchiveInput interface {
 type AssetOrArchiveOutput struct{ *OutputState }
 
 func (AssetOrArchiveOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveOutput) ToOutput(ctx context.Context) pulumix.Output[AssetOrArchive] {
@@ -1258,7 +1258,7 @@ func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutputWithContext(ctx context
 type AssetOrArchiveArrayOutput struct{ *OutputState }
 
 func (AssetOrArchiveArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]AssetOrArchive] {
@@ -1330,7 +1330,7 @@ func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Con
 type AssetOrArchiveMapOutput struct{ *OutputState }
 
 func (AssetOrArchiveMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]AssetOrArchive] {
@@ -1395,7 +1395,7 @@ func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx c
 type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
 func (AssetOrArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]AssetOrArchive] {
@@ -1460,7 +1460,7 @@ func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx c
 type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 
 func (AssetOrArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]AssetOrArchive] {
@@ -1532,7 +1532,7 @@ func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx conte
 type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
 func (AssetOrArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]AssetOrArchive] {
@@ -1597,7 +1597,7 @@ func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(c
 type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
 
 func (AssetOrArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o AssetOrArchiveArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]AssetOrArchive] {
@@ -1680,7 +1680,7 @@ func (in Bool) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
 type BoolOutput struct{ *OutputState }
 
 func (BoolOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolOutput) ToOutput(ctx context.Context) pulumix.Output[bool] {
@@ -1758,7 +1758,7 @@ func (in *boolPtr) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 type BoolPtrOutput struct{ *OutputState }
 
 func (BoolPtrOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*bool] {
@@ -1827,7 +1827,7 @@ func (in BoolArray) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayO
 type BoolArrayOutput struct{ *OutputState }
 
 func (BoolArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]bool] {
@@ -1915,7 +1915,7 @@ func (in BoolMap) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput 
 type BoolMapOutput struct{ *OutputState }
 
 func (BoolMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]bool] {
@@ -1996,7 +1996,7 @@ func (in BoolArrayMap) ToBoolArrayMapOutputWithContext(ctx context.Context) Bool
 type BoolArrayMapOutput struct{ *OutputState }
 
 func (BoolArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]bool] {
@@ -2077,7 +2077,7 @@ func (in BoolMapArray) ToBoolMapArrayOutputWithContext(ctx context.Context) Bool
 type BoolMapArrayOutput struct{ *OutputState }
 
 func (BoolMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]bool] {
@@ -2165,7 +2165,7 @@ func (in BoolMapMap) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapM
 type BoolMapMapOutput struct{ *OutputState }
 
 func (BoolMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]bool] {
@@ -2246,7 +2246,7 @@ func (in BoolArrayArray) ToBoolArrayArrayOutputWithContext(ctx context.Context) 
 type BoolArrayArrayOutput struct{ *OutputState }
 
 func (BoolArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o BoolArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]bool] {
@@ -2345,7 +2345,7 @@ func (in Float64) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrO
 type Float64Output struct{ *OutputState }
 
 func (Float64Output) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64Output) ToOutput(ctx context.Context) pulumix.Output[float64] {
@@ -2423,7 +2423,7 @@ func (in *float64Ptr) ToFloat64PtrOutputWithContext(ctx context.Context) Float64
 type Float64PtrOutput struct{ *OutputState }
 
 func (Float64PtrOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64PtrOutput) ToOutput(ctx context.Context) pulumix.Output[*float64] {
@@ -2492,7 +2492,7 @@ func (in Float64Array) ToFloat64ArrayOutputWithContext(ctx context.Context) Floa
 type Float64ArrayOutput struct{ *OutputState }
 
 func (Float64ArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64ArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]float64] {
@@ -2580,7 +2580,7 @@ func (in Float64Map) ToFloat64MapOutputWithContext(ctx context.Context) Float64M
 type Float64MapOutput struct{ *OutputState }
 
 func (Float64MapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64MapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]float64] {
@@ -2661,7 +2661,7 @@ func (in Float64ArrayMap) ToFloat64ArrayMapOutputWithContext(ctx context.Context
 type Float64ArrayMapOutput struct{ *OutputState }
 
 func (Float64ArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64ArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]float64] {
@@ -2742,7 +2742,7 @@ func (in Float64MapArray) ToFloat64MapArrayOutputWithContext(ctx context.Context
 type Float64MapArrayOutput struct{ *OutputState }
 
 func (Float64MapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64MapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]float64] {
@@ -2830,7 +2830,7 @@ func (in Float64MapMap) ToFloat64MapMapOutputWithContext(ctx context.Context) Fl
 type Float64MapMapOutput struct{ *OutputState }
 
 func (Float64MapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64MapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]float64] {
@@ -2911,7 +2911,7 @@ func (in Float64ArrayArray) ToFloat64ArrayArrayOutputWithContext(ctx context.Con
 type Float64ArrayArrayOutput struct{ *OutputState }
 
 func (Float64ArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o Float64ArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]float64] {
@@ -3015,7 +3015,7 @@ func (in ID) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 type IDOutput struct{ *OutputState }
 
 func (IDOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDOutput) ToOutput(ctx context.Context) pulumix.Output[ID] {
@@ -3103,7 +3103,7 @@ func (in *idPtr) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 type IDPtrOutput struct{ *OutputState }
 
 func (IDPtrOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*ID] {
@@ -3172,7 +3172,7 @@ func (in IDArray) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput 
 type IDArrayOutput struct{ *OutputState }
 
 func (IDArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ID] {
@@ -3260,7 +3260,7 @@ func (in IDMap) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 type IDMapOutput struct{ *OutputState }
 
 func (IDMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]ID] {
@@ -3341,7 +3341,7 @@ func (in IDArrayMap) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayM
 type IDArrayMapOutput struct{ *OutputState }
 
 func (IDArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]ID] {
@@ -3422,7 +3422,7 @@ func (in IDMapArray) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArr
 type IDMapArrayOutput struct{ *OutputState }
 
 func (IDMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]ID] {
@@ -3510,7 +3510,7 @@ func (in IDMapMap) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutp
 type IDMapMapOutput struct{ *OutputState }
 
 func (IDMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]ID] {
@@ -3591,7 +3591,7 @@ func (in IDArrayArray) ToIDArrayArrayOutputWithContext(ctx context.Context) IDAr
 type IDArrayArrayOutput struct{ *OutputState }
 
 func (IDArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IDArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]ID] {
@@ -3679,7 +3679,7 @@ func (in Array) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 type ArrayOutput struct{ *OutputState }
 
 func (ArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]interface{}] {
@@ -3767,7 +3767,7 @@ func (in Map) ToMapOutputWithContext(ctx context.Context) MapOutput {
 type MapOutput struct{ *OutputState }
 
 func (MapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o MapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]interface{}] {
@@ -3848,7 +3848,7 @@ func (in ArrayMap) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutp
 type ArrayMapOutput struct{ *OutputState }
 
 func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]interface{}] {
@@ -3929,7 +3929,7 @@ func (in MapArray) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutp
 type MapArrayOutput struct{ *OutputState }
 
 func (MapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o MapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]interface{}] {
@@ -4017,7 +4017,7 @@ func (in MapMap) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
 type MapMapOutput struct{ *OutputState }
 
 func (MapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o MapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]interface{}] {
@@ -4098,7 +4098,7 @@ func (in ArrayArray) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArr
 type ArrayArrayOutput struct{ *OutputState }
 
 func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]interface{}] {
@@ -4186,7 +4186,7 @@ func (in ArrayArrayMap) ToArrayArrayMapOutputWithContext(ctx context.Context) Ar
 type ArrayArrayMapOutput struct{ *OutputState }
 
 func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o ArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]interface{}] {
@@ -4278,7 +4278,7 @@ func (in Int) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 type IntOutput struct{ *OutputState }
 
 func (IntOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntOutput) ToOutput(ctx context.Context) pulumix.Output[int] {
@@ -4356,7 +4356,7 @@ func (in *intPtr) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 type IntPtrOutput struct{ *OutputState }
 
 func (IntPtrOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*int] {
@@ -4425,7 +4425,7 @@ func (in IntArray) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutp
 type IntArrayOutput struct{ *OutputState }
 
 func (IntArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]int] {
@@ -4513,7 +4513,7 @@ func (in IntMap) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
 type IntMapOutput struct{ *OutputState }
 
 func (IntMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]int] {
@@ -4594,7 +4594,7 @@ func (in IntArrayMap) ToIntArrayMapOutputWithContext(ctx context.Context) IntArr
 type IntArrayMapOutput struct{ *OutputState }
 
 func (IntArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]int] {
@@ -4675,7 +4675,7 @@ func (in IntMapArray) ToIntMapArrayOutputWithContext(ctx context.Context) IntMap
 type IntMapArrayOutput struct{ *OutputState }
 
 func (IntMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]int] {
@@ -4763,7 +4763,7 @@ func (in IntMapMap) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapO
 type IntMapMapOutput struct{ *OutputState }
 
 func (IntMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]int] {
@@ -4844,7 +4844,7 @@ func (in IntArrayArray) ToIntArrayArrayOutputWithContext(ctx context.Context) In
 type IntArrayArrayOutput struct{ *OutputState }
 
 func (IntArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o IntArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]int] {
@@ -4943,7 +4943,7 @@ func (in String) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutp
 type StringOutput struct{ *OutputState }
 
 func (StringOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringOutput) ToOutput(ctx context.Context) pulumix.Output[string] {
@@ -5021,7 +5021,7 @@ func (in *stringPtr) ToStringPtrOutputWithContext(ctx context.Context) StringPtr
 type StringPtrOutput struct{ *OutputState }
 
 func (StringPtrOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*string] {
@@ -5090,7 +5090,7 @@ func (in StringArray) ToStringArrayOutputWithContext(ctx context.Context) String
 type StringArrayOutput struct{ *OutputState }
 
 func (StringArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]string] {
@@ -5178,7 +5178,7 @@ func (in StringMap) ToStringMapOutputWithContext(ctx context.Context) StringMapO
 type StringMapOutput struct{ *OutputState }
 
 func (StringMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]string] {
@@ -5259,7 +5259,7 @@ func (in StringArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) 
 type StringArrayMapOutput struct{ *OutputState }
 
 func (StringArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]string] {
@@ -5340,7 +5340,7 @@ func (in StringMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) 
 type StringMapArrayOutput struct{ *OutputState }
 
 func (StringMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]string] {
@@ -5428,7 +5428,7 @@ func (in StringMapMap) ToStringMapMapOutputWithContext(ctx context.Context) Stri
 type StringMapMapOutput struct{ *OutputState }
 
 func (StringMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]string] {
@@ -5509,7 +5509,7 @@ func (in StringArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Conte
 type StringArrayArrayOutput struct{ *OutputState }
 
 func (StringArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o StringArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]string] {
@@ -5613,7 +5613,7 @@ func (in URN) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 type URNOutput struct{ *OutputState }
 
 func (URNOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNOutput) ToOutput(ctx context.Context) pulumix.Output[URN] {
@@ -5701,7 +5701,7 @@ func (in *urnPtr) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 type URNPtrOutput struct{ *OutputState }
 
 func (URNPtrOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*URN] {
@@ -5770,7 +5770,7 @@ func (in URNArray) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutp
 type URNArrayOutput struct{ *OutputState }
 
 func (URNArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]URN] {
@@ -5858,7 +5858,7 @@ func (in URNMap) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
 type URNMapOutput struct{ *OutputState }
 
 func (URNMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]URN] {
@@ -5939,7 +5939,7 @@ func (in URNArrayMap) ToURNArrayMapOutputWithContext(ctx context.Context) URNArr
 type URNArrayMapOutput struct{ *OutputState }
 
 func (URNArrayMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]URN] {
@@ -6020,7 +6020,7 @@ func (in URNMapArray) ToURNMapArrayOutputWithContext(ctx context.Context) URNMap
 type URNMapArrayOutput struct{ *OutputState }
 
 func (URNMapArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]URN] {
@@ -6108,7 +6108,7 @@ func (in URNMapMap) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapO
 type URNMapMapOutput struct{ *OutputState }
 
 func (URNMapMapOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]URN] {
@@ -6189,7 +6189,7 @@ func (in URNArrayArray) ToURNArrayArrayOutputWithContext(ctx context.Context) UR
 type URNArrayArrayOutput struct{ *OutputState }
 
 func (URNArrayArrayOutput) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+	return nil, errors.New("Outputs can not be marshaled to JSON")
 }
 
 func (o URNArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]URN] {

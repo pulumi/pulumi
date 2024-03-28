@@ -67,7 +67,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"eks", "0.37.1"},
 		SchemaProvider{"google-native", "0.18.2"},
 		SchemaProvider{"google-native", "0.27.0"},
-		SchemaProvider{"aws-native", "0.13.0"},
+		SchemaProvider{"aws-native", "0.99.0"},
 		SchemaProvider{"docker", "3.1.0"},
 		SchemaProvider{"std", "1.0.0"},
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
@@ -92,5 +92,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"localref", "1.0.0"},
 		SchemaProvider{"enum", "1.0.0"},
 		SchemaProvider{"plain-properties", "1.0.0"},
+		SchemaProvider{"recursive", "1.0.0"},
+		SchemaProvider{"aws-static-website", "0.4.0"},
 	)
 }

@@ -81,7 +81,7 @@ func (t *OpaqueType) conversionFromImpl(
 				return SafeConversion, nil
 			case UnsafeConversion:
 				return UnsafeConversion, nil
-			default:
+			case NoConversion:
 				if checkUnsafe {
 					if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
 						return UnsafeConversion, nil

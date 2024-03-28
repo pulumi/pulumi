@@ -99,6 +99,7 @@ func (be *MockBackend) URL() string {
 func (be *MockBackend) SetCurrentProject(project *workspace.Project) {
 	if be.SetCurrentProjectF != nil {
 		be.SetCurrentProjectF(project)
+		return
 	}
 	panic("not implemented")
 }

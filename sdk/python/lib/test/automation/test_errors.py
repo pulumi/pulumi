@@ -16,6 +16,7 @@ import os
 import sys
 import subprocess
 import unittest
+import platform
 import pytest
 from pulumi.automation import (
     create_stack,
@@ -44,9 +45,6 @@ class TestErrors(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
-    # This test fails on Windows related to the `subprocess.run` call associated with setting up the environment.
-    # Skipping for now.
-    @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
     def test_runtime_errors(self):
         for lang in ["python", "go", "dotnet", "javascript", "typescript"]:
             stack_name = stack_namer(runtime_error_project)
@@ -56,8 +54,19 @@ class TestErrors(unittest.TestCase):
                 subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
             if lang == "python":
                 subprocess.run(["python3", "-m", "venv", "venv"], check=True, cwd=project_dir, capture_output=True)
-                subprocess.run([os.path.join("venv", "bin", "python"),
-                                "-m", "pip", "install", "-r", "requirements.txt"],
+
+                # Get the path to the python executable in the virtual environment.
+                python_venv_path = os.path.join("venv", "bin", "python")
+                if platform.system() == "Windows":
+                    python_venv_path = os.path.join("venv", "Scripts", "python.exe")
+
+                # Determine the locally built Pulumi SDK path.
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                env_src_dir = os.path.join(script_dir, "..", "..", "..", "env", "src")
+
+                # Install the locally built Pulumi SDK in the virtual environment.
+                subprocess.run([python_venv_path,
+                                "-m", "pip", "install", "-e", env_src_dir],
                                check=True, cwd=project_dir, capture_output=True)
 
             stack = create_stack(stack_name, work_dir=project_dir)

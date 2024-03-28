@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -188,7 +188,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	)
 	if err != nil {
 		contract.IgnoreClose(wrapper)
-		return nil, nil, fmt.Errorf("could not connect to resource provider service: %v", err)
+		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
@@ -204,7 +204,7 @@ type hostEngine struct {
 	stop    chan bool
 }
 
-func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
 	case pulumirpc.LogSeverity_DEBUG:
@@ -224,7 +224,7 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	} else {
 		e.sink.Logf(sev, diag.StreamMessage(resource.URN(req.Urn), req.Message, req.StreamId))
 	}
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (e *hostEngine) GetRootResource(_ context.Context,
@@ -286,7 +286,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		panic(fmt.Errorf("could not start engine service: %v", err))
+		panic(fmt.Errorf("could not start engine service: %w", err))
 	}
 	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
 
@@ -356,6 +356,8 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 		host.analyzers = append(host.analyzers, plug.(plugin.Analyzer))
 	case workspace.ResourcePlugin:
 		host.providers = append(host.providers, plug.(plugin.Provider))
+	case workspace.LanguagePlugin, workspace.ConverterPlugin, workspace.ToolPlugin:
+		// Nothing to do for these to plugins.
 	}
 
 	host.plugins[plug] = closer
@@ -380,9 +382,7 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -492,13 +492,14 @@ func (host *pluginHost) ResolvePlugin(
 
 	match := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
 	if match == nil {
-		return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and " +
+		return nil, errors.New("could not locate a compatible plugin in deploytest, the makefile and " +
 			"& constructor of the plugin host must define the location of the schema")
 	}
 	return match, nil
 }
 
-func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
+func (host *pluginHost) GetRequiredPlugins(
+	info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginSpec, error) {
 	return host.languageRuntime.GetRequiredPlugins(info)

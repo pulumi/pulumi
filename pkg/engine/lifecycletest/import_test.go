@@ -2,7 +2,6 @@ package lifecycletest
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -79,7 +78,7 @@ func TestImportOption(t *testing.T) {
 		if readID != "" {
 			_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "")
 		} else {
-			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:   inputs,
 				ImportID: importID,
 			})
@@ -344,7 +343,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
@@ -424,7 +423,7 @@ func TestImportUpdatedID(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, id, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+		_, id, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			ImportID: importID,
 		})
 		assert.NoError(t, err)
@@ -549,7 +548,7 @@ func TestImportPlan(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 		return nil
 	})
@@ -617,7 +616,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo":  resource.NewStringProperty("foo"),
 				"frob": resource.NewNumberProperty(1),
@@ -676,10 +675,10 @@ func TestImportPlanExistingImport(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		stackURN, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		stackURN, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		require.NoError(t, err)
 
-		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo":  resource.NewStringProperty("bar"),
 				"frob": resource.NewNumberProperty(1),
@@ -814,7 +813,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		_, _, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -892,7 +891,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		_, _, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -938,7 +937,7 @@ func TestImportIntoParent(t *testing.T) {
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", news, resource.StatusUnknown, fmt.Errorf("not implemented")
+					return "", news, resource.StatusUnknown, errors.New("not implemented")
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,
@@ -997,7 +996,7 @@ func TestImportComponent(t *testing.T) {
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+					return "", nil, resource.StatusUnknown, errors.New("not implemented")
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,
@@ -1071,7 +1070,7 @@ func TestImportRemoteComponent(t *testing.T) {
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusUnknown, fmt.Errorf("not implemented")
+					return "", nil, resource.StatusUnknown, errors.New("not implemented")
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
 					inputs, state resource.PropertyMap,

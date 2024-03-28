@@ -101,8 +101,13 @@ class MakefileTest(TypedDict):
 MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && ../../scripts/retry make test_auto", "eta": 3},
     {"name": "sdk/nodejs unit_tests", "run": "cd sdk/nodejs && ../../scripts/retry make unit_tests", "eta": 4},
+    {"name": "sdk/nodejs test_closure", "run": "cd sdk/nodejs && ../../scripts/retry make test_closure", "eta": 3},
     {"name": "sdk/python test_auto", "run": "cd sdk/python && ../../scripts/retry make test_auto", "eta": 6},
     {"name": "sdk/python test_fast", "run": "cd sdk/python && ../../scripts/retry make test_fast", "eta": 3},
+]
+
+MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
+    {"name": "sdk/nodejs test_closure", "run": "cd sdk/nodejs && ../../scripts/retry make test_closure", "eta": 3},
 ]
 
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
@@ -115,17 +120,17 @@ ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
-    "go": "1.20.x",
-    "nodejs": "16.x",
+    "go": "1.21.x",
+    "nodejs": "18.x",
     "python": "3.8.x",
 }
 
 CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "8",
-    "go": "1.21.x",
-    "nodejs": "20.x",
-    "python": "3.11.x",
+    "go": "1.22.x",
+    "nodejs": "21.x",
+    "python": "3.12.x",
 }
 
 
@@ -377,7 +382,7 @@ def get_matrix(
     elif kind == JobKind.UNIT_TEST:
         makefile_tests = MAKEFILE_UNIT_TESTS
     elif kind == JobKind.ACCEPTANCE_TEST:
-        makefile_tests = []
+        makefile_tests = MAKEFILE_ACCEPTANCE_TESTS
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
     else:
@@ -412,9 +417,6 @@ def get_matrix(
         pkg_tests = run_list_tests(item.package_dir, tags)
 
         test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
-
-    if kind == JobKind.ACCEPTANCE_TEST:
-        platforms = list(map(lambda p: "windows-16core-2022" if p == "windows-latest" else p, platforms))
 
     return {
         "test-suite": test_suites,

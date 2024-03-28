@@ -15,6 +15,7 @@
 package tstypes
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -94,7 +95,7 @@ func (p *typeScriptTypeParser) parse(tokens []typeToken) (TypeAst, error) {
 		return nil, err
 	}
 	if len(rest) > 0 {
-		return nil, fmt.Errorf("Unexpected trailing tokens")
+		return nil, errors.New("Unexpected trailing tokens")
 	}
 	return e, nil
 }
@@ -105,9 +106,10 @@ func (p *typeScriptTypeParser) parseType(tokens []typeToken) (TypeAst, []typeTok
 
 func (p *typeScriptTypeParser) parseType1(tokens []typeToken) (TypeAst, []typeToken, error) {
 	if len(tokens) == 0 {
-		return nil, nil, fmt.Errorf("Expect more tokens")
+		return nil, nil, errors.New("Expect more tokens")
 	}
 
+	//nolint:exhaustive // Only a subset of token kinds are needed for testing.
 	switch tokens[0].kind {
 	case openParen:
 		t, rest, err := p.parseType(tokens[1:])
@@ -115,7 +117,7 @@ func (p *typeScriptTypeParser) parseType1(tokens []typeToken) (TypeAst, []typeTo
 			return nil, nil, err
 		}
 		if len(rest) == 0 || rest[0].kind != closeParen {
-			return nil, nil, fmt.Errorf("Expect `)`")
+			return nil, nil, errors.New("Expect `)`")
 		}
 		return t, rest[1:], nil
 	case openMap:
@@ -124,7 +126,7 @@ func (p *typeScriptTypeParser) parseType1(tokens []typeToken) (TypeAst, []typeTo
 			return nil, nil, err
 		}
 		if len(rest) == 0 {
-			return nil, nil, fmt.Errorf("Expect `}`, but got nothing")
+			return nil, nil, errors.New("Expect `}`, but got nothing")
 		}
 		if rest[0].kind != closeMap {
 			return nil, nil, fmt.Errorf("Expect `}`, but got %s", toLiteral(rest))

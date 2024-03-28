@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
-		err      error
+		err      string
 	}{
 		{
 			input:    "0.1",
@@ -48,7 +47,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "",
-			err:   fmt.Errorf("cannot parse empty string"),
+			err:   "cannot parse empty string",
 		},
 		{
 			input:    "4.3.2.1",
@@ -56,7 +55,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: " 1 . 2 . 3 ",
-			err:   fmt.Errorf(`' 1 . 2 . 3 ' still unparsed`),
+			err:   `' 1 . 2 . 3 ' still unparsed`,
 		},
 		{
 			input:    "2.1a123456789",
@@ -76,7 +75,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "1.2.3dev7890",
-			err:   fmt.Errorf("'dev7890' still unparsed"),
+			err:   "'dev7890' still unparsed",
 		},
 		{
 			input:    "1.2.3.dev456",
@@ -84,7 +83,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "1.",
-			err:   fmt.Errorf("'.' still unparsed"),
+			err:   "'.' still unparsed",
 		},
 		{
 			input:    "3.2.post32",
@@ -96,7 +95,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "10!3.2.1",
-			err:   fmt.Errorf("epochs are not supported"),
+			err:   "epochs are not supported",
 		},
 		{
 			input:    "3.2.post1.dev0",
@@ -109,9 +108,8 @@ func TestDeterminePluginVersion(t *testing.T) {
 			t.Parallel()
 
 			result, err := determinePluginVersion(tt.input)
-			if tt.err != nil {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.err.Error())
+			if tt.err != "" {
+				assert.EqualError(t, err, tt.err)
 				return
 			}
 			assert.NoError(t, err)
@@ -139,6 +137,13 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		cwd := t.TempDir()
 		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
+
+		// Install the local Pulumi SDK into the virtual environment.
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
+		assert.NoError(t, err)
+		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		assert.NoError(t, err)
+
 		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
 		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
@@ -148,7 +153,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NotEmpty(t, packages)
 		assert.Equal(t, 1, len(packages))
 		random := packages[0]
-		assert.Equal(t, "pulumi-random", random.Name)
+		assert.Equal(t, "pulumi_random", random.Name)
 		assert.NotEmpty(t, random.Location)
 	})
 	t.Run("pulumiplugin", func(t *testing.T) {
@@ -195,5 +200,37 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.Equal(t, "thing2", pipInstallTest.plugin.Version)
 		assert.Equal(t, "thing3", pipInstallTest.plugin.Server)
 		assert.True(t, pipInstallTest.plugin.Resource)
+	})
+	t.Run("no-pulumiplugin.json-file", func(t *testing.T) {
+		t.Parallel()
+
+		cwd := t.TempDir()
+		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
+
+		_, err = runPythonCommand(context.Background(),
+			"venv", cwd, "-m", "pip", "install", "--upgrade", "pip", "setuptools")
+		assert.NoError(t, err)
+
+		// Install the local Pulumi SDK into the virtual environment.
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
+		assert.NoError(t, err)
+		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		assert.NoError(t, err)
+
+		// Install a local old provider SDK that does not have a pulumi-plugin.json file.
+		oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
+		assert.NoError(t, err)
+		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", oldSdkDir)
+		assert.NoError(t, err)
+
+		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
+		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, packages)
+		assert.Equal(t, 1, len(packages))
+		old := packages[0]
+		assert.Equal(t, "pulumi_old", old.Name)
+		assert.NotEmpty(t, old.Location)
 	})
 }

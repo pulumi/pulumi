@@ -67,7 +67,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		return policyPackPath, nil
 	}
 
-	fmt.Printf("Installing policy pack %s %s...\n", policy.Name, version)
+	fmt.Printf("Installing policy pack %s %s...\r\n", policy.Name, version)
 
 	// PolicyPack has not been downloaded and installed. Do this now.
 	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
@@ -252,7 +252,7 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
-	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), filepath.Base(finalDir)+".tmp")
 	if err != nil {
 		return fmt.Errorf("creating plugin directory %s: %w", tempDir, err)
 	}
@@ -300,7 +300,7 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		}
 	}
 
-	fmt.Println("Finished installing policy pack")
+	fmt.Println("Finished installing policy pack\r")
 	fmt.Println()
 
 	return nil

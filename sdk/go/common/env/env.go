@@ -43,8 +43,8 @@ var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new 
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
-var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Experimental flag to skip saving state "+
-	"checkpoints and only save the final deployment. See #10668.", env.Needs(Experimental))
+var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
+	"the final deployment. See #10668.")
 
 var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself.")
 
@@ -55,6 +55,9 @@ var DisableProviderPreview = env.Bool("DISABLE_PROVIDER_PREVIEW", "")
 var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")
 
 var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
+
+var ErrorOutputString = env.Bool("ERROR_OUTPUT_STRING", "Throw an error instead "+
+	"of returning a string on attempting to convert an Output to a string")
 
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 	"Discover additional plugins by examining $PATH.")
@@ -78,22 +81,30 @@ var GitSSHPassphrase = env.String("GITSSH_PASSPHRASE",
 var ErrorOnDependencyCycles = env.Bool("ERROR_ON_DEPENDENCY_CYCLES",
 	"Whether or not to error when dependency cycles are detected.")
 
-// Environment variables that affect the self-managed backend.
+var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
+	"If set skip validating the version number reported by the CLI.")
+
+// Environment variables that affect the DIY backend.
 var (
-	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",
-		"Disables the warning about legacy stack files mixed with project-scoped stack files.")
+	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
+		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
+		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	SelfManagedStateLegacyLayout = env.Bool("SELF_MANAGED_STATE_LEGACY_LAYOUT",
-		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.")
+	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
+		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
+		env.Alternative("SELF_MANAGED_STATE_LEGACY_LAYOUT"))
 
-	SelfManagedGzip = env.Bool("SELF_MANAGED_STATE_GZIP",
-		"Enables gzip compression when writing state files.")
+	DIYBackendGzip = env.Bool("DIY_BACKEND_GZIP",
+		"Enables gzip compression when writing state files.",
+		env.Alternative("SELF_MANAGED_STATE_GZIP"))
 
-	SelfManagedRetainCheckpoints = env.Bool("RETAIN_CHECKPOINTS",
-		"If set every checkpoint will be duplicated to a timestamped file.")
+	DIYBackendRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
+		"If set every checkpoint will be duplicated to a timestamped file.",
+		env.Alternative("RETAIN_CHECKPOINTS"))
 
-	SelfManagedDisableCheckpointBackups = env.Bool("DISABLE_CHECKPOINT_BACKUPS",
-		"If set checkpoint backups will not be written the to the backup folder.")
+	DIYBackendDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
+		"If set checkpoint backups will not be written the to the backup folder.",
+		env.Alternative("DISABLE_CHECKPOINT_BACKUPS"))
 )
 
 // Environment variables which affect Pulumi AI integrations

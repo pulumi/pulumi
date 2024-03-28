@@ -21,10 +21,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,6 +96,99 @@ func TestStackOutputsPython(t *testing.T) {
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
+		},
+	})
+}
+
+// TestStackOutputsProgramErrorPython tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorPython(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "python")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",       // Expected to be updated
+					"foo": float64(42), // Expected to remain the same
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorPython tests that when a resource error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorPython(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "python")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
 		},
 	})
 }
@@ -529,9 +625,6 @@ func TestPythonResourceArgs(t *testing.T) {
 	for f, contents := range files {
 		outfile := filepath.Join(outdir, f)
 		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
-		if outfile == filepath.Join(outdir, "setup.py") {
-			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
-		}
 		assert.NoError(t, os.WriteFile(outfile, contents, 0o600))
 	}
 	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
@@ -754,6 +847,51 @@ func TestConstructMethodsPython(t *testing.T) {
 			})
 		})
 	}
+}
+
+func findResource(token string, resources []apitype.ResourceV3) *apitype.ResourceV3 {
+	for _, r := range resources {
+		if string(r.Type) == token {
+			return &r
+		}
+	}
+	return nil
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestConstructComponentWithIdOutputPython(t *testing.T) {
+	testDir := "construct_component_id_output"
+
+	// the component implementation is written as a simple provider in go
+	localProvider := integration.LocalDependency{
+		Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go"),
+	}
+
+	// run python program against the component
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			component := findResource("testcomponent:index:Component", stackInfo.Deployment.Resources)
+			require.NotNil(t, component, "component should be present in the deployment")
+			require.NotNil(t, component.Outputs, "component should have outputs")
+			componentID, ok := component.Outputs["id"].(string)
+			require.True(t, ok, "component should have an output called ID")
+			require.Equal(t, "42-hello", componentID, "component id output should be '42-hello'")
+
+			// the stack should also have an output called ID
+			stack := findResource("pulumi:pulumi:Stack", stackInfo.Deployment.Resources)
+			require.NotNil(t, stack, "stack should be present in the deployment")
+			require.NotNil(t, stack.Outputs, "stack should have outputs")
+			stackID, ok := stack.Outputs["id"].(string)
+			require.True(t, ok, "stack should have an output named 'id'")
+			require.Equal(t, "42-hello", stackID, "stack id output should be '42-hello'")
+		},
+	})
 }
 
 func TestConstructMethodsUnknownPython(t *testing.T) {
@@ -1032,12 +1170,44 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			},
 		})
 	})
+
+	// This checks we await outputs but not asyncio.tasks
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("AsyncioTasks", func(t *testing.T) {
+		// Skip if python is < 3.9
+		version, err := exec.Command("python3", "--version").Output()
+		require.NoError(t, err)
+		if strings.Contains(string(version), "3.8") {
+			t.Skip("Skipping test as Python version is < 3.9")
+		}
+
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "asyncio_tasks"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			Quick: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "PRINT: 42") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
 }
 
 // Test dict key translations.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonTranslation(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{

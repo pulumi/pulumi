@@ -11,7 +11,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +41,7 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			// `new` wants to work in an empty directory but our use of local filestate means we have a
+			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
 			projectDir := filepath.Join(e.RootPath, "project")
 			err := os.Mkdir(projectDir, 0o700)
@@ -59,8 +58,11 @@ func TestLanguageNewSmoke(t *testing.T) {
 }
 
 // Quick sanity tests that YAML convert works.
+//
+//nolint:paralleltest // sets envvars
 func TestYamlConvertSmoke(t *testing.T) {
-	t.Parallel()
+	// make sure we can download the yaml converter plugin
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
@@ -68,10 +70,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	e.ImportDirectory("testdata/random_yaml")
 
 	// Make sure random is installed
-	out, _ := e.RunCommand("pulumi", "plugin", "ls")
-	if !strings.Contains(out, "random  resource  4.13.0") {
-		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-	}
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -105,10 +104,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/random_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -139,10 +135,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/bad_random_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -175,10 +168,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/component_pp")
 
 			// Make sure random is installed
-			out, _ := e.RunCommand("pulumi", "plugin", "ls")
-			if !strings.Contains(out, "random  resource  4.13.0") {
-				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
-			}
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "convert", "--language", Languages[runtime], "--from", "pcl", "--out", "out")
@@ -262,10 +252,8 @@ func TestPackageGetSchema(t *testing.T) {
 	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
-	pulumiHome, err := workspace.GetPulumiHomeDir()
-	require.NoError(t, err)
 	binaryPath := filepath.Join(
-		pulumiHome,
+		e.HomePath,
 		"plugins",
 		"resource-random-v4.13.0",
 		"pulumi-resource-random")
@@ -315,7 +303,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			// `new` wants to work in an empty directory but our use of local filestate means we have a
+			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
 			projectDir := filepath.Join(e.RootPath, "project")
 			err := os.Mkdir(projectDir, 0o700)
@@ -393,8 +381,12 @@ func TestPreviewImportFile(t *testing.T) {
 			"component": true,
 		},
 		map[string]interface{}{
-			"id":      "<PLACEHOLDER>",
-			"name":    "username",
+			"id":          "<PLACEHOLDER>",
+			"logicalName": "username",
+			// This isn't ideal, we don't really need to change the "name" here because it isn't used as a
+			// parent, but currently we generate unique names for all resources rather than just unique names
+			// for all parent resources.
+			"name":    "usernameRandomPet",
 			"type":    "random:index/randomPet:RandomPet",
 			"version": "4.12.0",
 			"parent":  "component",
@@ -409,4 +401,25 @@ func TestPreviewImportFile(t *testing.T) {
 	assert.ElementsMatch(t, expectedResources, actual["resources"])
 	_, has := actual["nameTable"]
 	assert.False(t, has, "nameTable should not be present in import file")
+}
+
+// Small integration test for relative plugin paths. It's hard to do this test via the standard ProgramTest because that
+// framework does it's own manipulation of plugin paths. Regression test for
+// https://github.com/pulumi/pulumi/issues/15467.
+func TestRelativePluginPath(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("testdata/relative_plugin_node")
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "preview")
 }

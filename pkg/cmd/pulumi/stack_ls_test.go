@@ -139,7 +139,7 @@ func TestListStacksPagination(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -148,7 +148,7 @@ func TestListStacksPagination(t *testing.T) {
 			response := cannedResponses[requestIdx]
 			return response.summaries, response.outContToken, nil
 		},
-	}
+	})
 
 	const testOrgName, testProjName = "comprehendingdevice", "website"
 
@@ -193,7 +193,7 @@ func TestListStacksPagination(t *testing.T) {
 func TestListStacksJsonProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -223,7 +223,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 		SupportsProgressF: func() bool {
 			return true
 		},
-	}
+	})
 
 	var buff bytes.Buffer
 	ctx := context.Background()
@@ -258,7 +258,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 func TestListStacksJsonNoProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -281,7 +281,7 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 		SupportsProgressF: func() bool {
 			return false
 		},
-	}
+	})
 
 	var buff bytes.Buffer
 	ctx := context.Background()

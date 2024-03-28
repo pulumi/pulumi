@@ -16,7 +16,7 @@ builds:
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version=v{{.Env.PULUMI_VERSION}}
   mod_timestamp: '{{ .CommitTimestamp }}'
 - <<: *pulumibin
   id: pulumi-language-go

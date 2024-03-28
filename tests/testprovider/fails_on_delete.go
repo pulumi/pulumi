@@ -23,7 +23,7 @@ import (
 
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type failsOnDeleteResourceProvider struct {
@@ -62,6 +62,6 @@ func (p *failsOnDeleteResourceProvider) Update(
 	panic("Update not implemented")
 }
 
-func (p *failsOnDeleteResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *failsOnDeleteResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	return nil, errors.New("Delete always fails for the FailsOnDelete resource")
 }

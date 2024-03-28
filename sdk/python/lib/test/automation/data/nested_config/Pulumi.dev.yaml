@@ -7,6 +7,5 @@ config:
     - two
     - three
   nested_config:outer:
-    inner:
-      secure: AAABADOd8UPayqGlunla+Lo6kSSYA4LffCNBe84ElLwv0kyz7oIcYAw=
+    inner: my_value
     other: something_else

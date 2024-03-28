@@ -16,7 +16,7 @@ package pulumi
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -64,16 +64,22 @@ func TestRunningUnderMocks(t *testing.T) {
 
 	t.Run("With mocks", func(t *testing.T) {
 		t.Parallel()
-		testCtx := &Context{
+		testCtxState := &contextState{
 			monitor: &mockMonitor{},
+		}
+		testCtx := &Context{
+			state: testCtxState,
 		}
 		assert.True(t, testCtx.RunningWithMocks())
 	})
 
 	t.Run("Without mocks", func(t *testing.T) {
 		t.Parallel()
-		testCtx := &Context{
+		testCtxState := &contextState{
 			monitor: nil,
+		}
+		testCtx := &Context{
+			state: testCtxState,
 		}
 		assert.False(t, testCtx.RunningWithMocks())
 	})
@@ -349,7 +355,7 @@ func TestMergeProviders(t *testing.T) {
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		i, tt := i, tt
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 
 			err := RunErr(func(ctx *Context) error {
@@ -602,4 +608,20 @@ func TestSourcePosition(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+}
+
+func TestWithValue(t *testing.T) {
+	t.Parallel()
+
+	key := "key"
+	val := "val"
+	testCtx := &Context{
+		state: &contextState{},
+		ctx:   context.Background(),
+	}
+	newCtx := testCtx.WithValue(key, val)
+
+	assert.Equal(t, nil, testCtx.Value(key))
+	assert.Equal(t, val, newCtx.Value(key))
+	assert.Equal(t, newCtx.state, testCtx.state)
 }

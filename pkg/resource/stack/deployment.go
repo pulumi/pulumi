@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,11 +53,11 @@ const (
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too old to understand.
-	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old")
+	ErrDeploymentSchemaVersionTooOld = errors.New("this stack's deployment is too old")
 
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
-	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
+	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
 )
 
 var (
@@ -99,17 +101,13 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
+func SerializeDeployment(snap *deploy.Snapshot, showSecrets bool) (*apitype.DeploymentV3, error) {
 	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	// Capture the version information into a manifest.
 	manifest := snap.Manifest.Serialize()
 
-	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
-	if sm == nil {
-		sm = snap.SecretsManager
-	}
-
+	sm := snap.SecretsManager
 	var enc config.Encrypter
 	if sm != nil {
 		e, err := sm.Encrypter()
@@ -238,6 +236,17 @@ func DeserializeDeploymentV3(
 	var dec config.Decrypter
 	var enc config.Encrypter
 	if secretsManager == nil {
+		var ciphertexts []string
+		for _, res := range deployment.Resources {
+			collectCiphertexts(&ciphertexts, res.Inputs)
+			collectCiphertexts(&ciphertexts, res.Outputs)
+		}
+		if len(ciphertexts) > 0 {
+			// If there are ciphertexts, but we couldn't set up a secrets manager, error out early
+			// to avoid panic'ing later on.  This snapshot is broken and needs to be repaired
+			// manually.
+			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found")
+		}
 		dec = config.NewPanicCrypter()
 		enc = config.NewPanicCrypter()
 	} else {
@@ -447,19 +456,6 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		}
 		plaintext := string(bytes)
 
-		// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
-		// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
-		var ciphertext string
-		if cachingCrypter, ok := enc.(*cachingCrypter); ok {
-			ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
-		} else {
-			ciphertext, err = enc.EncryptValue(ctx, plaintext)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
-		}
-		contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
-
 		secret := apitype.SecretV1{
 			Sig: resource.SecretSig,
 		}
@@ -467,6 +463,19 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		if showSecrets {
 			secret.Plaintext = plaintext
 		} else {
+			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
+			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
+			var ciphertext string
+			if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
+			} else {
+				ciphertext, err = enc.EncryptValue(ctx, plaintext)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
+			}
+			contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
+
 			secret.Ciphertext = ciphertext
 		}
 
@@ -510,7 +519,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 	}
 
 	if res.URN == "" {
-		return nil, fmt.Errorf("resource missing required 'urn' field")
+		return nil, errors.New("resource missing required 'urn' field")
 	}
 
 	if res.Type == "" {
@@ -590,15 +599,15 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			objmap := obj.Mappable()
 			if sig, hasSig := objmap[resource.SigKey]; hasSig {
 				switch sig {
-				case resource.AssetSig:
-					asset, isasset, err := resource.DeserializeAsset(objmap)
+				case asset.AssetSig:
+					asset, isasset, err := asset.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isasset, "resource with asset signature is not an asset")
 					return resource.NewAssetProperty(asset), nil
-				case resource.ArchiveSig:
-					archive, isarchive, err := resource.DeserializeArchive(objmap)
+				case archive.ArchiveSig:
+					archive, isarchive, err := archive.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
@@ -622,7 +631,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					} else {
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
+							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
 						}
 						plaintext = unencryptedText
 					}

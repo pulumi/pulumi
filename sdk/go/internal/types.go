@@ -196,7 +196,7 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 	if o.join != nil {
 		// If this output is being resolved to another output O' with a different wait group, ensure that we
 		// don't decrement the current output's wait group until O' completes.
-		if other, ok := getOutputState(value); ok && other.join != o.join {
+		if other, ok := getOutputState(value); ok && other != nil && other.join != o.join {
 			go func() {
 				//nolint:errcheck
 				other.await(context.Background())
@@ -727,6 +727,7 @@ func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 			return
 		}
 
+		//nolint:exhaustive // We only need to further process a few kinds of values.
 		switch v.Kind() {
 		case reflect.Interface, reflect.Ptr:
 			if v.IsNil() {
@@ -917,6 +918,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	}
 
 	known, secret, deps, err := true, false, make([]Resource, 0), error(nil)
+	//nolint:exhaustive // The default case is equipped to handle the rest of the types.
 	switch v.Kind() {
 	case reflect.Interface:
 		if !v.IsNil() {

@@ -24,9 +24,7 @@ import (
 // and it makes no attempt to preserve file permissions.  It is what we need for this utility package, no more, no less.
 func CopyFile(dst string, src string, excl map[string]bool) error {
 	info, err := os.Lstat(src)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
+	if err != nil {
 		return err
 	} else if excl[info.Name()] {
 		return nil

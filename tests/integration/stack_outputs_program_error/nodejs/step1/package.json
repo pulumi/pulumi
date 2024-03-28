@@ -1,0 +1,7 @@
+{
+    "name": "stack_outputs_error",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "typescript": "^3.0.0"
+    }
+}

@@ -1,0 +1,13 @@
+exports.handler = __f0;
+
+var __x = Object.create(null);
+
+function __f0() {
+  return (function() {
+    with({ x: __x, this: undefined, arguments: undefined }) {
+
+return () => { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

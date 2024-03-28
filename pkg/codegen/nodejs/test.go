@@ -2,7 +2,6 @@ package nodejs
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,10 +68,10 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// other places at the moment, and yarn does not run into the
 	// ${VERSION} problem; use yarn for now.
 
+	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
-	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
@@ -85,7 +84,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	result := make(map[string]string, len(deps))
 	for _, d := range deps.SortedValues() {
-		pkgName := fmt.Sprintf("@pulumi/%s", d)
+		pkgName := "@pulumi/" + d
 		set := func(pkgVersion string) {
 			result[pkgName] = "^" + pkgVersion
 		}
@@ -102,6 +101,10 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			set(test.RandomSchema)
 		case "eks":
 			set(test.EksSchema)
+		case "aws-static-website":
+			set(test.AwsStaticWebsiteSchema)
+		case "aws-native":
+			set(test.AwsNativeSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}

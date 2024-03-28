@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -49,28 +48,21 @@ type L2ResourceSimpleLanguageHost struct {
 func (h *L2ResourceSimpleLanguageHost) Pack(
 	ctx context.Context, req *pulumirpc.PackRequest,
 ) (*pulumirpc.PackResponse, error) {
-	if !strings.HasSuffix(req.PackageDirectory, "/sdk/dir") &&
-		req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
-		return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
-	}
-
 	if req.DestinationDirectory != filepath.Join(h.tempDir, "artifacts") {
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.0" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
-	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
+	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
 		return &pulumirpc.PackResponse{
-			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-1.0.0.sdk"),
+			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-2.0.0.sdk"),
+		}, nil
+	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
+		return &pulumirpc.PackResponse{
+			ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 		}, nil
 	}
 
-	return &pulumirpc.PackResponse{
-		ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
-	}, nil
+	return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
 }
 
 func (h *L2ResourceSimpleLanguageHost) GenerateProject(
@@ -79,7 +71,7 @@ func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
-	if req.LocalDependencies["simple"] != filepath.Join(h.tempDir, "artifacts", "simple-1.0.0.sdk") {
+	if req.LocalDependencies["simple"] != filepath.Join(h.tempDir, "artifacts", "simple-2.0.0.sdk") {
 		return nil, fmt.Errorf("unexpected simple sdk %s", req.LocalDependencies["simple"])
 	}
 	if !req.Strict {
@@ -112,7 +104,10 @@ func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
-	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-1.0.0") {
+	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
+		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+	}
+	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
 		return nil, fmt.Errorf("unexpected directory %s", req.Directory)
 	}
 
@@ -127,6 +122,10 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return nil, fmt.Errorf("unexpected directory to get required plugins %s", req.Info.ProgramDirectory)
+	}
+
 	if h.skipRequiredPlugins {
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
@@ -136,7 +135,28 @@ func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 			{
 				Name:    "simple",
 				Kind:    string(workspace.ResourcePlugin),
-				Version: "1.0.0",
+				Version: "2.0.0",
+			},
+		},
+	}, nil
+}
+
+func (h *L2ResourceSimpleLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return nil, fmt.Errorf("unexpected directory to get program dependencies %s", req.Info.ProgramDirectory)
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: []*pulumirpc.DependencyInfo{
+			{
+				Name:    "pulumi_pulumi",
+				Version: "1.0.1",
+			},
+			{
+				Name:    "pulumi_simple",
+				Version: "2.0.0",
 			},
 		},
 	}, nil
@@ -145,8 +165,14 @@ func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 func (h *L2ResourceSimpleLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	if req.Directory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Directory)
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
+	}
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
+		return fmt.Errorf("unexpected program directory to install dependencies %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return fmt.Errorf("unexpected entry point to install dependencies %s", req.Info.EntryPoint)
 	}
 	return nil
 }
@@ -154,6 +180,16 @@ func (h *L2ResourceSimpleLanguageHost) InstallDependencies(
 func (h *L2ResourceSimpleLanguageHost) Run(
 	ctx context.Context, req *pulumirpc.RunRequest,
 ) (*pulumirpc.RunResponse, error) {
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+		return nil, fmt.Errorf("unexpected root directory to run %s", req.Info.RootDirectory)
+	}
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
+		return nil, fmt.Errorf("unexpected program directory to run %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return nil, fmt.Errorf("unexpected entry point to run %s", req.Info.EntryPoint)
+	}
+
 	conn, err := grpc.Dial(
 		req.MonitorAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -194,9 +230,11 @@ func (h *L2ResourceSimpleLanguageHost) Run(
 }
 
 // Run a simple successful test with a mocked runtime.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2ResourceSimple(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -215,6 +253,7 @@ func TestL2ResourceSimple(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -231,12 +270,14 @@ func TestL2ResourceSimple(t *testing.T) {
 }
 
 // Run a simple failing test because of a bad sdk snapshot with a mocked runtime.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2SimpleResource_BadSnapshot(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -252,6 +293,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots_bad",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -264,15 +306,17 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t, []string{
-		"sdk snapshot validation for simple failed:\nexpected file test.txt does not match actual file",
-	}, runResponse.Messages)
+	require.Len(t, runResponse.Messages, 1)
+	assert.Contains(t, runResponse.Messages[0],
+		"sdk snapshot validation for simple failed:\nexpected file test.txt does not match actual file")
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2SimpleResource_MissingResource(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -294,6 +338,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -312,9 +357,11 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 }
 
 // Run a simple failing test because GetRequiredPlugins doesn't return the right plugins.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -336,6 +383,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -352,5 +400,51 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	failureMessage := runResponse.Messages[0]
 	assert.Contains(t, failureMessage,
 		"expected no error, got Error: unexpected required plugins: "+
-			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@1.0.0]")
+			"actual Set{language-mock@<nil>}, expected Set{language-mock@<nil>, resource-simple@2.0.0}")
+}
+
+// Run a simple successful test with a mocked runtime that edits the snapshot files.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
+//
+//nolint:paralleltest // These aren't yet safe to run in parallel
+func TestL2ResourceSnapshotEdit(t *testing.T) {
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	engine := &languageTestServer{}
+	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
+		LanguagePluginName:   "mock",
+		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:   tempDir,
+		SnapshotDirectory:    "./testdata/snapshots_edit",
+		CoreSdkDirectory:     "sdk/dir",
+		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+			{
+				Path:        "test.txt",
+				Pattern:     "testing",
+				Replacement: "replaced",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, prepareResponse.Token)
+
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
+		Token: prepareResponse.Token,
+		Test:  "l2-resource-simple",
+	})
+	require.NoError(t, err)
+	t.Logf("stdout: %s", runResponse.Stdout)
+	t.Logf("stderr: %s", runResponse.Stderr)
+	assert.Empty(t, runResponse.Messages)
+	assert.True(t, runResponse.Success)
 }

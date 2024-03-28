@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Engine now prefers stable plugin versions to pre-releases when no explict version is given.

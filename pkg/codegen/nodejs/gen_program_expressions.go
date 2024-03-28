@@ -2,6 +2,7 @@ package nodejs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -30,7 +31,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 		expr = g.awaitInvokes(expr)
 	}
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
+	skipToJSONWhenRewritingApplies := true
+	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncMain, skipToJSONWhenRewritingApplies)
 	if typ != nil {
 		var convertDiags hcl.Diagnostics
 		expr, convertDiags = pcl.RewriteConversions(expr, typ)
@@ -303,7 +305,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 func enumName(enum *model.EnumType) (string, error) {
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
-		return "", fmt.Errorf("Could not get associated enum")
+		return "", errors.New("Could not get associated enum")
 	}
 	pkgRef := e.(*schema.EnumType).PackageReference
 	return enumNameWithPackage(enum.Token, pkgRef)
@@ -315,6 +317,12 @@ func enumNameWithPackage(enumToken string, pkgRef schema.PackageReference) (stri
 	name := tokenToName(enumToken)
 	pkg := makeValidIdentifier(components[0])
 	if mod := components[1]; mod != "" && mod != "index" {
+		// if the token has the format {pkg}:{mod}/{name}:{Name}
+		// then we simplify into {pkg}:{mod}:{Name}
+		modParts := strings.Split(mod, "/")
+		if len(modParts) == 2 && strings.EqualFold(modParts[1], components[2]) {
+			mod = modParts[0]
+		}
 		if pkgRef != nil {
 			mod = moduleName(mod, pkgRef)
 		}
@@ -407,7 +415,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "remoteAsset":
 		g.Fgenf(w, "new pulumi.asset.RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
-		g.Fgenf(w, "Buffer.from(fs.readFileSync(%v), 'binary').toString('base64')", expr.Args[0])
+		g.Fgenf(w, "fs.readFileSync(%v, { encoding: \"base64\" })", expr.Args[0])
 	case "filebase64sha256":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
@@ -415,6 +423,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
+	case "mimeType":
+		g.Fgenf(w, "mimeType(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
@@ -424,7 +434,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
 		if isOut {
-			name = fmt.Sprintf("%sOutput", name)
+			name = name + "Output"
 		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
@@ -473,7 +483,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "Buffer.from(%v, \"base64\").toString(\"utf8\")", expr.Args[0])
 	case "toJSON":
-		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgenf(w, "pulumi.jsonStringify(%v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
+		}
 	case "sha1":
 		g.Fgenf(w, "crypto.createHash('sha1').update(%v).digest('hex')", expr.Args[0])
 	case "stack":
@@ -679,7 +693,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		if _, isConfig := configVars[expr.RootName]; isConfig {
 			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
-				rootName = fmt.Sprintf("args.%s", expr.RootName)
+				rootName = "args." + expr.RootName
 			}
 		}
 	}

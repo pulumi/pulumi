@@ -29,7 +29,7 @@ import (
 )
 
 func getStackEncrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Encrypter, bool, error) {
-	sm, needsSave, err := getStackSecretsManager(s, ps)
+	sm, needsSave, err := getStackSecretsManager(s, ps, nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -42,7 +42,7 @@ func getStackEncrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Encr
 }
 
 func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decrypter, bool, error) {
-	sm, needsSave, err := getStackSecretsManager(s, ps)
+	sm, needsSave, err := getStackSecretsManager(s, ps, nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -54,7 +54,9 @@ func getStackDecrypter(s backend.Stack, ps *workspace.ProjectStack) (config.Decr
 	return dec, needsSave, nil
 }
 
-func getStackSecretsManager(s backend.Stack, ps *workspace.ProjectStack) (secrets.Manager, bool, error) {
+func getStackSecretsManager(
+	s backend.Stack, ps *workspace.ProjectStack, fallbackManager secrets.Manager,
+) (secrets.Manager, bool, error) {
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
 	var sm secrets.Manager
@@ -66,7 +68,26 @@ func getStackSecretsManager(s backend.Stack, ps *workspace.ProjectStack) (secret
 		sm, err = passphrase.NewPromptingPassphraseSecretsManager(
 			ps, false /* rotateSecretsProvider */)
 	} else {
-		sm, err = s.DefaultSecretManager(ps)
+		if fallbackManager != nil {
+			sm = fallbackManager
+
+			// We need to ensure the fallback manager picked saves to the stack state. TODO: It would be
+			// really nice if the format of secrets state in the config file matched what managers reported
+			// for state. That would go well with the pluginification of secret providers as well, but for now
+			// just switch on the secret provider type and ask it to fill in the config file for us.
+			if sm.Type() == passphrase.Type {
+				err = passphrase.EditProjectStack(ps, sm.State())
+			} else if sm.Type() == cloud.Type {
+				err = cloud.EditProjectStack(ps, sm.State())
+			} else {
+				// Anything else assume we can just clear all the secret bits
+				ps.EncryptionSalt = ""
+				ps.SecretsProvider = ""
+				ps.EncryptedKey = ""
+			}
+		} else {
+			sm, err = s.DefaultSecretManager(ps)
+		}
 	}
 	if err != nil {
 		return nil, false, err

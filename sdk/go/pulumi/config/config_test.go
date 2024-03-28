@@ -86,7 +86,7 @@ func TestConfig(t *testing.T) {
 	// malformed key GetObj
 	err = cfg.GetObject("malobj", &testStruct)
 	assert.Equal(t, emptyTestStruct, testStruct)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "invalid character 'o' in literal null (expecting 'u')")
 	testStruct = TestStruct{}
 	// GetObj
 	err = cfg.GetObject("obj", &testStruct)
@@ -139,7 +139,7 @@ func TestConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 42, k3)
 	invalidInt, err := cfg.TryInt("badint")
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "unable to cast \"4d2\" of type string to int")
 	assert.Zero(t, invalidInt)
 	k4, err := cfg.TryFloat64("fpfpfp")
 	assert.NoError(t, err)
@@ -151,19 +151,18 @@ func TestConfig(t *testing.T) {
 	testStruct = TestStruct{}
 	// missing TryObject
 	err = cfg.TryObject("missing", &testStruct)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "missing required configuration variable 'testpkg:missing'; run `pulumi config` to set")
 	assert.Equal(t, emptyTestStruct, testStruct)
 	assert.True(t, errors.Is(err, ErrMissingVar))
 	testStruct = TestStruct{}
 	// malformed TryObject
 	err = cfg.TryObject("malobj", &testStruct)
-	assert.Error(t, err)
+	assert.EqualError(t, err, "invalid character 'o' in literal null (expecting 'u')")
 	assert.Equal(t, emptyTestStruct, testStruct)
 	assert.False(t, errors.Is(err, ErrMissingVar))
 	testStruct = TestStruct{}
 	_, err = cfg.Try("missing")
-	assert.Error(t, err)
-	assert.Equal(t, err.Error(),
+	assert.EqualError(t, err,
 		"missing required configuration variable 'testpkg:missing'; run `pulumi config` to set")
 	assert.True(t, errors.Is(err, ErrMissingVar))
 }

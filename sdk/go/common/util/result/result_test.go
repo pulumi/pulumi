@@ -27,14 +27,14 @@ func TestBail(t *testing.T) {
 	t.Parallel()
 
 	err := BailError(errors.New("big boom"))
-	assert.Equal(t, "BAIL: big boom", err.Error())
+	assert.EqualError(t, err, "BAIL: big boom")
 }
 
 func TestBailf(t *testing.T) {
 	t.Parallel()
 
 	err := BailErrorf("%d booms", 5)
-	assert.Equal(t, "BAIL: 5 booms", err.Error())
+	assert.EqualError(t, err, "BAIL: 5 booms")
 }
 
 func TestFprintBailf(t *testing.T) {
@@ -42,7 +42,7 @@ func TestFprintBailf(t *testing.T) {
 
 	var buff bytes.Buffer
 	err := FprintBailf(&buff, "%d booms", 5)
-	assert.Equal(t, "BAIL: 5 booms", err.Error())
+	assert.EqualError(t, err, "BAIL: 5 booms")
 	assert.Equal(t, "5 booms\n", buff.String())
 }
 

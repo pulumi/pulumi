@@ -615,15 +615,7 @@ func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {
 		vr := v.ResourceReferenceValue()
 		or := other.ResourceReferenceValue()
 
-		if vr.URN != or.URN {
-			return false
-		}
-
-		vid, oid := vr.ID, or.ID
-		if vid.IsComputed() || oid.IsComputed() {
-			return true
-		}
-		return vid.DeepEqualsIncludeUnknowns(oid)
+		return vr.Equal(or)
 	}
 
 	// Outputs are equal if each of their fields is deeply equal.

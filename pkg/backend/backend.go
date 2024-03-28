@@ -76,7 +76,7 @@ type StackReference interface {
 	Name() tokens.StackName
 
 	// Project is the project name that this stack belongs to.
-	// For old filestate backends this will return false.
+	// For old diy backends this will return false.
 	Project() (tokens.Name, bool)
 
 	// Fully qualified name of the stack, including any organization, project, or other information.
@@ -297,6 +297,10 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
+	PreviewOnly bool
+	// ContinueOnError, when true, causes the update to continue even if there are errors.
+	ContinueOnError bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.

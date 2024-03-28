@@ -115,6 +115,27 @@ func Plan(path string) Option {
 	})
 }
 
+// Refresh will run a refresh before the preview.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -157,6 +178,12 @@ type Options struct {
 	PolicyPacks []string
 	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
 	PolicyPackConfigs []string
+	// Refresh will run a refresh before the preview.
+	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
 }
 
 type optionFunc func(*Options)

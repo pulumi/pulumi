@@ -17,10 +17,8 @@ package deploytest
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 
-	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -57,7 +55,7 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
+func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgramInfo) ([]workspace.PluginSpec, error) {
 	if p.closed {
 		return nil, ErrLanguageRuntimeIsClosed
 	}
@@ -92,7 +90,7 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(directory string) error {
+func (p *languageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
 	if p.closed {
 		return ErrLanguageRuntimeIsClosed
 	}
@@ -107,7 +105,7 @@ func (p *languageRuntime) About() (plugin.AboutInfo, error) {
 }
 
 func (p *languageRuntime) GetProgramDependencies(
-	info plugin.ProgInfo, transitiveDependencies bool,
+	info plugin.ProgramInfo, transitiveDependencies bool,
 ) ([]plugin.DependencyInfo, error) {
 	if p.closed {
 		return nil, ErrLanguageRuntimeIsClosed
@@ -116,23 +114,25 @@ func (p *languageRuntime) GetProgramDependencies(
 }
 
 func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
-	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
+	return nil, nil, nil, errors.New("inline plugins are not currently supported")
 }
 
 func (p *languageRuntime) GenerateProject(string, string, string,
 	bool, string, map[string]string,
 ) (hcl.Diagnostics, error) {
-	return nil, fmt.Errorf("GenerateProject is not supported")
+	return nil, errors.New("GenerateProject is not supported")
 }
 
-func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, string) (hcl.Diagnostics, error) {
-	return nil, fmt.Errorf("GeneratePackage is not supported")
+func (p *languageRuntime) GeneratePackage(
+	string, string, map[string][]byte, string, map[string]string,
+) (hcl.Diagnostics, error) {
+	return nil, errors.New("GeneratePackage is not supported")
 }
 
 func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string][]byte, hcl.Diagnostics, error) {
-	return nil, nil, fmt.Errorf("GenerateProgram is not supported")
+	return nil, nil, errors.New("GenerateProgram is not supported")
 }
 
-func (p *languageRuntime) Pack(string, semver.Version, string) (string, error) {
-	return "", fmt.Errorf("Pack is not supported")
+func (p *languageRuntime) Pack(string, string) (string, error) {
+	return "", errors.New("Pack is not supported")
 }

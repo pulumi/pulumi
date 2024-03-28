@@ -454,7 +454,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 			// Return the raw bytes of the response body.
 			*respObj = respBody
 		case []byte:
-			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
+			return errors.New("Can't unmarshal response body to []byte. Try *[]byte")
 		default:
 			// Else, unmarshal as JSON.
 			if err = json.Unmarshal(respBody, respObj); err != nil {

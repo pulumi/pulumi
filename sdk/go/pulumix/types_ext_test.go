@@ -75,7 +75,6 @@ func TestOutput_ConvertTyped_error(t *testing.T) {
 	stringOut := pulumi.String("bar").ToStringOutput()
 
 	_, err := pulumix.ConvertTyped[int](stringOut)
-	require.Error(t, err)
 	assert.ErrorContains(t, err, "cannot convert string to int")
 }
 

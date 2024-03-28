@@ -49,6 +49,7 @@ func TestEmptyGo(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferenceGo(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -63,11 +64,11 @@ func TestStackReferenceGo(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "go", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "go", "step2"),
 				Additive: true,
 			},
 		},
@@ -187,8 +188,9 @@ func optsForConstructGo(
 	}
 }
 
+//nolint:paralleltest // Mutates environment variables.
 func TestConstructComponentConfigureProviderGo(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")

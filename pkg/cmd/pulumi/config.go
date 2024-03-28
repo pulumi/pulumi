@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	zxcvbn "github.com/nbutton23/zxcvbn-go"
+	"github.com/nbutton23/zxcvbn-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -52,6 +52,7 @@ func newConfigCmd() *cobra.Command {
 	var stack string
 	var showSecrets bool
 	var jsonOut bool
+	var open bool
 
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -61,7 +62,7 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -81,13 +82,27 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut)
+			// If --open is explicitly set, use that value. Otherwise, default to true if --show-secrets is set.
+			openSetByUser := cmd.Flags().Changed("open")
+
+			var openEnvironment bool
+			if openSetByUser {
+				openEnvironment = open
+			} else {
+				openEnvironment = showSecrets
+			}
+
+			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut, openEnvironment)
 		}),
 	}
 
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
+	cmd.Flags().BoolVar(
+		&open, "open", false,
+		"Open and resolve any environments listed in the stack configuration. "+
+			"Defaults to true if --show-secrets is set, false otherwise")
 	cmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
@@ -121,7 +136,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			"then all of the config from the current stack will be copied to the destination stack.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -161,7 +176,25 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 					destinationProjectStack)
 			}
 
-			return copyEntireConfigMap(currentStack, currentProjectStack, destinationStack, destinationProjectStack)
+			requiresSaving, err := copyEntireConfigMap(
+				currentStack,
+				currentProjectStack,
+				destinationStack,
+				destinationProjectStack)
+			if err != nil {
+				return err
+			}
+
+			// The use of `requiresSaving` here ensures that there was actually some config
+			// that needed saved, otherwise it's an unnecessary save call
+			if requiresSaving {
+				err := saveProjectStack(destinationStack, destinationProjectStack)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
 		}),
 	}
 
@@ -224,13 +257,15 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 func copyEntireConfigMap(currentStack backend.Stack,
 	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
 	destinationProjectStack *workspace.ProjectStack,
-) error {
+) (bool, error) {
 	var decrypter config.Decrypter
 	currentConfig := currentProjectStack.Config
+	currentEnvironments := currentProjectStack.Environment
+
 	if currentConfig.HasSecureValue() {
 		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
 		if decerr != nil {
-			return decerr
+			return false, decerr
 		}
 		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
 		decrypter = dec
@@ -240,37 +275,34 @@ func copyEntireConfigMap(currentStack backend.Stack,
 
 	encrypter, _, cerr := getStackEncrypter(destinationStack, destinationProjectStack)
 	if cerr != nil {
-		return cerr
+		return false, cerr
 	}
 
 	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	var requiresSaving bool
 	for key, val := range newProjectConfig {
 		err = destinationProjectStack.Config.Set(key, val, false)
 		if err != nil {
-			return err
+			return false, err
 		}
 		requiresSaving = true
 	}
 
-	// The use of `requiresSaving` here ensures that there was actually some config
-	// that needed saved, otherwise it's an unnecessary save call
-	if requiresSaving {
-		err := saveProjectStack(destinationStack, destinationProjectStack)
-		if err != nil {
-			return err
-		}
+	if currentEnvironments != nil && len(currentEnvironments.Imports()) > 0 {
+		destinationProjectStack.Environment = currentEnvironments
+		requiresSaving = true
 	}
 
-	return nil
+	return requiresSaving, nil
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {
 	var jsonOut bool
+	var open bool
 	var path bool
 
 	getCmd := &cobra.Command{
@@ -284,7 +316,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -299,12 +331,15 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(ctx, s, key, path, jsonOut)
+			return getConfig(ctx, s, key, path, jsonOut, open)
 		}),
 	}
 	getCmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
+	getCmd.Flags().BoolVar(
+		&open, "open", true,
+		"Open and resolve any environments listed in the stack configuration")
 	getCmd.PersistentFlags().BoolVar(
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to get")
@@ -326,7 +361,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -380,7 +415,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -429,7 +464,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -548,7 +583,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -666,7 +701,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -748,7 +783,7 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	firstChar := string([]rune(pair)[0])
 	if firstChar == "\"" || firstChar == "'" {
 		pair = strings.TrimPrefix(pair, firstChar)
-		splitArg = strings.SplitN(pair, fmt.Sprintf("%s=", firstChar), 2)
+		splitArg = strings.SplitN(pair, firstChar+"=", 2)
 	}
 
 	if len(splitArg) < 2 {
@@ -837,8 +872,16 @@ func listConfig(
 	ps *workspace.ProjectStack,
 	showSecrets bool,
 	jsonOut bool,
+	openEnvironment bool,
 ) error {
-	env, diags, err := checkStackEnv(ctx, stack, ps)
+	var env *esc.Environment
+	var diags []apitype.EnvironmentDiagnostic
+	var err error
+	if openEnvironment {
+		env, diags, err = openStackEnv(ctx, stack, ps)
+	} else {
+		env, diags, err = checkStackEnv(ctx, stack, ps)
+	}
 	if err != nil {
 		return err
 	}
@@ -952,8 +995,8 @@ func listConfig(
 
 		if env != nil {
 			_, environ, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
-				Pretend: true,
-				Redact:  true,
+				Pretend: !openEnvironment,
+				Redact:  !showSecrets,
 			})
 			if err != nil {
 				return err
@@ -990,7 +1033,7 @@ func listConfig(
 	return nil
 }
 
-func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut bool) error {
+func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut, openEnvironment bool) error {
 	project, _, err := readProject()
 	if err != nil {
 		return err
@@ -1000,7 +1043,13 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 		return err
 	}
 
-	env, diags, err := checkStackEnv(ctx, stack, ps)
+	var env *esc.Environment
+	var diags []apitype.EnvironmentDiagnostic
+	if openEnvironment {
+		env, diags, err = openStackEnv(ctx, stack, ps)
+	} else {
+		env, diags, err = checkStackEnv(ctx, stack, ps)
+	}
 	if err != nil {
 		return err
 	}
@@ -1131,8 +1180,10 @@ func looksLikeSecret(k config.Key, v string) bool {
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
 }
 
-func getAndSaveSecretsManager(stack backend.Stack, workspaceStack *workspace.ProjectStack) (secrets.Manager, error) {
-	sm, needsSave, err := getStackSecretsManager(stack, workspaceStack)
+func getAndSaveSecretsManager(
+	stack backend.Stack, workspaceStack *workspace.ProjectStack, fallbackManager secrets.Manager,
+) (secrets.Manager, error) {
+	sm, needsSave, err := getStackSecretsManager(stack, workspaceStack, fallbackManager)
 	if err != nil {
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
@@ -1270,7 +1321,7 @@ func getStackConfigurationWithFallback(
 		}
 	}
 
-	sm, err := getAndSaveSecretsManager(stack, workspaceStack)
+	sm, err := getAndSaveSecretsManager(stack, workspaceStack, fallbackSecretsManager)
 	if err != nil {
 		if fallbackSecretsManager != nil {
 			sm = fallbackSecretsManager
@@ -1313,7 +1364,7 @@ func getStackConfigurationWithFallback(
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
-	// the correct decrypter for the local backend would involve prompting for a passphrase)
+	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
 			Environment: pulumiEnv,

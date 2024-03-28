@@ -24,6 +24,7 @@ import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
 import { parseArgs } from "./internals";
 
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
@@ -218,7 +219,9 @@ class Server implements grpc.UntypedServiceImplementation {
                 const result: any = await this.provider.read(id, req.getUrn(), props);
                 resp.setId(result.id);
                 resp.setProperties(structproto.Struct.fromJavaScript(result.props));
-                resp.setInputs(structproto.Struct.fromJavaScript(result.inputs));
+                resp.setInputs(
+                    result.inputs === undefined ? undefined : structproto.Struct.fromJavaScript(result.inputs),
+                );
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);
@@ -306,7 +309,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
 
@@ -397,7 +400,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            configureRuntime(req, this.engineAddr);
+            await configureRuntime(req, this.engineAddr);
 
             const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
 
@@ -487,7 +490,7 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string | undefined) {
+async function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     if (engineAddr === undefined) {
@@ -504,6 +507,9 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
         req.getOrganization(),
     );
 
+    // resetOptions doesn't reset the saved features
+    await settings.awaitFeatureSupport();
+
     const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();
     if (rpcConfig) {
@@ -518,7 +524,7 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
  * deserializeInputs deserializes the inputs struct and applies appropriate dependencies.
  * @internal
  */
-export async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
+export async function deserializeInputs(inputsStruct: gstruct.Struct, inputDependencies: any): Promise<Inputs> {
     const result: Inputs = {};
 
     const deserializedInputs = rpc.deserializeProperties(inputsStruct);
@@ -674,7 +680,6 @@ export async function main(provider: Provider, args: string[]) {
             }
         });
     });
-    server.start();
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
     // We explicitly convert the number to a string so that Node doesn't colorize the output.

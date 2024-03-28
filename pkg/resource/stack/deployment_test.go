@@ -21,14 +21,17 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -200,7 +203,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -214,7 +217,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
@@ -282,7 +285,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 func TestCustomSerialization(t *testing.T) {
 	t.Parallel()
 
-	textAsset, err := resource.NewTextAsset("alpha beta gamma")
+	textAsset, err := rasset.FromText("alpha beta gamma")
 	assert.NoError(t, err)
 
 	strProp := resource.NewStringProperty("strProp")
@@ -445,7 +448,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 				ID:     "vol-044ba5ad2bd959bc1",
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.NoError(t, err)
 }
 
@@ -457,10 +460,9 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 		Resources: []apitype.ResourceV3{
 			{},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, "resource missing required 'urn' field", err.Error())
+	assert.EqualError(t, err, "resource missing required 'urn' field")
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
 
@@ -470,10 +472,9 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 				URN: resource.URN(urn),
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
+	assert.EqualError(t, err, fmt.Sprintf("resource '%s' missing required 'type' field", urn))
 
 	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
@@ -484,10 +485,65 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 				ID:     "vol-044ba5ad2bd959bc1",
 			},
 		},
-	}, DefaultSecretsProvider)
+	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
-	assert.Equal(t, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn), err.Error())
+	assert.EqualError(t, err, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn))
+}
+
+func TestDeserializeMissingSecretsManager(t *testing.T) {
+	t.Parallel()
+
+	urn := "urn:pulumi:urn:pulumi:test_stack::test_project::pkg:index:type::name"
+	ctx := context.Background()
+	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.URN(urn),
+				Type: "pkg:index:type",
+				Outputs: map[string]interface{}{
+					"secret": map[string]interface{}{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"ciphertext":                       "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
+					},
+				},
+			},
+		},
+	}, b64.Base64SecretsProvider)
+	assert.Nil(t, deployment)
+	assert.EqualError(t, err, "snapshot contains encrypted secrets but no secrets manager could be found")
+
+	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.URN(urn),
+				Type: "pkg:index:type",
+			},
+		},
+	}, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	assert.Equal(t, deployment, &deploy.Snapshot{
+		Manifest: deploy.Manifest{
+			Time:    time.Time{},
+			Version: "",
+			Plugins: nil,
+		},
+		SecretsManager: nil,
+		Resources: []*resource.State{
+			{
+				Type:         "pkg:index:type",
+				URN:          resource.URN(urn),
+				Custom:       false,
+				Delete:       false,
+				ID:           "",
+				Inputs:       resource.PropertyMap{},
+				Outputs:      resource.PropertyMap{},
+				Parent:       "",
+				Protect:      false,
+				Dependencies: nil,
+			},
+		},
+		PendingOperations: nil,
+	})
 }
 
 func TestSerializePropertyValue(t *testing.T) {
@@ -498,6 +554,23 @@ func TestSerializePropertyValue(t *testing.T) {
 		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
 		assert.NoError(t, err)
 	})
+}
+
+// Test that if ShowSecrets is set the encrypter is not called into at all.
+func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
+	t.Parallel()
+
+	crypter := config.NewPanicCrypter()
+
+	secret := resource.MakeSecret(resource.NewStringProperty("secret"))
+	_, err := SerializePropertyValue(secret, crypter, true)
+	assert.NoError(t, err)
+
+	secret = resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+		resource.MakeSecret(resource.NewStringProperty("secret")),
+	}))
+	_, err = SerializePropertyValue(secret, crypter, true)
+	assert.NoError(t, err)
 }
 
 func TestDeserializePropertyValue(t *testing.T) {

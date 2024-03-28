@@ -34,8 +34,8 @@ import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
-import * as providerproto from "../proto/provider_pb";
 import * as resourceproto from "../proto/resource_pb";
+import * as providerproto from "../proto/provider_pb";
 
 /**
  * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
@@ -220,8 +220,11 @@ function getProvider(tok: string, opts: InvokeOptions) {
     return opts.provider ? opts.provider : opts.parent ? opts.parent.getProvider(tok) : undefined;
 }
 
-function deserializeResponse(tok: string, resp: any): any {
-    const failures: any = resp.getFailuresList();
+function deserializeResponse(
+    tok: string,
+    resp: { getFailuresList(): Array<providerproto.CheckFailure>; getReturn(): gstruct.Struct | undefined },
+): Inputs | undefined {
+    const failures = resp.getFailuresList();
     if (failures?.length) {
         let reasons = "";
         for (let i = 0; i < failures.length; i++) {
@@ -281,29 +284,36 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                     pluginDownloadURL,
                 );
 
-                const monitor: any = getMonitor();
-                const resp: any = await debuggablePromise(
-                    new Promise((innerResolve, innerReject) =>
-                        monitor.call(req, (err: grpc.ServiceError, innerResponse: any) => {
-                            log.debug(`Call RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
-                            if (err) {
-                                // If the monitor is unavailable, it is in the process of shutting down or has already
-                                // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                                if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
-                                    terminateRpcs();
-                                    err.message = "Resource monitor is terminating";
-                                    innerReject(err);
-                                    return;
-                                }
+                const monitor = getMonitor();
+                const resp = await debuggablePromise(
+                    new Promise<providerproto.CallResponse>((innerResolve, innerReject) => {
+                        if (monitor === undefined) {
+                            throw new Error("No monitor available");
+                        }
 
-                                // If the RPC failed, rethrow the error with a native exception and the message that
-                                // the engine provided - it's suitable for user presentation.
-                                innerReject(new Error(err.details));
-                            } else {
-                                innerResolve(innerResponse);
-                            }
-                        }),
-                    ),
+                        monitor.call(
+                            req,
+                            (err: grpc.ServiceError | null, innerResponse: providerproto.CallResponse) => {
+                                log.debug(`Call RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                                if (err) {
+                                    // If the monitor is unavailable, it is in the process of shutting down or has already
+                                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
+                                    if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
+                                        terminateRpcs();
+                                        err.message = "Resource monitor is terminating";
+                                        innerReject(err);
+                                        return;
+                                    }
+
+                                    // If the RPC failed, rethrow the error with a native exception and the message that
+                                    // the engine provided - it's suitable for user presentation.
+                                    innerReject(new Error(err.details));
+                                } else {
+                                    innerResolve(innerResponse);
+                                }
+                            },
+                        );
+                    }),
                     label,
                 );
 
@@ -314,11 +324,13 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
 
                 // Keep track of whether we need to mark the resulting output a secret.
                 // and unwrap each individual value.
-                for (const k of Object.keys(deserialized)) {
-                    const v = deserialized[k];
-                    if (isRpcSecret(v)) {
-                        isSecret = true;
-                        deserialized[k] = unwrapRpcSecret(v);
+                if (deserialized !== undefined) {
+                    for (const k of Object.keys(deserialized)) {
+                        const v = deserialized[k];
+                        if (isRpcSecret(v)) {
+                            isSecret = true;
+                            deserialized[k] = unwrapRpcSecret(v);
+                        }
                     }
                 }
 
@@ -339,7 +351,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                 // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
                 // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
                 // present during previews (i.e. isDryRun() will be true).
-                resolver(deserialized, true, isSecret, deps);
+                resolver(<any>deserialized, true, isSecret, deps);
             } catch (e) {
                 resolver(<any>undefined, true, false, undefined, e);
             } finally {
@@ -427,7 +439,7 @@ async function createCallRequest(
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
 
-    const req = new providerproto.CallRequest();
+    const req = new resourceproto.ResourceCallRequest();
     req.setTok(tok);
     req.setArgs(obj);
     req.setProvider(provider || "");
@@ -441,7 +453,7 @@ async function createCallRequest(
             const urn = await dep.urn.promise();
             urns.add(urn);
         }
-        const deps = new providerproto.CallRequest.ArgumentDependencies();
+        const deps = new resourceproto.ResourceCallRequest.ArgumentDependencies();
         deps.setUrnsList(Array.from(urns));
         argDependencies.set(key, deps);
     }

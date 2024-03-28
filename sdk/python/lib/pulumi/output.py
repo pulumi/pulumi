@@ -14,6 +14,7 @@
 import asyncio
 import contextlib
 import json
+import os
 from functools import reduce
 from inspect import isawaitable
 from typing import (
@@ -38,6 +39,7 @@ from typing import (
 from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
+from .runtime.settings import SETTINGS
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -98,6 +100,8 @@ class Output(Generic[T_co]):
     ) -> None:
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
+        # keep track of all created outputs so we can check they resolve
+        SETTINGS.outputs.append(future)
 
         async def is_value_known() -> bool:
             return await is_known and not contains_unknowns(await future)
@@ -299,9 +303,7 @@ class Output(Generic[T_co]):
                 # this. If we get an empty list we can't splat it as that results in a type error, so check
                 # that we have some values before splatting. If it's empty just call the `typ` constructor
                 # directly with no arguments.
-                lambda d: typ(**d)
-                if d
-                else typ()
+                lambda d: typ(**d) if d else typ()
             )
             return cast(Output[T_co], o_typ)
 
@@ -420,8 +422,7 @@ class Output(Generic[T_co]):
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[T]) -> "Output[Dict[str, T]]":
-        ...
+    def all(**kwargs: Input[T]) -> "Output[Dict[str, T]]": ...
 
     @staticmethod
     def all(*args: Input[T], **kwargs: Input[T]):
@@ -718,17 +719,20 @@ class Output(Generic[T_co]):
 
         # You'd think this could all be on one line but mypy seems to think `s` is a `Sequence[object]` if you
         # do.
-        os: Output[Union[str, bytes, bytearray]] = Output.from_input(s)
-        return os.apply(loads)
+        s_output: Output[Union[str, bytes, bytearray]] = Output.from_input(s)
+        return s_output.apply(loads)
 
     def __str__(self) -> str:
-        return """Calling __str__ on an Output[T] is not supported.
+        msg = """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of Pulumi."""
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+        if os.getenv("PULUMI_ERROR_OUTPUT_STRING", "").lower() in ["1", "true"]:
+            raise TypeError(msg)
+        msg += "\nThis function may throw in a future version of Pulumi."
+        return msg
 
 
 class Unknown:

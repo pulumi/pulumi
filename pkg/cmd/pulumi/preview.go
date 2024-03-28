@@ -21,6 +21,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -32,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -41,6 +44,13 @@ import (
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
 func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 	return promise.Run(func() (importFile, error) {
+		// We may exit the below loop early if we encounter an error, so we need to make sure we drain the events
+		// channel.
+		defer func() {
+			for range events {
+			}
+		}()
+
 		// A mapping of every URN we see to it's name, used to build later resourceSpecs
 		fullNameTable := map[resource.URN]string{}
 		// A set of all URNs we've added to the import list, used to avoid adding parents to NameTable.
@@ -52,6 +62,28 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			NameTable: map[string]resource.URN{},
 		}
 
+		// A mapping of names to the index of the resourceSpec in imports.Resources that used it. We have to
+		// fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
+		// inefficient to wait for the whole thing to finish before building the import specs.
+		takenNames := map[string]int{}
+
+		// We want to prefer using the urns name for the source name, but if it conflicts with other resources
+		// we'll auto suffix it, first with the type, then with rising numbers. This function does that
+		// auto-suffixing.
+		uniqueName := func(name string, typ tokens.Type) string {
+			caser := cases.Title(language.English, cases.NoLower)
+			typeSuffix := caser.String(string(typ.Name()))
+			baseName := fmt.Sprintf("%s%s", name, typeSuffix)
+			name = baseName
+
+			counter := 2
+			for _, has := takenNames[name]; has; _, has = takenNames[name] {
+				name = fmt.Sprintf("%s%d", baseName, counter)
+				counter++
+			}
+			return name
+		}
+
 		// This is a pretty trivial mapping of Create operations to import declarations.
 		for e := range events {
 			preEvent, ok := e.Payload().(engine.ResourcePreEventPayload)
@@ -60,7 +92,35 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			}
 
 			urn := preEvent.Metadata.URN
-			fullNameTable[urn] = urn.Name()
+			name := urn.Name()
+			if i, has := takenNames[name]; has {
+				// Another resource already has this name, lets check if that was it's original name or if it was a rename
+				importI := imports.Resources[i]
+				if importI.LogicalName != "" {
+					// i was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
+					newName := uniqueName(importI.LogicalName, importI.Type)
+					imports.Resources[i].Name = newName
+					// Go through all the resources and fix up any parent references to use the new name.
+					for j := range imports.Resources {
+						if imports.Resources[j].Parent == name {
+							imports.Resources[j].Parent = newName
+						}
+					}
+					// Fix up the nametable if needed
+					if urn, has := imports.NameTable[name]; has {
+						delete(imports.NameTable, name)
+						imports.NameTable[newName] = urn
+					}
+					// Fix up takenNames incase this is hit again
+					takenNames[newName] = i
+				} else {
+					// i just had the same name as us, lets find a new one
+					name = uniqueName(name, urn.Type())
+				}
+			}
+
+			// Name is unique at this point
+			fullNameTable[urn] = name
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
@@ -92,7 +152,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			var parent string
 			if new.Parent != "" {
 				// If the parent is just the root stack then skip it as we don't need to import that.
-				if new.Parent.Type() != resource.RootStackType {
+				if new.Parent.QualifiedType() != resource.RootStackType {
 					var has bool
 					parent, has = fullNameTable[new.Parent]
 					contract.Assertf(has, "expected parent %q to be in full name table", new.Parent)
@@ -107,7 +167,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			if new.Provider != "" {
 				ref, err := providers.ParseReference(new.Provider)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not parse provider reference: %v", err)
+					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
 				// If we're trying to create this provider in the same deployment and it's not a default provider then
@@ -129,7 +189,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 				v, err := providers.GetProviderVersion(inputs)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not get provider version for %s: %v", ref, err)
+					return importFile{}, fmt.Errorf("could not get provider version for %s: %w", ref, err)
 				}
 				if v != nil {
 					version = v.String()
@@ -137,7 +197,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 
 				pluginDownloadURL, err = providers.GetProviderDownloadURL(inputs)
 				if err != nil {
-					return importFile{}, fmt.Errorf("could not get provider download url for %s: %v", ref, err)
+					return importFile{}, fmt.Errorf("could not get provider download url for %s: %w", ref, err)
 				}
 			}
 
@@ -148,9 +208,16 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 				id = "<PLACEHOLDER>"
 			}
 
+			// We only want to set logical name if we need to
+			var logicalName string
+			if name != urn.Name() {
+				logicalName = urn.Name()
+			}
+
+			takenNames[name] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
-				Name:              urn.Name(),
+				Name:              name,
 				ID:                id,
 				Parent:            parent,
 				Provider:          provider,
@@ -158,6 +225,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 				Remote:            !new.Custom && new.Provider != "",
 				Version:           version,
 				PluginDownloadURL: pluginDownloadURL,
+				LogicalName:       logicalName,
 			})
 		}
 
@@ -196,6 +264,7 @@ func newPreviewCmd() *cobra.Command {
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var suppressPermalink string
 	var targets []string
 	var replaces []string
@@ -225,7 +294,7 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -239,6 +308,7 @@ func newPreviewCmd() *cobra.Command {
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
 				SuppressOutputs:        suppressOutputs,
+				SuppressProgress:       suppressProgress,
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
@@ -270,14 +340,14 @@ func newPreviewCmd() *cobra.Command {
 				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, args[0], remoteArgs)
 			}
 
-			filestateBackend, err := isFilestateBackend(displayOpts)
+			isDIYBackend, err := isDIYBackend(displayOpts)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			// by default, we are going to suppress the permalink when using self-managed backends
+			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				displayOpts.SuppressPermalink = true
 			}
 
@@ -455,7 +525,7 @@ func newPreviewCmd() *cobra.Command {
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
-		"Config to use during the preview")
+		"Config to use during the preview and save to the stack config file")
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
@@ -510,7 +580,7 @@ func newPreviewCmd() *cobra.Command {
 		"Serialize the preview diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
@@ -534,7 +604,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
-
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")

@@ -82,7 +82,7 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new == old || new.ID == "", "new", "must not have an ID")
 	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
 		"new", "must have or be a provider if it is a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
@@ -140,7 +140,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			err := s.Deployment().SameProvider(s.new)
 			if err != nil {
 				return resource.StatusOK, nil,
-					fmt.Errorf("bad provider state for resource %v: %v", s.URN(), err)
+					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
 			}
 		}
 	}
@@ -164,6 +164,7 @@ type CreateStep struct {
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff (only for replacements).
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
+	provider      plugin.Provider                // the optional provider to use.
 }
 
 var _ Step = (*CreateStep)(nil)
@@ -240,7 +241,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	resourceStatus := resource.StatusOK
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -260,7 +261,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		if !preview && id == "" {
-			return resourceStatus, nil, fmt.Errorf("provider did not return an ID from Create")
+			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 		}
 
 		// Copy any of the default and output properties on the live object state.
@@ -288,10 +289,11 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
-	deployment     *Deployment     // the current deployment.
-	old            *resource.State // the state of the existing resource.
-	replacing      bool            // true if part of a replacement.
+	deployment     *Deployment           // the current deployment.
+	old            *resource.State       // the state of the existing resource.
+	replacing      bool                  // true if part of a replacement.
 	otherDeletions *sync.Map       // other resources that are planned to delete
+	provider       plugin.Provider       // the optional provider to use.
 }
 
 var _ Step = (*DeleteStep)(nil)
@@ -411,7 +413,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Not preview and not external and not Drop and is custom, do the actual delete
 
 		// Invoke the Delete RPC function for this provider:
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -464,6 +466,7 @@ type UpdateStep struct {
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	provider      plugin.Provider                // the optional provider to use.
 }
 
 var _ Step = (*UpdateStep)(nil)
@@ -522,7 +525,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	resourceStatus := resource.StatusOK
 	if s.new.Custom {
 		// Invoke the Update RPC function for this provider:
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -634,6 +637,7 @@ type ReadStep struct {
 	old        *resource.State   // the old resource state, if one exists for this urn
 	new        *resource.State   // the new resource state, to be used to query the provider
 	replacing  bool              // whether or not the new resource is replacing the old resource
+	provider   plugin.Provider   // the optional provider to use.
 }
 
 // NewReadStep creates a new Read step.
@@ -709,7 +713,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	if id == plugin.UnknownStringValue {
 		s.new.Outputs = resource.PropertyMap{}
 	} else {
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -779,6 +783,7 @@ type RefreshStep struct {
 	old        *resource.State // the old resource state, if one exists for this urn
 	new        *resource.State // the new resource state, to be used to query the provider
 	done       chan<- bool     // the channel to use to signal completion, if any
+	provider   plugin.Provider // the optional provider to use.
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -830,7 +835,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	// For a custom resource, fetch the resource's provider and read the resource's current state.
-	prov, err := getProvider(s)
+	prov, err := getProvider(s, s.provider)
 	if err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -850,7 +855,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			// 2. Make sure the initialization errors are persisted in the state, so that the next
 			//    `pulumi up` will surface them to the user.
 			err = nil
-			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
+			msg := "Refreshed resource is in an unhealthy state:\n* " + strings.Join(initErrors, "\n* ")
 			s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
@@ -910,6 +915,7 @@ type ImportStep struct {
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
 	randomSeed    []byte                         // the random seed to use for Check.
+	provider      plugin.Provider                // the optional provider to use.
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
@@ -1020,7 +1026,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
 		// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
 		var err error
-		prov, err = getProvider(s)
+		prov, err = getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1351,13 +1357,16 @@ func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
 }
 
 // getProvider fetches the provider for the given step.
-func getProvider(s Step) (plugin.Provider, error) {
+func getProvider(s Step, override plugin.Provider) (plugin.Provider, error) {
+	if override != nil {
+		return override, nil
+	}
 	if providers.IsProviderType(s.Type()) {
 		return s.Deployment().providers, nil
 	}
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
-		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %w", s.Provider(), s.URN(), err)
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
 		pkg := providers.GetDeniedDefaultProviderPkg(ref)

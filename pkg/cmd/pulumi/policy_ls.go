@@ -37,7 +37,7 @@ func newPolicyLsCmd() *cobra.Command {
 		Short: "List all Policy Packs for a Pulumi organization",
 		Long:  "List all Policy Packs for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 
 			// Try to read the current project
 			project, _, err := readProject()

@@ -261,7 +261,6 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestWriteCheckpointOnceUnsafe(t *testing.T) {
-	t.Setenv(env.Experimental.Var().Name(), "1")
 	t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
 
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgUnsafe::provider")

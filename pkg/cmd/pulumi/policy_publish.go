@@ -40,7 +40,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return policyPublishCmd.Run(commandContext(), args)
+			return policyPublishCmd.Run(cmd.Context(), args)
 		}),
 	}
 
@@ -88,7 +88,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	if strings.Contains(orgName, "/") {
 		return errors.New("organization name must not contain slashes")
 	}
-	policyPackRef := fmt.Sprintf("%s/", orgName)
+	policyPackRef := orgName + "/"
 
 	//
 	// Obtain current PolicyPack, tied to the Pulumi Cloud backend.

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -70,8 +71,13 @@ func mockStdin(t *testing.T, input string) {
 //nolint:paralleltest // mutates global state
 func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 	var stdoutBuff bytes.Buffer
+	secretsProvider := b64.Base64SecretsProvider.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
+
 	cmd := stackChangeSecretsProviderCmd{
-		stdout: &stdoutBuff,
+		stdout:          &stdoutBuff,
+		secretsProvider: secretsProvider,
 
 		stack: "testStack",
 	}
@@ -100,7 +106,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			return snapshot, nil
 		},
 		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(snapshot, nil, false)
+			chk, err := stack.SerializeDeployment(snapshot, false)
 			if err != nil {
 				return nil, err
 			}
@@ -114,7 +120,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			}, nil
 		},
 		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 			if err != nil {
 				return err
 			}
@@ -123,12 +129,11 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
-	}
-	t.Cleanup(func() { backendInstance = nil })
+	})
 
 	tmpDir := t.TempDir()
 	chdir(t, tmpDir)
@@ -163,9 +168,14 @@ runtime: mock
 func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 	ctx := context.Background()
 
+	secretsProvider := b64.Base64SecretsProvider.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
+
 	var stdoutBuff bytes.Buffer
 	cmd := stackChangeSecretsProviderCmd{
-		stdout: &stdoutBuff,
+		stdout:          &stdoutBuff,
+		secretsProvider: secretsProvider,
 
 		stack: "testStack",
 	}
@@ -197,7 +207,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			return snapshot, nil
 		},
 		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(snapshot, nil, false)
+			chk, err := stack.SerializeDeployment(snapshot, false)
 			if err != nil {
 				return nil, err
 			}
@@ -211,7 +221,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			}, nil
 		},
 		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 			if err != nil {
 				return err
 			}
@@ -223,12 +233,11 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	mockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
-	}
-	t.Cleanup(func() { backendInstance = nil })
+	})
 
 	tmpDir := t.TempDir()
 	chdir(t, tmpDir)

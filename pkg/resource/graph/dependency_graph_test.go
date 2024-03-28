@@ -268,3 +268,59 @@ func TestTransitiveDependenciesOf(t *testing.T) {
 	assert.True(t, set.Contains(aws), "everything should depend on the provider")
 	assert.True(t, set.Contains(greatUncle), "child depends on greatUncle")
 }
+
+func TestOnlyDependsOn(t *testing.T) {
+	t.Parallel()
+
+	aws0 := NewProviderResource("aws", "default", "0")
+	aws1 := NewProviderResource("aws", "default", "1")
+	aws2 := NewProviderResource("aws", "default", "2")
+
+	b0 := NewResource("b", aws0)
+	b1 := NewResource("b", aws1)
+
+	c0 := NewResource("c0", aws2, b0.URN)
+
+	dg := NewDependencyGraph([]*resource.State{
+		aws0,
+		aws1,
+		aws2,
+		b0,
+		b1,
+		c0,
+	})
+
+	assert.Equal(t, []*resource.State{b1}, dg.OnlyDependsOn(aws1))
+	assert.Equal(t, []*resource.State{c0}, dg.OnlyDependsOn(aws2))
+	assert.Equal(t, []*resource.State(nil), dg.OnlyDependsOn(b0))
+}
+
+func TestOnlyDependsOnMultipleProviders(t *testing.T) {
+	t.Parallel()
+
+	aws0 := NewProviderResource("aws", "default", "0")
+	aws1 := NewProviderResource("aws", "default", "1")
+
+	b0 := NewResource("b", aws0)
+
+	c0 := NewProviderResource("aws", "non-default", "0", b0.URN)
+	c1 := NewProviderResource("aws", "non-default", "1")
+
+	d0 := NewResource("d", c0)
+	d1 := NewResource("d", c1)
+
+	dg := NewDependencyGraph([]*resource.State{
+		aws0,
+		aws1,
+		b0,
+		c0,
+		c1,
+		d0,
+		d1,
+	})
+
+	assert.Equal(t, []*resource.State{b0, c0, d0}, dg.OnlyDependsOn(aws0))
+	assert.Equal(t, []*resource.State(nil), dg.OnlyDependsOn(aws1))
+	assert.Equal(t, []*resource.State{c0, d0}, dg.OnlyDependsOn(b0))
+	assert.Equal(t, []*resource.State{d1}, dg.OnlyDependsOn(c1))
+}

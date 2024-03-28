@@ -15,6 +15,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -28,7 +30,7 @@ func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
 		Short: "Remove environments from a stack",
 		Long:  "Removes an environment from a stack's import list.",
 		Args:  cmdutil.ExactArgs(1),
-		Run:   cmdutil.RunFunc(impl.run),
+		Run:   cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error { return impl.run(cmd.Context(), args) }),
 	}
 
 	cmd.Flags().BoolVar(
@@ -48,9 +50,10 @@ type configEnvRmCmd struct {
 	yes         bool
 }
 
-func (cmd *configEnvRmCmd) run(_ *cobra.Command, args []string) error {
-	return cmd.parent.editStackEnvironment(cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
-		stack.Environment = stack.Environment.Remove(args[0])
-		return nil
-	})
+func (cmd *configEnvRmCmd) run(ctx context.Context, args []string) error {
+	return cmd.parent.editStackEnvironment(
+		ctx, cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
+			stack.Environment = stack.Environment.Remove(args[0])
+			return nil
+		})
 }

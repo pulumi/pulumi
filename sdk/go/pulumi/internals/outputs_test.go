@@ -59,7 +59,7 @@ func TestBasicOutputs(t *testing.T) {
 			reject(errors.New("boom"))
 		}()
 		v, _, _, _, err := await(out)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "boom")
 		assert.Nil(t, v)
 	}
 }

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as url from "url";
 import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
@@ -27,7 +28,6 @@ import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
-import * as url from "url";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -644,8 +644,9 @@ function collapseAliasToUrn(
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
 export interface ResourceOptions {
-    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
-    // that mergeOptions works properly for it.
+    // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies that
+    // mergeOptions works properly for it. Also be sure to update the logic in callbacks.ts that marshals to
+    // and from this type to the wire protocol.
 
     /**
      * An optional existing ID to load, rather than create.
@@ -701,6 +702,16 @@ export interface ResourceOptions {
      * parents walking from the resource up to the stack.
      */
     transformations?: ResourceTransformation[];
+
+    /**
+     * Optional list of transforms to apply to this resource during construction. The
+     * transforms are applied in order, and are applied prior to transforms applied to
+     * parents walking from the resource up to the stack.
+     *
+     * This property is experimental.
+     */
+    xTransforms?: ResourceTransform[];
+
     /**
      * The URN of a previously-registered resource of this type to read from the engine.
      */
@@ -749,6 +760,60 @@ export interface CustomTimeouts {
  * this indicates that the resource will not be transformed.
  */
 export type ResourceTransformation = (args: ResourceTransformationArgs) => ResourceTransformationResult | undefined;
+
+/**
+ * ResourceTransform is the callback signature for the `transforms` resource option.  A
+ * transform is passed the same set of inputs provided to the `Resource` constructor, and can
+ * optionally return back alternate values for the `props` and/or `opts` prior to the resource
+ * actually being created.  The effect will be as though those props and opts were passed in place
+ * of the original call to the `Resource` constructor.  If the transform returns undefined,
+ * this indicates that the resource will not be transformed.
+ */
+export type ResourceTransform = (
+    args: ResourceTransformArgs,
+) => Promise<ResourceTransformResult | undefined> | ResourceTransformResult | undefined;
+
+/**
+ * ResourceTransformArgs is the argument bag passed to a resource transform.
+ */
+export interface ResourceTransformArgs {
+    /**
+     * If the resource is a custom or component resource.
+     */
+    custom: boolean;
+    /**
+     * The type of the Resource.
+     */
+    type: string;
+    /**
+     * The name of the Resource.
+     */
+    name: string;
+    /**
+     * The original properties passed to the Resource constructor.
+     */
+    props: Inputs;
+    /**
+     * The original resource options passed to the Resource constructor.
+     */
+    opts: ResourceOptions;
+}
+
+/**
+ * ResourceTransformResult is the result that must be returned by a resource transformation
+ * callback.  It includes new values to use for the `props` and `opts` of the `Resource` in place of
+ * the originally provided values.
+ */
+export interface ResourceTransformResult {
+    /**
+     * The new properties to use in place of the original `props`
+     */
+    props: Inputs;
+    /**
+     * The new resource options to use in place of the original `opts`
+     */
+    opts: ResourceOptions;
+}
 
 /**
  * ResourceTransformationArgs is the argument bag passed to a resource transformation.
@@ -987,7 +1052,7 @@ export class ComponentResource<TData = any> extends Resource {
      * list of other resources that this resource depends on, controlling the order in which we
      * perform resource operations.
      *
-     * @param t The type of the resource.
+     * @param type The type of the resource.
      * @param name The _unique_ name of the resource.
      * @param args Information passed to [initialize] method.
      * @param opts A bag of options that control this resource's behavior.

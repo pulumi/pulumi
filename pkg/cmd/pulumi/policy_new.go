@@ -60,7 +60,7 @@ func newPolicyNewCmd() *cobra.Command {
 			"Only organization administrators can publish a Policy Pack.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
@@ -134,7 +134,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else if !opts.IsInteractive {
-		return fmt.Errorf("a template must be provided when running in non-interactive mode")
+		return errors.New("a template must be provided when running in non-interactive mode")
 	} else {
 		if template, err = choosePolicyPackTemplate(templates, opts); err != nil {
 			return err
@@ -191,7 +191,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			Main:    proj.Main,
 			Runtime: proj.Runtime,
 		}, Root: root}
-		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
+		_, main, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -206,7 +206,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 		defer pluginCtx.Close()
 
-		if err := installPolicyPackDependencies(pluginCtx, proj, pwd); err != nil {
+		if err := installPolicyPackDependencies(pluginCtx, proj, main); err != nil {
 			return err
 		}
 	}
@@ -223,16 +223,17 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 }
 
 func installPolicyPackDependencies(ctx *plugin.Context,
-	proj *workspace.PolicyPackProject, directory string,
+	proj *workspace.PolicyPackProject, main string,
 ) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, proj.Runtime.Name(), proj.Runtime.Options())
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, proj.Runtime.Options())
+	lang, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(directory); err != nil {
+	if err = lang.InstallDependencies(programInfo); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}
@@ -271,7 +272,7 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 	usageCommandPreambles := []string{
 		"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run",
 	}
-	usageCommands := []string{fmt.Sprintf("pulumi up --policy-pack %s", root)}
+	usageCommands := []string{"pulumi up --policy-pack " + root}
 
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
 		usageCommandPreambles = append(usageCommandPreambles, "publish the Policy Pack, run")

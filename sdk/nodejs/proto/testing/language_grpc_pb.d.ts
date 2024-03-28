@@ -6,7 +6,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_testing_language_pb from "../testing/language_pb";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 
 interface ILanguageTestService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     getLanguageTests: ILanguageTestService_IGetLanguageTests;

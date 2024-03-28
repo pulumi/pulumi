@@ -564,6 +564,9 @@ func (fun *Function) NeedsOutputVersion() bool {
 
 // Package describes a Pulumi package.
 type Package struct {
+	// True if this package should be written in the new style to support pack and conformance testing.
+	SupportPack bool
+
 	moduleFormat *regexp.Regexp
 
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes". "random")
@@ -870,11 +873,12 @@ func (pkg *Package) TokenToModule(tok string) string {
 	case "providers":
 		return ""
 	default:
-		if pkg.moduleFormat == nil {
-			pkg.moduleFormat = defaultModuleFormat
+		format := pkg.moduleFormat
+		if format == nil {
+			format = defaultModuleFormat
 		}
 
-		matches := pkg.moduleFormat.FindStringSubmatch(components[1])
+		matches := format.FindStringSubmatch(components[1])
 		if len(matches) < 2 || strings.HasPrefix(matches[1], "index") {
 			return ""
 		}
@@ -927,8 +931,11 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	var metadata *MetadataSpec
-	if pkg.moduleFormat != nil {
-		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
+	if pkg.moduleFormat != nil || pkg.SupportPack {
+		metadata = &MetadataSpec{SupportPack: pkg.SupportPack}
+		if pkg.moduleFormat != nil {
+			metadata.ModuleFormat = pkg.moduleFormat.String()
+		}
 	}
 
 	spec = &PackageSpec{
@@ -1826,6 +1833,11 @@ type MetadataSpec struct {
 	// a format. The regex must define one capturing group that contains the module name, which must be formatted as
 	// "namespace1/namespace2/...namespaceN".
 	ModuleFormat string `json:"moduleFormat,omitempty" yaml:"moduleFormat,omitempty"`
+
+	// SupportPack indicates whether or not the package is written to support the pack command. This causes versions to
+	// be written out, plugin.json files to be filled in, and package metadata to be written to the directory.
+	// This defaults to false currently, but conformance testing _always_ turns it on.
+	SupportPack bool `json:"supportPack,omitempty" yaml:"supportPack,omitempty"`
 }
 
 // PackageInfoSpec is the serializable description of a Pulumi package's metadata.

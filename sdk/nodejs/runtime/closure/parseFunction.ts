@@ -468,6 +468,22 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
             return false;
         }
 
+        // crypto is never considered a built-in. Starting with nodejs 19
+        // there is global.crypto builtin that references
+        // `require("crypto").webcrypto`. If we treat crypto as a builtin, we
+        // would never serialize a require expression for it, even if the user
+        // shadowed global.crypto by required the node:crypto module under the
+        // name `crypto`.
+        //
+        // If crypto was required as a module, createClosure will add a module
+        // entry for it, and we will correctly serialize a require expression.
+        // Otherwise we'll pick up the entry that was added in
+        // addEntriesForWellKnownGlobalObjectsAsync and serialize it as
+        // `global.crypto`.
+        if (ident === "crypto") {
+            return false;
+        }
+
         // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
         // note that these only exist in the scope of modules, and so are not truly global in the usual sense.
         // See https://nodejs.org/api/globals.html for more details.

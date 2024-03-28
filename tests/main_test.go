@@ -13,7 +13,7 @@ import (
 func TestMain(m *testing.M) {
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	disableCheckpointBackups := env.SelfManagedDisableCheckpointBackups.Var().Name()
+	disableCheckpointBackups := env.DIYBackendDisableCheckpointBackups.Var().Name()
 	if err := os.Setenv(disableCheckpointBackups, "1"); err != nil {
 		fmt.Printf("error setting env var '%s': %v\n", disableCheckpointBackups, err)
 		os.Exit(1)

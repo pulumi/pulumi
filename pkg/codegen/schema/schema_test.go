@@ -16,6 +16,7 @@
 package schema
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -28,10 +29,19 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"gopkg.in/yaml.v3"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
@@ -50,7 +60,7 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 			panic(err)
 		}
 	} else {
-		panic(fmt.Sprintf("unknown schema file extension while parsing %s", file))
+		panic("unknown schema file extension while parsing " + file)
 	}
 
 	return pkgSpec
@@ -384,8 +394,7 @@ func TestInvalidTypes(t *testing.T) {
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
 			_, err := ImportSpec(pkgSpec, nil)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expected)
+			assert.ErrorContains(t, err, tt.expected)
 		})
 	}
 }
@@ -636,6 +645,110 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 }
 
+func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"urn": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+			"test:index:TestComponent": {
+				IsComponent: true,
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"urn": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	// No error as binding should work fine even with warnings
+	assert.NoError(t, err)
+	// assert that there are 2 warnings in the diagnostics because of using URN as a property
+	assert.Len(t, diags, 2)
+	for _, diag := range diags {
+		assert.Equal(t, diag.Severity, hcl.DiagWarning)
+		assert.Contains(t, diag.Summary, "urn is a reserved property name")
+	}
+	assert.NotNil(t, pkg)
+}
+
+func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	// No error as binding should work fine even with warnings
+	assert.NoError(t, err)
+	assert.NotNil(t, pkg)
+	// assert that there is 1 warning in the diagnostics because of using ID as a property
+	assert.Len(t, diags, 1)
+	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
+	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
+}
+
+func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestComponent": {
+				IsComponent: true,
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	assert.NoError(t, err)
+	assert.Empty(t, diags)
+	assert.NotNil(t, pkg)
+}
+
 func TestMethods(t *testing.T) {
 	t.Parallel()
 
@@ -725,8 +838,7 @@ func TestMethods(t *testing.T) {
 
 			pkg, err := ImportSpec(pkgSpec, nil)
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
 				if err != nil {
 					t.Error(err)
@@ -1442,27 +1554,74 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 	}
 }
 
-func TestInvalidProperties(t *testing.T) {
-	t.Parallel()
+//nolint:paralleltest // using t.Setenv which is incompatible with t.Parallel
+func TestLoaderRespectsDebugProviders(t *testing.T) {
+	host := debugProvidersHelperHost(t)
+	loader := NewPluginLoader(host)
+	cancel := make(chan bool)
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceProviderServer(srv, &debugProvidersHelperServer{})
+			return nil
+		},
+	})
+	require.NoError(t, err)
 
-	tests := []struct {
-		filename string
-		expected string
-	}{
-		{"bad-property-1.json", "failed to bind properties for fake-provider:index:typ: property name \"urn\" is reserved"},
-		{"bad-property-2.json", "failed to bind properties for fake-provider:index:typ: property name \"id\" is reserved"},
+	t.Cleanup(func() {
+		require.NoError(t, host.SignalCancellation())
+		cancel <- true
+		require.NoError(t, <-handle.Done)
+		require.NoError(t, host.Close())
+	})
+
+	// Instruct to attach to the imaginary provider.
+	t.Setenv("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("imaginary:%d", handle.Port))
+
+	// Load from the in-process provider.
+	pref, err := loader.LoadPackageReference("imaginary", nil)
+	require.NoError(t, err)
+	require.Equal(t, "imaginary", pref.Name())
+}
+
+type debugProvidersHelperServer struct {
+	pulumirpc.UnimplementedResourceProviderServer
+}
+
+func (*debugProvidersHelperServer) GetSchema(
+	ctx context.Context, req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
+	schema := PackageSpec{
+		Name:    "imaginary",
+		Version: "0.0.1",
 	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.filename, func(t *testing.T) {
-			t.Parallel()
-
-			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
-
-			_, err := ImportSpec(pkgSpec, nil)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expected)
-		})
+	bytes, err := json.Marshal(schema)
+	if err != nil {
+		return nil, err
 	}
+	return &pulumirpc.GetSchemaResponse{Schema: string(bytes)}, nil
+}
+
+func (*debugProvidersHelperServer) GetPluginInfo(
+	context.Context, *emptypb.Empty,
+) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "0.0.1"}, nil
+}
+
+func (*debugProvidersHelperServer) Attach(
+	context.Context, *pulumirpc.PluginAttach,
+) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
+// This is the host that pulumi-yaml is using. Somehow the test does not work with utils.NewHost,
+// perhaps that does not support PULUMI_DEBUG_PROVIDERS yet.
+func debugProvidersHelperHost(t *testing.T) plugin.Host {
+	cwd := t.TempDir()
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	})
+	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	require.NoError(t, err)
+	return pluginCtx.Host
 }

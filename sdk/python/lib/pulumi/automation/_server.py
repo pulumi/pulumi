@@ -26,14 +26,12 @@ from ..runtime import reset_options, run_in_stack, set_all_config
 from ..runtime.proto import LanguageRuntimeServicer, language_pb2, plugin_pb2
 from ._workspace import PulumiFn
 
-_py_version_less_than_3_7 = sys.version_info[0] == 3 and sys.version_info[1] < 7
-
 
 class LanguageServer(LanguageRuntimeServicer):
     program: PulumiFn
 
     def __init__(self, program: PulumiFn) -> None:
-        self.program = program  # type: ignore
+        self.program = program
 
     @staticmethod
     def on_pulumi_exit():
@@ -109,10 +107,7 @@ class LanguageServer(LanguageRuntimeServicer):
             # closing the loop.
             pending = (
                 # lint safety: we use the python version here to track deprecations
-                # pylint: disable=no-member
-                asyncio.Task.all_tasks(loop)
-                if _py_version_less_than_3_7
-                else asyncio.all_tasks(loop)
+                asyncio.all_tasks(loop)
             )  # pylint: disable=no-member
             log.debug(f"Cancelling {len(pending)} tasks.")
             for task in pending:

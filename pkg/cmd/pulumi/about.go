@@ -64,7 +64,7 @@ func newAboutCmd() *cobra.Command {
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
 			if jsonOut {
 				return printJSON(summary)
@@ -145,9 +145,10 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 				result.Plugins = plugins
 			}
 
-			lang, err := pluginContext.Host.LanguageRuntime(projinfo.Root, pwd, proj.Runtime.Name(), proj.Runtime.Options())
+			programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
 			if err != nil {
-				addError(err, fmt.Sprintf("Failed to load language plugin %s", proj.Runtime.Name()))
+				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
 				aboutResponse, err := lang.About()
 				if err != nil {
@@ -161,8 +162,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 					}
 				}
 
-				progInfo := plugin.ProgInfo{Proj: proj, Pwd: pwd, Program: program}
-				deps, err := lang.GetProgramDependencies(progInfo, transitiveDependencies)
+				deps, err := lang.GetProgramDependencies(programInfo, transitiveDependencies)
 				if err != nil {
 					addError(err, "Failed to get information about the Pulumi program's dependencies")
 				} else {
@@ -170,7 +170,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 					for i, dep := range deps {
 						result.Dependencies[i] = programDependencyAbout{
 							Name:    dep.Name,
-							Version: dep.Version.String(),
+							Version: dep.Version,
 						}
 					}
 				}
@@ -336,10 +336,10 @@ func (b backendAbout) String() string {
 	if b.TokenInformation != nil {
 		var tokenType string
 		if b.TokenInformation.Team != "" {
-			tokenType = fmt.Sprintf("team: %s", b.TokenInformation.Team)
+			tokenType = "team: " + b.TokenInformation.Team
 		} else {
 			contract.Assertf(b.TokenInformation.Organization != "", "token must have an organization or team")
-			tokenType = fmt.Sprintf("organization: %s", b.TokenInformation.Organization)
+			tokenType = "organization: " + b.TokenInformation.Organization
 		}
 		rows = append(rows, []string{"Token type", tokenType})
 		rows = append(rows, []string{"Token type", b.TokenInformation.Name})
@@ -569,7 +569,7 @@ func (runtime projectRuntimeAbout) String() string {
 	}
 	paramString := ""
 	if len(params) > 0 {
-		paramString = fmt.Sprintf(": %s", strings.Join(params, " "))
+		paramString = ": " + strings.Join(params, " ")
 	}
 	return fmt.Sprintf("This project is written in %s%s\n",
 		runtime.Language, paramString)
@@ -588,9 +588,8 @@ func getProjectPluginsSilently(
 	defer func() { os.Stdout = stdout }()
 	os.Stdout = w
 
-	return plugin.GetRequiredPlugins(ctx.Host, ctx.Root, plugin.ProgInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-	}, plugin.AllPlugins)
+	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
+	runtimeName := proj.Runtime.Name()
+	projectName := string(proj.Name)
+	return plugin.GetRequiredPlugins(ctx.Host, runtimeName, projectName, programInfo, plugin.AllPlugins)
 }

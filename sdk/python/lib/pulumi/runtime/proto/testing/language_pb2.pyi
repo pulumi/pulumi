@@ -59,16 +59,40 @@ global___GetLanguageTestsResponse = GetLanguageTestsResponse
 class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class Replacement(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        PATH_FIELD_NUMBER: builtins.int
+        PATTERN_FIELD_NUMBER: builtins.int
+        REPLACEMENT_FIELD_NUMBER: builtins.int
+        path: builtins.str
+        pattern: builtins.str
+        replacement: builtins.str
+        def __init__(
+            self,
+            *,
+            path: builtins.str = ...,
+            pattern: builtins.str = ...,
+            replacement: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["path", b"path", "pattern", b"pattern", "replacement", b"replacement"]) -> None: ...
+
     LANGUAGE_PLUGIN_NAME_FIELD_NUMBER: builtins.int
     LANGUAGE_PLUGIN_TARGET_FIELD_NUMBER: builtins.int
     SNAPSHOT_DIRECTORY_FIELD_NUMBER: builtins.int
     TEMPORARY_DIRECTORY_FIELD_NUMBER: builtins.int
     CORE_SDK_DIRECTORY_FIELD_NUMBER: builtins.int
+    CORE_SDK_VERSION_FIELD_NUMBER: builtins.int
+    SNAPSHOT_EDITS_FIELD_NUMBER: builtins.int
     language_plugin_name: builtins.str
     language_plugin_target: builtins.str
     snapshot_directory: builtins.str
     temporary_directory: builtins.str
     core_sdk_directory: builtins.str
+    core_sdk_version: builtins.str
+    @property
+    def snapshot_edits(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PrepareLanguageTestsRequest.Replacement]: ...
     def __init__(
         self,
         *,
@@ -77,8 +101,10 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         snapshot_directory: builtins.str = ...,
         temporary_directory: builtins.str = ...,
         core_sdk_directory: builtins.str = ...,
+        core_sdk_version: builtins.str = ...,
+        snapshot_edits: collections.abc.Iterable[global___PrepareLanguageTestsRequest.Replacement] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "snapshot_directory", b"snapshot_directory", "temporary_directory", b"temporary_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
 
 global___PrepareLanguageTestsRequest = PrepareLanguageTestsRequest
 

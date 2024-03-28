@@ -19,7 +19,6 @@
 package docs
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pgavlin/goldmark/ast"
@@ -46,6 +45,9 @@ type docInfo struct {
 func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 	if docstring == "" {
 		return docInfo{}
+	}
+	if strings.Contains(docstring, beginCodeBlock) {
+		return dctx.processDescription(docstring)
 	}
 
 	languages := codegen.NewStringSet(dctx.snippetLanguages...)
@@ -170,7 +172,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 
 	// When we split the description above, the main part of the description is always part[0]
 	// the description must have a blank line after it to render the examples correctly
-	description = fmt.Sprintf("%s\n", parts[0])
+	description = parts[0] + "\n"
 
 	return docInfo{
 		description:   description,

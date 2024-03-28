@@ -94,6 +94,27 @@ func ShowSecrets(show bool) Option {
 	})
 }
 
+// Refresh will run a refresh before the destroy.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -126,6 +147,12 @@ type Options struct {
 	Color string
 	// Show config secrets when they appear.
 	ShowSecrets *bool
+	// Refresh will run a refresh before the destroy.
+	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
 }
 
 type optionFunc func(*Options)

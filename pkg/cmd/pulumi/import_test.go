@@ -1,3 +1,17 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -5,6 +19,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/importer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -212,6 +229,19 @@ func TestParseImportFile_errors(t *testing.T) {
 				"resource 'res-2' of type 'foo:bar:a' has an ambiguous provider",
 			},
 		},
+		{
+			desc: "component with ID",
+			give: importFile{Resources: []importSpec{{
+				Name:      "comp",
+				ID:        "some-id",
+				Type:      "foo:bar:baz",
+				Component: true,
+			}}},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'comp' of type 'foo:bar:baz' has an ID, but is marked as a component",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -228,6 +258,60 @@ func TestParseImportFile_errors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseImportFileJustLogicalName(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			{
+				LogicalName: "thing",
+				ID:          "thing",
+				Type:        "foo:bar:bar",
+			},
+		},
+	}
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	assert.NoError(t, err)
+	assert.Equal(t, []deploy.Import{
+		{
+			Type: "foo:bar:bar",
+			Name: "thing",
+			ID:   "thing",
+		},
+	}, imports)
+	assert.Equal(t, importer.NameTable{
+		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
+	}, names)
+}
+
+func TestParseImportFileLogicalName(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:        "thing",
+				LogicalName: "different logical name",
+				ID:          "thing",
+				Type:        "foo:bar:bar",
+				Version:     "0.0.0",
+			},
+		},
+	}
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	assert.NoError(t, err)
+	v := semver.MustParse("0.0.0")
+	assert.Equal(t, []deploy.Import{
+		{
+			Type:    "foo:bar:bar",
+			Name:    "different logical name",
+			ID:      "thing",
+			Version: &v,
+		},
+	}, imports)
+	assert.Equal(t, importer.NameTable{
+		"urn:pulumi:stack::proj::foo:bar:bar::different logical name": "thing",
+	}, names)
 }
 
 func TestParseImportFileSameName(t *testing.T) {
@@ -248,61 +332,45 @@ func TestParseImportFileSameName(t *testing.T) {
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
-	assert.NoError(t, err)
-	resourceNames := map[string]struct{}{}
-	for _, imp := range imports {
-		_, exists := resourceNames[imp.Name]
-		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
-		resourceNames[imp.Name] = struct{}{}
-	}
-
-	// Check expected names are present.
-	for _, name := range []string{"thing", "thing_1"} {
-		_, exists := resourceNames[name]
-		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
-	}
+	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	assert.ErrorContains(t, err,
+		"resource 'thing' of type 'foo:bar:bar' has an ambiguous URN, set name (or logical name) to be unique")
 }
 
-func TestParseImportFileRenameNoClash(t *testing.T) {
+func TestParseImportFileSameNameDifferentType(t *testing.T) {
 	t.Parallel()
 	f := importFile{
 		Resources: []importSpec{
 			{
-				Name:    "thing",
-				ID:      "thing",
-				Type:    "foo:bar:a",
-				Version: "0.0.0",
+				Name: "thing",
+				ID:   "thing",
+				Type: "foo:bar:bar",
 			},
 			{
-				Name:    "thing",
-				ID:      "thing",
-				Type:    "foo:bar:a",
-				Version: "0.0.0",
-			},
-			{
-				Name:    "thing_1",
-				ID:      "thing",
-				Type:    "foo:bar:a",
-				Version: "0.0.0",
+				Name: "thing",
+				ID:   "thing",
+				Type: "foo:bar:baz",
 			},
 		},
 	}
-	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
 	assert.NoError(t, err)
-	resourceNames := map[string]struct{}{}
-	// Check resource names are unique.
-	for _, imp := range imports {
-		_, exists := resourceNames[imp.Name]
-		assert.False(t, exists, "name %s should not have been seen already", imp.Name)
-		resourceNames[imp.Name] = struct{}{}
-	}
-
-	// Check expected names are present.
-	for _, name := range []string{"thing", "thing_1", "thing_2"} {
-		_, exists := resourceNames[name]
-		assert.True(t, exists, "expected resource with name '%v' to be in the imports", name)
-	}
+	assert.Equal(t, []deploy.Import{
+		{
+			Type: "foo:bar:bar",
+			Name: "thing",
+			ID:   "thing",
+		},
+		{
+			Type: "foo:bar:baz",
+			Name: "thing",
+			ID:   "thing",
+		},
+	}, imports)
+	assert.Equal(t, importer.NameTable{
+		"urn:pulumi:stack::proj::foo:bar:bar::thing": "thing",
+		"urn:pulumi:stack::proj::foo:bar:baz::thing": "thing",
+	}, names)
 }
 
 // Test that if we're using the name for another resource in the import file for a parent that we don't need
@@ -349,33 +417,36 @@ func TestParseImportFileAutoURN(t *testing.T) {
 func TestImportFileMarshal(t *testing.T) {
 	t.Parallel()
 
-	importFile := importFile{
-		NameTable: map[string]resource.URN{
-			"foo": "urn:pulumi:stack::proj::foo:bar:a::arb",
-		},
-		Resources: []importSpec{
-			{
-				Name: "bar",
-				Type: "foo:bar:b",
-				ID:   "123",
-			},
-			{
-				Name:      "comp",
-				Type:      "some/comp",
-				Component: true,
-			},
-			{
-				Name:              "thirdParty",
-				Type:              "some:third:party",
-				ID:                "abc123",
-				Parent:            "bar",
-				Version:           "1.2.3",
-				PluginDownloadURL: "https://example.com",
-			},
-		},
-	}
+	t.Run("initial", func(t *testing.T) {
+		t.Parallel()
 
-	expected := `{
+		importFile := importFile{
+			NameTable: map[string]resource.URN{
+				"foo": "urn:pulumi:stack::proj::foo:bar:a::arb",
+			},
+			Resources: []importSpec{
+				{
+					Name: "bar",
+					Type: "foo:bar:b",
+					ID:   "123",
+				},
+				{
+					Name:      "comp",
+					Type:      "some/comp",
+					Component: true,
+				},
+				{
+					Name:              "thirdParty",
+					Type:              "some:third:party",
+					ID:                "abc123",
+					Parent:            "bar",
+					Version:           "1.2.3",
+					PluginDownloadURL: "https://example.com",
+				},
+			},
+		}
+
+		expected := `{
   "nameTable": {
     "foo": "urn:pulumi:stack::proj::foo:bar:a::arb"
   },
@@ -401,10 +472,23 @@ func TestImportFileMarshal(t *testing.T) {
   ]
 }
 `
-	var buffer bytes.Buffer
-	enc := json.NewEncoder(&buffer)
-	enc.SetIndent("", "  ")
-	err := enc.Encode(importFile)
-	require.NoError(t, err)
-	assert.Equal(t, expected, buffer.String())
+		var buffer bytes.Buffer
+		enc := json.NewEncoder(&buffer)
+		enc.SetIndent("", "  ")
+		err := enc.Encode(importFile)
+		require.NoError(t, err)
+		assert.Equal(t, expected, buffer.String())
+	})
+
+	t.Run("omit empty resources list", func(t *testing.T) {
+		t.Parallel()
+
+		importFile := importFile{}
+
+		var buffer bytes.Buffer
+		enc := json.NewEncoder(&buffer)
+		err := enc.Encode(importFile)
+		require.NoError(t, err)
+		assert.NotContains(t, buffer.String(), "resources")
+	})
 }

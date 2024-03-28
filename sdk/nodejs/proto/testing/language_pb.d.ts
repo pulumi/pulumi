@@ -5,7 +5,6 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 
 export class GetLanguageTestsRequest extends jspb.Message { 
 
@@ -57,6 +56,12 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     setTemporaryDirectory(value: string): PrepareLanguageTestsRequest;
     getCoreSdkDirectory(): string;
     setCoreSdkDirectory(value: string): PrepareLanguageTestsRequest;
+    getCoreSdkVersion(): string;
+    setCoreSdkVersion(value: string): PrepareLanguageTestsRequest;
+    clearSnapshotEditsList(): void;
+    getSnapshotEditsList(): Array<PrepareLanguageTestsRequest.Replacement>;
+    setSnapshotEditsList(value: Array<PrepareLanguageTestsRequest.Replacement>): PrepareLanguageTestsRequest;
+    addSnapshotEdits(value?: PrepareLanguageTestsRequest.Replacement, index?: number): PrepareLanguageTestsRequest.Replacement;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
@@ -75,7 +80,37 @@ export namespace PrepareLanguageTestsRequest {
         snapshotDirectory: string,
         temporaryDirectory: string,
         coreSdkDirectory: string,
+        coreSdkVersion: string,
+        snapshotEditsList: Array<PrepareLanguageTestsRequest.Replacement.AsObject>,
     }
+
+
+    export class Replacement extends jspb.Message { 
+        getPath(): string;
+        setPath(value: string): Replacement;
+        getPattern(): string;
+        setPattern(value: string): Replacement;
+        getReplacement(): string;
+        setReplacement(value: string): Replacement;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Replacement.AsObject;
+        static toObject(includeInstance: boolean, msg: Replacement): Replacement.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Replacement, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Replacement;
+        static deserializeBinaryFromReader(message: Replacement, reader: jspb.BinaryReader): Replacement;
+    }
+
+    export namespace Replacement {
+        export type AsObject = {
+            path: string,
+            pattern: string,
+            replacement: string,
+        }
+    }
+
 }
 
 export class PrepareLanguageTestsResponse extends jspb.Message { 

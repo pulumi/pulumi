@@ -1,0 +1,5 @@
+name: l1-empty
+runtime:
+  name: python
+  options:
+    virtualenv: venv

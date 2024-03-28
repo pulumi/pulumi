@@ -81,6 +81,7 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	//nolint:exhaustive // the default case is for test failures
 	switch e := <-eventsChan; e.Type {
 	case ResourceOutputsEvent:
 		e, ok := e.Payload().(ResourceOutputsEventPayload)

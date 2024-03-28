@@ -14,7 +14,11 @@
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "typeRoots": [
+            "node_modules/@types",
+            "types/"
+        ],
     },
     "files": [
         "index.ts",
@@ -95,20 +99,24 @@
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
-        "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/registrations.spec.ts",
-        "tests/runtime/tsClosureCases.ts",
-        "tests/runtime/package.spec.ts",
+        "tests/runtime/closure-integration-tests.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/settings.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
         "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
+        "tests/runtime/testdata/nested/project/index.ts",
 
         "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
 
-        "tests_with_mocks/mocks.spec.ts"
+        "tests_with_mocks/mocks.spec.ts",
+
+        "npm/testdata/nested/project/index.ts",
+
+        "types/arborist.d.ts"
     ]
 }

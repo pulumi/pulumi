@@ -30,7 +30,6 @@ import (
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/pflag"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -40,14 +39,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
@@ -102,7 +100,7 @@ func skipConfirmations() bool {
 // backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
 
-func isFilestateBackend(opts display.Options) (bool, error) {
+func isDIYBackend(opts display.Options) (bool, error) {
 	if backendInstance != nil {
 		return false, nil
 	}
@@ -118,7 +116,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	return filestate.IsFileStateBackendURL(url), nil
+	return diy.IsDIYBackendURL(url), nil
 }
 
 func loginToCloud(
@@ -146,8 +144,8 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(ctx, cmdutil.Diag(), url, project)
+	if diy.IsDIYBackendURL(url) {
+		return diy.New(ctx, cmdutil.Diag(), url, project)
 	}
 
 	insecure := workspace.GetCloudInsecure(url)
@@ -168,30 +166,11 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(ctx, cmdutil.Diag(), url, project)
+	if diy.IsDIYBackendURL(url) {
+		return diy.New(ctx, cmdutil.Diag(), url, project)
 	}
 
 	return loginToCloud(ctx, url, project, workspace.GetCloudInsecure(url), opts)
-}
-
-// This is used to control the contents of the tracing header.
-var tracingHeader = os.Getenv("PULUMI_TRACING_HEADER")
-
-func commandContext() context.Context {
-	ctx := context.Background()
-	if cmdutil.IsTracingEnabled() {
-		if cmdutil.TracingRootSpan != nil {
-			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
-		}
-
-		tracingOptions := tracing.Options{
-			PropagateSpans: true,
-			TracingHeader:  tracingHeader,
-		}
-		ctx = tracing.ContextWithOptions(ctx, tracingOptions)
-	}
-	return ctx
 }
 
 func createSecretsManager(
@@ -935,16 +914,24 @@ func fprintJSON(w io.Writer, v interface{}) error {
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
 // is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
-func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
-	if !interactive && !yes {
+func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
+	switch {
+	case !interactive && !yes && !skipPreview && !previewOnly:
 		return backend.UpdateOptions{},
-			errors.New("--yes must be passed in non-interactive mode")
+			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
+	case skipPreview && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--skip-preview and --preview-only cannot be used together")
+	case yes && previewOnly:
+		return backend.UpdateOptions{},
+			errors.New("--yes and --preview-only cannot be used together")
+	default:
+		return backend.UpdateOptions{
+			AutoApprove: yes,
+			SkipPreview: skipPreview,
+			PreviewOnly: previewOnly,
+		}, nil
 	}
-
-	return backend.UpdateOptions{
-		AutoApprove: yes,
-		SkipPreview: skipPreview,
-	}, nil
 }
 
 func checkDeploymentVersionError(err error, stackName string) error {
@@ -1034,7 +1021,7 @@ func buildStackName(stackName string) (string, error) {
 }
 
 // we only want to log a secrets decryption for a Pulumi Cloud backend project
-// we will allow any secrets provider to be used (Pulumi Cloud or self managed)
+// we will allow any secrets provider to be used (Pulumi Cloud or passphrase/cloud/etc)
 // we will log the message and not worry about the response. The types
 // of messages we will log here will range from single secret decryption events
 // to requesting a list of secrets in an individual event e.g. stack export

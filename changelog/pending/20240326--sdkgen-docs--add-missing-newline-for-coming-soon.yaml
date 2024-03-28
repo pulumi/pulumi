@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/docs
+  description: Add missing newline for `Coming soon!`

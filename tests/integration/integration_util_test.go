@@ -143,8 +143,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			// Call GetSchema and verify the results.
 			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
 			if test.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), test.expectedError)
+				assert.ErrorContains(t, err, test.expectedError)
 			} else {
 				assert.Equal(t, test.expected, resp.GetSchema())
 			}

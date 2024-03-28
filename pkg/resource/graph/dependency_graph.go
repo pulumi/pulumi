@@ -89,6 +89,79 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	return dependents
 }
 
+// OnlyDependsOn returns a slice containing all resources that directly or indirectly
+// depend upon *only* the given resource.  Resources that also depend on another resource with
+// the same URN will not be included in the returned slice.  The returned slice is guaranteed
+// to be in topological order with respect to the snapshot dependency graph.
+//
+// The time complexity of OnlyDependsOn is linear with respect to the number of resources.
+func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State {
+	// This implementation relies on the detail that snapshots are stored in a valid
+	// topological order.
+	var dependents []*resource.State
+	dependentSet := make(map[resource.URN][]resource.ID)
+	nonDependentSet := make(map[resource.URN][]resource.ID)
+
+	cursorIndex, ok := dg.index[res]
+	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
+	dependentSet[res.URN] = []resource.ID{res.ID}
+	isDependent := func(candidate *resource.State) bool {
+		if res.URN == candidate.URN && res.ID == candidate.ID {
+			return false
+		}
+		if len(dependentSet[candidate.Parent]) > 0 && len(nonDependentSet[candidate.Parent]) == 0 {
+			return true
+		}
+		for _, dependency := range candidate.Dependencies {
+			if len(dependentSet[dependency]) == 1 && len(nonDependentSet[dependency]) == 0 {
+				return true
+			}
+		}
+		if candidate.Provider != "" {
+			ref, err := providers.ParseReference(candidate.Provider)
+			contract.AssertNoErrorf(err, "cannot parse provider reference %q", candidate.Provider)
+			for _, id := range dependentSet[ref.URN()] {
+				if id == ref.ID() {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	// The dependency graph encoded directly within the snapshot is the reverse of
+	// the graph that we actually want to operate upon. Edges in the snapshot graph
+	// originate in a resource and go to that resource's dependencies.
+	//
+	// The `OnlyDependsOn` is simpler when operating on the reverse of the snapshot graph,
+	// where edges originate in a resource and go to resources that depend on that resource.
+	// In this graph, `OnlyDependsOn` for a resource is the set of resources that are reachable from the
+	// given resource, and only from the given resource.
+	//
+	// To accomplish this without building up an entire graph data structure, we'll do a linear
+	// scan of the resource list starting at the requested resource and ending at the end of
+	// the list. All resources that depend directly or indirectly on `res` are prepended
+	// onto `dependents`.
+	//
+	// We also walk through the the list of resources before the requested resource, as resources
+	// sorted later could still be dependent on the requested resource.
+	for i := 0; i < cursorIndex; i++ {
+		candidate := dg.resources[i]
+		nonDependentSet[candidate.URN] = append(nonDependentSet[candidate.URN], candidate.ID)
+	}
+	for i := cursorIndex + 1; i < len(dg.resources); i++ {
+		candidate := dg.resources[i]
+		if isDependent(candidate) {
+			dependents = append(dependents, candidate)
+			dependentSet[candidate.URN] = append(dependentSet[candidate.URN], candidate.ID)
+		} else {
+			nonDependentSet[candidate.URN] = append(nonDependentSet[candidate.URN], candidate.ID)
+		}
+	}
+
+	return dependents
+}
+
 // DependenciesOf returns a set of resources upon which the given resource depends. The resource's parent is
 // included in the returned set.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resource.State] {

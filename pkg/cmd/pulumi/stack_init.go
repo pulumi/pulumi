@@ -68,7 +68,7 @@ func newStackInitCmd() *cobra.Command {
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			return sicmd.Run(ctx, args)
 		}),
 	}
@@ -200,7 +200,19 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// copy the config from the old to the new
-		return copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+		requiresSaving, err := copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+		if err != nil {
+			return err
+		}
+
+		// The use of `requiresSaving` here ensures that there was actually some config
+		// that needed saved, otherwise it's an unnecessary save call
+		if requiresSaving {
+			err := saveProjectStack(newStack, newProjectStack)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

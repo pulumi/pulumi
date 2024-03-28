@@ -16,9 +16,9 @@ import * as asset from "../asset";
 import { warn } from "../log";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
-import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { isDryRun, isQueryMode, setRootResource } from "./settings";
-import { setStackResource, getStackResource as stateGetStackResource } from "./state";
+import { ComponentResource, Resource, ResourceTransform, ResourceTransformation } from "../resource";
+import { getCallbacks, isDryRun, isQueryMode, setRootResource } from "./settings";
+import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -64,7 +64,7 @@ export class Stack extends ComponentResource<Inputs> {
      * runInit invokes the given init callback with this resource set as the root resource. The return value of init is
      * used as the stack's output properties.
      *
-     * @param init The callback to run in the context of this Pulumi stack
+     * @param args.init The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
         await setRootResource(this);
@@ -217,6 +217,22 @@ export function registerStackTransformation(t: ResourceTransformation) {
         throw new Error("The root stack resource was referenced before it was initialized.");
     }
     stackResource.__transformations = [...(stackResource.__transformations || []), t];
+}
+
+/**
+ * Add a transformation to all future resources constructed in this Pulumi stack.
+ *
+ * This method is experimental.
+ */
+export function xRegisterStackTransform(t: ResourceTransform) {
+    if (!getStore().supportsTransforms) {
+        throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
+    }
+    const callbacks = getCallbacks();
+    if (!callbacks) {
+        throw new Error("No callback server registered.");
+    }
+    callbacks.registerStackTransform(t);
 }
 
 export function getStackResource(): Stack | undefined {

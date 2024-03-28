@@ -17,7 +17,7 @@ fi
 
 case "${LANGUAGE}" in
   python)
-    echo -n "${VERSION}" | sed 's/-alpha./a/; s/-beta./b/; s/-rc./rc/; s/-dev./dev/'
+    echo -n "${VERSION}" | sed "s/-alpha.*/a$(date +%s)/"
     ;;
   *)
     echo -n "${VERSION}"

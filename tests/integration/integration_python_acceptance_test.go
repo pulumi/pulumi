@@ -51,6 +51,7 @@ func TestEmptyPython(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackReferencePython(t *testing.T) {
+	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 
@@ -61,11 +62,11 @@ func TestStackReferencePython(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step1",
+				Dir:      filepath.Join("stack_reference", "python", "step1"),
 				Additive: true,
 			},
 			{
-				Dir:      "step2",
+				Dir:      filepath.Join("stack_reference", "python", "step2"),
 				Additive: true,
 			},
 		},
@@ -87,7 +88,7 @@ func TestDynamicPython(t *testing.T) {
 			randomVal = stack.Outputs["random_val"].(string)
 		},
 		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
+			Dir:      filepath.Join("dynamic", "python", "step1"),
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
@@ -220,8 +221,10 @@ func optsForConstructPython(
 	}
 }
 
+//nolint:paralleltest // Sets env vars
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
-	t.Parallel()
+	// This uses the tls plugin so needs to be able to download it
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)

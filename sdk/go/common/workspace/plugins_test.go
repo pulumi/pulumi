@@ -485,7 +485,7 @@ func TestPluginDownload(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -504,7 +504,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -533,7 +533,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/tags/v4.32.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -552,7 +552,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			assert.Equal(t, "https://api.git.org/repos/ourorg/mock/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -676,7 +676,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t,
 				"https://gitlab.com/api/v4/projects/278964/releases/v1.23.4/downloads/"+
 					"pulumi-resource-mock-gitlab-v1.23.4-windows-arm64.tar.gz", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("Bearer %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "Bearer "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -726,7 +726,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
 	t.Run("Custom https URL", func(t *testing.T) {
 		spec := PluginSpec{
@@ -738,7 +738,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
 	t.Run("Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
@@ -752,7 +752,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mock-private/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -778,7 +778,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -804,7 +804,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://gitlab.com/api/v4/projects/278964/releases/permalink/latest" {
-				assert.Equal(t, fmt.Sprintf("Bearer %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "Bearer "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 
 				// Minimal JSON from the releases API to get the test to pass
@@ -832,9 +832,8 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
 		}
 		_, err = source.GetLatestVersion(getHTTPResponse)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "rate limit exceeded")
-		assert.Contains(t, err.Error(), "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
+		assert.ErrorContains(t, err, "rate limit exceeded")
+		assert.ErrorContains(t, err, "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
 	})
 }
 
@@ -848,10 +847,10 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}
 
 	tests := []struct {
-		input       string
-		expected    pluginDownloadOverrideArray
-		matches     []match
-		expectError bool
+		input         string
+		expected      pluginDownloadOverrideArray
+		matches       []match
+		expectedError string
 	}{
 		{
 			input:    "",
@@ -949,24 +948,24 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			},
 		},
 		{
-			input:       "=", // missing regex and url
-			expectError: true,
+			input:         "=", // missing regex and url
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"=\"",
 		},
 		{
-			input:       "^foo.*=", // missing url
-			expectError: true,
+			input:         "^foo.*=", // missing url
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"^foo.*=\"",
 		},
 		{
-			input:       "=https://foo", // missing regex
-			expectError: true,
+			input:         "=https://foo", // missing regex
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"=https://foo\"",
 		},
 		{
-			input:       "^foo.*=https://foo,", // trailing comma
-			expectError: true,
+			input:         "^foo.*=https://foo,", // trailing comma
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"^foo.*=https://foo,\"",
 		},
 		{
-			input:       "[=https://foo", // invalid regex
-			expectError: true,
+			input:         "[=https://foo", // invalid regex
+			expectedError: "error parsing regexp: missing closing ]: `[`",
 		},
 	}
 	for _, tt := range tests {
@@ -975,8 +974,8 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			t.Parallel()
 
 			actual, err := parsePluginDownloadURLOverrides(tt.input)
-			if tt.expectError {
-				assert.Error(t, err)
+			if tt.expectedError != "" {
+				assert.EqualError(t, err, tt.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -1163,7 +1162,7 @@ func TestMissingErrorText(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.IncludeAmbient)
-			assert.Equal(t, tt.ExpectedError, err.Error())
+			assert.EqualError(t, err, tt.ExpectedError)
 		})
 	}
 }

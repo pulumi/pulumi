@@ -14,17 +14,19 @@
 
 import assert from "assert";
 import * as semver from "semver";
+import * as tmp from "tmp";
 import * as upath from "upath";
 
 import {
+    CommandResult,
     ConfigMap,
     EngineEvent,
     fullyQualifiedStackName,
     LocalWorkspace,
     OutputMap,
     ProjectSettings,
+    PulumiCommand,
     Stack,
-    parseAndValidatePulumiVersion,
 } from "../../automation";
 import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
@@ -50,6 +52,8 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(settings.secretsProvider, "abc");
             assert.strictEqual(settings.config!["plain"], "plain");
             assert.strictEqual(settings.config!["secure"].secure, "secret");
+            await ws.saveStackSettings("dev", settings);
+            assert.strictEqual(settings.secretsProvider, "abc");
         }
     });
 
@@ -138,6 +142,53 @@ describe("LocalWorkspace", () => {
         afterEach(async () => {
             await workspace.removeStack(stackName);
         });
+    });
+    it(`Environment functions`, async function () {
+        // Skipping test because the required environments are in the moolumi org.
+        if (getTestOrg() !== "moolumi") {
+            this.skip();
+            return;
+        }
+        const projectName = "node_env_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+
+        // Adding non-existent env should fail.
+        await assert.rejects(
+            stack.addEnvironments("non-existent-env"),
+            "stack.addEnvironments('non-existent-env') did not reject",
+        );
+
+        // Adding existing envs should succeed.
+        await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
+
+        let envs = await stack.listEnvironments();
+        assert.deepStrictEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"]);
+
+        const config = await stack.getAllConfig();
+        assert.strictEqual(config["node_env_test:new_key"].value, "test_value");
+        assert.strictEqual(config["node_env_test:also"].value, "business");
+
+        // Removing existing env should succeed.
+        await stack.removeEnvironment("automation-api-test-env");
+        envs = await stack.listEnvironments();
+        assert.deepStrictEqual(envs, ["automation-api-test-env-2"]);
+
+        const alsoConfig = await stack.getConfig("also");
+        assert.strictEqual(alsoConfig.value, "business");
+        await assert.rejects(stack.getConfig("new_key"), "stack.getConfig('new_key') did not reject");
+
+        await stack.removeEnvironment("automation-api-test-env-2");
+        envs = await stack.listEnvironments();
+        assert.strictEqual(envs.length, 0);
+        await assert.rejects(stack.getConfig("also"), "stack.getConfig('also') did not reject");
+
+        await ws.removeStack(stackName);
     });
     it(`Config`, async () => {
         const projectName = "node_test";
@@ -296,26 +347,27 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
+    // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
+    // config from the file. This means we can't remove the stack at the end of the test.
+    // We should also not include secrets in this config, because the secret encryption is only valid within
+    // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     it(`nested_config`, async () => {
-        if (getTestOrg() !== "pulumi-test") {
-            return;
-        }
         const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
 
         const allConfig = await stack.getAllConfig();
         const outerVal = allConfig["nested_config:outer"];
-        assert.strictEqual(outerVal.secret, true);
-        assert.strictEqual(outerVal.value, '{"inner":"my_secret","other":"something_else"}');
+        assert.strictEqual(outerVal.secret, false);
+        assert.strictEqual(outerVal.value, '{"inner":"my_value","other":"something_else"}');
 
         const listVal = allConfig["nested_config:myList"];
         assert.strictEqual(listVal.secret, false);
         assert.strictEqual(listVal.value, '["one","two","three"]');
 
         const outer = await stack.getConfig("outer");
-        assert.strictEqual(outer.secret, true);
-        assert.strictEqual(outer.value, '{"inner":"my_secret","other":"something_else"}');
+        assert.strictEqual(outer.secret, false);
+        assert.strictEqual(outer.value, '{"inner":"my_value","other":"something_else"}');
 
         const list = await stack.getConfig("myList");
         assert.strictEqual(list.secret, false);
@@ -569,7 +621,7 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackNames = Array.from(Array(10).keys()).map((_) =>
+        const stackNames = Array.from(Array(30).keys()).map((_) =>
             fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
         );
 
@@ -610,8 +662,10 @@ describe("LocalWorkspace", () => {
 
             await stack.workspace.removeStack(stack.name);
         };
-
-        await Promise.all(stackNames.map(async (stackName) => await testStackLifetime(stackName)));
+        for (let i = 0; i < stackNames.length; i += 10) {
+            const chunk = stackNames.slice(i, i + 10);
+            await Promise.all(chunk.map(async (stackName) => await testStackLifetime(stackName)));
+        }
     });
     it(`handles events`, async () => {
         const program = async () => {
@@ -990,6 +1044,60 @@ describe("LocalWorkspace", () => {
         assert(ws.pulumiVersion);
         assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
     });
+    it("sets pulumi version when using a custom CLI instance", async () => {
+        const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
+        try {
+            const cmd = await PulumiCommand.get();
+            const ws = await LocalWorkspace.create({ pulumiCommand: cmd });
+            assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
+        } finally {
+            tmpDir.removeCallback();
+        }
+    });
+    it("throws when attempting to retrieve an invalid pulumi version", async () => {
+        const mockWithNoVersion = {
+            command: "pulumi",
+            version: null,
+            run: async () => new CommandResult("some output", "", 0),
+        };
+        const ws = await LocalWorkspace.create({
+            pulumiCommand: mockWithNoVersion,
+            envVars: {
+                PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
+            },
+        });
+        assert.throws(() => ws.pulumiVersion);
+    });
+    it("fails creation if remote operation is not supported", async () => {
+        const mockWithNoRemoteSupport = {
+            command: "pulumi",
+            version: new semver.SemVer("2.0.0"),
+            // We inspect the output of `pulumi preview --help` to determine
+            // if the CLI supports remote operations, see
+            // `LocalWorkspace.checkRemoteSupport`.
+            run: async () => new CommandResult("some output", "", 0),
+        };
+        await assert.rejects(LocalWorkspace.create({ pulumiCommand: mockWithNoRemoteSupport, remote: true }));
+    });
+    it("bypasses remote support check", async () => {
+        const mockWithNoRemoteSupport = {
+            command: "pulumi",
+            version: new semver.SemVer("2.0.0"),
+            // We inspect the output of `pulumi preview --help` to determine
+            // if the CLI supports remote operations, see
+            // `LocalWorkspace.checkRemoteSupport`.
+            run: async () => new CommandResult("some output", "", 0),
+        };
+        await assert.doesNotReject(
+            LocalWorkspace.create({
+                pulumiCommand: mockWithNoRemoteSupport,
+                remote: true,
+                envVars: {
+                    PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
+                },
+            }),
+        );
+    });
     it(`respects existing project settings`, async () => {
         const projectName = "correct_project";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
@@ -1049,100 +1157,6 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(Object.keys(config).length, 20);
             await stack.workspace.removeStack(stacks[i]);
         }
-    });
-});
-
-const MAJOR = /Major version mismatch./;
-const MINIMUM = /Minimum version requirement failed./;
-const PARSE = /Failed to parse/;
-
-describe(`checkVersionIsValid`, () => {
-    const versionTests = [
-        {
-            name: "higher_major",
-            currentVersion: "100.0.0",
-            expectError: MAJOR,
-            optOut: false,
-        },
-        {
-            name: "lower_major",
-            currentVersion: "1.0.0",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "higher_minor",
-            currentVersion: "v2.22.0",
-            expectError: null,
-            optOut: false,
-        },
-        {
-            name: "lower_minor",
-            currentVersion: "v2.1.0",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_higher_patch",
-            currentVersion: "v2.21.2",
-            expectError: null,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_equal_patch",
-            currentVersion: "v2.21.1",
-            expectError: null,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_lower_patch",
-            currentVersion: "v2.21.0",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "equal_minor_equal_patch_prerelease",
-            // Note that prerelease < release so this case will error
-            currentVersion: "v2.21.1-alpha.1234",
-            expectError: MINIMUM,
-            optOut: false,
-        },
-        {
-            name: "opt_out_of_check_would_fail_otherwise",
-            currentVersion: "v2.20.0",
-            expectError: null,
-            optOut: true,
-        },
-        {
-            name: "opt_out_of_check_would_succeed_otherwise",
-            currentVersion: "v2.22.0",
-            expectError: null,
-            optOut: true,
-        },
-        {
-            name: "invalid_version",
-            currentVersion: "invalid",
-            expectError: PARSE,
-            optOut: false,
-        },
-        {
-            name: "invalid_version_opt_out",
-            currentVersion: "invalid",
-            expectError: null,
-            optOut: true,
-        },
-    ];
-    const minVersion = new semver.SemVer("v2.21.1");
-
-    versionTests.forEach((test) => {
-        it(`validates ${test.name} (${test.currentVersion})`, () => {
-            const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
-            if (test.expectError) {
-                assert.throws(validate, test.expectError);
-            } else {
-                assert.doesNotThrow(validate);
-            }
-        });
     });
 });
 
