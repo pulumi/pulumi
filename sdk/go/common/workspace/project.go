@@ -73,6 +73,8 @@ type ProjectTemplate struct {
 	DisplayName string `json:"displayName,omitempty" yaml:"displayName,omitempty"`
 	// Description is an optional description of the template.
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Instructions to be displayed when a user chooses the template.
+	Instructions string `json:"instructions,omitempty" yaml:"instructions,omitempty"`
 	// Quickstart contains optional text to be displayed after template creation.
 	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 	// Config is an optional template config.

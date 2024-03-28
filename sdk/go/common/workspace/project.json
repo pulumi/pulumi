@@ -163,6 +163,13 @@
                         "null"
                     ]
                 },
+                "instructions":{
+                    "description":"Instructions to be displayed when a user chooses the template.",
+                    "type":[
+                        "string",
+                        "null"
+                    ]
+                },
                 "quickstart":{
                     "description":"Quickstart contains optional text to be displayed after template creation.",
                     "type":[

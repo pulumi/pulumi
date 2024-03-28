@@ -196,13 +196,14 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 // Template represents a project template.
 type Template struct {
-	Dir         string                                // The directory containing Pulumi.yaml.
-	Name        string                                // The name of the template.
-	Description string                                // Description of the template.
-	Quickstart  string                                // Optional text to be displayed after template creation.
-	Config      map[string]ProjectTemplateConfigValue // Optional template config.
-	Important   bool                                  // Indicates whether the template should be listed by default.
-	Error       error                                 // Non-nil if the template is broken.
+	Dir          string                                // The directory containing Pulumi.yaml.
+	Name         string                                // The name of the template.
+	Description  string                                // Description of the template.
+	Instructions string                                // Instructions to be displayed when a user chooses the template.
+	Quickstart   string                                // Optional text to be displayed after template creation.
+	Config       map[string]ProjectTemplateConfigValue // Optional template config.
+	Important    bool                                  // Indicates whether the template should be listed by default.
+	Error        error                                 // Non-nil if the template is broken.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.
@@ -470,6 +471,7 @@ func LoadTemplate(path string) (Template, error) {
 	}
 	if proj.Template != nil {
 		template.Description = proj.Template.Description
+		template.Instructions = proj.Template.Instructions
 		template.Quickstart = proj.Template.Quickstart
 		template.Config = proj.Template.Config
 		template.Important = proj.Template.Important
