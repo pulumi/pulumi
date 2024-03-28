@@ -23,6 +23,16 @@ var pyNameTests = []struct {
 	{"SHA256Hash", "sha256_hash", "sha256_hash"},
 	{"proj:config", "proj_config", "proj_config"},
 
+	// Handle embedded underscores
+	{"_NO_NAME", "_no_name", "_no_name"},
+	{"_no_NAME", "_no_name", "_no_name"},
+	{"_NO_name", "_no_name", "_no_name"},
+	{"_no_name", "_no_name", "_no_name"},
+	{"NO_NAME", "no_name", "no_name"},
+	{"no_NAME", "no_name", "no_name"},
+	{"NO_name", "no_name", "no_name"},
+	{"no_name", "no_name", "no_name"},
+
 	// PyName should return the legacy name for these:
 	{"openXJsonSerDe", "open_x_json_ser_de", "open_x_json_ser_de"},
 	{"GetPublicIPs", "get_public_i_ps", "get_public_i_ps"},
@@ -36,14 +46,6 @@ func TestPyName(t *testing.T) {
 		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
-
-			// TODO[pulumi/pulumi#5201]: Once the assertion has been removed, we can remove this `if` block.
-			// Prevent this input from panic'ing.
-			if tt.input == "someTHINGsAREWeird" {
-				result := pyName(tt.input, false /*legacy*/)
-				assert.Equal(t, tt.expected, result)
-				return
-			}
 
 			result := PyName(tt.input)
 			assert.Equal(t, tt.expected, result)
