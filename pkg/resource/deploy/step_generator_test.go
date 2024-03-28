@@ -17,6 +17,7 @@ package deploy
 import (
 	"os"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -498,9 +499,8 @@ func TestGenerateAliases(t *testing.T) {
 			}, Options{}, NewUrnTargets(nil), NewUrnTargets(nil))
 
 			if tt.parentAlias != nil {
-				sg.aliases = map[resource.URN]resource.URN{
-					parentURN: *tt.parentAlias,
-				}
+				sg.aliases = &sync.Map{}
+				sg.aliases.Store(parentURN, *tt.parentAlias)
 			}
 
 			actual := sg.generateAliases(goal)

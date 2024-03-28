@@ -3,6 +3,7 @@
 package graph
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -82,41 +83,41 @@ func TestBasicGraph(t *testing.T) {
 	assert.Nil(t, dg.DependingOn(c, nil, false))
 	assert.Nil(t, dg.DependingOn(d, nil, false))
 
-	assert.Nil(t, dg.DependingOn(pA, map[resource.URN]bool{
-		a.URN: true,
-		b.URN: true,
-	}, false))
+	pAMap := &sync.Map{}
+	pAMap.Store(a.URN, true)
+	pAMap.Store(b.URN, true)
+	assert.Nil(t, dg.DependingOn(pA, pAMap, false))
 
+	pAMap = &sync.Map{}
+	pAMap.Store(b.URN, true)
 	assert.Equal(t, []*resource.State{
 		a, pB, c,
-	}, dg.DependingOn(pA, map[resource.URN]bool{
-		b.URN: true,
-	}, false))
+	}, dg.DependingOn(pA, pAMap, false))
 
+	pAMap = &sync.Map{}
+	pAMap.Store(a.URN, true)
 	assert.Equal(t, []*resource.State{
 		b, pB, c, d,
-	}, dg.DependingOn(pA, map[resource.URN]bool{
-		a.URN: true,
-	}, false))
+	}, dg.DependingOn(pA, pAMap, false))
 
+	pAMap = &sync.Map{}
+	pAMap.Store(b.URN, true)
+	pAMap.Store(pB.URN, true)
 	assert.Equal(t, []*resource.State{
 		c,
-	}, dg.DependingOn(a, map[resource.URN]bool{
-		b.URN:  true,
-		pB.URN: true,
-	}, false))
+	}, dg.DependingOn(a, pAMap, false))
 
+	pAMap = &sync.Map{}
+	pAMap.Store(b.URN, true)
 	assert.Equal(t, []*resource.State{
 		pB, c,
-	}, dg.DependingOn(a, map[resource.URN]bool{
-		b.URN: true,
-	}, false))
+	}, dg.DependingOn(a, pAMap, false))
 
+	pAMap = &sync.Map{}
+	pAMap.Store(pB.URN, true)
 	assert.Equal(t, []*resource.State{
 		d,
-	}, dg.DependingOn(b, map[resource.URN]bool{
-		pB.URN: true,
-	}, false))
+	}, dg.DependingOn(b, pAMap, false))
 }
 
 // Tests that we don't add the same node to the DependingOn set twice.
