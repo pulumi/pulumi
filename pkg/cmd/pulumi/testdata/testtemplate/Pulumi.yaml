@@ -1,0 +1,8 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: nodejs
+template:
+  description: Test description
+  instructions: |
+    <{%bold%}>Test instructions<{%reset%}>
+    Line 2.

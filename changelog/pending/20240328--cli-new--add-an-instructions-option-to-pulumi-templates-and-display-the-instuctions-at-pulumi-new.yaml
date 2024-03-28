@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Add an 'instructions' option to Pulumi templates and display the instuctions at pulumi new
