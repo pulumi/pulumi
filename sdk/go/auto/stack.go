@@ -305,6 +305,10 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 			if event.SummaryEvent != nil {
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
+			if event.Error != nil {
+				// Log the error
+				fmt.Println(event.Error)
+			}
 		}
 	}()
 
