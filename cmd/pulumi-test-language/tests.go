@@ -18,6 +18,7 @@ import (
 	"embed"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -94,7 +95,6 @@ var languageTests = map[string]languageTest{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
 					requireStackResource(l, res, changes)
 
-					// Check we have two outputs in the stack for true and false
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
@@ -107,6 +107,41 @@ var languageTests = map[string]languageTest{
 					assertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
 					assertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
 					assertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
+				},
+			},
+		},
+	},
+	"l1-output-string": {
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 6, "expected 6 outputs")
+					assertPropertyMapMember(l, outputs, "empty", resource.NewStringProperty(""))
+					assertPropertyMapMember(l, outputs, "small", resource.NewStringProperty("Hello world!"))
+					assertPropertyMapMember(l, outputs, "emoji", resource.NewStringProperty("👋 \"Hello \U0001019b!\" 😊"))
+					assertPropertyMapMember(l, outputs, "escape", resource.NewStringProperty(
+						"Some ${common} \"characters\" 'that' need escaping: "+
+							"\\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
+					assertPropertyMapMember(l, outputs, "escapeNewline", resource.NewStringProperty(
+						"Some ${common} \"characters\" 'that' need escaping: "+
+							"\\ (backslash), \n (newline), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
+
+					lorem := "Lorem ipsum dolor sit amet, consectetur adipiscing elit," +
+						" sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." +
+						" Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." +
+						" Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur." +
+						" Excepteur sint occaecat cupidatat non proident," +
+						" sunt in culpa qui officia deserunt mollit anim id est laborum.\n"
+					large := strings.Repeat(lorem, 150)
+					assertPropertyMapMember(l, outputs, "large", resource.NewStringProperty(large))
 				},
 			},
 		},
