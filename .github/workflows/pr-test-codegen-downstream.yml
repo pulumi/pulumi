@@ -86,7 +86,7 @@ jobs:
             role-session-name: awsx@githubActions
             role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
         - name: Setup Go
-          uses: actions/setup-go@v2
+          uses: actions/setup-go@v5
           with:
             go-version: ${{ env.GOVERSION }}
             check-latest: true

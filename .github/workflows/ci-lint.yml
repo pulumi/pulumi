@@ -28,7 +28,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           # golangci-lint-action handles all the caching for Go.
@@ -58,7 +58,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Run go mod tidy
@@ -79,7 +79,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Run make gen
@@ -111,7 +111,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
@@ -160,7 +160,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - run: |
