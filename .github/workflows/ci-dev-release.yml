@@ -161,7 +161,7 @@ jobs:
             done
           )
       - name: Set up Node ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
           registry-url: https://registry.npmjs.org

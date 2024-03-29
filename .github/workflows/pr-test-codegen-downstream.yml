@@ -91,7 +91,7 @@ jobs:
             go-version: ${{ env.GOVERSION }}
             check-latest: true
         - name: Setup Node
-          uses: actions/setup-node@v1
+          uses: actions/setup-node@v4
           with:
             node-version: ${{ env.NODEVERSION }}
         - name: Setup Python
