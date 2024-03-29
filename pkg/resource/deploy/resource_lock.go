@@ -8,18 +8,32 @@ import (
 )
 
 type resourceLock struct {
-	mu    *sync.Mutex
+	mu    sync.Mutex
 	locks map[resource.URN]struct{}
 	cond  sync.Cond
 }
 
-func newResourceLock(mu *sync.Mutex) *resourceLock {
+func newResourceLock() *resourceLock {
 	rl := &resourceLock{
-		mu:    mu,
 		locks: make(map[resource.URN]struct{}),
 	}
-	rl.cond.L = mu
+	rl.cond.L = &rl.mu
 	return rl
+}
+
+// Locks the controlling mutex
+func (rl *resourceLock) lock() {
+	rl.mu.Lock()
+}
+
+// Tries to lock the controlling mutex and reports when it succeeds.
+func (rl *resourceLock) tryLock() bool {
+	return rl.mu.TryLock()
+}
+
+// Unlocks the controlling mutex
+func (rl *resourceLock) unlock() {
+	rl.mu.Unlock()
 }
 
 // Locks a single resource, This waits until it can lock the URN

@@ -37,8 +37,10 @@ type workerPool struct {
 //
 // IF size is <= 1, OR > NumCPU THEN use the number of available Logical CPUs
 func newWorkerPool(size int, cancel context.CancelFunc) *workerPool {
-	if size <= 1 || size > runtime.NumCPU() {
-		size = runtime.NumCPU()
+	if size <= 1 {
+		// This number is chosen to match the value of defaultParallel in /pkg/cmd/pulumi/up.go
+		// See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
+		size = runtime.NumCPU() * 4
 	}
 	return &workerPool{
 		numWorkers: size,

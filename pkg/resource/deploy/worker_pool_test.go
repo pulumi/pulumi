@@ -138,6 +138,7 @@ func TestWorkerPool_workerCount(t *testing.T) {
 	t.Parallel()
 
 	gomaxprocs := runtime.GOMAXPROCS(0)
+	defaultWorkerCount := gomaxprocs * 4
 
 	tests := []struct {
 		desc            string
@@ -146,12 +147,12 @@ func TestWorkerPool_workerCount(t *testing.T) {
 	}{
 		{
 			desc:            "default",
-			expectedWorkers: gomaxprocs,
+			expectedWorkers: defaultWorkerCount,
 		},
 		{
 			desc:            "negative",
 			numWorkers:      -1,
-			expectedWorkers: gomaxprocs,
+			expectedWorkers: defaultWorkerCount,
 		},
 		{
 			desc:            "explicit",

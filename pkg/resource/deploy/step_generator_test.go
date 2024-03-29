@@ -744,8 +744,8 @@ func TestStepGenerator(t *testing.T) {
 			sg.deployment.olds = olds
 			sg.deployment.depGraph = graph.NewDependencyGraph(oldResources)
 
-			sg.generatorMutex.Lock()
-			defer sg.generatorMutex.Unlock()
+			sg.urnLock.lock()
+			defer sg.urnLock.unlock()
 
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(UrnTargets{
 				literals: []resource.URN{"a"},
@@ -770,8 +770,8 @@ func TestStepGenerator(t *testing.T) {
 			sg.deployment.olds = olds
 			sg.deployment.depGraph = graph.NewDependencyGraph(oldResources)
 
-			sg.generatorMutex.Lock()
-			defer sg.generatorMutex.Unlock()
+			sg.urnLock.lock()
+			defer sg.urnLock.unlock()
 
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(UrnTargets{
 				literals: []resource.URN{"a"},

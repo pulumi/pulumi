@@ -28,9 +28,8 @@ func TestResourceLock(t *testing.T) {
 	}
 	t.Run("Two workers accessing the same urn", func(t *testing.T) {
 		t.Parallel()
-		mu := sync.Mutex{}
 
-		resourceLock := *newResourceLock(&mu)
+		resourceLock := newResourceLock()
 
 		wg := &sync.WaitGroup{}
 		wg.Add(2)
@@ -40,15 +39,15 @@ func TestResourceLock(t *testing.T) {
 
 		worker := func() {
 			defer func() {
-				mu.Lock()
+				resourceLock.lock()
 				resourceLock.UnlockResource(urn)
-				mu.Unlock()
+				resourceLock.unlock()
 				wg.Done()
 			}()
 
-			mu.Lock()
+			resourceLock.lock()
 			resourceLock.LockResource(urn)
-			mu.Unlock()
+			resourceLock.unlock()
 
 			update++
 		}
@@ -63,8 +62,7 @@ func TestResourceLock(t *testing.T) {
 
 	t.Run("Attempt multiple concurrent actions", func(t *testing.T) {
 		t.Parallel()
-		mu := sync.Mutex{}
-		resourceLock := *newResourceLock(&mu)
+		resourceLock := newResourceLock()
 		values := make(map[resource.URN]int)
 		wg := &sync.WaitGroup{}
 
@@ -78,7 +76,7 @@ func TestResourceLock(t *testing.T) {
 					if !fwd {
 						urn = urns[len(urns)-i-1]
 					}
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResource(urn)
 
 					if prev, ok := values[urn]; ok {
@@ -86,12 +84,12 @@ func TestResourceLock(t *testing.T) {
 					} else {
 						values[urn] = 1
 					}
-					mu.Unlock()
+					resourceLock.unlock()
 					runtime.Gosched()
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.UnlockResource(urn)
-					mu.Unlock()
+					resourceLock.unlock()
 				}
 				wg.Done()
 			}(pass&1 == 0)
@@ -109,7 +107,7 @@ func TestResourceLock(t *testing.T) {
 						a = urns[j]
 						b = urns[j+1]
 					}
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResources(func() []*resource.State {
 						return []*resource.State{
 							{URN: a},
@@ -119,16 +117,16 @@ func TestResourceLock(t *testing.T) {
 
 					values[a]++
 					values[b]++
-					mu.Unlock()
+					resourceLock.unlock()
 					runtime.Gosched()
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.UnlockResources(
 						[]*resource.State{
 							{URN: a},
 							{URN: b},
 						})
-					mu.Unlock()
+					resourceLock.unlock()
 				}
 				wg.Done()
 			}(pass&1 == 0)
@@ -150,7 +148,7 @@ func TestResourceLock(t *testing.T) {
 						}
 					}
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResources(func() []*resource.State {
 						return resources
 					})
@@ -160,12 +158,12 @@ func TestResourceLock(t *testing.T) {
 						values[res.URN]++
 						replacements[j].res = res
 					}
-					mu.Unlock()
+					resourceLock.unlock()
 					runtime.Gosched()
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.UnlockDependentReplaces(replacements)
-					mu.Unlock()
+					resourceLock.unlock()
 				}
 			}()
 		}
@@ -180,25 +178,24 @@ func TestResourceLock(t *testing.T) {
 		t.Parallel()
 
 		rapid.Check(t, func(rt *rapid.T) {
-			mu := sync.Mutex{}
-			resourceLock := newResourceLock(&mu)
+			resourceLock := newResourceLock()
 
 			rt.Run(map[string]func(*rapid.T){
 				"LockResource": func(*rapid.T) {
 					urn := urns[rand.Intn(len(urns))] //nolint:gosec
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResource(urn)
-					mu.Unlock()
+					resourceLock.unlock()
 
 					runtime.Gosched()
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.UnlockResource(urn)
-					mu.Unlock()
+					resourceLock.unlock()
 				},
 				"LockResourceWithInversion": func(*rapid.T) {
 					urn := urns[rand.Intn(len(urns))] //nolint:gosec
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResource(urn)
 
 					assert.NoError(t, resourceLock.InvertLock(func() error {
@@ -207,7 +204,7 @@ func TestResourceLock(t *testing.T) {
 					}))
 
 					resourceLock.UnlockResource(urn)
-					mu.Unlock()
+					resourceLock.unlock()
 				},
 				"LockResources": func(*rapid.T) {
 					resources := make([]*resource.State, len(urns)/3)
@@ -227,17 +224,17 @@ func TestResourceLock(t *testing.T) {
 						}
 					}
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResources(func() []*resource.State {
 						return resources
 					})
-					mu.Unlock()
+					resourceLock.unlock()
 
 					runtime.Gosched()
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.UnlockResources(resources)
-					mu.Unlock()
+					resourceLock.unlock()
 				},
 				"UnlockDependentReplaces": func(*rapid.T) {
 					resources := make([]*resource.State, len(urns)/3)
@@ -257,11 +254,11 @@ func TestResourceLock(t *testing.T) {
 						}
 					}
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.LockResources(func() []*resource.State {
 						return resources
 					})
-					mu.Unlock()
+					resourceLock.unlock()
 
 					runtime.Gosched()
 
@@ -270,9 +267,9 @@ func TestResourceLock(t *testing.T) {
 						replaces[i].res = res
 					}
 
-					mu.Lock()
+					resourceLock.lock()
 					resourceLock.UnlockDependentReplaces(replaces)
-					mu.Unlock()
+					resourceLock.unlock()
 				},
 			})
 		})
