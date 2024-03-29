@@ -15,6 +15,7 @@
 /* eslint-disable max-len */
 
 import * as upath from "upath";
+import { builtinModules as nodeBuiltinModules } from "node:module";
 import { ResourceError } from "../../errors";
 import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
@@ -1335,43 +1336,16 @@ function getBuiltInModules(): Promise<Map<any, string>> {
     async function computeBuiltInModules() {
         // These modules are built-in to Node.js, and are available via `require(...)`
         // but are not stored in the `require.cache`.  They are guaranteed to be
-        // available at the unqualified names listed below. _Note_: This list is derived
-        // based on Node.js 6.x tree at: https://github.com/nodejs/node/tree/v6.x/lib
-        const builtInModuleNames = [
-            "assert",
-            "buffer",
-            "child_process",
-            "cluster",
-            "console",
-            "constants",
-            "crypto",
-            "dgram",
-            "dns",
-            "domain",
-            "events",
-            "fs",
-            "http",
-            "https",
-            "module",
-            "net",
-            "os",
-            "path",
-            "process",
-            "punycode",
-            "querystring",
-            "readline",
-            "repl",
-            "stream",
-            "string_decoder",
-            /* "sys" deprecated ,*/ "timers",
-            "tls",
-            "tty",
-            "url",
-            "util",
-            "v8",
-            "vm",
-            "zlib",
+        // available at the unqualified names listed below.
+
+        const excludes = [
+            "sys", // deprecated since 1.0
+            "wasi", // experimental
         ];
+
+        const builtInModuleNames = nodeBuiltinModules.filter(
+            (name) => !name.startsWith("_") && !excludes.includes(name),
+        );
 
         const map = new Map<any, string>();
         for (const name of builtInModuleNames) {
