@@ -32,9 +32,7 @@ import (
 
 func init() {
 	providerSchema.Resources["testprovider:index:Random"] = pschema.ResourceSpec{
-		IsComponent: false,
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
-			IsOverlay:   false,
 			Description: "A test resource that generates a random string of a given length and with an optional prefix.",
 			Properties: map[string]pschema.PropertySpec{
 				"length": {

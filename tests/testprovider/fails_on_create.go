@@ -28,9 +28,7 @@ import (
 
 func init() {
 	providerSchema.Resources["testprovider:index:FailsOnCreate"] = pschema.ResourceSpec{
-		IsComponent: false,
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
-			IsOverlay:   false,
 			Description: "A test resource fails on create.",
 			Properties:  map[string]pschema.PropertySpec{},
 			Type:        "object",

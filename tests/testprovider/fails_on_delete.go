@@ -29,9 +29,7 @@ import (
 
 func init() {
 	providerSchema.Resources["testprovider:index:FailsOnDelete"] = pschema.ResourceSpec{
-		IsComponent: false,
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
-			IsOverlay:   false,
 			Description: "A test resource fails on delete.",
 			Properties:  map[string]pschema.PropertySpec{},
 			Type:        "object",

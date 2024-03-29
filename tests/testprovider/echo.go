@@ -30,16 +30,14 @@ import (
 
 func init() {
 	providerSchema.Resources["testprovider:index:Echo"] = pschema.ResourceSpec{
-		IsComponent: false,
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
-			IsOverlay:   false,
 			Description: "A test resource that echoes its input.",
 			Properties: map[string]pschema.PropertySpec{
 				"echo": {
 					TypeSpec: pschema.TypeSpec{
-						Ref: "pulumi.json#/Resource",
+						Ref: "pulumi.json#/Any",
 					},
-					Description: "A resource to echo.",
+					Description: "Input to echo.",
 				},
 			},
 			Type: "object",
@@ -47,9 +45,9 @@ func init() {
 		InputProperties: map[string]pschema.PropertySpec{
 			"echo": {
 				TypeSpec: pschema.TypeSpec{
-					Ref: "pulumi.json#/Resource",
+					Ref: "pulumi.json#/Any",
 				},
-				Description: "An echoed resource.",
+				Description: "An echoed input.",
 			},
 		},
 	}
