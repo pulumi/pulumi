@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Adds parallel step generation as an experimental feature. Enable by setting the environment variables PULUMI_EXPERIMENTAL and PULUMI_PARALLEL_STEP_GEN
