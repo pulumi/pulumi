@@ -222,7 +222,7 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
@@ -230,7 +230,7 @@ jobs:
           tag: v0.0.42
           cache: enable
       - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
@@ -238,7 +238,7 @@ jobs:
           tag: v1.8.1
           cache: enable
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:

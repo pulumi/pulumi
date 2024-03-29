@@ -169,7 +169,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
