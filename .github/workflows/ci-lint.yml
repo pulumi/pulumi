@@ -115,7 +115,7 @@ jobs:
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip

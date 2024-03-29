@@ -70,7 +70,7 @@ jobs:
         with:
           node-version: ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
       - name: Install Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(needs.matrix.outputs.version-set).python }}
       - name: Set up DotNet
