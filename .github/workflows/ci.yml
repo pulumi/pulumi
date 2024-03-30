@@ -103,7 +103,7 @@ jobs:
       - run: |
           cd vendor/gotestsum
           go install .
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
@@ -409,7 +409,7 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
