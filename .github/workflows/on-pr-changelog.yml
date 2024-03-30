@@ -57,7 +57,7 @@ jobs:
           CHANGELOG="$(./.github/scripts/get-changelog-comment "${PREVIOUS_VERSION}" "${CHANGELOG_REQUIRED}" "${GITHUB_PR}")"
           ./.github/scripts/set-output CHANGELOG "${CHANGELOG}"
       - name: Find Comment
-        uses: peter-evans/find-comment@1769778a0c5bd330272d749d12c036d65e70d39d # v2.0.0
+        uses: peter-evans/find-comment@v3
         id: fc
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
