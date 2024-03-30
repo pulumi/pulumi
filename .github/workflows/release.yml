@@ -70,7 +70,7 @@ jobs:
         language: ["nodejs", "python", "go"]
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure AWS Credentials
@@ -165,7 +165,7 @@ jobs:
             run-command: pulumictl dispatch -r pulumi/pulumi-docker-containers -c release-build "${PULUMI_VERSION}"
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Install Pulumictl

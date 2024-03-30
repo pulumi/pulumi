@@ -71,7 +71,7 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key

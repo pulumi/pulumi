@@ -116,7 +116,7 @@ jobs:
           with:
             repo: pulumi/pulumictl
         - name: Check out source code
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             ref: ${{ github.event.pull_request.head.sha }}
             token: ${{ secrets.PULUMI_BOT_TOKEN }}

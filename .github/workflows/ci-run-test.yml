@@ -140,7 +140,7 @@ jobs:
           echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
           command -v bash
           bash --version
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars

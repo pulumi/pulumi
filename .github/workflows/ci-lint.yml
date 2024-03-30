@@ -24,7 +24,7 @@ jobs:
     name: Lint Go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -54,7 +54,7 @@ jobs:
     name: go mod tidy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -75,7 +75,7 @@ jobs:
     name: Generate Go SDK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -96,7 +96,7 @@ jobs:
     name: Lint Protobufs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Check Protobufs
@@ -107,7 +107,7 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -136,7 +136,7 @@ jobs:
       - name: Update path
         run: |
           echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set Go Dep path
@@ -156,7 +156,7 @@ jobs:
     name: Lint GHA
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go

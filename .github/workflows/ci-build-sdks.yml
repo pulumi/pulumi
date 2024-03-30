@@ -42,7 +42,7 @@ jobs:
     name: python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -79,7 +79,7 @@ jobs:
     name: nodejs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
