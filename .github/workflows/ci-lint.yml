@@ -40,7 +40,7 @@ jobs:
       # The action doesn't have an install-only mode,
       # so we'll ask it to print its version only.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --version
