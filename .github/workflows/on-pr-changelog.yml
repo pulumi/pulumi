@@ -64,7 +64,7 @@ jobs:
           issue-number: ${{ inputs.pr-number }}
           body-includes: "# Changelog"
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@c9fcb64660bc90ec1cc535646af190c992007c32 # v2.0.0
+        uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           comment-id: ${{ steps.fc.outputs.comment-id }}
