@@ -347,10 +347,10 @@ func (c *testPulumiClient) getEnvironment(orgName, envName, revisionOrTag string
 
 	var revision int
 	if revisionOrTag == "" || revisionOrTag == "latest" {
-		revision = len(env.revisions) - 1
+		revision = len(env.revisions)
 	} else if revisionOrTag[0] >= '0' && revisionOrTag[0] <= '9' {
 		rev, err := strconv.ParseInt(revisionOrTag, 10, 0)
-		if err != nil || rev < 0 || rev >= int64(len(env.revisions)) {
+		if err != nil || rev < 1 || rev > int64(len(env.revisions)) {
 			return nil, nil, errors.New("not found")
 		}
 		revision = int(rev)
@@ -362,7 +362,7 @@ func (c *testPulumiClient) getEnvironment(orgName, envName, revisionOrTag string
 		revision = rev
 	}
 
-	return env, env.revisions[revision], nil
+	return env, env.revisions[revision-1], nil
 }
 
 func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envName string, yaml []byte) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
@@ -434,6 +434,15 @@ func (c *testPulumiClient) URL() string {
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 func (c *testPulumiClient) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
 	return c.user, nil, nil, nil
+}
+
+func (c *testPulumiClient) GetRevisionNumber(ctx context.Context, orgName, envName, revisionOrTag string) (int, error) {
+	_, rev, err := c.getEnvironment(orgName, envName, revisionOrTag)
+	if err != nil {
+		return 0, err
+	}
+	return rev.number, nil
+
 }
 
 func (c *testPulumiClient) ListEnvironments(
@@ -532,7 +541,7 @@ func (c *testPulumiClient) UpdateEnvironment(
 			return nil, err
 		}
 
-		revisionNumber := len(env.revisions)
+		revisionNumber := len(env.revisions) + 1
 		env.revisions = append(env.revisions, &testEnvironmentRevision{
 			number: revisionNumber,
 			yaml:   yaml,
@@ -597,6 +606,35 @@ func (c *testPulumiClient) GetOpenProperty(ctx context.Context, orgName, envName
 	return nil, errors.New("NYI")
 }
 
+func (c *testPulumiClient) ListEnvironmentRevisions(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	options client.ListEnvironmentRevisionsOptions,
+) ([]client.EnvironmentRevision, error) {
+	env, _, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	before := len(env.revisions) + 1
+	if options.Before != nil && *options.Before != 0 {
+		before = *options.Before
+	}
+
+	var resp []client.EnvironmentRevision
+	for i := before - 1; i > 0; i-- {
+		resp = append(resp, client.EnvironmentRevision{
+			Number:       i,
+			Created:      time.Unix(0, 0).Add(time.Duration(i) * time.Hour),
+			CreatorLogin: "Test Tester",
+			CreatorName:  "test-tester",
+		})
+	}
+
+	return resp, nil
+}
+
 type testExec struct {
 	fs       testFS
 	environ  map[string]string
@@ -659,6 +697,7 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 					fs:              c.fs,
 					environ:         environ,
 					exec:            c,
+					pager:           testPager(0),
 					newClient: func(_, backendURL, accessToken string, insecure bool) client.Client {
 						return c.client
 					},
@@ -713,6 +752,12 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 	}
 
 	return runner.Run(context.Background(), file)
+}
+
+type testPager int
+
+func (testPager) Run(pager string, stdout, stderr io.Writer, f func(context.Context, io.Writer) error) error {
+	return f(context.Background(), stdout)
 }
 
 type cliTestcaseProcess struct {
@@ -786,7 +831,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			revisions = cliTestcaseRevisions{Revisions: []cliTestcaseRevision{{YAML: env}}}
 		}
 
-		envRevisions := []*testEnvironmentRevision{{}}
+		envRevisions := []*testEnvironmentRevision{{number: 1}}
 		tags := map[string]int{}
 		for _, rev := range revisions.Revisions {
 			bytes, err := yaml.Marshal(rev.YAML)
@@ -794,7 +839,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 				return nil, nil, err
 			}
 
-			revisionNumber := len(envRevisions)
+			revisionNumber := len(envRevisions) + 1
 			envRevisions = append(envRevisions, &testEnvironmentRevision{
 				number: revisionNumber,
 				yaml:   bytes,
@@ -807,7 +852,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 				tags[rev.Tag] = revisionNumber
 			}
 		}
-		tags["latest"] = len(envRevisions) - 1
+		tags["latest"] = len(envRevisions)
 
 		environments[k] = &testEnvironment{
 			revisions: envRevisions,

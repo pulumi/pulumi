@@ -36,6 +36,7 @@ type Options struct {
 	fs      escFS
 	environ environ
 	exec    cmdExec
+	pager   pager
 
 	newClient func(userAgent, backendURL, accessToken string, insecure bool) client.Client
 }
@@ -44,6 +45,7 @@ type escCommand struct {
 	fs      escFS
 	environ environ
 	exec    cmdExec
+	pager   pager
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -68,6 +70,7 @@ func newESC(opts *Options) *escCommand {
 		fs:        fs,
 		environ:   valueOrDefault(opts.environ, newEnviron()),
 		exec:      valueOrDefault(opts.exec, newCmdExec()),
+		pager:     valueOrDefault(opts.pager, newPager()),
 		stdin:     valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
 		stdout:    valueOrDefault(opts.Stdout, io.Writer(os.Stdout)),
 		stderr:    valueOrDefault(opts.Stderr, io.Writer(os.Stderr)),

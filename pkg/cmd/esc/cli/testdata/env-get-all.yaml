@@ -2,9 +2,9 @@ run: |
   esc env get test
   esc env get test:latest
   esc env get test:stable
-  esc env get test:0
   esc env get test:1
   esc env get test:2
+  esc env get test:3
 environments:
   test-user/a: {}
   test-user/b: {}
@@ -126,8 +126,8 @@ stdout: |+
 
   ```
 
-  > esc env get test:0
   > esc env get test:1
+  > esc env get test:2
   # Value
   ```json
   {
@@ -141,7 +141,7 @@ stdout: |+
 
   ```
 
-  > esc env get test:2
+  > esc env get test:3
   # Value
   ```json
   {
@@ -185,6 +185,6 @@ stderr: |
   > esc env get test
   > esc env get test:latest
   > esc env get test:stable
-  > esc env get test:0
   > esc env get test:1
   > esc env get test:2
+  > esc env get test:3

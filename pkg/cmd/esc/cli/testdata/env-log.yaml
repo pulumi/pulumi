@@ -1,0 +1,136 @@
+run: |
+  esc env log test --utc
+  esc env log test:latest --utc
+  esc env log test:stable --utc
+  esc env log test:1 --utc
+  esc env log test:2 --utc
+  esc env log test:3 --utc
+  esc env log test:4 --utc
+environments:
+  test-user/a: {}
+  test-user/b: {}
+  test-user/test:
+    revisions:
+      - yaml:
+          values: {}
+      - yaml:
+          values:
+            string: hello, world!
+        tag: stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+stdout: |+
+  > esc env log test --utc
+  revision 4
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env log test:latest --utc
+  revision 4
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env log test:stable --utc
+  revision 3
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env log test:1 --utc
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env log test:2 --utc
+  revision 2
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env log test:3 --utc
+  revision 3
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env log test:4 --utc
+  revision 4
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: test-tester <Test Tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+stderr: |
+  > esc env log test --utc
+  > esc env log test:latest --utc
+  > esc env log test:stable --utc
+  > esc env log test:1 --utc
+  > esc env log test:2 --utc
+  > esc env log test:3 --utc
+  > esc env log test:4 --utc

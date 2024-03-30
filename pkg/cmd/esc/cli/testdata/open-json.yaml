@@ -2,9 +2,9 @@ run: |
   esc open test --format json
   esc open test:stable
   esc open test:latest
-  esc open test:0
   esc open test:1
   esc open test:2
+  esc open test:3
 environments:
   test-user/test:
     revisions:
@@ -36,12 +36,12 @@ stdout: |
     "foo": "bar",
     "hello": "world"
   }
-  > esc open test:0
   > esc open test:1
+  > esc open test:2
   {
     "foo": "bar"
   }
-  > esc open test:2
+  > esc open test:3
   {
     "foo": "bar",
     "hello": "world"
@@ -50,6 +50,6 @@ stderr: |
   > esc open test --format json
   > esc open test:stable
   > esc open test:latest
-  > esc open test:0
   > esc open test:1
   > esc open test:2
+  > esc open test:3
