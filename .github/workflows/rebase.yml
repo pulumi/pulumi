@@ -15,7 +15,7 @@ jobs:
       )
     steps:
       - name: Checkout the latest code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           fetch-depth: 0 # otherwise, you will fail to push refs to dest repo

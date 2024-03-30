@@ -80,7 +80,7 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
@@ -95,7 +95,7 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: dnephin/gotestsum
           ref: d09768c81065b404caed0855eb3ab8f11a2a4431
@@ -443,7 +443,7 @@ jobs:
               exit 1
           fi
       # Checkout repository to upload coverage results.
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports

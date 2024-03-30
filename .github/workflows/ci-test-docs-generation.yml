@@ -27,7 +27,7 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: build matrix
@@ -81,25 +81,25 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Check out source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: pulumi
           ref: ${{ inputs.ref }}
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Check out pulumi-aws
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: pulumi/pulumi-aws
           path: pulumi-aws
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Check out pulumi-kubernetes
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: pulumi/pulumi-kubernetes
           path: pulumi-kubernetes
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Check out docs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           # Use the PAT and not the default GITHUB_TOKEN since we want to create a branch
           # in this workflow and push it to a remote that is NOT the current repo, i.e. pulumi/pulumi.
@@ -107,7 +107,7 @@ jobs:
           repository: pulumi/docs
           path: docs
       - name: Check out registry
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: pulumi/registry
           path: registry
