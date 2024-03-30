@@ -198,7 +198,7 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2.4.2
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
