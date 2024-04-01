@@ -5,6 +5,8 @@ run: |
   esc env run -i test echo "secret: \${secret}, plain: \${plain}"
   esc env run test source-file
   esc env run -i test source-file
+  esc env run test -- echo -n hunter2
+  esc env run test -i -- echo -n hunter2
 process:
   commands:
     dump-env: |
@@ -32,7 +34,7 @@ environments:
           export F_PLAIN=${plain}
         BOOL_FILE: ${yup}
         NUM_FILE: ${pi}
-stdout: |
+stdout: |-
   > esc env run test dump-env
   secret: [secret], plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
   > esc env run -i test dump-env
@@ -45,6 +47,9 @@ stdout: |
   secret: [secret], plain: plaintext
   > esc env run -i test source-file
   secret: hunter2, plain: plaintext
+  > esc env run test -- echo -n hunter2
+  [secret]> esc env run test -i -- echo -n hunter2
+  hunter2
 stderr: |
   > esc env run test dump-env
   > esc env run -i test dump-env
@@ -52,3 +57,5 @@ stderr: |
   > esc env run -i test echo secret: ${secret}, plain: ${plain}
   > esc env run test source-file
   > esc env run -i test source-file
+  > esc env run test -- echo -n hunter2
+  > esc env run test -i -- echo -n hunter2

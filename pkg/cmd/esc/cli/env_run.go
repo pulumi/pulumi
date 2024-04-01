@@ -80,10 +80,14 @@ func (w *redactor) Write(b []byte) (int, error) {
 
 func (w *redactor) Close() error {
 	if w.line.Len() != 0 {
-		bytes := w.line.Bytes()
+		rest := w.line.String()
 		w.line.Reset()
 
-		_, err := w.w.Write(bytes)
+		redacted := w.replacer.ReplaceAllFunc(rest, func(m aho_corasick.Match) (string, bool) {
+			return "[secret]", true
+		})
+
+		_, err := w.w.Write([]byte(redacted))
 		return err
 	}
 	return nil
@@ -193,7 +197,10 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			stdout, stderr := envcmd.esc.stdout, envcmd.esc.stderr
 			if !interactive {
 				replacer := newReplacer(secrets)
-				stdout, stderr = newRedactor(stdout, replacer), newRedactor(stderr, replacer)
+				redactedStdout, redactedStderr := newRedactor(stdout, replacer), newRedactor(stderr, replacer)
+				defer contract.IgnoreClose(redactedStdout)
+				defer contract.IgnoreClose(redactedStderr)
+				stdout, stderr = redactedStdout, redactedStderr
 			}
 
 			runCmd.Stdin = envcmd.esc.stdin
