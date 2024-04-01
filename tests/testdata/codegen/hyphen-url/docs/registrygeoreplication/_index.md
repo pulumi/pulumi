@@ -366,7 +366,7 @@ This type is defined in the <a href="/registry/packages/azure-native">Azure Nati
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Resource<wbr>Group</span>
+        <span class="property-type">pulumi_<wbr>azure_<wbr>native.resources.<wbr>Resource<wbr>Group</span>
     </dt>
     <dd>The resource group that hosts the component resource
 This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
@@ -539,7 +539,7 @@ This type is defined in the <a href="/registry/packages/azure-native">Azure Nati
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_python" style="color: inherit; text-decoration: inherit;">registry</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Registry</span>
+        <span class="property-type">pulumi_<wbr>azure_<wbr>native.containerregistry.<wbr>Registry</span>
     </dt>
     <dd>The Registry
 This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
@@ -548,7 +548,7 @@ This type is defined in the <a href="/registry/packages/azure-native">Azure Nati
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_python" style="color: inherit; text-decoration: inherit;">replication</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Replication</span>
+        <span class="property-type">pulumi_<wbr>azure_<wbr>native.containerregistry.<wbr>Replication</span>
     </dt>
     <dd>The replication policy
 This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>

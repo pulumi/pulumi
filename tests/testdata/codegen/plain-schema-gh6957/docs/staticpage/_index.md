@@ -559,7 +559,7 @@ This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> pac
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bucket_python" style="color: inherit; text-decoration: inherit;">bucket</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Bucket</span>
+        <span class="property-type">pulumi_<wbr>aws.s3.<wbr>Bucket</span>
     </dt>
     <dd>The bucket resource.
 This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"

@@ -469,7 +469,7 @@ The Release resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml_files_python" style="color: inherit; text-decoration: inherit;">value_<wbr>yaml_<wbr>files</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Archive]]</span>
+        <span class="property-type">Sequence[Union[pulumi.<wbr>Asset, pulumi.<wbr>Archive]]</span>
     </dt>
     <dd>List of assets (raw yaml files). Content is read and merged with values.</dd><dt class="property-optional"
             title="Optional">

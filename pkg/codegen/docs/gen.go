@@ -555,7 +555,7 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 // The result of this function should be used display purposes only.
 func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modName string, isInput bool) string {
 	switch lang {
-	case "go", "python":
+	case "go":
 		langTypeString = cleanOptionalIdentifier(langTypeString, lang)
 		parts := strings.Split(langTypeString, ".")
 		return parts[len(parts)-1]
@@ -595,6 +595,24 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 		return strings.ReplaceAll(langTypeString, objModName, "")
 	}
 
+	cleanPythonName := func(objModName string) string {
+		// SDK codegen aliases imported top-level inputs as _root_inputs and _root_enums, e.g.
+		// from .. import _inputs as _root_inputs
+		// This is our implementation detail, so we shouldn't show this prefix
+		// in end-user documentation. Remove them here.
+		// Top-level arg types will be displayed without any module prefix.
+		objModName = strings.Replace(objModName, "root_enums.", "", 1)
+		objModName = strings.Replace(objModName, "root_inputs.", "", 1)
+
+		// SDK codegen aliases imported modules with underscored names, e.g.
+		// from ... import meta as _meta
+		// Therefore, type references for Python all have _ before module names.
+		// This is our implementation detail, so we shouldn't show those underscores
+		// in end-user documentation. Remove them here.
+		// We need to keep underscores inside module names though, as in 'pulumi_random'.
+		return removeLeadingUnderscores(objModName)
+	}
+
 	switch t := t.(type) {
 	case *schema.ObjectType:
 		// Strip "Args" suffixes from display names for everything but Python inputs.
@@ -629,13 +647,16 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 		}
 	}
 
-	if lang == "nodejs" {
+	switch lang {
+	case "nodejs":
 		return cleanNodeJSName(modName)
-	} else if lang == "csharp" {
+	case "csharp":
 		return cleanCSharpName(mod.pkg.Name(), modName)
+	case "python":
+		return cleanPythonName(langTypeString)
+	default:
+		return strings.ReplaceAll(langTypeString, modName, "")
 	}
-
-	return strings.ReplaceAll(langTypeString, modName, "")
 }
 
 // typeString returns a property type suitable for docs with its display name and the anchor link to

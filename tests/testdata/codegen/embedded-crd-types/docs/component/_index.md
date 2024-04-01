@@ -9675,7 +9675,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#eni_config_python" style="color: inherit; text-decoration: inherit;">eni_<wbr>config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">ENIConfig<wbr>Spec<wbr>Args]</span>
+        <span class="property-type">Mapping[str, crd_<wbr>k8s_<wbr>amazonaws_<wbr>com.v1alpha1.<wbr>ENIConfig<wbr>Spec<wbr>Args]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -9683,7 +9683,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_python" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod<wbr>Args</a></span>
+        <span class="property-type"><a href="#pod">pulumi_<wbr>kubernetes.core.v1.<wbr>Pod<wbr>Args</a></span>
     </dt>
     <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd></dl>
 </pulumi-choosable>
