@@ -44,15 +44,15 @@ type Type interface {
 type primitiveType int
 
 const (
-	boolType              primitiveType = 1
-	intType               primitiveType = 2
-	numberType            primitiveType = 3
-	stringType            primitiveType = 4
-	archiveType           primitiveType = 5
-	assetType             primitiveType = 6
-	anyType               primitiveType = 7
-	jsonType              primitiveType = 8
-	anyResourceType       primitiveType = 9
+	boolType        primitiveType = 1
+	intType         primitiveType = 2
+	numberType      primitiveType = 3
+	stringType      primitiveType = 4
+	archiveType     primitiveType = 5
+	assetType       primitiveType = 6
+	anyType         primitiveType = 7
+	jsonType        primitiveType = 8
+	anyResourceType primitiveType = 9
 )
 
 func (t primitiveType) String() string {
