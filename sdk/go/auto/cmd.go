@@ -265,6 +265,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 	args = withNonInteractiveArg(args)
+	fmt.Println("args: ", args)
 	cmd := exec.CommandContext(ctx, p.command, args...) //nolint:gosec
 	cmd.Dir = workdir
 	env := append(os.Environ(), additionalEnv...)

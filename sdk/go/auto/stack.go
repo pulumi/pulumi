@@ -101,6 +101,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -108,6 +109,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/nxadm/tail"
@@ -292,6 +294,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	args = append(args, "--exec-kind="+kind)
 	args = append(args, sharedArgs...)
 
+	fmt.Println("args", args)
+
 	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
 	eventsDone := make(chan bool)
@@ -299,12 +303,13 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	go func() {
 		for {
 			event, ok := <-eventChannel
-			fmt.Println("event, ok", event, ok)
+			fmt.Println("event, ok", event, ok, eventChannel)
 			if !ok {
 				close(eventsDone)
 				return
 			}
 			if event.SummaryEvent != nil {
+				fmt.Println("recoring summaryEvent", event.SummaryEvent, eventChannel)
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
 			if event.Error != nil {
@@ -314,7 +319,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}()
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	fmt.Println("eventChannels1", eventChannels)
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
+	fmt.Println("eventChannels2", eventChannels)
 
 	t, err := tailLogs("preview", eventChannels)
 	if err != nil {
@@ -322,6 +329,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 	defer t.Close()
 	args = append(args, "--event-log", t.Filename)
+	fmt.Println("event-log", args, t.Filename)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
@@ -336,6 +344,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	// Close the file watcher wait for all events to send
 	t.Close()
 	<-eventsDone
+
+	fmt.Println("checking for summary events", summaryEvents, eventChannel)
 
 	if len(summaryEvents) == 0 {
 		errStr := ""
@@ -1403,13 +1413,14 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 	t, err := tail.TailFile(path, tail.Config{
 		Follow:        true,
 		Poll:          runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
-		Logger:        tail.DiscardingLogger,
+		Logger:        tail.DefaultLogger,
 		CompleteLines: true,
 	})
 	if err != nil {
 		return nil, err
 	}
 	done := make(chan bool)
+	fmt.Println("receivers:", receivers)
 	go func(tailedLog *tail.Tail) {
 		for line := range tailedLog.Lines {
 			fmt.Println("line", line.Text)
@@ -1429,7 +1440,7 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 				continue
 			}
 			for _, r := range receivers {
-				fmt.Printf("sending event: %v\n", e)
+				fmt.Printf("sending event: %v, %v\n", e, r)
 				r <- events.EngineEvent{EngineEvent: e}
 			}
 		}
@@ -1468,11 +1479,18 @@ func (fw *fileWatcher) Close() {
 	}
 
 	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
-
+	if runtime.GOOS == "windows" {
+		// tail.StopAtEOF() is racy on windows.
+		time.Sleep(300 * time.Millisecond)
+	}
 	//nolint:errcheck
 	fw.tail.StopAtEOF()
 	<-fw.done
 	logDir := filepath.Dir(fw.tail.Filename)
+	read, err := ioutil.ReadFile(fw.tail.Filename)
+	fmt.Println(os.Stat(fw.tail.Filename))
+	fmt.Println("contents", string(read), err)
+
 	fw.tail.Cleanup()
 	os.RemoveAll(logDir)
 
