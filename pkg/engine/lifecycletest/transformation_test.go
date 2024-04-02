@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -256,6 +257,49 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.ErrorContains(t, err, "unmarshaling response: proto:")
 	assert.ErrorContains(t, err, "cannot parse invalid wire-format data")
+	assert.Len(t, snap.Resources, 0)
+}
+
+// Test that the engine errors if a transformation function returns an error.
+func TestRemoteTransformErrorResponse(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		callback1, err := callbacks.Allocate(func(args []byte) (proto.Message, error) {
+			return nil, errors.New("bad transform")
+		})
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackTransform(callback1)
+		require.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewNumberProperty(1),
+			},
+		})
+		assert.ErrorContains(t, err, "Unknown desc = bad transform")
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "Unknown desc = bad transform")
 	assert.Len(t, snap.Resources, 0)
 }
 
