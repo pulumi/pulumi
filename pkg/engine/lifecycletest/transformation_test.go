@@ -560,3 +560,84 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 	}, res.Dependencies)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/15843. Ensure that if a component resource has a
+// transform that's saved and looked up by it's children.
+func TestRemoteComponentTransforms(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					monitor *deploytest.ResourceMonitor, typ string, name string, parent resource.URN,
+					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					assert.Equal(t, "pkgA:m:typC", typ)
+
+					urn, _, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					require.NoError(t, err)
+
+					_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+						Parent: urn,
+						Inputs: resource.PropertyMap{
+							"foo": resource.NewNumberProperty(1),
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN: urn,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		callback1, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				if typ == "pkgA:m:typA" {
+					props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
+						return resource.NewNumberProperty(v.NumberValue() + 1)
+					})
+				}
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
+			Remote: true,
+			Transforms: []*pulumirpc.Callback{
+				callback1,
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	assert.Len(t, snap.Resources, 3)
+	// Check Resources[2] is the resA resource
+	res := snap.Resources[2]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"), res.URN)
+	// Check it's final input properties match what we expected from the transformations
+	assert.Equal(t, resource.PropertyMap{
+		"foo": resource.NewNumberProperty(2),
+	}, res.Inputs)
+}

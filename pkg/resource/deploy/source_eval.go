@@ -552,6 +552,12 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 type resmon struct {
 	pulumirpc.UnsafeResourceMonitorServer
 
+	pendingTransforms     map[string][]TransformFunction // pending transformation functions for a constructed resource
+	pendingTransformsLock sync.Mutex
+
+	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
+	parentsLock sync.Mutex
+
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.
 	diagostics                diag.Sink                          // logger for user-facing messages
@@ -603,6 +609,8 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		providers:                 provs,
 		defaultProviders:          d,
 		sourcePositions:           newSourcePositions(src.runinfo.ProjectRoot),
+		pendingTransforms:         map[string][]TransformFunction{},
+		parents:                   map[resource.URN]resource.URN{},
 		resGoals:                  map[resource.URN]resource.Goal{},
 		componentProviders:        map[resource.URN]map[string]string{},
 		regChan:                   regChan,
@@ -1502,12 +1510,34 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		PluginChecksums:         req.GetPluginChecksums(),
 	}
 
-	// Before we calculate anything else run the transformations. First run the transforms for this resource,
-	// then it's parents etc etc
-	transforms, err := slice.MapError(req.Transforms, rm.wrapTransformCallback)
+	// This might be a resource registation for a resource that another process requested to be constructed. If so we'll
+	// have saved the pending transforms for this and we should use those rather than what is on the request.
+	var transforms []TransformFunction
+	pendingKey := fmt.Sprintf("%s::%s::%s", parent, t, name)
+	err = func() error {
+		rm.pendingTransformsLock.Lock()
+		defer rm.pendingTransformsLock.Unlock()
+
+		if pending, ok := rm.pendingTransforms[pendingKey]; ok {
+			transforms = pending
+		} else {
+			transforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
+			if err != nil {
+				return err
+			}
+			// We only need to save this for remote calls
+			if remote && len(transforms) > 0 {
+				rm.pendingTransforms[pendingKey] = transforms
+			}
+		}
+		return nil
+	}()
 	if err != nil {
 		return nil, err
 	}
+
+	// Before we calculate anything else run the transformations. First run the transforms for this resource,
+	// then it's parents etc etc
 	for _, transform := range transforms {
 		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 		if err != nil {
@@ -1521,8 +1551,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Function exists to scope the lock
 		rm.resourceTransformsLock.Lock()
 		defer rm.resourceTransformsLock.Unlock()
-		rm.resGoalsLock.Lock()
-		defer rm.resGoalsLock.Unlock()
+		rm.parentsLock.Lock()
+		defer rm.parentsLock.Unlock()
 
 		current := parent
 		for current != "" {
@@ -1536,7 +1566,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 					opts = newOpts
 				}
 			}
-			current = rm.resGoals[current].Parent
+			current = rm.parents[current]
 		}
 		return nil
 	}()
@@ -1874,7 +1904,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if result != nil && result.State != nil && result.State.URN != "" {
-		// We've got a safe URN now, save the transformations
+		// We've got a safe URN now, save the parent and transformations
+		func() {
+			rm.parentsLock.Lock()
+			defer rm.parentsLock.Unlock()
+			rm.parents[result.State.URN] = parent
+		}()
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()
