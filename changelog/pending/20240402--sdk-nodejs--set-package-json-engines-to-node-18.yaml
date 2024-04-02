@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Set package.json engines to node >= 18
