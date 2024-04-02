@@ -201,6 +201,13 @@ jobs:
         uses: gradle/gradle-build-action@v2.4.2
         with:
           gradle-version: "7.6"
+      - name: log in to azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -339,6 +346,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json

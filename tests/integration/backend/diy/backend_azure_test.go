@@ -108,3 +108,28 @@ func TestAzureLoginAzLoginUsingCLI(t *testing.T) {
 
 	loginAndCreateStack(t, cloudURL)
 }
+
+//nolint:paralleltest // this test uses the global azure login state
+func TestAzureLoginAzLoginUsingAction(t *testing.T) {
+	err := os.Chdir("project")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Chdir("..")
+		require.NoError(t, err)
+	})
+	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
+	t.Setenv("AZURE_CLIENT_ID", "")
+	t.Setenv("AZURE_CLIENT_SECRET", "")
+	t.Setenv("AZURE_TENANT_ID", "")
+
+	// Make sure we don't use the SAS token for login here
+	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
+	t.Setenv("AZURE_KEYVAULT_AUTH_VIA_CLI", "\"true\"")
+
+	t.Cleanup(func() {
+		err = exec.Command("pulumi", "logout").Run()
+		assert.NoError(t, err)
+	})
+
+	loginAndCreateStack(t, cloudURL)
+}
