@@ -15,139 +15,11 @@ no_edit_this_page: true
 
 
 
-## Create ResourceWithAssets Resource
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
+## Create ResourceWithAssets Resource {#create}
 
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
 
-<div>
-<pulumi-choosable type="language" values="csharp">
-
-```csharp
-var resourceWithAssetsResource = new Example.ResourceWithAssets("resourceWithAssetsResource", new()
-{
-    Source = new StringAsset("content"),
-    Archive = new FileArchive("./path/to/archive"),
-    Nested = new Example.Inputs.TypeWithAssetsArgs
-    {
-        Asset = new StringAsset("content"),
-        PlainArchive = new FileArchive("./path/to/archive"),
-        Archive = new FileArchive("./path/to/archive"),
-        PlainAsset = new StringAsset("content"),
-    },
-});
-```
-
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="go">
-
-```go
-example, err := example.NewResourceWithAssets(ctx, "resourceWithAssetsResource", &example.ResourceWithAssetsArgs{
-	Source:  pulumi.NewStringAsset("content"),
-	Archive: pulumi.NewFileArchive("./path/to/archive"),
-	Nested: &example.TypeWithAssetsArgs{
-		Asset:        pulumi.NewStringAsset("content"),
-		PlainArchive: pulumi.NewFileArchive("./path/to/archive"),
-		Archive:      pulumi.NewFileArchive("./path/to/archive"),
-		PlainAsset:   pulumi.NewStringAsset("content"),
-	},
-})
-```
-
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="java">
-
-```java
-var resourceWithAssetsResource = new ResourceWithAssets("resourceWithAssetsResource", ResourceWithAssetsArgs.builder()        
-    .source(new StringAsset("content"))
-    .archive(new FileArchive("./path/to/archive"))
-    .nested(TypeWithAssetsArgs.builder()
-        .asset(new StringAsset("content"))
-        .plainArchive(new FileArchive("./path/to/archive"))
-        .archive(new FileArchive("./path/to/archive"))
-        .plainAsset(new StringAsset("content"))
-        .build())
-    .build());
-```
-
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="python">
-
-```python
-resource_with_assets_resource = example.ResourceWithAssets("resourceWithAssetsResource",
-    source=pulumi.StringAsset("content"),
-    archive=pulumi.FileArchive("./path/to/archive"),
-    nested=example.TypeWithAssetsArgs(
-        asset=pulumi.StringAsset("content"),
-        plain_archive=pulumi.FileArchive("./path/to/archive"),
-        archive=pulumi.FileArchive("./path/to/archive"),
-        plain_asset=pulumi.StringAsset("content"),
-    ))
-```
-
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="typescript">
-
-```typescript
-const resourceWithAssetsResource = new example.ResourceWithAssets("resourceWithAssetsResource", {
-    source: new pulumi.asset.StringAsset("content"),
-    archive: new pulumi.asset.FileArchive("./path/to/archive"),
-    nested: {
-        asset: new pulumi.asset.StringAsset("content"),
-        plainArchive: new pulumi.asset.FileArchive("./path/to/archive"),
-        archive: new pulumi.asset.FileArchive("./path/to/archive"),
-        plainAsset: new pulumi.asset.StringAsset("content"),
-    },
-});
-```
-
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="yaml">
-
-```yaml
-type: example:ResourceWithAssets
-properties:
-    archive:
-        fn::FileArchive: ./path/to/archive
-    nested:
-        archive:
-            fn::FileArchive: ./path/to/archive
-        asset:
-            fn::StringAsset: content
-        plainArchive:
-            fn::FileArchive: ./path/to/archive
-        plainAsset:
-            fn::StringAsset: content
-    source:
-        fn::StringAsset: content
-```
-
-</pulumi-choosable>
-</div>
-
-
-## Definition of ResourceWithAssets {#create}
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -155,55 +27,58 @@ properties:
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+                       <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p">,</span>
+                       <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
                        <span class="nx">source</span><span class="p">:</span> <span class="nx">Optional[Union[pulumi.Asset, pulumi.Archive]]</span> = None<span class="p">,</span>
                        <span class="nx">archive</span><span class="p">:</span> <span class="nx">Optional[pulumi.Archive]</span> = None<span class="p">,</span>
-                       <span class="nx">nested</span><span class="p">:</span> <span class="nx">Optional[TypeWithAssetsArgs]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-                       <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p">,</span>
-                       <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+                       <span class="nx">nested</span><span class="p">:</span> <span class="nx">Optional[TypeWithAssetsArgs]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewResourceWithAssets</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">ResourceWithAssets</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewResourceWithAssets</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">ResourceWithAssets</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">ResourceWithAssets</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceWithAssetsArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:ResourceWithAssets</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:ResourceWithAssets</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -340,6 +215,143 @@ properties:
 
 </pulumi-choosable>
 </div>
+
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var resourceWithAssetsResource = new Example.ResourceWithAssets("resourceWithAssetsResource", new()
+{
+    Source = new StringAsset("content"),
+    Archive = new FileArchive("./path/to/archive"),
+    Nested = new Example.Inputs.TypeWithAssetsArgs
+    {
+        Asset = new StringAsset("content"),
+        PlainArchive = new FileArchive("./path/to/archive"),
+        Archive = new FileArchive("./path/to/archive"),
+        PlainAsset = new StringAsset("content"),
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewResourceWithAssets(ctx, "resourceWithAssetsResource", &example.ResourceWithAssetsArgs{
+	Source:  pulumi.NewStringAsset("content"),
+	Archive: pulumi.NewFileArchive("./path/to/archive"),
+	Nested: &example.TypeWithAssetsArgs{
+		Asset:        pulumi.NewStringAsset("content"),
+		PlainArchive: pulumi.NewFileArchive("./path/to/archive"),
+		Archive:      pulumi.NewFileArchive("./path/to/archive"),
+		PlainAsset:   pulumi.NewStringAsset("content"),
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var resourceWithAssetsResource = new ResourceWithAssets("resourceWithAssetsResource", ResourceWithAssetsArgs.builder()        
+    .source(new StringAsset("content"))
+    .archive(new FileArchive("./path/to/archive"))
+    .nested(TypeWithAssetsArgs.builder()
+        .asset(new StringAsset("content"))
+        .plainArchive(new FileArchive("./path/to/archive"))
+        .archive(new FileArchive("./path/to/archive"))
+        .plainAsset(new StringAsset("content"))
+        .build())
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+resource_with_assets_resource = example.ResourceWithAssets("resourceWithAssetsResource",
+    source=pulumi.StringAsset("content"),
+    archive=pulumi.FileArchive("./path/to/archive"),
+    nested=example.TypeWithAssetsArgs(
+        asset=pulumi.StringAsset("content"),
+        plain_archive=pulumi.FileArchive("./path/to/archive"),
+        archive=pulumi.FileArchive("./path/to/archive"),
+        plain_asset=pulumi.StringAsset("content"),
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const resourceWithAssetsResource = new example.ResourceWithAssets("resourceWithAssetsResource", {
+    source: new pulumi.asset.StringAsset("content"),
+    archive: new pulumi.asset.FileArchive("./path/to/archive"),
+    nested: {
+        asset: new pulumi.asset.StringAsset("content"),
+        plainArchive: new pulumi.asset.FileArchive("./path/to/archive"),
+        archive: new pulumi.asset.FileArchive("./path/to/archive"),
+        plainAsset: new pulumi.asset.StringAsset("content"),
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: example:ResourceWithAssets
+properties:
+    archive:
+        fn::FileArchive: ./path/to/archive
+    nested:
+        archive:
+            fn::FileArchive: ./path/to/archive
+        asset:
+            fn::StringAsset: content
+        plainArchive:
+            fn::FileArchive: ./path/to/archive
+        plainAsset:
+            fn::StringAsset: content
+    source:
+        fn::StringAsset: content
+```
+
+</pulumi-choosable>
+</div>
+
+
 
 ## ResourceWithAssets Resource Properties {#properties}
 
