@@ -62,6 +62,9 @@ go_test(
         "loader_test.go",
         "schema_test.go",
     ],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
     embed = [":schema"],
     deps = [
         "//pkg/codegen/testing/utils",

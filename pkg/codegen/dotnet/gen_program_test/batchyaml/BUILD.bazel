@@ -3,6 +3,9 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 go_test(
     name = "batchyaml_test",
     srcs = ["gen_program_test.go"],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
     deps = [
         "//pkg/codegen",
         "//pkg/codegen/dotnet",

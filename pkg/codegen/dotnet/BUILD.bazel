@@ -56,6 +56,9 @@ go_test(
         "gen_test.go",
         "utilities_test.go",
     ],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
     embed = [":dotnet"],
     deps = [
         "//pkg/codegen",

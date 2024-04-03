@@ -1,2 +1,2 @@
 build --spawn_strategy=local
-test --test_env=PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true --test_env=GOCACHE=/tmp/.cache --test_env=GOMODCACHE=/tmp/.cache --test_env=GOPATH=/tmp/gopath --test_output=errors
+test --test_env=PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true --test_env=GOCACHE=/tmp/.cache --test_env=GOMODCACHE=/tmp/.cache --test_env=GOPATH=/tmp/gopath --test_env=HOME=$HOME --test_output=errors --test_timeout=300 --local_resources=cpu=20

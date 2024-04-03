@@ -63,6 +63,9 @@ go_test(
         "python_test.go",
         "utilities_test.go",
     ],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
     embed = [":python"],
     deps = [
         "//pkg/codegen/hcl2/model",

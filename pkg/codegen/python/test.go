@@ -27,7 +27,7 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 			return filepath.SkipDir
 		}
 
-		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".py") {
+		if strings.HasSuffix(info.Name(), ".py") {
 			path, err = filepath.Abs(path)
 			require.NoError(t, err)
 
