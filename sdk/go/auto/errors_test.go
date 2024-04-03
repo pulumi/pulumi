@@ -17,6 +17,7 @@ package auto
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
@@ -390,6 +392,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 }
 
 func TestRuntimeErrorPython(t *testing.T) {
+	// TODO: this only works if `make ensure` has been run in the sdk/python directory.  We need to do better here.
 	t.Parallel()
 
 	ctx := context.Background()
@@ -418,7 +421,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
 	pyCmd := python.VirtualEnvCommand(filepath.Join(pDir, "venv"), "python", "-m", "pip", "install", "-e", pySDK)
 	pyCmd.Dir = pDir
-	err = pyCmd.Run()
+	err := pyCmd.Run()
 	if err != nil {
 		t.Errorf("failed to link venv against in-source pulumi: %v", err)
 		t.FailNow()
@@ -456,16 +459,22 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
+	// TODO: this is super hacky, but I don't know how else to solve this right now
 	// initialize
-	pDir := filepath.Join(".", "testdata", "errors", "runtime_error", "javascript")
+	pulumiYaml := filepath.Join(".", "testdata", "errors", "runtime_error", "javascript", "Pulumi.yaml")
+	pDir, err := filepath.EvalSymlinks(pulumiYaml)
+	require.NoError(t, err)
+	pDir = filepath.Dir(pDir)
 
 	cmd := exec.Command("yarn", "install")
 	cmd.Dir = pDir
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		t.Errorf("failed to install project dependencies")
 		t.FailNow()
 	}
+
+	_ = os.Symlink(filepath.Join(pDir, "node_modules"), filepath.Join(filepath.Dir(pulumiYaml), "node_modules"))
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
@@ -498,16 +507,22 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
+	// TODO: this is super hacky, but I don't know how else to solve this right now
 	// initialize
-	pDir := filepath.Join(".", "testdata", "errors", "runtime_error", "typescript")
+	pulumiYaml := filepath.Join(".", "testdata", "errors", "runtime_error", "typescript", "Pulumi.yaml")
+	pDir, err := filepath.EvalSymlinks(pulumiYaml)
+	require.NoError(t, err)
+	pDir = filepath.Dir(pDir)
 
 	cmd := exec.Command("yarn", "install")
 	cmd.Dir = pDir
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		t.Errorf("failed to install project dependencies")
 		t.FailNow()
 	}
+
+	_ = os.Symlink(filepath.Join(pDir, "node_modules"), filepath.Join(filepath.Dir(pulumiYaml), "node_modules"))
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {

@@ -24,3 +24,10 @@ go_test(
     embed = [":python"],
     deps = ["@com_github_stretchr_testify//assert"],
 )
+
+# TODO: This is a hack to get the Python SDK to build. We should hopefully be able to replace this with a proper python rule.
+filegroup(
+    name = "python_files",
+    srcs = glob(["env/**"]),
+    visibility = ["//visibility:public"],
+)
