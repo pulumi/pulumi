@@ -80,7 +80,7 @@ func TestEngineEventPerf(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEngineEvents(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "single_resource",
+		Dir:          filepath.Join("testdata", "single_resource"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -196,7 +196,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.ImportDirectory("single_resource")
+	e.ImportDirectory(filepath.Join("testdata", "single_resource"))
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")

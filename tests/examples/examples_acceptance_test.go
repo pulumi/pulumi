@@ -30,7 +30,7 @@ import (
 func TestAccMinimal_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "minimal"),
+			Dir: filepath.Join(getCwd(t), "testdata", "minimal"),
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
@@ -52,7 +52,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
+			Dir: filepath.Join(getCwd(t), "testdata", "dynamic-provider/simple"),
 			Config: map[string]string{
 				"simple:config:w": "1",
 				"simple:config:x": "1",
@@ -69,7 +69,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "formattable"),
+			Dir: filepath.Join(getCwd(t), "testdata", "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
@@ -88,6 +88,7 @@ func getCwd(t *testing.T) string {
 	if err != nil {
 		t.FailNow()
 	}
+
 	return cwd
 }
 

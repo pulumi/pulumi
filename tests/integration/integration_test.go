@@ -1087,7 +1087,7 @@ func TestStackRmConfig_Cloud(t *testing.T) {
 //nolint:paralleltest // uses parallel programtest
 func TestAdvisoryPolicyPack(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	e.ImportDirectory("single_resource")
+	e.ImportDirectory(filepath.Join("testdata", "single_resource"))
 	e.ImportDirectory("policy")
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -1112,7 +1112,7 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 //nolint:paralleltest // uses parallel programtest
 func TestMandatoryPolicyPack(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	e.ImportDirectory("single_resource")
+	e.ImportDirectory(filepath.Join("testdata", "single_resource"))
 	e.ImportDirectory("policy")
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -1138,7 +1138,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 //nolint:paralleltest // uses parallel programtest
 func TestMultiplePolicyPacks(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	e.ImportDirectory("single_resource")
+	e.ImportDirectory(filepath.Join("testdata", "single_resource"))
 	e.ImportDirectory("policy")
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())

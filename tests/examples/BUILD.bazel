@@ -6,6 +6,7 @@ go_test(
         "examples_acceptance_test.go",
         "examples_test.go",
     ],
+    data = glob(["testdata/**"]),
     deps = [
         "//pkg/resource/deploy/providers",
         "//pkg/testing/integration",

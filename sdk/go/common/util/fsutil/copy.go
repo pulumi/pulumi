@@ -56,6 +56,19 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
 			return err
 		}
+	} else {
+		// Include symlinks for bazel builds // TODO: check that we're in bazel mode
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return err
+		}
+		dstdir := filepath.Dir(dst)
+		if err = os.MkdirAll(dstdir, 0o700); err != nil {
+			return err
+		}
+		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
+			return err
+		}
 	}
 
 	return nil

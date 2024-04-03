@@ -38,5 +38,6 @@ go_test(
     name = "test_test",
     srcs = ["program_driver_test.go"],
     embed = [":test"],
+    data = glob(["testdata/**"]),
     deps = ["@com_github_stretchr_testify//assert"],
 )
