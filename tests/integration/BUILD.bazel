@@ -22,3 +22,9 @@ go_test(
         "@org_golang_google_grpc//credentials/insecure",
     ],
 )
+
+filegroup(
+    name = "testdata",
+    srcs = glob(["testdata/**"]),
+    visibility = ["//visibility:public"],
+)

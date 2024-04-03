@@ -152,11 +152,6 @@ func TestGoModEdits(t *testing.T) {
 			expectedError: "error parsing go.mod",
 			skip:          skipInvalidPathTest,
 		},
-		{
-			name:          "valid-module-name",
-			dep:           "github.com/pulumi/pulumi/sdk/v3",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
-		},
 		// TODO: We're making assumptions about the package
 		// layout here that are not completely compatible with
 		// gomodules (We assume that
@@ -166,6 +161,11 @@ func TestGoModEdits(t *testing.T) {
 		// bazel this doesn't work and neither does it when
 		// people check the repo out in directories not called
 		// `pulumi`.
+		// {
+		// 	name:          "valid-module-name",
+		// 	dep:           "github.com/pulumi/pulumi/sdk/v3",
+		// 	expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+		// },
 		// {
 		// 	name:          "valid-module-name-version-skew",
 		// 	dep:           "github.com/pulumi/pulumi/sdk",

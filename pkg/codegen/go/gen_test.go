@@ -157,7 +157,7 @@ func testGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	test.RunCommand(t, "go-test", codeDir, goExe, "test", inferModuleName(codeDir)+"/...")
+	test.RunCommand(t, "go-test", codeDir, goExe, "test", "./...")
 }
 
 func TestGenerateTypeNames(t *testing.T) {

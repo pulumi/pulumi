@@ -15,7 +15,7 @@ go_test(
         "smoke_test.go",
         "stack_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + ["//tests/integration:testdata"],
     deps = [
         "//pkg/codegen/schema",
         "//pkg/resource/stack",
