@@ -1465,6 +1465,9 @@ func (fw *fileWatcher) Close() {
 	// the whole file.  On OSs that don't use the poller we still
 	// want to try to avoid the problem so we sleep for a short
 	// amount of time.
+	//
+	// TODO: remove this once https://github.com/nxadm/tail/issues/67
+	// is fixed and we can upgrade nxadm/tail.
 	if runtime.GOOS == "windows" {
 		time.Sleep(300 * time.Millisecond)
 	} else {
