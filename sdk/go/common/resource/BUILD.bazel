@@ -54,6 +54,7 @@ go_test(
         "property_compatibility_test.go",
         "resource_id_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":resource"],
     deps = [
         "//sdk/go/common/resource/archive",
