@@ -36,7 +36,9 @@ go_test(
         "hcl2_test.go",
         "language_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
     embed = [":importer"],
     deps = [
         "//pkg/codegen/hcl2/model",

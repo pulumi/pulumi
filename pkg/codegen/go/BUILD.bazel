@@ -66,6 +66,10 @@ go_test(
         "utilities_test.go",
     ],
     embed = [":go"],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+        "//sdk:sdk_files",
+    ],
     deps = [
         "//pkg/codegen",
         "//pkg/codegen/hcl2/model",

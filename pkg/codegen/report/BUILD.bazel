@@ -23,6 +23,9 @@ alias(
 go_test(
     name = "report_test",
     srcs = ["report_test.go"],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
     deps = [
         ":report",
         "//pkg/codegen/dotnet",

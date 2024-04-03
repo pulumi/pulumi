@@ -50,6 +50,9 @@ alias(
 go_test(
     name = "integration_test",
     srcs = ["program_test.go"],
+    data = [
+        "//sdk:sdk_files",
+    ],
     embed = [":integration"],
     deps = [
         "//sdk/go/common/testing/iotest",
