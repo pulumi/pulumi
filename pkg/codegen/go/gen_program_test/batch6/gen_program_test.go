@@ -17,6 +17,7 @@
 package batch6
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -25,6 +26,7 @@ import (
 )
 
 func TestGenerateProgram(t *testing.T) {
+	fmt.Println(os.Getwd())
 	os.Chdir("../../../go") // chdir into codegen/go
 	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(6, 6))
 }

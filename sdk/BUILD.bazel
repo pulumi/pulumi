@@ -11,6 +11,12 @@ go_library(
     deps = ["@com_github_blang_semver//:semver"],
 )
 
+filegroup (
+    name = "sdk_files",
+    srcs = glob(["**"]) + subpackages(include = ["**"]),
+    visibility = ["//visibility:public"],
+)
+
 alias(
     name = "go_default_library",
     actual = ":sdk",

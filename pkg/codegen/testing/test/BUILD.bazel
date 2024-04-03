@@ -28,6 +28,12 @@ go_library(
     ],
 )
 
+filegroup(
+    name = "codegen_testdata",
+    srcs = glob(["testdata/**"]),
+    visibility = ["//visibility:public"],
+)
+
 alias(
     name = "go_default_library",
     actual = ":test",
