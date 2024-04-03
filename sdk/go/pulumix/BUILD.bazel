@@ -20,6 +20,29 @@ go_library(
     ],
 )
 
+filegroup(
+    name = "pulumix_data",
+    srcs = [
+        "apply_state.go",
+        "applyn.go",
+        "array.go",
+        "combinators.go",
+        "gen.go",
+        "map.go",
+        "ptr.go",
+        "types.go",
+        "applyn_test.go",
+        "array_test.go",
+        "combinators_test.go",
+        "context_test.go",
+        "map_test.go",
+        "ptr_test.go",
+        "types_ext_test.go",
+        "types_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 alias(
     name = "go_default_library",
     actual = ":pulumix",
