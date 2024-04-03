@@ -17,6 +17,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -58,6 +59,9 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureCloudManager(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	ctx := context.Background()
 	cfg := getAzureCaller(ctx, t)
 	keyName := createAzureKey(ctx, t, cfg)
@@ -73,6 +77,9 @@ func TestAzureCloudManager(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKey(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	ctx := context.Background()
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
@@ -101,6 +108,9 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingState(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	ctx := context.Background()
 
 	//nolint:lll // this includes a base64 encoded key
@@ -130,6 +140,9 @@ func TestAzureKeyVaultExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyEditProjectStack(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -152,6 +165,9 @@ func TestAzureKeyEditProjectStack(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKeyState(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	ctx := context.Background()
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
@@ -186,6 +202,9 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultAutoFix15329(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	ctx := context.Background()
 	// https://github.com/pulumi/pulumi/issues/15329 result in keys like the following being written to state. We can auto-detect these because they aren't valid base64.
 	//nolint:lll // this includes a base64 encoded key
@@ -227,6 +246,9 @@ func TestAzureKeyVaultAutoFix15329(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultKeyError(t *testing.T) {
+	if os.Getenv("AZURE_CLIENT_ID") == "" {
+		t.Skip("Skipping test because AZURE_CLIENT_ID is not set")
+	}
 	cloudState := `{
 		"url": "azurekeyvault://pulumi-testing.vault.azure.net/keys/test-key",
 		"encryptedkey": "not base64 data"

@@ -17,6 +17,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -25,6 +26,9 @@ import (
 )
 
 func createGCPKey(ctx context.Context, t *testing.T) string {
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
 	keyName := "test-key-" + randomName(t)
 
 	parent := "projects/pulumi-development/locations/global/keyRings/pulumi-testing"
