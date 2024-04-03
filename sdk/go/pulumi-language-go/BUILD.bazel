@@ -46,6 +46,7 @@ go_test(
     name = "pulumi-language-go_test",
     srcs = ["main_test.go"],
     embed = [":pulumi-language-go_lib"],
+    data = glob(["testdata/**"]),
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",
         "//sdk/go/common/resource/plugin",
