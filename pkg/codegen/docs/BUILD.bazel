@@ -62,6 +62,7 @@ go_test(
         "package_tree_test.go",
         "utils_test.go",
     ],
+    data = glob(["testdata/**"]) + ["//pkg/codegen/testing/test:codegen_testdata"],
     embed = [":docs"],
     deps = [
         "//pkg/codegen/schema",

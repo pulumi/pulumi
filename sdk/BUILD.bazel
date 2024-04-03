@@ -11,7 +11,7 @@ go_library(
     deps = ["@com_github_blang_semver//:semver"],
 )
 
-filegroup (
+filegroup(
     name = "sdk_files",
     srcs = glob(["**"]) + subpackages(include = ["**"]),
     visibility = ["//visibility:public"],

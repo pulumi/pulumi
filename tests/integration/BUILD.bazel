@@ -6,6 +6,7 @@ go_test(
         "appdash_test.go",
         "integration_util_test.go",
     ],
+    data = glob(["testdata/**"]),
     deps = [
         "//pkg/testing/integration",
         "//proto/pulumi:pulumirpc_go_proto",

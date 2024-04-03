@@ -11,14 +11,14 @@ import (
 
 func TestProcessDescription(t *testing.T) {
 	t.Parallel()
-	inputBytes, err := os.ReadFile(filepath.Join("test_data", "lambda-description-in.md"))
+	inputBytes, err := os.ReadFile(filepath.Join("testdata", "lambda-description-in.md"))
 	require.NoError(t, err)
 	input := string(inputBytes)
 	dctx := newDocGenContext()
 	docInfo := dctx.processDescription(input)
 	actual := docInfo.description
 
-	expectedBytes, err := os.ReadFile(filepath.Join("test_data", "lambda-description-out.md"))
+	expectedBytes, err := os.ReadFile(filepath.Join("testdata", "lambda-description-out.md"))
 	require.NoError(t, err)
 	expected := string(expectedBytes)
 	assert.Equal(t, expected, actual)
@@ -26,14 +26,14 @@ func TestProcessDescription(t *testing.T) {
 
 func TestDecomposeDocstringRendersCodeChoosers(t *testing.T) {
 	t.Parallel()
-	inputBytes, err := os.ReadFile(filepath.Join("test_data", "lambda-description-in.md"))
+	inputBytes, err := os.ReadFile(filepath.Join("testdata", "lambda-description-in.md"))
 	require.NoError(t, err)
 	input := string(inputBytes)
 	dctx := newDocGenContext()
 	docInfo := dctx.decomposeDocstring(input)
 	actual := docInfo.description
 
-	expectedBytes, err := os.ReadFile(filepath.Join("test_data", "lambda-description-out.md"))
+	expectedBytes, err := os.ReadFile(filepath.Join("testdata", "lambda-description-out.md"))
 	require.NoError(t, err)
 	expected := string(expectedBytes)
 	assert.Equal(t, expected, actual)
@@ -41,14 +41,14 @@ func TestDecomposeDocstringRendersCodeChoosers(t *testing.T) {
 
 func TestDecomposeDocstringRendersLegacyShortcodeExamples(t *testing.T) {
 	t.Parallel()
-	inputBytes, err := os.ReadFile(filepath.Join("test_data", "certificate-validation-description-in.md"))
+	inputBytes, err := os.ReadFile(filepath.Join("testdata", "certificate-validation-description-in.md"))
 	require.NoError(t, err)
 	input := string(inputBytes)
 	dctx := newDocGenContext()
 	docInfo := dctx.decomposeDocstring(input)
 	actual := docInfo.description
 
-	expectedBytes, err := os.ReadFile(filepath.Join("test_data", "certificate-validation-description-out.md"))
+	expectedBytes, err := os.ReadFile(filepath.Join("testdata", "certificate-validation-description-out.md"))
 	require.NoError(t, err)
 	expected := string(expectedBytes)
 	assert.Equal(t, expected, actual)
