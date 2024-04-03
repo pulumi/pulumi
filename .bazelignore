@@ -1,0 +1,4 @@
+sdk/nodejs/bin/node_modules/
+sdk/nodejs/node_modules/
+sdk/nodejs/tests/sxs_ts_test/node_modules/
+sdk/python/env/src/
