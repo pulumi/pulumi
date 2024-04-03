@@ -24,8 +24,8 @@ go_binary(
 go_test(
     name = "gen-pux-applyn_test",
     srcs = ["main_test.go"],
-    embed = [":gen-pux-applyn_lib"],
     data = ["//sdk/go/pulumix:pulumix_data"],
+    embed = [":gen-pux-applyn_lib"],
     deps = [
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
