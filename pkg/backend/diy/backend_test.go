@@ -37,8 +37,75 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+//nolint:paralleltest // mutates global configuration
+func TestEnabledFullyQualifiedStackNames(t *testing.T) {
+	// Arrange
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	stackName := "organization/project-12345/stack-67890"
+	ref, err := b.ParseStackReference(stackName)
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	previous := cmdutil.FullyQualifyStackNames
+	expected := stackName
+
+	// Act
+	cmdutil.FullyQualifyStackNames = true
+	defer func() { cmdutil.FullyQualifyStackNames = previous }()
+
+	actual := s.Ref().String()
+
+	// Assert
+	assert.Equal(t, expected, actual)
+}
+
+//nolint:paralleltest // mutates global configuration
+func TestDisabledFullyQualifiedStackNames(t *testing.T) {
+	// Arrange
+	// Create a new project
+	projectDir := t.TempDir()
+	pyaml := filepath.Join(projectDir, "Pulumi.yaml")
+	err := os.WriteFile(pyaml, []byte("name: project-12345\nruntime: test"), 0o600)
+	require.NoError(t, err)
+	proj, err := workspace.LoadProject(pyaml)
+	require.NoError(t, err)
+
+	chdir(t, projectDir)
+
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), proj)
+	assert.NoError(t, err)
+
+	stackName := "organization/project-12345/stack-67890"
+	ref, err := b.ParseStackReference(stackName)
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	previous := cmdutil.FullyQualifyStackNames
+	expected := "stack-67890"
+
+	// Act
+	cmdutil.FullyQualifyStackNames = false
+	defer func() { cmdutil.FullyQualifyStackNames = previous }()
+
+	actual := s.Ref().String()
+
+	// Assert
+	assert.Equal(t, expected, actual)
+}
 
 func TestMassageBlobPath(t *testing.T) {
 	t.Parallel()

@@ -141,6 +141,12 @@ func (r *diyBackendReference) String() string {
 		return r.name.String()
 	}
 
+	// If the user has asked us to fully qualify names, we won't elide any
+	// information.
+	if cmdutil.FullyQualifyStackNames {
+		return fmt.Sprintf("organization/%s/%s", r.project, r.name)
+	}
+
 	if r.currentProject != nil {
 		proj := r.currentProject()
 		// For project scoped references when stringifying backend references,

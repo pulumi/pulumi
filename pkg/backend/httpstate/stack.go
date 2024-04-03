@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -51,6 +52,12 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
+	// If the user has asked us to fully qualify names, we won't elide any
+	// information.
+	if cmdutil.FullyQualifyStackNames {
+		return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
+	}
+
 	// When stringifying backend references, we take the current project (if present) into account.
 	currentProject := c.b.currentProject
 
