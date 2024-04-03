@@ -41,7 +41,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "conflict_error")
+	pDir := filepath.Join(".", "testdata", "errors", "conflict_error")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -165,7 +165,7 @@ func TestCompilationErrorGo(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "compilation_error", "go")
+	pDir := filepath.Join(".", "testdata", "errors", "compilation_error", "go")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -198,7 +198,7 @@ func TestSelectStack404Error(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	opts := []LocalWorkspaceOption{WorkDir(pDir)}
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
@@ -219,7 +219,7 @@ func TestCreateStack409Error(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
 	// initialize first stack
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := filepath.Join(".", "testdata", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -253,7 +253,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "compilation_error", "dotnet")
+	pDir := filepath.Join(".", "testdata", "errors", "compilation_error", "dotnet")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -286,7 +286,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "compilation_error", "typescript")
+	pDir := filepath.Join(".", "testdata", "errors", "compilation_error", "typescript")
 
 	cmd := exec.Command("yarn", "install")
 	cmd.Dir = pDir
@@ -330,7 +330,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "runtime_error", "go")
+	pDir := filepath.Join(".", "testdata", "errors", "runtime_error", "go")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -397,7 +397,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir, err := filepath.Abs(filepath.Join(".", "test", "errors", "runtime_error", "python"))
+	pDir, err := filepath.Abs(filepath.Join(".", "testdata", "errors", "runtime_error", "python"))
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -457,7 +457,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "runtime_error", "javascript")
+	pDir := filepath.Join(".", "testdata", "errors", "runtime_error", "javascript")
 
 	cmd := exec.Command("yarn", "install")
 	cmd.Dir = pDir
@@ -499,7 +499,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "runtime_error", "typescript")
+	pDir := filepath.Join(".", "testdata", "errors", "runtime_error", "typescript")
 
 	cmd := exec.Command("yarn", "install")
 	cmd.Dir = pDir
@@ -541,7 +541,7 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "runtime_error", "dotnet")
+	pDir := filepath.Join(".", "testdata", "errors", "runtime_error", "dotnet")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
