@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Avoid flakyness when reading the event log from pulumi commands
