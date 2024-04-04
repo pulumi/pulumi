@@ -36,7 +36,7 @@ genrule(
     name = "generate_python",
     srcs = glob(["**"]),
     outs = ["env/made"],
-    cmd = "(cd sdk/python && make build_package) && touch $@",
+    cmd = "(cd sdk/python && make build_package >/dev/null) && touch $@",
     visibility = ["//visibility:public"],
 )
 

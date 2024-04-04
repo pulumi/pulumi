@@ -1252,11 +1252,17 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("find yarn: %w", err)
 		}
 
+		npm, err := executable.FindExecutable("npm")
+		if err != nil {
+			return nil, fmt.Errorf("find npm: %w", err)
+		}
+
 		err = writeString("$ yarn install --frozen-lockfile\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
+		// Yarn deals with symlinks differently than npm, and only npm's way agrees with what bazel expects.
+		yarnInstallCmd := exec.Command(npm, "install", "--frozen-lockfile")
 		yarnInstallCmd.Dir = req.PackageDirectory
 		yarnInstallCmd.Stdout = os.Stdout
 		yarnInstallCmd.Stderr = os.Stderr
