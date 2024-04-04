@@ -1,0 +1,4 @@
+- Make sure integration tests are using the binary bazel is building
+- Fix python tests needing `make build_package` being run in sdk/python before anything works
+- Improve hacks around yarn install
+- Fix setting $HOME and make sure that's overridden to the users home directory
