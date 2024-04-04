@@ -314,10 +314,14 @@ class Resource(CustomResource):
 
         props = cast(dict, props)
 
+        # Serialize the provider, allowing secret Outputs to be captured.
         serialized_provider, contains_secrets = _serialize(
             True, serialize_provider, provider
         )
 
+        # auto_secret == False is the default, which makes the serialized provider a secret always, which
+        # is the existing behavior as of v3.75.0. When auto_secret == True, the serialized provider is a
+        # secret only if any secret Outputs were captured during serialization of the provider.
         auto_secret: bool = getattr(provider, "auto_secret", False)
         if not auto_secret or contains_secrets:
             serialized_provider = pulumi.Output.secret(serialized_provider)
