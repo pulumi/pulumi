@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 
 # gazelle:prefix github.com/pulumi/pulumi
 #
@@ -9,15 +10,11 @@ load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:proto package
 # gazelle:proto_group go_package
 #
-# gazelle:python_library_naming_convention py_$package_name$
-# gazelle:python_test_naming_convention py_$package_name$
-# gazelle:exclude codegen/python/**/*
-#
 # gazelle:exclude pkg/codegen/testing/test/testdata/**/*
 #
 # gazelle:exclude sdk/go/auto/test/**/*
 # gazelle:exclude sdk/go/auto/testdata/**/*
-# gazelle:exclude sdk/go/pulumi-language-go/testdata/
+# gazelle:exclude sdk/go/pulumi-language-go/testdata/**/*
 # gazelle:exclude sdk/proto/**/*
 # gazelle:exclude sdk/python/cmd/pulumi-language-python/testdata/**/*
 # gazelle:exclude sdk/python/env/src/**/*
@@ -28,27 +25,22 @@ load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:exclude tests/testdata/**/*
 #
 
-gazelle_binary(
-    name = "gazelle-binary",
-    languages = [
-        "@bazel_gazelle//language/go",
-        "@bazel_gazelle//language/proto",
-        "@rules_python_gazelle_plugin//python",
-    ],
-)
-
 gazelle(
     name = "gazelle",
-    gazelle = ":gazelle-binary",
 )
 
 gazelle(
     name = "gazelle-update-repos",
-    gazelle = ":gazelle-binary",
     args = [
         "-from_file=go.work",
         "-to_macro=deps.bzl%go_deps",
         "-prune=True",
     ],
     command = "update-repos",
+)
+
+compile_pip_requirements(
+    name = "requirements",
+    requirements_in = "requirements.txt",
+    requirements_txt = "requirements_lock.txt",
 )

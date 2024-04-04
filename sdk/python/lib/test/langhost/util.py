@@ -341,7 +341,7 @@ class LanghostTest(unittest.TestCase):
         return ResourceMonitorEndpoint(engine, monitor, server, port)
 
     def _create_language_host(self, port):
-        exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
+        exec_path = path.join(path.dirname(__file__), "..", "..", "..", "executor")
         proc = subprocess.Popen(
             ["pulumi-language-python", "--use-executor", exec_path, "localhost:%d" % port],
             stdout=subprocess.PIPE,

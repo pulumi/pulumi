@@ -1,9 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("@bazel_gazelle//:def.bzl", "gazelle")
-load("@rules_python//python:pip.bzl", "compile_pip_requirements")
-load("@pip//:requirements.bzl", "all_whl_requirements")
-load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
-load("@rules_python_gazelle_plugin//manifest:defs.bzl", "gazelle_python_manifest")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:packaging.bzl", "py_wheel")
+load("@pip//:requirements.bzl", "requirement")
 
 go_library(
     name = "python",
@@ -30,23 +28,96 @@ go_test(
     deps = ["@com_github_stretchr_testify//assert"],
 )
 
-compile_pip_requirements(
-    name = "requirements",
-    requirements_in = "requirements.txt",
-    requirements_txt = "requirements_lock.txt",
-)
-
-modules_mapping(
-    name = "modules_map",
-    exclude_patterns = [
-        "^_|(\\._)+",
+py_library(
+    name = "sdk",
+    srcs = glob(["lib/pulumi/**/*.py"]),
+    imports = ["lib"],
+    deps = [
+        requirement("dill"),
+        requirement("grpcio"),
+        requirement("protobuf"),
+        requirement("pyyaml"),
+        requirement("semver"),
+        requirement("six"),
     ],
-    wheels = all_whl_requirements,
 )
 
-gazelle_python_manifest(
-    name = "gazelle_python_manifest",
-    modules_mapping = ":modules_map",
-    pip_repository_name = "pip",
-    requirements = ":requirements_lock.txt",
+py_wheel(
+    name = "sdk_wheel",
+    deps = [
+        ":sdk",
+    ],
+    distribution = "pulumi",
+    version = "0.0.1",
+    summary = "Pulumi's Python SDK",
+    description_content_type = "text/markdown",
+    description_file = ":README.md",
+    homepage = "https://github.com/pulumi/pulumi",
+    license = "Apache-2.0",
+    python_requires = ">=3.8",
+    strip_path_prefixes = [
+        "sdk/python/lib",
+    ],
+)
+
+test_srcs = glob([
+    "lib/test/**/test_*.py",
+],
+    exclude=[
+        #"lib/test/automation/**/*",
+        "lib/test/data/**/*",
+        #"lib/test/langhost/**/*",
+        #"lib/test/provider/**/*",
+        #"lib/test/runtime/**/*",
+    ],
+)
+
+langhost_data = glob([
+    "lib/test/langhost/**/*.py",
+], exclude=[
+    "lib/test/langhost/test_*.py",
+])
+
+py_test(
+    name = "sdk_test",
+    srcs = [
+        ":pytest.py",
+    ] + test_srcs,
+    main = ":pytest.py",
+    args = [
+        "--capture=no",
+    ] + [
+        "$(location :{})".format(s) for s in test_srcs
+    ],
+    data = [
+        "lib/test/conftest.py",
+        "lib/test/helpers.py",
+
+        "//sdk/python/cmd/pulumi-language-python",
+        ":executor",
+    ] + langhost_data,
+    deps = [
+        ":sdk",
+
+        ":lazy_import_test",
+
+        requirement("pytest"),
+        requirement("pytest-asyncio"),
+        requirement("pytest-timeout"),
+    ],
+)
+
+py_library(
+    name = "lazy_import_test",
+    srcs = glob(["lib/test/data/lazy_import_test/**/*.py"]),
+    imports = ["lib/test/data"],
+)
+
+py_binary(
+    name = "executor",
+    srcs = [":cmd/pulumi-language-python-exec.py"],
+    main = ":cmd/pulumi-language-python-exec.py",
+    deps = [
+        ":sdk",
+    ],
 )

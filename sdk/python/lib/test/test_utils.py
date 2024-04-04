@@ -95,7 +95,6 @@ class IsEmptyFunctionTests(unittest.TestCase):
 
 
 def test_lazy_import():
-    sys.path.append(os.path.join(os.path.dirname(__file__), 'data'))
     x = lazy_import('lazy_import_test.x')
     test = lazy_import('lazy_import_test')
 

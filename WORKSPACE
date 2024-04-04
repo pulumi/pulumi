@@ -143,7 +143,7 @@ pip_parse(
     name = "pip",
     python_interpreter_target = "@nixpkgs_python_config_python3//:bin/python",
 
-    requirements_lock = "//sdk/python:requirements_lock.txt",
+    requirements_lock = "//:requirements_lock.txt",
 )
 
 load("@pip//:requirements.bzl", "install_deps")
