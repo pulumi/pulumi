@@ -40,3 +40,9 @@ go_test(
         "@com_github_stretchr_testify//require",
     ],
 )
+
+filegroup(
+    name = "npm_testdata",
+    srcs = glob(["testdata/**"]),
+    visibility = ["//visibility:public"],
+)

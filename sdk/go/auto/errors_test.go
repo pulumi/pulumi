@@ -421,7 +421,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
 	pyCmd := python.VirtualEnvCommand(filepath.Join(pDir, "venv"), "python", "-m", "pip", "install", "-e", pySDK)
 	pyCmd.Dir = pDir
-	err := pyCmd.Run()
+	err = pyCmd.Run()
 	if err != nil {
 		t.Errorf("failed to link venv against in-source pulumi: %v", err)
 		t.FailNow()

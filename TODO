@@ -2,3 +2,4 @@
 - Fix python tests needing `make build_package` being run in sdk/python before anything works
 - Improve hacks around yarn install
 - Fix setting $HOME and make sure that's overridden to the users home directory
+- Figure out why having a `go.work` file at the root doesn't work (it breaks at least //sdk/go/auto:auto_test and //pkg/codegen/go:go_test)

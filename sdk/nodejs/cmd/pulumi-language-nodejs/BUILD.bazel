@@ -57,7 +57,11 @@ go_test(
         "language_test.go",
         "main_test.go",
     ],
-    data = glob(["testdata/**"]) + ["//cmd/pulumi-test-language"],  # TODO: depend on //sdk/nodejs, need to include node stuff first
+    data = glob(["testdata/**"]) + [
+        "//cmd/pulumi-test-language",
+        "//sdk/nodejs:nodejs_files",
+        "//sdk/nodejs/npm:npm_testdata",
+    ],
     embed = [":pulumi-language-nodejs_lib"],
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",

@@ -40,7 +40,12 @@ go_test(
         "language_test.go",
         "main_test.go",
     ],
-    data = glob(["testdata/**"]) + ["//cmd/pulumi-test-language", "//sdk/python:python_lib", "//sdk/python:python_files", "//sdk/python/cmd:language-exec"],
+    data = glob(["testdata/**"]) + [
+        "//cmd/pulumi-test-language",
+        "//sdk/python:python_files",
+        "//sdk/python:python_lib",
+        "//sdk/python/cmd:language-exec",
+    ],
     embed = [":pulumi-language-python_lib"],
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",
