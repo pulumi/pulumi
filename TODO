@@ -1,5 +1,14 @@
+How to run the Go tests:
+
+- Update .bazelrc and make sure it points to your `$HOME`
+- bazel test //sdk/... should work, but might have test failures in the first run, will succeed afterwards
+- Set PULUMI_ACCESS_TOKEN in the environment
+
+# TODO:
+
 - Make sure integration tests are using the binary bazel is building
 - Fix python tests needing `make build_package` being run in sdk/python before anything works
 - Improve hacks around yarn install
 - Fix setting $HOME and make sure that's overridden to the users home directory
 - Figure out why having a `go.work` file at the root doesn't work (it breaks at least //sdk/go/auto:auto_test and //pkg/codegen/go:go_test)
+- See if we really need to switch to npm install for conformance tests.  The `mockpackage` linking doesn't currently seem to work with `yarn install`.

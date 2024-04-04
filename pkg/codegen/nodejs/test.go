@@ -69,6 +69,24 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// ${VERSION} problem; use yarn for now.
 
 	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
+
+	// TODO: this is super hacky, but I don't know how else to solve this right now
+	files := os.DirFS(pwd)
+	entries, err := fs.ReadDir(files, ".")
+	require.NoError(t, err)
+	for _, entry := range entries {
+		fileinfo, err := entry.Info()
+		assert.NoError(t, err)
+		if fileinfo.Mode()&os.ModeSymlink != 0 {
+			fmt.Println("Found symlink", entry.Name())
+			symlink, err := filepath.EvalSymlinks(filepath.Join(pwd, entry.Name()))
+			require.NoError(t, err)
+			dir := filepath.Dir(symlink)
+			os.Symlink(filepath.Join(pwd, "node_modules"), filepath.Join(dir, "node_modules"))
+			break
+		}
+	}
+
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}

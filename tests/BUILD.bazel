@@ -27,7 +27,6 @@ go_test(
         "//sdk/go/common/testing",
         "//sdk/go/common/util/contract",
         "//sdk/go/common/workspace",
-        "@com_github_hexops_autogold//:autogold",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@in_gopkg_yaml_v2//:yaml_v2",

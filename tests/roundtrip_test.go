@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hexops/autogold"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -82,7 +82,7 @@ resources:
 	require.NoError(t, err)
 
 	// Project file:
-	want := autogold.Want("roundtrip-project", `# 🔴 header comment
+	want := `# 🔴 header comment
 name: pulumi-test
 runtime: yaml
 config:
@@ -108,8 +108,8 @@ resources:
       bucket: test-123 # 🟣 comment after prop
     type: aws:s3:bucket
 # 🟥 footer comment
-`)
-	want.Equal(t, string(projData))
+`
+	assert.Equal(t, want, string(projData))
 }
 
 func TestConfigRoundtripComments(t *testing.T) {
@@ -160,7 +160,7 @@ config:
 	require.NoError(t, err)
 
 	// Project file:
-	want := autogold.Want("roundtrip-config", `encryptionsalt: v1:ThS5UPxP9qc=:v1:UZYAXF+ylaJ0rGhv:9OTvBnOEDFgxs7btjzSu+LZ470vLpg==
+	want := `encryptionsalt: v1:ThS5UPxP9qc=:v1:UZYAXF+ylaJ0rGhv:9OTvBnOEDFgxs7btjzSu+LZ470vLpg==
 # 🔴 header comment
 config:
   foo:a: some-value # 🟠 comment after value
@@ -179,6 +179,6 @@ config:
   foo:e: E
 
 # 🟥 footer comment
-`)
-	want.Equal(t, string(projData))
+`
+	assert.Equal(t, want, string(projData))
 }

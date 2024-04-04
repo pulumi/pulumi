@@ -2557,7 +2557,7 @@ func TestCall(t *testing.T) {
 							"test": resource.NewStringProperty("test-value"),
 						},
 						args)
-					assert.Equal(t,
+					assert.EqualValues(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",
 							"urn:pulumi:stack::project::type::dep2",
