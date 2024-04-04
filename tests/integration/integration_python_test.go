@@ -488,6 +488,45 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	})
 }
 
+// Tests dynamic provider in Python with `auto_secret` set to `True`.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicPythonAutoSecret(t *testing.T) {
+	dir := filepath.Join("dynamic", "python-auto-secret")
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: dir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      filepath.Join(dir, "step1"),
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+
+				// `auto-secret` is set to `True`, so we expect `__provider` to be a plain string and
+				// not a secret since it didn't capture any secrets.
+				dynRes := stack.Deployment.Resources[2]
+				assert.IsType(t, "", dynRes.Inputs["__provider"], "expect __provider to be a string")
+				assert.IsType(t, "", dynRes.Outputs["__provider"], "expect __provider to be a string")
+
+				// Ensure there are no diagnostic events other than debug.
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil {
+						assert.Equal(t, "debug", event.DiagnosticEvent.Severity,
+							"unexpected diagnostic event: %#v", event.DiagnosticEvent)
+					}
+				}
+			},
+		}},
+		UseSharedVirtualEnv: boolPointer(false),
+	})
+}
+
 // Tests custom resource type name of dynamic provider in Python.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
