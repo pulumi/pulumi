@@ -210,10 +210,10 @@ class Output(Generic[T_co]):
         """
         Retrieves the underlying value of this Output.
 
-        This function is only callable in code that runs in the cloud post-deployment. At this
-        point all Output values will be known and can be safely retrieved. During pulumi deployment
-        or preview execution this must not be called (and will raise an error). This is because doing
-        so would allow Output values to flow into Resources while losing hte data that would allow the
+        This function is only callable in code that runs post-deployment. At this point all Output
+        values will be known and can be safely retrieved. During pulumi deployment or preview
+        execution this must not be called (and will raise an error). This is because doing so would
+        allow Output values to flow into Resources while losing the data that would allow the
         dependency graph to be changed.
         """
         raise Exception(
