@@ -31,6 +31,7 @@ import dill
 import pulumi
 
 from .. import CustomResource, ResourceOptions
+from ..runtime._serialization import _serialize
 
 if TYPE_CHECKING:
     from ..output import Inputs, Output
@@ -304,6 +305,13 @@ class Resource(CustomResource):
             raise Exception("A dynamic resource must not define the __provider key")
 
         props = cast(dict, props)
-        props[PROVIDER_KEY] = pulumi.Output.secret(serialize_provider(provider))
+
+        serialized_provider, contains_secrets = _serialize(
+            True, serialize_provider, provider
+        )
+        if contains_secrets:
+            serialized_provider = pulumi.Output.secret(serialized_provider)
+
+        props[PROVIDER_KEY] = serialized_provider
 
         super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)

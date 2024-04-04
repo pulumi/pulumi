@@ -67,21 +67,9 @@ func TestDynamicPython(t *testing.T) {
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
-
-				// Regression testing the workaround for https://github.com/pulumi/pulumi/issues/8265
-				// Ensure the __provider input and output was marked secret
-				assertIsSecret := func(v interface{}) {
-					switch v := v.(type) {
-					case string:
-						assert.Fail(t, "__provider was not a secret")
-					case map[string]interface{}:
-						assert.Equal(t, resource.SecretSig, v[resource.SigKey])
-					}
-				}
-
 				dynRes := stack.Deployment.Resources[2]
-				assertIsSecret(dynRes.Inputs["__provider"])
-				assertIsSecret(dynRes.Outputs["__provider"])
+				assert.IsType(t, "", dynRes.Inputs["__provider"], "expect __provider to be a string")
+				assert.IsType(t, "", dynRes.Outputs["__provider"], "expect __provider to be a string")
 
 				// Ensure there are no diagnostic events other than debug.
 				for _, event := range stack.Events {
