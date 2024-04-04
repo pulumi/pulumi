@@ -26,10 +26,81 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+//nolint:paralleltest // mutates global configuration
+func TestEnabledFullyQualifiedStackNames(t *testing.T) {
+	// Arrange
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	ctx := context.Background()
+
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	require.NoError(t, err)
+
+	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	require.NoError(t, err)
+
+	stackName := ptesting.RandomStackName()
+	ref, err := b.ParseStackReference(stackName)
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	previous := cmdutil.FullyQualifyStackNames
+	expected := s.Ref().FullyQualifiedName().String()
+
+	// Act
+	cmdutil.FullyQualifyStackNames = true
+	defer func() { cmdutil.FullyQualifyStackNames = previous }()
+
+	actual := s.Ref().String()
+
+	// Assert
+	assert.Equal(t, expected, actual)
+}
+
+//nolint:paralleltest // mutates global configuration
+func TestDisabledFullyQualifiedStackNames(t *testing.T) {
+	// Arrange
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	ctx := context.Background()
+
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	require.NoError(t, err)
+
+	b, err := New(diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	require.NoError(t, err)
+
+	stackName := ptesting.RandomStackName()
+	ref, err := b.ParseStackReference(stackName)
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil)
+	require.NoError(t, err)
+
+	previous := cmdutil.FullyQualifyStackNames
+	expected := s.Ref().Name().String()
+
+	// Act
+	cmdutil.FullyQualifyStackNames = false
+	defer func() { cmdutil.FullyQualifyStackNames = previous }()
+
+	actual := s.Ref().String()
+
+	// Assert
+	assert.Equal(t, expected, actual)
+}
 
 //nolint:paralleltest // mutates environment variables
 func TestValueOrDefaultURL(t *testing.T) {
