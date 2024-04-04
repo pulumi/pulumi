@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
 
-go 1.20
+go 1.21.1
+
+toolchain go1.21.6
 
 replace (
 	github.com/pulumi/pulumi/pkg/v3 => ../../../../pkg
@@ -8,6 +10,7 @@ replace (
 )
 
 require (
+	github.com/bazelbuild/rules_go v0.46.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi/pkg/v3 v3.98.0
 	github.com/pulumi/pulumi/sdk/v3 v3.111.1
@@ -82,7 +85,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
 	github.com/golang/glog v1.1.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect

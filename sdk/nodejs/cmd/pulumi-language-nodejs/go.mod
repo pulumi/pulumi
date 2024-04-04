@@ -11,6 +11,7 @@ replace (
 
 require (
 	github.com/Microsoft/go-winio v0.6.1
+	github.com/bazelbuild/rules_go v0.46.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hashicorp/go-multierror v1.1.1
@@ -61,7 +62,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.5 // indirect
 	github.com/aws/smithy-go v1.19.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/bazelbuild/rules_go v0.46.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/charmbracelet/bubbles v0.16.1 // indirect
 	github.com/charmbracelet/bubbletea v0.24.2 // indirect
