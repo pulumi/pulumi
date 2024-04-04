@@ -1,4 +1,9 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@rules_python//python:pip.bzl", "compile_pip_requirements")
+load("@pip//:requirements.bzl", "all_whl_requirements")
+load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
+load("@rules_python_gazelle_plugin//manifest:defs.bzl", "gazelle_python_manifest")
 
 go_library(
     name = "python",
@@ -25,24 +30,23 @@ go_test(
     deps = ["@com_github_stretchr_testify//assert"],
 )
 
-# TODO: This is a hack to get the Python SDK to build. We should hopefully be able to replace this with a proper python rule.
-filegroup(
-    name = "python_files",
-    srcs = glob(["env/**"]) + ["//sdk/python:generate_python"],
-    visibility = ["//visibility:public"],
+compile_pip_requirements(
+    name = "requirements",
+    requirements_in = "requirements.txt",
+    requirements_txt = "requirements_lock.txt",
 )
 
-# TODO: this can probably be improved, I think right now we need to run bazel twice for this to be correct.
-genrule(
-    name = "generate_python",
-    srcs = glob(["**"]),
-    outs = ["env/made"],
-    cmd = "(cd sdk/python && make build_package >/dev/null 2>&1) && touch $@",
-    visibility = ["//visibility:public"],
+modules_mapping(
+    name = "modules_map",
+    exclude_patterns = [
+        "^_|(\\._)+",
+    ],
+    wheels = all_whl_requirements,
 )
 
-filegroup(
-    name = "python_lib",
-    srcs = glob(["lib/**"]),
-    visibility = ["//visibility:public"],
+gazelle_python_manifest(
+    name = "gazelle_python_manifest",
+    modules_mapping = ":modules_map",
+    pip_repository_name = "pip",
+    requirements = ":requirements_lock.txt",
 )
