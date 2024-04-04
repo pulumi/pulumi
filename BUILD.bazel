@@ -10,6 +10,8 @@ load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:proto_group go_package
 #
 # gazelle:python_library_naming_convention py_$package_name$
+# gazelle:python_test_naming_convention py_$package_name$
+# gazelle:exclude codegen/python/**/*
 #
 # gazelle:exclude pkg/codegen/testing/test/testdata/**/*
 #
@@ -17,6 +19,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:exclude sdk/go/auto/testdata/**/*
 # gazelle:exclude sdk/go/pulumi-language-go/testdata/
 # gazelle:exclude sdk/proto/**/*
+# gazelle:exclude sdk/python/cmd/pulumi-language-python/testdata/**/*
 # gazelle:exclude sdk/python/env/src/**/*
 # gazelle:exclude sdk/python/lib/test/**/*
 #
