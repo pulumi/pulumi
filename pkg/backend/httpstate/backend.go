@@ -1191,10 +1191,13 @@ func (b *cloudBackend) PromptAI(
 	ctx context.Context, requestBody AIPromptRequestBody,
 ) (*http.Response, error) {
 	res, err := b.client.SubmitAIPrompt(ctx, requestBody)
+	if err != nil {
+		return nil, err
+	}
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
 	}
-	return res, err
+	return res, nil
 }
 
 type updateMetadata struct {
