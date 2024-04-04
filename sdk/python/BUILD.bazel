@@ -28,7 +28,15 @@ go_test(
 # TODO: This is a hack to get the Python SDK to build. We should hopefully be able to replace this with a proper python rule.
 filegroup(
     name = "python_files",
-    srcs = glob(["env/**"]),
+    srcs = glob(["env/**"]) + ["//sdk/python:generate_python"],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "generate_python",
+    srcs = glob(["**"]),
+    outs = ["env/made"],
+    cmd = "(cd sdk/python && make build_package) && touch $@",
     visibility = ["//visibility:public"],
 )
 

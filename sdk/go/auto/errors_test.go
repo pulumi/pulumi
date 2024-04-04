@@ -287,16 +287,22 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
+	// TODO: this is super hacky, but I don't know how else to solve this right now
 	// initialize
-	pDir := filepath.Join(".", "testdata", "errors", "compilation_error", "typescript")
+	pulumiYaml := filepath.Join(".", "testdata", "errors", "compilation_error", "typescript", "Pulumi.yaml")
+	pDir, err := filepath.EvalSymlinks(pulumiYaml)
+	require.NoError(t, err)
+	pDir = filepath.Dir(pDir)
 
 	cmd := exec.Command("yarn", "install")
 	cmd.Dir = pDir
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		t.Errorf("failed to install project dependencies")
 		t.FailNow()
 	}
+
+	_ = os.Symlink(filepath.Join(pDir, "node_modules"), filepath.Join(filepath.Dir(pulumiYaml), "node_modules"))
 
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
