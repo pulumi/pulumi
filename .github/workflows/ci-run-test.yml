@@ -46,7 +46,7 @@ on:
         default: |
           {
             "dotnet": "6.0.x",
-            "go": "1.21.x",
+            "go": "1.18.x",
             "nodejs": "16.x",
             "python": "3.9.x"
           }
@@ -175,6 +175,32 @@ jobs:
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ fromJson(inputs.version-set).python }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+          dotnet-quality: ga
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -185,6 +211,9 @@ jobs:
       - name: Install yarn and pnpm
         run: |
           npm install -g yarn pnpm
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -278,6 +307,24 @@ jobs:
         run: |
           command -v pulumi || echo "no pulumi"
           pulumi version    || echo "no pulumi"
+      - name: Ensure dependencies for the Node SDK
+        run: |
+          cd sdk/nodejs
+          make ensure
+      - name: Build the Node SDK
+        run: |
+          cd sdk/nodejs
+          make build_package
+          cd bin
+          yarn link
+      - name: Ensure dependencies for the Python SDK
+        run: |
+          cd sdk/python
+          make ensure
+      - name: Install Python SDK
+        run: |
+          cd sdk/python
+          make build_package
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
@@ -286,14 +333,7 @@ jobs:
           echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
       - name: run tests "${{ inputs.test-command }}"
         id: test
-        run: |
-          cd sdk/go/auto
-          for run in {1..50}; do
-            echo "$run"
-            if ! go test -count=1 -run='TestWorkspaceSecretsProvider|TestRemoveWithForce|TestNewStackLocalSource|TestUpsertStackLocalSource|TestNewStackRemoteSource|TestUpsertStackRemoteSource|TestNewStackRemoteSourceWithSetup|TestUpsertStackRemoteSourceWithSetup|TestNewStackInlineSource|TestUpsertStackInlineSourceParallel|TestNestedStackFails|TestErrorProgressStreams|TestProgressStreams|TestImportExportStack|TestConfigFlagLike|TestConfigWithOptions|TestConfigAllWithOptions|TestNestedConfig|TestEnvFunctions|TestTagFunctions|TestStructuredOutput|TestSupportsStackOutputs|TestShallowClone|TestPulumiVersion|TestPulumiCommand|TestClIWithoutRemoteSupport|TestByPassesRemoteCheck|TestProjectSettingsRespected|TestSaveStackSettings|TestConfigSecretWarnings|TestWhoAmIDetailed' .; then
-              exit 1
-            fi
-          done
+        run: ${{ inputs.test-command }}
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}

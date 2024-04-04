@@ -355,6 +355,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+	assert.True(t, false)
 }
 
 //nolint:paralleltest // mutates environment variables
