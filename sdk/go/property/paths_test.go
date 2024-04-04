@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-func TestPath(t *testing.T) {
+func TestParsePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		path     property.Path
@@ -101,6 +101,29 @@ func TestPath(t *testing.T) {
 				}
 
 			}
+		})
+	}
+}
+
+func TestParsePathInvalid(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		path string
+		err  error
+	}{
+		{
+			path: ".foo",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := property.ParsePath(tt.path)
+			assert.ErrorIs(t, err, tt.err)
 		})
 	}
 }

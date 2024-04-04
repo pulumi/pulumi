@@ -22,9 +22,24 @@ import (
 	"strings"
 )
 
+var (
+	propPathStartNameOrIndexErr = fmt.Errorf("expected property path to start with a name or index")
+	propPathEndNameOrIndexErr   = fmt.Errorf("expected property path to end with a name or index")
+	propNameAfterDotErr         = fmt.Errorf("expected property name after '.'")
+	missingClosingQuoteErr      = fmt.Errorf("missing closing quote in property name")
+)
+
+type unknownEscapeSequenceError struct {
+	found rune
+}
+
+func (err unknownEscapeSequenceError) Error() string {
+	return fmt.Sprintf(`unknown escape sequence: \%c`, err.found)
+}
+
 func pathParse(path []rune) (elements []any, isGlob bool, _ error) {
 	if len(path) > 0 && path[0] == '.' {
-		return nil, false, errors.New("expected property path to start with a name or index")
+		return nil, false, propPathStartNameOrIndexErr
 	}
 
 	for len(path) > 0 {
@@ -32,10 +47,10 @@ func pathParse(path []rune) (elements []any, isGlob bool, _ error) {
 		case '.':
 			path = path[1:]
 			if len(path) == 0 {
-				return nil, false, errors.New("expected property path to end with a name or index")
+				return nil, false, propPathEndNameOrIndexErr
 			}
 			if path[0] == '[' {
-				return nil, false, errors.New("expected property name after '.'")
+				return nil, false, propNameAfterDotErr
 			}
 		case '[':
 			path = path[1:]
@@ -48,7 +63,7 @@ func pathParse(path []rune) (elements []any, isGlob bool, _ error) {
 				i := 0
 				for {
 					if i >= len(path) {
-						return nil, false, errors.New("missing closing quote in property name")
+						return nil, false, missingClosingQuoteErr
 					} else if path[i] == '"' {
 						// We have found the closing element, finish the element and break
 						elements = append(elements, element.String())
@@ -65,8 +80,7 @@ func pathParse(path []rune) (elements []any, isGlob bool, _ error) {
 						case '"':
 							element.WriteRune(path[i+1])
 						default:
-							return nil, false,
-								fmt.Errorf("unknown escape sequence: \\%c", path[i+1])
+							return nil, false, unknownEscapeSequenceError{path[i+1]}
 						}
 						i += 2
 					} else {
