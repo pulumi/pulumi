@@ -1,0 +1,5 @@
+filegroup(
+    name = "nodejs_files",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
