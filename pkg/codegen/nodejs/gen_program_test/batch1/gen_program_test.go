@@ -17,6 +17,7 @@
 package batch1
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -27,4 +28,6 @@ import (
 func TestGenerateProgram(t *testing.T) {
 	os.Chdir("../../../nodejs") // chdir into codegen/nodejs
 	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(1, 6))
+	fmt.Println(os.Environ())
+	t.Fail()
 }
