@@ -64,7 +64,9 @@ go_test(
         "utilities_test.go",
     ],
     data = [
+        "requirements.txt",
         "//pkg/codegen/testing/test:codegen_testdata",
+        "//sdk/python:python_files",
     ],
     embed = [":python"],
     deps = [
