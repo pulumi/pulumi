@@ -32,11 +32,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+# TODO: this can probably be improved, I think right now we need to run bazel twice for this to be correct.
 genrule(
     name = "generate_python",
     srcs = glob(["**"]),
     outs = ["env/made"],
-    cmd = "(cd sdk/python && make build_package >/dev/null) && touch $@",
+    cmd = "(cd sdk/python && make build_package >/dev/null 2>&1) && touch $@",
     visibility = ["//visibility:public"],
 )
 
