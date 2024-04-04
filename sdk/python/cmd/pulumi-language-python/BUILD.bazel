@@ -40,7 +40,7 @@ go_test(
         "language_test.go",
         "main_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + ["//cmd/pulumi-test-language", "//sdk/python:python_lib", "//sdk/python:python_files", "//sdk/python/cmd:language-exec"],
     embed = [":pulumi-language-python_lib"],
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",
@@ -50,6 +50,7 @@ go_test(
         "//sdk/go/common/util/rpcutil",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_protobuf//types/known/emptypb",

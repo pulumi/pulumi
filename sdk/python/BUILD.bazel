@@ -31,3 +31,9 @@ filegroup(
     srcs = glob(["env/**"]),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "python_lib",
+    srcs = glob(["lib/**"]),
+    visibility = ["//visibility:public"],
+)
