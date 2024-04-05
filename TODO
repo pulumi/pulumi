@@ -12,3 +12,4 @@ How to run the Go tests:
 - Fix setting $HOME and make sure that's overridden to the users home directory
 - Figure out why having a `go.work` file at the root doesn't work (it breaks at least //sdk/go/auto:auto_test and //pkg/codegen/go:go_test)
 - See if we really need to switch to npm install for conformance tests.  The `mockpackage` linking doesn't currently seem to work with `yarn install`.
+- Make integration tests use pulumi we just built instead of pulumi from "$PATH"

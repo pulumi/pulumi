@@ -1383,9 +1383,25 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		return nil, fmt.Errorf("write to output: %w", err)
 	}
 	var stdoutBuffer bytes.Buffer
+	pkgDir := req.PackageDirectory
+	file := filepath.Join(req.PackageDirectory, "package.json")
+	fileinfo, err := os.Lstat(file)
+	if err != nil {
+		return nil, fmt.Errorf("stat package.json: %w", err)
+	}
+	if fileinfo.Mode()&os.ModeSymlink != 0 {
+		symlink, err := filepath.EvalSymlinks(file)
+		if err != nil {
+			return nil, fmt.Errorf("eval symlink: %w", err)
+		}
+		pkgDir, err = filepath.Abs(filepath.Dir(symlink))
+		if err != nil {
+			return nil, fmt.Errorf("abs symlink: %w", err)
+		}
+	}
 	npmPackCmd := exec.Command(npm,
 		"pack",
-		filepath.Join(req.PackageDirectory, "bin"),
+		filepath.Join(pkgDir, "bin"),
 		"--pack-destination", req.DestinationDirectory)
 	npmPackCmd.Stdout = &stdoutBuffer
 	npmPackCmd.Stderr = os.Stderr

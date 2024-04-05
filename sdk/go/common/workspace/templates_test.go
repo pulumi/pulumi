@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // uses shared state in pulumi dir
@@ -74,7 +75,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(tt.templateName, false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Root should point to Pulumi templates directory

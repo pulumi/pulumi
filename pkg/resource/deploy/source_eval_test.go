@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -2557,6 +2558,9 @@ func TestCall(t *testing.T) {
 							"test": resource.NewStringProperty("test-value"),
 						},
 						args)
+					sort.Slice(options.ArgDependencies["test"], func(i, j int) bool {
+						return options.ArgDependencies["test"][i] < options.ArgDependencies["test"][j]
+					})
 					assert.EqualValues(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",

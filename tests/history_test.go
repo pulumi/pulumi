@@ -82,7 +82,7 @@ func TestHistoryCommand(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/stack_dependencies")
+		e.ImportDirectory("integration/testdata/stack_dependencies")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.ImportDirectory("integration/stack_outputs")
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")

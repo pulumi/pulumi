@@ -9,3 +9,4 @@ go.mod
 */python/requirements.txt
 */dotnet/Tests
 */nodejs/tests
+**/node_modules
