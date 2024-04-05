@@ -2698,10 +2698,12 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	}
 
 	for _, prop := range props {
-
 		pname := PyName(prop.Name)
 		ty := mod.typeString(prop.Type, true /*input*/, false /*acceptMapping*/, true /*forDict*/)
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
+		if prop.Comment != "" {
+			printComment(w, prop.Comment, indent)
+		}
 	}
 
 	fmt.Fprintf(w, "\n")
