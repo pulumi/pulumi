@@ -59,9 +59,9 @@ go_test(
     ],
     data = glob(["testdata/**"]) + [
         "//cmd/pulumi-test-language",
+        "//scripts:reversion",
         "//sdk/nodejs:nodejs_files",
         "//sdk/nodejs/npm:npm_testdata",
-        "//scripts:reversion",
     ],
     embed = [":pulumi-language-nodejs_lib"],
     deps = [

@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "steps_test",
+    srcs = ["steps_test.go"],
+    deps = [
+        "//pkg/resource/deploy/providers",
+        "//pkg/testing/integration",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

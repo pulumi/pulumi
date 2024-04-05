@@ -1,0 +1,7 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "duplicate_urns_test",
+    srcs = ["duplicate_urns_test.go"],
+    deps = ["//pkg/testing/integration"],
+)

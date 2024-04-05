@@ -1,0 +1,7 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "read_dbr_test",
+    srcs = ["read_dbr_test.go"],
+    deps = ["//pkg/testing/integration"],
+)

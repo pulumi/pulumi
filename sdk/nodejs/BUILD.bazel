@@ -1,5 +1,8 @@
 filegroup(
     name = "nodejs_files",
-    srcs = glob(["**"], exclude=["bin/**"]),
+    srcs = glob(
+        ["**"],
+        exclude = ["bin/**"],
+    ),
     visibility = ["//visibility:public"],
 )

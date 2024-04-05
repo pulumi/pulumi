@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "partial_state_test",
+    srcs = ["partial_state_test.go"],
+    deps = [
+        "//pkg/resource/deploy/providers",
+        "//pkg/testing/integration",
+        "//sdk/go/common/resource",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

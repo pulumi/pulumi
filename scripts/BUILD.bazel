@@ -1,0 +1,5 @@
+filegroup(
+    name = "reversion",
+    srcs = glob(["reversion.js"]),
+    visibility = ["//visibility:public"],
+)

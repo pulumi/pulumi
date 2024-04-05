@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "valid-property-names_test",
+    srcs = ["steps_test.go"],
+    deps = [
+        "//pkg/testing/integration",
+        "//sdk/go/common/apitype",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

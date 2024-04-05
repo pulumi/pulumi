@@ -11,12 +11,16 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 # gazelle:exclude sdk/go/auto/test/**/*
 # gazelle:exclude sdk/python/lib/test/**/*
 # gazelle:exclude sdk/go/pulumi-language-go/testdata/
+# gazelle:exclude sdk/python/env/**/*
+# gazelle:exclude sdk/nodejs/bin/**/*
+# gazelle:exclude sdk/nodejs/tests/automation/data/**/*
+# gazelle:exclude tests/integration/backend/diy/project/**/*
 #
 # gazelle:exclude pkg/codegen/testing/test/testdata/**/*
 #
 # gazelle:exclude tests/benchmarks/**/*
 # gazelle:exclude tests/integration/get_resource/**/*
-# gazelle:exclude tests/integration/*/**/*
+# gazelle:exclude tests/integration/construct_component_configure_provider/**/*
 # gazelle:exclude tests/testdata/**/*
 #
 gazelle(name = "gazelle")

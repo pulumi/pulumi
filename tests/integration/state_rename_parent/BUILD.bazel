@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "state_rename_parent_lib",
+    srcs = [
+        "main.go",
+        "random.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/tests/integration/state_rename_parent",
+    visibility = ["//visibility:private"],
+    deps = ["//sdk/go/pulumi"],
+)
+
+go_binary(
+    name = "state_rename_parent",
+    embed = [":state_rename_parent_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "diy",
+    srcs = ["helpers.go"],
+    importpath = "github.com/pulumi/pulumi/tests/integration/backend/diy",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/testing",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":diy",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "diy_test",
+    srcs = [
+        "backend_aws_test.go",
+        "backend_azure_test.go",
+        "backend_gcp_test.go",
+    ],
+    embed = [":diy"],
+    data = glob(["project/**"]),
+    deps = [
+        "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_config//:config",
+        "@com_github_aws_aws_sdk_go_v2_service_sts//:sts",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

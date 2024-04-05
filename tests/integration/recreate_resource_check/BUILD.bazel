@@ -1,0 +1,7 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "recreate_resource_check_test",
+    srcs = ["resource_recreate_check_test.go"],
+    deps = ["//pkg/testing/integration"],
+)

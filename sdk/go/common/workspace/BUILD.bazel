@@ -67,6 +67,8 @@ go_test(
         "creds_test.go",
         "loaders_test.go",
         "paths_test.go",
+        "plugins_install_nodejs_test.go",
+        "plugins_install_python_test.go",
         "plugins_install_test.go",
         "plugins_test.go",
         "project_test.go",

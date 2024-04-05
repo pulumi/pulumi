@@ -1,0 +1,7 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "delete_before_create_test",
+    srcs = ["delete_before_create_test.go"],
+    deps = ["//pkg/testing/integration"],
+)

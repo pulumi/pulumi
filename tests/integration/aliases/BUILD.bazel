@@ -1,0 +1,11 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "aliases_test",
+    srcs = [
+        "aliases_go_test.go",
+        "aliases_nodejs_test.go",
+        "aliases_py_test.go",
+    ],
+    deps = ["//pkg/testing/integration"],
+)
