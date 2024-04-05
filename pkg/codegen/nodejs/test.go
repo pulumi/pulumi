@@ -69,7 +69,9 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// ${VERSION} problem; use yarn for now.
 
 	test.RunCommand(t, "yarn_install", pwd, "npm", "install")
-
+	t.Cleanup(func() {
+		os.RemoveAll(filepath.Join(pwd, "node_modules"))
+	})
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
