@@ -234,7 +234,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 
 	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input)
 	if forDict {
-		name = fmt.Sprintf("%sDict", name)
+		name = name + "Dict"
 	}
 	if modName == "" && modName != mod.mod {
 		rootModName := "_root_outputs."
