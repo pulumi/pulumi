@@ -560,11 +560,15 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
 
-			e.ImportDirectory(dirPath)
+			os.Mkdir(filepath.Join(e.RootPath, filepath.FromSlash(tt.Directory)), 0755)
+			e.CWD = filepath.Join(e.RootPath, filepath.FromSlash(tt.Directory))
 
-			schemaPath := filepath.Join(e.RootPath, "schema.json")
+			e.ImportDirectory(dirPath)
+			defer e.DeleteEnvironment()
+
+			schemaPath := filepath.Join(e.CWD, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
-				schemaPath = filepath.Join(e.RootPath, "schema.yaml")
+				schemaPath = filepath.Join(e.CWD, "schema.yaml")
 			}
 
 			if tt.ShouldSkipCodegen(opts.Language) {
@@ -575,8 +579,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
 			require.NoError(t, err)
 
-			if !RewriteFilesWhenPulumiAccept(t, e.RootPath, opts.Language, files) {
-				expectedFiles, err := LoadBaseline(e.RootPath, opts.Language)
+			if !RewriteFilesWhenPulumiAccept(t, e.CWD, opts.Language, files) {
+				expectedFiles, err := LoadBaseline(e.CWD, opts.Language)
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
@@ -588,7 +592,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			CopyExtraFiles(t, e.RootPath, opts.Language)
+			CopyExtraFiles(t, e.CWD, opts.Language)
 
 			// Merge language-specific global and
 			// test-specific checks, with test-specific
@@ -608,7 +612,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			}
 			sort.Strings(checkOrder)
 
-			codeDir := filepath.Join(e.RootPath, opts.Language)
+			codeDir := filepath.Join(e.CWD, opts.Language)
 
 			// Perform the checks.
 			//nolint:paralleltest // test functions are ordered
