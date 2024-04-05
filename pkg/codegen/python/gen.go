@@ -413,7 +413,10 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 	fmt.Fprintf(w, "import pulumi\n")
 	fmt.Fprintf(w, "import pulumi.runtime\n")
 	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
-	fmt.Fprintf(w, "from typing_extensions import NotRequired, Required, TypedDict\n")
+	fmt.Fprintf(w, "if sys.version_info >= (3, 11):\n")
+	fmt.Fprintf(w, "    from typing import NotRequired, TypedDict\n")
+	fmt.Fprintf(w, "else:\n")
+	fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict\n")
 	fmt.Fprintf(w, "from %s import _utilities\n", relImport)
 	for _, imp := range imports.strings() {
 		fmt.Fprintf(w, "%s\n", imp)
@@ -3277,6 +3280,7 @@ func calculateDeps(requires map[string]string) ([][2]string, error) {
 	deps := []string{
 		"semver>=2.8.1",
 		"parver>=0.2.1",
+		"typing-extensions>=4.11; python_version < \"3.11\"",
 	}
 	for dep := range requires {
 		deps = append(deps, dep)
