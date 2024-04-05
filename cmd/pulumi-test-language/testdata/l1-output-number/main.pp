@@ -10,6 +10,10 @@ output "e" {
     value = 2.718
 }
 
+output "minInt32" {
+    value = -2147483648
+}
+
 output "max" {
     value = 1.7976931348623157E+308
 }

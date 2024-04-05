@@ -101,10 +101,11 @@ var languageTests = map[string]languageTest{
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 5, "expected 5 outputs")
+					assert.Len(l, outputs, 6, "expected 6 outputs")
 					assertPropertyMapMember(l, outputs, "zero", resource.NewNumberProperty(0))
 					assertPropertyMapMember(l, outputs, "one", resource.NewNumberProperty(1))
 					assertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
+					assertPropertyMapMember(l, outputs, "minInt32", resource.NewNumberProperty(math.MinInt32))
 					assertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
 					assertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
 				},
