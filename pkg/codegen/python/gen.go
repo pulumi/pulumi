@@ -2357,7 +2357,7 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 	case *schema.OptionalType:
 		typ := mod.typeString(t.ElementType, input, acceptMapping, forDict)
 		if forDict {
-			return fmt.Sprintf("NotRequired[Optional[%s]]", typ)
+			return fmt.Sprintf("NotRequired[%s]", typ)
 		}
 		return fmt.Sprintf("Optional[%s]", typ)
 	case *schema.InputType:
