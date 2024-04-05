@@ -10,7 +10,7 @@ go_library(
         "random.go",
     ],
     importpath = "github.com/pulumi/pulumi/tests/testprovider",
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
     deps = [
         "//pkg/resource/provider",
         "//proto/pulumi:pulumirpc_go_proto",
@@ -24,5 +24,11 @@ go_library(
 go_binary(
     name = "testprovider",
     embed = [":testprovider_lib"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "testprovider_files",
+    srcs = glob(["**"]),
     visibility = ["//visibility:public"],
 )

@@ -84,7 +84,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/testdata/stack_dependencies")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-		e.ImportDirectory("integration/stack_outputs")
+		e.ImportDirectory("integration/testdata/stack_outputs")
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")

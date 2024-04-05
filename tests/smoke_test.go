@@ -413,9 +413,11 @@ func TestRelativePluginPath(t *testing.T) {
 	defer deleteIfNotFailed(e)
 
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
-	// work.
+	// work. TODO: actually use import here and import the testprovider as well.
 	var err error
-	e.CWD, err = filepath.Abs("testdata/relative_plugin_node")
+	symlink, err := filepath.EvalSymlinks("testdata/relative_plugin_node/Pulumi.yaml")
+	require.NoError(t, err)
+	e.CWD, err = filepath.Abs(filepath.Dir(symlink))
 	require.NoError(t, err)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
