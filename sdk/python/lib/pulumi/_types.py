@@ -283,11 +283,13 @@ from typing import (
     Union,
     cast,
     get_type_hints,
+    overload,
 )
 
 from . import _utils
 
 T = TypeVar("T")
+C = TypeVar("C", bound=Callable)
 
 
 _PULUMI_NAME = "_pulumi_name"
@@ -581,6 +583,10 @@ def output_type_from_dict(cls: Type[T], output: Dict[str, Any]) -> T:
     return cls(**args)  # type: ignore
 
 
+@overload
+def getter(*, name: Optional[str] = None) -> Callable[[C], C]: ...
+@overload
+def getter(_fn: C) -> C: ...
 def getter(_fn=None, *, name: Optional[str] = None):
     """
     Decorator to indicate a function is a Pulumi property getter.
