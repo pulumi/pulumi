@@ -1060,6 +1060,9 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
 				fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
+			if input && mod.details(t).inputType {
+				fmt.Fprintf(w, "    '%sDict',\n", mod.unqualifiedObjectTypeName(t, input))
+			}
 		}
 		fmt.Fprintf(w, "]\n\n")
 
