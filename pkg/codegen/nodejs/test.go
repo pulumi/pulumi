@@ -70,7 +70,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// other places at the moment, and yarn does not run into the
 	// ${VERSION} problem; use yarn for now.
 
-	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
+	test.RunCommand(t, "yarn_install", pwd, "npm", "install")
 
 	// TODO: this is super hacky, but I don't know how else to solve this right now
 	files := os.DirFS(pwd)
@@ -97,7 +97,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
 	}
-	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc",
+	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, filepath.Join(pwd, "node_modules", ".bin", "tsc"),
 		"--noEmit", "--skipLibCheck", "true", "--skipDefaultLibCheck", "true")
 }
 
