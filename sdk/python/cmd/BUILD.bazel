@@ -1,5 +1,0 @@
-filegroup(
-    name = "language-exec",
-    srcs = ["pulumi-language-python-exec"],
-    visibility = ["//visibility:public"],
-)

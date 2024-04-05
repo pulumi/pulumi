@@ -228,9 +228,9 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
 	printmsg := func(message string) {
-		if showOutput {
+		//if showOutput {
 			fmt.Fprintf(infoWriter, "%s\n", message)
-		}
+		//}
 	}
 
 	if venvDir != "" {

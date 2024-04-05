@@ -1,2 +1,2 @@
 build --host_platform=@rules_nixpkgs_core//platforms:host --spawn_strategy=local
-test --test_env=PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true --test_env=GOCACHE=/tmp/.cache --test_env=GOMODCACHE=/tmp/.cache --test_env=GOPATH=/tmp/gopath --test_env=HOME --test_env=GITHUB_TOKEN --test_output=errors --test_timeout=300 --local_resources=cpu=10 --test_env=PULUMI_ACCESS_TOKEN --nobuild_runfile_links
+test --test_env=PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true --test_env=GOCACHE=/tmp/.cache --test_env=GOMODCACHE=/tmp/.cache --test_env=GOPATH=/tmp/gopath --test_env=HOME --test_env=GITHUB_TOKEN --test_output=errors --test_timeout=300 --test_env=PULUMI_ACCESS_TOKEN --nobuild_runfile_links

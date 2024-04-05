@@ -253,7 +253,8 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, expectedDir)
 
 		// Check that the file is present in the expected directory and has the same contents
-		expectedContents, err := os.ReadFile(filepath.Join(expectedDir, relativePath))
+    expectedPath := filepath.Join(expectedDir, relativePath)
+		expectedContents, err := os.ReadFile(expectedPath)
 		if err != nil {
 			return fmt.Errorf("read expected file: %w", err)
 		}
@@ -262,7 +263,7 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 		actualContents, err := os.ReadFile(actualPath)
 		// An error here is a test failure rather than an error, add this to the validation list
 		if err != nil {
-			validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
+			validations = append(validations, fmt.Sprintf("actual file %s could not be read", actualPath))
 			// Move on to the next file
 			return nil
 		}

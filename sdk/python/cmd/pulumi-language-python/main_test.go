@@ -138,12 +138,6 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
 
-		// Install the local Pulumi SDK into the virtual environment.
-		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
-		assert.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
-		assert.NoError(t, err)
-
 		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
 		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
@@ -210,12 +204,6 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 		_, err = runPythonCommand(context.Background(),
 			"venv", cwd, "-m", "pip", "install", "--upgrade", "pip", "setuptools")
-		assert.NoError(t, err)
-
-		// Install the local Pulumi SDK into the virtual environment.
-		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
-		assert.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
 		assert.NoError(t, err)
 
 		// Install a local old provider SDK that does not have a pulumi-plugin.json file.

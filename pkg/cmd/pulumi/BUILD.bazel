@@ -200,6 +200,9 @@ go_binary(
     name = "pulumi",
     embed = [":pulumi_lib"],
     visibility = ["//visibility:public"],
+    x_defs = {
+        "github.com/pulumi/pulumi/pkg/v3/version.Version": "3.111.2-dev.0", # keep
+    }
 )
 
 go_test(

@@ -22,7 +22,7 @@ import unittest
 from collections import namedtuple
 from concurrent import futures
 from inspect import signature
-from os import path
+from os import getenv, path
 
 import grpc
 from google.protobuf import empty_pb2, struct_pb2
@@ -343,7 +343,7 @@ class LanghostTest(unittest.TestCase):
     def _create_language_host(self, port):
         exec_path = path.join(path.dirname(__file__), "..", "..", "..", "executor")
         proc = subprocess.Popen(
-            ["pulumi-language-python", "--use-executor", exec_path, "localhost:%d" % port],
+            [getenv("LANGUAGE_HOST", "pulumi-language-python") , "--use-executor", exec_path, "localhost:%d" % port],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True)

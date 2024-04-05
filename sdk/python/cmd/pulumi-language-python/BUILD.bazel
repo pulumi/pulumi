@@ -42,9 +42,10 @@ go_test(
     ],
     data = glob(["testdata/**"]) + [
         "//cmd/pulumi-test-language",
-        "//sdk/python:python_files",
-        "//sdk/python:python_lib",
-        "//sdk/python/cmd:language-exec",
+        "//sdk/python:executor",
+        "//sdk/python/cmd/pulumi-language-python",
+
+        "@nixpkgs_python_config_python3//:bin/python",
     ],
     embed = [":pulumi-language-python_lib"],
     deps = [

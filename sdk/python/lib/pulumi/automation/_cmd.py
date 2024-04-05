@@ -65,7 +65,11 @@ class PulumiCommand:
                 `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK` also disable this check, and takes precendence. If it is set it
                 is not possible to re-enable the validation even if `skip_version_check` is `True`.
         """
-        self.command = os.path.join(root, "bin", "pulumi") if root else "pulumi"
+        if "PULUMI_HACK" in os.environ:
+            self.command = os.path.abspath(os.environ["PULUMI_HACK"])
+        else:
+            self.command = os.path.join(root, "bin", "pulumi") if root else "pulumi"
+
         min_version = _MINIMUM_VERSION
         if version and version.compare(min_version) > 0:
             min_version = version
@@ -206,7 +210,7 @@ class PulumiCommand:
         env = {**os.environ, **additional_env}
         if os.path.isabs(self.command):
             env = _fixup_path(env, os.path.dirname(self.command))
-        cmd = ["pulumi"]
+        cmd = [self.command]
         cmd.extend(args)
 
         stdout_chunks: List[str] = []

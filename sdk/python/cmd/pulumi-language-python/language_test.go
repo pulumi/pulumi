@@ -158,7 +158,7 @@ func TestLanguage(t *testing.T) {
 	// Run the language plugin
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
-			pythonExec := "../pulumi-language-python-exec"
+			pythonExec := "../../executor"
 			host := newLanguageHost(pythonExec, engineAddress, "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil

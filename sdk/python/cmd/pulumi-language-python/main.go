@@ -254,16 +254,16 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
 	// ensure build is up-to-date
-	buildUpgradeCmd, err := python.Command(ctx, "-m", "pip", "install", "--upgrade", "build")
-	if err != nil {
-		return nil, err
-	}
-	buildUpgradeCmd.Stdout = os.Stdout
-	buildUpgradeCmd.Stderr = os.Stderr
-	err = buildUpgradeCmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("install build tools: %w", err)
-	}
+	//buildUpgradeCmd, err := python.Command(ctx, "-m", "pip", "install", "--upgrade", "build")
+	//if err != nil {
+	//	return nil, err
+	//}
+	//buildUpgradeCmd.Stdout = os.Stdout
+	//buildUpgradeCmd.Stderr = os.Stderr
+	//err = buildUpgradeCmd.Run()
+	//if err != nil {
+	//	return nil, fmt.Errorf("install build tools: %w", err)
+	//}
 
 	tmp, err := os.MkdirTemp("", "pulumi-python-pack")
 	if err != nil {

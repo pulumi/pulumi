@@ -36,7 +36,7 @@ nixpkgs_local_repository(
 nixpkgs_python_configure(
     name = "nixpkgs_python_config",
     repository = "@nixpkgs",
-    python3_attribute_path = "python312",
+    python3_attribute_path = "python3WithPackages",
 )
 
 http_archive(

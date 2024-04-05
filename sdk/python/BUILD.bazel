@@ -30,7 +30,7 @@ go_test(
 
 py_library(
     name = "sdk",
-    srcs = glob(["lib/pulumi/**/*.py"]),
+    srcs = glob(["lib/setup.py", "lib/pulumi/**/*.py"]),
     imports = ["lib"],
     deps = [
         requirement("dill"),
@@ -61,6 +61,7 @@ py_wheel(
 )
 
 test_srcs = glob([
+    "lib/test/**/__init__.py",
     "lib/test/**/test_*.py",
 ],
     exclude=[
@@ -93,6 +94,7 @@ py_test(
         "lib/test/conftest.py",
         "lib/test/helpers.py",
 
+        "//pkg/cmd/pulumi",
         "//sdk/python/cmd/pulumi-language-python",
         ":executor",
     ] + langhost_data,
@@ -105,6 +107,11 @@ py_test(
         requirement("pytest-asyncio"),
         requirement("pytest-timeout"),
     ],
+    env = {
+        "LANGUAGE_HOST": "$(location //sdk/python/cmd/pulumi-language-python)",
+        "PULUMI_HACK": "$(location //pkg/cmd/pulumi)",
+    },
+    legacy_create_init = False,
 )
 
 py_library(
@@ -120,4 +127,6 @@ py_binary(
     deps = [
         ":sdk",
     ],
+    visibility = ["//visibility:public"],
+    legacy_create_init = False,
 )
