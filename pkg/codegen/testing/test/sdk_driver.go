@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -555,11 +556,15 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 
 			t.Log(tt.Description)
 
+			e := ptesting.NewEnvironment(t)
+
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
 
-			schemaPath := filepath.Join(dirPath, "schema.json")
+			e.ImportDirectory(dirPath)
+
+			schemaPath := filepath.Join(e.RootPath, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
-				schemaPath = filepath.Join(dirPath, "schema.yaml")
+				schemaPath = filepath.Join(e.RootPath, "schema.yaml")
 			}
 
 			if tt.ShouldSkipCodegen(opts.Language) {
@@ -570,8 +575,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
 			require.NoError(t, err)
 
-			if !RewriteFilesWhenPulumiAccept(t, dirPath, opts.Language, files) {
-				expectedFiles, err := LoadBaseline(dirPath, opts.Language)
+			if !RewriteFilesWhenPulumiAccept(t, e.RootPath, opts.Language, files) {
+				expectedFiles, err := LoadBaseline(e.RootPath, opts.Language)
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
@@ -583,7 +588,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			CopyExtraFiles(t, dirPath, opts.Language)
+			CopyExtraFiles(t, e.RootPath, opts.Language)
 
 			// Merge language-specific global and
 			// test-specific checks, with test-specific
@@ -603,7 +608,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			}
 			sort.Strings(checkOrder)
 
-			codeDir := filepath.Join(dirPath, opts.Language)
+			codeDir := filepath.Join(e.RootPath, opts.Language)
 
 			// Perform the checks.
 			//nolint:paralleltest // test functions are ordered

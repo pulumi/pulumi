@@ -2,12 +2,10 @@ package nodejs
 
 import (
 	"encoding/json"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -71,24 +69,6 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// ${VERSION} problem; use yarn for now.
 
 	test.RunCommand(t, "yarn_install", pwd, "npm", "install")
-
-	// TODO: this is super hacky, but I don't know how else to solve this right now
-	files := os.DirFS(pwd)
-	entries, err := fs.ReadDir(files, ".")
-	require.NoError(t, err)
-	for _, entry := range entries {
-		fileinfo, err := entry.Info()
-		assert.NoError(t, err)
-		if fileinfo.Mode()&os.ModeSymlink != 0 {
-			symlink, err := filepath.EvalSymlinks(filepath.Join(pwd, entry.Name()))
-			require.NoError(t, err)
-			dir, err := filepath.Abs(filepath.Dir(symlink))
-			require.NoError(t, err)
-			path, err := filepath.Abs(pwd)
-			_ = os.Symlink(filepath.Join(path, "node_modules"), filepath.Join(dir, "node_modules"))
-			break
-		}
-	}
 
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
