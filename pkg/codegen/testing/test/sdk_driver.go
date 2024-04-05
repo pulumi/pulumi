@@ -42,6 +42,12 @@ type SDKTest struct {
 	Mutex sync.Mutex
 }
 
+func deleteIfNotFailed(e *ptesting.Environment) {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
+	}
+}
+
 // ShouldSkipTest indicates if a given test for a given language should be run.
 func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 	// Only language-specific checks.
@@ -564,7 +570,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			e.CWD = filepath.Join(e.RootPath, filepath.FromSlash(tt.Directory))
 
 			e.ImportDirectory(dirPath)
-			defer e.DeleteEnvironment()
+			defer deleteIfNotFailed(e)
 
 			schemaPath := filepath.Join(e.CWD, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
@@ -617,14 +623,11 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			// Perform the checks.
 			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
-				check := check
-				t.Run(check, func(t *testing.T) {
-					if tt.ShouldSkipTest(opts.Language, check) {
-						t.Skip()
-					}
-					checkFun := allChecks[check]
-					checkFun(t, codeDir)
-				})
+				if tt.ShouldSkipTest(opts.Language, check) {
+					t.Skip()
+				}
+				checkFun := allChecks[check]
+				checkFun(t, codeDir)
 			}
 		})
 	}
