@@ -465,7 +465,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	newResources := &resourceMap{}
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient, newResources, ctx.Diag)
+	builtins := newBuiltinProvider(backendClient, newResources, ctx.Diag, ctx, target.Organization)
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -540,7 +540,7 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 
 // generateURN generates a resource's URN from its parent, type, and name under the scope of the deployment's stack and
 // project.
-func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) resource.URN {
+func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) (resource.URN, error) {
 	// Use the resource goal state name to produce a globally unique URN.
 	parentType := tokens.Type("")
 	if parent != "" && parent.QualifiedType() != resource.RootStackType {
@@ -548,7 +548,20 @@ func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name strin
 		parentType = parent.QualifiedType()
 	}
 
-	return resource.NewURN(d.Target().Name.Q(), d.source.Project(), parentType, ty, name)
+	// If the parent is a non-root stack, we include the name of the stack in the parent type. This is to ensure that
+	// resources in different sub-stacks with the same name do not collide.
+	if parent != "" && ty == resource.RootStackType {
+		if parentType != "" {
+			parentType += "$"
+		}
+		parsedStackName, err := tokens.ParseStackName(name)
+		if err != nil {
+			return "", err
+		}
+		parentType += tokens.Type(parsedStackName.String())
+	}
+
+	return resource.NewURN(d.Target().Name.Q(), d.source.Project(), parentType, ty, name), nil
 }
 
 // defaultProviderURN generates the URN for the global provider given a package.
@@ -557,7 +570,7 @@ func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resou
 }
 
 // generateEventURN generates a URN for the resource associated with the given event.
-func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
+func (d *Deployment) generateEventURN(event SourceEvent) (resource.URN, error) {
 	contract.Requiref(event != nil, "event", "must not be nil")
 
 	switch e := event.(type) {
@@ -567,9 +580,9 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 	case ReadResourceEvent:
 		return d.generateURN(e.Parent(), e.Type(), e.Name())
 	case RegisterResourceOutputsEvent:
-		return e.URN()
+		return e.URN(), nil
 	default:
-		return ""
+		return "", nil
 	}
 }
 
