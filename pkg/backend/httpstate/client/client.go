@@ -234,7 +234,7 @@ type serviceTokenInfo struct {
 	Team         string `json:"team,omitempty"`
 }
 
-// GetPulumiAccountName returns the user implied by the API token associated with this client.
+// GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
 	if pc.apiUser == "" {
 		resp := serviceUser{}

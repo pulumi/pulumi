@@ -222,7 +222,7 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	}
 }
 
-// PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
+// PolicyPayloads returns the PolicyViolationEventPayload object associated with the resourceRowData.
 func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
 	return data.policyPayloads
 }
