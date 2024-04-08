@@ -71,6 +71,8 @@ func (t primitiveType) String() string {
 		return "pulumi:pulumi:Asset"
 	case jsonType:
 		fallthrough
+	case anyResourceType:
+		fallthrough
 	case anyType:
 		return "pulumi:pulumi:Any"
 	default:
