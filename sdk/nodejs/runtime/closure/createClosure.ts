@@ -300,7 +300,7 @@ export async function createClosureInfoAsync(
 
         return;
 
-        async function addEntriesAsync(val: any, emitExpr: string) {
+        async function addEntriesAsync(val: any, emitExpr: string, recurse = false) {
             if (val === undefined || val === null) {
                 return;
             }
@@ -313,6 +313,21 @@ export async function createClosureInfoAsync(
 
             seenGlobalObjects.add(val);
             context.cache.set(val, { expr: emitExpr });
+
+            // For global objects, we want to recurse into them to find all
+            // their properties and add entries for them. This allows us to
+            // recognize these builtins when they have been aliased, for
+            // example if we have `const isArray = Array.isArray` and capture
+            // `isArray` in the function, we want to emit the expression
+            // `Array.isArray` for the captured value.
+            if (recurse) {
+                for (const propName of Object.getOwnPropertyNames(val)) {
+                    const desc = Object.getOwnPropertyDescriptor(val, propName);
+                    if (desc?.value && typeof desc.value === "function") {
+                        addEntriesAsync(desc?.value, `${emitExpr}.${propName}`, recurse);
+                    }
+                }
+            }
         }
 
         async function addGlobalInfoAsync(key: string) {
@@ -320,9 +335,13 @@ export async function createClosureInfoAsync(
             const text = utils.isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
 
             if (globalObj !== undefined && globalObj !== null) {
-                await addEntriesAsync(globalObj, text);
-                await addEntriesAsync(Object.getPrototypeOf(globalObj), `Object.getPrototypeOf(${text})`);
-                await addEntriesAsync(globalObj.prototype, `${text}.prototype`);
+                await addEntriesAsync(globalObj, text, /* recurse */ true);
+                await addEntriesAsync(
+                    Object.getPrototypeOf(globalObj),
+                    `Object.getPrototypeOf(${text})`,
+                    /* recurse */ true,
+                );
+                await addEntriesAsync(globalObj.prototype, `${text}.prototype`, /* recurse */ true);
             }
         }
 
