@@ -392,7 +392,7 @@ async function analyzeFunctionInfoAsync(
     // logInfo = logInfo || func.name === "addHandler";
 
     const { file, line, column } = await v8.getFunctionLocationAsync(func);
-    const functionString = func.toString();
+    let functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
     context.frames.push(frame);
@@ -430,6 +430,61 @@ async function analyzeFunctionInfoAsync(
             throw new Error("Entry for this this function was not created by caller");
         }
 
+        const capturedValues: PropertyMap = new Map();
+
+        // If the function is a native function, it is most likely the result of `Function.bind`.
+        // We get the target function via the debugger API, along with the boundThis and boundArgs
+        // values and create a new function using the target function's text representation and
+        // rebind it. The boundThis and boundArgs values are manually captured.
+        //
+        // TODO: This does not handle multiple binds correctly.
+        // For example (function () { ... }).bind("a").bind("b") will fail to serialize correctly.
+        if (parseFunctionModule.isNativeFunction(functionString)) {
+            try {
+                const { targetFunctionText, boundThisValue, boundArgsValues } = await v8.getBoundFunction(func);
+                const boundThis = "__pulumi_bound_this";
+                const boundArgs = boundArgsValues.map((_: any, i: number) => `__pulumi_bound_arg_${i}`).join(", ");
+                const boundArgsString = boundArgs.length > 0 ? `, ${boundArgs}` : "";
+
+                functionString =
+                    `function (...args) {\n` +
+                    `  return (\n` +
+                    `${targetFunctionText}\n` +
+                    `  ).bind(${boundThis}${boundArgsString})(...args);\n` +
+                    `}`;
+
+                const serializedName = await getOrCreateNameEntryAsync(
+                    "__pulumi_bound_this",
+                    undefined,
+                    context,
+                    serialize,
+                    logInfo,
+                );
+                const serializedValue = await getOrCreateEntryAsync(
+                    boundThisValue,
+                    undefined,
+                    context,
+                    serialize,
+                    logInfo,
+                );
+                capturedValues.set(serializedName, { entry: serializedValue });
+
+                for (const [i, boundArg] of boundArgsValues.entries()) {
+                    const name = await getOrCreateNameEntryAsync(
+                        `__pulumi_bound_arg_${i}`,
+                        undefined,
+                        context,
+                        serialize,
+                        logInfo,
+                    );
+                    const value = await getOrCreateEntryAsync(boundArg, undefined, context, serialize, logInfo);
+                    capturedValues.set(name, { entry: value });
+                }
+            } catch (err) {
+                throwSerializationError(func, context, err.message);
+            }
+        }
+
         // First, convert the js func object to a reasonable stringified version that we can operate on.
         // Importantly, this function helps massage all the different forms that V8 can produce to
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
@@ -446,7 +501,6 @@ async function analyzeFunctionInfoAsync(
         const functionDeclarationName = parsedFunction.functionDeclarationName;
         frame.functionLocation.isArrowFunction = parsedFunction.isArrowFunction;
 
-        const capturedValues: PropertyMap = new Map();
         await processCapturedVariablesAsync(parsedFunction.capturedVariables.required, /*throwOnFailure:*/ true);
         await processCapturedVariablesAsync(parsedFunction.capturedVariables.optional, /*throwOnFailure:*/ false);
 
@@ -560,6 +614,12 @@ async function analyzeFunctionInfoAsync(
             throwOnFailure: boolean,
         ): Promise<void> {
             for (const name of capturedVariables.keys()) {
+                // We have a special case for __pulumi_bound_this and __pulumi_bound_arg_X.
+                // We manually inject these variables into the closure environment of a
+                // function when we rewrite bound functions.
+                if (name.startsWith("__pulumi_bound_")) {
+                    continue;
+                }
                 let value: any;
                 try {
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
