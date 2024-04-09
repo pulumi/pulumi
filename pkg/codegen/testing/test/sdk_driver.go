@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -591,11 +592,21 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 
 			t.Log(tt.Description)
 
-			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
 
-			schemaPath := filepath.Join(dirPath, "schema.json")
+			// Some tests need the directory to have the right name.  Create a subdirectory
+			// under the test environment to ensure that
+			err := os.Mkdir(filepath.Join(e.RootPath, filepath.FromSlash(tt.Directory)), 0o755)
+			require.NoError(t, err)
+			e.CWD = filepath.Join(e.RootPath, filepath.FromSlash(tt.Directory))
+
+			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
+			e.ImportDirectory(dirPath)
+
+			schemaPath := filepath.Join(e.CWD, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
-				schemaPath = filepath.Join(dirPath, "schema.yaml")
+				schemaPath = filepath.Join(e.CWD, "schema.yaml")
 			}
 
 			if tt.ShouldSkipCodegen(opts.Language) {
@@ -606,8 +617,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
 			require.NoError(t, err)
 
-			if !RewriteFilesWhenPulumiAccept(t, dirPath, opts.Language, files) {
-				expectedFiles, err := LoadBaseline(dirPath, opts.Language)
+			if !RewriteFilesWhenPulumiAccept(t, e.CWD, opts.Language, files) {
+				expectedFiles, err := LoadBaseline(e.CWD, opts.Language)
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
@@ -619,7 +630,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			CopyExtraFiles(t, dirPath, opts.Language)
+			CopyExtraFiles(t, e.CWD, opts.Language)
 
 			// Merge language-specific global and
 			// test-specific checks, with test-specific
@@ -639,19 +650,15 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			}
 			sort.Strings(checkOrder)
 
-			codeDir := filepath.Join(dirPath, opts.Language)
+			codeDir := filepath.Join(e.CWD, opts.Language)
 
 			// Perform the checks.
-			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
-				check := check
-				t.Run(check, func(t *testing.T) {
-					if tt.ShouldSkipTest(opts.Language, check) {
-						t.Skip()
-					}
-					checkFun := allChecks[check]
-					checkFun(t, codeDir)
-				})
+				if tt.ShouldSkipTest(opts.Language, check) {
+					t.Skip()
+				}
+				checkFun := allChecks[check]
+				checkFun(t, codeDir)
 			}
 		})
 	}
