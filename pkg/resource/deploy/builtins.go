@@ -8,6 +8,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -22,10 +23,12 @@ type builtinProvider struct {
 	diag    diag.Sink
 
 	backendClient BackendClient
-	resources     *resourceMap
+	resources     *gsync.Map[resource.URN, *resource.State]
 }
 
-func newBuiltinProvider(backendClient BackendClient, resources *resourceMap, d diag.Sink) *builtinProvider {
+func newBuiltinProvider(
+	backendClient BackendClient, resources *gsync.Map[resource.URN, *resource.State], d diag.Sink,
+) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
 		context:       ctx,
@@ -307,7 +310,7 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	contract.Assertf(ok, "missing required property 'urn'")
 	contract.Assertf(urn.IsString(), "expected 'urn' to be a string")
 
-	state, ok := p.resources.get(resource.URN(urn.StringValue()))
+	state, ok := p.resources.Load(resource.URN(urn.StringValue()))
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", urn.StringValue())
 	}

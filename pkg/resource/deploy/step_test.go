@@ -20,9 +20,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
@@ -659,7 +661,7 @@ func TestImportStep(t *testing.T) {
 				},
 				deployment: &Deployment{
 					olds: map[resource.URN]*resource.State{},
-					news: &resourceMap{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
 				},
 			}
 			status, _, err := s.Apply(true)
@@ -676,7 +678,7 @@ func TestImportStep(t *testing.T) {
 				},
 				deployment: &Deployment{
 					olds: map[resource.URN]*resource.State{},
-					news: &resourceMap{},
+					news: &gsync.Map[urn.URN, *resource.State]{},
 				},
 			}
 			status, _, err := s.Apply(true)
@@ -696,7 +698,7 @@ func TestImportStep(t *testing.T) {
 					},
 					deployment: &Deployment{
 						olds: map[resource.URN]*resource.State{},
-						news: &resourceMap{},
+						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(
@@ -720,7 +722,7 @@ func TestImportStep(t *testing.T) {
 					},
 					deployment: &Deployment{
 						olds: map[resource.URN]*resource.State{},
-						news: &resourceMap{},
+						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(
@@ -749,7 +751,7 @@ func TestImportStep(t *testing.T) {
 					},
 					deployment: &Deployment{
 						olds: map[resource.URN]*resource.State{},
-						news: &resourceMap{},
+						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(
@@ -773,7 +775,7 @@ func TestImportStep(t *testing.T) {
 					},
 					deployment: &Deployment{
 						olds: map[resource.URN]*resource.State{},
-						news: &resourceMap{},
+						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(
@@ -806,7 +808,7 @@ func TestImportStep(t *testing.T) {
 					},
 					deployment: &Deployment{
 						olds: map[resource.URN]*resource.State{},
-						news: &resourceMap{},
+						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					randomSeed: []byte{},
 					provider: &deploytest.Provider{
@@ -848,7 +850,7 @@ func TestImportStep(t *testing.T) {
 					planned: true,
 					deployment: &Deployment{
 						olds: map[resource.URN]*resource.State{},
-						news: &resourceMap{},
+						news: &gsync.Map[urn.URN, *resource.State]{},
 						ctx: &plugin.Context{
 							Diag: &deploytest.NoopSink{},
 						},

@@ -24,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -84,7 +85,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	}
 
 	// Create a goal map for the deployment.
-	newGoals := &goalMap{}
+	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
 
 	builtins := newBuiltinProvider(nil, nil, ctx.Diag)
 
@@ -105,7 +106,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		preview:      preview,
 		providers:    reg,
 		newPlans:     newResourcePlan(target.Config),
-		news:         &resourceMap{},
+		news:         &gsync.Map[resource.URN, *resource.State]{},
 	}, nil
 }
 
@@ -154,7 +155,7 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 			new := *r
 			new.ID = ""
 			// Set a dummy goal so the resource is tracked as managed.
-			i.deployment.goals.set(r.URN, &resource.Goal{})
+			i.deployment.goals.Store(r.URN, &resource.Goal{})
 			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
 				return false
 			}
@@ -280,7 +281,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.set(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &resource.Goal{})
 		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
 	}
 
@@ -350,7 +351,7 @@ func (i *importer) importResources(ctx context.Context) error {
 				new := *old
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
-				i.deployment.goals.set(old.URN, &resource.Goal{})
+				i.deployment.goals.Store(old.URN, &resource.Goal{})
 				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
 				continue
 			}
@@ -368,7 +369,7 @@ func (i *importer) importResources(ctx context.Context) error {
 				new := *old
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
-				i.deployment.goals.set(old.URN, &resource.Goal{})
+				i.deployment.goals.Store(old.URN, &resource.Goal{})
 				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
 				continue
 			}
@@ -393,7 +394,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			urn.Type(), urn, !imp.Component, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "")
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.set(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &resource.Goal{})
 
 		if imp.Component {
 			if imp.Remote {

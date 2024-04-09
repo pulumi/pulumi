@@ -19,8 +19,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
@@ -214,7 +216,7 @@ func TestBuiltinProvider(t *testing.T) {
 			t.Run("err", func(t *testing.T) {
 				t.Parallel()
 				p := &builtinProvider{
-					resources: &resourceMap{},
+					resources: &gsync.Map[urn.URN, *resource.State]{},
 				}
 				_, _, err := p.Invoke(getResource, resource.PropertyMap{
 					"urn": resource.NewStringProperty("res-name"),

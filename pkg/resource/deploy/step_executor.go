@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -93,11 +94,16 @@ type incomingChain struct {
 // resolved, we (the engine) can assume that any chain given to us by the step generator is already
 // ready to execute.
 type stepExecutor struct {
-	deployment   *Deployment // The deployment currently being executed.
-	opts         Options     // The options for this current deployment.
-	preview      bool        // Whether or not we are doing a preview.
-	pendingNews  sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
-	ignoreErrors bool        // True if we want to ignore any errors and continue executing steps.
+	// The deployment currently being executed.
+	deployment *Deployment
+	// The options for this current deployment.
+	opts Options
+	// Whether or not we are doing a preview.
+	preview bool
+	// Resources that have been created but are pending a RegisterResourceOutputs.
+	pendingNews gsync.Map[resource.URN, Step]
+	// True if we want to ignore any errors and continue executing steps.
+	ignoreErrors bool
 
 	// Lock protecting the running of workers. This can be used to synchronize with step executor.
 	workerLock sync.RWMutex
@@ -212,11 +218,10 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	}
 
 	// Look up the final state in the pending registration list.
-	value, has := se.pendingNews.Load(urn)
+	reg, has := se.pendingNews.Load(urn)
 	if !has {
 		return fmt.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
 	}
-	reg := value.(Step)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
@@ -401,7 +406,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
+				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.Op(), step.Op())
 			}
 
 			se.pendingNews.Store(step.URN(), step)
@@ -460,8 +465,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
-		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
-			se.deployment.news.set(newState.URN, newState)
+		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
+			se.deployment.news.Store(newState.URN, newState)
 		}
 
 		// If we're generating plans update the resource's outputs in the generated plan.
