@@ -1728,6 +1728,7 @@ type boolPtr bool
 func BoolPtr(v bool) BoolPtrInput {
 	return (*boolPtr)(&v)
 }
+
 func BoolPtrFromPtr(v *bool) BoolPtrInput {
 	if v == nil {
 		return nil
@@ -2393,6 +2394,7 @@ type float64Ptr float64
 func Float64Ptr(v float64) Float64PtrInput {
 	return (*float64Ptr)(&v)
 }
+
 func Float64PtrFromPtr(v *float64) Float64PtrInput {
 	if v == nil {
 		return nil
@@ -3073,6 +3075,7 @@ type idPtr ID
 func IDPtr(v ID) IDPtrInput {
 	return (*idPtr)(&v)
 }
+
 func IDPtrFromPtr(v *ID) IDPtrInput {
 	if v == nil {
 		return nil
@@ -4326,6 +4329,7 @@ type intPtr int
 func IntPtr(v int) IntPtrInput {
 	return (*intPtr)(&v)
 }
+
 func IntPtrFromPtr(v *int) IntPtrInput {
 	if v == nil {
 		return nil
@@ -4991,6 +4995,7 @@ type stringPtr string
 func StringPtr(v string) StringPtrInput {
 	return (*stringPtr)(&v)
 }
+
 func StringPtrFromPtr(v *string) StringPtrInput {
 	if v == nil {
 		return nil
@@ -5671,6 +5676,7 @@ type urnPtr URN
 func URNPtr(v URN) URNPtrInput {
 	return (*urnPtr)(&v)
 }
+
 func URNPtrFromPtr(v *URN) URNPtrInput {
 	if v == nil {
 		return nil

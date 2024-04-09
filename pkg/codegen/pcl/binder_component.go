@@ -161,7 +161,6 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 				}
 
 				err = parser.ParseFile(file, fileName)
-
 				if err != nil {
 					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
 					return nil, diagnostics, err
