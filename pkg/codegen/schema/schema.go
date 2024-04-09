@@ -72,7 +72,7 @@ func (t primitiveType) String() string {
 	case jsonType:
 		fallthrough
 	case anyResourceType:
-		fallthrough
+		return "pulumi:pulumi:Resource"
 	case anyType:
 		return "pulumi:pulumi:Any"
 	default:

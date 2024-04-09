@@ -921,7 +921,6 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			return secret, nil
 		}
 
-		// TODO: pulumi.Resource is a non-empty interface type
 		if !anyType.Implements(typ) {
 			return false, fmt.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
 		}

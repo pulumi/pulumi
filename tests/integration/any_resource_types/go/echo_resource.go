@@ -2,7 +2,7 @@
 //go:build !all
 // +build !all
 
-// Exposes the FailsOnDelete resource from the testprovider.
+// Exposes the Echo resource from the testprovider.
 
 package main
 

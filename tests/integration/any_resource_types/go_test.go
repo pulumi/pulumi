@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDeletedWithGo tests the DeletedWith resource option.
+// TestAnyResource tests the `pulumi.json/#Resource` schema type.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestAnyResource(t *testing.T) {
