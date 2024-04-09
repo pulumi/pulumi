@@ -5590,24 +5590,29 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{})
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsSkipReason: true,
+		})
 		assert.NoError(t, err)
 
 		respIndependent1, err := monitor.RegisterResource(
-			"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{})
+			"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{SupportsSkipReason: true})
 		assert.NoError(t, err)
 		respIndependent2, err := monitor.RegisterResource(
 			"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-				Dependencies: []resource.URN{respIndependent1.URN},
+				SupportsSkipReason: true,
+				Dependencies:       []resource.URN{respIndependent1.URN},
 			})
 		assert.NoError(t, err)
 		_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{respIndependent2.URN},
+			SupportsSkipReason: true,
+			Dependencies:       []resource.URN{respIndependent2.URN},
 		})
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{failingResp.URN},
+			SupportsSkipReason: true,
+			Dependencies:       []resource.URN{failingResp.URN},
 		})
 		assert.NoError(t, err)
 
@@ -5666,21 +5671,26 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
-			Inputs: ins,
+			SupportsSkipReason: true,
+			Inputs:             ins,
 		})
 		assert.NoError(t, err)
 
 		if update {
 			respIndependent1, err := monitor.RegisterResource(
-				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{})
+				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{
+					SupportsSkipReason: true,
+				})
 			assert.NoError(t, err)
 			respIndependent2, err := monitor.RegisterResource(
 				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
-					Dependencies: []resource.URN{respIndependent1.URN},
+					SupportsSkipReason: true,
+					Dependencies:       []resource.URN{respIndependent1.URN},
 				})
 			assert.NoError(t, err)
 			_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
-				Dependencies: []resource.URN{respIndependent2.URN},
+				SupportsSkipReason: true,
+				Dependencies:       []resource.URN{respIndependent2.URN},
 			})
 			assert.NoError(t, err)
 		}

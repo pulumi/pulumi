@@ -505,7 +505,7 @@ export function registerResource(
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
             req.setTransformsList(callbacks);
-            req.setSupportserrorfield(true);
+            req.setSupportsskipreason(true);
 
             if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(

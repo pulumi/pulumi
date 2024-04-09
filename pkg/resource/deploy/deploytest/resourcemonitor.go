@@ -151,6 +151,8 @@ type ResourceOptions struct {
 	GrpcRequestHeaders        map[string]string
 
 	Transforms []*pulumirpc.Callback
+
+	SupportsSkipReason bool
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -279,6 +281,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
 		Transforms:                 opts.Transforms,
+		SupportsSkipReason:         opts.SupportsSkipReason,
 	}
 
 	ctx := context.Background()
