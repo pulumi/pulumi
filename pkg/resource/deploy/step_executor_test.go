@@ -16,10 +16,10 @@ package deploy
 
 import (
 	"errors"
-	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ func TestRegisterResourceErrorsOnMissingPendingNew(t *testing.T) {
 	t.Parallel()
 
 	se := &stepExecutor{
-		pendingNews: sync.Map{},
+		pendingNews: gsync.Map[resource.URN, Step]{},
 	}
 	urn := resource.URN("urn:pulumi:stack::project::my:example:Foo::foo")
 	err := se.ExecuteRegisterResourceOutputs(&mockRegisterResourceOutputsEvent{
@@ -105,7 +105,7 @@ func TestStepExecutor(t *testing.T) {
 				deployment: &Deployment{
 					plan: &Plan{},
 				},
-				pendingNews: sync.Map{},
+				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
 			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
@@ -123,7 +123,7 @@ func TestStepExecutor(t *testing.T) {
 				deployment: &Deployment{
 					newPlans: &resourcePlans{},
 				},
-				pendingNews: sync.Map{},
+				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
 			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
@@ -151,7 +151,7 @@ func TestStepExecutor(t *testing.T) {
 						Diag: &deploytest.NoopSink{},
 					},
 				},
-				pendingNews: sync.Map{},
+				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
 			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
@@ -180,7 +180,7 @@ func TestStepExecutor(t *testing.T) {
 						Diag: &deploytest.NoopSink{},
 					},
 				},
-				pendingNews: sync.Map{},
+				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
 			assert.ErrorIs(t, se.executeStep(0, &CreateStep{
@@ -208,9 +208,9 @@ func TestStepExecutor(t *testing.T) {
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
 					},
-					goals: &goalMap{},
+					goals: &gsync.Map[resource.URN, *resource.Goal]{},
 				},
-				pendingNews: sync.Map{},
+				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			step := &CreateStep{
 				new: &resource.State{
