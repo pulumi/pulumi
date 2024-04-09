@@ -245,7 +245,9 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
+	reg.New().Lock.Lock()
 	reg.New().Outputs = outs
+	reg.New().Lock.Unlock()
 
 	// If a plan is present check that these outputs match what we recorded before
 	if se.deployment.plan != nil {

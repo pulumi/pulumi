@@ -107,11 +107,11 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
 	// Make the old state here a direct copy of the new state
-	old := *new
+	old := new.Copy()
 	return &SameStep{
 		deployment:    deployment,
 		reg:           reg,
-		old:           &old,
+		old:           old,
 		new:           new,
 		skippedCreate: true,
 	}
