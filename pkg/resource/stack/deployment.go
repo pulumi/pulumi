@@ -306,6 +306,9 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 	contract.Requiref(res != nil, "res", "must not be nil")
 	contract.Requiref(res.URN != "", "res", "must have a URN")
 
+	res.Lock.Lock()
+	defer res.Lock.Unlock()
+
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
 	if inp := res.Inputs; inp != nil {

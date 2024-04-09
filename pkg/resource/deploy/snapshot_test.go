@@ -56,9 +56,9 @@ func TestSnapshotWithUpdatedResources(t *testing.T) {
 	assert.Same(t, s, s1)
 
 	s = s1.withUpdatedResources(func(r *resource.State) *resource.State {
-		out := *r
+		out := r.Copy()
 		out.URN += "!"
-		return &out
+		return out
 	})
 	assert.NotSame(t, s, s1)
 	assert.Equal(t, s1.Resources[0].URN+"!", s.Resources[0].URN)

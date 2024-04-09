@@ -325,7 +325,6 @@ func persistEngineEvents(
 	batchesToTransmit := make(chan engineEventBatch)
 
 	transmitBatchLoop := func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		for eventBatch := range batchesToTransmit {
@@ -338,6 +337,7 @@ func persistEngineEvents(
 	// Start N different go-routines which will all pull from the batchesToTransmit channel
 	// and persist those engine events until the channel is closed.
 	for i := 0; i < maxConcurrentRequests; i++ {
+		wg.Add(1)
 		go transmitBatchLoop()
 	}
 
