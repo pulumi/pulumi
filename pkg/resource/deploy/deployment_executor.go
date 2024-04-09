@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -39,6 +40,8 @@ type deploymentExecutor struct {
 
 	stepGen  *stepGenerator // step generator owned by this deployment
 	stepExec *stepExecutor  // step executor owned by this deployment
+
+	skipped mapset.Set[urn.URN] // The set of resources that have failed
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -125,6 +128,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
+	ex.skipped = mapset.NewSet[urn.URN]()
 	done := make(chan bool)
 	defer close(done)
 	go func() {
@@ -445,8 +449,28 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	if err != nil {
 		return err
 	}
+	// Exclude the steps that depend on errored steps if ContinueOnError is set.
+	var newSteps []Step
+	if ex.stepExec.opts.ContinueOnError {
+		for _, errored := range ex.stepExec.GetErroredSteps() {
+			ex.skipped.Add(errored.Res().URN)
+		}
+	outer:
+		for _, step := range steps {
+			for _, dep := range step.Res().Dependencies {
+				if ex.skipped.Contains(dep) {
+					step.Skip()
+					ex.skipped.Add(step.Res().URN)
+					continue outer
+				}
+			}
+			newSteps = append(newSteps, step)
+		}
+	} else {
+		newSteps = steps
+	}
 
-	ex.stepExec.ExecuteSerial(steps)
+	ex.stepExec.ExecuteSerial(newSteps)
 	return nil
 }
 

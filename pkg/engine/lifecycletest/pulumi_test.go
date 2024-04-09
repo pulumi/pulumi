@@ -5590,7 +5590,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{})
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
 		respIndependent1, err := monitor.RegisterResource(
@@ -5603,6 +5603,11 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 		assert.NoError(t, err)
 		_, err = monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respIndependent2.URN},
+		})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{failingResp.URN},
 		})
 		assert.NoError(t, err)
 
@@ -5624,8 +5629,8 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 	// Run an update to create the resource
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
-	assert.NotNil(t, snap)
-	assert.Equal(t, 5, len(snap.Resources)) // 3 resources + 2 providers
+	require.NotNil(t, snap)
+	require.Equal(t, 5, len(snap.Resources)) // 3 resources + 2 providers
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)

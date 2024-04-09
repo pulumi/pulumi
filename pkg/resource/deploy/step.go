@@ -56,6 +56,7 @@ type Step interface {
 	Logical() bool           // true if this step represents a logical operation in the program.
 	Deployment() *Deployment // the owning deployment.
 	Fail()                   // mark a step as failed.
+	Skip()                   // mark a step as skipped
 }
 
 // SameStep is a mutating step that does nothing.
@@ -148,6 +149,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		}
 	}
 
+	// TODO: should this step be marked as skipped if it comes from a targeted up?
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
@@ -158,6 +160,10 @@ func (s *SameStep) IsSkippedCreate() bool {
 
 func (s *SameStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
+}
+
+func (s *SameStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -308,6 +314,10 @@ func (s *CreateStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
 }
 
+func (s *CreateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
+}
+
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
@@ -454,6 +464,10 @@ func (s *DeleteStep) Fail() {
 	// Nothing to do here.
 }
 
+func (s *DeleteStep) Skip() {
+	// Nothing to do here.
+}
+
 type RemovePendingReplaceStep struct {
 	deployment *Deployment     // the current deployment.
 	old        *resource.State // the state of the existing resource.
@@ -485,6 +499,10 @@ func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCom
 }
 
 func (s *RemovePendingReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RemovePendingReplaceStep) Skip() {
 	// Nothing to do here.
 }
 
@@ -602,6 +620,10 @@ func (s *UpdateStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
 }
 
+func (s *UpdateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
+}
+
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
@@ -661,6 +683,10 @@ func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 }
 
 func (s *ReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *ReplaceStep) Skip() {
 	// Nothing to do here.
 }
 
@@ -825,6 +851,10 @@ func (s *ReadStep) Fail() {
 	s.event.Done(&ReadResult{State: s.new, Failed: true})
 }
 
+func (s *ReadStep) Skip() {
+	s.event.Done(&ReadResult{State: s.new, Skipped: true})
+}
+
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
@@ -954,6 +984,10 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 }
 
 func (s *RefreshStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RefreshStep) Skip() {
 	// Nothing to do here.
 }
 
@@ -1241,6 +1275,10 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 func (s *ImportStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
+}
+
+func (s *ImportStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
 }
 
 const (

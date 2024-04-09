@@ -38,6 +38,7 @@ goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse.PropertyDependencies
 goog.exportSymbol('proto.pulumirpc.ResourceCallRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ResourceCallRequest.ArgumentDependencies', null, global);
 goog.exportSymbol('proto.pulumirpc.ResourceInvokeRequest', null, global);
+goog.exportSymbol('proto.pulumirpc.SkipReason', null, global);
 goog.exportSymbol('proto.pulumirpc.SupportsFeatureRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.SupportsFeatureResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.TransformRequest', null, global);
@@ -1501,7 +1502,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
     sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
     transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance)
+    pulumi_callback_pb.Callback.toObject, includeInstance),
+    supportsskipreason: jspb.Message.getBooleanFieldWithDefault(msg, 32, false)
   };
 
   if (includeInstance) {
@@ -1672,6 +1674,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_callback_pb.Callback;
       reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
       msg.addTransforms(value);
+      break;
+    case 32:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSupportsskipreason(value);
       break;
     default:
       reader.skipField();
@@ -1913,6 +1919,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       31,
       f,
       pulumi_callback_pb.Callback.serializeBinaryToWriter
+    );
+  }
+  f = message.getSupportsskipreason();
+  if (f) {
+    writer.writeBool(
+      32,
+      f
     );
   }
 };
@@ -3026,6 +3039,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearTransformsList = function
 };
 
 
+/**
+ * optional bool supportsSkipReason = 32;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getSupportsskipreason = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 32, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setSupportsskipreason = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 32, value);
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -3070,7 +3101,8 @@ proto.pulumirpc.RegisterResourceResponse.toObject = function(includeInstance, ms
     object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     stable: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
     stablesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject) : []
+    propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject) : [],
+    skipreason: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -3133,6 +3165,10 @@ proto.pulumirpc.RegisterResourceResponse.deserializeBinaryFromReader = function(
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.deserializeBinaryFromReader, "", new proto.pulumirpc.RegisterResourceResponse.PropertyDependencies());
          });
+      break;
+    case 7:
+      var value = /** @type {!proto.pulumirpc.SkipReason} */ (reader.readEnum());
+      msg.setSkipreason(value);
       break;
     default:
       reader.skipField();
@@ -3202,6 +3238,13 @@ proto.pulumirpc.RegisterResourceResponse.serializeBinaryToWriter = function(mess
   f = message.getPropertydependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.serializeBinaryToWriter);
+  }
+  f = message.getSkipreason();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      7,
+      f
+    );
   }
 };
 
@@ -3510,6 +3553,24 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getPropertydependenciesMap = 
 proto.pulumirpc.RegisterResourceResponse.prototype.clearPropertydependenciesMap = function() {
   this.getPropertydependenciesMap().clear();
   return this;};
+
+
+/**
+ * optional SkipReason skipReason = 7;
+ * @return {!proto.pulumirpc.SkipReason}
+ */
+proto.pulumirpc.RegisterResourceResponse.prototype.getSkipreason = function() {
+  return /** @type {!proto.pulumirpc.SkipReason} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/**
+ * @param {!proto.pulumirpc.SkipReason} value
+ * @return {!proto.pulumirpc.RegisterResourceResponse} returns this
+ */
+proto.pulumirpc.RegisterResourceResponse.prototype.setSkipreason = function(value) {
+  return jspb.Message.setProto3EnumField(this, 7, value);
+};
 
 
 
@@ -5846,5 +5907,14 @@ proto.pulumirpc.TransformResponse.prototype.hasOptions = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.pulumirpc.SkipReason = {
+  NONE: 0,
+  FAIL: 1,
+  SKIP: 2
+};
 
 goog.object.extend(exports, proto.pulumirpc);

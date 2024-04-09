@@ -88,8 +88,9 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State  *resource.State // the resource state.
-	Failed bool            // true if the resource registration failed.
+	State   *resource.State // the resource state.
+	Failed  bool            // true if the resource registration failed.
+	Skipped bool            // true if the resource registration was skippeg.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -130,6 +131,7 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State  *resource.State
-	Failed bool
+	State   *resource.State
+	Failed  bool
+	Skipped bool
 }

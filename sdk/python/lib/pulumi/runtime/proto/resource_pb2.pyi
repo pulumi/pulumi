@@ -19,19 +19,38 @@ import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
+import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
 import pulumi.alias_pb2
 import pulumi.callback_pb2
 import pulumi.source_pb2
 import sys
+import typing
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 10):
     import typing as typing_extensions
 else:
     import typing_extensions
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
+
+class _SkipReason:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _SkipReasonEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_SkipReason.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    NONE: _SkipReason.ValueType  # 0
+    FAIL: _SkipReason.ValueType  # 1
+    SKIP: _SkipReason.ValueType  # 2
+
+class SkipReason(_SkipReason, metaclass=_SkipReasonEnumTypeWrapper): ...
+
+NONE: SkipReason.ValueType  # 0
+FAIL: SkipReason.ValueType  # 1
+SKIP: SkipReason.ValueType  # 2
+global___SkipReason = SkipReason
 
 @typing_extensions.final
 class SupportsFeatureRequest(google.protobuf.message.Message):
@@ -320,6 +339,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     ALIASSPECS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
     TRANSFORMS_FIELD_NUMBER: builtins.int
+    SUPPORTSSKIPREASON_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -402,6 +422,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     @property
     def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]:
         """a list of transforms to apply to the resource before registering it."""
+    supportsSkipReason: builtins.bool
+    """true if the request is from an SDK that supports the skipReason field in the response."""
     def __init__(
         self,
         *,
@@ -436,9 +458,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+        supportsSkipReason: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsSkipReason", b"supportsSkipReason", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -491,6 +514,7 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     STABLE_FIELD_NUMBER: builtins.int
     STABLES_FIELD_NUMBER: builtins.int
     PROPERTYDEPENDENCIES_FIELD_NUMBER: builtins.int
+    SKIPREASON_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN assigned by the engine."""
     id: builtins.str
@@ -506,6 +530,8 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     @property
     def propertyDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___RegisterResourceResponse.PropertyDependencies]:
         """a map from property keys to the dependencies of the property."""
+    skipReason: global___SkipReason.ValueType
+    """the reason why the resource creation was skipped"""
     def __init__(
         self,
         *,
@@ -515,9 +541,10 @@ class RegisterResourceResponse(google.protobuf.message.Message):
         stable: builtins.bool = ...,
         stables: collections.abc.Iterable[builtins.str] | None = ...,
         propertyDependencies: collections.abc.Mapping[builtins.str, global___RegisterResourceResponse.PropertyDependencies] | None = ...,
+        skipReason: global___SkipReason.ValueType = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["object", b"object"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "object", b"object", "propertyDependencies", b"propertyDependencies", "stable", b"stable", "stables", b"stables", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "object", b"object", "propertyDependencies", b"propertyDependencies", "skipReason", b"skipReason", "stable", b"stable", "stables", b"stables", "urn", b"urn"]) -> None: ...
 
 global___RegisterResourceResponse = RegisterResourceResponse
 

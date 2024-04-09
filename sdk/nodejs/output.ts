@@ -378,11 +378,11 @@ async function applyHelperAsync<T, U>(
     func: (t: T) => Input<U>,
     runWithUnknowns: boolean,
 ) {
-    // Only perform the apply if the engine was able to give us an actual value
+    // During previews only perform the apply if the engine was able to give us an actual value
     // for this Output.
-    const doApply = isKnown || runWithUnknowns;
+    const apply = isKnown || runWithUnknowns;
 
-    if (!doApply) {
+    if (!apply) {
         // We didn't actually run the function, our new Output is definitely **not** known.
         return {
             allResources,

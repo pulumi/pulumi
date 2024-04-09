@@ -1249,7 +1249,9 @@ func (ctx *Context) registerResource(
 			for key, propertyDependencies := range resp.GetPropertyDependencies() {
 				var resources []Resource
 				for _, urn := range propertyDependencies.GetUrns() {
-					resources = append(resources, &ResourceState{urn: URNInput(URN(urn)).ToURNOutput()})
+					resources = append(resources, &ResourceState{
+						urn: URNInput(URN(urn)).ToURNOutput(),
+					})
 				}
 				deps[key] = resources
 			}
