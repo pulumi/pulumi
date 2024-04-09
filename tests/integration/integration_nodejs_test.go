@@ -1996,3 +1996,26 @@ func TestEnvironmentsMergeNodeJS(t *testing.T) {
 		},
 	})
 }
+
+// Tests errors that would occur when generating code that shadows reserved
+// identifiers (e.g. "const exports = ...").
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodeJSReservedIdentifierShadowing(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("dynamic", "nodejs-reserved-identifier-shadowing"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: false,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			noError := true
+			for _, event := range stack.Events {
+				if event.ResOpFailedEvent != nil {
+					noError = false
+					assert.Equal(t, apitype.OpType("create"), event.ResOpFailedEvent.Metadata.Op)
+				}
+			}
+
+			assert.True(t, noError, "An error occurred when testing shadowing of reserved identifiers")
+		},
+	})
+}
