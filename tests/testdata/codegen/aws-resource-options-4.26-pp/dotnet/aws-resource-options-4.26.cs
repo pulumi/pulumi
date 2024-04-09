@@ -17,7 +17,7 @@ return await Deployment.RunAsync(() =>
         Provider = provider,
         DependsOn =
         {
-            provider, 
+            provider,
         },
         Protect = true,
         IgnoreChanges =

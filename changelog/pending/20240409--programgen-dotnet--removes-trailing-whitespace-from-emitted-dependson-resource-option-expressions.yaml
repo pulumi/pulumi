@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet
+  description: Removes trailing whitespace from emitted DependsOn resource option expressions

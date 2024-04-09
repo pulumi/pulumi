@@ -38,8 +38,8 @@ return await Deployment.RunAsync(() =>
     {
         DependsOn =
         {
-            publicAccessBlock, 
-            ownershipControls, 
+            publicAccessBlock,
+            ownershipControls,
         },
     });
 
