@@ -171,7 +171,7 @@ return await Deployment.RunAsync(() =>
     {
         DependsOn =
         {
-            webListener, 
+            webListener,
         },
     });
 

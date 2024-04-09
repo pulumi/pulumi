@@ -1144,7 +1144,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 				g.Fgenf(&result, "\n%s{", g.Indent)
 				g.Indented(func() {
 					for _, resource := range resourcesList.Expressions {
-						g.Fgenf(&result, "\n%s%v, ", g.Indent, resource)
+						g.Fgenf(&result, "\n%s%v,", g.Indent, resource)
 					}
 				})
 				g.Fgenf(&result, "\n%s},", g.Indent)
