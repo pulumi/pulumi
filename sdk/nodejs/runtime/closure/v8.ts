@@ -307,3 +307,27 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
 
     return val;
 }
+
+export async function getBoundFunction(
+    func: Function,
+): Promise<{ targetFunctionText: string; boundThisValue: any; boundArgsValues: any[] }> {
+    const functionId = await getRuntimeIdForFunctionAsync(func);
+    const { internalProperties } = await runtimeGetPropertiesAsync(functionId, /*ownProperties:*/ false);
+
+    const desc = internalProperties.find((p) => p.name === "[[TargetFunction]]");
+    const targetFunctionText = desc?.value?.description;
+    if (!targetFunctionText) {
+        throw new Error("function is not a bound function");
+    }
+
+    const boundThisValue = internalProperties.find((p) => p.name === "[[BoundThis]]")?.value?.value;
+
+    const boundArgsObjectId = internalProperties.find((p) => p.name === "[[BoundArgs]]")?.value?.objectId;
+    let boundArgsValues: any[] = [];
+    if (boundArgsObjectId) {
+        const { properties } = await runtimeGetPropertiesAsync(boundArgsObjectId, /*ownProperties:*/ false);
+        boundArgsValues = properties.filter((p) => p.enumerable).map((p) => p.value?.value);
+    }
+
+    return { targetFunctionText, boundThisValue, boundArgsValues };
+}

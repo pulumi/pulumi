@@ -133,16 +133,20 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
 
     return ["", result];
 }
+/** @internal */
+export function isNativeFunction(funcString: string): boolean {
+    // Split this constant out so that if this function *itself* is closure serialized,
+    // it will not be thought to be native code itself.
+    const nativeCodeString = "[native " + "code]";
+    return funcString.indexOf(nativeCodeString) !== -1;
+}
 
 function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     if (funcString.startsWith("[Function:")) {
         return [`the function form was not understood.`, <any>undefined];
     }
 
-    // Split this constant out so that if this function *itself* is closure serialized,
-    // it will not be thought to be native code itself.
-    const nativeCodeString = "[native " + "code]";
-    if (funcString.indexOf(nativeCodeString) !== -1) {
+    if (isNativeFunction(funcString)) {
         return [`it was a native code function.`, <any>undefined];
     }
 
