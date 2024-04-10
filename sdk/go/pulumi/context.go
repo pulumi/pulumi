@@ -469,8 +469,9 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
 			rpcRes.Options.Protect = opts.Protect
+
 			if opts.Provider != nil {
-				rpcRes.Options.Provider, err = marshalToUrn(opts.Provider)
+				rpcRes.Options.Provider, err = ctx.resolveProviderReference(opts.Provider)
 				if err != nil {
 					return nil, fmt.Errorf("marshaling provider: %w", err)
 				}
@@ -478,12 +479,12 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			if opts.Providers != nil {
 				rpcRes.Options.Providers = make(map[string]string)
 				for _, p := range opts.Providers {
-					urn, err := marshalToUrn(p)
+					ref, err := ctx.resolveProviderReference(p)
 					if err != nil {
 						return nil, fmt.Errorf("marshaling providers: %w", err)
 					}
 
-					rpcRes.Options.Providers[p.getPackage()] = urn
+					rpcRes.Options.Providers[p.getPackage()] = ref
 				}
 			}
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
