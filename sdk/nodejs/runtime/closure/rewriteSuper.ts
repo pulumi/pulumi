@@ -12,25 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The typescript import is used for type-checking only. Do not reference it in the emitted code.
+import * as typescript from "typescript";
 import * as semver from "semver";
-import * as ts from "typescript";
 import * as utils from "./utils";
 
 type Factory = {
-    createIdentifier: typeof ts.createIdentifier;
-    createThis: typeof ts.createThis;
-    createPropertyAccessExpression: typeof ts.createPropertyAccess;
-    updatePropertyAccessExpression: typeof ts.updatePropertyAccess;
-    updateFunctionDeclaration: typeof ts.updateFunctionDeclaration;
-    updateElementAccessExpression: typeof ts.updateElementAccess;
-    updateCallExpression: typeof ts.updateCall;
+    createIdentifier: typeof typescript.createIdentifier;
+    createThis: typeof typescript.createThis;
+    createPropertyAccessExpression: typeof typescript.createPropertyAccess;
+    updatePropertyAccessExpression: typeof typescript.updatePropertyAccess;
+    updateFunctionDeclaration: typeof typescript.updateFunctionDeclaration;
+    updateElementAccessExpression: typeof typescript.updateElementAccess;
+    updateCallExpression: typeof typescript.updateCall;
 };
 
 // TypeScript 4.0 moved the factory functions to the transformationContext
 // with deprecation. TypeScript 5.0 removed the deprecated functions.
 // https://github.com/microsoft/TypeScript/wiki/API-Breaking-Changes#typescript-40
 // Use a shim factory that calls the correct function based on the TypeScript version.
-function getFactory(transformationContext: ts.TransformationContext): Factory {
+function getFactory(transformationContext: typescript.TransformationContext): Factory {
+    const ts: typeof typescript = require("../../typescript-shim");
     const tsVersion = semver.parse(ts.version)!;
     const tsLessThan4 = semver.satisfies(tsVersion, "<4.0.0");
     const tsLessThan48 = semver.satisfies(tsVersion, "<4.8.0");
@@ -38,16 +40,16 @@ function getFactory(transformationContext: ts.TransformationContext): Factory {
 
     // In 4.8 the signature of updateFunctionDeclaration changed to remove the decorators parameter.
     function updateFunctionDeclaration(
-        node: ts.FunctionDeclaration,
-        decorators: readonly ts.Decorator[] | undefined,
-        modifiers: readonly ts.Modifier[] | undefined,
-        asteriskToken: ts.AsteriskToken | undefined,
-        name: ts.Identifier | undefined,
-        typeParameters: readonly ts.TypeParameterDeclaration[] | undefined,
-        parameters: readonly ts.ParameterDeclaration[],
-        type: ts.TypeNode | undefined,
-        body: ts.Block | undefined,
-    ): ts.FunctionDeclaration {
+        node: typescript.FunctionDeclaration,
+        decorators: readonly typescript.Decorator[] | undefined,
+        modifiers: readonly typescript.Modifier[] | undefined,
+        asteriskToken: typescript.AsteriskToken | undefined,
+        name: typescript.Identifier | undefined,
+        typeParameters: readonly typescript.TypeParameterDeclaration[] | undefined,
+        parameters: readonly typescript.ParameterDeclaration[],
+        type: typescript.TypeNode | undefined,
+        body: typescript.Block | undefined,
+    ): typescript.FunctionDeclaration {
         if (tsLessThan4) {
             return ts.updateFunctionDeclaration(
                 node,
@@ -105,6 +107,7 @@ function getFactory(transformationContext: ts.TransformationContext): Factory {
 
 /** @internal */
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
+    const ts: typeof typescript = require("../../typescript-shim");
     const sourceFile = ts.createSourceFile("", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
     // Transform any usages of "super(...)" into "__super.call(this, ...)", any
@@ -116,12 +119,12 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
 
     return output;
 
-    function rewriteSuperCallsWorker(transformationContext: ts.TransformationContext) {
+    function rewriteSuperCallsWorker(transformationContext: typescript.TransformationContext) {
         const factory = getFactory(transformationContext);
-        const newNodes = new Set<ts.Node>();
+        const newNodes = new Set<typescript.Node>();
         let firstFunctionDeclaration = true;
 
-        function visitor(node: ts.Node): ts.Node {
+        function visitor(node: typescript.Node): typescript.Node {
             // Convert the top level function so it doesn't have a name. We want to convert the user
             // function to an anonymous function so that interior references to the same function
             // bind properly.  i.e. if we start with "function f() { f(); }" then this gets converted to
@@ -198,6 +201,6 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
             return rewritten;
         }
 
-        return (node: ts.Node) => ts.visitNode(node, visitor);
+        return (node: typescript.Node) => ts.visitNode(node, visitor);
     }
 }

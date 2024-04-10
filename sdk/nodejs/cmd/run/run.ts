@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The tsnode import is used for type-checking only. Do not reference it in the emitted code.
+import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as fspromises from "fs/promises";
 import * as ini from "ini";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as semver from "semver";
-import * as tsnode from "ts-node";
 import * as url from "url";
 import * as util from "util";
 import { ResourceError, RunError } from "../../errors";
@@ -256,8 +257,10 @@ export async function run(
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require("ts-node");
+        const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
+        const tsn: typeof tsnode = require(tsnodeRequire);
         tsn.register({
+            compiler: typescriptRequire,
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
             // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
@@ -308,7 +311,7 @@ export async function run(
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        } else if (err.name === tsnode.TSError.name || err.name === SyntaxError.name) {
+        } else if (err.name === "TSError" || err.name === SyntaxError.name) {
             // Hide stack frames as TSError/SyntaxError have messages containing
             // where the error is located
             const errOut = err.stack?.toString() || "";

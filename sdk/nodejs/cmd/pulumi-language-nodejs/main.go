@@ -1302,13 +1302,20 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
 
-		// "tsc" doesn't copy in the "proto" directory of .js files.
+		// "tsc" doesn't copy in the "proto" and "vendor" directories.
 		err = fsutil.CopyFile(
 			filepath.Join(req.PackageDirectory, "bin", "proto"),
 			filepath.Join(req.PackageDirectory, "proto"),
 			nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy proto: %w", err)
+		}
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "vendor"),
+			filepath.Join(req.PackageDirectory, "vendor"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy vendor: %w", err)
 		}
 
 	} else {

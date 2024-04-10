@@ -18,20 +18,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as process from "process";
 import * as tmp from "tmp";
-
-async function pack(dir: string, out: string) {
-    const { stdout } = await execa("npm", ["pack"], { cwd: dir });
-    const tarball = stdout.trim();
-    const tarballPath = path.join(dir, tarball);
-    try {
-        await fs.rename(tarballPath, out);
-    } catch (error) {
-        // Rename can fail if we move across devices on Windows, fallback to
-        // copying and removing.
-        await fs.copyFile(tarballPath, out);
-        await fs.unlink(tarballPath);
-    }
-}
+import { pack } from "./pack";
 
 // Write a package.json that installs the local pulumi package and ensures we
 // have the right typescript version.
