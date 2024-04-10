@@ -180,7 +180,7 @@ class Output(Generic[T_co]):
                 # Only perform the apply if the engine was able to give us an actual value for this
                 # Output or if the caller is able to tolerate unknown values.
                 do_apply = is_known or run_with_unknowns
-                if not do_apply_during_preview:
+                if not do_apply:
                     # We didn't actually run the function, our new Output is definitely
                     # **not** known.
                     result_resources.set_result(resources)
@@ -191,11 +191,7 @@ class Output(Generic[T_co]):
                 # If we are running with unknown values and the value is explicitly unknown but does not actually
                 # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
                 # that expect to see unknowns during preview in outputs that are not known will always do so.
-                if (
-                        not is_known
-                        and run_with_unknowns
-                        and not contains_unknowns(value)
-                ):
+                if not is_known and run_with_unknowns and not contains_unknowns(value):
                     value = cast(T_co, UNKNOWN)
 
                 transformed: Input[U] = func(value)
