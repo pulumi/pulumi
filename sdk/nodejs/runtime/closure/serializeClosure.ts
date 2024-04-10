@@ -146,7 +146,7 @@ function serializeJavaScriptText(
 
     let environmentText = "";
     let functionText = "";
-    const emittedRequires = new Set<string>();
+    const importedIdentifiers = new Map<string, ImportedIdentifier>();
 
     const outerFunctionName = emitFunctionAndGetName(outerClosure.func);
 
@@ -198,11 +198,63 @@ function serializeJavaScriptText(
         const parameters = [...Array(functionInfo.paramCount)].map((_, index) => `__${index}`).join(", ");
 
         for (const [keyEntry, { entry: valEntry }] of functionInfo.capturedValues) {
-            if (valEntry.module !== undefined) {
-                if (!emittedRequires.has(keyEntry.json)) {
-                    emittedRequires.add(keyEntry.json);
-                    functionText += `const ${keyEntry.json} = require("${valEntry.module}");\n`;
-                }
+            if (valEntry.module === undefined) {
+                continue;
+            }
+
+            let imported = importedIdentifiers.get(keyEntry.json);
+
+            // If we haven't imported this identifier yet, we'll do so now. If
+            // the identifier isn't reserved, importIdentifier will instruct us
+            // to import it "as-is". We can thus remove it from the list of
+            // captured values and have it available inside the scope of the
+            // function (and all subsequent functions). If the identifier is
+            // reserved, importIdentifier will generate a suitable alias for it.
+            // We'll declare this now, but we'll not remove the identifier from
+            // the list of captures. This means that we can safely alias it as
+            // the reserved identifier inside relevant function scopes.
+            //
+            // As an example, consider the identifiers "foo" (not reserved) and
+            // "exports" (reserved).
+            //
+            // For "foo", we'll generate code like:
+            //
+            // const foo = require("some/module/foo");
+            //
+            // function x() {
+            //   return (function () {
+            //     with({ ... }) {
+            //       // foo used directly
+            //     }
+            //   }).apply(...)
+            // }
+            //
+            // For "exports", importIdentifier will give us an identifier like
+            // "__pulumi_closure_import_exports" and we'll generate code like:
+            //
+            // const __pulumi_closure_import_exports = require("some/module/foo");
+            //
+            // function x() {
+            //   return (function () {
+            //     with({ exports: __pulumi_closure_import_exports, ... }) {
+            //       // exports now available by virtue of the with()
+            //     }
+            //   }).apply(...)
+            // }
+            //
+            // This hack saves us having to rewrite the function's code while
+            // helping us avoid importing modules over and over again (which
+            // might have unintended side effects).
+            if (!imported) {
+                imported = importIdentifier(keyEntry.json);
+                importedIdentifiers.set(keyEntry.json, imported);
+
+                functionText += `const ${imported.as} = require("${valEntry.module}");\n`;
+            }
+
+            if (imported.reserved) {
+                capturedValues[imported.identifier] = imported.as;
+            } else {
                 delete capturedValues[keyEntry.json];
             }
         }
@@ -519,3 +571,54 @@ function envObjToString(envObj: Record<string, string>): string {
         .map((k) => `${k}: ${envObj[k]}`)
         .join(", ")} }`;
 }
+
+/**
+ * An identifier to be imported into a serialised function.
+ */
+interface ImportedIdentifier {
+    /**
+     * True if and only if the identifier to be imported would shadow a reserved
+     * identifier (e.g. "exports").
+     */
+    reserved: boolean;
+
+    /**
+     * The identifier required by serialised function code.
+     */
+    identifier: string;
+
+    /**
+     * An alias for the required identifier that doesn't clash with reserved
+     * identifiers. May be the required identifier itself if it doesn't clash.
+     */
+    as: string;
+}
+
+/**
+ * Computes an appropriate {@link ImportedIdentifier} for a given identifier.
+ */
+function importIdentifier(identifier: string): ImportedIdentifier {
+    if (RESERVED_IDENTIFIERS.has(identifier)) {
+        const as = `__pulumi_closure_import_${identifier}`;
+
+        return {
+            reserved: true,
+            identifier,
+            as,
+        };
+    }
+
+    return {
+        reserved: false,
+        identifier,
+        as: identifier,
+    };
+}
+
+/**
+ * The set of known reserved identifiers that we might encounter when
+ * serialising function code.
+ *
+ * @internal
+ */
+const RESERVED_IDENTIFIERS = new Set(["exports"]);
