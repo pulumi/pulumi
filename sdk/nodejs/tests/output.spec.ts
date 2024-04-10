@@ -485,34 +485,31 @@ describe("output", () => {
             assert.strictEqual(await r.promise(), "inner");
         });
 
-        it("produces known on unknown", async () => {
+        it("produces unknown on unknown", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
             const r = out.apply((v) => v + 1);
 
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.promise(), 1);
+            assert.strictEqual(await r.isKnown, false);
         });
 
-        it("produces known on unknown awaitable", async () => {
+        it("produces unknown on unknown awaitable", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
             const r = out.apply((v) => Promise.resolve("inner"));
 
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.promise(), "inner");
+            assert.strictEqual(await r.isKnown, false);
         });
 
-        it("produces known on unknown known output", async () => {
+        it("produces unknown on unknown known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
             const r = out.apply((v) => createOutput("inner", true));
 
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.promise(), "inner");
+            assert.strictEqual(await r.isKnown, false);
         });
 
         it("produces unknown on unknown unknown output", async () => {
@@ -522,7 +519,6 @@ describe("output", () => {
             const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("preserves secret on known", async () => {
@@ -575,9 +571,8 @@ describe("output", () => {
             const out = createOutput(0, false, true);
             const r = out.apply((v) => v + 1);
 
-            assert.strictEqual(await r.isKnown, true);
+            assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), 1);
         });
 
         it("preserves secret on unknown awaitable", async () => {
@@ -586,9 +581,8 @@ describe("output", () => {
             const out = createOutput(0, false, true);
             const r = out.apply((v) => Promise.resolve("inner"));
 
-            assert.strictEqual(await r.isKnown, true);
+            assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("preserves secret on unknown known output", async () => {
@@ -597,9 +591,8 @@ describe("output", () => {
             const out = createOutput(0, false, true);
             const r = out.apply((v) => createOutput("inner", true));
 
-            assert.strictEqual(await r.isKnown, true);
+            assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("preserves secret on unknown known output", async () => {
@@ -610,7 +603,6 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("propagates secret on known known output", async () => {
@@ -621,7 +613,6 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("propagates secret on known unknown output", async () => {
@@ -632,29 +623,6 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
-        });
-
-        it("propagates secret on unknown known output", async () => {
-            runtime._setIsDryRun(false);
-
-            const out = createOutput(0, false);
-            const r = out.apply((v) => createOutput("inner", true, true));
-
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
-        });
-
-        it("propagates secret on unknown uknown output", async () => {
-            runtime._setIsDryRun(false);
-
-            const out = createOutput(0, false);
-            const r = out.apply((v) => createOutput("inner", false, true));
-
-            assert.strictEqual(await r.isKnown, false);
-            assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
     });
 

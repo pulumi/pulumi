@@ -782,17 +782,16 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(await r.future(), "inner")
 
     @pulumi_test
-    async def test_apply_produces_known_on_unknown(self):
+    async def test_apply_produces_unknown_on_unknown(self):
         settings.SETTINGS.dry_run = False
 
         out = self.create_output(0, is_known=False)
         r = out.apply(lambda v: v + 1)
 
-        self.assertTrue(await r.is_known())
-        self.assertEqual(await r.future(), 1)
+        self.assertFalse(await r.is_known())
 
     @pulumi_test
-    async def test_apply_produces_known_on_unknown_awaitable(self):
+    async def test_apply_produces_unknown_on_unknown_awaitable(self):
         settings.SETTINGS.dry_run = False
 
         out = self.create_output(0, is_known=False)
@@ -803,8 +802,7 @@ class NextSerializationTests(unittest.TestCase):
             return fut
         r = out.apply(apply)
 
-        self.assertTrue(await r.is_known())
-        self.assertEqual(await r.future(), "inner")
+        self.assertFalse(await r.is_known())
 
     @pulumi_test
     async def test_apply_produces_known_on_unknown_known_output(self):
@@ -813,8 +811,7 @@ class NextSerializationTests(unittest.TestCase):
         out = self.create_output(0, is_known=False)
         r = out.apply(lambda v: self.create_output("inner", is_known=True))
 
-        self.assertTrue(await r.is_known())
-        self.assertEqual(await r.future(), "inner")
+        self.assertFalse(await r.is_known())
 
     @pulumi_test
     async def test_apply_produces_unknown_on_unknown_unknown_output(self):
@@ -824,7 +821,6 @@ class NextSerializationTests(unittest.TestCase):
         r = out.apply(lambda v: self.create_output("inner", is_known=False))
 
         self.assertFalse(await r.is_known())
-        self.assertEqual(await r.future(), "inner")
 
     @pulumi_test
     async def test_apply_preserves_secret_on_known(self):
@@ -882,9 +878,8 @@ class NextSerializationTests(unittest.TestCase):
         out = self.create_output(0, is_known=False, is_secret=True)
         r = out.apply(lambda v: v + 1)
 
-        self.assertTrue(await r.is_known())
+        self.assertFalse(await r.is_known())
         self.assertTrue(await r.is_secret())
-        self.assertEqual(await r.future(), 1)
 
     @pulumi_test
     async def test_apply_preserves_secret_on_unknown_awaitable(self):
@@ -898,9 +893,8 @@ class NextSerializationTests(unittest.TestCase):
             return fut
         r = out.apply(apply)
 
-        self.assertTrue(await r.is_known())
+        self.assertFalse(await r.is_known())
         self.assertTrue(await r.is_secret())
-        self.assertEqual(await r.future(), "inner")
 
     @pulumi_test
     async def test_apply_preserves_secret_on_unknown_known_output(self):
@@ -909,9 +903,8 @@ class NextSerializationTests(unittest.TestCase):
         out = self.create_output(0, is_known=False, is_secret=True)
         r = out.apply(lambda v: self.create_output("inner", is_known=True))
 
-        self.assertTrue(await r.is_known())
+        self.assertFalse(await r.is_known())
         self.assertTrue(await r.is_secret())
-        self.assertEqual(await r.future(), "inner")
 
     @pulumi_test
     async def test_apply_preserves_secret_on_unknown_unknown_output(self):
@@ -922,7 +915,6 @@ class NextSerializationTests(unittest.TestCase):
 
         self.assertFalse(await r.is_known())
         self.assertTrue(await r.is_secret())
-        self.assertEqual(await r.future(), "inner")
 
     @pulumi_test
     async def test_apply_propagates_secret_on_known_known_output(self):
@@ -940,28 +932,6 @@ class NextSerializationTests(unittest.TestCase):
         settings.SETTINGS.dry_run = False
 
         out = self.create_output(0, is_known=True)
-        r = out.apply(lambda v: self.create_output("inner", is_known=False, is_secret=True))
-
-        self.assertFalse(await r.is_known())
-        self.assertTrue(await r.is_secret())
-        self.assertEqual(await r.future(), "inner")
-
-    @pulumi_test
-    async def test_apply_propagates_secret_on_unknown_known_output(self):
-        settings.SETTINGS.dry_run = False
-
-        out = self.create_output(0, is_known=False)
-        r = out.apply(lambda v: self.create_output("inner", is_known=True, is_secret=True))
-
-        self.assertTrue(await r.is_known())
-        self.assertTrue(await r.is_secret())
-        self.assertEqual(await r.future(), "inner")
-
-    @pulumi_test
-    async def test_apply_propagates_secret_on_unknown_unknown_output(self):
-        settings.SETTINGS.dry_run = False
-
-        out = self.create_output(0, is_known=False)
         r = out.apply(lambda v: self.create_output("inner", is_known=False, is_secret=True))
 
         self.assertFalse(await r.is_known())

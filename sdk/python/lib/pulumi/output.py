@@ -154,8 +154,8 @@ class Output(Generic[T_co]):
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
 
-        This function will be called during execution of a `pulumi up` request.  It may not run
-        during `pulumi preview` (as the values of resources are of course may not be known then).
+        This function will be called during execution of a `pulumi up` or `pulumi preview` request.
+        It may not run when the values of the resource is unknown.
 
         :param Callable[[T_co],Input[U]] func: A function that will, given this Output's value, transform the value to
                an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
@@ -177,28 +177,22 @@ class Output(Generic[T_co]):
                 is_secret = await self._is_secret
                 value = await self._future
 
-                if runtime.is_dry_run():
-                    # During previews only perform the apply if the engine was able to give us an actual value for this
-                    # Output or if the caller is able to tolerate unknown values.
-                    apply_during_preview = is_known or run_with_unknowns
+                # Only perform the apply if the engine was able to give us an actual value for this
+                # Output or if the caller is able to tolerate unknown values.
+                do_apply = is_known or run_with_unknowns
+                if not do_apply:
+                    # We didn't actually run the function, our new Output is definitely
+                    # **not** known.
+                    result_resources.set_result(resources)
+                    result_is_known.set_result(False)
+                    result_is_secret.set_result(is_secret)
+                    return cast(U, None)
 
-                    if not apply_during_preview:
-                        # We didn't actually run the function, our new Output is definitely
-                        # **not** known.
-                        result_resources.set_result(resources)
-                        result_is_known.set_result(False)
-                        result_is_secret.set_result(is_secret)
-                        return cast(U, None)
-
-                    # If we are running with unknown values and the value is explicitly unknown but does not actually
-                    # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
-                    # that expect to see unknowns during preview in outputs that are not known will always do so.
-                    if (
-                        not is_known
-                        and run_with_unknowns
-                        and not contains_unknowns(value)
-                    ):
-                        value = cast(T_co, UNKNOWN)
+                # If we are running with unknown values and the value is explicitly unknown but does not actually
+                # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
+                # that expect to see unknowns during preview in outputs that are not known will always do so.
+                if not is_known and run_with_unknowns and not contains_unknowns(value):
+                    value = cast(T_co, UNKNOWN)
 
                 transformed: Input[U] = func(value)
                 # Transformed is an Input, meaning there are three cases:
