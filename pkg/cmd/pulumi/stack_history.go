@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -162,7 +163,9 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 			info.EndTime = makeStringRef(time.Unix(update.EndTime, 0).UTC().Format(timeFormat))
 			resourceChanges := make(map[string]int)
 			for k, v := range update.ResourceChanges {
-				resourceChanges[string(k)] = v
+				if k != deploy.OpOutputChange {
+					resourceChanges[string(k)] = v
+				}
 			}
 			info.ResourceChanges = &resourceChanges
 		}

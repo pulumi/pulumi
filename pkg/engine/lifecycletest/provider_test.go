@@ -126,7 +126,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	isRefresh := false
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, err error,
+		_ []Event, changes display.ResourceChanges, err error,
 	) error {
 		require.NoError(t, err)
 
@@ -164,7 +164,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			require.NoError(t, err)
 
@@ -240,7 +240,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			provURN := p.NewProviderURN("pkgA", "default", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -336,7 +336,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -577,7 +577,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			for _, entry := range entries {
 				if entry.Step.Op() != deploy.OpSame {
@@ -594,7 +594,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			provURN := p.NewProviderURN("pkgA", providerName, "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -715,7 +715,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -811,7 +811,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, err error,
+						events []Event, changes display.ResourceChanges, err error,
 					) error {
 						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
@@ -938,7 +938,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, err error,
+						events []Event, changes display.ResourceChanges, err error,
 					) error {
 						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
@@ -1226,7 +1226,7 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 
 	steps := MakeBasicLifecycleSteps(t, 2)
 	steps[0].ValidateAnd(func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, err error,
+		_ []Event, changes display.ResourceChanges, err error,
 	) error {
 		for _, e := range entries {
 			r := e.Step.New()
@@ -1483,7 +1483,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 			update := []TestStep{{Op: Update, Validate: func(
 				project workspace.Project, target deploy.Target, entries JournalEntries,
-				events []Event, err error,
+				events []Event, changes display.ResourceChanges, err error,
 			) error {
 				require.NoError(t, err)
 

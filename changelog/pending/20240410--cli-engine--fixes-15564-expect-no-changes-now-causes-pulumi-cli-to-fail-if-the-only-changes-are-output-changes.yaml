@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/engine
+  description: "Fixes #15564, --expect-no-changes now causes pulumi cli to fail if the only changes are output changes"

@@ -1277,8 +1277,10 @@ const (
 	OpDiscardReplaced      display.StepOp = "discard-replaced"       // discarding a read resource that was replaced.
 	OpRemovePendingReplace display.StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               display.StepOp = "import"                 // import an existing resource.
-	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
-	// with an imported resource.
+	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource with an
+	// imported resource.
+	OpOutputChange display.StepOp = "output-change" // A pseudo operation used when aggregating
+	// statistics. This indicates the number of changed outputs
 )
 
 // StepOps contains the full set of step operation types.
@@ -1298,6 +1300,7 @@ var StepOps = []display.StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+	OpOutputChange,
 }
 
 func IsReplacementStep(op display.StepOp) bool {
@@ -1334,6 +1337,8 @@ func Color(op display.StepOp) string {
 		return colors.SpecUpdate
 	case OpReadDiscard, OpDiscardReplaced:
 		return colors.SpecDelete
+	case OpOutputChange:
+		return colors.SpecUpdate
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -1388,6 +1393,8 @@ func RawPrefix(op display.StepOp) string {
 		return "= "
 	case OpImportReplacement:
 		return "=>"
+	case OpOutputChange:
+		return "~ "
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -1396,7 +1403,7 @@ func RawPrefix(op display.StepOp) string {
 
 func PastTense(op display.StepOp) string {
 	switch op {
-	case OpSame, OpCreate, OpReplace, OpCreateReplacement, OpUpdate, OpReadReplacement:
+	case OpSame, OpCreate, OpReplace, OpCreateReplacement, OpUpdate, OpReadReplacement, OpOutputChange:
 		return string(op) + "d"
 	case OpRefresh:
 		return "refreshed"

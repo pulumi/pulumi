@@ -657,9 +657,21 @@ func (acts *updateActions) OnResourceStepPost(
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
-	acts.MapLock.Lock()
-	assertSeen(acts.Seen, step)
-	acts.MapLock.Unlock()
+	func() {
+		acts.MapLock.Lock()
+		defer acts.MapLock.Unlock()
+		assertSeen(acts.Seen, step)
+
+		var oldOutputs resource.PropertyMap
+		if step.Old() != nil {
+			oldOutputs = step.Old().Outputs
+		}
+		newOutputs := step.New().Outputs
+		diff := oldOutputs.Diff(newOutputs)
+		if diff.AnyChanges() {
+			acts.Ops[deploy.OpOutputChange] += len(diff.Adds) + len(diff.Deletes) + len(diff.Updates)
+		}
+	}()
 
 	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, false /*planning*/, acts.Opts.Debug, isInternalStep(step))
 
@@ -771,9 +783,21 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
-	acts.MapLock.Lock()
-	assertSeen(acts.Seen, step)
-	acts.MapLock.Unlock()
+	func() {
+		acts.MapLock.Lock()
+		defer acts.MapLock.Unlock()
+		assertSeen(acts.Seen, step)
+
+		var oldOutputs resource.PropertyMap
+		if step.Old() != nil {
+			oldOutputs = step.Old().Outputs
+		}
+		newOutputs := step.New().Outputs
+		diff := oldOutputs.Diff(newOutputs)
+		if diff.AnyChanges() {
+			acts.Ops[deploy.OpOutputChange] += len(diff.Adds) + len(diff.Deletes) + len(diff.Updates)
+		}
+	}()
 
 	// Print the resource outputs separately.
 	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug, isInternalStep(step))

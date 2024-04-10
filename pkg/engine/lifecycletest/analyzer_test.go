@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -375,7 +376,7 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 				SkipPreview:   true,
 				ExpectFailure: true,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-					events []Event, err error,
+					events []Event, changes display.ResourceChanges, err error,
 				) error {
 					violationEvents := []Event{}
 					for _, e := range events {
@@ -439,7 +440,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 				SkipPreview:   true,
 				ExpectFailure: true,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-					events []Event, err error,
+					events []Event, changes display.ResourceChanges, err error,
 				) error {
 					violationEvents := []Event{}
 					for _, e := range events {

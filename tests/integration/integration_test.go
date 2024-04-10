@@ -1164,3 +1164,58 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: advisory_policy_pack; mandatory_policy_pack)")
 }
+
+func TestRenameExport(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.ImportDirectory("stack_outputs/python")
+
+	stackName, err := resource.NewUniqueHex("re-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	// rename the output "foo" to "bar"
+	//
+	// The export line will go from
+	//
+	// pulumi.export("foo", 42)
+	//
+	// to
+	//
+	// pulumi.export("bar", 42)
+	//
+	mainPy := filepath.Join(e.CWD, "__main__.py")
+	src, err := os.ReadFile(mainPy)
+	require.NoError(e, err, "Reading __main__.py")
+
+	updated := strings.Replace(string(src), "\"foo\"", "\"bar\"", 1)
+	//nolint:gosec
+	err = os.WriteFile(mainPy, []byte(updated), 0o644)
+	require.NoError(e, err, "Writing updated __main__.py")
+
+	// This should fail because the output has changed
+	stdout, stderr := e.RunCommandExpectError("pulumi", "preview", "--expect-no-changes")
+	assert.Contains(e, stdout, "+ bar: 42")
+	assert.Contains(e, stdout, "- foo: 42")
+	assert.Contains(e, stderr,
+		"error: no changes were expected but changes were proposed")
+
+	// This should succeed because we aren't checking the expect-no-changes flag
+	e.RunCommand("pulumi", "preview")
+
+	// This should also fail because the output has changed (although it will make the change anyway)
+	stdout, stderr = e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--yes", "--expect-no-changes")
+	assert.Contains(e, stdout, "+ bar: 42")
+	assert.Contains(e, stdout, "- foo: 42")
+	assert.Contains(e, stderr,
+		"error: no changes were expected but changes occurred")
+
+	// This should now succeed because the up made the change (although it reported the error)
+	e.RunCommand("pulumi", "preview", "--expect-no-changes")
+}

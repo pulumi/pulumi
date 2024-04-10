@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -316,6 +317,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 					_ deploy.Target,
 					entries engine.JournalEntries,
 					_ []engine.Event,
+					_ display.ResourceChanges,
 					_ error,
 				) error {
 					journalEntries = entries
