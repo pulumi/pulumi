@@ -48,6 +48,14 @@ type languageTest struct {
 	runs []testRun
 }
 
+// lorem is a long string used for testing large string values.
+const lorem string = "Lorem ipsum dolor sit amet, consectetur adipiscing elit," +
+	" sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." +
+	" Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." +
+	" Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur." +
+	" Excepteur sint occaecat cupidatat non proident," +
+	" sunt in culpa qui officia deserunt mollit anim id est laborum."
+
 //go:embed testdata
 var languageTestdata embed.FS
 
@@ -135,14 +143,51 @@ var languageTests = map[string]languageTest{
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \n (newline), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
 
-					lorem := "Lorem ipsum dolor sit amet, consectetur adipiscing elit," +
-						" sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." +
-						" Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." +
-						" Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur." +
-						" Excepteur sint occaecat cupidatat non proident," +
-						" sunt in culpa qui officia deserunt mollit anim id est laborum.\n"
-					large := strings.Repeat(lorem, 150)
+					large := strings.Repeat(lorem+"\n", 150)
 					assertPropertyMapMember(l, outputs, "large", resource.NewStringProperty(large))
+				},
+			},
+		},
+	},
+	"l1-output-array": {
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 5, "expected 5 outputs")
+					assertPropertyMapMember(l, outputs, "empty", resource.NewArrayProperty([]resource.PropertyValue{}))
+					assertPropertyMapMember(l, outputs, "small", resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewStringProperty("Hello"),
+						resource.NewStringProperty("World"),
+					}))
+					assertPropertyMapMember(l, outputs, "numbers", resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewNumberProperty(0), resource.NewNumberProperty(1), resource.NewNumberProperty(2),
+						resource.NewNumberProperty(3), resource.NewNumberProperty(4), resource.NewNumberProperty(5),
+					}))
+					assertPropertyMapMember(l, outputs, "nested", resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewNumberProperty(1), resource.NewNumberProperty(2), resource.NewNumberProperty(3),
+						}),
+						resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewNumberProperty(4), resource.NewNumberProperty(5), resource.NewNumberProperty(6),
+						}),
+						resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewNumberProperty(7), resource.NewNumberProperty(8), resource.NewNumberProperty(9),
+						}),
+					}))
+
+					large := []resource.PropertyValue{}
+					for i := 0; i < 150; i++ {
+						large = append(large, resource.NewStringProperty(lorem))
+					}
+					assertPropertyMapMember(l, outputs, "large", resource.NewArrayProperty(large))
 				},
 			},
 		},

@@ -2166,9 +2166,9 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			return resource.NewObjectProperty(downgradeOutputValues(v.ObjectValue()))
 		}
 		if v.IsArray() {
-			var result []resource.PropertyValue
-			for _, elem := range v.ArrayValue() {
-				result = append(result, downgradeOutputPropertyValue(elem))
+			result := make([]resource.PropertyValue, len(v.ArrayValue()))
+			for i, elem := range v.ArrayValue() {
+				result[i] = downgradeOutputPropertyValue(elem)
 			}
 			return resource.NewArrayProperty(result)
 		}

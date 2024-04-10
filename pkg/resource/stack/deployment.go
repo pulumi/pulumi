@@ -580,13 +580,13 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			}
 			return resource.NewStringProperty(w), nil
 		case []interface{}:
-			var arr []resource.PropertyValue
-			for _, elem := range w {
+			arr := make([]resource.PropertyValue, len(w))
+			for i, elem := range w {
 				ev, err := DeserializePropertyValue(elem, dec, enc)
 				if err != nil {
 					return resource.PropertyValue{}, err
 				}
-				arr = append(arr, ev)
+				arr[i] = ev
 			}
 			return resource.NewArrayProperty(arr), nil
 		case map[string]interface{}:

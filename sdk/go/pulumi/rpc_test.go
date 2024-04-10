@@ -938,7 +938,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 		{value: "", expected: resource.NewStringProperty("")},
 		{value: "hi", expected: resource.NewStringProperty("hi")},
 		{value: map[string]string{}, expected: resource.NewObjectProperty(resource.PropertyMap{})},
-		{value: []string{}, expected: resource.NewArrayProperty(nil)},
+		{value: []string{}, expected: resource.NewArrayProperty([]resource.PropertyValue{})},
 	}
 	//nolint:paralleltest // parallel parent, would require refactor to silence lint
 	for _, value := range values {
