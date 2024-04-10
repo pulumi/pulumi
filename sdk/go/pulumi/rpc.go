@@ -407,7 +407,7 @@ func marshalInputImpl(v interface{},
 			destElem := destType.Elem()
 
 			// If an array or a slice, create a new array by recursing into elements.
-			var arr []resource.PropertyValue
+			arr := make([]resource.PropertyValue, 0, rv.Len())
 			for i := 0; i < rv.Len(); i++ {
 				elem := rv.Index(i)
 				e, d, err := marshalInput(elem.Interface(), destElem, await)
