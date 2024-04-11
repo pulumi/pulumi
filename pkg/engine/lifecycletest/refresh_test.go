@@ -596,6 +596,9 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 						assert.Equal(t, deploy.OpUpdate, resultOp)
 					}
 
+					old = old.Copy()
+					new = new.Copy()
+
 					// Only the inputs and outputs should have changed (if anything changed).
 					old.Inputs = expected.Inputs
 					old.Outputs = expected.Outputs
@@ -643,10 +646,12 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}
 
 		// If targeted for refresh the new resources should be equal to the old resources + the new inputs and outputs
+		// and timestamp.
 		old := oldResources[int(idx)]
 		if targetedForRefresh {
 			old.Inputs = expected.Inputs
 			old.Outputs = expected.Outputs
+			old.Modified = r.Modified
 		}
 		assert.Equal(t, old, r)
 	}
@@ -765,6 +770,7 @@ func TestCanceledRefresh(t *testing.T) {
 				}
 
 				// Only the outputs and Modified timestamp should have changed (if anything changed).
+				old = old.Copy()
 				old.Outputs = expected
 				old.Modified = new.Modified
 

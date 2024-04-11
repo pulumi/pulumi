@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -245,10 +245,6 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
-	reg.New().Lock.Lock()
-	reg.New().Outputs = outs
-	reg.New().Lock.Unlock()
-
 	// If a plan is present check that these outputs match what we recorded before
 	if se.deployment.plan != nil {
 		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
@@ -260,6 +256,10 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 			return fmt.Errorf("resource violates plan: %w", err)
 		}
 	}
+
+	reg.New().Lock.Lock()
+	reg.New().Outputs = outs
+	reg.New().Lock.Unlock()
 
 	// If we're generating plans save these new outputs to the plan
 	if se.opts.GeneratePlan {

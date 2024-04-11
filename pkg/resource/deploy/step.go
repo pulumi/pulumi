@@ -239,11 +239,12 @@ func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	s.new.Lock.Lock()
-	defer s.new.Lock.Unlock()
-
 	var resourceError error
 	resourceStatus := resource.StatusOK
+
+	id := s.new.ID
+	outs := s.new.Outputs
+
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
 		prov, err := getProvider(s, s.provider)
@@ -251,7 +252,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
+		var rst resource.Status
+		id, outs, rst, err = prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -268,11 +270,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if !preview && id == "" {
 			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 		}
-
-		// Copy any of the default and output properties on the live object state.
-		s.new.ID = id
-		s.new.Outputs = outs
 	}
+
+	s.new.Lock.Lock()
+	defer s.new.Lock.Unlock()
+
+	// Copy any of the default and output properties on the live object state.
+	s.new.ID = id
+	s.new.Outputs = outs
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -281,6 +286,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
+		contract.Assertf(s.old != s.new, "old and new states should not be the same")
 		s.old.Lock.Lock()
 		s.old.Delete = true
 		s.old.Lock.Unlock()
