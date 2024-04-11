@@ -1171,12 +1171,15 @@ func TestRenameExport(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.ImportDirectory("stack_outputs/python")
+	e.ImportDirectory("stack_outputs/nodejs")
 
 	stackName, err := resource.NewUniqueHex("re-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
@@ -1184,20 +1187,20 @@ func TestRenameExport(t *testing.T) {
 	//
 	// The export line will go from
 	//
-	// pulumi.export("foo", 42)
+	// let foo = 42;
 	//
 	// to
 	//
-	// pulumi.export("bar", 42)
+	// let bar = 42;
 	//
-	mainPy := filepath.Join(e.CWD, "__main__.py")
-	src, err := os.ReadFile(mainPy)
-	require.NoError(e, err, "Reading __main__.py")
+	indexTs := filepath.Join(e.CWD, "index.ts")
+	src, err := os.ReadFile(indexTs)
+	require.NoError(e, err, "Reading index.ts")
 
-	updated := strings.Replace(string(src), "\"foo\"", "\"bar\"", 1)
+	updated := strings.Replace(string(src), "let foo =", "let bar =", 1)
 	//nolint:gosec
-	err = os.WriteFile(mainPy, []byte(updated), 0o644)
-	require.NoError(e, err, "Writing updated __main__.py")
+	err = os.WriteFile(indexTs, []byte(updated), 0o644)
+	require.NoError(e, err, "Writing updated index.ts")
 
 	// This should fail because the output has changed
 	stdout, stderr := e.RunCommandExpectError("pulumi", "preview", "--expect-no-changes")
