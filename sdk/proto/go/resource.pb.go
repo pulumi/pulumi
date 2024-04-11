@@ -705,7 +705,7 @@ type RegisterResourceResponse struct {
 	Stable               bool                                                      `protobuf:"varint,4,opt,name=stable,proto3" json:"stable,omitempty"`                                                                                                                    // if true, the object's state is stable and may be trusted not to change.
 	Stables              []string                                                  `protobuf:"bytes,5,rep,name=stables,proto3" json:"stables,omitempty"`                                                                                                                   // an optional list of guaranteed-stable properties.
 	PropertyDependencies map[string]*RegisterResourceResponse_PropertyDependencies `protobuf:"bytes,6,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map from property keys to the dependencies of the property.
-	SkipReason           SkipReason                                                `protobuf:"varint,7,opt,name=skipReason,proto3,enum=pulumirpc.SkipReason" json:"skipReason,omitempty"`                                                                                  // the reason why the resource creation was skipped
+	SkipReason           SkipReason                                                `protobuf:"varint,7,opt,name=skipReason,proto3,enum=pulumirpc.SkipReason" json:"skipReason,omitempty"`                                                                                  // the reason, if any, why the resource creation was skipped.
 }
 
 func (x *RegisterResourceResponse) Reset() {

@@ -531,7 +531,7 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     def propertyDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___RegisterResourceResponse.PropertyDependencies]:
         """a map from property keys to the dependencies of the property."""
     skipReason: global___SkipReason.ValueType
-    """the reason why the resource creation was skipped"""
+    """the reason, if any, why the resource creation was skipped."""
     def __init__(
         self,
         *,
