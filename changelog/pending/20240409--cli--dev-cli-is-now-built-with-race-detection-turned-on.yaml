@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Dev CLI is now built with race detection turned on.
