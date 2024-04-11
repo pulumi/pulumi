@@ -2557,15 +2557,14 @@ func TestCall(t *testing.T) {
 							"test": resource.NewStringProperty("test-value"),
 						},
 						args)
-					assert.Equal(t,
-						map[resource.PropertyKey][]resource.URN{
-							"test": {
-								"urn:pulumi:stack::project::type::dep1",
-								"urn:pulumi:stack::project::type::dep2",
-								"urn:pulumi:stack::project::type::dep3",
-							},
+					require.Equal(t, 1, len(options.ArgDependencies))
+					assert.ElementsMatch(t,
+						[]resource.URN{
+							"urn:pulumi:stack::project::type::dep1",
+							"urn:pulumi:stack::project::type::dep2",
+							"urn:pulumi:stack::project::type::dep3",
 						},
-						options.ArgDependencies)
+						options.ArgDependencies["test"])
 					called = true
 					return plugin.CallResult{}, expectedErr
 				},
