@@ -663,8 +663,10 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := sm.persister.Save(snap); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if err := snap.VerifyIntegrity(); err != nil {
-		return fmt.Errorf("failed to verify snapshot: %w", err)
+	if !DisableIntegrityChecking {
+		if err := snap.VerifyIntegrity(); err != nil {
+			return fmt.Errorf("failed to verify snapshot: %w", err)
+		}
 	}
 	return nil
 }

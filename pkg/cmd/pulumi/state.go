@@ -177,7 +177,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
-	if !stackIsAlreadyHosed {
+	if !stackIsAlreadyHosed && !backend.DisableIntegrityChecking {
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 

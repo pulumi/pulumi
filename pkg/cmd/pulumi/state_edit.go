@@ -218,9 +218,11 @@ func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotB
 		return nil, err
 	}
 
-	err = news.VerifyIntegrity()
-	if err != nil {
-		return nil, err
+	if !backend.DisableIntegrityChecking {
+		err = news.VerifyIntegrity()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Display state in JSON to match JSON-like diffs in the update display.
