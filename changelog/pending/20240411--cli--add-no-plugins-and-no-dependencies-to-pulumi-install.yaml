@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add --no-plugins and --no-dependencies to `pulumi install`
