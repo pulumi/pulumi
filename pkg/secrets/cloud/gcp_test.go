@@ -16,12 +16,13 @@ package cloud
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createGCPKey(ctx context.Context, t *testing.T) string {
@@ -60,7 +61,88 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 func TestGCPCloudManager(t *testing.T) {
 	ctx := context.Background()
 	keyName := createGCPKey(ctx, t)
-	fmt.Println(keyName)
 	url := "gcpkms://" + keyName
 	testURL(ctx, t, url)
+	t.Fail()
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestGCPExistingKey(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-west-2")
+	ctx := context.Background()
+
+	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
+
+	//nolint:lll // this is a base64 encoded key
+	encryptedKeyBase64 := "CiQAAVPx+1LGEXNyhMLo89JUdLIUqqsHxB3GlqHHqsGgQB2O7IYSSQBzSboprGFFkoJKRp5baCnFKH5gkCiADJINnUF9luzY93RjYSlyQ23qj0kopX3ZuuXB+ZuzSEqaH0IOL9RoYP1kB+FIXGdkWXE="
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestGCPExistingState(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-west-2")
+	ctx, _, _ := getAwsCaller(t)
+
+	//nolint:lll // this includes a base64 encoded key
+	cloudState := `{
+		"url": "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2",
+		"encryptedkey": "CiQAAVPx+1LGEXNyhMLo89JUdLIUqqsHxB3GlqHHqsGgQB2O7IYSSQBzSboprGFFkoJKRp5baCnFKH5gkCiADJINnUF9luzY93RjYSlyQ23qj0kopX3ZuuXB+ZuzSEqaH0IOL9RoYP1kB+FIXGdkWXE="
+	}`
+	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+
+	assert.JSONEq(t, cloudState, string(manager.State()))
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestGCPKeyEditProjectStack(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-west-2")
+	_, _, _ = getAwsCaller(t)
+
+	url := "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2"
+
+	//nolint:lll // this is a base64 encoded key
+	encryptedKeyBase64 := "CiQAAVPx+1LGEXNyhMLo89JUdLIUqqsHxB3GlqHHqsGgQB2O7IYSSQBzSboprGFFkoJKRp5baCnFKH5gkCiADJINnUF9luzY93RjYSlyQ23qj0kopX3ZuuXB+ZuzSEqaH0IOL9RoYP1kB+FIXGdkWXE="
+
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
+	require.NoError(t, err)
+
+	newConfig := &workspace.ProjectStack{}
+	err = EditProjectStack(newConfig, manager.State())
+	require.NoError(t, err)
+
+	assert.Equal(t, stackConfig.EncryptedKey, newConfig.EncryptedKey)
 }
