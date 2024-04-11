@@ -152,11 +152,11 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 			}
 
 			// Clear the ID because Same asserts that the new state has no ID.
-			new := *r
+			new := r.Copy()
 			new.ID = ""
 			// Set a dummy goal so the resource is tracked as managed.
 			i.deployment.goals.Store(r.URN, &resource.Goal{})
-			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
+			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, new)) {
 				return false
 			}
 		}
@@ -348,11 +348,11 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 			if oldID == imp.ID {
 				// Clear the ID because Same asserts that the new state has no ID.
-				new := *old
+				new := old.Copy()
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
 				i.deployment.goals.Store(old.URN, &resource.Goal{})
-				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
+				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, new))
 				continue
 			}
 		}
@@ -366,11 +366,11 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 			if oldID == imp.ID {
 				// Clear the ID because Same asserts that the new state has no ID.
-				new := *old
+				new := old.Copy()
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
 				i.deployment.goals.Store(old.URN, &resource.Goal{})
-				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
+				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, new))
 				continue
 			}
 		}
