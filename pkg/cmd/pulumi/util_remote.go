@@ -241,7 +241,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 ) result.Result {
 	// Validate args.
 	if url == "" && !args.inheritSettings {
-		return result.FromError(errors.New("the url arg must be specified"))
+		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings"))
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
 		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))

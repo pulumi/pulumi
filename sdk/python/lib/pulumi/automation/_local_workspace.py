@@ -528,6 +528,12 @@ class LocalWorkspace(Workspace):
         help_string = result.stdout.strip()
         return "--remote" in help_string
 
+    def _remote_inherit_settings_supported(self) -> bool:
+        # See if `--remote` is present in `pulumi preview --help`'s output.
+        result = self._run_pulumi_cmd_sync(["preview", "--help"])
+        help_string = result.stdout.strip()
+        return "--remote-inherit-settings" in help_string
+
     def _run_pulumi_cmd_sync(
         self, args: List[str], on_output: Optional[OnOutput] = None
     ) -> CommandResult:

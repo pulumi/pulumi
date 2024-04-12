@@ -97,7 +97,7 @@ class RemoteGitAuth:
 
 def create_remote_stack_git_source(
     stack_name: str,
-    url: str,
+    url: Optional[str] = None,
     *,
     branch: Optional[str] = None,
     commit_hash: Optional[str] = None,
@@ -126,7 +126,7 @@ def create_remote_stack_git_source(
 
 def create_or_select_remote_stack_git_source(
     stack_name: str,
-    url: str,
+    url: Optional[str] = None,
     *,
     branch: Optional[str] = None,
     commit_hash: Optional[str] = None,
@@ -155,7 +155,7 @@ def create_or_select_remote_stack_git_source(
 
 def select_remote_stack_git_source(
     stack_name: str,
-    url: str,
+    url: Optional[str] = None,
     *,
     branch: Optional[str] = None,
     commit_hash: Optional[str] = None,
@@ -183,25 +183,13 @@ def select_remote_stack_git_source(
 
 
 def _create_local_workspace(
-    url: str,
+    url: Optional[str],
     branch: Optional[str] = None,
     commit_hash: Optional[str] = None,
     project_path: Optional[str] = None,
     auth: Optional[RemoteGitAuth] = None,
     opts: Optional[RemoteWorkspaceOptions] = None,
 ) -> LocalWorkspace:
-    if not url:
-        raise Exception("url is required.")
-    if branch and commit_hash:
-        raise Exception("branch and commit_hash cannot both be specified.")
-    if not branch and not commit_hash and not opts.inherit_settings:
-        raise Exception("either branch or commit_hash is required.")
-    if auth is not None:
-        if auth.ssh_private_key and auth.ssh_private_key_path:
-            raise Exception(
-                "ssh_private_key and ssh_private_key_path cannot both be specified."
-            )
-
     env_vars = None
     pre_run_commands = None
     skip_install_dependencies = None
@@ -211,6 +199,18 @@ def _create_local_workspace(
         pre_run_commands = opts.pre_run_commands
         skip_install_dependencies = opts.skip_install_dependencies
         inherit_settings = opts.inherit_settings
+
+    if not url and not inherit_settings:
+        raise Exception("url is required.")
+    if branch and commit_hash:
+        raise Exception("branch and commit_hash cannot both be specified.")
+    if not branch and not commit_hash and not inherit_settings:
+        raise Exception("either branch or commit_hash is required.")
+    if auth is not None:
+        if auth.ssh_private_key and auth.ssh_private_key_path:
+            raise Exception(
+                "ssh_private_key and ssh_private_key_path cannot both be specified."
+            )
 
     ws = LocalWorkspace()
     ws._remote = True
@@ -224,11 +224,16 @@ def _create_local_workspace(
     ws._remote_git_commit_hash = commit_hash
     ws._remote_git_auth = auth
 
-    # Ensure the CLI supports --remote.
-    if not ws._version_check_opt_out() and not ws._remote_supported():
-        raise Exception(
-            "The Pulumi CLI does not support remote operations. Please upgrade."
-        )
+    # Ensure the CLI supports the commands being executed.
+    if not ws._version_check_opt_out():
+        if not ws._remote_supported():
+            raise Exception(
+                "The Pulumi CLI version does not support remote operations. Please upgrade."
+            )
+        if inherit_settings and not ws._remote_inherit_settings_supported():
+            raise Exception(
+                "The Pulumi CLI version does not support remote inherit settings. Please upgrade."
+            )
 
     return ws
 
