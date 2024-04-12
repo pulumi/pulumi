@@ -234,7 +234,6 @@ func RemoteInheritSettings(inheritSettings bool) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.InheritSettings = inheritSettings
 	})
-
 }
 
 // RemoteExecutorImage sets the image to use for the remote executor.
