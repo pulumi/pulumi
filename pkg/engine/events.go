@@ -45,7 +45,8 @@ type Event struct {
 type EventPayload interface {
 	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
-		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload
+		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload |
+		DownloadProgressEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -75,6 +76,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = PolicyRemediationEvent
 	case PolicyLoadEventPayload:
 		typ = PolicyLoadEvent
+	case DownloadProgressEventPayload:
+		typ = DownloadProgressEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -99,6 +102,13 @@ const (
 	PolicyViolationEvent    EventType = "policy-violation"
 	PolicyRemediationEvent  EventType = "policy-remediation"
 	PolicyLoadEvent         EventType = "policy-load"
+	DownloadProgressEvent   EventType = "download-progress"
+)
+
+type DownloadType string
+
+const (
+	PluginDownload DownloadType = "plugin"
 )
 
 func (e Event) Payload() interface{} {
@@ -112,6 +122,16 @@ func (e Event) Internal() bool {
 		return payload.Internal
 	case ResourceOutputsEventPayload:
 		return payload.Internal
+	default:
+		return false
+	}
+}
+
+// Returns true if this event is intended only for local display purposes and shouldn't be persisted.
+func (e Event) DisplayEvent() bool {
+	switch e.payload.(type) {
+	case DownloadProgressEventPayload:
+		return true
 	default:
 		return false
 	}
@@ -153,6 +173,15 @@ type PolicyRemediationEventPayload struct {
 
 // PolicyLoadEventPayload is the payload for an event with type `policy-load`.
 type PolicyLoadEventPayload struct{}
+
+type DownloadProgressEventPayload struct {
+	DownloadType DownloadType
+	ID           string
+	Msg          string
+	Received     int64
+	Total        int64
+	Done         bool
+}
 
 type StdoutEventPayload struct {
 	Message string
@@ -565,6 +594,19 @@ func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemera
 
 func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
 	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
+}
+
+func (e *eventEmitter) downloadProgressEvent(downloadType DownloadType, id string,
+	msg string, received, total int64, done bool,
+) {
+	e.sendEvent(NewEvent(DownloadProgressEventPayload{
+		DownloadType: downloadType,
+		ID:           id,
+		Msg:          msg,
+		Received:     received,
+		Total:        total,
+		Done:         done,
+	}))
 }
 
 func filterResourceProperties(m resource.PropertyMap, debug bool) resource.PropertyMap {

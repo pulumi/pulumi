@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -45,6 +46,7 @@ type treeRenderer struct {
 
 	treeTableRows         []string
 	systemMessages        []string
+	showDownloadProgress  bool
 	statusMessage         string
 	statusMessageDeadline time.Time
 
@@ -101,6 +103,10 @@ func (r *treeRenderer) systemMessage(_ engine.StdoutEventPayload) {
 	r.markDirty()
 }
 
+func (r *treeRenderer) downloadProgress(_ engine.DownloadProgressEventPayload) {
+	r.markDirty()
+}
+
 func (r *treeRenderer) done() {
 	r.markDirty()
 
@@ -138,7 +144,7 @@ func (r *treeRenderer) overln(text string) {
 	r.print("\n")
 }
 
-func (r *treeRenderer) render() {
+func (r *treeRenderer) render(termWidth int) {
 	contract.Assertf(!r.m.TryLock(), "treeRenderer.render() MUST be called from within a locked context")
 
 	if r.display.headerRow == nil {
@@ -175,6 +181,27 @@ func (r *treeRenderer) render() {
 	for _, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
+	}
+
+	if len(r.systemMessages) == 0 && len(r.display.downloadProgressPayloads) > 0 && termWidth > 10 {
+		// If we don't have system messages, but do have download progress events, then
+		// show those (We should never have both at the same time, but if we do the system
+		// messages have the priority)
+
+		// sort the download payloads by id to ensure stable display order.
+		keys := make([]string, 0, len(r.display.downloadProgressPayloads))
+		for key := range r.display.downloadProgressPayloads {
+			keys = append(keys, key)
+		}
+		slices.Sort(keys)
+
+		for _, key := range keys {
+			payload := r.display.downloadProgressPayloads[key]
+			r.systemMessages = append(r.systemMessages, renderDownloadProgress(payload, termWidth-4, false))
+		}
+		r.showDownloadProgress = true
+	} else {
+		r.showDownloadProgress = false
 	}
 }
 
@@ -213,11 +240,11 @@ func (r *treeRenderer) frame(locked, done bool) {
 	}
 	r.dirty = false
 
-	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
-	r.render()
-
 	termWidth, termHeight, err := r.term.Size()
 	contract.IgnoreError(err)
+
+	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
+	r.render(termWidth)
 
 	treeTableRows := r.treeTableRows
 	systemMessages := r.systemMessages
@@ -325,7 +352,6 @@ func (r *treeRenderer) frame(locked, done bool) {
 			padding = 0
 		}
 		treeTableFooter = r.opts.Color.Colorize(prefix + strings.Repeat(" ", padding) + footer)
-
 		if systemMessagesHeight > 0 {
 			treeTableFooter += "\n"
 		}
@@ -333,45 +359,68 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	// Re-home the cursor.
 	r.print("\r")
-	for ; r.rewind > 0; r.rewind-- {
-		// If there is content that we won't overwrite, clear it.
-		if r.rewind > totalHeight-1 {
-			r.term.ClearEnd()
-		}
-		r.term.CursorUp(1)
+	if r.rewind > 0 {
+		r.term.CursorUp(r.rewind)
 	}
-	r.rewind = totalHeight - 1
+
+	lineCount := 0
 
 	// Render the tree table.
 	r.overln(r.clampLine(treeTableHeader, termWidth))
 	for _, row := range treeTableRows {
 		r.overln(r.clampLine(row, termWidth))
 	}
+	lineCount += 1 + len(treeTableRows)
+
 	if treeTableFooter != "" {
-		r.over(treeTableFooter)
+		r.overln(treeTableFooter)
+		if strings.HasSuffix(treeTableFooter, "\n") {
+			lineCount++
+		}
 	}
 
 	// Render the system messages.
 	if systemMessagesHeight > 0 {
 		r.overln("")
-		r.overln(colors.Yellow + "System Messages" + colors.Reset)
+		if r.showDownloadProgress {
+			r.overln(colors.Yellow + "Downloads" + colors.Reset)
+		} else {
+			r.overln(colors.Yellow + "System Messages" + colors.Reset)
+		}
 
 		for _, line := range systemMessages {
-			r.overln("  " + line)
+			r.overln(r.clampLine("  "+line, termWidth))
 		}
+		lineCount += 2 + len(systemMessages)
 	}
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
 		padding := termWidth - colors.MeasureColorizedString(statusMessage)
+		if padding < 0 {
+			padding = 0
+		}
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
+		lineCount++
 	}
 
 	if done && totalHeight > 0 {
 		r.overln("")
+		lineCount++
 	}
+
+	// if we didn't write as many lines as last time, then overwrite the unwritten lines
+	if r.rewind > lineCount {
+		delta := r.rewind - lineCount
+		for i := 0; i < delta; i++ {
+			r.overln("")
+		}
+		r.term.CursorUp(delta)
+	}
+
+	r.rewind = lineCount
 
 	// Handle the status message timer. We do this at the end to ensure that any message is displayed for at least one
 	// frame.

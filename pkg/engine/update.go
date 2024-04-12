@@ -221,13 +221,16 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 func RunInstallPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
 ) error {
-	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
+	_, _, err := installPlugins(context.Background(), proj, pwd, main, target, plugctx,
+		nil,  /*deployOpts*/
+		true, /*returnInstallErrors*/
+	)
 	return err
 }
 
 func installPlugins(ctx context.Context,
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context, returnInstallErrors bool,
+	plugctx *plugin.Context, deployOpts *deploymentOptions, returnInstallErrors bool,
 ) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
@@ -264,7 +267,7 @@ func installPlugins(ctx context.Context,
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, allPlugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, deployOpts, allPlugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
@@ -434,7 +437,7 @@ func newUpdateSource(ctx context.Context,
 	//
 
 	allPlugins, defaultProviderVersions, err := installPlugins(ctx, proj, pwd, main, target,
-		plugctx, false /*returnInstallErrors*/)
+		plugctx, opts, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
 	}

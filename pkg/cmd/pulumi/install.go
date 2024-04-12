@@ -119,7 +119,7 @@ func newInstallCmd() *cobra.Command {
 
 					// If we got here, actually try to do the download.
 					withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-						return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", displayOpts.Color)
+						return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", displayOpts.Color, nil)
 					}
 					retry := func(err error, attempt int, limit int, delay time.Duration) {
 						pctx.Diag.Warningf(

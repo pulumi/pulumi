@@ -84,6 +84,9 @@ var ErrorOnDependencyCycles = env.Bool("ERROR_ON_DEPENDENCY_CYCLES",
 var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 	"If set skip validating the version number reported by the CLI.")
 
+var PersistLocalEvents = env.Bool("PERSIST_LOCAL_EVENTS`",
+	"If set persist local events to the backend.")
+
 // Environment variables that affect the DIY backend.
 var (
 	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",

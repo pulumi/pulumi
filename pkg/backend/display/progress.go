@@ -70,6 +70,7 @@ type progressRenderer interface {
 	tick()
 	rowUpdated(row Row)
 	systemMessage(payload engine.StdoutEventPayload)
+	downloadProgress(payload engine.DownloadProgressEventPayload)
 	done()
 	println(line string)
 }
@@ -114,6 +115,9 @@ type ProgressDisplay struct {
 
 	// Any system events we've received.  They will be printed at the bottom of all the status rows
 	systemEventPayloads []engine.StdoutEventPayload
+
+	// Any currently active downloads
+	downloadProgressPayloads map[string]engine.DownloadProgressEventPayload
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -956,6 +960,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.StdoutColorEvent:
 		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
 		return
+	case engine.DownloadProgressEvent:
+		display.handleDownloadProgressEvent(event.Payload().(engine.DownloadProgressEventPayload))
+		return
 	}
 
 	// At this point, all events should relate to resources.
@@ -1077,6 +1084,25 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
 
 	display.renderer.systemMessage(payload)
+}
+
+func (display *ProgressDisplay) handleDownloadProgressEvent(payload engine.DownloadProgressEventPayload) {
+	display.m.Lock()
+	defer display.m.Unlock()
+
+	// Make sure we have a header to display
+	display.ensureHeaderAndStackRows()
+
+	if display.downloadProgressPayloads == nil {
+		display.downloadProgressPayloads = make(map[string]engine.DownloadProgressEventPayload)
+	}
+
+	if payload.Done {
+		delete(display.downloadProgressPayloads, payload.ID)
+	} else {
+		display.downloadProgressPayloads[payload.ID] = payload
+	}
+	display.renderer.downloadProgress(payload)
 }
 
 func (display *ProgressDisplay) ensureHeaderAndStackRows() {

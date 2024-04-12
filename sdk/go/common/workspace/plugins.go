@@ -2042,7 +2042,7 @@ func SelectCompatiblePlugin(
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
 func ReadCloserProgressBar(
-	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization, callback func(out string),
 ) io.ReadCloser {
 	if size == -1 {
 		return closer
@@ -2054,12 +2054,21 @@ func ReadCloserProgressBar(
 
 	// If we know the length of the download, show a progress bar.
 	bar := pb.New(int(size))
-	bar.Output = os.Stderr
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
-	bar.Postfix(colorization.Colorize(colors.Reset))
+	if callback != nil {
+		bar.Callback = callback
+		bar.NotPrint = true
+	} else {
+		bar.Output = os.Stderr
+		bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
+		bar.Postfix(colorization.Colorize(colors.Reset))
+	}
 	bar.SetMaxWidth(80)
 	bar.SetUnits(pb.U_BYTES)
 	bar.Start()
+
+	if callback != nil {
+		return bar.NewProxyReader(closer)
+	}
 
 	return &barCloser{
 		bar:        bar,

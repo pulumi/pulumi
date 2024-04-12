@@ -208,7 +208,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 			localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(cancelCtx, proj, pwd, main, target, plugctx,
-			false /*returnInstallErrors*/)
+			opts, false /*returnInstallErrors*/)
 		if pluginErr != nil {
 			return nil, pluginErr
 		}

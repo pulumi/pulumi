@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"unicode/utf8"
 
@@ -239,6 +240,14 @@ func (r *messageRenderer) systemMessage(payload engine.StdoutEventPayload) {
 	}
 }
 
+func (r *messageRenderer) downloadProgress(payload engine.DownloadProgressEventPayload) {
+	if r.isInteractive {
+		r.render(false)
+	} else {
+		r.writeSimpleMessage(renderDownloadProgress(payload, 80, true))
+	}
+}
+
 func (r *messageRenderer) done() {
 	if r.isInteractive {
 		r.render(false)
@@ -303,6 +312,27 @@ func (r *messageRenderer) render(done bool) {
 			r.colorizeAndWriteProgress(makeActionProgress(
 				strconv.Itoa(systemID), "  "+line))
 			systemID++
+		}
+	}
+
+	if len(r.display.systemEventPayloads) > 0 {
+		ids := make([]string, 0, len(r.display.systemEventPayloads))
+		for id := range r.display.downloadProgressPayloads {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+
+		printedHeader = false
+		for _, id := range ids {
+			if !printedHeader {
+				printedHeader = true
+				r.colorizeAndWriteProgress(makeActionProgress(
+					strconv.Itoa(systemID),
+					colors.Yellow+"Downloads"+colors.Reset))
+			}
+			payload := r.display.downloadProgressPayloads[id]
+			renderedPayload := renderDownloadProgress(payload, r.terminalWidth, true)
+			r.colorizeAndWriteProgress(makeActionProgress(payload.ID, renderedPayload))
 		}
 	}
 

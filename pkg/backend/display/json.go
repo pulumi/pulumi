@@ -213,6 +213,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			digest.Duration = p.Duration
 			digest.ChangeSummary = p.ResourceChanges
 			digest.MaybeCorrupt = p.MaybeCorrupt
+		case engine.DownloadProgressEvent:
+			// It doesn't make sense to record these ephemeral events
+			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
 		}

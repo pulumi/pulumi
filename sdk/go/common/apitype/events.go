@@ -200,6 +200,9 @@ type ResOpFailedEvent struct {
 // PolicyLoadEvent is emitted when a policy starts loading
 type PolicyLoadEvent struct{}
 
+// DownloadProgressEvent is emitted when a plugin is being downloaded
+type DownloadProgressEvent struct{}
+
 // EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
@@ -227,6 +230,7 @@ type EngineEvent struct {
 	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
 	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
 	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
+	DownloadProgressEvent  *DownloadProgressEvent  `json:"downloadProgressEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.
