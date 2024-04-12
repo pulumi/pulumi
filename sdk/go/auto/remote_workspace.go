@@ -104,27 +104,30 @@ func SelectRemoteStackGitSource(
 }
 
 func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalWorkspaceOption, error) {
+	remoteOpts := &remoteWorkspaceOptions{}
+	for _, o := range opts {
+		o.applyOption(remoteOpts)
+	}
+
+	if !remoteOpts.InheritSettings {
+		ifNotSet := " if RemoteWorkspaceOption.InheritSettings(true) is not set"
+		if repo.URL == "" {
+			return nil, errors.New("repo.URL is required" + ifNotSet)
+		}
+		if repo.Branch == "" && repo.CommitHash == "" {
+			return nil, errors.New("either repo.Branch or repo.CommitHash is required" + ifNotSet)
+		}
+	}
 	if repo.Setup != nil {
 		return nil, errors.New("repo.Setup cannot be used with remote workspaces")
 	}
-	if repo.URL == "" {
-		return nil, errors.New("repo.URL is required")
-	}
 	if repo.Branch != "" && repo.CommitHash != "" {
 		return nil, errors.New("repo.Branch and repo.CommitHash cannot both be specified")
-	}
-	if repo.Branch == "" && repo.CommitHash == "" {
-		return nil, errors.New("either repo.Branch or repo.CommitHash is required")
 	}
 	if repo.Auth != nil {
 		if repo.Auth.SSHPrivateKey != "" && repo.Auth.SSHPrivateKeyPath != "" {
 			return nil, errors.New("repo.Auth.SSHPrivateKey and repo.Auth.SSHPrivateKeyPath cannot both be specified")
 		}
-	}
-
-	remoteOpts := &remoteWorkspaceOptions{}
-	for _, o := range opts {
-		o.applyOption(remoteOpts)
 	}
 
 	for k, v := range remoteOpts.EnvVars {
@@ -224,6 +227,14 @@ func RemoteSkipInstallDependencies(skipInstallDependencies bool) RemoteWorkspace
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.SkipInstallDependencies = skipInstallDependencies
 	})
+}
+
+// RemoteInheritSettings sets whether to inherit deployment settings from the stack.
+func RemoteInheritSettings(inheritSettings bool) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.InheritSettings = inheritSettings
+	})
+
 }
 
 // RemoteExecutorImage sets the image to use for the remote executor.
