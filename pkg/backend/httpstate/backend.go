@@ -686,6 +686,10 @@ func (b *cloudBackend) SupportsProgress() bool {
 	return true
 }
 
+func (b *cloudBackend) SupportsDeployments() bool {
+	return true
+}
+
 // qualifiedStackReference describes a qualified stack on the Pulumi Service. The Owner or Project
 // may be "" if unspecified, e.g. "pulumi/production" specifies the Owner and Name, but not the
 // Project. We infer the missing data and try to make things work as best we can in ParseStackReference.
@@ -1845,6 +1849,29 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	}
 
 	return b.client.UpdateStackTags(ctx, stackID, tags)
+}
+
+// UpdateStackDeployment updates the stacks's deployment settings.
+func (b *cloudBackend) UpdateStackDeployment(ctx context.Context, stack backend.Stack,
+	deployment apitype.DeploymentSettings,
+) error {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return err
+	}
+
+	return b.client.UpdateStackDeployment(ctx, stackID, deployment)
+}
+
+func (b *cloudBackend) GetStackDeployment(ctx context.Context,
+	stack backend.Stack,
+) (*apitype.DeploymentSettings, error) {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+
+	return b.client.GetStackDeployment(ctx, stackID)
 }
 
 const pulumiOperationHeader = "Pulumi operation"

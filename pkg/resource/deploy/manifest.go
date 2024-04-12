@@ -47,7 +47,7 @@ func (m Manifest) Serialize() apitype.ManifestV1 {
 		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
 			Name:    plug.Name,
 			Path:    plug.Path,
-			Type:    plug.Kind,
+			Type:    string(plug.Kind), // tmp
 			Version: version,
 		})
 	}
@@ -72,7 +72,7 @@ func DeserializeManifest(m apitype.ManifestV1) (*Manifest, error) {
 		}
 		manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
 			Name:    plug.Name,
-			Kind:    plug.Type,
+			Kind:    workspace.PluginKind(plug.Type),
 			Version: version,
 		})
 	}

@@ -45,6 +45,7 @@ type MockBackend struct {
 	SupportsTagsF          func() bool
 	SupportsOrganizationsF func() bool
 	SupportsProgressF      func() bool
+	SupportsDeploymentsF   func() bool
 	ParseStackReferenceF   func(s string) (StackReference, error)
 	ValidateStackNameF     func(s string) error
 	DoesProjectExistF      func(context.Context, string, string) (bool, error)
@@ -61,6 +62,8 @@ type MockBackend struct {
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
+	UpdateStackDeploymentF  func(context.Context, Stack, apitype.DeploymentSettings) error
+	GetStackDeploymentF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
 	CurrentUserF            func() (string, []string, *workspace.TokenInformation, error)
 	PreviewF                func(context.Context, Stack,
 		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
@@ -142,6 +145,13 @@ func (be *MockBackend) SupportsOrganizations() bool {
 func (be *MockBackend) SupportsProgress() bool {
 	if be.SupportsProgressF != nil {
 		return be.SupportsProgressF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) SupportsDeployments() bool {
+	if be.SupportsOrganizationsF != nil {
+		return be.SupportsDeploymentsF()
 	}
 	panic("not implemented")
 }
@@ -370,6 +380,24 @@ func (be *MockBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error {
 	if be.CancelCurrentUpdateF != nil {
 		return be.CancelCurrentUpdateF(ctx, stackRef)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) UpdateStackDeployment(ctx context.Context, stack Stack,
+	deployment apitype.DeploymentSettings,
+) error {
+	if be.UpdateStackTagsF != nil {
+		return be.UpdateStackDeploymentF(ctx, stack, deployment)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetStackDeployment(ctx context.Context,
+	stack Stack,
+) (*apitype.DeploymentSettings, error) {
+	if be.UpdateStackTagsF != nil {
+		return be.GetStackDeploymentF(ctx, stack)
 	}
 	panic("not implemented")
 }

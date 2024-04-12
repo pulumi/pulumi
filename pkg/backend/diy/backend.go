@@ -643,6 +643,10 @@ func (b *diyBackend) SupportsProgress() bool {
 	return false
 }
 
+func (b *diyBackend) SupportsDeployments() bool {
+	return false
+}
+
 func (b *diyBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
 	return b.parseStackReference(stackRef)
 }
@@ -1348,6 +1352,21 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 ) error {
 	// The diy backend does not currently persist tags.
 	return errors.New("stack tags not supported in diy mode")
+}
+
+// UpdateStackDeployment updates the stacks's deployment settings.
+func (b *diyBackend) UpdateStackDeployment(ctx context.Context, stack backend.Stack,
+	deployment apitype.DeploymentSettings,
+) error {
+	// The local backend does not currently persist tags.
+	return errors.New("stack deployments not supported in --local mode")
+}
+
+func (b *diyBackend) GetStackDeployment(ctx context.Context,
+	stack backend.Stack,
+) (*apitype.DeploymentSettings, error) {
+	// The local backend does not currently persist tags.
+	return nil, errors.New("stack deployments not supported in --local mode")
 }
 
 func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

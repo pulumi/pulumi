@@ -151,6 +151,9 @@ type Backend interface {
 	// SupportsProgress tells whether the backend supports showing whether an operation is currently in progress
 	SupportsProgress() bool
 
+	// SupportsDeployments tells whether it is possible to configure deployments in this backend.
+	SupportsDeployments() bool
+
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
@@ -208,6 +211,10 @@ type Backend interface {
 
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
+
+	// UpdateStackDeployment updates the stacks's deployment settings.
+	UpdateStackDeployment(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
+	GetStackDeployment(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
 	ExportDeployment(ctx context.Context, stack Stack) (*apitype.UntypedDeployment, error)

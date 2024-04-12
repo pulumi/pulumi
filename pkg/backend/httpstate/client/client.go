@@ -1127,6 +1127,24 @@ func (pc *Client) UpdateStackTags(
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
 }
 
+func (pc *Client) UpdateStackDeployment(ctx context.Context, stack StackIdentifier,
+	deployment apitype.DeploymentSettings,
+) error {
+	// TODO(german): validate deployment
+
+	return pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
+}
+
+func (pc *Client) GetStackDeployment(ctx context.Context, stack StackIdentifier) (*apitype.DeploymentSettings, error) {
+	// TODO(german): validate deployment
+
+	var response apitype.DeploymentSettings
+
+	err := pc.restCall(ctx, "GET", getStackPath(stack, "deployments", "settings"), nil, nil, &response)
+
+	return &response, err
+}
+
 func getDeploymentPath(stack StackIdentifier, components ...string) string {
 	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s/deployments", stack.Owner, stack.Project, stack.Stack)
 	return path.Join(append([]string{prefix}, components...)...)

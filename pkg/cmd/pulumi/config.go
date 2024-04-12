@@ -798,7 +798,10 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	return key, value, nil
 }
 
-var stackConfigFile string
+var (
+	stackConfigFile           string
+	stackDeploymentConfigFile string
+)
 
 func getProjectStackPath(stack backend.Stack) (string, error) {
 	if stackConfigFile == "" {
@@ -820,6 +823,20 @@ func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
 		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 	}
 	return ps.Save(stackConfigFile)
+}
+
+func loadProjectStackDeployment(stack backend.Stack) (*workspace.ProjectStackDeployment, error) {
+	if stackDeploymentConfigFile == "" {
+		return workspace.DetectProjectStackDeployment(stack.Ref().Name().Q())
+	}
+	return workspace.LoadProjectStackDeployment(stackDeploymentConfigFile)
+}
+
+func saveProjectStackDeployment(psd *workspace.ProjectStackDeployment, stack backend.Stack) error {
+	if stackDeploymentConfigFile == "" {
+		return workspace.SaveProjectStackDeployment(stack.Ref().Name().Q(), psd)
+	}
+	return psd.Save(stackDeploymentConfigFile)
 }
 
 func parseConfigKey(key string) (config.Key, error) {

@@ -53,18 +53,36 @@ type CreateDeploymentRequest struct {
 	Operation *OperationContext `json:"operationContext,omitempty"`
 }
 
+type DeploymentSettings struct {
+	Tag           string                    `json:"tag,omitempty" yaml:"tag,omitempty"`
+	Executor      *ExecutorContext          `json:"executorContext,omitempty" yaml:"executorContext,omitempty"`
+	SourceContext *SourceContext            `json:"sourceContext,omitempty" yaml:"sourceContext,omitempty"`
+	GitHub        *DeploymentSettingsGitHub `json:"gitHub,omitempty" yaml:"gitHub,omitempty"`
+	Operation     *OperationContext         `json:"operationContext,omitempty" yaml:"operationContext,omitempty"`
+	AgentPoolID   *string                   `json:"agentPoolID,omitempty" yaml:"agentPoolID,omitempty"`
+}
+
+type DeploymentSettingsGitHub struct {
+	Repository          string   `json:"repository,omitempty" yaml:"repository,omitempty"`
+	PullRequestTemplate bool     `json:"pullRequestTemplate,omitempty" yaml:"pullRequestTemplate,omitempty"`
+	DeployCommits       bool     `json:"deployCommits,omitempty" yaml:"deployCommits,omitempty"`
+	PreviewPullRequests bool     `json:"previewPullRequests,omitempty" yaml:"previewPullRequests,omitempty"`
+	DeployPullRequest   *int64   `json:"deployPullRequest,omitempty" yaml:"deployPullRequest,omitempty"`
+	Paths               []string `json:"paths,omitempty" yaml:"paths,omitempty"`
+}
+
 type ExecutorContext struct {
 	// WorkingDirectory defines the path where the work should be done when executing.
-	WorkingDirectory string `json:"workingDirectory"`
+	WorkingDirectory string `json:"workingDirectory" yaml:"workingDirectory,omitempty"`
 
 	// Defines the image that the pulumi operations should run in.
-	ExecutorImage *DockerImage `json:"executorImage,omitempty"`
+	ExecutorImage *DockerImage `json:"executorImage,omitempty" yaml:"executorImage,omitempty"`
 }
 
 // A DockerImage describes a Docker image reference + optional credentials for use with a job definition.
 type DockerImage struct {
-	Reference   string                  `json:"reference"`
-	Credentials *DockerImageCredentials `json:"credentials,omitempty"`
+	Reference   string                  `json:"reference" yaml:"reference"`
+	Credentials *DockerImageCredentials `json:"credentials,omitempty" yaml:"credentials,omitempty"`
 }
 
 type dockerImageJSON struct {
@@ -99,28 +117,28 @@ func (d *DockerImage) UnmarshalJSON(bytes []byte) error {
 
 // DockerImageCredentials describes the credentials needed to access a Docker repository.
 type DockerImageCredentials struct {
-	Username string      `json:"username"`
-	Password SecretValue `json:"password"`
+	Username string      `json:"username" yaml:"username,omitempty"`
+	Password SecretValue `json:"password" yaml:"password,omitempty"`
 }
 
 // SourceContext describes some source code, and how to obtain it.
 type SourceContext struct {
-	Git *SourceContextGit `json:"git,omitempty"`
+	Git *SourceContextGit `json:"git,omitempty" yaml:"git,omitempty"`
 }
 
 type SourceContextGit struct {
-	RepoURL string `json:"repoURL"`
+	RepoURL string `json:"repoURL" yaml:"repoURL,omitempty"`
 
-	Branch string `json:"branch"`
+	Branch string `json:"branch" yaml:"branch,omitempty"`
 
 	// (optional) RepoDir is the directory to work from in the project's source repository
 	// where Pulumi.yaml is located. It is used in case Pulumi.yaml is not
 	// in the project source root.
-	RepoDir string `json:"repoDir,omitempty"`
+	RepoDir string `json:"repoDir,omitempty" yaml:"repoDir,omitempty"`
 
 	// (optional) Commit is the hash of the commit to deploy. If used, HEAD will be in detached mode. This
 	// is mutually exclusive with the Branch setting. Either value needs to be specified.
-	Commit string `json:"commit,omitempty"`
+	Commit string `json:"commit,omitempty" yaml:"commit,omitempty"`
 
 	// (optional) GitAuth allows configuring git authentication options
 	// There are 3 different authentication options:
@@ -130,7 +148,7 @@ type SourceContextGit struct {
 	// Only one authentication mode will be considered if more than one option is specified,
 	// with ssh private key/password preferred first, then personal access token, and finally
 	// basic auth credentials.
-	GitAuth *GitAuthConfig `json:"gitAuth,omitempty"`
+	GitAuth *GitAuthConfig `json:"gitAuth,omitempty" yaml:"gitAuth,omitempty"`
 }
 
 // GitAuthConfig specifies git authentication configuration options.
@@ -141,23 +159,23 @@ type SourceContextGit struct {
 //
 // Only 1 authentication mode is valid.
 type GitAuthConfig struct {
-	PersonalAccessToken *SecretValue `json:"accessToken,omitempty"`
-	SSHAuth             *SSHAuth     `json:"sshAuth,omitempty"`
-	BasicAuth           *BasicAuth   `json:"basicAuth,omitempty"`
+	PersonalAccessToken *SecretValue `json:"accessToken,omitempty" yaml:"accessToken,omitempty"`
+	SSHAuth             *SSHAuth     `json:"sshAuth,omitempty" yaml:"sshAuth,omitempty"`
+	BasicAuth           *BasicAuth   `json:"basicAuth,omitempty" yaml:"basicAuth,omitempty"`
 }
 
 // SSHAuth configures ssh-based auth for git authentication.
 // SSHPrivateKey is required but password is optional.
 type SSHAuth struct {
-	SSHPrivateKey SecretValue  `json:"sshPrivateKey"`
-	Password      *SecretValue `json:"password,omitempty"`
+	SSHPrivateKey SecretValue  `json:"sshPrivateKey" yaml:"sshPrivateKey"`
+	Password      *SecretValue `json:"password,omitempty" yaml:"password,omitempty"`
 }
 
 // BasicAuth configures git authentication through basic auth —
 // i.e. username and password. Both UserName and Password are required.
 type BasicAuth struct {
-	UserName SecretValue `json:"userName"`
-	Password SecretValue `json:"password"`
+	UserName SecretValue `json:"userName" yaml:"userName"`
+	Password SecretValue `json:"password" yaml:"password"`
 }
 
 // OperationContext describes what to do.
@@ -165,22 +183,25 @@ type OperationContext struct {
 	// PreRunCommands is an optional list of arbitrary commands to run before Pulumi
 	// is invoked.
 	// ref: https://github.com/pulumi/pulumi/issues/9397
-	PreRunCommands []string `json:"preRunCommands"`
+	PreRunCommands []string `json:"preRunCommands" yaml:"preRunCommands"`
 
 	// Operation is what we plan on doing.
-	Operation PulumiOperation `json:"operation"`
+	Operation PulumiOperation `json:"operation" yaml:"operation"`
 
 	// EnvironmentVariables contains environment variables to be applied during the execution.
-	EnvironmentVariables map[string]SecretValue `json:"environmentVariables"`
+	EnvironmentVariables map[string]SecretValue `json:"environmentVariables" yaml:"environmentVariables"`
 
 	// Options is a bag of settings to specify or override default behavior
-	Options *OperationContextOptions `json:"options,omitempty"`
+	Options *OperationContextOptions `json:"options,omitempty" yaml:"options,omitempty"`
 }
 
 // OperationContextOptions is a bag of settings to specify or override default behavior in a deployment
 type OperationContextOptions struct {
-	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
-	SkipInstallDependencies bool `json:"skipInstallDependencies"`
+	SkipInstallDependencies     bool   `json:"skipInstallDependencies" yaml:"skipInstallDependencies"`
+	SkipIntermediateDeployments bool   `json:"skipIntermediateDeployments" yaml:"skipIntermediateDeployments"`
+	Shell                       string `json:"shell" yaml:"shell"`
+	DeleteAfterDestroy          bool   `json:"deleteAfterDestroy" yaml:"deleteAfterDestroy"`
+	RemediateIfDriftDetected    bool   `json:"remediateIfDriftDetected" yaml:"remediateIfDriftDetected"`
 }
 
 // CreateDeploymentResponse defines the response given when a new Deployment is created.
