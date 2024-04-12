@@ -1,0 +1,8 @@
+build --host_platform=@rules_nixpkgs_core//platforms:host
+
+startup --batch_cpu_scheduling --io_nice_level 7
+build --jobs 16 --local_ram_resources=HOST_RAM*0.5
+test --jobs 16 --local_ram_resources=HOST_RAM*0.5
+
+test --test_output=errors
+
