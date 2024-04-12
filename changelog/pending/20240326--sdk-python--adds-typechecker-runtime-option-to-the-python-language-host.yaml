@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/python
-  description: Adds 'typeChecker' runtime option to the Python language host
+  description: Add 'typeChecker' runtime option to the Python language host
