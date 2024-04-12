@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "step3_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/tests/integration/stack_outputs_resource_error/go/step3",
+    visibility = ["//visibility:private"],
+    deps = ["//sdk/go/pulumi"],
+)
+
+go_binary(
+    name = "step3",
+    embed = [":step3_lib"],
+    visibility = ["//visibility:public"],
+)

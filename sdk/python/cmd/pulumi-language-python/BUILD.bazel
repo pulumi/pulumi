@@ -1,0 +1,60 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "pulumi-language-python_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/python",
+        "//pkg/codegen/schema",
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/go/common/version",
+        "//sdk/go/common/workspace",
+        "//sdk/python",
+        "@com_github_blang_semver//:semver",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)
+
+go_binary(
+    name = "pulumi-language-python",
+    embed = [":pulumi-language-python_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "pulumi-language-python_test",
+    srcs = [
+        "language_test.go",
+        "main_test.go",
+    ],
+    data = glob(["testdata/**"]) + [
+        "//cmd/pulumi-test-language",
+    ],
+    embed = [":pulumi-language-python_lib"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//proto/pulumi/testing:testing_go_proto",
+        "//sdk",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/rpcutil",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)

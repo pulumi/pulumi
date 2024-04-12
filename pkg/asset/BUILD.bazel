@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "asset",
+    srcs = ["massage.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/asset",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/resource"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":asset",
+    visibility = ["//visibility:public"],
+)

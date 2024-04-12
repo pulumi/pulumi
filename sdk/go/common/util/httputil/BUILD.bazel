@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "httputil",
+    srcs = ["http.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/retry",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":httputil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "httputil_test",
+    srcs = ["http_test.go"],
+    embed = [":httputil"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@org_golang_x_net//http2",
+    ],
+)

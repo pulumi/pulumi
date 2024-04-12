@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "fsutil",
+    srcs = [
+        "chdir.go",
+        "copy.go",
+        "isdirempty.go",
+        "lock.go",
+        "qname.go",
+        "walkup.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@com_github_rogpeppe_go_internal//lockedfile",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":fsutil",
+    visibility = ["//visibility:public"],
+)

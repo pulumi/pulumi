@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "generate_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/generate",
+    visibility = ["//visibility:private"],
+    deps = ["//sdk/go/common/slice"],
+)
+
+go_binary(
+    name = "generate",
+    embed = [":generate_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "generate_test",
+    srcs = ["main_test.go"],
+    embed = [":generate_lib"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

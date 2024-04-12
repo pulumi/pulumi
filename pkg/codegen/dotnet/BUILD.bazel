@@ -1,0 +1,70 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "dotnet",
+    srcs = [
+        "doc.go",
+        "gen.go",
+        "gen_intrinsics.go",
+        "gen_program.go",
+        "gen_program_expressions.go",
+        "git_ignore.go",
+        "importer.go",
+        "templates.go",
+        "test.go",
+        "utilities.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/hcl2/model",
+        "//pkg/codegen/hcl2/model/format",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/schema",
+        "//pkg/codegen/testing/test",
+        "//pkg/testing/integration",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/encoding",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/executable",
+        "//sdk/go/common/workspace",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":dotnet",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "dotnet_test",
+    srcs = [
+        "doc_test.go",
+        "gen_program_test.go",
+        "gen_test.go",
+        "utilities_test.go",
+    ],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
+    embed = [":dotnet"],
+    deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/schema",
+        "//pkg/codegen/testing/test",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

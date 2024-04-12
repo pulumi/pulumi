@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "config",
+    srcs = [
+        "config.go",
+        "get.go",
+        "require.go",
+        "try.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_spf13_cast//:cast",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":config",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "config_test",
+    srcs = ["config_test.go"],
+    embed = [":config"],
+    deps = [
+        "//sdk/go/pulumi",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

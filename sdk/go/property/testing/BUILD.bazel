@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "testing",
+    srcs = ["rapid.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/property/testing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource/urn",
+        "//sdk/go/property",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":testing",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "testing_test",
+    srcs = ["equal_test.go"],
+    embed = [":testing"],
+    deps = [
+        "//sdk/go/property",
+        "@com_github_stretchr_testify//assert",
+        "@net_pgregory_rapid//:rapid",
+    ],
+)

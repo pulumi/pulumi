@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "gen-pux-applyn_lib",
+    srcs = ["main.go"],
+    embedsrcs = [
+        "tmpl/applyn.go.tmpl",
+        "tmpl/applyn_test.go.tmpl",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/internal/gen-pux-applyn",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+    ],
+)
+
+go_binary(
+    name = "gen-pux-applyn",
+    embed = [":gen-pux-applyn_lib"],
+    visibility = ["//sdk/go:__subpackages__"],
+)
+
+go_test(
+    name = "gen-pux-applyn_test",
+    srcs = ["main_test.go"],
+    data = ["//sdk/go/pulumix:pulumix_data"],
+    embed = [":gen-pux-applyn_lib"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "property",
+    srcs = [
+        "equal.go",
+        "map.go",
+        "reference.go",
+        "values.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/property",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource/archive",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/urn",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":property",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "property_test",
+    srcs = ["values_test.go"],
+    embed = [":property"],
+    deps = [
+        "//sdk/go/common/resource/asset",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

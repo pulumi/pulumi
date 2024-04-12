@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "simple_lib",
+    srcs = [
+        "main.go",
+        "random.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/tests/integration/transformations/go/simple",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/common/promise",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumix",
+    ],
+)
+
+go_binary(
+    name = "simple",
+    embed = [":simple_lib"],
+    visibility = ["//visibility:public"],
+)

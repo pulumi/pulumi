@@ -1,0 +1,31 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "analyzer",
+    srcs = ["config.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/analyzer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/contract",
+        "@com_github_xeipuuv_gojsonschema//:gojsonschema",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":analyzer",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "analyzer_test",
+    srcs = ["config_test.go"],
+    embed = [":analyzer"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource/plugin",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

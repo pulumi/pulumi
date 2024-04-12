@@ -1,0 +1,58 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# gazelle:prefix github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
+
+go_library(
+    name = "pulumi-language-go_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/codegen/go",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/schema",
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/constant",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/executable",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/go/common/version",
+        "//sdk/go/common/workspace",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi-language-go/buildutil",
+        "//sdk/go/pulumi-language-go/goversion",
+        "@com_github_blang_semver//:semver",
+        "@com_github_opentracing_opentracing_go//:opentracing-go",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_x_mod//modfile",
+    ],
+)
+
+go_binary(
+    name = "pulumi-language-go",
+    embed = [":pulumi-language-go_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "pulumi-language-go_test",
+    srcs = ["main_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":pulumi-language-go_lib"],
+    deps = [
+        "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/testing/iotest",
+        "//sdk/go/common/util/fsutil",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

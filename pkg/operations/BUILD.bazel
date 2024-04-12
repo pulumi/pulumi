@@ -1,0 +1,57 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "operations",
+    srcs = [
+        "doc.go",
+        "operations.go",
+        "operations_aws.go",
+        "operations_cloud_aws.go",
+        "operations_gcp.go",
+        "resources.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/operations",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/resource/deploy/providers",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "@com_github_aws_aws_sdk_go//aws",
+        "@com_github_aws_aws_sdk_go//aws/credentials",
+        "@com_github_aws_aws_sdk_go//aws/session",
+        "@com_github_aws_aws_sdk_go//service/cloudwatchlogs",
+        "@com_github_aws_aws_sdk_go//service/sts",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_google_cloud_go_logging//apiv2",
+        "@org_golang_google_api//iterator",
+        "@org_golang_google_api//option",
+        "@org_golang_google_genproto//googleapis/logging/v2:logging",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":operations",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "operations_test",
+    srcs = [
+        "operations_aws_test.go",
+        "operations_cloud_aws_test.go",
+        "resources_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":operations"],
+    deps = [
+        "//pkg/resource/stack",
+        "//pkg/secrets/b64",
+        "//sdk/go/common/apitype",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

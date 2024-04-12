@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "channel",
+    srcs = ["channel.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/channel",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":channel",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "channel_test",
+    srcs = ["channel_test.go"],
+    embed = [":channel"],
+    deps = [
+        "//sdk/go/common/promise",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

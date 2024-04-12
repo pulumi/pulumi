@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "utils_lib",
+    srcs = ["jsonschema2md.go"],
+    importpath = "github.com/pulumi/pulumi/developer-docs/utils",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/common/slice",
+        "@com_github_santhosh_tekuri_jsonschema_v5//:jsonschema",
+    ],
+)
+
+go_binary(
+    name = "utils",
+    embed = [":utils_lib"],
+    visibility = ["//visibility:public"],
+)

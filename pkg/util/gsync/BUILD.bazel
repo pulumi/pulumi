@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "gsync",
+    srcs = ["syncmap.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/gsync",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":gsync",
+    visibility = ["//visibility:public"],
+)

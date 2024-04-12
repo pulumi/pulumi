@@ -1,0 +1,118 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cmdutil",
+    srcs = [
+        "args.go",
+        "child_unix.go",
+        "child_windows.go",
+        "console.go",
+        "console_password.go",
+        "diag.go",
+        "exit.go",
+        "profile.go",
+        "spinner.go",
+        "stack.go",
+        "term.go",
+        "term_unix.go",
+        "term_windows.go",
+        "trace.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/ciutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/result",
+        "@com_github_charmbracelet_bubbles//textinput",
+        "@com_github_charmbracelet_bubbletea//:bubbletea",
+        "@com_github_charmbracelet_lipgloss//:lipgloss",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_github_opentracing_opentracing_go//:opentracing-go",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_pulumi_appdash//:appdash",
+        "@com_github_pulumi_appdash//opentracing",
+        "@com_github_rivo_uniseg//:uniseg",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_uber_jaeger_client_go//:jaeger-client-go",
+        "@com_github_uber_jaeger_client_go//transport/zipkin",
+        "@org_golang_x_term//:term",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:aix": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:android": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:illumos": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:js": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:plan9": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "@org_golang_x_sys//unix",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@com_github_mitchellh_go_ps//:go-ps",
+            "@org_golang_x_sys//windows",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":cmdutil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "cmdutil_test",
+    srcs = [
+        "console_test.go",
+        "exit_test.go",
+        "term_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":cmdutil"],
+    deps = [
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/testing/iotest",
+        "//sdk/go/common/util/result",
+        "@com_github_charmbracelet_bubbletea//:bubbletea",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_github_mitchellh_go_ps//:go-ps",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

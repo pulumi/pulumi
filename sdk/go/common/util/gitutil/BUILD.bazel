@@ -1,0 +1,45 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "gitutil",
+    srcs = ["git.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/env",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/logging",
+        "@com_github_go_git_go_git_v5//:go-git",
+        "@com_github_go_git_go_git_v5//config",
+        "@com_github_go_git_go_git_v5//plumbing",
+        "@com_github_go_git_go_git_v5//plumbing/transport",
+        "@com_github_go_git_go_git_v5//plumbing/transport/http",
+        "@com_github_go_git_go_git_v5//plumbing/transport/ssh",
+        "@com_github_go_git_go_git_v5//storage/memory",
+        "@com_github_kevinburke_ssh_config//:ssh_config",
+        "@org_golang_x_crypto//ssh",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":gitutil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "gitutil_test",
+    srcs = ["git_test.go"],
+    embed = [":gitutil"],
+    deps = [
+        "//sdk/go/common/env",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/util/contract",
+        "@com_github_go_git_go_git_v5//plumbing/transport",
+        "@com_github_go_git_go_git_v5//plumbing/transport/http",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_x_net//nettest",
+    ],
+)

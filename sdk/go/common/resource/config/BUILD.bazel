@@ -1,0 +1,49 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "config",
+    srcs = [
+        "crypt.go",
+        "key.go",
+        "map.go",
+        "object.go",
+        "plaintext.go",
+        "value.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@org_golang_x_crypto//pbkdf2",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":config",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "config_test",
+    srcs = [
+        "key_test.go",
+        "map_test.go",
+        "object_test.go",
+        "plaintext_test.go",
+        "repr_test.go",
+        "value_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":config"],
+    deps = [
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@in_gopkg_yaml_v2//:yaml_v2",
+    ],
+)

@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "dotconv",
+    srcs = ["print.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/graph/dotconv",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/graph",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":dotconv",
+    visibility = ["//visibility:public"],
+)

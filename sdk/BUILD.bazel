@@ -1,0 +1,24 @@
+# gazelle:prefix github.com/pulumi/pulumi/sdk/v3
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "sdk",
+    srcs = ["version.go"],
+    embedsrcs = [".version"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_blang_semver//:semver"],
+)
+
+filegroup(
+    name = "sdk_files",
+    srcs = glob(["**"]) + subpackages(include = ["**"]),
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":sdk",
+    visibility = ["//visibility:public"],
+)

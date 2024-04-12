@@ -1,0 +1,60 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "importer",
+    srcs = [
+        "hcl2.go",
+        "language.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/importer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/hcl2/model",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/schema",
+        "//pkg/resource/deploy/providers",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":importer",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "importer_test",
+    srcs = [
+        "hcl2_test.go",
+        "language_test.go",
+    ],
+    data = glob(["testdata/**"]) + [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
+    embed = [":importer"],
+    deps = [
+        "//pkg/codegen/hcl2/model",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/schema",
+        "//pkg/codegen/testing/utils",
+        "//pkg/resource/deploy/providers",
+        "//pkg/resource/stack",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)

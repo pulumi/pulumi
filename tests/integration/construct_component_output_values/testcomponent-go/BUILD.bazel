@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "testcomponent-go_lib",
+    srcs = [
+        "main.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/tests/integration/construct_component_output_values/testcomponent-go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/resource/provider",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/provider",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+go_binary(
+    name = "testcomponent-go",
+    embed = [":testcomponent-go_lib"],
+    visibility = ["//visibility:public"],
+)

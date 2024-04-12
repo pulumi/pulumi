@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "apitype",
+    srcs = [
+        "cli.go",
+        "core.go",
+        "deployments.go",
+        "environments.go",
+        "errors.go",
+        "events.go",
+        "history.go",
+        "logs.go",
+        "plan.go",
+        "policy.go",
+        "search.go",
+        "service.go",
+        "stacks.go",
+        "updates.go",
+    ],
+    embedsrcs = [
+        "deployments.json",
+        "property-values.json",
+        "resources.json",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/apitype",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/workspace",
+        "@com_github_pulumi_esc//:esc",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":apitype",
+    visibility = ["//visibility:public"],
+)

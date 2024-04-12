@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "env",
+    srcs = ["env.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/env",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/env"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":env",
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tools",
+    srcs = [
+        "gen.go",
+        "paths.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/tools",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "@com_github_tweekmonster_luser//:luser",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":tools",
+    visibility = ["//visibility:public"],
+)

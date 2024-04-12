@@ -1,0 +1,51 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "python",
+    srcs = [
+        "python.go",
+        "shim_unix.go",
+        "shim_windows.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/python",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/contract"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":python",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "python_test",
+    srcs = ["python_test.go"],
+    embed = [":python"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)
+
+# TODO: This is a hack to get the Python SDK to build. We should hopefully be able to replace this with a proper python rule.
+#filegroup(
+#    name = "python_files",
+#    srcs = glob(["env/**"]) + ["//sdk/python:generate_python"],
+#    visibility = ["//visibility:public"],
+#)
+#
+## TODO: this can probably be improved, I think right now we need to run bazel twice for this to be correct.
+#genrule(
+#    name = "generate_python",
+#    srcs = glob(
+#        ["**"],
+#        exclude = ["env/**"],
+#    ),
+#    outs = ["env/made"],
+#    cmd = "(cd sdk/python && make build_package >/dev/null 2>&1) && touch $@",
+#    visibility = ["//visibility:public"],
+#)
+#
+#filegroup(
+#    name = "python_lib",
+#    srcs = glob(["lib/**"]),
+#    visibility = ["//visibility:public"],
+#)

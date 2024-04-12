@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "step1_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/tests/integration/aliases/go/rename_component_and_child/step1",
+    visibility = ["//visibility:private"],
+    deps = ["//sdk/go/pulumi"],
+)
+
+go_binary(
+    name = "step1",
+    embed = [":step1_lib"],
+    visibility = ["//visibility:public"],
+)

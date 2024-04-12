@@ -2300,8 +2300,8 @@ def go_deps():
     go_repository(
         name = "com_github_grpc_ecosystem_grpc_gateway_v2",
         importpath = "github.com/grpc-ecosystem/grpc-gateway/v2",
-        sum = "h1:YBftPWNWd4WwGqtY2yeZL2ef8rHAxPBD8KFhJpmcqms=",
-        version = "v2.16.0",
+        sum = "h1:/c3QmbOGMGTOumP2iT/rCwB7b0QDGLKzqOmktBjT+Is=",
+        version = "v2.19.1",
     )
     go_repository(
         name = "com_github_grpc_ecosystem_grpc_opentracing",
@@ -2528,8 +2528,9 @@ def go_deps():
     go_repository(
         name = "com_github_hashicorp_vault_api",
         importpath = "github.com/hashicorp/vault/api",
-        sum = "h1:C7OL9YtOtwQbTKI9ogB0A1wffRbCN+rH/LLCHO3d8HM=",
-        version = "v1.8.2",
+        replace = "github.com/hashicorp/vault/api",
+        sum = "h1:ab7dI6W8DuCY7yCU8blo0UCYl2oHre/dloCmzMWg9w8=",
+        version = "v1.9.0",
     )
     go_repository(
         name = "com_github_hashicorp_vault_sdk",
@@ -5872,8 +5873,9 @@ def go_deps():
     go_repository(
         name = "org_golang_google_protobuf",
         importpath = "google.golang.org/protobuf",
-        sum = "h1:uNO2rsAINq/JlFpSdYEKIZ0uKD/R9cpdv0T+yoGwGmI=",
-        version = "v1.33.0",
+        replace = "google.golang.org/protobuf", # keep
+        sum = "h1:g0LDEJHgrBl9N9r17Ru3sqWhkIx2NB67okBHPwC7hs8=", # keep
+        version = "v1.31.0", # keep
     )
     go_repository(
         name = "org_golang_x_arch",

@@ -1,0 +1,83 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pcl",
+    srcs = [
+        "binder.go",
+        "binder_component.go",
+        "binder_nodes.go",
+        "binder_resource.go",
+        "binder_schema.go",
+        "component.go",
+        "config.go",
+        "diagnostics.go",
+        "functions.go",
+        "intrinsics.go",
+        "invoke.go",
+        "local.go",
+        "output.go",
+        "program.go",
+        "resource.go",
+        "rewrite_apply.go",
+        "rewrite_convert.go",
+        "rewrite_properties.go",
+        "type.go",
+        "utilities.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/pcl",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/hcl2/model",
+        "//pkg/codegen/hcl2/model/format",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/schema",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+        "@com_github_blang_semver//:semver",
+        "@com_github_gedex_inflector//:inflector",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
+        "@com_github_spf13_afero//:afero",
+        "@com_github_zclconf_go_cty//cty",
+        "@com_github_zclconf_go_cty//cty/convert",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":pcl",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "pcl_test",
+    srcs = [
+        "binder_resource_test.go",
+        "binder_schema_test.go",
+        "binder_test.go",
+        "functions_test.go",
+        "rewrite_apply_test.go",
+        "rewrite_convert_test.go",
+        "utilities_test.go",
+    ],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
+    embed = [":pcl"],
+    deps = [
+        "//pkg/codegen/hcl2/model",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/schema",
+        "//pkg/codegen/testing/test",
+        "//pkg/codegen/testing/utils",
+        "//sdk/go/common/util/contract",
+        "@com_github_blang_semver//:semver",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_spf13_afero//:afero",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)

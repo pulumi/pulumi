@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "logging",
+    srcs = ["log.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/slice",
+        "@com_github_golang_glog//:glog",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":logging",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "logging_test",
+    srcs = ["log_test.go"],
+    embed = [":logging"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

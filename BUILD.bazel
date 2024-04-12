@@ -2,9 +2,13 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 
 # gazelle:prefix github.com/pulumi/pulumi
+#
 # gazelle:go_naming_convention import_alias
+#
 # gazelle:proto package
 # gazelle:proto_group go_package
+# gazelle:go_grpc_compilers @io_bazel_rules_go//proto:go_proto,@io_bazel_rules_go//proto:go_grpc_v2
+#
 # gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/proto/go //proto/pulumi:pulumirpc_go_proto
 #
 # gazelle:exclude sdk/proto/**/*

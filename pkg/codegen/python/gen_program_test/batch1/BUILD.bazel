@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "batch1_test",
+    srcs = ["gen_program_test.go"],
+    data = [
+        "//pkg/codegen/testing/test:codegen_testdata",
+    ],
+    deps = [
+        "//pkg/codegen/python",
+        "//pkg/codegen/testing/test",
+    ],
+)

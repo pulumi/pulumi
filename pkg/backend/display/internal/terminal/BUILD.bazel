@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "terminal",
+    srcs = [
+        "info.go",
+        "mock.go",
+        "term.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal",
+    visibility = ["//pkg/backend/display:__subpackages__"],
+    deps = [
+        "@com_github_ijc_gotty//:Gotty",
+        "@com_github_muesli_cancelreader//:cancelreader",
+        "@org_golang_x_term//:term",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":terminal",
+    visibility = ["//pkg/backend/display:__subpackages__"],
+)
+
+go_test(
+    name = "terminal_test",
+    srcs = ["term_test.go"],
+    embed = [":terminal"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

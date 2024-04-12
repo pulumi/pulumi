@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "targets_test",
+    srcs = ["targets_test.go"],
+    data = glob(["delete_targets_many_deps/**"]),
+    deps = [
+        "//sdk/go/common/resource",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

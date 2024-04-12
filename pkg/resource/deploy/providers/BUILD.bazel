@@ -1,0 +1,51 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "providers",
+    srcs = [
+        "doc.go",
+        "provider.go",
+        "reference.go",
+        "registry.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/workspace",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/env",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_gofrs_uuid//:uuid",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":providers",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "providers_test",
+    srcs = [
+        "provider_test.go",
+        "reference_test.go",
+        "registry_test.go",
+    ],
+    embed = [":providers"],
+    deps = [
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+    ],
+)
