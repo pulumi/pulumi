@@ -5720,10 +5720,10 @@ func TestOutputChanges(t *testing.T) {
 		"frob": "baz",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urn, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		rrResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(urn, outs)
+		err = monitor.RegisterResourceOutputs(rrResp.URN, outs)
 		assert.NoError(t, err)
 
 		return nil

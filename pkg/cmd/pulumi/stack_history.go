@@ -163,6 +163,8 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 			info.EndTime = makeStringRef(time.Unix(update.EndTime, 0).UTC().Format(timeFormat))
 			resourceChanges := make(map[string]int)
 			for k, v := range update.ResourceChanges {
+				// Filter out the the OpOutputChange events because they are pseudo
+				// events that shouldn't be included in the stack history
 				if k != deploy.OpOutputChange {
 					resourceChanges[string(k)] = v
 				}
