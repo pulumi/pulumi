@@ -115,6 +115,13 @@ func SuppressOutputs() Option {
 	})
 }
 
+// Continue to perform the destroy operation despite the occurrence of errors.
+func ContinueOnError() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ContinueOnError = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -153,6 +160,8 @@ type Options struct {
 	SuppressProgress bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
 	SuppressOutputs bool
+	// Continue to perform the destroy operation despite the occurrence of errors.
+	ContinueOnError bool
 }
 
 type optionFunc func(*Options)

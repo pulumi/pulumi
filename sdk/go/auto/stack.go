@@ -688,6 +688,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if destroyOpts.SuppressProgress {
 		args = append(args, "--suppress-progress")
 	}
+	if destroyOpts.ContinueOnError {
+		args = append(args, "--continue-on-error")
+	}
 
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
