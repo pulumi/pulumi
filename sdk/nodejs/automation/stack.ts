@@ -492,6 +492,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.excludeProtected) {
                 args.push("--exclude-protected");
             }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
@@ -1003,6 +1006,8 @@ export interface DestroyOptions extends GlobalOpts {
      * Do not destroy protected resources.
      */
     excludeProtected?: boolean;
+    // Continue to perform the destroy operation despite the occurrence of errors.
+    continueOnError?: boolean;
 }
 
 const execKind = {

@@ -540,6 +540,7 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
+        continue_on_error: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -560,6 +561,7 @@ class Stack:
         :param debug: Print detailed debugging output during resource operations
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
+        :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -876,6 +878,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     debug: Optional[bool] = kwargs.get("debug")
     suppress_outputs: Optional[bool] = kwargs.get("suppress_outputs")
     suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
+    continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
 
     if message:
         extra_args.extend(["--message", message])
@@ -915,6 +918,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--suppress-outputs"])
     if suppress_progress:
         extra_args.extend(["--suppress-progress"])
+    if continue_on_error:
+        extra_args.extend(["--continue-on-error"])
     return extra_args
 
 
