@@ -110,7 +110,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 	}
 
 	if !remoteOpts.InheritSettings {
-		ifNotSet := " if RemoteWorkspaceOption.InheritSettings(true) is not set"
+		ifNotSet := " if RemoteInheritSettings(true) is not set"
 		if repo.URL == "" {
 			return nil, errors.New("repo.URL is required" + ifNotSet)
 		}
