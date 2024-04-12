@@ -242,7 +242,11 @@ go_test(
         "util_test.go",
         "whoami_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob([
+        "convert_testdata/**",
+        "pcl_convert_testdata/**",
+        "testdata/**"
+    ]),
     embed = [":pulumi_lib"],
     deps = [
         "//pkg/backend",

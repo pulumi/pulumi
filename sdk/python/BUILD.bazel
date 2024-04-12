@@ -1,4 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@pip//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:packaging.bzl", "py_wheel")
 
 go_library(
     name = "python",
@@ -25,27 +28,35 @@ go_test(
     deps = ["@com_github_stretchr_testify//assert"],
 )
 
-# TODO: This is a hack to get the Python SDK to build. We should hopefully be able to replace this with a proper python rule.
-#filegroup(
-#    name = "python_files",
-#    srcs = glob(["env/**"]) + ["//sdk/python:generate_python"],
-#    visibility = ["//visibility:public"],
-#)
-#
-## TODO: this can probably be improved, I think right now we need to run bazel twice for this to be correct.
-#genrule(
-#    name = "generate_python",
-#    srcs = glob(
-#        ["**"],
-#        exclude = ["env/**"],
-#    ),
-#    outs = ["env/made"],
-#    cmd = "(cd sdk/python && make build_package >/dev/null 2>&1) && touch $@",
-#    visibility = ["//visibility:public"],
-#)
-#
-#filegroup(
-#    name = "python_lib",
-#    srcs = glob(["lib/**"]),
-#    visibility = ["//visibility:public"],
-#)
+py_library(
+    name = "sdk",
+    srcs = glob([
+        "lib/setup.py",
+        "lib/pulumi/**/*.py",
+    ]),
+    imports = ["lib"],
+    deps = [
+        requirement("dill"),
+        requirement("grpcio"),
+        requirement("protobuf"),
+        requirement("pyyaml"),
+        requirement("semver"),
+        requirement("six"),
+    ],
+)
+
+py_wheel(
+    name = "sdk_wheel",
+    deps = [":sdk"],
+    distribution = "pulumi",
+    version = "0.0.1",
+    summary = "Pulumi's Python SDK",
+    description_content_type = "text/markdown",
+    description_file = ":README.md",
+    homepage = "https://github.com/pulumi/pulumi",
+    license = "Apache-2.0",
+    python_requires = ">=3.8",
+    strip_path_prefixes = [
+        "sdk/python/lib",
+    ],
+)

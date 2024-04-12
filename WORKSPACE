@@ -1,5 +1,22 @@
 workspace(name = "pulumi")
 
+## TODOS
+#
+# Docs
+#
+# * Ordering constraints in WORKSPACE
+# * Gazelle directives, including those in pkg/BUILD.bazel, sdk/BUILD.bazel,
+#   etc.
+# * Nixpkgs setup and directory
+# * gRPC compilers used by Gazelle so that we get UnsafeServers, newer gRPC
+#   features, etc.
+#
+# Layout
+#
+# * Just inline everything into the WORKSPACE -- the ordering constraints etc.
+#   mean it's uglier and harder to follow with bazel/repo/*
+# * Though perhaps leave the Go deps in there somewhere
+
 # Dependencies
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -91,5 +108,7 @@ go_deps()
 setup_go()
 
 setup_python()
+load("@pip//:requirements.bzl", setup_pip = "install_deps")
+setup_pip()
 
 setup_gazelle()
