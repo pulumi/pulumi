@@ -18,9 +18,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -33,6 +36,27 @@ const (
 	providerName = "testprovider"
 	version      = "0.0.1"
 )
+
+var providerSchema = pschema.PackageSpec{
+	Name:        "testprovider",
+	Description: "A test provider.",
+	DisplayName: "testprovider",
+
+	Config: pschema.ConfigSpec{},
+
+	Provider: pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "The provider type for the testprovider package.",
+			Type:        "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{},
+	},
+
+	Types:     map[string]pschema.ComplexTypeSpec{},
+	Resources: map[string]pschema.ResourceSpec{},
+	Functions: map[string]pschema.FunctionSpec{},
+	Language:  map[string]pschema.RawMessage{},
+}
 
 // Minimal set of methods to implement a basic provider.
 type resourceProvider interface {
@@ -192,7 +216,23 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest,
 ) (*rpc.GetSchemaResponse, error) {
-	return &rpc.GetSchemaResponse{}, nil
+	makeJSONString := func(v any) ([]byte, error) {
+		var out bytes.Buffer
+		encoder := json.NewEncoder(&out)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "    ")
+		if err := encoder.Encode(v); err != nil {
+			return nil, err
+		}
+		return out.Bytes(), nil
+	}
+	schemaJSON, err := makeJSONString(providerSchema)
+	if err != nil {
+		return nil, err
+	}
+	return &rpc.GetSchemaResponse{
+		Schema: string(schemaJSON),
+	}, nil
 }
 
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
