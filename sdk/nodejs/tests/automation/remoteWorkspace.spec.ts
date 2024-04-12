@@ -211,6 +211,17 @@ describe("RemoteWorkspace", () => {
                 },
                 expected: ["--remote", "foo", "--remote-skip-install-dependencies"],
             },
+            {
+                name: "inherit settings",
+                opts: {
+                    remote: true,
+                    remoteGitProgramArgs: {
+                        stackName: "stack",
+                    },
+                    remoteInheritSettings: true,
+                },
+                expected: ["--remote", "--remote-inherit-settings"],
+            },
         ];
         tests.forEach((test) => {
             it(`${test.name}`, async () => {
@@ -323,13 +334,13 @@ function testErrors(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptio
             name: "no url",
             stackName: stack,
             url: "",
-            error: `url is required.`,
+            error: `url is required if inheritSettings is not set.`,
         },
         {
             name: "no branch or commit",
             stackName: stack,
             url: testRepo,
-            error: `either branch or commitHash is required.`,
+            error: `either branch or commitHash is required if inheritSettings is not set.`,
         },
         {
             name: "both branch and commit",
