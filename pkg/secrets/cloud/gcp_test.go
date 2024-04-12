@@ -63,12 +63,10 @@ func TestGCPCloudManager(t *testing.T) {
 	keyName := createGCPKey(ctx, t)
 	url := "gcpkms://" + keyName
 	testURL(ctx, t, url)
-	t.Fail()
 }
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingKey(t *testing.T) {
-	t.Setenv("AWS_REGION", "us-west-2")
 	ctx := context.Background()
 
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
@@ -97,12 +95,11 @@ func TestGCPExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingState(t *testing.T) {
-	t.Setenv("AWS_REGION", "us-west-2")
-	ctx, _, _ := getAwsCaller(t)
+	ctx := context.Background()
 
 	//nolint:lll // this includes a base64 encoded key
 	cloudState := `{
-		"url": "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2",
+		"url": "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key",
 		"encryptedkey": "CiQAAVPx+1LGEXNyhMLo89JUdLIUqqsHxB3GlqHHqsGgQB2O7IYSSQBzSboprGFFkoJKRp5baCnFKH5gkCiADJINnUF9luzY93RjYSlyQ23qj0kopX3ZuuXB+ZuzSEqaH0IOL9RoYP1kB+FIXGdkWXE="
 	}`
 	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
@@ -126,10 +123,7 @@ func TestGCPExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPKeyEditProjectStack(t *testing.T) {
-	t.Setenv("AWS_REGION", "us-west-2")
-	_, _, _ = getAwsCaller(t)
-
-	url := "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2"
+	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
 
 	//nolint:lll // this is a base64 encoded key
 	encryptedKeyBase64 := "CiQAAVPx+1LGEXNyhMLo89JUdLIUqqsHxB3GlqHHqsGgQB2O7IYSSQBzSboprGFFkoJKRp5baCnFKH5gkCiADJINnUF9luzY93RjYSlyQ23qj0kopX3ZuuXB+ZuzSEqaH0IOL9RoYP1kB+FIXGdkWXE="

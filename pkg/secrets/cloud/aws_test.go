@@ -66,19 +66,16 @@ func createKey(ctx context.Context, t *testing.T, cfg aws.Config) *kms.CreateKey
 //nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
-	ctx, _, _ := getAwsCaller(t)
+	ctx, cfg, _ := getAwsCaller(t)
 
-	//	key := createKey(ctx, t, cfg)
+	key := createKey(ctx, t, cfg)
+	url := "awskms://" + *key.KeyMetadata.KeyId + "?awssdk=v2"
 
-	url := "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2"
-
-	t.Fail()
 	testURL(ctx, t, url)
 }
 
 //nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager_SessionToken(t *testing.T) {
-	t.Fail()
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, cfg, _ := getAwsCaller(t)
 
@@ -94,7 +91,6 @@ func TestAWSCloudManager_SessionToken(t *testing.T) {
 	t.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
 
 	testURL(ctx, t, url)
-	t.FailNow()
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -203,10 +199,10 @@ func TestAWSKmsExistingKey(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, _, _ := getAwsCaller(t)
 
-	url := "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2"
+	url := "awskms://41c7ebf3-fc15-4ff3-bfdb-ffcf9277a9f6?awssdk=v2"
 
 	//nolint:lll // this is a base64 encoded key
-	encryptedKeyBase64 := "AQICAHi8kmx0ArV3r2Ctcuwqc7bVvA5A0v8PG8tTkBe44vAmpgGc5fHCEkQrUvkskgf54rp3AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM0S6ctJDDPlmN3PsLAgEQgDt4Td9GegS8bRWPt0zWKQLLqtnXFwirKWSoZG5fVkpkUBkYW3zxMk0DHvBIfaT+iHMZ/0CyfOESapBxlA=="
+	encryptedKeyBase64 := "AQICAHg7lg2X+XZ/4ezjs2GWB1eN65mBC53Noao88o5hGgxBBQHwg+RoNOZsvR97C58ZQGmOAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM/FKZ87bd4i/7cGjiAgEQgDtM/i6rplbMr9KAlevqdkPrnhHb5BCbnENyQp4fhxlM92OH8hObxYaUyXNYVzsYxBRbGwN13j0B/wEQlw=="
 	stackConfig := &workspace.ProjectStack{}
 	stackConfig.SecretsProvider = url
 	stackConfig.EncryptedKey = encryptedKeyBase64
@@ -234,8 +230,8 @@ func TestAWSKmsExistingState(t *testing.T) {
 
 	//nolint:lll // this includes a base64 encoded key
 	cloudState := `{
-		"url": "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2",
-		"encryptedkey": "AQICAHi8kmx0ArV3r2Ctcuwqc7bVvA5A0v8PG8tTkBe44vAmpgGc5fHCEkQrUvkskgf54rp3AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM0S6ctJDDPlmN3PsLAgEQgDt4Td9GegS8bRWPt0zWKQLLqtnXFwirKWSoZG5fVkpkUBkYW3zxMk0DHvBIfaT+iHMZ/0CyfOESapBxlA=="
+		"url": "awskms://41c7ebf3-fc15-4ff3-bfdb-ffcf9277a9f6?awssdk=v2",
+		"encryptedkey": "AQICAHg7lg2X+XZ/4ezjs2GWB1eN65mBC53Noao88o5hGgxBBQHwg+RoNOZsvR97C58ZQGmOAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM/FKZ87bd4i/7cGjiAgEQgDtM/i6rplbMr9KAlevqdkPrnhHb5BCbnENyQp4fhxlM92OH8hObxYaUyXNYVzsYxBRbGwN13j0B/wEQlw=="
 	}`
 	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
 	require.NoError(t, err)
@@ -261,10 +257,10 @@ func TestAWSKeyEditProjectStack(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	_, _, _ = getAwsCaller(t)
 
-	url := "awskms://dfd7fc6b-05c5-4885-9e2b-dcc4b72c5797?awssdk=v2"
+	url := "awskms://41c7ebf3-fc15-4ff3-bfdb-ffcf9277a9f6?awssdk=v2"
 
 	//nolint:lll // this is a base64 encoded key
-	encryptedKeyBase64 := "AQICAHi8kmx0ArV3r2Ctcuwqc7bVvA5A0v8PG8tTkBe44vAmpgGc5fHCEkQrUvkskgf54rp3AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM0S6ctJDDPlmN3PsLAgEQgDt4Td9GegS8bRWPt0zWKQLLqtnXFwirKWSoZG5fVkpkUBkYW3zxMk0DHvBIfaT+iHMZ/0CyfOESapBxlA=="
+	encryptedKeyBase64 := "AQICAHg7lg2X+XZ/4ezjs2GWB1eN65mBC53Noao88o5hGgxBBQHwg+RoNOZsvR97C58ZQGmOAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM/FKZ87bd4i/7cGjiAgEQgDtM/i6rplbMr9KAlevqdkPrnhHb5BCbnENyQp4fhxlM92OH8hObxYaUyXNYVzsYxBRbGwN13j0B/wEQlw=="
 	stackConfig := &workspace.ProjectStack{}
 	stackConfig.SecretsProvider = url
 	stackConfig.EncryptedKey = encryptedKeyBase64
