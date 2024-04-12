@@ -79,18 +79,18 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		},
 		"repo setup": {
 			stack: stack,
-			repo:  GitRepo{Setup: func(context.Context, Workspace) error { return nil }},
+			repo:  GitRepo{URL: remoteTestRepo, Setup: func(context.Context, Workspace) error { return nil }},
 			err:   "repo.Setup cannot be used with remote workspaces",
 		},
 		"no url": {
 			stack: stack,
 			repo:  GitRepo{},
-			err:   "repo.URL is required",
+			err:   "repo.URL is required if RemoteWorkspaceOption.InheritSettings(true) is not set",
 		},
 		"no branch or commit": {
 			stack: stack,
 			repo:  GitRepo{URL: remoteTestRepo},
-			err:   "either repo.Branch or repo.CommitHash is required",
+			err:   "either repo.Branch or repo.CommitHash is required if RemoteWorkspaceOption.InheritSettings(true) is not set",
 		},
 		"both branch and commit": {
 			stack: stack,
