@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,4 +192,84 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	t.Setenv("AWS_SESSION_TOKEN", *creds.SessionToken)
 
 	testURL(ctx, t, url)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestAWSKmsExistingKey(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-west-2")
+	ctx, _, _ := getAwsCaller(t)
+
+	url := "awskms://41c7ebf3-fc15-4ff3-bfdb-ffcf9277a9f6?awssdk=v2"
+
+	//nolint:lll // this is a base64 encoded key
+	encryptedKeyBase64 := "AQICAHg7lg2X+XZ/4ezjs2GWB1eN65mBC53Noao88o5hGgxBBQHwg+RoNOZsvR97C58ZQGmOAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM/FKZ87bd4i/7cGjiAgEQgDtM/i6rplbMr9KAlevqdkPrnhHb5BCbnENyQp4fhxlM92OH8hObxYaUyXNYVzsYxBRbGwN13j0B/wEQlw=="
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestAWSKmsExistingState(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-west-2")
+	ctx, _, _ := getAwsCaller(t)
+
+	//nolint:lll // this includes a base64 encoded key
+	cloudState := `{
+		"url": "awskms://41c7ebf3-fc15-4ff3-bfdb-ffcf9277a9f6?awssdk=v2",
+		"encryptedkey": "AQICAHg7lg2X+XZ/4ezjs2GWB1eN65mBC53Noao88o5hGgxBBQHwg+RoNOZsvR97C58ZQGmOAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM/FKZ87bd4i/7cGjiAgEQgDtM/i6rplbMr9KAlevqdkPrnhHb5BCbnENyQp4fhxlM92OH8hObxYaUyXNYVzsYxBRbGwN13j0B/wEQlw=="
+	}`
+	manager, err := NewCloudSecretsManagerFromState([]byte(cloudState))
+	require.NoError(t, err)
+
+	enc, err := manager.Encrypter()
+	require.NoError(t, err)
+
+	dec, err := manager.Decrypter()
+	require.NoError(t, err)
+
+	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
+	require.NoError(t, err)
+
+	plaintext, err := dec.DecryptValue(ctx, ciphertext)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", plaintext)
+
+	assert.JSONEq(t, cloudState, string(manager.State()))
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestAWSKeyEditProjectStack(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-west-2")
+	_, _, _ = getAwsCaller(t)
+
+	url := "awskms://41c7ebf3-fc15-4ff3-bfdb-ffcf9277a9f6?awssdk=v2"
+
+	//nolint:lll // this is a base64 encoded key
+	encryptedKeyBase64 := "AQICAHg7lg2X+XZ/4ezjs2GWB1eN65mBC53Noao88o5hGgxBBQHwg+RoNOZsvR97C58ZQGmOAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM/FKZ87bd4i/7cGjiAgEQgDtM/i6rplbMr9KAlevqdkPrnhHb5BCbnENyQp4fhxlM92OH8hObxYaUyXNYVzsYxBRbGwN13j0B/wEQlw=="
+	stackConfig := &workspace.ProjectStack{}
+	stackConfig.SecretsProvider = url
+	stackConfig.EncryptedKey = encryptedKeyBase64
+	manager, err := NewCloudSecretsManager(stackConfig, url, false)
+	require.NoError(t, err)
+
+	newConfig := &workspace.ProjectStack{}
+	err = EditProjectStack(newConfig, manager.State())
+	require.NoError(t, err)
+
+	assert.Equal(t, stackConfig.EncryptedKey, newConfig.EncryptedKey)
 }
