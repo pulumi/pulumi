@@ -37,7 +37,7 @@ const (
 // creating a new deployment.
 type CreateDeploymentRequest struct {
 	// Op
-	Op PulumiOperation `json:"op"`
+	Op PulumiOperation `json:"operation"`
 
 	// InheritSettings is a flag that indicates whether the deployment should inherit
 	// deployment settings from the stack.

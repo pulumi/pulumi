@@ -482,10 +482,6 @@ func newUpCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
@@ -494,7 +490,11 @@ func newUpCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Update, stackName, args[0], remoteArgs)
+				url := ""
+				if len(args) > 0 {
+					url = args[0]
+				}
+				return runDeployment(ctx, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)

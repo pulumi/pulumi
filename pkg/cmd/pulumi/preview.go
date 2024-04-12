@@ -325,10 +325,6 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
@@ -337,7 +333,12 @@ func newPreviewCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, args[0], remoteArgs)
+				url := ""
+				if len(args) > 0 {
+					url = args[0]
+				}
+
+				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(displayOpts)

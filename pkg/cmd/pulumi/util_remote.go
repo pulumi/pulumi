@@ -240,7 +240,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	args RemoteArgs,
 ) result.Result {
 	// Validate args.
-	if url == "" {
+	if url == "" && !args.inheritSettings {
 		return result.FromError(errors.New("the url arg must be specified"))
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
@@ -358,21 +358,35 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		}
 	}
 
+	var sourceContext *apitype.SourceContext
+	if url != "" || args.gitBranch != "" || args.gitCommit != "" || args.gitRepoDir != "" || gitAuth != nil {
+		sourceContext = &apitype.SourceContext{
+			Git: &apitype.SourceContextGit{},
+		}
+		if url != "" {
+			sourceContext.Git.RepoURL = url
+		}
+		if args.gitBranch != "" {
+			sourceContext.Git.Branch = args.gitBranch
+		}
+		if args.gitCommit != "" {
+			sourceContext.Git.Commit = args.gitCommit
+		}
+		if args.gitRepoDir != "" {
+			sourceContext.Git.RepoDir = args.gitRepoDir
+		}
+		if gitAuth != nil {
+			sourceContext.Git.GitAuth = gitAuth
+		}
+	}
+
 	req := apitype.CreateDeploymentRequest{
 		Op:              operation,
 		InheritSettings: args.inheritSettings,
 		Executor: &apitype.ExecutorContext{
 			ExecutorImage: executorImage,
 		},
-		Source: &apitype.SourceContext{
-			Git: &apitype.SourceContextGit{
-				RepoURL: url,
-				Branch:  args.gitBranch,
-				Commit:  args.gitCommit,
-				RepoDir: args.gitRepoDir,
-				GitAuth: gitAuth,
-			},
-		},
+		Source: sourceContext,
 		Operation: &apitype.OperationContext{
 			PreRunCommands:       args.preRunCommands,
 			EnvironmentVariables: env,
