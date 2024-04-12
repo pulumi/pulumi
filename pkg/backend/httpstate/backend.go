@@ -1369,8 +1369,12 @@ func (b *cloudBackend) runEngineAction(
 		close(eventsDone)
 	}()
 
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	snapshotManager := backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+	// We only need a snapshot manager if we're doing an update.
+	var snapshotManager *backend.SnapshotManager
+	if kind != apitype.PreviewUpdate && !dryRun {
+		persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
@@ -1410,11 +1414,13 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	err = snapshotManager.Close()
-	// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
-	// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
-	if err != nil {
-		cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+	if snapshotManager != nil {
+		err = snapshotManager.Close()
+		// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
+		// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+		if err != nil {
+			cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+		}
 	}
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
