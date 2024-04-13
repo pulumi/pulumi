@@ -108,7 +108,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		"",
 	)
 
-	dep, err := SerializeResource(res, config.NopEncrypter, false /* showSecrets */)
+	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
 	assert.NoError(t, err)
 
 	// assert some things about the deployment record:
@@ -382,7 +382,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Run("SerializeProperties", func(t *testing.T) {
 		t.Parallel()
 
-		serializedPropMap, err := SerializeProperties(propMap, config.BlindingCrypter, false /* showSecrets */)
+		serializedPropMap, err := SerializeProperties(context.Background(), propMap, config.BlindingCrypter, false /* showSecrets */)
 		assert.NoError(t, err)
 
 		// Now JSON encode the results?
@@ -549,9 +549,10 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 func TestSerializePropertyValue(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
-		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
+		_, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
 		assert.NoError(t, err)
 	})
 }
@@ -560,16 +561,17 @@ func TestSerializePropertyValue(t *testing.T) {
 func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	crypter := config.NewPanicCrypter()
 
 	secret := resource.MakeSecret(resource.NewStringProperty("secret"))
-	_, err := SerializePropertyValue(secret, crypter, true)
+	_, err := SerializePropertyValue(ctx, secret, crypter, true)
 	assert.NoError(t, err)
 
 	secret = resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 		resource.MakeSecret(resource.NewStringProperty("secret")),
 	}))
-	_, err = SerializePropertyValue(secret, crypter, true)
+	_, err = SerializePropertyValue(ctx, secret, crypter, true)
 	assert.NoError(t, err)
 }
 
@@ -584,7 +586,7 @@ func TestDeserializePropertyValue(t *testing.T) {
 }
 
 func wireValue(v resource.PropertyValue) (interface{}, error) {
-	object, err := SerializePropertyValue(v, config.NopEncrypter, false)
+	object, err := SerializePropertyValue(context.Background(), v, config.NopEncrypter, false)
 	if err != nil {
 		return nil, err
 	}

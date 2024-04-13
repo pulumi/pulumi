@@ -181,7 +181,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, false /* showSecrets */)
+	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}

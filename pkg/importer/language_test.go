@@ -15,6 +15,7 @@
 package importer
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"testing"
@@ -72,7 +73,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			assert.Equal(t, state.Provider, actualState.Provider)
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
-				actual, err := stack.SerializeResource(actualState, config.NopEncrypter, false)
+				actual, err := stack.SerializeResource(context.Background(), actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
 				sb, err := json.MarshalIndent(s, "", "    ")
