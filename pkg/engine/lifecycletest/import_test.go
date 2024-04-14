@@ -2,6 +2,7 @@ package lifecycletest
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -1127,4 +1128,99 @@ func TestImportRemoteComponent(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::mlc:index:Component$pkgA:m:typA::resB"), custom.URN)
 	// Ensure it's marked as custom.
 	assert.True(t, custom.Custom, "expected custom resource to be marked as custom")
+}
+
+// Regression test for https://github.com/pulumi/pulumi-gcp/issues/1900
+// Check that if a provider normalizes an input we don't display that as a diff.
+func TestImportInputDiff(t *testing.T) {
+	t.Parallel()
+
+	upInputs := resource.PropertyMap{
+		"foo": resource.NewStringProperty("barz"),
+	}
+	readInputs := resource.PropertyMap{
+		"foo": resource.NewStringProperty("bar"),
+	}
+	readOutputs := resource.PropertyMap{
+		"foo":  resource.NewStringProperty("bar"),
+		"frob": resource.NewNumberProperty(1),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: func(
+					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{
+						Changes: plugin.DiffNone,
+						StableKeys: []resource.PropertyKey{
+							"foo",
+						},
+					}, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						ID:      "actual-id",
+						Inputs:  readInputs,
+						Outputs: readOutputs,
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: upInputs,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// Run an import.
+	snap, err := ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resA",
+		ID:   "imported-id",
+	}}).Run(
+		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
+			assertDisplay(t, events, filepath.Join("testdata", "output", t.Name(), "import"))
+			return err
+		})
+	assert.NoError(t, err)
+	// 3 because Import magic's up a Stack resource.
+	assert.Len(t, snap.Resources, 3)
+
+	// Import should save the ID, inputs and outputs
+	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
+	assert.Equal(t, readInputs, snap.Resources[2].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[2].Outputs)
+
+	// Run an update that changes the input but the provider normalizes it.
+	snap, err = TestOp(Update).Run(
+		project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
+			assertDisplay(t, events, filepath.Join("testdata", "output", t.Name(), "up"))
+			return err
+		})
+	assert.NoError(t, err)
+
+	// Update should have updated to the new inputs from the program.
+	assert.Equal(t, resource.ID("actual-id"), snap.Resources[1].ID)
+	assert.Equal(t, upInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }

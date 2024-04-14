@@ -15,11 +15,13 @@
 package lifecycletest
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -36,18 +38,21 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 
+	bdisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
@@ -150,6 +155,98 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func assertDisplay(t *testing.T, events []Event, path string) {
+	var expectedStdout []byte
+	var expectedStderr []byte
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	accept = true
+	if !accept {
+		var err error
+		expectedStdout, err = os.ReadFile(path + "/diff.stdout.txt")
+		require.NoError(t, err)
+
+		expectedStderr, err = os.ReadFile(path + "/diff.stderr.txt")
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	// ShowProgressEvents
+
+	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
+		Color:                colors.Raw,
+		ShowSameResources:    true,
+		ShowReplacementSteps: true,
+		ShowReads:            true,
+		Stdout:               &stdout,
+		Stderr:               &stderr,
+	})
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+		assert.Equal(t, string(expectedStderr), stderr.String())
+	} else {
+		err := os.MkdirAll(path, 0o700)
+		require.NoError(t, err)
+
+		err = os.WriteFile(path+"/diff.stdout.txt", stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+
+		err = os.WriteFile(path+"/diff.stderr.txt", stderr.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
+
+	expectedStdout = []byte{}
+	expectedStderr = []byte{}
+	if !accept {
+		var err error
+		expectedStdout, err = os.ReadFile(path + "/progress.stdout.txt")
+		require.NoError(t, err)
+
+		expectedStderr, err = os.ReadFile(path + "/progress.stderr.txt")
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel = make(chan engine.Event), make(chan bool)
+	stdout.Reset()
+	stderr.Reset()
+
+	go bdisplay.ShowProgressEvents(
+		"test", apitype.UpdateUpdate,
+		tokens.MustParseStackName("stack"), "project", "http://link.com",
+		eventChannel, doneChannel, bdisplay.Options{
+			Color:                colors.Raw,
+			ShowSameResources:    true,
+			ShowReplacementSteps: true,
+			ShowReads:            true,
+			Stdout:               &stdout,
+			Stderr:               &stderr,
+		}, false)
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+		assert.Equal(t, string(expectedStderr), stderr.String())
+	} else {
+		err := os.WriteFile(path+"/progress.stdout.txt", stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+
+		err = os.WriteFile(path+"/progress.stderr.txt", stderr.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
+}
+
 func TestSingleResourceDiffUnavailable(t *testing.T) {
 	t.Parallel()
 
@@ -190,6 +287,8 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, err error,
 		) error {
+			assertDisplay(t, events, filepath.Join("testdata", "display", t.Name()))
+
 			found := false
 			for _, e := range events {
 				if e.Type == DiagEvent {
