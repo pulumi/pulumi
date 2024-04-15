@@ -990,6 +990,7 @@ def register_resource(
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
                 transforms=callbacks,
+                supportsSkipReason=True,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

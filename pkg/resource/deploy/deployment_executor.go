@@ -451,6 +451,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
 	var newSteps []Step
+	skipped := false
 	if ex.stepExec.opts.ContinueOnError {
 		for _, errored := range ex.stepExec.GetErroredSteps() {
 			ex.skipped.Add(errored.Res().URN)
@@ -461,6 +462,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 				if ex.skipped.Contains(dep) {
 					step.Skip()
 					ex.skipped.Add(step.Res().URN)
+					skipped = true
 					continue outer
 				}
 			}
@@ -468,6 +470,12 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		}
 	} else {
 		newSteps = steps
+	}
+
+	// If we pass an empty chain to the step generators the workers will shut down.  However we don't want that
+	// if we just skipped a step because its dependencies errored out.  Return early in that case.
+	if skipped && len(newSteps) == 0 {
+		return nil
 	}
 
 	ex.stepExec.ExecuteSerial(newSteps)
