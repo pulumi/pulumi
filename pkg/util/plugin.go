@@ -18,6 +18,7 @@ import (
 	"runtime/debug"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -31,7 +32,7 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 	}
 
 	// Zaid's arm and bicep converters so that `pulumi convert --from arm/bicep` just works.
-	if spec.Kind == workspace.ConverterPlugin && (spec.Name == "arm" || spec.Name == "bicep") {
+	if spec.Kind == apitype.ConverterPlugin && (spec.Name == "arm" || spec.Name == "bicep") {
 		spec.PluginDownloadURL = "github://api.github.com/Zaid-Ajaj"
 		return true
 	}
@@ -63,7 +64,7 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		"vra",
 		"zitadel",
 	}
-	if spec.Kind == workspace.ResourcePlugin {
+	if spec.Kind == apitype.ResourcePlugin {
 		for _, plugin := range pulumiversePlugins {
 			if spec.Name == plugin {
 				spec.PluginDownloadURL = "github://api.github.com/pulumiverse"
@@ -83,7 +84,7 @@ func SetKnownPluginVersion(spec *workspace.PluginSpec) bool {
 		return false
 	}
 
-	if spec.Kind == workspace.ConverterPlugin && spec.Name == "yaml" {
+	if spec.Kind == apitype.ConverterPlugin && spec.Name == "yaml" {
 		// By default use the version of yaml we've linked to. N.B. This has to be tested manually because
 		// ReadBuildInfo doesn't return anything in test builds (https://github.com/golang/go/issues/33976).
 		info, ok := debug.ReadBuildInfo()

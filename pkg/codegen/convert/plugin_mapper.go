@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -136,7 +137,7 @@ func NewPluginMapper(ws Workspace,
 	// and so the user can just delete the higher version plugins from their cache.
 	latestVersions := make(map[string]semver.Version)
 	for _, plugin := range allPlugins {
-		if plugin.Kind != workspace.ResourcePlugin {
+		if plugin.Kind != apitype.ResourcePlugin {
 			continue
 		}
 
@@ -153,7 +154,7 @@ func NewPluginMapper(ws Workspace,
 	// iterate all the plugins now because the convert might not even ask for any mappings.
 	plugins := make([]mapperPluginSpec, 0)
 	for _, plugin := range allPlugins {
-		if plugin.Kind != workspace.ResourcePlugin {
+		if plugin.Kind != apitype.ResourcePlugin {
 			continue
 		}
 

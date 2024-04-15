@@ -26,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -107,7 +108,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	// Parse the kind, name, and version, if specified.
 	var installs []workspace.PluginSpec
 	if len(args) > 0 {
-		if !workspace.IsPluginKind(args[0]) {
+		if !apitype.IsPluginKind(args[0]) {
 			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")
@@ -137,7 +138,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		pluginSpec := workspace.PluginSpec{
-			Kind:              workspace.PluginKind(args[0]),
+			Kind:              apitype.PluginKind(args[0]),
 			Name:              args[1],
 			Version:           version,
 			PluginDownloadURL: cmd.serverURL, // If empty, will use default plugin source.
@@ -148,7 +149,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// distributed with Pulumi itself. But we turn this check off if PULUMI_DEV is set so we can
 		// test installing plugins that are being moved to their own distribution (such as when we move
 		// pulumi-nodejs).
-		if !cmd.env.GetBool(env.Dev) && workspace.IsPluginBundled(pluginSpec.Kind, pluginSpec.Name) {
+		if !cmd.env.GetBool(env.Dev) && apitype.IsPluginBundled(pluginSpec.Kind, pluginSpec.Name) {
 			return fmt.Errorf(
 				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed"+
 					" with this command. If you need to reinstall this plugin, reinstall"+
@@ -190,7 +191,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		for _, plugin := range plugins {
 			// Skip language plugins; by definition, we already have one installed.
 			// TODO[pulumi/pulumi#956]: eventually we will want to honor and install these in the usual way.
-			if plugin.Kind != workspace.LanguagePlugin {
+			if plugin.Kind != apitype.LanguagePlugin {
 				installs = append(installs, plugin)
 			}
 		}

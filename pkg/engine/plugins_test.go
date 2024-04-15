@@ -21,6 +21,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -37,12 +38,12 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:              "kubernetes",
 		Version:           mustMakeVersion("0.22.0"),
-		Kind:              workspace.ResourcePlugin,
+		Kind:              apitype.ResourcePlugin,
 		PluginDownloadURL: "com.server.url",
 	})
 
@@ -70,12 +71,12 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: nil,
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
@@ -94,17 +95,17 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.0"),
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.2-dev.1553126336"),
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
@@ -122,13 +123,13 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginSpec{
 		Name: "python",
-		Kind: workspace.LanguagePlugin,
+		Kind: apitype.LanguagePlugin,
 	})
 	snapshotPlugins := newPluginSet()
 	snapshotPlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.0"),
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	})
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins)
@@ -200,13 +201,13 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 	p1 := workspace.PluginSpec{
 		Name:    "foo",
 		Version: &v1,
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	}
 	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
 	p2 := workspace.PluginSpec{
 		Name:    "foo",
 		Version: &v2,
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	}
 	plugins := newPluginSet(p1, p2)
 	result := computeDefaultProviderPlugins(plugins, plugins)

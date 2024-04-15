@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -724,7 +725,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 	loader := newLoader(t, "myplugin", "1.2.3",
 		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
 			return nil, workspace.NewMissingError(
-				workspace.ResourcePlugin, "myplugin", &version, false /* ambient */)
+				apitype.ResourcePlugin, "myplugin", &version, false /* ambient */)
 		})
 	host := newPluginHost(t, []*providerLoader{loader})
 

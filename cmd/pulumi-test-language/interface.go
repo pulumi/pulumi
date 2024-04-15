@@ -295,7 +295,7 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 }
 
 func (h *testHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	panic("not implemented")
 }

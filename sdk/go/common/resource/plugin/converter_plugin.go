@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -44,7 +45,7 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 	prefix := fmt.Sprintf("%v (converter)", name)
 
 	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(ctx.Diag, workspace.ConverterPlugin, name, version, ctx.Host.GetProjectPlugins())
+	path, err := workspace.GetPluginPath(ctx.Diag, apitype.ConverterPlugin, name, version, ctx.Host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +53,7 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 	contract.Assertf(path != "", "unexpected empty path for plugin %s", name)
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, prefix,
-		workspace.ConverterPlugin, []string{}, os.Environ(), converterPluginDialOptions(ctx, name, ""))
+		apitype.ConverterPlugin, []string{}, os.Environ(), converterPluginDialOptions(ctx, name, ""))
 	if err != nil {
 		return nil, err
 	}

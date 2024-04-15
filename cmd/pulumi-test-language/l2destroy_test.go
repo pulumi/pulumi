@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -131,7 +132,7 @@ func (h *L2DestroyLanguageHost) GetRequiredPlugins(
 		Plugins: []*pulumirpc.PluginDependency{
 			{
 				Name:    "simple",
-				Kind:    string(workspace.ResourcePlugin),
+				Kind:    string(apitype.ResourcePlugin),
 				Version: "2.0.0",
 			},
 		},

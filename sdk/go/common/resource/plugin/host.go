@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -77,7 +78,7 @@ type Host interface {
 	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
 
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
-	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+	ResolvePlugin(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
 	GetProjectPlugins() []workspace.ProjectPlugin
 
@@ -100,21 +101,21 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
 		for _, providerOpts := range plugins.Providers {
-			info, err := parsePluginOpts(ctx.Root, providerOpts, workspace.ResourcePlugin)
+			info, err := parsePluginOpts(ctx.Root, providerOpts, apitype.ResourcePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, languageOpts := range plugins.Languages {
-			info, err := parsePluginOpts(ctx.Root, languageOpts, workspace.LanguagePlugin)
+			info, err := parsePluginOpts(ctx.Root, languageOpts, apitype.LanguagePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, analyzerOpts := range plugins.Analyzers {
-			info, err := parsePluginOpts(ctx.Root, analyzerOpts, workspace.AnalyzerPlugin)
+			info, err := parsePluginOpts(ctx.Root, analyzerOpts, apitype.AnalyzerPlugin)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +165,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 }
 
 func parsePluginOpts(
-	root string, providerOpts workspace.PluginOptions, k workspace.PluginKind,
+	root string, providerOpts workspace.PluginOptions, k apitype.PluginKind,
 ) (workspace.ProjectPlugin, error) {
 	handleErr := func(msg string, a ...interface{}) (workspace.ProjectPlugin, error) {
 		return workspace.ProjectPlugin{},
@@ -469,14 +470,14 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	var result error
 	for _, plugin := range plugins {
 		switch plugin.Kind {
-		case workspace.AnalyzerPlugin:
+		case apitype.AnalyzerPlugin:
 			if kinds&AnalyzerPlugins != 0 {
 				if _, err := host.Analyzer(tokens.QName(plugin.Name)); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load analyzer plugin %s", plugin.Name))
 				}
 			}
-		case workspace.LanguagePlugin:
+		case apitype.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
 				// Pass nil options here, we just need to check the language plugin is loadable. We can't use
 				// host.runtimePlugins because there might be other language plugins reported here (e.g
@@ -489,14 +490,14 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 						errors.Wrapf(err, "failed to load language plugin %s", plugin.Name))
 				}
 			}
-		case workspace.ResourcePlugin:
+		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
 				if _, err := host.Provider(tokens.Package(plugin.Name), plugin.Version); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load resource plugin %s", plugin.Name))
 				}
 			}
-		case workspace.ConverterPlugin, workspace.ToolPlugin:
+		case apitype.ConverterPlugin, apitype.ToolPlugin:
 			contract.Failf("unexpected plugin kind: %s", plugin.Kind)
 		}
 	}
@@ -505,7 +506,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 }
 
 func (host *defaultHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	return workspace.GetPluginInfo(host.ctx.Diag, kind, name, version, host.GetProjectPlugins())
 }
@@ -616,7 +617,7 @@ func GetRequiredPlugins(
 		}
 		plugins = append(plugins, workspace.PluginSpec{
 			Name: runtime,
-			Kind: workspace.LanguagePlugin,
+			Kind: apitype.LanguagePlugin,
 		})
 
 		if kinds&ResourcePlugins != 0 {

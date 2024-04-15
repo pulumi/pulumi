@@ -17,9 +17,9 @@ package deploytest
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -129,7 +129,7 @@ func TestAnalyzer(t *testing.T) {
 		info, err := a.GetPluginInfo()
 		assert.NoError(t, err)
 		assert.Equal(t, "my-analyzer", info.Name)
-		assert.Equal(t, workspace.AnalyzerPlugin, info.Kind)
+		assert.Equal(t, apitype.AnalyzerPlugin, info.Kind)
 	})
 	t.Run("Configure", func(t *testing.T) {
 		t.Parallel()

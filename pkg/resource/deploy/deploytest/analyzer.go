@@ -15,6 +15,7 @@
 package deploytest
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -67,7 +68,7 @@ func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 
 func (a *Analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
-		Kind: workspace.AnalyzerPlugin,
+		Kind: apitype.AnalyzerPlugin,
 		Name: a.Info.Name,
 	}, nil
 }
