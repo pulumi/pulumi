@@ -1107,6 +1107,7 @@ def resolve_outputs(
     resolvers: Dict[str, Resolver],
     custom: bool,
     transform_using_type_metadata: bool = False,
+    keep_unknowns: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -1126,7 +1127,7 @@ def resolve_outputs(
         # pylint: disable=C3001
         translate_to_pass = lambda k: k
 
-    for key, value in deserialize_properties(outputs).items():
+    for key, value in deserialize_properties(outputs, keep_unknowns).items():
         # Outputs coming from the provider are NOT translated. Do so here.
         translated_key = translate(key)
 

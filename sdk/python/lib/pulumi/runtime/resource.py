@@ -1057,6 +1057,7 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
+            keep_unknows = resp.skipReason != resource.SkipReason.NONE
             rpc.resolve_outputs(
                 res,
                 resolver.serialized_props,
@@ -1065,6 +1066,7 @@ def register_resource(
                 resolvers,
                 custom,
                 transform_using_type_metadata,
+                keep_unknowns,
             )
             resolve_outputs_called = True
 
