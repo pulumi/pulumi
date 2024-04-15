@@ -1,6 +1,8 @@
 package stack
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -13,12 +15,13 @@ func SerializePlanDiff(
 	enc config.Encrypter,
 	showSecrets bool,
 ) (apitype.PlanDiffV1, error) {
-	adds, err := SerializeProperties(diff.Adds, enc, showSecrets)
+	ctx := context.TODO()
+	adds, err := SerializeProperties(ctx, diff.Adds, enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
 
-	updates, err := SerializeProperties(diff.Updates, enc, showSecrets)
+	updates, err := SerializeProperties(ctx, diff.Updates, enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
@@ -65,7 +68,8 @@ func SerializeResourcePlan(
 ) (apitype.ResourcePlanV1, error) {
 	var outputs map[string]interface{}
 	if plan.Outputs != nil {
-		outs, err := SerializeProperties(plan.Outputs, enc, showSecrets)
+		ctx := context.TODO()
+		outs, err := SerializeProperties(ctx, plan.Outputs, enc, showSecrets)
 		if err != nil {
 			return apitype.ResourcePlanV1{}, err
 		}

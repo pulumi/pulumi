@@ -237,8 +237,9 @@ func makeUntypedDeploymentTimestamp(
 	}
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(snap, false /* showSecrets */)
+	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
 	if err != nil {
 		return nil, err
 	}
@@ -598,8 +599,9 @@ func TestHtmlEscaping(t *testing.T) {
 	}
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+	ctx := context.Background()
 
-	sdep, err := stack.SerializeDeployment(snap, false /* showSecrets */)
+	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
 	assert.NoError(t, err)
 
 	data, err := encoding.JSON.Marshal(sdep)
@@ -616,7 +618,6 @@ func TestHtmlEscaping(t *testing.T) {
 
 	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()
-	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 

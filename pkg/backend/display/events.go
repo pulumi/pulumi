@@ -1,6 +1,7 @@
 package display
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -89,10 +90,11 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 
 		// Serialize properties, ignoring errors, as with other event types.
+		ctx := context.TODO()
 		encrypter := config.BlindingCrypter
-		before, err := stack.SerializeProperties(p.Before, encrypter, showSecrets)
+		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
 		contract.IgnoreError(err)
-		after, err := stack.SerializeProperties(p.After, encrypter, showSecrets)
+		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
@@ -245,11 +247,12 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		return nil
 	}
 
+	ctx := context.TODO()
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(md.Inputs, encrypter, showSecrets)
+	inputs, err := stack.SerializeProperties(ctx, md.Inputs, encrypter, showSecrets)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(md.Outputs, encrypter, showSecrets)
+	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{

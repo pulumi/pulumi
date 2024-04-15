@@ -325,7 +325,7 @@ func TestStackCommands(t *testing.T) {
 			Resource: res,
 			Type:     resource.OperationTypeDeleting,
 		})
-		v3deployment, err := stack.SerializeDeployment(snap, false /* showSecrets */)
+		v3deployment, err := stack.SerializeDeployment(context.Background(), snap, false /* showSecrets */)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

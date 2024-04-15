@@ -326,7 +326,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
 		require.NoError(t, err)
-		deployment, err := stack.SerializeDeployment(snap, true)
+		deployment, err := stack.SerializeDeployment(context.Background(), snap, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
 	}
