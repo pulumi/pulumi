@@ -415,10 +415,11 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 
 			rpcRes.Properties, err = plugin.MarshalProperties(
 				properties,
-				ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+				plugin.MarshalOptions{
+					KeepUnknowns:  true,
 					KeepSecrets:   true,
 					KeepResources: ctx.state.keepResources,
-				}),
+				},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling properties: %w", err)
@@ -574,10 +575,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
-		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: ctx.state.keepResources,
-		}),
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("marshaling arguments: %w", err)
@@ -612,10 +614,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	// Otherwise, simply unmarshal the output properties and return the result.
 	outProps, err := plugin.UnmarshalProperties(
 		resp.Return,
-		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
-		}),
+		},
 	)
 	if err != nil {
 		return err
@@ -707,11 +710,12 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		// Marshal all properties for the RPC call.
 		rpcArgs, err := plugin.MarshalProperties(
 			resolvedArgs,
-			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+			plugin.MarshalOptions{
+				KeepUnknowns:     true,
 				KeepSecrets:      true,
 				KeepResources:    ctx.state.keepResources,
 				KeepOutputValues: ctx.state.keepOutputValues,
-			}))
+			})
 		if err != nil {
 			return nil, fmt.Errorf("marshaling args: %w", err)
 		}
@@ -754,10 +758,11 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 
 			var outprops resource.PropertyMap
 			if err == nil {
-				outprops, err = plugin.UnmarshalProperties(ret, ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+				outprops, err = plugin.UnmarshalProperties(ret, plugin.MarshalOptions{
+					KeepUnknowns:  true,
 					KeepSecrets:   true,
 					KeepResources: true,
-				}))
+				})
 			}
 			if err != nil {
 				logging.V(9).Infof("Call(%s, ...): success: w/ unmarshal error: %v", tok, err)
@@ -1006,10 +1011,11 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
-		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: ctx.state.keepResources,
-		}),
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling arguments: %w", err)
@@ -1543,10 +1549,11 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	if err == nil {
 		outprops, err = plugin.UnmarshalProperties(
 			result,
-			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+			plugin.MarshalOptions{
+				KeepUnknowns:  true,
 				KeepSecrets:   true,
 				KeepResources: true,
-			}),
+			},
 		)
 	}
 	if err != nil {
@@ -1825,13 +1832,14 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	// Marshal all properties for the RPC call.
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: ctx.state.keepResources,
 			// To initially scope the use of this new feature, we only keep output values when
 			// remote is true (for multi-lang components).
 			KeepOutputValues: remote && ctx.state.keepOutputValues,
-		}))
+		})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -2070,10 +2078,11 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
-			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
+			plugin.MarshalOptions{
+				KeepUnknowns:  true,
 				KeepSecrets:   true,
 				KeepResources: ctx.state.keepResources,
-			}))
+			})
 		if err != nil {
 			return
 		}
@@ -2126,19 +2135,6 @@ func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
 // NewOutput creates a new output associated with this context.
 func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(&ctx.state.join)
-}
-
-// Sets marshalling flags based on `ctx.state.DryRun()`: we will either
-// preserve unknowns as-is or fail strictly with an exception if any
-// unkowns are found. The third option, filtering out unknown values
-// from the data structure being marshalled, is never used.
-func (ctx *Context) withKeepOrRejectUnknowns(options plugin.MarshalOptions) plugin.MarshalOptions {
-	if ctx.DryRun() {
-		options.KeepUnknowns = true
-	} else {
-		options.RejectUnknowns = true
-	}
-	return options
 }
 
 // Returns the source position of the Nth stack frame, where N is skip+1.
