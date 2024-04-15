@@ -42,31 +42,6 @@ func TestEmptyNodeJS(t *testing.T) {
 	})
 }
 
-// Tests that stack references work in Node.
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackReferenceNodeJS(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir:          filepath.Join("stack_reference", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      filepath.Join("stack_reference", "nodejs", "step1"),
-				Additive: true,
-			},
-			{
-				Dir:      filepath.Join("stack_reference", "nodejs", "step2"),
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
-}
-
 // Test remote component construction in Node.
 func TestConstructNode(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
