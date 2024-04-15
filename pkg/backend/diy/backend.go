@@ -775,7 +775,18 @@ func (b *diyBackend) ListStacks(
 
 		chk, err := b.getCheckpoint(ctx, stackRef)
 		if err != nil {
-			return nil, nil, err
+			// There is a race between listing stacks and getting their checkpoints.  If there's an error getting
+			// the checkpoint, check if the stack still exists before returning an error.
+			stacks, stackErr := b.getStacks(ctx)
+			if stackErr != nil {
+				return nil, nil, stackErr
+			}
+			for _, stack := range stacks {
+				// The stack still exists, but we couldn't get the checkpoint.  Return the error.
+				if stack.Name() == stackRef.Name() {
+					return nil, nil, err
+				}
+			}
 		}
 		results = append(results, newDIYStackSummary(stackRef, chk))
 	}
