@@ -61,7 +61,7 @@ const (
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
 	// DeploymentSuffix base suffix for the deployment file
-	DeploymentSuffix = "deployment"
+	DeploymentSuffix = "deploy"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
 	RepoFile = "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
@@ -116,7 +116,7 @@ func DetectProjectStackDeploymentPath(stackName tokens.QName) (*Project, string,
 		return nil, "", err
 	}
 
-	fileName := fmt.Sprintf("%s.%s.%s%s", ProjectFile, DeploymentSuffix, qnameFileName(stackName), filepath.Ext(projPath))
+	fileName := fmt.Sprintf("%s.%s.%s%s", ProjectFile, qnameFileName(stackName), DeploymentSuffix, filepath.Ext(projPath))
 
 	if proj.StackConfigDir != "" {
 		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil

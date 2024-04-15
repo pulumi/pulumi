@@ -1863,6 +1863,15 @@ func (b *cloudBackend) UpdateStackDeployment(ctx context.Context, stack backend.
 	return b.client.UpdateStackDeployment(ctx, stackID, deployment)
 }
 
+func (b *cloudBackend) DestroyStackDeployment(ctx context.Context, stack backend.Stack) error {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return err
+	}
+
+	return b.client.DestroyStackDeployment(ctx, stackID)
+}
+
 func (b *cloudBackend) GetStackDeployment(ctx context.Context,
 	stack backend.Stack,
 ) (*apitype.DeploymentSettings, error) {

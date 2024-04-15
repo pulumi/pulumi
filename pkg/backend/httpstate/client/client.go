@@ -1135,6 +1135,12 @@ func (pc *Client) UpdateStackDeployment(ctx context.Context, stack StackIdentifi
 	return pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
 }
 
+func (pc *Client) DestroyStackDeployment(ctx context.Context, stack StackIdentifier) error {
+	// TODO(german): validate deployment
+
+	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
+}
+
 func (pc *Client) GetStackDeployment(ctx context.Context, stack StackIdentifier) (*apitype.DeploymentSettings, error) {
 	// TODO(german): validate deployment
 

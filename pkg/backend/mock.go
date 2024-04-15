@@ -63,6 +63,7 @@ type MockBackend struct {
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
 	UpdateStackDeploymentF  func(context.Context, Stack, apitype.DeploymentSettings) error
+	DestroyStackDeploymentF func(ctx context.Context, stack Stack) error
 	GetStackDeploymentF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
 	CurrentUserF            func() (string, []string, *workspace.TokenInformation, error)
 	PreviewF                func(context.Context, Stack,
@@ -398,6 +399,13 @@ func (be *MockBackend) GetStackDeployment(ctx context.Context,
 ) (*apitype.DeploymentSettings, error) {
 	if be.UpdateStackTagsF != nil {
 		return be.GetStackDeploymentF(ctx, stack)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) DestroyStackDeployment(ctx context.Context, stack Stack) error {
+	if be.UpdateStackTagsF != nil {
+		return be.DestroyStackDeploymentF(ctx, stack)
 	}
 	panic("not implemented")
 }
