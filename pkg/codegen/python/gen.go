@@ -100,9 +100,9 @@ func title(s string) string {
 }
 
 type modLocator struct {
-	// Returns defining modlue for a given ObjectType. Returns nil
+	// Returns defining module for a given ObjectType. Returns nil
 	// for types that are not being generated in the current
-	// GeneratePacakge call.
+	// GeneratePackage call.
 	objectTypeMod func(*schema.ObjectType) *modContext
 }
 
