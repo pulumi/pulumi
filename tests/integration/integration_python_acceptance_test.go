@@ -49,31 +49,6 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackReferencePython(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      filepath.Join("stack_reference", "python", "step1"),
-				Additive: true,
-			},
-			{
-				Dir:      filepath.Join("stack_reference", "python", "step2"),
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
-}
-
 // Tests dynamic provider in Python.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

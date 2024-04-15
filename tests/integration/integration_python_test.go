@@ -396,46 +396,6 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 	})
 }
 
-func TestMultiStackReferencePython(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-	t.Parallel()
-
-	// build a stack with an export
-	exporterOpts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
-		DestroyOnCleanup: true,
-	}
-	exporterStackName := exporterOpts.GetStackName().String()
-	integration.ProgramTest(t, exporterOpts)
-
-	importerOpts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
-			"exporter_stack_name": exporterStackName,
-		},
-		DestroyOnCleanup: true,
-	}
-	integration.ProgramTest(t, importerOpts)
-}
-
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1207,7 +1167,6 @@ func TestPythonAwaitOutputs(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonTranslation(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{

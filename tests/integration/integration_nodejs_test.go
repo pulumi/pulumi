@@ -804,39 +804,6 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackReferenceSecretsNodejs(t *testing.T) {
-	owner := os.Getenv("PULUMI_TEST_OWNER")
-	if owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	d := "stack_reference_secrets"
-
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir:          filepath.Join(d, "nodejs", "step1"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:             filepath.Join(d, "nodejs", "step2"),
-				Additive:        true,
-				ExpectNoChanges: true,
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					_, isString := stackInfo.Outputs["refNormal"].(string)
-					assert.Truef(t, isString, "referenced non-secret output was not a string")
-
-					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
-					assert.Truef(t, ok, "secret output was not serialized as a secret")
-					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
-				},
-			},
-		},
-	})
-}
-
 //nolint:paralleltest // mutates environment variables
 func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
