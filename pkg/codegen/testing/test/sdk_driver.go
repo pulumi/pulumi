@@ -624,6 +624,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				if !ValidateFileEquality(t, files, expectedFiles) {
 					t.Fail()
 				}
+			} else {
+				e.ExportDirectory(dirPath)
 			}
 
 			if genSDKOnly {

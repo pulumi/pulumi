@@ -118,6 +118,15 @@ func (e *Environment) ImportDirectory(path string) {
 	}
 }
 
+// ExportDirectory copies a folder from the test environment to the given path.  This is useful for generated
+// files via PULUMI_ACCEPT.
+func (e *Environment) ExportDirectory(path string) {
+	err := fsutil.CopyFile(path, e.CWD, nil)
+	if err != nil {
+		e.T.Fatalf("error exporting directory: %v", err)
+	}
+}
+
 // DeleteEnvironment deletes the environment's HomePath and RootPath, and everything underneath them.
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
