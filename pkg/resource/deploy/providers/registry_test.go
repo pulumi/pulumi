@@ -92,7 +92,7 @@ func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds 
 }
 
 func (host *testPluginHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	return nil, nil
 }
