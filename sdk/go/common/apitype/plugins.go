@@ -24,8 +24,6 @@
 // In the event that this is not possible, a breaking change is implied.  The preferred approach is to never make
 // breaking changes.  If that isn't possible, the next best approach is to support both the old and new formats
 // side-by-side (for instance, by using a union type for the property in question).
-//
-//nolint:lll
 package apitype
 
 // apitype.PluginKind represents a kind of a plugin that may be dynamically loaded and used by Pulumi.
@@ -43,28 +41,3 @@ const (
 	// ToolPlugin is an arbitrary plugin that can be run as a tool.
 	ToolPlugin PluginKind = "tool"
 )
-
-// IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
-func IsPluginKind(k string) bool {
-	switch PluginKind(k) {
-	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin, ConverterPlugin, ToolPlugin:
-		return true
-	default:
-		return false
-	}
-}
-
-// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary.
-// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
-func IsPluginBundled(kind PluginKind, name string) bool {
-	return (kind == LanguagePlugin && name == "nodejs") ||
-		(kind == LanguagePlugin && name == "go") ||
-		(kind == LanguagePlugin && name == "python") ||
-		(kind == LanguagePlugin && name == "dotnet") ||
-		(kind == LanguagePlugin && name == "yaml") ||
-		(kind == LanguagePlugin && name == "java") ||
-		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == ResourcePlugin && name == "pulumi-python") ||
-		(kind == AnalyzerPlugin && name == "policy") ||
-		(kind == AnalyzerPlugin && name == "policy-python")
-}

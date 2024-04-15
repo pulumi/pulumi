@@ -60,7 +60,7 @@ func newPluginRmCmd() *cobra.Command {
 			var name string
 			var version *semver.Range
 			if len(args) > 0 {
-				if !apitype.IsPluginKind(args[0]) {
+				if !workspace.IsPluginKind(args[0]) {
 					return fmt.Errorf("unrecognized plugin kind: %s", kind)
 				}
 				kind = apitype.PluginKind(args[0])

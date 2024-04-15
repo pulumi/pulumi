@@ -39,7 +39,7 @@ type pluginRunCmd struct {
 }
 
 func (cmd *pluginRunCmd) run(args []string) error {
-	if !apitype.IsPluginKind(cmd.kind) {
+	if !workspace.IsPluginKind(cmd.kind) {
 		return fmt.Errorf("unrecognized plugin kind: %s", cmd.kind)
 	}
 	kind := apitype.PluginKind(cmd.kind)

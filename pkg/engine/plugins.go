@@ -205,7 +205,7 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 			continue
 		}
 
-		if apitype.IsPluginBundled(plug.Kind, plug.Name) {
+		if workspace.IsPluginBundled(plug.Kind, plug.Name) {
 			return fmt.Errorf(
 				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed."+
 					" Reinstall Pulumi via your package manager or install script",

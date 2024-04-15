@@ -108,7 +108,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	// Parse the kind, name, and version, if specified.
 	var installs []workspace.PluginSpec
 	if len(args) > 0 {
-		if !apitype.IsPluginKind(args[0]) {
+		if !workspace.IsPluginKind(args[0]) {
 			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")
@@ -149,7 +149,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// distributed with Pulumi itself. But we turn this check off if PULUMI_DEV is set so we can
 		// test installing plugins that are being moved to their own distribution (such as when we move
 		// pulumi-nodejs).
-		if !cmd.env.GetBool(env.Dev) && apitype.IsPluginBundled(pluginSpec.Kind, pluginSpec.Name) {
+		if !cmd.env.GetBool(env.Dev) && workspace.IsPluginBundled(pluginSpec.Kind, pluginSpec.Name) {
 			return fmt.Errorf(
 				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed"+
 					" with this command. If you need to reinstall this plugin, reinstall"+

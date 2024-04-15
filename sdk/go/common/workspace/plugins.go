@@ -1496,6 +1496,20 @@ func cleanupTempDirs(finalDir string) error {
 	return nil
 }
 
+// Re exporting PluginKind to keep backward compatibility
+type PluginKind apitype.PluginKind
+
+// IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
+func IsPluginKind(k string) bool {
+	switch apitype.PluginKind(k) {
+	case apitype.AnalyzerPlugin, apitype.LanguagePlugin, apitype.ResourcePlugin,
+		apitype.ConverterPlugin, apitype.ToolPlugin:
+		return true
+	default:
+		return false
+	}
+}
+
 // HasPlugin returns true if the given plugin exists.
 func HasPlugin(spec PluginSpec) bool {
 	dir, err := spec.DirPath()
@@ -1637,6 +1651,21 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 	return plugins, nil
 }
 
+// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary.
+// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
+func IsPluginBundled(kind apitype.PluginKind, name string) bool {
+	return (kind == apitype.LanguagePlugin && name == "nodejs") ||
+		(kind == apitype.LanguagePlugin && name == "go") ||
+		(kind == apitype.LanguagePlugin && name == "python") ||
+		(kind == apitype.LanguagePlugin && name == "dotnet") ||
+		(kind == apitype.LanguagePlugin && name == "yaml") ||
+		(kind == apitype.LanguagePlugin && name == "java") ||
+		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
+		(kind == apitype.ResourcePlugin && name == "pulumi-python") ||
+		(kind == apitype.AnalyzerPlugin && name == "policy") ||
+		(kind == apitype.AnalyzerPlugin && name == "policy-python")
+}
+
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
@@ -1761,7 +1790,7 @@ func getPluginInfoAndPath(
 	// plugins are not, or has simply set IGNORE_AMBIENT_PLUGINS. So, if possible, look next to the instance
 	// of `pulumi` that is running to find this bundled plugin.
 	var bundledPath string
-	if apitype.IsPluginBundled(kind, name) {
+	if IsPluginBundled(kind, name) {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
 			fullPath, fullErr := filepath.EvalSymlinks(exePath)
@@ -2078,7 +2107,7 @@ func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bo
 		switch group {
 		case "Kind":
 			// Skip invalid kinds.
-			if apitype.IsPluginKind(v) {
+			if IsPluginKind(v) {
 				kind = apitype.PluginKind(v)
 			} else {
 				logging.V(11).Infof("skipping invalid plugin kind: %s", v)
