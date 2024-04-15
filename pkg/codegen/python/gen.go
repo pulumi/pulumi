@@ -410,6 +410,7 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 
 	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
+	fmt.Fprintf(w, "import sys\n")
 	fmt.Fprintf(w, "import pulumi\n")
 	fmt.Fprintf(w, "import pulumi.runtime\n")
 	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
