@@ -34,7 +34,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -118,6 +120,10 @@ type providerLoader struct {
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
+	if pkg == "pulumi" {
+		return schema.DefaultPulumiPackage.Reference(), nil
+	}
+
 	// Find the provider with the given package name
 	var provider plugin.Provider
 	for _, p := range l.providers {
@@ -641,6 +647,71 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	// Just use base64 "secrets" for these tests
+	sm := b64secrets.NewBase64SecretsManager()
+	dec, err := sm.Decrypter()
+	contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
+
+	// Create a temp dir for the a diy backend to run in for the test
+	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
+	err = os.MkdirAll(backendDir, 0o755)
+	if err != nil {
+		return nil, fmt.Errorf("create temp backend dir: %w", err)
+	}
+	testBackend, err := diy.New(ctx, snk, "file://"+backendDir, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create diy backend: %w", err)
+	}
+
+	// Create any stack references needed for the test
+	for name, outputs := range test.stackReferences {
+		ref, err := testBackend.ParseStackReference(name)
+		if err != nil {
+			return nil, fmt.Errorf("parse test stack reference: %w", err)
+		}
+
+		s, err := testBackend.CreateStack(ctx, ref, "", nil)
+		if err != nil {
+			return nil, fmt.Errorf("create test stack reference: %w", err)
+		}
+
+		stackName := ref.Name()
+		projectName, has := ref.Project()
+		if !has {
+			return nil, fmt.Errorf("stack reference %s has no project", ref)
+		}
+		name := fmt.Sprintf("%s-%s", projectName, stackName)
+
+		// Import the deployment for the stack reference
+		snap := &deploy.Snapshot{
+			SecretsManager: sm,
+			Resources: []*resource.State{
+				{
+					Type:    resource.RootStackType,
+					URN:     resource.CreateURN(name, string(resource.RootStackType), "", string(projectName), stackName.String()),
+					Outputs: outputs,
+				},
+			},
+		}
+		serializedDeployment, err := stack.SerializeDeployment(ctx, snap, false)
+		if err != nil {
+			return nil, fmt.Errorf("serialize deployment: %w", err)
+		}
+		jsonDeployment, err := json.Marshal(serializedDeployment)
+		if err != nil {
+			return nil, fmt.Errorf("serialize deployment: %w", err)
+		}
+
+		untypedDeployment := &apitype.UntypedDeployment{
+			Version:    apitype.DeploymentSchemaVersionCurrent,
+			Deployment: jsonDeployment,
+		}
+		err = s.ImportDeployment(ctx, untypedDeployment)
+		if err != nil {
+			return nil, fmt.Errorf("import deployment: %w", err)
+		}
+	}
+
 	var result LResult
 	for i, run := range test.runs {
 		// Create a source directory for the test
@@ -790,16 +861,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 
-		// Create a temp dir for the a diy backend to run in for the test
-		backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
-		err = os.MkdirAll(backendDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create temp backend dir: %w", err)
-		}
-		testBackend, err := diy.New(ctx, snk, "file://"+backendDir, project)
-		if err != nil {
-			return nil, fmt.Errorf("create diy backend: %w", err)
-		}
+		testBackend.SetCurrentProject(project)
 
 		// Create a new stack for the test
 		stackReference, err := testBackend.ParseStackReference("test")
@@ -833,9 +895,6 @@ func (eng *languageTestServer) RunLanguageTest(
 			},
 			Engine: updateOptions,
 		}
-		sm := b64secrets.NewBase64SecretsManager()
-		dec, err := sm.Decrypter()
-		contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
 
 		cfg := backend.StackConfiguration{
 			Config:    run.config,

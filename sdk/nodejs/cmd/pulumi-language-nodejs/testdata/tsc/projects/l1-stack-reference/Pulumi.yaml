@@ -1,0 +1,5 @@
+name: l1-stack-reference
+runtime:
+  name: nodejs
+  options:
+    typescript: false
