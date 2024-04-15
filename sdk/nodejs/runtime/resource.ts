@@ -588,7 +588,7 @@ export function registerResource(
                             getId: () => undefined,
                             getObject: () => req.getObject(),
                             getPropertydependenciesMap: () => undefined,
-			    getSkipreason: () => 0,
+                            getSkipreason: () => 0,
                         };
                     }
                 } catch (e) {
@@ -598,7 +598,7 @@ export function registerResource(
                         getId: () => undefined,
                         getObject: () => req.getObject(),
                         getPropertydependenciesMap: () => undefined,
-			getSkipreason: () => 0,
+                        getSkipreason: () => 0,
                     };
                 }
 

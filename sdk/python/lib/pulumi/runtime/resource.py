@@ -780,7 +780,7 @@ def read_resource(
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None
+                        mock_urn or "", None, resolver.serialized_props, None, None
                     )
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -1001,7 +1001,7 @@ def register_resource(
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None
+                        mock_urn or "", None, resolver.serialized_props, None, None
                     )
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -1057,7 +1057,7 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
-            keep_unknows = resp.skipReason != resource.SkipReason.NONE
+            keep_unknowns = resp.skipReason == resource_pb2.SkipReason.NONE
             rpc.resolve_outputs(
                 res,
                 resolver.serialized_props,
@@ -1138,6 +1138,7 @@ class RegisterResponse:
     id: Optional[str]
     object: struct_pb2.Struct
     propertyDependencies: Optional[Dict[str, PropertyDependencies]]
+    skipReason: Optional[resource_pb2.SkipReason]
 
     # pylint: disable=redefined-builtin
     def __init__(
@@ -1146,11 +1147,13 @@ class RegisterResponse:
         id: Optional[str],
         object: struct_pb2.Struct,
         propertyDependencies: Optional[Dict[str, PropertyDependencies]],
+        skipReason: Optional[resource_pb2.SkipReason],
     ):
         self.urn = urn
         self.id = id
         self.object = object
         self.propertyDependencies = propertyDependencies
+        self.skipReason = skipReason
 
 
 def convert_providers(

@@ -445,7 +445,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(ctx, nil, nil, "foo", "bar", s, nil)
+	state.resolve(ctx, nil, nil, "foo", "bar", s, nil, false)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),
@@ -879,7 +879,7 @@ func TestDependsOnComponent(t *testing.T) {
 	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
 		state := ctx.makeResourceState("", "", res, nil, nil, "", "", nil, nil)
-		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
+		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil, false)
 
 		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false, custom)
 		require.NoError(t, err)
