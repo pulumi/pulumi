@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: backend/diy
-  description: Upgrade gocloud.dev dependency to 0.37

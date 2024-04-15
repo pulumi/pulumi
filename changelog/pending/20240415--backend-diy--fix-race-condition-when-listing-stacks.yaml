@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/diy
-  description: Fix race condition when listing stacks

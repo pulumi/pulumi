@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet,go
-  description: Fix SDK-generation when referencing shared types in config variables

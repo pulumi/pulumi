@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: Update builtin module list for function serialization
