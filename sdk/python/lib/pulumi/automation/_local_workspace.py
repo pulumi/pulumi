@@ -101,7 +101,8 @@ class LocalWorkspace(Workspace):
     _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
     _remote_pre_run_commands: Optional[List[str]]
     _remote_skip_install_dependencies: Optional[bool]
-    _remote_git_url: str
+    _remote_inherit_settings: Optional[bool]
+    _remote_git_url: Optional[str]
     _remote_git_project_path: Optional[str]
     _remote_git_branch: Optional[str]
     _remote_git_commit_hash: Optional[str]
@@ -527,6 +528,12 @@ class LocalWorkspace(Workspace):
         help_string = result.stdout.strip()
         return "--remote" in help_string
 
+    def _remote_inherit_settings_supported(self) -> bool:
+        # See if `--remote-inherit-settings` is present in `pulumi preview --help`'s output.
+        result = self._run_pulumi_cmd_sync(["preview", "--help"])
+        help_string = result.stdout.strip()
+        return "--remote-inherit-settings" in help_string
+
     def _run_pulumi_cmd_sync(
         self, args: List[str], on_output: Optional[OnOutput] = None
     ) -> CommandResult:
@@ -590,6 +597,9 @@ class LocalWorkspace(Workspace):
 
         if self._remote_skip_install_dependencies:
             args.append("--remote-skip-install-dependencies")
+
+        if self._remote_inherit_settings:
+            args.append("--remote-inherit-settings")
 
         return args
 

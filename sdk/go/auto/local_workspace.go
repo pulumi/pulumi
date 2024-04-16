@@ -56,6 +56,7 @@ type LocalWorkspace struct {
 	remoteEnvVars                 map[string]EnvVarValue
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
+	remoteInheritSettings         bool
 	pulumiCommand                 PulumiCommand
 	remoteExecutorImage           *ExecutorImage
 }
@@ -872,6 +873,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
 		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
+		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
 		repo:                          lwOpts.Repo,
 		pulumiCommand:                 pulumiCommand,
 	}
@@ -968,6 +970,8 @@ type localWorkspaceOptions struct {
 	RemoteSkipInstallDependencies bool
 	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
 	RemoteExecutorImage *ExecutorImage
+	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
+	RemoteInheritSettings bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -1130,6 +1134,12 @@ func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceO
 func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteExecutorImage = image
+	})
+}
+
+func remoteInheritSettings(inheritSettings bool) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteInheritSettings = inheritSettings
 	})
 }
 

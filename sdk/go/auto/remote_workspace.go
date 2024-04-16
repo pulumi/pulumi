@@ -104,27 +104,30 @@ func SelectRemoteStackGitSource(
 }
 
 func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalWorkspaceOption, error) {
+	remoteOpts := &remoteWorkspaceOptions{}
+	for _, o := range opts {
+		o.applyOption(remoteOpts)
+	}
+
+	if !remoteOpts.InheritSettings {
+		ifNotSet := " if RemoteInheritSettings(true) is not set"
+		if repo.URL == "" {
+			return nil, errors.New("repo.URL is required" + ifNotSet)
+		}
+		if repo.Branch == "" && repo.CommitHash == "" {
+			return nil, errors.New("either repo.Branch or repo.CommitHash is required" + ifNotSet)
+		}
+	}
 	if repo.Setup != nil {
 		return nil, errors.New("repo.Setup cannot be used with remote workspaces")
 	}
-	if repo.URL == "" {
-		return nil, errors.New("repo.URL is required")
-	}
 	if repo.Branch != "" && repo.CommitHash != "" {
 		return nil, errors.New("repo.Branch and repo.CommitHash cannot both be specified")
-	}
-	if repo.Branch == "" && repo.CommitHash == "" {
-		return nil, errors.New("either repo.Branch or repo.CommitHash is required")
 	}
 	if repo.Auth != nil {
 		if repo.Auth.SSHPrivateKey != "" && repo.Auth.SSHPrivateKeyPath != "" {
 			return nil, errors.New("repo.Auth.SSHPrivateKey and repo.Auth.SSHPrivateKeyPath cannot both be specified")
 		}
-	}
-
-	remoteOpts := &remoteWorkspaceOptions{}
-	for _, o := range opts {
-		o.applyOption(remoteOpts)
 	}
 
 	for k, v := range remoteOpts.EnvVars {
@@ -158,6 +161,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 
 	localOpts := []LocalWorkspaceOption{
 		remote(true),
+		remoteInheritSettings(remoteOpts.InheritSettings),
 		remoteEnvVars(remoteOpts.EnvVars),
 		preRunCommands(remoteOpts.PreRunCommands...),
 		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
@@ -168,6 +172,8 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 }
 
 type remoteWorkspaceOptions struct {
+	// InheritSettings sets whether to inherit deployment settings from the stack.
+	InheritSettings bool
 	// EnvVars is a map of environment values scoped to the workspace.
 	// These values will be passed to all Workspace and Stack level commands.
 	EnvVars map[string]EnvVarValue
@@ -220,6 +226,13 @@ func RemotePreRunCommands(commands ...string) RemoteWorkspaceOption {
 func RemoteSkipInstallDependencies(skipInstallDependencies bool) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.SkipInstallDependencies = skipInstallDependencies
+	})
+}
+
+// RemoteInheritSettings sets whether to inherit deployment settings from the stack.
+func RemoteInheritSettings(inheritSettings bool) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.InheritSettings = inheritSettings
 	})
 }
 

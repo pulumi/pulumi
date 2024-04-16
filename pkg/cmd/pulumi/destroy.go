@@ -143,10 +143,6 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
@@ -155,7 +151,12 @@ func newDestroyCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, args[0], remoteArgs)
+				var url string
+				if len(args) > 0 {
+					url = args[0]
+				}
+
+				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)

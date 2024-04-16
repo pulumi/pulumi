@@ -1143,8 +1143,9 @@ func (s *Stack) remoteArgs() []string {
 	var repo *GitRepo
 	var preRunCommands []string
 	var envvars map[string]EnvVarValue
-	var skipInstallDependencies bool
 	var executorImage *ExecutorImage
+	var skipInstallDependencies bool
+	var inheritSettings bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
 		remote = lws.remote
 		repo = lws.repo
@@ -1152,6 +1153,7 @@ func (s *Stack) remoteArgs() []string {
 		envvars = lws.remoteEnvVars
 		skipInstallDependencies = lws.remoteSkipInstallDependencies
 		executorImage = lws.remoteExecutorImage
+		inheritSettings = lws.remoteInheritSettings
 	}
 	if !remote {
 		return nil
@@ -1204,10 +1206,6 @@ func (s *Stack) remoteArgs() []string {
 		args = append(args, "--remote-pre-run-command="+command)
 	}
 
-	if skipInstallDependencies {
-		args = append(args, "--remote-skip-install-dependencies")
-	}
-
 	if executorImage != nil {
 		args = append(args, "--remote-executor-image="+executorImage.Image)
 		if executorImage.Credentials != nil {
@@ -1218,6 +1216,14 @@ func (s *Stack) remoteArgs() []string {
 				args = append(args, "--remote-executor-image-password="+executorImage.Credentials.Password)
 			}
 		}
+	}
+
+	if skipInstallDependencies {
+		args = append(args, "--remote-skip-install-dependencies")
+	}
+
+	if inheritSettings {
+		args = append(args, "--remote-inherit-settings")
 	}
 
 	return args

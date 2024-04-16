@@ -153,6 +153,7 @@ func validateUnsupportedRemoteFlags(
 // Flags for remote operations.
 type RemoteArgs struct {
 	remote                   bool
+	inheritSettings          bool
 	envVars                  []string
 	secretEnvVars            []string
 	preRunCommands           []string
@@ -179,6 +180,9 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(
 		&r.remote, "remote", false,
 		"[EXPERIMENTAL] Run the operation remotely")
+	cmd.PersistentFlags().BoolVar(
+		&r.inheritSettings, "remote-inherit-settings", false,
+		"[EXPERIMENTAL] Inherit deployment settings from the current stack")
 	cmd.PersistentFlags().StringArrayVar(
 		&r.envVars, "remote-env", []string{},
 		"[EXPERIMENTAL] Environment variables to use in the remote operation of the form NAME=value "+
@@ -236,14 +240,15 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	args RemoteArgs,
 ) result.Result {
 	// Validate args.
-	if url == "" {
-		return result.FromError(errors.New("the url arg must be specified"))
+	if url == "" && !args.inheritSettings {
+		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings"))
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
 		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
 	}
-	if args.gitBranch == "" && args.gitCommit == "" {
-		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required"))
+	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
+		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required " +
+			"if not passing --remote-inherit-settings"))
 	}
 	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
 		return result.FromError(errors.New("`--remote-git-auth-ssh-private-key` and " +
@@ -354,21 +359,36 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		}
 	}
 
+	var sourceContext *apitype.SourceContext
+	if url != "" || args.gitBranch != "" || args.gitCommit != "" || args.gitRepoDir != "" || gitAuth != nil {
+		sourceContext = &apitype.SourceContext{
+			Git: &apitype.SourceContextGit{},
+		}
+		if url != "" {
+			sourceContext.Git.RepoURL = url
+		}
+		if args.gitBranch != "" {
+			sourceContext.Git.Branch = args.gitBranch
+		}
+		if args.gitCommit != "" {
+			sourceContext.Git.Commit = args.gitCommit
+		}
+		if args.gitRepoDir != "" {
+			sourceContext.Git.RepoDir = args.gitRepoDir
+		}
+		if gitAuth != nil {
+			sourceContext.Git.GitAuth = gitAuth
+		}
+	}
+
 	req := apitype.CreateDeploymentRequest{
+		Op:              operation,
+		InheritSettings: args.inheritSettings,
 		Executor: &apitype.ExecutorContext{
 			ExecutorImage: executorImage,
 		},
-		Source: &apitype.SourceContext{
-			Git: &apitype.SourceContextGit{
-				RepoURL: url,
-				Branch:  args.gitBranch,
-				Commit:  args.gitCommit,
-				RepoDir: args.gitRepoDir,
-				GitAuth: gitAuth,
-			},
-		},
+		Source: sourceContext,
 		Operation: &apitype.OperationContext{
-			Operation:            operation,
 			PreRunCommands:       args.preRunCommands,
 			EnvironmentVariables: env,
 			Options:              operationOptions,

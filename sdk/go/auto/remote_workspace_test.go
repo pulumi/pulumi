@@ -44,10 +44,11 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 	const stack = "owner/project/stack"
 
 	tests := map[string]struct {
-		stack         string
-		repo          GitRepo
-		executorImage *ExecutorImage
-		err           string
+		stack           string
+		repo            GitRepo
+		executorImage   *ExecutorImage
+		err             string
+		inheritSettings bool
 	}{
 		"stack empty": {
 			stack: "",
@@ -78,19 +79,20 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 			err:   `stack name "owner/project/stack/wat" must be fully qualified`,
 		},
 		"repo setup": {
-			stack: stack,
-			repo:  GitRepo{Setup: func(context.Context, Workspace) error { return nil }},
-			err:   "repo.Setup cannot be used with remote workspaces",
+			stack:           stack,
+			repo:            GitRepo{Setup: func(context.Context, Workspace) error { return nil }},
+			inheritSettings: true,
+			err:             "repo.Setup cannot be used with remote workspaces",
 		},
 		"no url": {
 			stack: stack,
 			repo:  GitRepo{},
-			err:   "repo.URL is required",
+			err:   "repo.URL is required if RemoteInheritSettings(true) is not set",
 		},
 		"no branch or commit": {
 			stack: stack,
 			repo:  GitRepo{URL: remoteTestRepo},
-			err:   "either repo.Branch or repo.CommitHash is required",
+			err:   "either repo.Branch or repo.CommitHash is required if RemoteInheritSettings(true) is not set",
 		},
 		"both branch and commit": {
 			stack: stack,
@@ -155,7 +157,8 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := fn(ctx, tc.stack, tc.repo, RemoteExecutorImage(tc.executorImage))
+			_, err := fn(ctx, tc.stack, tc.repo, RemoteExecutorImage(tc.executorImage),
+				RemoteInheritSettings(tc.inheritSettings))
 			assert.EqualError(t, err, tc.err)
 		})
 	}
