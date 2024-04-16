@@ -1,5 +1,5 @@
 resource "failing" "fail_on_create:index:Resource" {
-    value = true
+    value = false
 }
 
 resource "dependent" "simple:index:Resource" {

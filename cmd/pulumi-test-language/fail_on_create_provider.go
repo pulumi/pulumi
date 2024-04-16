@@ -58,7 +58,7 @@ func (p *failOnCreateProvider) GetSchema(version int) ([]byte, error) {
 
 	pkg := schema.PackageSpec{
 		Name:    "fail_on_create",
-		Version: "2.0.0",
+		Version: "4.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"fail_on_create:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -91,8 +91,8 @@ func (p *failOnCreateProvider) CheckConfig(urn resource.URN, oldInputs, newInput
 	if !version.IsString() {
 		return nil, makeCheckFailure("version", "version is not a string"), nil
 	}
-	if version.StringValue() != "2.0.0" {
-		return nil, makeCheckFailure("version", "version is not 2.0.0"), nil
+	if version.StringValue() != "4.0.0" {
+		return nil, makeCheckFailure("version", "version is not 4.0.0"), nil
 	}
 
 	if len(newInputs) != 1 {
@@ -133,7 +133,7 @@ func (p *failOnCreateProvider) Create(
 }
 
 func (p *failOnCreateProvider) GetPluginInfo() (workspace.PluginInfo, error) {
-	ver := semver.MustParse("2.0.0")
+	ver := semver.MustParse("4.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil

@@ -3,7 +3,7 @@
   dependencies = ["parver>=0.2.1", "pulumi", "semver>=2.8.1"]
   readme = "README.md"
   requires-python = ">=3.8"
-  version = "2.0.0"
+  version = "4.0.0"
 
 [build-system]
   requires = ["setuptools>=61.0"]
