@@ -1513,7 +1513,7 @@ type ComplexTypeSpec struct {
 	Enum []EnumValueSpec `json:"enum,omitempty" yaml:"enum,omitempty"`
 }
 
-// EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
+// EnumValueSpec is the serializable form of the values metadata associated with an enum type.
 type EnumValueSpec struct {
 	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`

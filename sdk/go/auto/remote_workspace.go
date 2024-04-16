@@ -189,7 +189,7 @@ type DockerImageCredentials struct {
 	Password string
 }
 
-// LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
+// RemoteWorkspaceOption is used to customize and configure a RemoteWorkspace at initialization time.
 // See Workdir, Program, PulumiHome, Project, Stacks, and Repo for concrete options.
 type RemoteWorkspaceOption interface {
 	applyOption(*remoteWorkspaceOptions)
