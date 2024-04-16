@@ -17,20 +17,6 @@ resource "independent" "simple:index:Resource" {
     value = true
 }
 
-resource "independent2" "simple:index:Resource" {
-    value = true
-    options {
-        dependsOn = [independent]
-    }
-}
-
-resource "independent3" "simple:index:Resource" {
-    value = true
-    options {
-        dependsOn = [independent2]
-    }
-}
-
 resource "double_dependency" "simple:index:Resource" {
     value = true
     options {

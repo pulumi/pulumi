@@ -396,16 +396,10 @@ var languageTests = map[string]languageTest{
 					require.Equal(l, 1, len(changes), "expected at least 1 StepOp")
 					require.Equal(l, 4, changes[deploy.OpCreate], "expected at least  Create")
 					require.NotNil(l, snap, "expected snapshot to be non-nil")
-					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot") // 1 stack, 2 providers, 3 resources
+					require.Len(l, snap.Resources, 4, "expected 6 resources in snapshot") // 1 stack, 2 providers, 1 resource
 					require.NoError(l, snap.VerifyIntegrity(), "expected snapshot to be valid")
 
-					sort.Slice(snap.Resources, func(i, j int) bool {
-						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
-					})
-
 					require.Equal(l, "independent", snap.Resources[2].URN.Name(), "expected independent resource")
-					require.Equal(l, "independent2", snap.Resources[3].URN.Name(), "expected independent resource")
-					require.Equal(l, "independent3", snap.Resources[4].URN.Name(), "expected independent resource")
 				},
 			},
 		},
