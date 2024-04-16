@@ -2,12 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 go_test(
     name = "transforms_test",
-    srcs = [
-        "transforms_go_test.go",
-        "transforms_nodejs_test.go",
-        "transforms_py_test.go",
-        "transforms_test.go",
-    ],
+    srcs = ["transforms_test.go"],
     deps = [
         "//pkg/testing/integration",
         "//sdk/go/common/resource",

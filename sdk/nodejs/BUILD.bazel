@@ -2,7 +2,11 @@ load("@aspect_rules_swc//swc:defs.bzl", "swc")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
-
+# Tests aren't working so they're not being type checked. They've also been
+# taken out of the tsconfig.json. We should get this working somehow.
+#
+# Also, we should declare a top-level //:tsconfig using ts_config and use that
+# here rather than the local tsconfig.json.
 ts_project(
     name = "sdk",
     srcs = glob([
@@ -53,5 +57,28 @@ ts_project(
         "//:node_modules/source-map-support",
         "//:node_modules/tmp",
         "//:node_modules/upath",
+
+        # devDependencies
+        "//:node_modules/@types/ini",
+        "//:node_modules/@types/js-yaml",
+        "//:node_modules/@types/minimist",
+        #"//:node_modules/@types/mocha",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/normalize-package-data",
+        "//:node_modules/@types/picomatch",
+        #"//:node_modules/@types/sinon",
+        #"//:node_modules/@types/split2",
+        #"//:node_modules/@types/uuid",
+        #"//:node_modules/@typescript-eslint/eslint-plugin",
+        #"//:node_modules/@typescript-eslint/parser",
+        #"//:node_modules/eslint",
+        #"//:node_modules/eslint-plugin-header",
+        #"//:node_modules/eslint-plugin-import",
+        #"//:node_modules/mocha",
+        #"//:node_modules/nyc",
+        #"//:node_modules/rome",
+        #"//:node_modules/sinon",
+        "//:node_modules/ts-node",
+        "//:node_modules/typescript",
     ],
 )

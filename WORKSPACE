@@ -146,14 +146,6 @@ nixpkgs_nodejs_configure(
     attribute_path = "nodejs-18_x",
 )
 
-# Register aspect_bazel_lib toolchains;
-# If you use npm_translate_lock or npm_import from aspect_rules_js you can omit this block.
-load("@aspect_bazel_lib//lib:repositories.bzl", "register_copy_directory_toolchains", "register_copy_to_directory_toolchains")
-
-register_copy_directory_toolchains()
-
-register_copy_to_directory_toolchains()
-
 load("@aspect_rules_js//npm:repositories.bzl", "npm_translate_lock")
 
 # Uses the pnpm-lock.yaml file to automate creation of npm_import rules
