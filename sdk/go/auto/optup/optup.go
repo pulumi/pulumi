@@ -193,7 +193,7 @@ type Options struct {
 	SuppressProgress bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
 	SuppressOutputs bool
-	// ContinueOnError will continue updating resources even if a resource update fails
+	// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
 	ContinueOnError bool
 }
 
