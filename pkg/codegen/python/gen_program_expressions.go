@@ -423,6 +423,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "pulumi.get_stack()")
 	case "cwd":
 		g.Fgen(w, "os.getcwd()")
+	case "getOutput":
+		g.Fgenf(w, "%v.get_output(%v)", expr.Args[0], expr.Args[1])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

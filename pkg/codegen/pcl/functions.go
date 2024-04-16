@@ -400,5 +400,16 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					ReturnType: model.NewOptionalType(elementType),
 				}, diagnostics
 			})),
+		"getOutput": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "stackReference",
+				// TODO: should be StackReference resource type but I'm not sure how to define that
+				Type: model.DynamicType,
+			}, {
+				Name: "outputName",
+				Type: model.StringType,
+			}},
+			ReturnType: model.NewOutputType(model.DynamicType),
+		}),
 	}
 }

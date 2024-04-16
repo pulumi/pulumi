@@ -497,6 +497,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.getProject()")
 	case "cwd":
 		g.Fgen(w, "process.cwd()")
+	case "getOutput":
+		g.Fgenf(w, "%s.getOutput(%v)", expr.Args[0], expr.Args[1])
 
 	default:
 		var rng hcl.Range

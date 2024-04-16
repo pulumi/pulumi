@@ -45,6 +45,9 @@ type languageTest struct {
 	// TODO: This should be a function so we don't have to load all providers in memory all the time.
 	providers []plugin.Provider
 
+	// stackReferences specifies other stack data that this test depends on.
+	stackReferences map[string]resource.PropertyMap
+
 	runs []testRun
 }
 
@@ -207,6 +210,35 @@ var languageTests = map[string]languageTest{
 					outputs := stack.Outputs
 
 					assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+				},
+			},
+		},
+	},
+	"l1-stack-reference": {
+		stackReferences: map[string]resource.PropertyMap{
+			"organization/other/dev": {
+				"plain":  resource.NewStringProperty("plain"),
+				"secret": resource.MakeSecret(resource.NewStringProperty("secret")),
+			},
+		},
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.Len(l, snap.Resources, 3, "expected at least 3 resources")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					prov := snap.Resources[1]
+					require.Equal(l, "pulumi:providers:pulumi", prov.Type.String(), "expected a default pulumi provider resource")
+					ref := snap.Resources[2]
+					require.Equal(l, "pulumi:pulumi:StackReference", ref.Type.String(), "expected a stack reference resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 2, "expected 2 outputs")
+					assertPropertyMapMember(l, outputs, "plain", resource.NewStringProperty("plain"))
+					assertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewStringProperty("secret")))
 				},
 			},
 		},
