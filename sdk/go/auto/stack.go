@@ -406,6 +406,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.SuppressProgress {
 		sharedArgs = append(sharedArgs, "--suppress-progress")
 	}
+	if upOpts.ContinueOnError {
+		sharedArgs = append(sharedArgs, "--continue-on-error")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)

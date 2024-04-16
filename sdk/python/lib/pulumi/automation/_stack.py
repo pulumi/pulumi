@@ -227,6 +227,7 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
+        continue_on_error: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -255,6 +256,7 @@ class Stack:
         :param debug: Print detailed debugging output during resource operations
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
+        :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
