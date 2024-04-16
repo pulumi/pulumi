@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: docs
-  description: Implement Java constructor syntax examples

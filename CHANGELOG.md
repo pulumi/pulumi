@@ -1,5 +1,90 @@
 # Changelog
 
+## 3.113.0 (2024-04-15)
+
+
+### Features
+
+- [sdk/nodejs] Make TypeScript and ts-node optional peer dependencies to allow using user specified versions
+  [#15622](https://github.com/pulumi/pulumi/pull/15622)
+  
+  Note: TypeScript and ts-node are now optional peer dependencies of the Node.js SDK. This makes its possible to chose any version of these packages by adding them as dependency or devDependency to your package.json. If these optional peer dependencies are not installed, Pulumi will fallback to bundled versions included in the Node.js SDK to maintain backwards compatibility. As a side effect of this change, the `tsc` binary is no longer available in `node_modules/.bin/tsc`. If you rely on `tsc` being available in your project, add it as a dependency or devDependency to your package.json.
+
+- [sdk/python] Add 'typeChecker' runtime option to the Python language host
+  [#15725](https://github.com/pulumi/pulumi/pull/15725)
+
+- [auto/{go,nodejs,python}] Add support for continue-on-error parameter of the destroy command to the Automation API
+  [#15921](https://github.com/pulumi/pulumi/pull/15921)
+
+- [cli] Support always fully qualifying stack names in CLI output
+  [#15857](https://github.com/pulumi/pulumi/pull/15857)
+
+- [cli] Add --no-plugins and --no-dependencies to `pulumi install`
+  [#15910](https://github.com/pulumi/pulumi/pull/15910)
+
+- [docs] Implement Java constructor syntax examples
+  [#15805](https://github.com/pulumi/pulumi/pull/15805)
+
+- [sdk/go] Allow unknowns during `pulumi up`
+  [#15942](https://github.com/pulumi/pulumi/pull/15942)
+
+- [sdk/{nodejs,python}] Allow apply to have unknown values during updates
+  [#15898](https://github.com/pulumi/pulumi/pull/15898)
+
+
+### Bug Fixes
+
+- [auto] Tolerate missing stack and bookkeeping files in ProgramTest
+  [#15863](https://github.com/pulumi/pulumi/pull/15863)
+
+- [backend/diy] Fix race condition when listing stacks
+  [#15931](https://github.com/pulumi/pulumi/pull/15931)
+
+- [cli] Fix a panic when user's home directory could not be looked up
+  [#15872](https://github.com/pulumi/pulumi/pull/15872)
+
+- [cli] Fix some commands that didn't respect `--disable-integrity-checking`
+  [#15911](https://github.com/pulumi/pulumi/pull/15911)
+
+- [auto/go] Avoid flakyness when reading the event log from pulumi commands
+  [#15856](https://github.com/pulumi/pulumi/pull/15856)
+
+- [engine] Resource transforms on component resources now apply to children correctly
+  [#15846](https://github.com/pulumi/pulumi/pull/15846)
+
+- [programgen/dotnet] Remove trailing whitespace from emitted DependsOn resource option expressions
+  [#15892](https://github.com/pulumi/pulumi/pull/15892)
+
+- [sdk/go] Fix Provider and Providers options in Go transform functions
+  [#15885](https://github.com/pulumi/pulumi/pull/15885)
+
+- [sdk/nodejs] Handle serialization of aliases for well known native functions
+  [#15873](https://github.com/pulumi/pulumi/pull/15873)
+
+- [sdk/nodejs] Correctly serialise functions whose code would make use of reserved identifiers
+  [#15879](https://github.com/pulumi/pulumi/pull/15879)
+
+- [sdk/nodejs] Serialize function values obtained from Function.bind
+  [#15887](https://github.com/pulumi/pulumi/pull/15887)
+
+- [sdk/python] Improve types of getters in Python SDK
+  [#15865](https://github.com/pulumi/pulumi/pull/15865)
+
+- [sdkgen/{dotnet,go}] Fix SDK-generation when referencing shared types in config variables
+  [#15772](https://github.com/pulumi/pulumi/pull/15772)
+
+
+### Miscellaneous
+
+- [backend/diy] Upgrade gocloud.dev dependency to 0.37
+  [#15924](https://github.com/pulumi/pulumi/pull/15924)
+
+- [sdk/nodejs] Update builtin module list for function serialization
+  [#15830](https://github.com/pulumi/pulumi/pull/15830)
+
+- [sdk/nodejs] Set package.json engines to node >= 18
+  [#15845](https://github.com/pulumi/pulumi/pull/15845)
+
 ## 3.112.0 (2024-03-27)
 
 

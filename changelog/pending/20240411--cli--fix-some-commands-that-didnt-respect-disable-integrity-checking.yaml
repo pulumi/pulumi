@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix some commands that didn't respect `--disable-integrity-checking`

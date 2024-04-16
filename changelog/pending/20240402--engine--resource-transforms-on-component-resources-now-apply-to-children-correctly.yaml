@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Resource transforms on component resources now apply to children correctly

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto
-  description: Tolerate missing stack and bookkeeping files in ProgramTest

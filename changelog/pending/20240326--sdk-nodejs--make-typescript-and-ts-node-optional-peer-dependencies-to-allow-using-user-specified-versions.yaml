@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Make TypeScript and ts-node optional peer dependencies to allow using user specified versions
