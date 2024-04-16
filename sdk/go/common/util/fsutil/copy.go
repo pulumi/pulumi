@@ -20,7 +20,7 @@ import (
 )
 
 // CopyFile is a braindead simple function that copies a src file to a dst file.  Note that it is not general purpose:
-// it doesn't handle symbolic links, it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
+// it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
 // and it makes no attempt to preserve file permissions.  It is what we need for this utility package, no more, no less.
 func CopyFile(dst string, src string, excl map[string]bool) error {
 	info, err := os.Lstat(src)
@@ -43,8 +43,8 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 				return copyerr
 			}
 		}
-	} else if info.Mode().IsRegular() {
-		// Copy files by reading and rewriting their contents.  Skip symlinks and other special files.
+	} else if info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		// Copy files by reading and rewriting their contents.  Skip other special files.
 		data, err := os.ReadFile(src)
 		if err != nil {
 			return err
