@@ -490,7 +490,7 @@ func newUpCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				url := ""
+				var url string
 				if len(args) > 0 {
 					url = args[0]
 				}
