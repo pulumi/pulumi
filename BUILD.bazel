@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 
 # gazelle:prefix github.com/pulumi/pulumi
@@ -44,4 +45,18 @@ compile_pip_requirements(
     name = "python-requirements",
     requirements_in = "requirements.txt",
     requirements_txt = "requirements_lock.txt",
+)
+
+npm_link_all_packages(
+    name = "node_modules",
+)
+
+load("@npm//:tsconfig-to-swcconfig/package_json.bzl", tsconfig_to_swcconfig = "bin")
+
+tsconfig_to_swcconfig.t2s(
+    name = "swcrc",
+    srcs = ["tsconfig.json"],
+    args = ["--filename", "$(location tsconfig.json)"],
+    stdout = ".swcrc",
+    visibility = ["//:__subpackages__"],
 )

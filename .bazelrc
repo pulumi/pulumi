@@ -6,3 +6,5 @@ test --jobs 16 --local_ram_resources=HOST_RAM*0.5
 
 test --test_output=errors
 
+# We have to pick an option here for rules_tsc
+common --@aspect_rules_ts//ts:skipLibCheck=honor_tsconfig

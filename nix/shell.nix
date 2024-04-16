@@ -22,7 +22,6 @@
       pkgs.nix
       pkgs.nodePackages.pnpm
       pkgs.nodePackages.typescript-language-server
-      pkgs.nodePackages.yarn
       pkgs.nodejs-18_x
       pkgs.pulumictl
       pkgs.python3

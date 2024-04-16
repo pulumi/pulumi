@@ -22,6 +22,17 @@ workspace(name = "pulumi")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
+    name = "bazel_features",
+    sha256 = "d7787da289a7fb497352211ad200ec9f698822a9e0757a4976fd9f713ff372b3",
+    strip_prefix = "bazel_features-1.9.1",
+    url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.9.1/bazel_features-v1.9.1.tar.gz",
+)
+
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
+bazel_features_deps()
+
+http_archive(
     name = "bazel_skylib",
     sha256 = "cd55a062e763b9349921f0f5db8c3933288dc8ba4f76dd9416aac68acee3cb94",
     urls = [
@@ -93,6 +104,98 @@ http_archive(
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
+
+http_archive(
+    name = "aspect_rules_ts",
+    sha256 = "c77f0dfa78c407893806491223c1264c289074feefbf706721743a3556fa7cea",
+    strip_prefix = "rules_ts-2.2.0",
+    url = "https://github.com/aspect-build/rules_ts/releases/download/v2.2.0/rules_ts-v2.2.0.tar.gz",
+)
+
+load("@aspect_rules_ts//ts:repositories.bzl", "rules_ts_dependencies")
+
+rules_ts_dependencies(
+    # This keeps the TypeScript version in-sync with the editor, which is typically best.
+    ts_version_from = "//:package.json",
+
+    # Alternatively, you could pick a specific version, or use
+    # load("@aspect_rules_ts//ts:repositories.bzl", "LATEST_TYPESCRIPT_VERSION")
+    # ts_version = LATEST_TYPESCRIPT_VERSION
+)
+
+load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
+
+rules_js_dependencies()
+
+# Fetch and register node, if you haven't already
+load("@rules_nodejs//nodejs:repositories.bzl", "DEFAULT_NODE_VERSION", "nodejs_register_toolchains")
+
+#nodejs_register_toolchains(
+#    name = "nodejs",
+#    node_version = DEFAULT_NODE_VERSION,
+#)
+
+load(
+    "@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl",
+    "nixpkgs_nodejs_configure",
+)
+
+nixpkgs_nodejs_configure(
+    name = "nixpkgs_nodejs_config",
+    repository = "@nixpkgs",
+    attribute_path = "nodejs-18_x",
+)
+
+# Register aspect_bazel_lib toolchains;
+# If you use npm_translate_lock or npm_import from aspect_rules_js you can omit this block.
+load("@aspect_bazel_lib//lib:repositories.bzl", "register_copy_directory_toolchains", "register_copy_to_directory_toolchains")
+
+register_copy_directory_toolchains()
+
+register_copy_to_directory_toolchains()
+
+load("@aspect_rules_js//npm:repositories.bzl", "npm_translate_lock")
+
+# Uses the pnpm-lock.yaml file to automate creation of npm_import rules
+npm_translate_lock(
+    # Creates a new repository named "@npm" - you could choose any name you like
+    name = "npm",
+    pnpm_lock = "//:pnpm-lock.yaml",
+    # Recommended attribute that also checks the .bazelignore file
+    verify_node_modules_ignored = "//:.bazelignore",
+)
+
+# Following our example above, we named this "npm"
+load("@npm//:repositories.bzl", "npm_repositories")
+
+npm_repositories()
+
+http_archive(
+    name = "aspect_rules_swc",
+    sha256 = "cde09df7dea773adaed896612434559f8955d2dfb2cfd6429ee333f30299ed34",
+    strip_prefix = "rules_swc-1.2.2",
+    url = "https://github.com/aspect-build/rules_swc/releases/download/v1.2.2/rules_swc-v1.2.2.tar.gz",
+)
+
+###################
+# rules_swc setup #
+###################
+
+# Fetches the rules_swc dependencies.
+# If you want to have a different version of some dependency,
+# you should fetch it *before* calling this.
+# Alternatively, you can skip calling this function, so long as you've
+# already fetched all the dependencies.
+load("@aspect_rules_swc//swc:dependencies.bzl", "rules_swc_dependencies")
+
+rules_swc_dependencies()
+
+load("@aspect_rules_swc//swc:repositories.bzl", "LATEST_SWC_VERSION", "swc_register_toolchains")
+
+swc_register_toolchains(
+    name = "swc",
+    swc_version = LATEST_SWC_VERSION,
+)
 
 # FOO
 

@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "declaration": true,
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "forceConsistentCasingInFileNames": true,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "outDir": "bin",
+        "pretty": true,
+        "resolveJsonModule": true,
+        "sourceMap": true,
+        "strict": true,
+        "stripInternal": true,
+        "target": "es2016"
+    }
+}
