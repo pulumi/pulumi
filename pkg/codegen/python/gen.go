@@ -128,6 +128,9 @@ type modContext struct {
 
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
+
+	// Emit TypedDicts types for inputs
+	typedDictArgs bool
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -410,14 +413,18 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 
 	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
-	fmt.Fprintf(w, "import sys\n")
+	if mod.typedDictArgs {
+		fmt.Fprintf(w, "import sys\n")
+	}
 	fmt.Fprintf(w, "import pulumi\n")
 	fmt.Fprintf(w, "import pulumi.runtime\n")
 	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
-	fmt.Fprintf(w, "if sys.version_info >= (3, 11):\n")
-	fmt.Fprintf(w, "    from typing import NotRequired, TypedDict\n")
-	fmt.Fprintf(w, "else:\n")
-	fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict\n")
+	if mod.typedDictArgs {
+		fmt.Fprintf(w, "if sys.version_info >= (3, 11):\n")
+		fmt.Fprintf(w, "    from typing import NotRequired, TypedDict\n")
+		fmt.Fprintf(w, "else:\n")
+		fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict\n")
+	}
 	fmt.Fprintf(w, "from %s import _utilities\n", relImport)
 	for _, imp := range imports.strings() {
 		fmt.Fprintf(w, "%s\n", imp)
@@ -1061,7 +1068,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
 				fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
-			if input && mod.details(t).inputType {
+			if input && mod.typedDictArgs && mod.details(t).inputType {
 				fmt.Fprintf(w, "    '%sDict',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
 		}
@@ -2384,7 +2391,14 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 		if !acceptMapping {
 			return typ
 		}
-		if input {
+		// If the type is an input and the TypedDict generation is enabled for the type's package, we
+		// we can emit `Union[type, dictType]` and avoid the `InputType[]` wrapper.
+		// dictType covers the Mapping case in `InputType = Union[T, Mapping[str, Any]]`.
+		pkg, err := t.PackageReference.Definition()
+		contract.AssertNoErrorf(err, "error loading definition for package %q", t.PackageReference.Name())
+		info, ok := pkg.Language["python"].(PackageInfo)
+		hasTypedDictArgs := ok && info.TypedDictArgs
+		if hasTypedDictArgs && input {
 			return fmt.Sprintf("Union[%s, %s]", typ, mod.objectType(t, input, true /*dictType*/))
 		}
 		return fmt.Sprintf("pulumi.InputType[%s]", typ)
@@ -2522,7 +2536,7 @@ func InitParamName(name string) string {
 func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
-	if input {
+	if input && mod.typedDictArgs {
 		if err := mod.genDictType(w, name, obj.Comment, obj.Properties); err != nil {
 			return err
 		}
@@ -2802,6 +2816,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				modNameOverrides:             info.ModuleNameOverrides,
 				compatibility:                info.Compatibility,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
+				typedDictArgs:                info.TypedDictArgs,
 			}
 
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {

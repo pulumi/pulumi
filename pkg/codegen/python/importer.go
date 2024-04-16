@@ -59,6 +59,9 @@ type PackageInfo struct {
 	PyProject struct {
 		Enabled bool `json:"enabled,omitempty"`
 	} `json:"pyproject,omitempty"`
+
+	// Toggle whether to generate TypedDict for inputs.
+	TypedDictArgs bool `json:"typedDictArgs,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
