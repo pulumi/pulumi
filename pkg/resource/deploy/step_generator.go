@@ -1034,7 +1034,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					"program and run `pulumi up`", urn)
 				sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 				sg.sawError = true
-				return nil, result.BailErrorf(message)
+				if !sg.deployment.preview {
+					return nil, result.BailErrorf(message)
+				}
 			}
 
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
