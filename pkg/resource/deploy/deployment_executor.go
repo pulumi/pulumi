@@ -472,7 +472,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		newSteps = steps
 	}
 
-	// If we pass an empty chain to the step generators the workers will shut down.  However we don't want that
+	// If we pass an empty chain to the step executors the workers will shut down.  However we don't want that
 	// if we just skipped a step because its dependencies errored out.  Return early in that case.
 	if skipped && len(newSteps) == 0 {
 		return nil
