@@ -159,11 +159,11 @@ func (s *SameStep) IsSkippedCreate() bool {
 }
 
 func (s *SameStep) Fail() {
-	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
 func (s *SameStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -311,11 +311,11 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 }
 
 func (s *CreateStep) Fail() {
-	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -617,11 +617,11 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 }
 
 func (s *UpdateStep) Fail() {
-	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
 func (s *UpdateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -848,11 +848,11 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 }
 
 func (s *ReadStep) Fail() {
-	s.event.Done(&ReadResult{State: s.new, Failed: true})
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateFailed})
 }
 
 func (s *ReadStep) Skip() {
-	s.event.Done(&ReadResult{State: s.new, Skipped: true})
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
@@ -1274,11 +1274,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 }
 
 func (s *ImportStep) Fail() {
-	s.reg.Done(&RegisterResult{State: s.new, Failed: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
 func (s *ImportStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Skipped: true})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 const (

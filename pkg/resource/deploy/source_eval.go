@@ -1126,11 +1126,6 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 	}
-	if result != nil && result.Failed {
-		return &pulumirpc.ReadResourceResponse{
-			Urn: string(result.State.URN),
-		}, nil
-	}
 
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
@@ -1901,7 +1896,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 		}
-		if result != nil && (result.Failed || result.Skipped) && !req.GetSupportsSkipReason() {
+		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsSkipReason() {
 			return nil, rpcerror.New(codes.Internal, "resource registration failed")
 		}
 		if result != nil && result.State != nil && result.State.URN != "" {
@@ -2018,9 +2013,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
 	reason := pulumirpc.SkipReason_NONE
-	if result.Skipped {
+	if result.Result == ResultStateSkipped {
 		reason = pulumirpc.SkipReason_SKIP
-	} else if result.Failed {
+	} else if result.Result == ResultStateFailed {
 		reason = pulumirpc.SkipReason_FAIL
 	}
 	return &pulumirpc.RegisterResourceResponse{
