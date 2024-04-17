@@ -116,7 +116,9 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 	var generatePackage func(string, *schema.Package, map[string][]byte) error
 	switch language {
 	case "dotnet":
-		generatePackage = writeWrapper(dotnet.GeneratePackage)
+		generatePackage = writeWrapper(func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
+			return dotnet.GeneratePackage(t, p, e, nil)
+		})
 	case "java":
 		generatePackage = writeWrapper(javagen.GeneratePackage)
 	default:

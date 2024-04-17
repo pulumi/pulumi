@@ -17,8 +17,10 @@ func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language:   "dotnet",
-		GenPackage: GeneratePackage,
+		Language: "dotnet",
+		GenPackage: func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
+			return GeneratePackage(t, p, e, nil)
+		},
 		Checks: map[string]test.CodegenCheck{
 			"dotnet/compile": typeCheckGeneratedPackage,
 			"dotnet/test":    testGeneratedPackage,
