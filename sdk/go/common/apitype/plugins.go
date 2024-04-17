@@ -27,7 +27,8 @@
 package apitype
 
 // apitype.PluginKind represents a kind of a plugin that may be dynamically loaded and used by Pulumi.
-// These are being re exported in sdk/go/common/workspace/plugins.go to keep backward compatibility and should be kept in sync
+// These are being re exported in sdk/go/common/workspace/plugins.go to keep backward compatibility and should
+// be kept in sync
 type PluginKind string
 
 const (
