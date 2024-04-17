@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Don't bail at preview when a protected resource needs replacement
