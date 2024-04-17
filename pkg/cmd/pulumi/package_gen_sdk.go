@@ -84,7 +84,7 @@ func newGenSdkCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
 		"The directory to write the SDK to")
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
-	cmd.Flags().StringVarP(&version, "version", "v", "", "The provider plugin version to generate the SDK for")
+	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
