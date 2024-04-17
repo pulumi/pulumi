@@ -511,7 +511,24 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				}
 			}
 			importSet[packageName] = Import{ImportAs: true, Pkg: makeValidIdentifier(pkg)}
+
+			if r.Schema != nil {
+				codegen.VisitTypeClosure(r.Schema.InputProperties, func(t schema.Type) {
+					switch t := t.(type) {
+					case *schema.ObjectType:
+						components := strings.Split(t.Token, ":")
+						contract.Assertf(len(components) == 3, "malformed token %v", t.Token)
+						pkg := makeValidIdentifier(components[0])
+						packageName := "pulumi_" + pkg
+						importSet[packageName] = Import{
+							ImportAs: true,
+							Pkg:      pkg,
+						}
+					}
+				})
+			}
 		}
+
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
 				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {

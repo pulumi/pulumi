@@ -1,5 +1,7 @@
 import pulumi
+import pulumi_aws as aws
 import pulumi_eks as eks
+import pulumi_kubernetes as kubernetes
 
 rawkode = eks.Cluster("rawkode",
     instance_type="t2.medium",
