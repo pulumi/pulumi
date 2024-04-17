@@ -1496,8 +1496,17 @@ func cleanupTempDirs(finalDir string) error {
 	return nil
 }
 
-// Re exporting PluginKind to keep backward compatibility
+// Re exporting PluginKind to keep backward compatibility, this should be kept in sync with
+// the definitions in sdk/go/common/apitype/plugins.go
 type PluginKind apitype.PluginKind
+
+const (
+	AnalyzerPlugin  = apitype.AnalyzerPlugin
+	LanguagePlugin  = apitype.LanguagePlugin
+	ResourcePlugin  = apitype.ResourcePlugin
+	ConverterPlugin = apitype.ConverterPlugin
+	ToolPlugin      = apitype.ToolPlugin
+)
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
 func IsPluginKind(k string) bool {
