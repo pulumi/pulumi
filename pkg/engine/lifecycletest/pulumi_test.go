@@ -3181,13 +3181,19 @@ func TestProtect(t *testing.T) {
 		return err
 	}
 
-	// Run a new update which will cause a replace, we should get an error
+	// Run a dry-run (preview) which will cause a replace, we should get an error.
+	// However, the preview doesn't bail, so we expect one "created" resource as a result of this operation.
 	expectedMessage = "<{%reset%}>unable to replace resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
 		"as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from " +
 		"the resource in your Pulumi program and run `pulumi up`<{%reset%}>\n"
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate)
+	assert.Error(t, err)
+
+	// Run an update which will cause a replace, we should get an error.
+	// Contrary to the preview, the error is a bail, so no resources are created.
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
@@ -3217,7 +3223,7 @@ func TestProtect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
 	assert.Equal(t, false, snap.Resources[1].Protect)
 	assert.Equal(t, 1, deleteCounter)
 
@@ -3227,7 +3233,7 @@ func TestProtect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
 	assert.Equal(t, true, snap.Resources[1].Protect)
 	assert.Equal(t, 1, deleteCounter)
 
@@ -3240,7 +3246,7 @@ func TestProtect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
 	assert.Equal(t, 2, deleteCounter)
 }
 
