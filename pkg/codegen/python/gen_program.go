@@ -681,6 +681,10 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 				modName = m
 			}
+			if pkgInfo.TypedDictArgs {
+				// Package supports TypedDicts, return an empty string so we use a dict instead of the Args class.
+				return ""
+			}
 		}
 	}
 	return tokenToQualifiedName(pkgName, modName, member) + "Args"
