@@ -1,0 +1,12 @@
+load("@npm//:grpc-tools/package_json.bzl", grpc_tools = "bin")
+load("@npm//:grpc_tools_node_protoc_ts/package_json.bzl", grpc_tools_node_protoc_ts = "bin")
+
+grpc_tools.grpc_tools_node_protoc_plugin_binary(
+    name = "grpc_tools_node_protoc",
+    visibility = ["__pkg__"],
+)
+
+grpc_tools_node_protoc_ts.protoc_gen_ts_binary(
+    name = "grpc_tools_node_protoc_ts",
+    visibility = ["__pkg__"],
+)
