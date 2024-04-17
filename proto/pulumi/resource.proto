@@ -139,11 +139,11 @@ message RegisterResourceRequest {
     SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
 
     repeated Callback transforms = 31; // a list of transforms to apply to the resource before registering it.
-    bool supportsSkipReason = 32; // true if the request is from an SDK that supports the skipReason field in the response.
+    bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 }
 
-enum SkipReason {
-	NONE = 0;
+enum Result {
+	SUCCESS = 0;
 	FAIL = 1;
 	SKIP = 2;
 }
@@ -162,7 +162,7 @@ message RegisterResourceResponse {
     bool stable = 4;                                            // if true, the object's state is stable and may be trusted not to change.
     repeated string stables = 5;                                // an optional list of guaranteed-stable properties.
     map<string, PropertyDependencies> propertyDependencies = 6; // a map from property keys to the dependencies of the property.
-    SkipReason skipReason = 7;                                  // the reason, if any, why the resource creation was skipped.
+    Result result = 7;                                          // the reason, whether the resource registration was successful, failed, or skipped.
 }
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.

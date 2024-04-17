@@ -211,7 +211,7 @@ func (h *L2ContinueOnErrorHost) Run(
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:               string(resource.RootStackType),
 		Name:               req.Stack,
-		SupportsSkipReason: true,
+		SupportsResultReporting: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not register stack: %w", err)
@@ -226,7 +226,7 @@ func (h *L2ContinueOnErrorHost) Run(
 				"value": structpb.NewBoolValue(true),
 			},
 		},
-		SupportsSkipReason: true,
+		SupportsResultReporting: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not register resource: %w", err)
@@ -241,7 +241,7 @@ func (h *L2ContinueOnErrorHost) Run(
 			},
 		},
 		Dependencies:       []string{failing.Urn},
-		SupportsSkipReason: true,
+		SupportsResultReporting: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not register resource: %w", err)
@@ -255,7 +255,7 @@ func (h *L2ContinueOnErrorHost) Run(
 				"value": structpb.NewBoolValue(true),
 			},
 		},
-		SupportsSkipReason: true,
+		SupportsResultReporting: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not register resource: %w", err)

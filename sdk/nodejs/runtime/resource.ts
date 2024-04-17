@@ -505,7 +505,7 @@ export function registerResource(
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
             req.setTransformsList(callbacks);
-            req.setSupportsskipreason(true);
+            req.setSupportsresultreporting(true);
 
             if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(
@@ -588,7 +588,7 @@ export function registerResource(
                             getId: () => undefined,
                             getObject: () => req.getObject(),
                             getPropertydependenciesMap: () => undefined,
-                            getSkipreason: () => 0,
+                            getResult: () => 0,
                         };
                     }
                 } catch (e) {
@@ -598,7 +598,7 @@ export function registerResource(
                         getId: () => undefined,
                         getObject: () => req.getObject(),
                         getPropertydependenciesMap: () => undefined,
-                        getSkipreason: () => 0,
+                        getResult: () => 0,
                     };
                 }
 
@@ -621,7 +621,7 @@ export function registerResource(
                 }
 
                 // Now resolve the output properties.
-                const keepUnknowns = resp.getSkipreason() > 0;
+                const keepUnknowns = resp.getResult() != resproto.Result.SUCCESS;
                 await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers, err, keepUnknowns);
             });
         }),

@@ -990,7 +990,7 @@ def register_resource(
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
                 transforms=callbacks,
-                supportsSkipReason=True,
+                supportsResultReporting=True,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1057,7 +1057,7 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
-            keep_unknowns = resp.skipReason == resource_pb2.SkipReason.NONE
+            keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
             rpc.resolve_outputs(
                 res,
                 resolver.serialized_props,
@@ -1138,7 +1138,7 @@ class RegisterResponse:
     id: Optional[str]
     object: struct_pb2.Struct
     propertyDependencies: Optional[Dict[str, PropertyDependencies]]
-    skipReason: Optional[resource_pb2.SkipReason]
+    result: Optional[resource_pb2.Result]
 
     # pylint: disable=redefined-builtin
     def __init__(
@@ -1147,13 +1147,13 @@ class RegisterResponse:
         id: Optional[str],
         object: struct_pb2.Struct,
         propertyDependencies: Optional[Dict[str, PropertyDependencies]],
-        skipReason: Optional[resource_pb2.SkipReason],
+        result: Optional[resource_pb2.Result],
     ):
         self.urn = urn
         self.id = id
         self.object = object
         self.propertyDependencies = propertyDependencies
-        self.skipReason = skipReason
+        self.result = result
 
 
 def convert_providers(

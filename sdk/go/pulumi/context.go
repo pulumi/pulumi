@@ -1236,7 +1236,7 @@ func (ctx *Context) registerResource(
 				DeletedWith:             inputs.deletedWith,
 				SourcePosition:          sourcePosition,
 				Transforms:              transforms,
-				SupportsSkipReason:      true,
+				SupportsResultReporting:      true,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
