@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
@@ -36,6 +37,7 @@ func newGenSdkCommand() *cobra.Command {
 	var overlays string
 	var language string
 	var out string
+	var version string
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source>",
 		Args:  cobra.ExactArgs(1),
@@ -49,6 +51,13 @@ func newGenSdkCommand() *cobra.Command {
 			pkg, err := schemaFromSchemaSource(source)
 			if err != nil {
 				return err
+			}
+			if version != "" {
+				pkgVersion, err := semver.Parse(version)
+				if err != nil {
+					return fmt.Errorf("invalid version %q: %w", version, err)
+				}
+				pkg.Version = &pkgVersion
 			}
 			// Normalize from well known language names the the matching runtime names.
 			switch language {
@@ -75,6 +84,7 @@ func newGenSdkCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
 		"The directory to write the SDK to")
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
+	cmd.Flags().StringVarP(&version, "version", "v", "", "The provider plugin version to generate the SDK for")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
