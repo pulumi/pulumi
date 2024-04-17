@@ -621,7 +621,7 @@ export function registerResource(
                 }
 
                 // Now resolve the output properties.
-                const keepUnknowns = resp.getResult() != resproto.Result.SUCCESS;
+                const keepUnknowns = resp.getResult() !== resproto.Result.SUCCESS;
                 await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers, err, keepUnknowns);
             });
         }),

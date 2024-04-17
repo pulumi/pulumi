@@ -209,8 +209,8 @@ func (h *L2ContinueOnErrorHost) Run(
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:               string(resource.RootStackType),
-		Name:               req.Stack,
+		Type:                    string(resource.RootStackType),
+		Name:                    req.Stack,
 		SupportsResultReporting: true,
 	})
 	if err != nil {
@@ -240,7 +240,7 @@ func (h *L2ContinueOnErrorHost) Run(
 				"value": structpb.NewBoolValue(true),
 			},
 		},
-		Dependencies:       []string{failing.Urn},
+		Dependencies:            []string{failing.Urn},
 		SupportsResultReporting: true,
 	})
 	if err != nil {

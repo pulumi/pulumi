@@ -281,7 +281,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AliasSpecs:                 opts.AliasSpecs,
 		SourcePosition:             sourcePosition,
 		Transforms:                 opts.Transforms,
-		SupportsResultReporting:         opts.SupportsResultReporting,
+		SupportsResultReporting:    opts.SupportsResultReporting,
 	}
 
 	ctx := context.Background()
