@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Don't bail at preview when a protected resource needs replacement
+  description: Display the entire preview with diff when a protected resource needs replacement
