@@ -594,7 +594,7 @@ func determinePluginDependency(
 	}
 	if !strings.HasPrefix(version, "v") {
 		// Add "v" prefix if not already present.
-		version = fmt.Sprintf("v%s", version)
+		version = "v" + version
 	}
 
 	result := &pulumirpc.PluginDependency{
@@ -632,7 +632,7 @@ func determinePluginDependency(
 // Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
 	if len(packageVersion) == 0 {
-		return "", fmt.Errorf("cannot parse empty string")
+		return "", errors.New("cannot parse empty string")
 	}
 	// Verify ASCII
 	for i := 0; i < len(packageVersion); i++ {
@@ -655,7 +655,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 	// Explicitly err on epochs
 	if num, maybeEpoch := parseNumber(packageVersion); num != "" && strings.HasPrefix(maybeEpoch, "!") {
-		return "", fmt.Errorf("epochs are not supported")
+		return "", errors.New("epochs are not supported")
 	}
 
 	segments := []string{}
@@ -1251,7 +1251,7 @@ func (host *pythonLanguageHost) GenerateProgram(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error program was nil")
+		return nil, errors.New("internal error program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)

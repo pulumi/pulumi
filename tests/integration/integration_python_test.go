@@ -459,7 +459,7 @@ func TestPython3NotInstalled(t *testing.T) {
 			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
 			// for Python 3, since anyone running tests surely already has Python 3 installed on their
 			// machine. The code paths are functionally the same.
-			fmt.Sprintf("PULUMI_PYTHON_CMD=%s", badPython),
+			"PULUMI_PYTHON_CMD=" + badPython,
 		},
 		ExpectFailure: true,
 		Stderr:        stderr,

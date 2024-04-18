@@ -17,7 +17,6 @@ package deploy
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -55,7 +54,7 @@ func TestImportDeployment(t *testing.T) {
 				Decrypter: &decrypterMock{
 					DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
 						decrypterCalled = true
-						return "", fmt.Errorf("expected fail")
+						return "", errors.New("expected fail")
 					},
 				},
 			}, "projectName", nil, true)

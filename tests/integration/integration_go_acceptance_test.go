@@ -191,7 +191,7 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	opts = opts.With(integration.ProgramTestOptions{
 		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
-			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
+			"github.com/pulumi/pulumi/sdk/v3=" + pulumiGoSDK,
 			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
 		},
 		NoParallel: true,

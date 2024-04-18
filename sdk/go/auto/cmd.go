@@ -332,9 +332,9 @@ func fixupPath(env []string, pulumiBin string) []string {
 		if oldPath != "" {
 			pathEntry = pulumiBin + string(os.PathListSeparator) + oldPath
 		}
-		newEnv[pathIndex] = fmt.Sprintf("PATH=%s", pathEntry)
+		newEnv[pathIndex] = "PATH=" + pathEntry
 	} else {
-		newEnv = append(newEnv, fmt.Sprintf("PATH=%s", pulumiBin))
+		newEnv = append(newEnv, "PATH="+pulumiBin)
 	}
 	return newEnv
 }

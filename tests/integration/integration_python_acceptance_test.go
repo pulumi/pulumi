@@ -17,7 +17,6 @@
 package ints
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -247,7 +246,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		}
 		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
 			"virtualenv: venv",
-			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
+			"virtualenv: >-\n      "+venvPath))
 
 		if err := os.WriteFile(pulumiYaml, newYaml, 0o600); err != nil {
 			t.Error(err)

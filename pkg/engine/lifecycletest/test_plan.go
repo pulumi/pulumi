@@ -38,16 +38,16 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 		return nil
 	}
 	if journal == nil {
-		return fmt.Errorf("journal snapshot is nil")
+		return errors.New("journal snapshot is nil")
 	}
 	if manager == nil {
-		return fmt.Errorf("manager snapshot is nil")
+		return errors.New("manager snapshot is nil")
 	}
 
 	// Manifests and SecretsManagers are known to differ because we don't thread them through for the Journal code.
 
 	if len(journal.PendingOperations) != len(manager.PendingOperations) {
-		return fmt.Errorf("journal and manager pending operations differ")
+		return errors.New("journal and manager pending operations differ")
 	}
 
 	for _, jop := range journal.PendingOperations {
@@ -64,7 +64,7 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 	}
 
 	if len(journal.Resources) != len(manager.Resources) {
-		return fmt.Errorf("journal and manager resources differ")
+		return errors.New("journal and manager resources differ")
 	}
 
 	for _, jr := range journal.Resources {

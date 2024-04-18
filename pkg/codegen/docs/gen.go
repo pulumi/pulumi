@@ -1202,7 +1202,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 		// in another package and link there.
 		if isExt := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg); isExt {
 			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
-			extPkgLink := fmt.Sprintf("/registry/packages/%s", packageName)
+			extPkgLink := "/registry/packages/" + packageName
 			comment += fmt.Sprintf("\nThis type is defined in the [%s](%s) package.", getPackageDisplayName(packageName), extPkgLink)
 		}
 

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	b64 "encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -234,7 +235,7 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 func (h *testHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	// Look in the providers map for this provider
 	if version == nil {
-		return nil, fmt.Errorf("unexpected provider request with no version")
+		return nil, errors.New("unexpected provider request with no version")
 	}
 
 	key := fmt.Sprintf("%s@%s", pkg, version)
@@ -335,16 +336,16 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	req *testingrpc.PrepareLanguageTestsRequest,
 ) (*testingrpc.PrepareLanguageTestsResponse, error) {
 	if req.LanguagePluginName == "" {
-		return nil, fmt.Errorf("language plugin name must be specified")
+		return nil, errors.New("language plugin name must be specified")
 	}
 	if req.LanguagePluginTarget == "" {
-		return nil, fmt.Errorf("language plugin target must be specified")
+		return nil, errors.New("language plugin target must be specified")
 	}
 	if req.SnapshotDirectory == "" {
-		return nil, fmt.Errorf("snapshot directory must be specified")
+		return nil, errors.New("snapshot directory must be specified")
 	}
 	if req.TemporaryDirectory == "" {
-		return nil, fmt.Errorf("temporary directory must be specified")
+		return nil, errors.New("temporary directory must be specified")
 	}
 
 	err := os.MkdirAll(req.SnapshotDirectory, 0o755)
@@ -775,7 +776,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("program snapshot validation: %w", err)
 		}
 		if len(validations) > 0 {
-			return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
+			return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
 		}
 		// If we made a snapshot edit we can clean it up now
 		if projectDirSnapshot != projectDir {
@@ -854,7 +855,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			if found == nil {
-				return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
+				return makeTestResponse("missing expected dependency " + expectedDependency.Name), nil
 			} else if expectedDependency.Version != *found {
 				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
 					expectedDependency.Name, *found, expectedDependency.Version)), nil

@@ -18,7 +18,8 @@ package main
 
 import (
 	"context"
-	"fmt"
+
+	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -107,7 +108,7 @@ func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateReques
 
 	p.id++
 	return &rpc.CreateResponse{
-		Id:         fmt.Sprintf("%v", p.id),
+		Id:         strconv.Itoa(p.id),
 		Properties: outputProperties,
 	}, nil
 }

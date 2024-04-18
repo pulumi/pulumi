@@ -16,7 +16,7 @@ package deploy
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -32,7 +32,7 @@ func TestTarget(t *testing.T) {
 			t.Parallel()
 			t.Run("secret in namespace", func(t *testing.T) {
 				t.Parallel()
-				expectedErr := fmt.Errorf("expected error")
+				expectedErr := errors.New("expected error")
 				target := &Target{
 					Config: config.Map{
 						config.MustMakeKey("test", "secret"):  config.NewSecureValue("secret-value"),
@@ -62,7 +62,7 @@ func TestTarget(t *testing.T) {
 			})
 		})
 		t.Run("ok", func(t *testing.T) {
-			expectedErr := fmt.Errorf("expected error")
+			expectedErr := errors.New("expected error")
 			target := &Target{
 				Config: config.Map{
 					config.MustMakeKey("a", "val"):        config.NewValue("a-value"),
