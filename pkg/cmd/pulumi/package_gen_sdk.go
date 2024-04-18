@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -48,6 +49,7 @@ func newGenSdkCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
+			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 			pkg, err := schemaFromSchemaSource(source)
 			if err != nil {
 				return err
@@ -56,6 +58,9 @@ func newGenSdkCommand() *cobra.Command {
 				pkgVersion, err := semver.Parse(version)
 				if err != nil {
 					return fmt.Errorf("invalid version %q: %w", version, err)
+				}
+				if pkg.Version != nil {
+					d.Infof(diag.Message("", "overriding package version %s with %s"), pkg.Version, pkgVersion)
 				}
 				pkg.Version = &pkgVersion
 			}
