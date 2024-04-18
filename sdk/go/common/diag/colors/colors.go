@@ -132,6 +132,8 @@ func writeDirective(w io.StringWriter, c Colorization, directive Color) {
 		writeCodes(w, "48", "5", "4")
 	case Black: // command("fg 0") // Only use with background colors.
 		writeCodes(w, "38", "5", "0")
+	case BrightBlack: // command("fg 8")
+		writeCodes(w, "38", "5", "8")
 	default:
 		contract.Failf("Unrecognized color code: %q", directive)
 	}
@@ -280,7 +282,7 @@ var (
 
 	Black = command("fg 0") // Only use with background colors.
 	// White         = command("fg 7")
-	// BrightBlack   = command("fg 8")
+	BrightBlack = command("fg 8")
 	// BrightYellow  = command("fg 11")
 	// BrightWhite   = command("fg 15")
 )
