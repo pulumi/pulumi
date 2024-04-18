@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
+	"github.com/pulumi/esc/cmd/esc/cli/style"
 )
 
 func newEnvLogCmd(env *envCommand) *cobra.Command {
@@ -48,6 +49,9 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 				before = rev + 1
 			}
 
+			// NOTE: we use the color profile from the user-visible stdout rather than the color profile from the pager's stdout.
+			rules := style.Default()
+			st := style.NewStylist(style.Profile(env.esc.stdout))
 			return env.esc.pager.Run(pagerFlag, env.esc.stdout, env.esc.stderr, func(ctx context.Context, stdout io.Writer) error {
 				count := 500
 				for {
@@ -65,14 +69,14 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 					before = revisions[len(revisions)-1].Number
 
 					for _, r := range revisions {
-						fmt.Fprintf(stdout, "revision %v", r.Number)
+						st.Fprintf(stdout, rules.H1.StylePrimitive, "revision %v", r.Number)
 						switch len(r.Tags) {
 						case 0:
 							// OK
 						case 1:
-							fmt.Fprintf(stdout, " (tag: %v)", r.Tags[0])
+							st.Fprintf(stdout, rules.LinkText, " (tag: %v)", r.Tags[0])
 						default:
-							fmt.Fprintf(stdout, " (tags: %v)", strings.Join(r.Tags, ", "))
+							st.Fprintf(stdout, rules.LinkText, " (tags: %v)", strings.Join(r.Tags, ", "))
 						}
 						fmt.Fprintln(stdout, "")
 

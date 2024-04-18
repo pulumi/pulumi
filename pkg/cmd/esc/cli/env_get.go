@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/cmd/esc/cli/style"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -104,7 +105,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return nil
 			}
 
-			renderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(0))
+			renderer, err := style.Glamour(get.env.esc.stdout, glamour.WithWordWrap(0))
 			if err != nil {
 				return fmt.Errorf("internal error: creating renderer: %w", err)
 			}

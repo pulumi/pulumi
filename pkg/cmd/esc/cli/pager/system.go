@@ -9,11 +9,12 @@ import (
 	"os/exec"
 )
 
-func runSystemPager(pager string, stdout, stderr io.Writer, f func(context.Context, io.Writer) error) error {
+func runSystemPager(pager []string, stdout, stderr io.Writer, f func(context.Context, io.Writer) error) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cmd := exec.Command(pager)
+	//nolint:gosec
+	cmd := exec.Command(pager[0], pager[1:]...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	stdin, err := cmd.StdinPipe()
