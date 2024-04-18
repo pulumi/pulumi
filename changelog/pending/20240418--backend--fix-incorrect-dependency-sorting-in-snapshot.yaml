@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend
-  description: Fix incorrect dependency sorting in snapshot
