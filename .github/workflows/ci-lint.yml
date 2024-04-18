@@ -38,12 +38,12 @@ jobs:
       # and maintain the cache,
       # but we want to run the command ourselves.
       # The action doesn't have an install-only mode,
-      # so we'll ask it to print its version only.
+      # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --version
+          args: --help
 
       - name: Run golangci-lint
         # Print GitHub Actions-friendly output so that errors get marked
