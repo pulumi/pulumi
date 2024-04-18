@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -64,7 +65,17 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 					before = revisions[len(revisions)-1].Number
 
 					for _, r := range revisions {
-						fmt.Fprintf(stdout, "revision %v\n", r.Number)
+						fmt.Fprintf(stdout, "revision %v", r.Number)
+						switch len(r.Tags) {
+						case 0:
+							// OK
+						case 1:
+							fmt.Fprintf(stdout, " (tag: %v)", r.Tags[0])
+						default:
+							fmt.Fprintf(stdout, " (tags: %v)", strings.Join(r.Tags, ", "))
+						}
+						fmt.Fprintln(stdout, "")
+
 						if r.CreatorLogin == "" {
 							fmt.Fprintf(stdout, "Author: <unknown>\n")
 						} else {

@@ -64,6 +64,7 @@ type EnvironmentRevision struct {
 	Created      time.Time `json:"created"`
 	CreatorLogin string    `json:"creatorLogin"`
 	CreatorName  string    `json:"creatorName"`
+	Tags         []string  `json:"tags"`
 }
 
 type CreateEnvironmentRevisionTagRequest struct {

@@ -624,11 +624,17 @@ func (c *testPulumiClient) ListEnvironmentRevisions(
 
 	var resp []client.EnvironmentRevision
 	for i := before - 1; i > 0; i-- {
+		var tags []string
+		if tag := env.revisions[i-1].tag; tag != "" {
+			tags = []string{tag}
+		}
+
 		resp = append(resp, client.EnvironmentRevision{
 			Number:       i,
 			Created:      time.Unix(0, 0).Add(time.Duration(i) * time.Hour),
 			CreatorLogin: "Test Tester",
 			CreatorName:  "test-tester",
+			Tags:         tags,
 		})
 	}
 
@@ -850,6 +856,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 					return nil, nil, fmt.Errorf("duplicate tag %q", rev.Tag)
 				}
 				tags[rev.Tag] = revisionNumber
+				envRevisions[revisionNumber-1].tag = rev.Tag
 			}
 		}
 		tags["latest"] = len(envRevisions)
