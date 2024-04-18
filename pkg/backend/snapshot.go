@@ -123,7 +123,14 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 // Note that this is completely not thread-safe and defeats the purpose of having a `mutate` callback
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	return sm.mutate(func() bool { return true })
+	return sm.mutate(func() bool {
+		if step.Old().Outputs.DeepEquals(step.New().Outputs) {
+			logging.V(9).Infof("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
+			return false
+		}
+
+		return true
+	})
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
