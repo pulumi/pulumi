@@ -1034,6 +1034,9 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					"program and run `pulumi up`", urn)
 				sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 				sg.sawError = true
+				// In Update mode, we bail to stop any further actions immediately.
+				// In Preview, we mark the deployment as Error but continue to next steps,
+				// so that the preview is shown to the user and they can see the diff causing it.
 				if !sg.deployment.preview {
 					return nil, result.BailErrorf(message)
 				}

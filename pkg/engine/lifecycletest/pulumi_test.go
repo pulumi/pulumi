@@ -3190,7 +3190,7 @@ func TestProtect(t *testing.T) {
 		"foo": "baz",
 	})
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "step generator errored")
 
 	// Run an update which will cause a replace, we should get an error.
 	// Contrary to the preview, the error is a bail, so no resources are created.
