@@ -1034,7 +1034,14 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					"program and run `pulumi up`", urn)
 				sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 				sg.sawError = true
-				return nil, result.BailErrorf(message)
+				// In Preview, we mark the deployment as Error but continue to next steps,
+				// so that the preview is shown to the user and they can see the diff causing it.
+				// In Update mode, we bail to stop any further actions immediately. If we don't bail and
+				// we're doing a create before delete replacement we'll execute the create before getting
+				// to the delete error.
+				if !sg.deployment.preview {
+					return nil, result.BailErrorf(message)
+				}
 			}
 
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
