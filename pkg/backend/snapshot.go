@@ -18,8 +18,9 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sort"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -271,7 +272,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		sortDeps := func(deps []resource.URN) []resource.URN {
 			result := make([]resource.URN, len(deps))
 			copy(result, deps)
-			sort.Slice(result, func(i, j int) bool { return deps[i] < deps[j] })
+			slices.Sort(result)
 			return result
 		}
 		oldDeps := sortDeps(old.Dependencies)
