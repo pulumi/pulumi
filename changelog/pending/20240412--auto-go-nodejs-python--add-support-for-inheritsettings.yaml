@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs,python
-  description: Add support for inheritSettings to go, nodejs and python automation API.

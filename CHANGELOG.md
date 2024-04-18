@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.113.1 (2024-04-18)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Add support for inheritSettings to go, nodejs and python automation API.
+  [#15684](https://github.com/pulumi/pulumi/pull/15684)
+
+
+### Bug Fixes
+
+- [backend] Fix incorrect dependency sorting in snapshot
+
 ## 3.113.0 (2024-04-15)
 
 
