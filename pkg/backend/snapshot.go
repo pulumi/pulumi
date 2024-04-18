@@ -124,7 +124,8 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.mutate(func() bool {
-		if old := step.Old(); old != nil && step.Old().Outputs.DeepEquals(step.New().Outputs) {
+		old, new := step.Old(), step.New()
+		if old != nil && new != nil && old.Outputs.DeepEquals(new.Outputs) {
 			logging.V(9).Infof("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
 			return false
 		}
