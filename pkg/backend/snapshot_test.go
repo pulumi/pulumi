@@ -1043,17 +1043,25 @@ func TestRegisterOutputs(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 
 	// There should be zero snaps performed at the start.
-	assert.Len(t, sp.SavedSnapshots, 0)
+	require.Empty(t, sp.SavedSnapshots)
 
 	// The step here is not important.
 	step := deploy.NewSameStep(nil, nil, resourceA, resourceA)
 	err := manager.RegisterResourceOutputs(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
+	require.NoError(t, err)
 
-	// The RegisterResourceOutputs should have caused a snapshot to be written.
-	assert.Len(t, sp.SavedSnapshots, 1)
+	// The RegisterResourceOutputs should not have caused a snapshot to be written.
+	require.Empty(t, sp.SavedSnapshots)
+
+	// Now, change the outputs and issue another RRO.
+	resourceA2 := NewResource("a")
+	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewStringProperty("world")}
+	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
+	err = manager.RegisterResourceOutputs(step)
+	require.NoError(t, err)
+
+	// The new outputs should have been saved.
+	require.Len(t, sp.SavedSnapshots, 1)
 
 	// It should be identical to what has already been written.
 	lastSnap := sp.LastSnap()
