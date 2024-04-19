@@ -3,7 +3,7 @@
 import asyncio
 from pulumi import Output, ComponentResource, ResourceOptions, ResourceTransformArgs, ResourceTransformResult
 from pulumi.runtime import x_register_stack_transform
-from random_ import Random, Provider
+from random_ import Component, Random, Provider
 
 class MyComponent(ComponentResource):
     child: Random
@@ -99,12 +99,12 @@ res5 = Random(
     None,
     ResourceOptions(x_transforms=[res5_transform]))
 
-# Scenario #6 - mutate the provider on the resource
+# Scenario #6 - mutate the provider on a custom resource
 provider1 = Provider("provider1")
 provider2 = Provider("provider2")
 
-def res6_transform(args: ResourceTransformArgs):
-    print("res6 transform")
+def provider_transform(args: ResourceTransformArgs):
+    print("provider transform")
     return ResourceTransformResult(
         props=args.props,
         opts=ResourceOptions.merge(args.opts, ResourceOptions(
@@ -117,5 +117,14 @@ res6 = Random(
     None,
     ResourceOptions(
         provider=provider1,
-        x_transforms=[res6_transform],
+        x_transforms=[provider_transform],
+    ))
+
+# Scenario #7 - mutate the provider on a component resource
+res7 = Component(
+    "res7",
+    10,
+    ResourceOptions(
+        provider=provider1,
+        x_transforms=[provider_transform],
     ))

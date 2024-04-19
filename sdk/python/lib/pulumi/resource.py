@@ -18,6 +18,7 @@ import asyncio
 import copy
 import warnings
 from typing import (
+    Awaitable,
     Optional,
     List,
     Any,
@@ -318,7 +319,12 @@ class ResourceTransformResult:
         self.opts = opts
 
 
-ResourceTransform = Callable[[ResourceTransformArgs], Optional[ResourceTransformResult]]
+ResourceTransform = Callable[
+    [ResourceTransformArgs],
+    Optional[
+        Union[Awaitable[Optional[ResourceTransformResult]], ResourceTransformResult]
+    ],
+]
 """
 ResourceTransform is the callback signature for the `transforms` resource option.  A
 transform is passed the same set of inputs provided to the `Resource` constructor, and can
@@ -753,7 +759,7 @@ def _collapse_providers(opts: "ResourceOptions"):
                 for prov in providers:
                     opts.providers[prov.package] = prov
             elif isinstance(providers, dict):
-                for key, prov in providers:
+                for key, prov in providers.items():
                     opts.providers[key] = prov
 
 

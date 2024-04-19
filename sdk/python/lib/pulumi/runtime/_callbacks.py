@@ -14,7 +14,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Mapping, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Union,
+    cast,
+    Optional,
+)
 import uuid
 
 import grpc
@@ -99,6 +109,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
         from ..resource import (  # pylint: disable=import-outside-toplevel
             ResourceTransformArgs,
+            ResourceTransformResult,
         )
 
         async def cb(s: bytes) -> Message:
@@ -114,7 +125,12 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                 opts=self._resource_options(request),
             )
 
-            result = transform(args)
+            maybeAwaitable = transform(args)
+            result: Optional[ResourceTransformResult] = None
+            if isinstance(maybeAwaitable, Awaitable):
+                result = await maybeAwaitable
+            else:
+                result = maybeAwaitable
 
             if result is None:
                 return resource_pb2.TransformResponse(
