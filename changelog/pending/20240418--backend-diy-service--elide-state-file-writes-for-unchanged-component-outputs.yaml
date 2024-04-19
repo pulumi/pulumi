@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/diy,service
-  description: Elide state file writes for unchanged component outputs
