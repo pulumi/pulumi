@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.113.2 (2024-04-18)
+
+
+### Features
+
+- [backend/{diy,service}] Elide state file writes for unchanged component outputs
+  [#15976](https://github.com/pulumi/pulumi/pull/15976)
+
+
+### Bug Fixes
+
+- [engine] Display the entire preview with diff when a protected resource needs replacement
+  [#15969](https://github.com/pulumi/pulumi/pull/15969)
+
 ## 3.113.1 (2024-04-18)
 
 
