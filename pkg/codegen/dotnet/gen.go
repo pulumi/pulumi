@@ -2171,6 +2171,7 @@ func genPackageMetadata(pkg *schema.Package,
 	packageReferences map[string]string,
 	projectReferences []string,
 	files codegen.Fs,
+	localDependencies map[string]string,
 ) error {
 	version := ""
 	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
@@ -2179,7 +2180,7 @@ func genPackageMetadata(pkg *schema.Package,
 		files.Add("version.txt", []byte(version))
 	}
 
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version)
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localDependencies)
 	if err != nil {
 		return err
 	}
@@ -2212,6 +2213,7 @@ func genProjectFile(pkg *schema.Package,
 	packageReferences map[string]string,
 	projectReferences []string,
 	version string,
+	localDependencies map[string]string,
 ) ([]byte, error) {
 	if packageReferences == nil {
 		packageReferences = map[string]string{}
@@ -2513,7 +2515,9 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func GeneratePackage(
+	tool string, pkg *schema.Package, extraFiles map[string][]byte, localDependencies map[string]string,
+) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg)
 	if err != nil {
 		return nil, err
@@ -2537,7 +2541,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		assemblyName,
 		info.PackageReferences,
 		info.ProjectReferences,
-		files); err != nil {
+		files,
+		localDependencies); err != nil {
 		return nil, err
 	}
 	return files, nil
