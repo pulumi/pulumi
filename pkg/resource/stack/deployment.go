@@ -22,6 +22,7 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -130,13 +131,31 @@ func SerializeDeployment(snap *deploy.Snapshot, showSecrets bool) (*apitype.Depl
 	}
 
 	operations := slice.Prealloc[apitype.OperationV2](len(snap.PendingOperations))
+	var errs []error
+	wg := &sync.WaitGroup{}
+	lock := &sync.Mutex{}
+	errLock := &sync.Mutex{}
 	for _, op := range snap.PendingOperations {
-		sop, err := SerializeOperation(op, enc, showSecrets)
-		if err != nil {
-			return nil, err
-		}
-		operations = append(operations, sop)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sop, err := SerializeOperation(op, enc, showSecrets)
+			if err != nil {
+				errLock.Lock()
+				defer errLock.Unlock()
+				errs = append(errs, err)
+			}
+			lock.Lock()
+			operations = append(operations, sop)
+			lock.Unlock()
+		}()
 	}
+	if len(errs) > 0 {
+		return nil, errors.New("serializing operations: " + strings.Join(slice.Map(errs, func(e error) string {
+			return e.Error()
+		}), ", "))
+	}
+	wg.Wait()
 
 	var secretsProvider *apitype.SecretsProvidersV1
 	if sm != nil {
