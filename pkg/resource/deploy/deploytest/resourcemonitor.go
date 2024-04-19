@@ -172,6 +172,7 @@ type RegisterResourceResponse struct {
 	ID           resource.ID
 	Outputs      resource.PropertyMap
 	Dependencies map[resource.PropertyKey][]resource.URN
+	Result       pulumirpc.Result
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -315,6 +316,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		ID:           resource.ID(resp.Id),
 		Outputs:      outs,
 		Dependencies: depsMap,
+		Result:       resp.Result,
 	}, nil
 }
 
