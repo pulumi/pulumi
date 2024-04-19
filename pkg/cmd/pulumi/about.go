@@ -223,8 +223,9 @@ func (summary *summaryAbout) Print() {
 }
 
 type pluginAbout struct {
-	Name    string          `json:"name"`
-	Version *semver.Version `json:"version"`
+	Name    string               `json:"name"`
+	Version *semver.Version      `json:"version"`
+	Kind    workspace.PluginKind `json:"kind"`
 }
 
 func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]pluginAbout, error) {
@@ -248,6 +249,7 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 		plugins[i] = pluginAbout{
 			Name:    p.Name,
 			Version: p.Version,
+			Kind:    p.Kind,
 		}
 	}
 	return plugins, nil
@@ -256,7 +258,6 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 func formatPlugins(p []pluginAbout) string {
 	rows := []cmdutil.TableRow{}
 	for _, plugin := range p {
-		name := plugin.Name
 		var version string
 		if plugin.Version != nil {
 			version = plugin.Version.String()
@@ -264,11 +265,11 @@ func formatPlugins(p []pluginAbout) string {
 			version = "unknown"
 		}
 		rows = append(rows, cmdutil.TableRow{
-			Columns: []string{name, version},
+			Columns: []string{string(plugin.Kind), plugin.Name, version},
 		})
 	}
 	table := cmdutil.Table{
-		Headers: []string{"NAME", "VERSION"},
+		Headers: []string{"KIND", "NAME", "VERSION"},
 		Rows:    rows,
 	}
 	return "Plugins\n" + table.String()
