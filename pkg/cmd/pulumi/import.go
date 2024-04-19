@@ -500,9 +500,9 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		urn := resource.NewURN(stackName.Q(), projectName, parentType, i.Type, i.Name)
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
-			s := state.Copy()
+			s := *state
 			s.Protect = protectResources
-			resources = append(resources, s)
+			resources = append(resources, &s)
 		}
 	}
 

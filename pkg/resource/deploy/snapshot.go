@@ -103,9 +103,6 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 	}
 
 	fixResource := func(old *resource.State) *resource.State {
-		old.Lock.Lock()
-		defer old.Lock.Unlock()
-
 		return newStateBuilder(old).
 			withUpdatedURN(fixUrn).
 			withUpdatedParent(fixUrn).
