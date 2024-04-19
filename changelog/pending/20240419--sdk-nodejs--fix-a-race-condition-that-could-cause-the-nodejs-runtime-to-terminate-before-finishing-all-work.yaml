@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix a race condition that could cause the NodeJS runtime to terminate before finishing all work

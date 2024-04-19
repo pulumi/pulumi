@@ -140,6 +140,9 @@ export function getResource(
     const label = `resource:urn=${urn}`;
     log.debug(`Getting resource: urn=${urn}`);
 
+    // Wait for all values to be available, and then perform the RPC.
+    const done = rpcKeepAlive();
+
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, parent, custom, false, props, {});
 
@@ -235,6 +238,7 @@ export function getResource(
                 }
 
                 await resolveOutputs(res, type, urnName, props, resp.state, {}, resop.resolvers, err);
+                done();
             });
         }),
         label,
@@ -261,6 +265,9 @@ export function readResource(
 
     const label = `resource:${name}[${t}]#...`;
     log.debug(`Reading resource: t=${t}, name=${name}`);
+
+    // Wait for all values to be available, and then perform the RPC.
+    const done = rpcKeepAlive();
 
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, parent, true, false, props, opts);
@@ -350,6 +357,7 @@ export function readResource(
                 resop.resolveURN(resp.getUrn(), err);
                 resop.resolveID!(resolvedID, resolvedID !== undefined, err);
                 await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err);
+                done();
             });
         }),
         label,
@@ -433,6 +441,9 @@ export function registerResource(
 ): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
+
+    // Wait for all values to be available, and then perform the RPC.
+    const done = rpcKeepAlive();
 
     const monitor = getMonitor();
     const resopAsync = prepareResource(label, res, parent, custom, remote, props, opts, t, name);
@@ -623,6 +634,7 @@ export function registerResource(
                 // Now resolve the output properties.
                 const keepUnknowns = resp.getResult() !== resproto.Result.SUCCESS;
                 await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers, err, keepUnknowns);
+                done();
             });
         }),
         label,
@@ -644,241 +656,227 @@ export async function prepareResource(
     type?: string,
     name?: string,
 ): Promise<ResourceResolverOperation> {
-    // add an entry to the rpc queue while we prepare the request.
-    // automation api inline programs that don't have stack exports can exit quickly. If we don't do this,
-    // sometimes they will exit right after `prepareResource` is called as a part of register resource, but before the
-    // .then() that adds to the queue via `runAsyncResourceOp`.
-    const done: () => void = rpcKeepAlive();
-
-    try {
-        // Simply initialize the URN property and get prepared to resolve it later on.
-        // Note: a resource urn will always get a value, and thus the output property
-        // for it can always run .apply calls.
-        let resolveURN: (urn: URN, err?: Error) => void;
-        {
-            let resolveValue: (urn: URN) => void;
-            let rejectValue: (err: Error) => void;
-            let resolveIsKnown: (isKnown: boolean) => void;
-            let rejectIsKnown: (err: Error) => void;
-            (res as any).urn = new Output(
-                res,
-                debuggablePromise(
-                    new Promise<URN>((resolve, reject) => {
-                        resolveValue = resolve;
-                        rejectValue = reject;
-                    }),
-                    `resolveURN(${label})`,
-                ),
-                debuggablePromise(
-                    new Promise<boolean>((resolve, reject) => {
-                        resolveIsKnown = resolve;
-                        rejectIsKnown = reject;
-                    }),
-                    `resolveURNIsKnown(${label})`,
-                ),
-                /*isSecret:*/ Promise.resolve(false),
-                Promise.resolve(res),
-            );
-
-            resolveURN = (v, err) => {
-                if (err) {
-                    if (isGrpcError(err)) {
-                        if (debugPromiseLeaks) {
-                            console.error("info: skipped rejection in resolveURN");
-                        }
-                        return;
-                    }
-                    rejectValue(err);
-                    rejectIsKnown(err);
-                } else {
-                    resolveValue(v);
-                    resolveIsKnown(true);
-                }
-            };
-        }
-
-        // If a custom resource, make room for the ID property.
-        let resolveID: ((v: any, performApply: boolean, err?: Error) => void) | undefined;
-        if (custom) {
-            let resolveValue: (v: ID) => void;
-            let rejectValue: (err: Error) => void;
-            let resolveIsKnown: (v: boolean) => void;
-            let rejectIsKnown: (err: Error) => void;
-
-            (res as any).id = new Output(
-                res,
-                debuggablePromise(
-                    new Promise<ID>((resolve, reject) => {
-                        resolveValue = resolve;
-                        rejectValue = reject;
-                    }),
-                    `resolveID(${label})`,
-                ),
-                debuggablePromise(
-                    new Promise<boolean>((resolve, reject) => {
-                        resolveIsKnown = resolve;
-                        rejectIsKnown = reject;
-                    }),
-                    `resolveIDIsKnown(${label})`,
-                ),
-                Promise.resolve(false),
-                Promise.resolve(res),
-            );
-
-            resolveID = (v, isKnown, err) => {
-                if (err) {
-                    if (isGrpcError(err)) {
-                        if (debugPromiseLeaks) {
-                            console.error("info: skipped rejection in resolveID");
-                        }
-                        return;
-                    }
-                    rejectValue(err);
-                    rejectIsKnown(err);
-                } else {
-                    resolveValue(v);
-                    resolveIsKnown(isKnown);
-                }
-            };
-        }
-
-        // Now "transfer" all input properties into unresolved Promises on res.  This way,
-        // this resource will look like it has all its output properties to anyone it is
-        // passed to.  However, those promises won't actually resolve until the registerResource
-        // RPC returns
-        const resolvers = transferProperties(res, label, props);
-
-        /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
-
-        // Before we can proceed, all our dependencies must be finished.
-        const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
-
-        // Serialize out all our props to their final values.  In doing so, we'll also collect all
-        // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-        const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
-            // To initially scope the use of this new feature, we only keep output values when
-            // remote is true (for multi-lang components).
-            keepOutputValues: remote,
-        });
-
-        // Wait for the parent to complete.
-        // If no parent was provided, parent to the root resource.
-        const parentURN = parent ? await parent.urn.promise() : undefined;
-
-        let importID: ID | undefined;
-        if (custom) {
-            const customOpts = <CustomResourceOptions>opts;
-            importID = customOpts.import;
-        }
-
-        let providerRef: string | undefined;
-        let sendProvider = custom;
-        if (remote && opts.provider) {
-            // If it's a remote component and a provider was specified, only
-            // send the provider in the request if the provider's package is
-            // the same as the component's package. Otherwise, don't send it
-            // because the user specified `provider: someProvider` as shorthand
-            // for `providers: [someProvider]`.
-            const pkg = pkgFromType(type!);
-            if (pkg && pkg === opts.provider.getPackage()) {
-                sendProvider = true;
-            }
-        }
-        if (sendProvider) {
-            providerRef = await ProviderResource.register(opts.provider);
-        }
-
-        const providerRefs: Map<string, string> = new Map<string, string>();
-        if (remote || !custom) {
-            const componentOpts = <ComponentResourceOptions>opts;
-            expandProviders(componentOpts);
-            // the <ProviderResource[]> casts are safe because expandProviders
-            // /always/ leaves providers as an array.
-            if (componentOpts.provider !== undefined) {
-                if (componentOpts.providers === undefined) {
-                    // We still want to do the promotion, so we define providers
-                    componentOpts.providers = [componentOpts.provider];
-                } else if ((<ProviderResource[]>componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
-                    const pkg = componentOpts.provider.getPackage();
-                    const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
-                    const deprecationd =
-                        "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details";
-                    log.warn(message + deprecationd);
-                } else {
-                    (<ProviderResource[]>componentOpts.providers).push(componentOpts.provider);
-                }
-            }
-            if (componentOpts.providers) {
-                for (const provider of componentOpts.providers as ProviderResource[]) {
-                    const pref = await ProviderResource.register(provider);
-                    if (pref) {
-                        providerRefs.set(provider.getPackage(), pref);
-                    }
-                }
-            }
-        }
-
-        // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
-        // the dependency graph and optimize operations accordingly.
-
-        // The list of all dependencies (implicit or explicit).
-        const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
-
-        const exclude = new Set<Resource>([res]);
-        const allDirectDependencyURNs = await getAllTransitivelyReferencedResourceURNs(
-            explicitDirectDependencies,
-            exclude,
+    // Simply initialize the URN property and get prepared to resolve it later on.
+    // Note: a resource urn will always get a value, and thus the output property
+    // for it can always run .apply calls.
+    let resolveURN: (urn: URN, err?: Error) => void;
+    {
+        let resolveValue: (urn: URN) => void;
+        let rejectValue: (err: Error) => void;
+        let resolveIsKnown: (isKnown: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
+        (res as any).urn = new Output(
+            res,
+            debuggablePromise(
+                new Promise<URN>((resolve, reject) => {
+                    resolveValue = resolve;
+                    rejectValue = reject;
+                }),
+                `resolveURN(${label})`,
+            ),
+            debuggablePromise(
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsKnown = resolve;
+                    rejectIsKnown = reject;
+                }),
+                `resolveURNIsKnown(${label})`,
+            ),
+            /*isSecret:*/ Promise.resolve(false),
+            Promise.resolve(res),
         );
-        const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
-        for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
-            addAll(allDirectDependencies, directDependencies);
+        resolveURN = (v, err) => {
+            if (err) {
+                if (isGrpcError(err)) {
+                    if (debugPromiseLeaks) {
+                        console.error("info: skipped rejection in resolveURN");
+                    }
+                    return;
+                }
+                rejectValue(err);
+                rejectIsKnown(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(true);
+            }
+        };
+    }
 
-            const urns = await getAllTransitivelyReferencedResourceURNs(directDependencies, exclude);
-            addAll(allDirectDependencyURNs, urns);
-            propertyToDirectDependencyURNs.set(propertyName, urns);
+    // If a custom resource, make room for the ID property.
+    let resolveID: ((v: any, performApply: boolean, err?: Error) => void) | undefined;
+    if (custom) {
+        let resolveValue: (v: ID) => void;
+        let rejectValue: (err: Error) => void;
+        let resolveIsKnown: (v: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
+
+        (res as any).id = new Output(
+            res,
+            debuggablePromise(
+                new Promise<ID>((resolve, reject) => {
+                    resolveValue = resolve;
+                    rejectValue = reject;
+                }),
+                `resolveID(${label})`,
+            ),
+            debuggablePromise(
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsKnown = resolve;
+                    rejectIsKnown = reject;
+                }),
+                `resolveIDIsKnown(${label})`,
+            ),
+            Promise.resolve(false),
+            Promise.resolve(res),
+        );
+
+        resolveID = (v, isKnown, err) => {
+            if (err) {
+                if (isGrpcError(err)) {
+                    if (debugPromiseLeaks) {
+                        console.error("info: skipped rejection in resolveID");
+                    }
+                    return;
+                }
+                rejectValue(err);
+                rejectIsKnown(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(isKnown);
+            }
+        };
+    }
+
+    // Now "transfer" all input properties into unresolved Promises on res.  This way,
+    // this resource will look like it has all its output properties to anyone it is
+    // passed to.  However, those promises won't actually resolve until the registerResource
+    // RPC returns
+    const resolvers = transferProperties(res, label, props);
+
+    /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
+
+    // Before we can proceed, all our dependencies must be finished.
+    const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
+
+    // Serialize out all our props to their final values.  In doing so, we'll also collect all
+    // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+    const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
+        // To initially scope the use of this new feature, we only keep output values when
+        // remote is true (for multi-lang components).
+        keepOutputValues: remote,
+    });
+
+    // Wait for the parent to complete.
+    // If no parent was provided, parent to the root resource.
+    const parentURN = parent ? await parent.urn.promise() : undefined;
+
+    let importID: ID | undefined;
+    if (custom) {
+        const customOpts = <CustomResourceOptions>opts;
+        importID = customOpts.import;
+    }
+
+    let providerRef: string | undefined;
+    let sendProvider = custom;
+    if (remote && opts.provider) {
+        // If it's a remote component and a provider was specified, only
+        // send the provider in the request if the provider's package is
+        // the same as the component's package. Otherwise, don't send it
+        // because the user specified `provider: someProvider` as shorthand
+        // for `providers: [someProvider]`.
+        const pkg = pkgFromType(type!);
+        if (pkg && pkg === opts.provider.getPackage()) {
+            sendProvider = true;
         }
+    }
+    if (sendProvider) {
+        providerRef = await ProviderResource.register(opts.provider);
+    }
 
-        const monitorSupportsStructuredAliases = getStore().supportsAliasSpecs;
-        let computedAliases;
-        if (!monitorSupportsStructuredAliases && parent) {
-            computedAliases = allAliases(opts.aliases || [], name!, type!, parent, parent.__name!);
-        } else {
-            computedAliases = opts.aliases || [];
-        }
-
-        // Wait for all aliases.
-        const aliases = [];
-        const uniqueAliases = new Set<Alias | URN>();
-        for (const alias of computedAliases || []) {
-            const aliasVal = await output(alias).promise();
-            if (!uniqueAliases.has(aliasVal)) {
-                uniqueAliases.add(aliasVal);
-                aliases.push(aliasVal);
+    const providerRefs: Map<string, string> = new Map<string, string>();
+    if (remote || !custom) {
+        const componentOpts = <ComponentResourceOptions>opts;
+        expandProviders(componentOpts);
+        // the <ProviderResource[]> casts are safe because expandProviders
+        // /always/ leaves providers as an array.
+        if (componentOpts.provider !== undefined) {
+            if (componentOpts.providers === undefined) {
+                // We still want to do the promotion, so we define providers
+                componentOpts.providers = [componentOpts.provider];
+            } else if ((<ProviderResource[]>componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
+                const pkg = componentOpts.provider.getPackage();
+                const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
+                const deprecationd =
+                    "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details";
+                log.warn(message + deprecationd);
+            } else {
+                (<ProviderResource[]>componentOpts.providers).push(componentOpts.provider);
             }
         }
-
-        const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
-
-        return {
-            resolveURN: resolveURN,
-            resolveID: resolveID,
-            resolvers: resolvers,
-            serializedProps: serializedProps,
-            parentURN: parentURN,
-            providerRef: providerRef,
-            providerRefs: providerRefs,
-            allDirectDependencyURNs: allDirectDependencyURNs,
-            propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
-            aliases: aliases,
-            import: importID,
-            monitorSupportsStructuredAliases,
-            deletedWithURN,
-        };
-    } finally {
-        // free the RPC queue
-        done();
+        if (componentOpts.providers) {
+            for (const provider of componentOpts.providers as ProviderResource[]) {
+                const pref = await ProviderResource.register(provider);
+                if (pref) {
+                    providerRefs.set(provider.getPackage(), pref);
+                }
+            }
+        }
     }
+
+    // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
+    // the dependency graph and optimize operations accordingly.
+
+    // The list of all dependencies (implicit or explicit).
+    const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
+
+    const exclude = new Set<Resource>([res]);
+    const allDirectDependencyURNs = await getAllTransitivelyReferencedResourceURNs(explicitDirectDependencies, exclude);
+    const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
+
+    for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
+        addAll(allDirectDependencies, directDependencies);
+
+        const urns = await getAllTransitivelyReferencedResourceURNs(directDependencies, exclude);
+        addAll(allDirectDependencyURNs, urns);
+        propertyToDirectDependencyURNs.set(propertyName, urns);
+    }
+
+    const monitorSupportsStructuredAliases = getStore().supportsAliasSpecs;
+    let computedAliases;
+    if (!monitorSupportsStructuredAliases && parent) {
+        computedAliases = allAliases(opts.aliases || [], name!, type!, parent, parent.__name!);
+    } else {
+        computedAliases = opts.aliases || [];
+    }
+
+    // Wait for all aliases.
+    const aliases = [];
+    const uniqueAliases = new Set<Alias | URN>();
+    for (const alias of computedAliases || []) {
+        const aliasVal = await output(alias).promise();
+        if (!uniqueAliases.has(aliasVal)) {
+            uniqueAliases.add(aliasVal);
+            aliases.push(aliasVal);
+        }
+    }
+
+    const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
+
+    return {
+        resolveURN: resolveURN,
+        resolveID: resolveID,
+        resolvers: resolvers,
+        serializedProps: serializedProps,
+        parentURN: parentURN,
+        providerRef: providerRef,
+        providerRefs: providerRefs,
+        allDirectDependencyURNs: allDirectDependencyURNs,
+        propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
+        aliases: aliases,
+        import: importID,
+        monitorSupportsStructuredAliases,
+        deletedWithURN,
+    };
 }
 
 function addAll<T>(to: Set<T>, from: Set<T>) {
@@ -1062,6 +1060,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
     // that will not resolve until later turns. This would create a circular promise chain that can
     // never resolve.
     const opLabel = `monitor.registerResourceOutputs(...)`;
+    const done = rpcKeepAlive();
     runAsyncResourceOp(
         opLabel,
         async () => {
@@ -1114,6 +1113,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                     label,
                 );
             }
+            done();
         },
         false,
     );
@@ -1184,19 +1184,7 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
         ),
     );
 
-    // Ensure the process won't exit until this RPC call finishes and resolve it when appropriate.
-    const done: () => void = rpcKeepAlive();
-    const finalOp: Promise<void> = debuggablePromise(
-        resourceOp.then(
-            () => {
-                done();
-            },
-            () => {
-                done();
-            },
-        ),
-        label + "-final",
-    );
+    const finalOp: Promise<void> = debuggablePromise(resourceOp, label + "-final");
 
     // Set up another promise that propagates the error, if any, so that it triggers unhandled rejection logic.
     resourceOp.catch((err) => Promise.reject(err));
