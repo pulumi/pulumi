@@ -1989,8 +1989,9 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
-		return nil, errors.New("a stack reference's name should be of the form " +
-			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
+		return nil, errors.New("a stack reference's name should be of the form '<organization>/<project>/<stack>'. " +
+			"See https://www.pulumi.com/docs/using-pulumi/stack-outputs-and-references/#using-stack-references " +
+			"for more information.")
 	}
 
 	return c.backend.GetStackOutputs(ctx, name)
