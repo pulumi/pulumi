@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/about
-  description: Add plugin kind to the about output
