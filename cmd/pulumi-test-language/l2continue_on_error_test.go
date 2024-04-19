@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -78,7 +79,7 @@ func (h *L2ContinueOnErrorHost) GenerateProject(
 		return nil, fmt.Errorf("unexpected fail_on_create sdk %s", req.LocalDependencies["fail_on_create"])
 	}
 	if !req.Strict {
-		return nil, fmt.Errorf("expected strict to be true")
+		return nil, errors.New("expected strict to be true")
 	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l2-failed-create-continue-on-error") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
