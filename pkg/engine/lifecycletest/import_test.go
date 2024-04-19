@@ -78,7 +78,7 @@ func TestImportOption(t *testing.T) {
 		if readID != "" {
 			_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "")
 		} else {
-			_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:   inputs,
 				ImportID: importID,
 			})
@@ -343,7 +343,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
@@ -423,11 +423,11 @@ func TestImportUpdatedID(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, id, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			ImportID: importID,
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, actualID, id)
+		assert.Equal(t, actualID, resp.ID)
 		return nil
 	})
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -548,7 +548,7 @@ func TestImportPlan(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 		return nil
 	})
@@ -616,7 +616,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo":  resource.NewStringProperty("foo"),
 				"frob": resource.NewNumberProperty(1),
@@ -675,20 +675,20 @@ func TestImportPlanExistingImport(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		stackURN, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		resp, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		require.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo":  resource.NewStringProperty("bar"),
 				"frob": resource.NewNumberProperty(1),
 			},
 			ImportID: "imported-id",
-			Parent:   stackURN,
+			Parent:   resp.URN,
 		})
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(stackURN, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{})
 		assert.NoError(t, err)
 		return nil
 	})
@@ -813,7 +813,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -891,7 +891,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
 		assert.NoError(t, err)
 		return nil
 	})

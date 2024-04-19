@@ -32,21 +32,21 @@ func TestParallelRefresh(t *testing.T) {
 	// Create a program that registers four resources, each of which depends on the resource that immediately precedes
 	// it.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		resA, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{resA},
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{respA.URN},
 		})
 		assert.NoError(t, err)
 
-		resC, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{resB},
+		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{respB.URN},
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{resC},
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{respC.URN},
 		})
 		assert.NoError(t, err)
 
@@ -164,7 +164,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -263,7 +263,7 @@ func TestRefreshWithDelete(t *testing.T) {
 			}
 
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 				assert.NoError(t, err)
 				return err
 			})
@@ -849,7 +849,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})

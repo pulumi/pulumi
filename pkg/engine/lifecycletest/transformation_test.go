@@ -158,7 +158,7 @@ func TestRemoteTransforms(t *testing.T) {
 		err = monitor.RegisterStackTransform(callback1)
 		require.NoError(t, err)
 
-		aURN, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewNumberProperty(1),
 			},
@@ -168,14 +168,14 @@ func TestRemoteTransforms(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewNumberProperty(10),
 			},
 			Transforms: []*pulumirpc.Callback{
 				callback3,
 			},
-			Parent: aURN,
+			Parent: respA.URN,
 		})
 		require.NoError(t, err)
 		return nil
@@ -238,7 +238,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 		err = monitor.RegisterStackTransform(callback1)
 		require.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewNumberProperty(1),
 			},
@@ -283,7 +283,7 @@ func TestRemoteTransformErrorResponse(t *testing.T) {
 		err = monitor.RegisterStackTransform(callback1)
 		require.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewNumberProperty(1),
 			},
@@ -316,11 +316,11 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 				) (plugin.ConstructResult, error) {
 					assert.Equal(t, "pkgA:m:typC", typ)
 
-					urn, _, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					resp, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
-					_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-						Parent: urn,
+					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+						Parent: resp.URN,
 						Inputs: resource.PropertyMap{
 							"foo": resource.NewNumberProperty(1),
 						},
@@ -328,7 +328,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 					require.NoError(t, err)
 
 					return plugin.ConstructResult{
-						URN: urn,
+						URN: resp.URN,
 					}, nil
 				},
 			}, nil
@@ -356,7 +356,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 		err = monitor.RegisterStackTransform(callback1)
 		require.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
 		require.NoError(t, err)
@@ -402,10 +402,10 @@ func TestRemoteTransformsOptions(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		urnA, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 
-		urnC, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Version: "1.0.0",
 		})
 		require.NoError(t, err)
@@ -421,8 +421,8 @@ func TestRemoteTransformsOptions(t *testing.T) {
 				assert.Equal(t, "33m20s", opts.CustomTimeouts.Update)
 				assert.Equal(t, "50m0s", opts.CustomTimeouts.Delete)
 				assert.True(t, *opts.DeleteBeforeReplace)
-				assert.Equal(t, string(urnA), opts.DeletedWith)
-				assert.Equal(t, []string{string(urnA)}, opts.DependsOn)
+				assert.Equal(t, string(respA.URN), opts.DeletedWith)
+				assert.Equal(t, []string{string(respA.URN)}, opts.DependsOn)
 				assert.Equal(t, []string{"foo"}, opts.IgnoreChanges)
 				assert.Equal(t, "http://server", opts.PluginDownloadUrl)
 				assert.Equal(t, false, opts.Protect)
@@ -441,8 +441,8 @@ func TestRemoteTransformsOptions(t *testing.T) {
 						Delete: "3s",
 					},
 					DeleteBeforeReplace: nil,
-					DeletedWith:         string(urnC),
-					DependsOn:           []string{string(urnC)},
+					DeletedWith:         string(respC.URN),
+					DependsOn:           []string{string(respC.URN)},
 					IgnoreChanges:       []string{"bar"},
 					PluginDownloadUrl:   "",
 					Protect:             true,
@@ -458,7 +458,7 @@ func TestRemoteTransformsOptions(t *testing.T) {
 		require.NoError(t, err)
 
 		dbr := true
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
 			AdditionalSecretOutputs: []resource.PropertyKey{"foo"},
 			Aliases: []*pulumirpc.Alias{
 				{Alias: &pulumirpc.Alias_Urn{Urn: urnB}},
@@ -469,8 +469,8 @@ func TestRemoteTransformsOptions(t *testing.T) {
 				Delete: 3000,
 			},
 			DeleteBeforeReplace: &dbr,
-			DeletedWith:         urnA,
-			Dependencies:        []resource.URN{urnA},
+			DeletedWith:         respA.URN,
+			Dependencies:        []resource.URN{respA.URN},
 			IgnoreChanges:       []string{"foo"},
 			PluginDownloadURL:   "http://server",
 			ReplaceOnChanges:    []string{"foo"},
@@ -524,16 +524,16 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		aURN, _, aOutputs, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewNumberProperty(1),
 			},
 		})
 		require.NoError(t, err)
-		assert.True(t, aOutputs["foo"].IsNumber())
+		assert.True(t, respA.Outputs["foo"].IsNumber())
 
 		// Register a separate resource that
-		bURN, _, bOutputs, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewNumberProperty(10),
 			},
@@ -546,13 +546,13 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
 				// props should be tracking that it depends on resB
 				assert.True(t, props["foo"].IsOutput())
-				assert.Equal(t, []resource.URN{bURN}, props["foo"].OutputValue().Dependencies)
+				assert.Equal(t, []resource.URN{respB.URN}, props["foo"].OutputValue().Dependencies)
 
 				// Add a dependency on resA
 				props["foo"] = resource.NewOutputProperty(resource.Output{
-					Element:      aOutputs["foo"],
+					Element:      respA.Outputs["foo"],
 					Known:        true,
-					Dependencies: []resource.URN{aURN},
+					Dependencies: []resource.URN{respA.URN},
 				})
 
 				return props, opts, nil
@@ -560,22 +560,22 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 		require.NoError(t, err)
 
 		// Register a resource that initially depends on resB but the transform will turn to depend on resA
-		_, _, cOutputs, cDependencies, err := monitor.RegisterResource(
+		respC, err := monitor.RegisterResource(
 			"pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"foo": bOutputs["foo"],
+					"foo": respB.Outputs["foo"],
 				},
 				PropertyDeps: map[resource.PropertyKey][]resource.URN{
-					"foo": {bURN},
+					"foo": {respB.URN},
 				},
 				Transforms: []*pulumirpc.Callback{
 					callback,
 				},
 			})
 		require.NoError(t, err)
-		assert.True(t, cOutputs["foo"].IsNumber())
+		assert.True(t, respC.Outputs["foo"].IsNumber())
 		// This is a custom resource so no output dependencies
-		assert.Empty(t, cDependencies)
+		assert.Empty(t, respC.Dependencies)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -619,11 +619,11 @@ func TestRemoteComponentTransforms(t *testing.T) {
 				) (plugin.ConstructResult, error) {
 					assert.Equal(t, "pkgA:m:typC", typ)
 
-					urn, _, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					resp, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
-					_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-						Parent: urn,
+					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+						Parent: resp.URN,
 						Inputs: resource.PropertyMap{
 							"foo": resource.NewNumberProperty(1),
 						},
@@ -631,7 +631,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 					require.NoError(t, err)
 
 					return plugin.ConstructResult{
-						URN: urn,
+						URN: resp.URN,
 					}, nil
 				},
 			}, nil
@@ -656,7 +656,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 			}))
 		require.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
 			Remote: true,
 			Transforms: []*pulumirpc.Callback{
 				callback1,

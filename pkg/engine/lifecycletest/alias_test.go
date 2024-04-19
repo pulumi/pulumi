@@ -146,7 +146,7 @@ func makeSpecAliasWithNoParent(name, typ, project, stack string, parent bool) *p
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
 	for _, r := range resources {
 		r := r
-		_, _, _, _, err := monitor.RegisterResource(r.t, r.name, true, deploytest.ResourceOptions{
+		_, err := monitor.RegisterResource(r.t, r.name, true, deploytest.ResourceOptions{
 			Parent:              r.parent,
 			Dependencies:        r.dependencies,
 			Inputs:              r.props,
@@ -1238,7 +1238,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 		switch mode {
 		case 0:
 			// Default case, just make resA
-			_, _, _, _, err := monitor.RegisterResource(
+			_, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
@@ -1247,7 +1247,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 		case 1:
 			// First test case, try and create a new B that aliases to A. First make the A like normal...
-			_, _, _, _, err := monitor.RegisterResource(
+			_, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
@@ -1255,7 +1255,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 			assert.NoError(t, err)
 
 			// ... then make B with an alias, it should error
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
@@ -1268,7 +1268,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 		case 2:
 			// Second test case, try and create a new B that aliases to A. First make the B with an alias...
-			_, _, _, _, err := monitor.RegisterResource(
+			_, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
@@ -1280,7 +1280,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 			assert.NoError(t, err)
 
 			// ... then try to make the A like normal. It should error that it's already been aliased away
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
@@ -1346,21 +1346,21 @@ func TestCorrectResourceChosen(t *testing.T) {
 		switch mode {
 		case 0:
 			// Default case, make "resA", "resB with resA as its parent", and "resB with no parent".
-			aURN, _, _, _, err := monitor.RegisterResource(
+			respA, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
-				deploytest.ResourceOptions{Parent: aURN})
+				deploytest.ResourceOptions{Parent: respA.URN})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
@@ -1369,20 +1369,20 @@ func TestCorrectResourceChosen(t *testing.T) {
 
 		case 1:
 			// Next case, make "resA" and "resB with no parent and alias to have resA as its parent".
-			aURN, _, _, _, err := monitor.RegisterResource(
+			respA, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resB",
 				true,
 				deploytest.ResourceOptions{
 					Aliases: []*pulumirpc.Alias{
-						makeSpecAliasWithParent("", "", "", "", string(aURN)),
+						makeSpecAliasWithParent("", "", "", "", string(respA.URN)),
 					},
 				},
 			)
@@ -1457,7 +1457,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		"foo": "bar",
 	})
 	createA := func(monitor *deploytest.ResourceMonitor) {
-		_, _, _, _, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
+		_, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
 		assert.NoError(t, err)
@@ -1485,7 +1485,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 
 	// Now update A from a component to custom with an alias
 	createA = func(monitor *deploytest.ResourceMonitor) {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: insA,
 			Aliases: []*pulumirpc.Alias{
 				makeSpecAlias("", "prog::myType", "", ""),
@@ -1504,7 +1504,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 
 	// Now update A back to a component (with an alias)
 	createA = func(monitor *deploytest.ResourceMonitor) {
-		_, _, _, _, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
+		_, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
 			Inputs: insA,
 			Aliases: []*pulumirpc.Alias{
 				makeSpecAlias("", "pkgA:m:typA", "", ""),
@@ -1546,31 +1546,31 @@ func TestParentAlias(t *testing.T) {
 
 	firstRun := true
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnA, _, _, _, err := monitor.RegisterResource(
+		respA, err := monitor.RegisterResource(
 			"prog:index:myStandardType", "resA", false, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
 		if firstRun {
-			urnB, _, _, _, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{})
+			respB, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-				Parent: urnB,
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+				Parent: respB.URN,
 			})
 			assert.NoError(t, err)
 		} else {
-			urnB, _, _, _, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{
-				Parent: urnA,
+			respB, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{
+				Parent: respA.URN,
 				Aliases: []*pulumirpc.Alias{
 					makeSpecAliasWithNoParent("", "", "", "", true),
 				},
 			})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-				Parent: urnA,
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+				Parent: respA.URN,
 				Aliases: []*pulumirpc.Alias{
-					makeSpecAliasWithParent("", "", "", "", string(urnB)),
+					makeSpecAliasWithParent("", "", "", "", string(respB.URN)),
 				},
 			})
 			assert.NoError(t, err)
@@ -1631,18 +1631,18 @@ func TestEmptyParentAlias(t *testing.T) {
 
 	firstRun := true
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnA, _, _, _, err := monitor.RegisterResource(
+		respA, err := monitor.RegisterResource(
 			"prog:index:myStandardType", "resA", false, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
 		if firstRun {
-			_, _, _, _, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{
-				Parent: urnA,
+			_, err := monitor.RegisterResource("prog:index:myType", "resB", false, deploytest.ResourceOptions{
+				Parent: respA.URN,
 			})
 			assert.NoError(t, err)
 		} else {
-			_, _, _, _, err := monitor.RegisterResource("prog:index:myType", "resC", false, deploytest.ResourceOptions{
-				Parent: urnA,
+			_, err := monitor.RegisterResource("prog:index:myType", "resC", false, deploytest.ResourceOptions{
+				Parent: respA.URN,
 				Aliases: []*pulumirpc.Alias{
 					makeSpecAliasWithParent("resB", "", "", "", ""),
 				},
@@ -1707,34 +1707,34 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 		switch mode {
 		case 0:
 			// Default case, make "resA", and "resB" a component with "resA" as its parent and "resC" in the component
-			aURN, _, _, _, err := monitor.RegisterResource(
+			respA, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
 			assert.NoError(t, err)
 
-			bURN, _, _, _, err := monitor.RegisterResource(
+			respB, err := monitor.RegisterResource(
 				"pkgA:m:typB",
 				"resB",
 				false,
 				deploytest.ResourceOptions{
-					Parent: aURN,
+					Parent: respA.URN,
 				})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typC",
 				"resC",
 				true,
 				deploytest.ResourceOptions{
-					Parent: bURN,
+					Parent: respB.URN,
 				})
 			assert.NoError(t, err)
 
 		case 1:
 			// Delete "resA" and re-parent "resB" to the root but then fail before getting to resC.
-			_, _, _, _, err := monitor.RegisterResource(
+			_, err := monitor.RegisterResource(
 				"pkgA:m:typB",
 				"resB",
 				false,
@@ -1749,7 +1749,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 
 		case 2:
 			// Update again but this time succeed and register C.
-			bURN, _, _, _, err := monitor.RegisterResource(
+			respB, err := monitor.RegisterResource(
 				"pkgA:m:typB",
 				"resB",
 				false,
@@ -1760,12 +1760,12 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 				})
 			assert.NoError(t, err)
 
-			_, _, _, _, err = monitor.RegisterResource(
+			_, err = monitor.RegisterResource(
 				"pkgA:m:typC",
 				"resC",
 				true,
 				deploytest.ResourceOptions{
-					Parent: bURN,
+					Parent: respB.URN,
 				})
 			assert.NoError(t, err)
 		}
@@ -1881,7 +1881,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 			fallthrough
 		case 2:
 			// Default case, and also the last case make "resA"
-			_, _, _, _, err := monitor.RegisterResource(
+			_, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resA",
 				true,
@@ -1890,7 +1890,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 
 		case 1:
 			// Rename "resA" to "resAX" with an alias
-			_, _, _, _, err := monitor.RegisterResource(
+			_, err := monitor.RegisterResource(
 				"pkgA:m:typA",
 				"resAX",
 				true,

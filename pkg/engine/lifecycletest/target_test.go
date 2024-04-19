@@ -357,7 +357,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 	}
 
 	program1F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -372,10 +372,10 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 
 	// Now, create a resource resB.  This shouldn't be a problem since resB isn't referenced by anything.
 	program2F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
 		return nil
@@ -419,7 +419,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	}
 
 	program1F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -434,10 +434,10 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 
 	// Now, create a resource resB.  This shouldn't be a problem since resB isn't referenced by anything.
 	program2F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
 		return nil
@@ -478,7 +478,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	}
 
 	program1F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -497,10 +497,10 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	// Now, create a resource resB.  But reference it from A. This will cause a dependency we can't
 	// satisfy.
 	program2F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true,
 			deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resB},
 			})
@@ -531,17 +531,18 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 	// Create a resource A with --target but don't target its explicit provider.
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
 
+		provID := resp.ID
 		if provID == "" {
 			provID = providers.UnknownID
 		}
 
-		provRef, err := providers.NewReference(provURN, provID)
+		provRef, err := providers.NewReference(resp.URN, provID)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
 		assert.NoError(t, err)
@@ -572,7 +573,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	}
 
 	program1F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -591,16 +592,16 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	// Now, create a resource resB.  But reference it from A. This will cause a dependency we can't
 	// satisfy.
 	program2F := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true,
 			deploytest.ResourceOptions{
 				Dependencies: []resource.URN{resB},
 			})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
 		return nil
@@ -792,7 +793,7 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	programF := deploytest.NewLanguageRuntimeF(
 		func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			register := func(urn, parent resource.URN) resource.ID {
-				_, id, _, _, err := monitor.RegisterResource(
+				resp, err := monitor.RegisterResource(
 					urn.Type(),
 					urn.Name(),
 					urn.Type() != resTypeComponent,
@@ -801,7 +802,7 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 						Parent: parent,
 					})
 				assert.NoError(t, err)
-				return id
+				return resp.ID
 			}
 
 			register(urnA, "")
@@ -975,7 +976,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
 		return nil
@@ -1041,17 +1042,17 @@ func TestEnsureUntargetedSame(t *testing.T) {
 
 	// Program that creates 2 resources.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("foo"),
 			},
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
@@ -1114,10 +1115,10 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	createResB := false
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		stackURN, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		resp, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty(fooVal),
 			},
@@ -1127,7 +1128,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 
 		if createResB {
 			// Now try to create resB which is not targeted and should show up in the plan.
-			_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
 					"foo": resource.NewStringProperty(fooVal),
 				},
@@ -1135,7 +1136,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		err = monitor.RegisterResourceOutputs(stackURN, resource.PropertyMap{
+		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
 			"foo": resource.NewStringProperty(fooVal),
 		})
 
@@ -1305,13 +1306,13 @@ func TestTargetDependents(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{})
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
 		return nil
@@ -1360,26 +1361,27 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		provURN, provID, _, _, err := monitor.RegisterResource(
+		resp, err := monitor.RegisterResource(
 			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
+		provID := resp.ID
 		if provID == "" {
 			provID = providers.UnknownID
 		}
 
-		provRef, err := providers.NewReference(provURN, provID)
+		provRef, err := providers.NewReference(resp.URN, provID)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
 		assert.NoError(t, err)
@@ -1431,7 +1433,7 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
 		// We're creating 8 resources here (one the implicit default provider). First we create three
@@ -1441,40 +1443,41 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 		// that if we target the X resources, the Y resources aren't created, but the providers are, and the Z
 		// resources are if --target-dependents is on.
 
-		implicitX, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "implicitX", true)
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "implicitX", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "implicitY", true)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "implicitY", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "implicitZ", true, deploytest.ResourceOptions{
-			Parent: implicitX,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "implicitZ", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
 		})
 		assert.NoError(t, err)
 
-		provURN, provID, _, _, err := monitor.RegisterResource(
+		resp, err = monitor.RegisterResource(
 			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
+		provID := resp.ID
 		if provID == "" {
 			provID = providers.UnknownID
 		}
 
-		provRef, err := providers.NewReference(provURN, provID)
+		provRef, err := providers.NewReference(resp.URN, provID)
 		assert.NoError(t, err)
 
-		explicitX, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "explicitX", true, deploytest.ResourceOptions{
+		resp, err = monitor.RegisterResource("pkgA:m:typA", "explicitX", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "explicitY", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "explicitY", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "explicitZ", true, deploytest.ResourceOptions{
-			Parent: explicitX,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "explicitZ", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
 		})
 		assert.NoError(t, err)
 
@@ -1531,14 +1534,14 @@ func TestTargetUntargetedParent(t *testing.T) {
 	inputs := resource.PropertyMap{}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		parent, _, _, _, err := monitor.RegisterResource("component", "parent", false)
+		resp, err := monitor.RegisterResource("component", "parent", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Parent: parent,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
@@ -1619,11 +1622,11 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		aURN, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{aURN},
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resp.URN},
 		})
 		assert.NoError(t, err)
 		return nil
@@ -1679,11 +1682,11 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		aURN, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Parent: aURN,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
 		})
 		assert.NoError(t, err)
 		return nil
@@ -1744,7 +1747,7 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -1806,11 +1809,11 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		aURN, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{aURN},
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resp.URN},
 		})
 		assert.NoError(t, err)
 
@@ -1892,11 +1895,11 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		aURN, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Parent: aURN,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
 		})
 		assert.NoError(t, err)
 
@@ -1967,14 +1970,14 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	inputs := resource.PropertyMap{}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "unrelated", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "unrelated", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
@@ -1983,19 +1986,19 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	})
 
 	programF2 := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
-		dep, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "dep", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "dep", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "unrelated", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "unrelated", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{
-				dep,
+				resp.URN,
 			},
 			Inputs: inputs,
 		})
@@ -2048,16 +2051,16 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 	inputs := resource.PropertyMap{}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "newResource", true)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "newResource", true)
 		assert.NoError(t, err)
-		parent, _, _, _, err := monitor.RegisterResource("component", "parent", false)
+		resp, err := monitor.RegisterResource("component", "parent", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Parent: parent,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
@@ -2066,22 +2069,22 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 	})
 
 	programF2 := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		newResource, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", "newResource", true)
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "newResource", true)
 		assert.NoError(t, err)
 
-		parent, _, _, _, err := monitor.RegisterResource("component", "parent", false, deploytest.ResourceOptions{
+		respParent, err := monitor.RegisterResource("component", "parent", false, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{
-				newResource,
+				resp.URN,
 			},
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Parent: parent,
+		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: respParent.URN,
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
@@ -2167,15 +2170,15 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 
 	providerVersion := "1.0.0"
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
 			Inputs:  inputs,
 			Version: providerVersion,
 		})
@@ -2233,21 +2236,21 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 
 	providerVersion := "1.0.0"
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:index:typA", "target", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgB:index:typA", "unrelated1", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated1", true, deploytest.ResourceOptions{
 			Inputs:  inputs,
 			Version: providerVersion,
 		})
 		assert.NoError(t, err)
 
-		_, _, _, _, err = monitor.RegisterResource("pkgB:index:typA", "unrelated2", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated2", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 			// This one always uses 1.0.0
 			Version: "1.0.0",
