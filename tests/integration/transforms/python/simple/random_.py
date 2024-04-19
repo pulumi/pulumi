@@ -26,3 +26,13 @@ class Random(pulumi.CustomResource):
     @pulumi.getter
     def result(self) -> pulumi.Output[str]:
         return pulumi.get(self, "result")
+
+class Provider(pulumi.ProviderResource):
+    def __init__(__self__,
+                 resource_name: str,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        super(Provider, __self__).__init__(
+            'testprovider',
+            resource_name,
+            None,
+            opts)

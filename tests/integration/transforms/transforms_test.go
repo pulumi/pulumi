@@ -6,10 +6,12 @@ package ints
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var Dirs = []string{
@@ -23,6 +25,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes3 := false
 	foundRes4Child := false
 	foundRes5 := false
+	foundRes6 := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -75,10 +78,19 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, length)
 			assert.Equal(t, 20.0, length)
 		}
+		// "res6" should have changed the provider
+		if res.URN.Name() == "res6" {
+			foundRes6 = true
+			ref, err := providers.ParseReference(res.Provider)
+			require.NoError(t, err)
+			urn := ref.URN()
+			assert.Equal(t, "provider2", urn.Name())
+		}
 	}
 	assert.True(t, foundRes1)
 	assert.True(t, foundRes2Child)
 	assert.True(t, foundRes3)
 	assert.True(t, foundRes4Child)
 	assert.True(t, foundRes5)
+	assert.True(t, foundRes6)
 }

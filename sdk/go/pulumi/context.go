@@ -399,6 +399,8 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 		}
 
 		if res != nil {
+			opts := res.Opts
+
 			umProperties := res.Props
 			if umProperties == nil {
 				umProperties = Map{}
@@ -426,7 +428,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			}
 
 			// Marshal the resource options
-			alias, err := ctx.mapAliases(res.Opts.Aliases, rpcReq.Type, rpcReq.Name, parent)
+			alias, err := ctx.mapAliases(opts.Aliases, rpcReq.Type, rpcReq.Name, parent)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling aliases: %w", err)
 			}
@@ -438,7 +440,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			}
 
 			rpcRes.Options = &pulumirpc.TransformResourceOptions{
-				AdditionalSecretOutputs: res.Opts.AdditionalSecretOutputs,
+				AdditionalSecretOutputs: opts.AdditionalSecretOutputs,
 				Aliases:                 alias,
 			}
 
@@ -477,6 +479,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 					return nil, fmt.Errorf("marshaling provider: %w", err)
 				}
 			}
+
 			if opts.Providers != nil {
 				rpcRes.Options.Providers = make(map[string]string)
 				for _, p := range opts.Providers {
