@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.113.3 (2024-04-19)
+
+
+### Features
+
+- [cli/about] Add plugin kind to the about output
+  [#15996](https://github.com/pulumi/pulumi/pull/15996)
+
+
+### Bug Fixes
+
+- [engine] Remove locks between snapshot and executor systems
+  [#15998](https://github.com/pulumi/pulumi/pull/15998)
+
 ## 3.113.2 (2024-04-18)
 
 
