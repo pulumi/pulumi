@@ -146,10 +146,11 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
 
-		respDepOnFailing, err := monitor.RegisterResource("pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
-			SupportsResultReporting: true,
-			Dependencies:            []resource.URN{failingResp.URN},
-		})
+		respDepOnFailing, err := monitor.RegisterResource(
+			"pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				Dependencies:            []resource.URN{failingResp.URN},
+			})
 		assert.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, respDepOnFailing.Result)
 
