@@ -296,7 +296,7 @@ func (ctx *Context) IsConfigSecret(key string) bool {
 // registerTransform starts up a callback server if not already running and registers the given transform.
 func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback, error) {
 	if !ctx.state.supportsTransforms {
-		return nil, fmt.Errorf("the Pulumi CLI does not support transforms. Please update the Pulumi CLI")
+		return nil, errors.New("the Pulumi CLI does not support transforms. Please update the Pulumi CLI")
 	}
 
 	// Wrap the transform in a callback function.
@@ -434,7 +434,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			// It's an error to try and change the parent and the engine doesn't even let you send it back so
 			// sanity check that here.
 			if opts.Parent != parent {
-				return nil, fmt.Errorf("cannot change parent in transform")
+				return nil, errors.New("cannot change parent in transform")
 			}
 
 			rpcRes.Options = &pulumirpc.TransformResourceOptions{

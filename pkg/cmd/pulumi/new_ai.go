@@ -153,7 +153,7 @@ func sendPromptToPulumiAI(
 	}
 	conversationID = res.Header.Get("x-conversation-id")
 	connectionID = res.Header.Get("x-connection-id")
-	projectURL := parsedURL.JoinPath("api", "project", url.PathEscape(fmt.Sprintf("%s.zip", conversationID))).String()
+	projectURL := parsedURL.JoinPath("api", "project", url.PathEscape(conversationID+".zip")).String()
 	conversationURL := parsedURL.JoinPath("conversations", conversationID).String()
 	fmt.Println("View this conversation at: ", conversationURL)
 	return projectURL, connectionID, conversationID, nil

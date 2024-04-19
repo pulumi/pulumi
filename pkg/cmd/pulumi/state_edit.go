@@ -208,7 +208,7 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 	}
 }
 
-var errNoStateChange = fmt.Errorf("No state change")
+var errNoStateChange = errors.New("No state change")
 
 func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotBuffer) (*deploy.Snapshot, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")

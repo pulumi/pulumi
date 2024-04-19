@@ -302,7 +302,7 @@ func (g *constructorSyntaxGenerator) generateAll(schema *schema.Package, opts ge
 
 			resourceCode := g.exampleResourceWithName(r, func(resourceToken string) string {
 				pkg, modName, memberName, _ := pcl.DecomposeToken(resourceToken, hcl.Range{})
-				resourceName := fmt.Sprintf("%sResource", camelCase(memberName))
+				resourceName := camelCase(memberName) + "Resource"
 				if !seenNames.Has(resourceName) {
 					seenNames.Add(resourceName)
 					return resourceName
@@ -320,7 +320,7 @@ func (g *constructorSyntaxGenerator) generateAll(schema *schema.Package, opts ge
 				return resourceNameWithModule
 			})
 
-			buffer.WriteString(fmt.Sprintf("// Resource %s", r.Token))
+			buffer.WriteString("// Resource " + r.Token)
 			buffer.WriteString("\n")
 			buffer.WriteString(resourceCode)
 			buffer.WriteString("\n")
@@ -340,7 +340,7 @@ func (g *constructorSyntaxGenerator) generateAll(schema *schema.Package, opts ge
 					return memberName
 				}
 
-				functionName := fmt.Sprintf("%sResult", memberName)
+				functionName := memberName + "Result"
 				if !seenNames.Has(functionName) {
 					seenNames.Add(functionName)
 					return functionName
@@ -360,7 +360,7 @@ func (g *constructorSyntaxGenerator) generateAll(schema *schema.Package, opts ge
 				return functionNameWithMod
 			})
 
-			buffer.WriteString(fmt.Sprintf("// Invoking %s", f.Token))
+			buffer.WriteString("// Invoking " + f.Token)
 			buffer.WriteString("\n")
 			buffer.WriteString(functionCode)
 			buffer.WriteString("\n")

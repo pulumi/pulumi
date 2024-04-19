@@ -459,7 +459,7 @@ func TestConfigPaths(t *testing.T) {
 			args = append(args, "--path")
 		}
 		stdout, stderr := e.RunCommand("pulumi", args...)
-		assert.Equal(t, fmt.Sprintf("%s\n", value), stdout)
+		assert.Equal(t, value+"\n", stdout)
 		assert.Equal(t, "", stderr)
 	}
 

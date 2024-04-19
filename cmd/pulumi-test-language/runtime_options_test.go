@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,7 +86,7 @@ func (h *RuntimeOptionsLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
 	if !req.Strict {
-		return nil, fmt.Errorf("expected strict to be true")
+		return nil, errors.New("expected strict to be true")
 	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)

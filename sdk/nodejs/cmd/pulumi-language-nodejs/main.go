@@ -487,7 +487,7 @@ func getPluginVersion(info packageJSON) (string, error) {
 		}
 	}
 	if strings.IndexRune(version, 'v') != 0 {
-		return fmt.Sprintf("v%s", version), nil
+		return "v" + version, nil
 	}
 	return version, nil
 }
@@ -1163,7 +1163,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error program was nil")
+		return nil, errors.New("internal error program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)

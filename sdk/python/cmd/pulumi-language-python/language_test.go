@@ -195,7 +195,7 @@ func TestLanguage(t *testing.T) {
 				},
 				{
 					Path:        "requirements\\.txt",
-					Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
+					Pattern:     rootDir + "/artifacts",
 					Replacement: "ROOT/artifacts",
 				},
 			},

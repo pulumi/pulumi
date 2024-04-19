@@ -15,7 +15,6 @@
 package docs
 
 import (
-	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -36,7 +35,7 @@ func extractConstructorSyntaxExamples(
 
 	for _, line := range strings.Split(program, "\n") {
 		line = strings.TrimPrefix(line, indentToTrim)
-		if strings.HasPrefix(line, fmt.Sprintf("%s Resource", commentDelimiter)) {
+		if strings.HasPrefix(line, commentDelimiter+" Resource") {
 			currentExample = ""
 			readingResource = true
 			readingInvoke = false
@@ -45,7 +44,7 @@ func extractConstructorSyntaxExamples(
 			continue
 		}
 
-		if strings.HasPrefix(line, fmt.Sprintf("%s Invoke", commentDelimiter)) {
+		if strings.HasPrefix(line, commentDelimiter+" Invoke") {
 			currentExample = ""
 			readingInvoke = true
 			readingResource = false

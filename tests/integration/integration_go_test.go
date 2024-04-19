@@ -19,7 +19,6 @@ package ints
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -859,7 +858,7 @@ func TestTracePropagationGo(t *testing.T) {
 		SkipExportImport:       true,
 		SkipEmptyPreviewUpdate: true,
 		Quick:                  false,
-		Tracing:                fmt.Sprintf("file:%s", filepath.Join(dir, "{command}.trace")),
+		Tracing:                "file:" + filepath.Join(dir, "{command}.trace"),
 		RequireService:         true,
 		NoParallel:             true,
 	}

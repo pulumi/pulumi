@@ -408,7 +408,7 @@ func goListModules(ctx context.Context, gobin, dir string, modulePaths []string)
 	args = append(args, modulePaths...)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx,
-		fmt.Sprintf("%s list -m json", gobin),
+		gobin+" list -m json",
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
@@ -451,7 +451,7 @@ func goModDownload(ctx context.Context, gobin, dir string, modulePaths []string)
 	args = append(args, modulePaths...)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx,
-		fmt.Sprintf("%s mod download -json", gobin),
+		gobin+" mod download -json",
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
@@ -1060,7 +1060,7 @@ func (host *goLanguageHost) GenerateProject(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error: program was nil")
+		return nil, errors.New("internal error: program was nil")
 	}
 
 	var project workspace.Project
@@ -1111,7 +1111,7 @@ func (host *goLanguageHost) GenerateProgram(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error: program was nil")
+		return nil, errors.New("internal error: program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)

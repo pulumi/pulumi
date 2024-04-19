@@ -1148,7 +1148,7 @@ func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType 
 			// skip deprecated enum cases
 			continue
 		}
-		enumCases = append(enumCases, fmt.Sprintf("\t\t%s", enumCase.Name))
+		enumCases = append(enumCases, "\t\t"+enumCase.Name)
 	}
 
 	enumUsage := strings.Join([]string{

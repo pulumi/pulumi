@@ -53,7 +53,7 @@ func RunCommandPulumiHome(
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 	if pulumiHome != "" {
-		env = append(env, fmt.Sprintf("PULUMI_HOME=%s", pulumiHome))
+		env = append(env, "PULUMI_HOME="+pulumiHome)
 	}
 
 	cmd := exec.Cmd{

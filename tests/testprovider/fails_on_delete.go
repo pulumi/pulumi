@@ -19,7 +19,8 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
+
+	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -57,7 +58,7 @@ func (p *failsOnDeleteResourceProvider) Create(
 ) (*rpc.CreateResponse, error) {
 	p.id++
 	return &rpc.CreateResponse{
-		Id: fmt.Sprintf("%v", p.id),
+		Id: strconv.Itoa(p.id),
 	}, nil
 }
 

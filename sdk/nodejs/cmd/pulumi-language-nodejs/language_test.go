@@ -193,7 +193,7 @@ func TestLanguage(t *testing.T) {
 				},
 				{
 					Path:        "package\\.json",
-					Pattern:     fmt.Sprintf("%s/artifacts", rootDir),
+					Pattern:     rootDir + "/artifacts",
 					Replacement: "ROOT/artifacts",
 				},
 			},

@@ -878,7 +878,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("awskms://alias/%s", awsKmsKeyAlias),
+		SecretsProvider: "awskms://alias/" + awsKmsKeyAlias,
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
@@ -903,11 +903,11 @@ func TestCloudSecretProvider(t *testing.T) {
 	})
 
 	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("azurekeyvault://%s", azureKeyVault),
+		SecretsProvider: "azurekeyvault://" + azureKeyVault,
 	})
 
 	gcpTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
+		SecretsProvider: "gcpkms://projects/" + gcpKmsKey,
 	})
 
 	// Run with default Pulumi service backend

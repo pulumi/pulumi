@@ -475,7 +475,7 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 
 	// 3.105.0 added this flag (https://github.com/pulumi/pulumi/releases/tag/v3.105.0)
 	if s.Workspace().PulumiCommand().Version().LT(semver.Version{Major: 3, Minor: 105}) {
-		return res, fmt.Errorf("PreviewRefresh requires Pulumi CLI version >= 3.105.0")
+		return res, errors.New("PreviewRefresh requires Pulumi CLI version >= 3.105.0")
 	}
 
 	refreshOpts := &optrefresh.Options{}

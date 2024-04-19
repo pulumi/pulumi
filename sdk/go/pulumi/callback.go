@@ -15,6 +15,7 @@
 package pulumi
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -76,7 +77,7 @@ func (s *callbackServer) Invoke(
 ) (*pulumirpc.CallbackInvokeResponse, error) {
 	function, ok := s.functions[req.Token]
 	if !ok {
-		return nil, fmt.Errorf("callback function not found")
+		return nil, errors.New("callback function not found")
 	}
 
 	resp, err := function(ctx, req.Request)

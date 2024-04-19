@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,7 +56,7 @@ func (h *L1EmptyLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	}
 
 	if h.failPack {
-		return nil, fmt.Errorf("boom")
+		return nil, errors.New("boom")
 	}
 
 	return &pulumirpc.PackResponse{
@@ -70,7 +71,7 @@ func (h *L1EmptyLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
 	if !req.Strict {
-		return nil, fmt.Errorf("expected strict to be true")
+		return nil, errors.New("expected strict to be true")
 	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)

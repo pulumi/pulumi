@@ -139,7 +139,7 @@ func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, stackName stri
 func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, envs ...string) error {
 	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
-		return fmt.Errorf("AddEnvironments requires Pulumi CLI version >= 3.95.0")
+		return errors.New("AddEnvironments requires Pulumi CLI version >= 3.95.0")
 	}
 	args := []string{"config", "env", "add"}
 	args = append(args, envs...)
@@ -155,7 +155,7 @@ func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, 
 func (l *LocalWorkspace) ListEnvironments(ctx context.Context, stackName string) ([]string, error) {
 	// 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 99}) {
-		return nil, fmt.Errorf("ListEnvironments requires Pulumi CLI version >= 3.99.0")
+		return nil, errors.New("ListEnvironments requires Pulumi CLI version >= 3.99.0")
 	}
 	args := []string{"config", "env", "ls", "--stack", stackName, "--json"}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -174,7 +174,7 @@ func (l *LocalWorkspace) ListEnvironments(ctx context.Context, stackName string)
 func (l *LocalWorkspace) RemoveEnvironment(ctx context.Context, stackName string, env string) error {
 	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
-		return fmt.Errorf("RemoveEnvironments requires Pulumi CLI version >= 3.95.0")
+		return errors.New("RemoveEnvironments requires Pulumi CLI version >= 3.95.0")
 	}
 	args := []string{"config", "env", "rm", env, "--yes", "--stack", stackName}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -527,7 +527,7 @@ func (l *LocalWorkspace) ChangeStackSecretsProvider(
 	var reader io.Reader
 	if newSecretsProvider == "passphrase" {
 		if opts == nil || opts.NewPassphrase == nil {
-			return fmt.Errorf("new passphrase must be provided")
+			return errors.New("new passphrase must be provided")
 		}
 		reader = strings.NewReader(*opts.NewPassphrase)
 	}
