@@ -673,16 +673,16 @@ func TestRemoteComponentGolang(t *testing.T) {
 					_, ok := inputs["bar"]
 					assert.False(t, ok)
 
-					urn, _, _, _, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
+					resp, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
 					require.NoError(t, err)
 
 					outs := resource.PropertyMap{}
 
-					err = monitor.RegisterResourceOutputs(urn, outs)
+					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
 
 					return plugin.ConstructResult{
-						URN:     urn,
+						URN:     resp.URN,
 						Outputs: outs,
 					}, nil
 				},

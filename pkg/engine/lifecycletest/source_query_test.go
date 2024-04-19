@@ -47,10 +47,10 @@ func TestRunQuery_nocreate(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+		_, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.ErrorContains(t, err, "Query mode does not support creating, updating, or deleting resources")
 
-		_, _, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.ErrorContains(t, err, "Query mode does not support creating, updating, or deleting resources")
 
 		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "")

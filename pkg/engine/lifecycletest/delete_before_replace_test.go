@@ -90,12 +90,12 @@ func generateComplexTestDependencyGraph(
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
-			_, id, _, _, err := monitor.RegisterResource(urn.Type(), urn.Name(), true, deploytest.ResourceOptions{
+			resp, err := monitor.RegisterResource(urn.Type(), urn.Name(), true, deploytest.ResourceOptions{
 				Provider: provider,
 				Inputs:   inputs,
 			})
 			assert.NoError(t, err)
-			return id
+			return resp.ID
 		}
 
 		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewStringProperty("bar")})
@@ -222,14 +222,14 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		register := func(name string, inputs resource.PropertyMap, inputDeps propertyDependencies,
 			dependencies []resource.URN,
 		) resource.URN {
-			urn, _, _, _, err := monitor.RegisterResource(resType, name, true, deploytest.ResourceOptions{
+			resp, err := monitor.RegisterResource(resType, name, true, deploytest.ResourceOptions{
 				Inputs:       inputs,
 				Dependencies: dependencies,
 				PropertyDeps: inputDeps,
 			})
 			assert.NoError(t, err)
 
-			return urn
+			return resp.URN
 		}
 
 		urnA = register("A", nil, nil, nil)
@@ -306,10 +306,11 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 
 	var provURN, urnA, urnB resource.URN
 	var provID resource.ID
-	var err error
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, _, err = monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+		var resp *deploytest.RegisterResourceResponse
+		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
+		provURN, provID = resp.URN, resp.ID
 
 		if provID == "" {
 			provID = providers.UnknownID
@@ -318,21 +319,23 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		assert.NoError(t, err)
 		provA := provRef.String()
 
-		urnA, _, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Provider:            provA,
 			Inputs:              inputsA,
 			DeleteBeforeReplace: dbrA,
 		})
 		assert.NoError(t, err)
+		urnA = respA.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
-		urnB, _, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+		respB, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Provider:     provA,
 			Inputs:       inputsB,
 			Dependencies: []resource.URN{urnA},
 			PropertyDeps: inputDepsB,
 		})
 		assert.NoError(t, err)
+		urnB = respB.URN
 
 		return nil
 	})
@@ -527,20 +530,21 @@ func TestDependencyChangeDBR(t *testing.T) {
 	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
 
 	var urnA, urnB resource.URN
-	var err error
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnA, _, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
 		assert.NoError(t, err)
+		urnA = resp.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
-		urnB, _, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+		resp, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs:       inputsB,
 			Dependencies: []resource.URN{urnA},
 			PropertyDeps: inputDepsB,
 		})
 		assert.NoError(t, err)
+		urnB = resp.URN
 
 		return nil
 	})
@@ -551,15 +555,17 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 	inputsA["A"] = resource.NewStringProperty("bar")
 	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnB, _, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs: inputsB,
 		})
 		assert.NoError(t, err)
+		urnB = resp.URN
 
-		urnA, _, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+		resp, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
 		assert.NoError(t, err)
+		urnA = resp.URN
 
 		return nil
 	})
@@ -634,15 +640,15 @@ func TestDBRProtect(t *testing.T) {
 	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnA, _, _, _, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
 		assert.NoError(t, err)
 
-		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
-		_, _, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
+		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs:       inputsB,
-			Dependencies: []resource.URN{urnA},
+			Dependencies: []resource.URN{respA.URN},
 			PropertyDeps: inputDepsB,
 			Protect:      true,
 		})

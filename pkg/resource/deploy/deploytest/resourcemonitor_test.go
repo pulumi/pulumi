@@ -107,7 +107,7 @@ func TestResourceMonitor_RegisterResource_customTimeouts(t *testing.T) {
 				},
 			}
 
-			_, _, _, _, err := NewResourceMonitor(&client).RegisterResource("pkg:m:typ", "foo", true, ResourceOptions{
+			_, err := NewResourceMonitor(&client).RegisterResource("pkg:m:typ", "foo", true, ResourceOptions{
 				CustomTimeouts: tt.give,
 			})
 			require.NoError(t, err)

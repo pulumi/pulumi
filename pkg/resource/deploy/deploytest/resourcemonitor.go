@@ -165,9 +165,16 @@ func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource
 	})
 }
 
+type RegisterResourceResponse struct {
+	URN          resource.URN
+	ID           resource.ID
+	Outputs      resource.PropertyMap
+	Dependencies map[resource.PropertyKey][]resource.URN
+}
+
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
 	options ...ResourceOptions,
-) (resource.URN, resource.ID, resource.PropertyMap, map[resource.PropertyKey][]resource.URN, error) {
+) (*RegisterResourceResponse, error) {
 	var opts ResourceOptions
 	if len(options) > 0 {
 		opts = options[0]
@@ -184,7 +191,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepOutputValues: opts.Remote,
 	})
 	if err != nil {
-		return "", "", nil, nil, err
+		return nil, err
 	}
 
 	// marshal dependencies
@@ -236,7 +243,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.SourcePosition != "" {
 		sourcePosition, err = parseSourcePosition(opts.SourcePosition)
 		if err != nil {
-			return "", "", nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -282,12 +289,12 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	// submit request
 	resp, err := rm.resmon.RegisterResource(ctx, requestInput)
 	if err != nil {
-		return "", "", nil, nil, err
+		return nil, err
 	}
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Object)
 	if err != nil {
-		return "", "", nil, nil, err
+		return nil, err
 	}
 
 	// unmarshal dependencies
@@ -300,7 +307,12 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		depsMap[resource.PropertyKey(k)] = urns
 	}
 
-	return resource.URN(resp.Urn), resource.ID(resp.Id), outs, depsMap, nil
+	return &RegisterResourceResponse{
+		URN:          resource.URN(resp.Urn),
+		ID:           resource.ID(resp.Id),
+		Outputs:      outs,
+		Dependencies: depsMap,
+	}, nil
 }
 
 func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
