@@ -107,11 +107,11 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
 	// Make the old state here a direct copy of the new state
-	old := new.Copy()
+	old := *new
 	return &SameStep{
 		deployment:    deployment,
 		reg:           reg,
-		old:           old,
+		old:           &old,
 		new:           new,
 		skippedCreate: true,
 	}
@@ -128,9 +128,6 @@ func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	s.new.Lock.Lock()
-	defer s.new.Lock.Unlock()
-
 	// Retain the ID and outputs
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
@@ -272,9 +269,6 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 	}
 
-	s.new.Lock.Lock()
-	defer s.new.Lock.Unlock()
-
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
@@ -287,9 +281,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
 		contract.Assertf(s.old != s.new, "old and new states should not be the same")
-		s.old.Lock.Lock()
 		s.old.Delete = true
-		s.old.Lock.Unlock()
 	}
 
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
@@ -353,9 +345,7 @@ func NewDeleteReplacementStep(
 	// that it can issue a deletion of this resource on the next update to this stack.
 	contract.Assertf(pendingReplace != old.Delete,
 		"resource %v cannot be pending replacement and deletion at the same time", old.URN)
-	old.Lock.Lock()
 	old.PendingReplacement = pendingReplace
-	old.Lock.Unlock()
 	return &DeleteStep{
 		deployment:     deployment,
 		otherDeletions: otherDeletions,
@@ -531,9 +521,6 @@ func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	s.new.Lock.Lock()
-	defer s.new.Lock.Unlock()
-
 	// Always propagate the ID and timestamps even in previews and refreshes.
 	s.new.ID = s.old.ID
 	s.new.Created = s.old.Created
@@ -721,9 +708,6 @@ func (s *ReadStep) Res() *resource.State    { return s.new }
 func (s *ReadStep) Logical() bool           { return !s.replacing }
 
 func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	s.new.Lock.Lock()
-	defer s.new.Lock.Unlock()
-
 	urn := s.new.URN
 	id := s.new.ID
 
@@ -1020,9 +1004,6 @@ func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	s.new.Lock.Lock()
-	defer s.new.Lock.Unlock()
-
 	complete := func() {
 		s.reg.Done(&RegisterResult{State: s.new})
 	}

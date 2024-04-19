@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Remove locks between snapshot and executor systems

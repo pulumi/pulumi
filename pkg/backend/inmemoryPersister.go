@@ -33,19 +33,13 @@ func (p *InMemoryPersister) Save(snap *deploy.Snapshot) error {
 		PendingOperations: make([]resource.Operation, len(snap.PendingOperations)),
 	}
 
-	for i, res := range snap.Resources {
-		res.Lock.Lock()
-		result.Resources[i] = res.Copy()
-		res.Lock.Unlock()
-	}
+	copy(result.Resources, snap.Resources)
 
 	for i, op := range snap.PendingOperations {
-		op.Resource.Lock.Lock()
 		result.PendingOperations[i] = resource.Operation{
 			Type:     op.Type,
-			Resource: op.Resource.Copy(),
+			Resource: op.Resource,
 		}
-		op.Resource.Lock.Unlock()
 	}
 
 	p.Snap = result

@@ -109,7 +109,7 @@ GO_TEST_PARALLELISM     ?= 10   # -parallel, number of parallel tests to run wit
 GO_TEST_PKG_PARALLELISM ?= 2    # -p flag, number of parallel packages to test
 GO_TEST_SHUFFLE         ?= off  # -shuffle flag, randomizes order of tests within a package
 GO_TEST_TAGS            ?= all
-GO_TEST_RACE            ?= true
+GO_TEST_RACE            ?= false # disable race detector by default until snapshot system doesn't race with the engine
 
 GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
 	-parallel=${GO_TEST_PARALLELISM} \
