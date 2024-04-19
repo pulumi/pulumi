@@ -54,6 +54,7 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	cmd.AddCommand(newEnvGetCmd(env))
 	cmd.AddCommand(newEnvSetCmd(env))
 	cmd.AddCommand(newEnvLogCmd(env))
+	cmd.AddCommand(newEnvVersionCmd(env))
 	cmd.AddCommand(newEnvLsCmd(env))
 	cmd.AddCommand(newEnvRmCmd(env))
 	cmd.AddCommand(newEnvOpenCmd(env))

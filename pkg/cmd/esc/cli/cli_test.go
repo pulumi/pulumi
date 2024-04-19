@@ -11,6 +11,7 @@ import (
 	"hash/fnv"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -23,12 +24,14 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/pgavlin/fx"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -37,6 +40,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
@@ -639,6 +643,122 @@ func (c *testPulumiClient) ListEnvironmentRevisions(
 	}
 
 	return resp, nil
+}
+
+// CreateEnvironmentRevisionTag creates a new revision tag with the given name.
+func (c *testPulumiClient) CreateEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+	revision *int,
+) error {
+	env, _, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return err
+	}
+
+	rev := len(env.revisions)
+	if revision != nil {
+		rev = *revision
+	}
+	if rev < 1 || rev > len(env.revisions) {
+		return errors.New("not found")
+	}
+
+	if _, ok := env.tags[tagName]; ok {
+		return errors.New("already exists")
+	}
+
+	env.tags[tagName] = rev
+	return nil
+}
+
+// GetEnvironmentRevisionTag returns a description of the given revision tag.
+func (c *testPulumiClient) GetEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+) (*client.EnvironmentRevisionTag, error) {
+	env, _, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	rev, ok := env.tags[tagName]
+	if !ok {
+		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
+	}
+	return &client.EnvironmentRevisionTag{Name: tagName, Revision: rev}, nil
+}
+
+// UpdateEnvironmentRevisionTag updates the revision tag with the given name.
+func (c *testPulumiClient) UpdateEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+	revision *int,
+) error {
+	env, _, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return err
+	}
+
+	rev := len(env.revisions)
+	if revision != nil {
+		rev = *revision
+	}
+	if rev < 1 || rev > len(env.revisions) {
+		return errors.New("not found")
+	}
+
+	if _, ok := env.tags[tagName]; !ok {
+		return &apitype.ErrorResponse{Code: http.StatusNotFound}
+	}
+
+	env.tags[tagName] = rev
+	return nil
+}
+
+// DeleteEnvironmentRevisionTag deletes the revision tag with the given name.
+func (c *testPulumiClient) DeleteEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+) error {
+	env, _, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return err
+	}
+
+	if _, ok := env.tags[tagName]; !ok {
+		return errors.New("not found")
+	}
+
+	delete(env.tags, tagName)
+	return nil
+}
+
+// ListEnvironmentRevisionTags lists the revision tags for the given environment.
+func (c *testPulumiClient) ListEnvironmentRevisionTags(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	options client.ListEnvironmentRevisionTagsOptions,
+) ([]client.EnvironmentRevisionTag, error) {
+	env, _, err := c.getEnvironment(orgName, envName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	names := maps.Keys(env.tags)
+	slices.Sort(names)
+	return fx.ToSlice(fx.FMap(fx.IterSlice(names), func(name string) (client.EnvironmentRevisionTag, bool) {
+		return client.EnvironmentRevisionTag{Name: name, Revision: env.tags[name]}, name > options.After
+	})), nil
 }
 
 type testExec struct {

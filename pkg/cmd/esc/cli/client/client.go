@@ -159,6 +159,26 @@ type Client interface {
 		envName string,
 		options ListEnvironmentRevisionsOptions,
 	) ([]EnvironmentRevision, error)
+
+	// CreateEnvironmentRevisionTag creates a new revision tag with the given name.
+	CreateEnvironmentRevisionTag(ctx context.Context, orgName, envName, tagName string, revision *int) error
+
+	// GetEnvironmentRevisionTag returns a description of the given revision tag.
+	GetEnvironmentRevisionTag(ctx context.Context, orgName, envName, tagName string) (*EnvironmentRevisionTag, error)
+
+	// UpdateEnvironmentRevisionTag updates the revision tag with the given name.
+	UpdateEnvironmentRevisionTag(ctx context.Context, orgName, envName, tagName string, revision *int) error
+
+	// DeleteEnvironmentRevisionTag deletes the revision tag with the given name.
+	DeleteEnvironmentRevisionTag(ctx context.Context, orgName, envName, tagName string) error
+
+	// ListEnvironmentRevisionTags lists the revision tags for the given environment.
+	ListEnvironmentRevisionTags(
+		ctx context.Context,
+		orgName string,
+		envName string,
+		options ListEnvironmentRevisionTagsOptions,
+	) ([]EnvironmentRevisionTag, error)
 }
 
 type client struct {
@@ -537,6 +557,80 @@ func (pc *client) ListEnvironmentRevisions(
 	return resp, nil
 }
 
+// CreateEnvironmentRevisionTag creates a new revision tag with the given name.
+func (pc *client) CreateEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+	revision *int,
+) error {
+	req := CreateEnvironmentRevisionTagRequest{Revision: revision}
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
+}
+
+// GetEnvironmentRevisionTag returns a description of the given revision tag.
+func (pc *client) GetEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+) (*EnvironmentRevisionTag, error) {
+	var resp EnvironmentRevisionTag
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// UpdateEnvironmentRevisionTag updates the revision tag with the given name.
+func (pc *client) UpdateEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+	revision *int,
+) error {
+	req := UpdateEnvironmentRevisionTagRequest{Revision: revision}
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	return pc.restCall(ctx, http.MethodPatch, path, nil, &req, nil)
+}
+
+// DeleteEnvironmentRevisionTag deletes the revision tag with the given name.
+func (pc *client) DeleteEnvironmentRevisionTag(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	tagName string,
+) error {
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	return pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
+}
+
+type ListEnvironmentRevisionTagsOptions struct {
+	After string `url:"after"`
+	Count *int   `url:"count"`
+}
+
+// ListEnvironmentRevisionTags lists the revision tags for the given environment.
+func (pc *client) ListEnvironmentRevisionTags(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	options ListEnvironmentRevisionTagsOptions,
+) ([]EnvironmentRevisionTag, error) {
+	var resp ListEnvironmentRevisionTagsResponse
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags", orgName, envName)
+	err := pc.restCall(ctx, http.MethodGet, path, options, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Tags, nil
+}
+
 type httpCallOptions struct {
 	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
 	//
@@ -761,4 +855,10 @@ func cleanPath(p string) string {
 	}
 
 	return np
+}
+
+// IsNotFound returns true if the indicated error is a "not found" error.
+func IsNotFound(err error) bool {
+	resp, ok := err.(*apitype.ErrorResponse)
+	return ok && resp.Code == http.StatusNotFound
 }
