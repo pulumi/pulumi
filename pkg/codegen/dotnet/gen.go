@@ -20,6 +20,7 @@ package dotnet
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,6 +31,7 @@ import (
 	"strings"
 	"unicode"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -2179,6 +2181,13 @@ func genPackageMetadata(pkg *schema.Package,
 		version = pkg.Version.String()
 		files.Add("version.txt", []byte(version))
 	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return errors.New("package version is required")
+		}
+		version = pkg.Version.String()
+		files.Add("version.txt", []byte(version))
+	}
 
 	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localDependencies)
 	if err != nil {
@@ -2219,6 +2228,24 @@ func genProjectFile(pkg *schema.Package,
 		packageReferences = map[string]string{}
 	}
 
+	// Find all the local dependency folders
+	folders := mapset.NewSet[string]()
+	for _, dep := range localDependencies {
+		folders.Add(path.Dir(dep))
+	}
+	restoreSources := ""
+	if len(folders.ToSlice()) > 0 {
+		restoreSources = strings.Join(folders.ToSlice(), ";")
+	}
+
+	// Add the Pulumi package reference
+	for _, path := range localDependencies {
+		filename := filepath.Base(path)
+		pkg, rest, _ := strings.Cut(filename, ".")
+		version, _ := strings.CutSuffix(rest, ".nupkg")
+		packageReferences[pkg] = version
+	}
+
 	// if we don't have a package reference to Pulumi SDK from nuget
 	// we need to add it, unless we are referencing a local Pulumi SDK project via a project reference
 	if _, ok := packageReferences["Pulumi"]; !ok {
@@ -2244,6 +2271,7 @@ func genProjectFile(pkg *schema.Package,
 		PackageReferences: packageReferences,
 		ProjectReferences: projectReferences,
 		Version:           version,
+		RestoreSources:    restoreSources,
 	})
 	if err != nil {
 		return nil, err
