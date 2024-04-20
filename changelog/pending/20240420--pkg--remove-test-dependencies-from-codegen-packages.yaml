@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Remove test dependencies from codegen packages
