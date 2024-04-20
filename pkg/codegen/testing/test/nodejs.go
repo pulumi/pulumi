@@ -11,20 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func generateNodeBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				CheckNodeJS(t, path, dependencies, true)
-			},
-			GenProgram: generator,
-			TestCases:  testCases,
-		})
-}
-
 func CheckNodeJS(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
 	dir := filepath.Dir(path)
 
@@ -118,6 +104,20 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 
 	}
 	return result
+}
+
+func generateNodeBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
+	TestProgramCodegen(t,
+		ProgramCodegenOptions{
+			Language:   "nodejs",
+			Extension:  "ts",
+			OutputFile: "index.ts",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				CheckNodeJS(t, path, dependencies, true)
+			},
+			GenProgram: generator,
+			TestCases:  testCases,
+		})
 }
 
 type pkg struct {

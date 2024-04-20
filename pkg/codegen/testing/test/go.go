@@ -43,10 +43,10 @@ func CheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath st
 			dir, &integration.ProgramTestOptions{})
 		require.NoError(t, err)
 	}
-	TypeCheckGo(t, path, deps, pulumiSDKPath)
+	typeCheckGo(t, path, deps, pulumiSDKPath)
 }
 
-func TypeCheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func typeCheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)

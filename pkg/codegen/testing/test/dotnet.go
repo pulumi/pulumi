@@ -13,21 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func generateDotnetBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				CheckDotnet(t, path, dependencies, "")
-			},
-			GenProgram: generator,
-			TestCases:  testCases,
-		},
-	)
-}
-
 func CheckDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
 	var err error
 	dir := filepath.Dir(path)
@@ -96,6 +81,21 @@ func TypeCheckDotnet(t *testing.T, path string, dependencies codegen.StringSet, 
 	require.NoError(t, err, "Failed to build dotnet project")
 }
 
+type dep struct {
+	Name    string
+	Version string
+}
+
+func (pkg dep) install(t *testing.T, ex, dir string) {
+	args := []string{ex, "add", "package", pkg.Name}
+	if pkg.Version != "" {
+		args = append(args, "--version", pkg.Version)
+	}
+	err := integration.RunCommand(t, "Add package",
+		args, dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to add dependency %q %q", pkg.Name, pkg.Version)
+}
+
 // Converts from the hcl2 dependency format to the dotnet format.
 //
 // Example:
@@ -131,17 +131,17 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 	return result
 }
 
-type dep struct {
-	Name    string
-	Version string
-}
-
-func (pkg dep) install(t *testing.T, ex, dir string) {
-	args := []string{ex, "add", "package", pkg.Name}
-	if pkg.Version != "" {
-		args = append(args, "--version", pkg.Version)
-	}
-	err := integration.RunCommand(t, "Add package",
-		args, dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err, "Failed to add dependency %q %q", pkg.Name, pkg.Version)
+func generateDotnetBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
+	TestProgramCodegen(t,
+		ProgramCodegenOptions{
+			Language:   "dotnet",
+			Extension:  "cs",
+			OutputFile: "Program.cs",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				CheckDotnet(t, path, dependencies, "")
+			},
+			GenProgram: generator,
+			TestCases:  testCases,
+		},
+	)
 }
