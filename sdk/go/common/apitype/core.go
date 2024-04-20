@@ -335,6 +335,8 @@ type ResourceV3 struct {
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// IgnoreChanges is a list of properties to ignore changes for.
+	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
