@@ -238,6 +238,10 @@ export class RegisterResourceRequest extends jspb.Message {
     getTransformsList(): Array<pulumi_callback_pb.Callback>;
     setTransformsList(value: Array<pulumi_callback_pb.Callback>): RegisterResourceRequest;
     addTransforms(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+    clearIgnorerefreshchangesList(): void;
+    getIgnorerefreshchangesList(): Array<string>;
+    setIgnorerefreshchangesList(value: Array<string>): RegisterResourceRequest;
+    addIgnorerefreshchanges(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -285,6 +289,7 @@ export namespace RegisterResourceRequest {
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
+        ignorerefreshchangesList: Array<string>,
     }
 
 
@@ -603,6 +608,10 @@ export class TransformResourceOptions extends jspb.Message {
 
     getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
     clearPluginChecksumsMap(): void;
+    clearIgnoreRefreshChangesList(): void;
+    getIgnoreRefreshChangesList(): Array<string>;
+    setIgnoreRefreshChangesList(value: Array<string>): TransformResourceOptions;
+    addIgnoreRefreshChanges(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
@@ -633,6 +642,7 @@ export namespace TransformResourceOptions {
         providersMap: Array<[string, string]>,
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+        ignoreRefreshChangesList: Array<string>,
     }
 }
 

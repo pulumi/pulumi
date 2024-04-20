@@ -669,6 +669,10 @@ export interface ResourceOptions {
      */
     ignoreChanges?: string[];
     /**
+     * Ignore changes to any of the specified properties during a refresh.
+     */
+    ignoreRefreshChanges?: string[];
+    /**
      * Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes to any
      * properties will force a replacement.  Initialization errors from previous deployments will require replacement
      * instead of update only if `"*"` is passed.

@@ -928,6 +928,7 @@ def register_resource(
                 )
 
             ignore_changes = _translate_ignore_changes(res, typ, opts.ignore_changes)
+            ignore_refresh_changes = _translate_ignore_changes(res, typ, opts.ignore_refresh_changes)
             additional_secret_outputs = _translate_additional_secret_outputs(
                 res, typ, opts.additional_secret_outputs
             )
@@ -974,6 +975,7 @@ def register_resource(
                 deleteBeforeReplace=opts.delete_before_replace or False,
                 deleteBeforeReplaceDefined=opts.delete_before_replace is not None,
                 ignoreChanges=ignore_changes,
+                ignoreRefreshChanges=ignore_refresh_changes,
                 version=opts.version or "",
                 pluginDownloadURL=opts.plugin_download_url or "",
                 acceptSecrets=True,

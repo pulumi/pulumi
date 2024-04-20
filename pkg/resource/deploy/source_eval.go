@@ -379,7 +379,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, "", ""),
+			nil, nil, nil, "", nil, nil, false, "", "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -1496,6 +1496,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		DependsOn:               req.GetDependencies(),
 		Protect:                 req.GetProtect(),
 		IgnoreChanges:           req.GetIgnoreChanges(),
+		IgnoreRefreshChanges:    req.GetIgnoreRefreshChanges(),
 		ReplaceOnChanges:        req.GetReplaceOnChanges(),
 		Version:                 req.GetVersion(),
 		Aliases:                 aliases,
@@ -1739,6 +1740,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	protect := opts.Protect
 	ignoreChanges := opts.IgnoreChanges
+	ignoreRefreshChanges := opts.IgnoreRefreshChanges
 	replaceOnChanges := opts.ReplaceOnChanges
 	retainOnDelete := opts.RetainOnDelete
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
@@ -1865,7 +1867,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
 			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			sourcePosition, ignoreRefreshChanges,
 		)
 
 		if goal.Parent != "" {

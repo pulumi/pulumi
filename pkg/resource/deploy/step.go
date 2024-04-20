@@ -873,16 +873,16 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		inputs = refreshed.Inputs
 	}
 
-	// Process ignoreChanges for this resource, replacing the outputs and inputs with the old
-	// state's outputs and inputs. Ignore any errors due to missing paths since the path may
+	// Process ignoreRefreshChanges for this resource, replacing the outputs and inputs with the
+	// old state's outputs and inputs. Ignore any errors due to missing paths since the path may
 	// be in either the inputs or outputs.
 	if outputs != nil {
-		inputs, _ = processIgnoreChanges(inputs, s.old.Inputs, s.old.IgnoreChanges)
-		outputs, _ = processIgnoreChanges(outputs, s.old.Outputs, s.old.IgnoreChanges)
+		inputs, _ = processIgnoreChanges(inputs, s.old.Inputs, s.old.IgnoreRefreshChanges)
+		outputs, _ = processIgnoreChanges(outputs, s.old.Outputs, s.old.IgnoreRefreshChanges)
 	} else {
 		// The resource doesn't exist in the cloud, but if "*" is ignored, we pretend it does
 		// still exist and just keep the old inputs and outputs.
-		if slices.Contains(s.old.IgnoreChanges, "*") {
+		if slices.Contains(s.old.IgnoreRefreshChanges, "*") {
 			inputs = s.old.Inputs
 			outputs = s.old.Outputs
 		}
@@ -901,7 +901,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
 			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
-			s.old.SourcePosition, s.old.IgnoreChanges,
+			s.old.SourcePosition, s.old.IgnoreChanges, s.old.IgnoreRefreshChanges,
 		)
 		var inputsChange, outputsChange bool
 		if s.old != nil {
@@ -1082,7 +1082,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, inputs, outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
-		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges)
+		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.IgnoreRefreshChanges)
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()

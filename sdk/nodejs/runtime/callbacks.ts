@@ -215,6 +215,7 @@ export class CallbackServer implements ICallbackServer {
                 opts.getDeletedWith() !== "" ? new DependencyResource(opts.getDeletedWith()) : undefined;
             ropts.dependsOn = opts.getDependsOnList().map((dep) => new DependencyResource(dep));
             ropts.ignoreChanges = opts.getIgnoreChangesList();
+            ropts.ignoreRefreshChanges = opts.getIgnoreRefreshChangesList();
             ropts.parent = request.getParent() !== "" ? new DependencyResource(request.getParent()) : undefined;
             ropts.pluginDownloadURL = opts.getPluginDownloadUrl() !== "" ? opts.getPluginDownloadUrl() : undefined;
             ropts.protect = opts.getProtect();
@@ -290,6 +291,9 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.ignoreChanges !== undefined) {
                         opts.setIgnoreChangesList(result.opts.ignoreChanges);
+                    }
+                    if (result.opts.ignoreRefreshChanges !== undefined) {
+                        opts.setIgnoreRefreshChangesList(result.opts.ignoreRefreshChanges);
                     }
                     if (result.opts.pluginDownloadURL !== undefined) {
                         opts.setPluginDownloadUrl(result.opts.pluginDownloadURL);

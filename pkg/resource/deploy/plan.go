@@ -131,6 +131,8 @@ type GoalPlan struct {
 	DeleteBeforeReplace *bool
 	// a list of property names to ignore during changes.
 	IgnoreChanges []string
+	// a list of property names to ignore during refresh.
+	IgnoreRefreshChanges []string
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
 	// Structured Alias objects to be assigned to this resource
@@ -186,6 +188,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		PropertyDependencies:    goal.PropertyDependencies,
 		DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 		IgnoreChanges:           goal.IgnoreChanges,
+		IgnoreRefreshChanges:    goal.IgnoreRefreshChanges,
 		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
 		Aliases:                 goal.Aliases,
 		ID:                      goal.ID,
@@ -332,6 +335,7 @@ func checkMissingPlan(
 		PropertyDependencies:    oldState.PropertyDependencies,
 		DeleteBeforeReplace:     nil,
 		IgnoreChanges:           nil,
+		IgnoreRefreshChanges:    nil,
 		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
 		Aliases:                 oldState.GetAliases(),
 		ID:                      "",
@@ -598,6 +602,11 @@ func (rp *ResourcePlan) checkGoal(
 	// Check that the ignoreChanges sets are identical.
 	if message, changed := rp.diffStringSets(rp.Goal.IgnoreChanges, programGoal.IgnoreChanges); changed {
 		return fmt.Errorf("ignoreChanges changed: %v", message)
+	}
+
+	// Check that the ignoreRefreshChanges sets are identical.
+	if message, changed := rp.diffStringSets(rp.Goal.IgnoreRefreshChanges, programGoal.IgnoreRefreshChanges); changed {
+		return fmt.Errorf("ignoreRefreshChanges changed: %v", message)
 	}
 
 	// Check that the additionalSecretOutputs sets are identical.

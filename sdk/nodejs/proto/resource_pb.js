@@ -1436,7 +1436,7 @@ proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,31];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26,31,32];
 
 
 
@@ -1501,7 +1501,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
     sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
     transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance)
+    pulumi_callback_pb.Callback.toObject, includeInstance),
+    ignorerefreshchangesList: (f = jspb.Message.getRepeatedField(msg, 32)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1672,6 +1673,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_callback_pb.Callback;
       reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
       msg.addTransforms(value);
+      break;
+    case 32:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addIgnorerefreshchanges(value);
       break;
     default:
       reader.skipField();
@@ -1913,6 +1918,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       31,
       f,
       pulumi_callback_pb.Callback.serializeBinaryToWriter
+    );
+  }
+  f = message.getIgnorerefreshchangesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      32,
+      f
     );
   }
 };
@@ -3023,6 +3035,43 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addTransforms = function(opt_v
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearTransformsList = function() {
   return this.setTransformsList([]);
+};
+
+
+/**
+ * repeated string ignoreRefreshChanges = 32;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getIgnorerefreshchangesList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 32));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setIgnorerefreshchangesList = function(value) {
+  return jspb.Message.setField(this, 32, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addIgnorerefreshchanges = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 32, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearIgnorerefreshchangesList = function() {
+  return this.setIgnorerefreshchangesList([]);
 };
 
 
@@ -4628,7 +4677,7 @@ proto.pulumirpc.ResourceCallRequest.prototype.hasSourceposition = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.TransformResourceOptions.repeatedFields_ = [1,3,4,6,13];
+proto.pulumirpc.TransformResourceOptions.repeatedFields_ = [1,3,4,6,13,16];
 
 
 
@@ -4676,7 +4725,8 @@ proto.pulumirpc.TransformResourceOptions.toObject = function(includeInstance, ms
     deleteBeforeReplace: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
+    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+    ignoreRefreshChangesList: (f = jspb.Message.getRepeatedField(msg, 16)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -4778,6 +4828,10 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
+      break;
+    case 16:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addIgnoreRefreshChanges(value);
       break;
     default:
       reader.skipField();
@@ -4908,6 +4962,13 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
   f = message.getPluginChecksumsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(15, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
+  }
+  f = message.getIgnoreRefreshChangesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      16,
+      f
+    );
   }
 };
 
@@ -5321,6 +5382,43 @@ proto.pulumirpc.TransformResourceOptions.prototype.getPluginChecksumsMap = funct
 proto.pulumirpc.TransformResourceOptions.prototype.clearPluginChecksumsMap = function() {
   this.getPluginChecksumsMap().clear();
   return this;};
+
+
+/**
+ * repeated string ignore_refresh_changes = 16;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getIgnoreRefreshChangesList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 16));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setIgnoreRefreshChangesList = function(value) {
+  return jspb.Message.setField(this, 16, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.addIgnoreRefreshChanges = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 16, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearIgnoreRefreshChangesList = function() {
+  return this.setIgnoreRefreshChangesList([]);
+};
 
 
 

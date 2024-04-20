@@ -460,6 +460,8 @@ class ResourceOptions:
     if specified resource is being deleted as well.
     """
 
+    ignore_refresh_changes: Optional[List[str]]
+
     # pylint: disable=redefined-builtin
     def __init__(
         self,
@@ -487,6 +489,7 @@ class ResourceOptions:
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
+        ignore_refresh_changes: Optional[List[str]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -531,6 +534,7 @@ class ResourceOptions:
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
                if specified resource is being deleted as well.
+        :param Optional[List[str]] ignore_refresh_changes: If provided, a list of property names to ignore during refreshes.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -558,6 +562,7 @@ class ResourceOptions:
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
+        self.ignore_refresh_changes = ignore_refresh_changes
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -685,6 +690,7 @@ class ResourceOptions:
         )
 
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
+        dest.ignore_refresh_changes = _merge_lists(dest.ignore_refresh_changes, source.ignore_refresh_changes)
         dest.replace_on_changes = _merge_lists(
             dest.replace_on_changes, source.replace_on_changes
         )

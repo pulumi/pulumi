@@ -44,6 +44,8 @@ type GoalV1 struct {
 	DeleteBeforeReplace *bool `json:"deleteBeforeReplace,omitempty"`
 	// a list of property names to ignore during changes.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty"`
+	// a list of property names to ignore during refresh.
+	IgnoreRefreshChanges []string `json:"ignoreRefreshChanges,omitempty"`
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty"`
 	// additional URNs that should be aliased to this resource.

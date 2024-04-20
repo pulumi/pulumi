@@ -212,6 +212,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if ignore_changes:
             ropts.ignore_changes = ignore_changes
 
+        ignore_refresh_changes = list(opts.ignore_refresh_changes)
+        if ignore_refresh_changes:
+            ropts.ignore_refresh_changes = ignore_refresh_changes
+
         if request.parent:
             ropts.parent = DependencyResource(request.parent)
 
@@ -296,6 +300,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.ignore_changes:
             ignore_changes = list(opts.ignore_changes)
 
+        ignore_refresh_changes = None
+        if opts.ignore_refresh_changes:
+            ignore_refresh_changes = list(opts.ignore_refresh_changes)
+
         replace_on_changes = None
         if opts.replace_on_changes:
             replace_on_changes = list(opts.replace_on_changes)
@@ -309,6 +317,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             custom_timeouts=custom_timeouts,
             depends_on=depends_on or None,
             ignore_changes=ignore_changes,
+            ignore_refresh_changes=ignore_refresh_changes,
             replace_on_changes=replace_on_changes,
             additional_secret_outputs=additional_secret_outputs,
         )

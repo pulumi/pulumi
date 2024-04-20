@@ -479,6 +479,7 @@ export function registerResource(
             req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
             req.setDeletebeforereplacedefined((<any>opts).deleteBeforeReplace !== undefined);
             req.setIgnorechangesList(opts.ignoreChanges || []);
+            req.setIgnorerefreshchangesList(opts.ignoreRefreshChanges || []);
             req.setVersion(opts.version || "");
             req.setAcceptsecrets(true);
             req.setAcceptresources(!utils.disableResourceReferences);
