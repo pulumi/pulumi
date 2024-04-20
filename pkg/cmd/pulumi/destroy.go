@@ -231,6 +231,7 @@ func newDestroyCmd() *cobra.Command {
 
 			stackName := s.Ref().Name().String()
 			configError := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
 				stackName,
 				proj,
 				cfg.Environment,
