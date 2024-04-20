@@ -26,5 +26,5 @@ import (
 
 func TestGenerateProgram(t *testing.T) {
 	os.Chdir("../../../dotnet") // chdir into codegen/dotnet
-	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(6, 6))
+	test.GenerateProgramBatchTest("dotnet")(t, codegen.GenerateProgram, test.ProgramTestBatch(6, 6))
 }

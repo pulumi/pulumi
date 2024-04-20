@@ -75,7 +75,7 @@ type GenerateProgramOptions struct {
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
-	return GenerateProgramWithOptions(program, GenerateProgramOptions{})
+	return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
 }
 
 func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator, error) {

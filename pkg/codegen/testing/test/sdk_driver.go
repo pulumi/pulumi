@@ -71,10 +71,10 @@ func (tt *SDKTest) ShouldSkipCodegen(language string) bool {
 }
 
 const (
-	python = "python"
-	nodejs = "nodejs"
-	dotnet = "dotnet"
-	golang = "go"
+	_python = "python"
+	_nodejs = "nodejs"
+	_dotnet = "dotnet"
+	_golang = "go"
 )
 
 var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
@@ -91,7 +91,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(golang),
+		SkipCompileCheck: codegen.NewStringSet(_golang),
 	},
 	{
 		Directory:   "nested-module",
@@ -146,7 +146,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
+		SkipCompileCheck: codegen.NewStringSet(_nodejs, _golang),
 	},
 	{
 		Directory:   "simple-methods-schema-single-value-returns",
@@ -165,7 +165,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "provider-config-schema",
 		Description: "Simple provider config schema",
 		// For golang skip check, see https://github.com/pulumi/pulumi/issues/11567
-		SkipCompileCheck: codegen.NewStringSet(dotnet, golang),
+		SkipCompileCheck: codegen.NewStringSet(_dotnet, _golang),
 	},
 	{
 		Directory:   "replace-on-change",
@@ -178,7 +178,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "resource-property-overlap",
 		Description:      "A resource with the same name as its property",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(_dotnet, _nodejs),
 	},
 	{
 		Directory:   "hyphen-url",
@@ -192,13 +192,13 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "output-funcs-edgeorder",
 		Description:      "Regresses Node compilation issues on a subset of azure-native",
-		SkipCompileCheck: codegen.NewStringSet(golang, python),
+		SkipCompileCheck: codegen.NewStringSet(_golang, _python),
 		Skip:             codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "output-funcs-tfbridge20",
 		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		SkipCompileCheck: codegen.NewStringSet(python),
+		SkipCompileCheck: codegen.NewStringSet(_python),
 	},
 	{
 		Directory:   "cyclic-types",
@@ -229,7 +229,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
-		SkipCompileCheck: codegen.NewStringSet(python),
+		SkipCompileCheck: codegen.NewStringSet(_python),
 	},
 	{
 		Directory:   "different-package-name-conflict",
@@ -271,7 +271,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Regress pulumi/pulumi#15478 affecting Go ensuring SDK-gen doesn't panic",
 		Skip:        allLanguages.Except("go/any"),
 		// skipping the compile step because the generated code emits nested types that are not supported by the Go SDK
-		SkipCompileCheck: codegen.NewStringSet(golang),
+		SkipCompileCheck: codegen.NewStringSet(_golang),
 	},
 	{
 		Directory:   "regress-py-12546",
@@ -359,7 +359,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "secrets",
 		Description:      "Generate a resource with secret properties",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		SkipCompileCheck: codegen.NewStringSet(_dotnet),
 	},
 	{
 		Directory:   "regress-py-tfbridge-611",

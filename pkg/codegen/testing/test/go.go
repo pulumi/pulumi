@@ -1,4 +1,4 @@
-package gen
+package test
 
 import (
 	"fmt"
@@ -6,18 +6,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func CheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -46,10 +43,10 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 			dir, &integration.ProgramTestOptions{})
 		require.NoError(t, err)
 	}
-	TypeCheck(t, path, deps, pulumiSDKPath)
+	TypeCheckGo(t, path, deps, pulumiSDKPath)
 }
 
-func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func TypeCheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -66,21 +63,18 @@ func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath 
 	assert.NoError(t, err)
 }
 
-func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+func generateGoBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
 	pulumiSdkPath, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
 	require.NoError(t, err)
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
+	TestProgramCodegen(t,
+		ProgramCodegenOptions{
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, pulumiSdkPath)
+				CheckGo(t, path, dependencies, pulumiSdkPath)
 			},
-			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-				// Prevent tests from interfering with each other
-				return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-			},
-			TestCases: testCases,
+			GenProgram: generator,
+			TestCases:  testCases,
 		})
 }

@@ -26,5 +26,5 @@ import (
 
 func TestGenerateProgram(t *testing.T) {
 	os.Chdir("../../../nodejs") // chdir into codegen/nodejs
-	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(2, 6))
+	test.GenerateProgramBatchTest("nodejs")(t, codegen.GenerateProgram, test.ProgramTestBatch(2, 6))
 }

@@ -31,7 +31,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, true)
+				test.CheckNodeJS(t, path, dependencies, true)
 			},
 			GenProgram: GenerateProgram,
 			TestCases: []test.ProgramTest{
