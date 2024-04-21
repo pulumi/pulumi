@@ -367,6 +367,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 				return ctx.newDependencyResource(URN(d))
 			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+			opts.IgnoreRefreshChanges = rpcReq.Options.IgnoreRefreshChanges
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
 			opts.Protect = rpcReq.Options.Protect
@@ -468,6 +469,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 				return nil, fmt.Errorf("marshaling dependsOn: %w", err)
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
+			rpcRes.Options.IgnoreRefreshChanges = opts.IgnoreRefreshChanges
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
 			rpcRes.Options.Protect = opts.Protect
 
@@ -1222,6 +1224,7 @@ func (ctx *Context) registerResource(
 				ImportId:                inputs.importID,
 				CustomTimeouts:          inputs.customTimeouts,
 				IgnoreChanges:           inputs.ignoreChanges,
+				IgnoreRefreshChanges:    inputs.ignoreRefreshChanges,
 				AliasURNs:               aliasURNs,
 				Aliases:                 aliases,
 				AcceptSecrets:           true,
@@ -1630,6 +1633,7 @@ type resourceInputs struct {
 	importID                string
 	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	ignoreChanges           []string
+	ignoreRefreshChanges    []string
 	aliases                 []*pulumirpc.Alias
 	additionalSecretOutputs []string
 	version                 string
@@ -1896,6 +1900,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:           resOpts.ignoreChanges,
+		ignoreRefreshChanges:    resOpts.ignoreRefreshChanges,
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
@@ -1926,6 +1931,7 @@ type resourceOpts struct {
 	deleteBeforeReplace     bool
 	importID                ID
 	ignoreChanges           []string
+	ignoreRefreshChanges    []string
 	additionalSecretOutputs []string
 	replaceOnChanges        []string
 }
@@ -1998,6 +2004,7 @@ func (ctx *Context) getOpts(
 		deleteBeforeReplace:     opts.DeleteBeforeReplace,
 		importID:                importID,
 		ignoreChanges:           opts.IgnoreChanges,
+		ignoreRefreshChanges:    opts.IgnoreRefreshChanges,
 		additionalSecretOutputs: opts.AdditionalSecretOutputs,
 		replaceOnChanges:        opts.ReplaceOnChanges,
 	}, nil

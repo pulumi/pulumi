@@ -348,6 +348,9 @@ type ResourceOptions struct {
 	// IgnoreChanges lists properties changes to which should be ignored.
 	IgnoreChanges []string
 
+	// IgnoreRefreshChanges lists properties changes to which should be ignored during refresh.
+	IgnoreRefreshChanges []string
+
 	// Import specifies that the provider for this resource
 	// should import its state from a cloud resource with the given ID.
 	Import IDInput
@@ -427,6 +430,7 @@ type resourceOptions struct {
 	DeleteBeforeReplace     bool
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
+	IgnoreRefreshChanges    []string
 	Import                  IDInput
 	Parent                  Resource
 	Protect                 bool
@@ -483,6 +487,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
+		IgnoreRefreshChanges:    ro.IgnoreRefreshChanges,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
 		Protect:                 ro.Protect,
@@ -717,6 +722,13 @@ func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urn
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
+	})
+}
+
+// Ignore refhres hanges to any of the specified properties.
+func IgnoreRefreshChanges(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.IgnoreRefreshChanges = append(ro.IgnoreRefreshChanges, o...)
 	})
 }
 
