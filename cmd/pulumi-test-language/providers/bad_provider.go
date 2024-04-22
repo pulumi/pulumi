@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package providers
 
 import (
 	"encoding/json"
@@ -27,21 +27,21 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type badProvider struct {
+type BadProvider struct {
 	plugin.UnimplementedProvider
 }
 
-var _ plugin.Provider = (*badProvider)(nil)
+var _ plugin.Provider = (*BadProvider)(nil)
 
-func (p *badProvider) Close() error {
+func (p *BadProvider) Close() error {
 	return nil
 }
 
-func (p *badProvider) Pkg() tokens.Package {
+func (p *BadProvider) Pkg() tokens.Package {
 	return "bad"
 }
 
-func (p *badProvider) GetSchema(version int) ([]byte, error) {
+func (p *BadProvider) GetSchema(version int) ([]byte, error) {
 	// The whole point of this provider is to return an invalid schema, so just make up a type for the
 	// property value.
 	resourceProperties := map[string]schema.PropertySpec{
@@ -77,7 +77,7 @@ func (p *badProvider) GetSchema(version int) ([]byte, error) {
 	return jsonBytes, nil
 }
 
-func (p *badProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
+func (p *BadProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
 	allowUnknowns bool,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	// Expect just the version
@@ -99,25 +99,25 @@ func (p *badProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resourc
 	return newInputs, nil, nil
 }
 
-func (p *badProvider) Configure(inputs resource.PropertyMap) error {
+func (p *BadProvider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 
-func (p *badProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *BadProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	ver := semver.MustParse("3.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *badProvider) SignalCancellation() error {
+func (p *BadProvider) SignalCancellation() error {
 	return nil
 }
 
-func (p *badProvider) GetMapping(key, provider string) ([]byte, string, error) {
+func (p *BadProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
 }
 
-func (p *badProvider) GetMappings(key string) ([]string, error) {
+func (p *BadProvider) GetMappings(key string) ([]string, error) {
 	return nil, nil
 }
