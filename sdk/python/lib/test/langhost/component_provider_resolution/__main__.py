@@ -12,25 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-from pulumi import ComponentResource, CustomResource, Output, ResourceOptions, ProviderResource
+from pulumi import (
+    ComponentResource,
+    CustomResource,
+    Output,
+    ResourceOptions,
+    ProviderResource,
+)
+
 
 class MyResource(CustomResource):
     def __init__(self, name, args, opts=None):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            **args,
-            "outprop": None,
-        }, opts=opts)
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                **args,
+                "outprop": None,
+            },
+            opts=opts,
+        )
+
 
 class OtherResource(CustomResource):
     def __init__(self, name, args, opts=None):
-        super().__init__("other:index:OtherResource", name, props={
-            **args,
-            "outprop": None,
-        }, opts=opts)
+        super().__init__(
+            "other:index:OtherResource",
+            name,
+            props={
+                **args,
+                "outprop": None,
+            },
+            opts=opts,
+        )
+
 
 class OtherProvider(ProviderResource):
     def __init__(self, name):
         super().__init__("other", name)
+
 
 class CombinedComponent(ComponentResource):
     def __init__(self, name, opts=None):
@@ -39,17 +60,17 @@ class CombinedComponent(ComponentResource):
         MyResource("combined-mine", {}, opts=parent)
         OtherResource("combined-other", {}, opts=parent)
 
+
 class MyComponent(ComponentResource):
     def __init__(self, name, opts=None):
         ComponentResource.__init__(self, "test:index:MyComponent", name, opts=opts)
+
 
 prov1 = OtherProvider("prov1")
 comp3 = CombinedComponent(
     "comp3",
     ResourceOptions(
-        providers={
-            "other": prov1
-        },
+        providers={"other": prov1},
         protect=True,
-    )
+    ),
 )

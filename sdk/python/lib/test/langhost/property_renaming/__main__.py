@@ -16,6 +16,7 @@ from typing import Dict
 import pulumi
 from pulumi import CustomResource, Output, Input
 
+
 def assert_eq(l, r):
     assert l == r
 
@@ -35,19 +36,25 @@ class TranslatedResource(CustomResource):
     This is used by providers to project their resource properties into Python using idiomatic snake case, while
     ensuring that providers themselves always speak over the RPC interface using camel case.
     """
+
     transformed_prop: Output[str]
     engine_output_prop: Output[str]
     recursive_prop: Output[Dict[str, str]]
 
     def __init__(self, name: str, prop: Input[str]) -> None:
-        CustomResource.__init__(self, "test:index:TranslatedResource", name, {
-            "transformed_prop": prop,
-            "recursive_prop": {
-                "recursive_key": "value",
-                "recursive_output": None,
+        CustomResource.__init__(
+            self,
+            "test:index:TranslatedResource",
+            name,
+            {
+                "transformed_prop": prop,
+                "recursive_prop": {
+                    "recursive_key": "value",
+                    "recursive_output": None,
+                },
+                "engine_output_prop": None,
             },
-            "engine_output_prop": None,
-        })
+        )
 
     # Note: providers tend to implement these functions using lookup tables.
     def translate_input_property(self, prop: str) -> str:
@@ -80,7 +87,6 @@ class TranslatedResource(CustomResource):
 
         if prop == "recursiveOutput":
             return "recursive_output"
-
 
         if prop == "engineOutputProp":
             return "engine_output_prop"

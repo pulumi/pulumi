@@ -45,6 +45,7 @@ from .test_utils import get_test_org, get_test_suffix, stack_namer
 
 extensions = ["json", "yaml", "yml"]
 
+
 def get_test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
 
@@ -69,7 +70,9 @@ def get_stack(stack_list: List[StackSummary], name: str) -> Optional[StackSummar
     return None
 
 
-@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
+@pytest.mark.skipif(
+    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
+)
 class TestLocalWorkspace(unittest.TestCase):
     def test_project_settings(self):
         for ext in extensions:
@@ -89,23 +92,24 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(settings.config["plain"], "plain")
             self.assertEqual(settings.config["secure"].secure, "secret")
 
-        settings_with_no_config = StackSettings(secrets_provider="blah",
-                                                encrypted_key="thisiskey",
-                                                encryption_salt="salty")
-        self.assertEqual(settings_with_no_config._serialize(), {
-            "secretsprovider": "blah",
-            "encryptedkey": "thisiskey",
-            "encryptionsalt": "salty"
-        })
+        settings_with_no_config = StackSettings(
+            secrets_provider="blah", encrypted_key="thisiskey", encryption_salt="salty"
+        )
+        self.assertEqual(
+            settings_with_no_config._serialize(),
+            {
+                "secretsprovider": "blah",
+                "encryptedkey": "thisiskey",
+                "encryptionsalt": "salty",
+            },
+        )
 
         config = {
             "cool": "sup",
             "foo": {"secure": "thisisasecret"},
         }
         settings_with_only_config = StackSettings(config=config)
-        self.assertEqual(settings_with_only_config._serialize(), {
-            "config": config
-        })
+        self.assertEqual(settings_with_only_config._serialize(), {"config": config})
 
     def test_plugin_functions(self):
         ws = LocalWorkspace()
@@ -197,7 +201,9 @@ class TestLocalWorkspace(unittest.TestCase):
 
     def test_config_env_functions(self):
         if get_test_org() != "moolumi":
-            self.skipTest("Skipping test because the required environments are in the moolumi org.")
+            self.skipTest(
+                "Skipping test because the required environments are in the moolumi org."
+            )
         project_name = "python_env_test"
         project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
@@ -212,7 +218,9 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # Ensure envs can be listed
         envs = stack.list_environments()
-        self.assertListEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"])
+        self.assertListEqual(
+            envs, ["automation-api-test-env", "automation-api-test-env-2"]
+        )
 
         # Check that we can access config from each env.
         config = stack.get_all_config()
@@ -249,7 +257,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         config: ConfigMap = {
             "plain": ConfigValue(value="abc"),
-            "secret": ConfigValue(value="def", secret=True)
+            "secret": ConfigValue(value="def", secret=True),
         }
 
         plain_key = normalize_config_key("plain", project_name)
@@ -293,11 +301,15 @@ class TestLocalWorkspace(unittest.TestCase):
         # test secret
         stack.set_config("key4", ConfigValue(value="value4", secret=True))
         # test subPath and key as secret
-        stack.set_config("key5.subKey1", ConfigValue(value="value5", secret=True), path=True)
+        stack.set_config(
+            "key5.subKey1", ConfigValue(value="value5", secret=True), path=True
+        )
         # test string with dots
         stack.set_config("key6.subKey1", ConfigValue(value="value6", secret=True))
         # test string with dots
-        stack.set_config("key7.subKey1", ConfigValue(value="value7", secret=True), path=False)
+        stack.set_config(
+            "key7.subKey1", ConfigValue(value="value7", secret=True), path=False
+        )
         # test subPath
         stack.set_config("key7.subKey2", ConfigValue(value="value8"), path=True)
         # test subPath
@@ -357,7 +369,9 @@ class TestLocalWorkspace(unittest.TestCase):
         stack.remove_config("key7.subKey1", path=False)
 
         cfg = stack.get_all_config()
-        self.assertEqual(cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}')
+        self.assertEqual(
+            cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}'
+        )
 
         ws.remove_stack(stack_name)
 
@@ -368,15 +382,17 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
-        stack.set_all_config({
-            "key1": ConfigValue(value="value1", secret=False),
-            "key2": ConfigValue(value="value2", secret=True),
-            "key3.subKey1": ConfigValue(value="value3", secret=False),
-            "key3.subKey2": ConfigValue(value="value4", secret=False),
-            "key3.subKey3": ConfigValue(value="value5", secret=False),
-            "key4.subKey1": ConfigValue(value="value6", secret=True),
-        }, path=True)
-
+        stack.set_all_config(
+            {
+                "key1": ConfigValue(value="value1", secret=False),
+                "key2": ConfigValue(value="value2", secret=True),
+                "key3.subKey1": ConfigValue(value="value3", secret=False),
+                "key3.subKey2": ConfigValue(value="value4", secret=False),
+                "key3.subKey3": ConfigValue(value="value5", secret=False),
+                "key4.subKey1": ConfigValue(value="value6", secret=True),
+            },
+            path=True,
+        )
 
         # test the SetAllConfigWithOptions configured the first item
         cv1 = stack.get_config("key1")
@@ -403,7 +419,9 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(cv5.value, "value6")
         self.assertTrue(cv5.secret)
 
-        stack.remove_all_config(["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True)
+        stack.remove_all_config(
+            ["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True
+        )
 
         cfg = stack.get_all_config()
         self.assertEqual(cfg["python_test:key3"].value, '{"subKey3":"value5"}')
@@ -462,19 +480,23 @@ class TestLocalWorkspace(unittest.TestCase):
         all_config = stack.get_all_config()
         outer_val = all_config["nested_config:outer"]
         self.assertFalse(outer_val.secret)
-        self.assertEqual(outer_val.value, "{\"inner\":\"my_value\",\"other\":\"something_else\"}")
+        self.assertEqual(
+            outer_val.value, '{"inner":"my_value","other":"something_else"}'
+        )
 
         list_val = all_config["nested_config:myList"]
         self.assertFalse(list_val.secret)
-        self.assertEqual(list_val.value, "[\"one\",\"two\",\"three\"]")
+        self.assertEqual(list_val.value, '["one","two","three"]')
 
         outer = stack.get_config("outer")
         self.assertFalse(outer.secret)
-        self.assertEqual(outer_val.value, "{\"inner\":\"my_value\",\"other\":\"something_else\"}")
+        self.assertEqual(
+            outer_val.value, '{"inner":"my_value","other":"something_else"}'
+        )
 
         arr = stack.get_config("myList")
         self.assertFalse(arr.secret)
-        self.assertEqual(arr.value, "[\"one\",\"two\",\"three\"]")
+        self.assertEqual(arr.value, '["one","two","three"]')
 
     def test_tag_methods(self):
         project_name = "python_test"
@@ -528,7 +550,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True)
+            "buzz": ConfigValue(value="secret", secret=True),
         }
         stack.set_all_config(config)
 
@@ -563,11 +585,13 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_inline_program(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True)
+            "buzz": ConfigValue(value="secret", secret=True),
         }
 
         try:
@@ -601,15 +625,16 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
-
     def test_stack_lifecycle_async_inline_program(self):
         project_name = "async_inline_python"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name, program=async_pulumi_program, project_name=project_name)
+        stack = create_stack(
+            stack_name, program=async_pulumi_program, project_name=project_name
+        )
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True)
+            "buzz": ConfigValue(value="secret", secret=True),
         }
 
         try:
@@ -646,11 +671,13 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_supports_stack_outputs(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True)
+            "buzz": ConfigValue(value="secret", secret=True),
         }
 
         def assert_outputs(outputs):
@@ -691,7 +718,7 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace()
         self.assertIsNotNone(ws.pulumi_version)
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
-    
+
     def test_pulumi_command(self):
         p = PulumiCommand()
         ws = LocalWorkspace(pulumi_command=p)
@@ -702,42 +729,49 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_project_settings_respected(self):
         project_name = "correct_project"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name,
-                             program=pulumi_program,
-                             project_name=project_name,
-                             opts=LocalWorkspaceOptions(work_dir=get_test_path("data", project_name)))
+        stack = create_stack(
+            stack_name,
+            program=pulumi_program,
+            project_name=project_name,
+            opts=LocalWorkspaceOptions(work_dir=get_test_path("data", project_name)),
+        )
         project_settings = stack.workspace.project_settings()
         self.assertEqual(project_settings.description, "This is a description")
         stack.workspace.remove_stack(stack_name)
 
     def test_project_settings_populates_main(self):
         main_cases = [
-            ('none', None, os.getcwd()),
-            ('blank', '', ''),
-            ('string', 'foo', 'foo'),
+            ("none", None, os.getcwd()),
+            ("blank", "", ""),
+            ("string", "foo", "foo"),
         ]
 
         for case_name, initial_main, expected_main in main_cases:
             project_name = f"project_populates_main_with_{case_name}"
             stack_name = stack_namer(project_name)
-            project_settings = ProjectSettings(name=project_name, runtime="python", main=initial_main)
-            stack = create_stack(stack_name,
-                                program=pulumi_program,
-                                project_name=project_name,
-                                opts=LocalWorkspaceOptions(project_settings=project_settings))
+            project_settings = ProjectSettings(
+                name=project_name, runtime="python", main=initial_main
+            )
+            stack = create_stack(
+                stack_name,
+                program=pulumi_program,
+                project_name=project_name,
+                opts=LocalWorkspaceOptions(project_settings=project_settings),
+            )
             project_settings = stack.workspace.project_settings()
             self.assertEqual(expected_main, project_settings.main)
             stack.workspace.remove_stack(stack_name)
 
-
     def test_structured_events(self):
         project_name = "structured_events"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True)
+            "buzz": ConfigValue(value="secret", secret=True),
         }
 
         try:
@@ -759,27 +793,35 @@ class TestLocalWorkspace(unittest.TestCase):
             # pulumi preview
             seen_summary_event[0] = False
             pre_res = stack.preview(on_event=find_summary_event)
-            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `preview`")
+            self.assertEqual(
+                seen_summary_event[0], True, "No SummaryEvent for `preview`"
+            )
             self.assertEqual(pre_res.change_summary.get(OpType.SAME), 1)
 
             # pulumi refresh
             seen_summary_event[0] = False
             refresh_res = stack.refresh(on_event=find_summary_event)
-            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `refresh`")
+            self.assertEqual(
+                seen_summary_event[0], True, "No SummaryEvent for `refresh`"
+            )
             self.assertEqual(refresh_res.summary.kind, "refresh")
             self.assertEqual(refresh_res.summary.result, "succeeded")
 
             # pulumi destroy
             seen_summary_event[0] = False
             destroy_res = stack.destroy(on_event=find_summary_event)
-            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `destroy`")
+            self.assertEqual(
+                seen_summary_event[0], True, "No SummaryEvent for `destroy`"
+            )
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)
 
     # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
-    @unittest.skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
+    @unittest.skip(
+        "Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127"
+    )
     def test_secret_config_warnings(self):
         def program():
             config = Config()
@@ -887,7 +929,10 @@ class TestLocalWorkspace(unittest.TestCase):
             events: List[str] = []
 
             def find_diagnostic_events(event: EngineEvent):
-                if event.diagnostic_event and event.diagnostic_event.severity == "warning":
+                if (
+                    event.diagnostic_event
+                    and event.diagnostic_event.severity == "warning"
+                ):
                     events.append(event.diagnostic_event.message)
 
             expected_warnings = [
@@ -947,7 +992,10 @@ class TestLocalWorkspace(unittest.TestCase):
                     self.assertTrue(found, "expected warning not found")
                 for unexpected in unexpected_warnings:
                     for warning in warnings:
-                        self.assertFalse(unexpected in warning, f"Unexpected ${unexpected}' found in warning")
+                        self.assertFalse(
+                            unexpected in warning,
+                            f"Unexpected ${unexpected}' found in warning",
+                        )
 
             # pulumi preview
             stack.preview(on_event=find_diagnostic_events)
@@ -976,9 +1024,13 @@ async def async_pulumi_program():
     export("exp_secret", config.get_secret("buzz"))
 
 
-@pytest.mark.parametrize("key,default", [("string", None), ("bar", "baz"), ("doesnt-exist", None)])
+@pytest.mark.parametrize(
+    "key,default", [("string", None), ("bar", "baz"), ("doesnt-exist", None)]
+)
 def test_config_get_with_defaults(key, default, mock_config, config_settings):
-    assert mock_config.get(key, default) == config_settings.get(f"test-config:{key}", default)
+    assert mock_config.get(key, default) == config_settings.get(
+        f"test-config:{key}", default
+    )
 
 
 def test_config_get_int(mock_config, config_settings):
@@ -990,8 +1042,12 @@ def test_config_get_bool(mock_config):
 
 
 def test_config_get_object(mock_config, config_settings):
-    assert mock_config.get_object("object") == json.loads(config_settings.get("test-config:object"))
+    assert mock_config.get_object("object") == json.loads(
+        config_settings.get("test-config:object")
+    )
 
 
 def test_config_get_float(mock_config, config_settings):
-    assert mock_config.get_float("float") == float(config_settings.get("test-config:float"))
+    assert mock_config.get_float("float") == float(
+        config_settings.get("test-config:float")
+    )

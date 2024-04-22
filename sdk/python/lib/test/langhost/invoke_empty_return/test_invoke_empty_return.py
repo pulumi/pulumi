@@ -20,7 +20,8 @@ class TestInvokeEmptyReturn(LanghostTest):
     def test_invoke_emptyReturn(self):
         self.run_test(
             program=path.join(self.base_path(), "invoke_empty_return"),
-            expected_resource_count=0)
+            expected_resource_count=0,
+        )
 
     def invoke(self, _ctx, token, _args, provider, _version):
         self.assertEqual("test:index:MyFunction", token)

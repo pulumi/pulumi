@@ -31,4 +31,6 @@ def get_test_suffix() -> int:
 
 
 def stack_namer(project_name):
-    return fully_qualified_stack_name(get_test_org(), project_name, f"int_test_{get_test_suffix()}")
+    return fully_qualified_stack_name(
+        get_test_org(), project_name, f"int_test_{get_test_suffix()}"
+    )

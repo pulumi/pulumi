@@ -18,6 +18,5 @@ from ..util import LanghostTest
 class EmptyTests(LanghostTest):
     def test_empty(self):
         self.run_test(
-            program=path.join(self.base_path(), "empty"),
-            expected_resource_count=0)
-
+            program=path.join(self.base_path(), "empty"), expected_resource_count=0
+        )

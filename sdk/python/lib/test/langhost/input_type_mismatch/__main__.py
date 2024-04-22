@@ -14,6 +14,7 @@
 
 import pulumi
 
+
 @pulumi.input_type
 class MyResourceArgs:
     def __init__(self, policy: pulumi.Input[str]):
@@ -24,6 +25,7 @@ class MyResourceArgs:
     def policy(self) -> pulumi.Input[str]:
         return pulumi.get(self, "policy")
 
+
 class MyResource(pulumi.CustomResource):
     def __init__(self, name, args: MyResourceArgs):
         super().__init__("test:index:MyResource", name, args)
@@ -32,6 +34,7 @@ class MyResource(pulumi.CustomResource):
     @pulumi.getter
     def policy(self) -> pulumi.Output[str]:
         return pulumi.get(self, "policy")
+
 
 r1 = MyResource("testResource", MyResourceArgs(policy='{"hello": "world"}'))
 

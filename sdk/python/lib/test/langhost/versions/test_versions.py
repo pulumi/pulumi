@@ -18,12 +18,30 @@ from ..util import LanghostTest
 class TestVersions(LanghostTest):
     def test_versions(self):
         self.run_test(
-            program=path.join(self.base_path(), "versions"),
-            expected_resource_count=3)
+            program=path.join(self.base_path(), "versions"), expected_resource_count=3
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         if name == "testres":
             self.assertEqual(_version, "0.19.1")
         elif name == "testres2":
@@ -32,11 +50,7 @@ class TestVersions(LanghostTest):
             self.assertEqual(_version, "")
         else:
             self.fail(f"unknown resource: {name}")
-        return {
-            "urn": self.make_urn(ty, name),
-            "id": name,
-            "object": {}
-        }
+        return {"urn": self.make_urn(ty, name), "id": name, "object": {}}
 
     def invoke(self, _ctx, token, args, _provider, version):
         if token == "test:index:doit":
