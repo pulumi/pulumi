@@ -20,6 +20,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -67,7 +69,7 @@ var languageTests = map[string]languageTest{
 	// INTERNAL
 	// ==========
 	"internal-bad-schema": {
-		providers: []plugin.Provider{&badProvider{}},
+		providers: []plugin.Provider{&providers.BadProvider{}},
 	},
 	// ==========
 	// L1 (Tests not using providers)
@@ -247,7 +249,7 @@ var languageTests = map[string]languageTest{
 	// L2 (Tests using providers)
 	// ==========
 	"l2-resource-simple": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -270,7 +272,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-engine-update-options": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
@@ -295,7 +297,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-destroy": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -338,7 +340,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-target-up-with-new-dependency": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -385,7 +387,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-failed-create-continue-on-error": {
-		providers: []plugin.Provider{&simpleProvider{}, &failOnCreateProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
