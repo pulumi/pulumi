@@ -913,7 +913,7 @@ func listConfig(
 
 	// when listing configuration values
 	// also show values coming from the project and environment
-	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	err = workspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}
@@ -1080,7 +1080,7 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 	}
 
 	// when asking for a configuration value, include values from the project and environment
-	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	err = workspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}

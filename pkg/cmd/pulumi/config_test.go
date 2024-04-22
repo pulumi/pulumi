@@ -336,8 +336,9 @@ func TestStackEnvConfig(t *testing.T) {
 
 	project := workspace.Project{Name: tokens.PackageName("project")}
 
+	ctx := context.Background()
 	cfg, err := getStackConfigurationFromProjectStack(
-		context.Background(),
+		ctx,
 		stack,
 		&project,
 		mockSecretsManager,
@@ -348,7 +349,7 @@ func TestStackEnvConfig(t *testing.T) {
 	assert.Nil(t, cfg.Config)
 	cfg.Config = config.Map{}
 
-	err = workspace.ApplyProjectConfig("mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
+	err = workspace.ApplyProjectConfig(ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
