@@ -102,7 +102,7 @@ jobs:
 
   sign:
     name: sign
-    needs: [build-release]
+    needs: [build-release, build-sdks]
     uses: ./.github/workflows/sign.yml
     with:
       ref: ${{ inputs.ref }}
