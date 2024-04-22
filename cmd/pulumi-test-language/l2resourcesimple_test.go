@@ -401,7 +401,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	failureMessage := runResponse.Messages[0]
 	assert.Contains(t, failureMessage,
 		"expected no error, got Error: unexpected required plugins: "+
-			"actual Set{language-mock@<nil>}, expected Set{language-mock@<nil>, resource-simple@2.0.0}")
+			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@2.0.0]")
 }
 
 // Run a simple successful test with a mocked runtime that edits the snapshot files.
