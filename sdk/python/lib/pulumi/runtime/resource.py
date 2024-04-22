@@ -1138,7 +1138,7 @@ class RegisterResponse:
     id: Optional[str]
     object: struct_pb2.Struct
     propertyDependencies: Optional[Dict[str, PropertyDependencies]]
-    result: Optional[resource_pb2.Result]
+    result: Optional[resource_pb2.Result.ValueType]
 
     # pylint: disable=redefined-builtin
     def __init__(
@@ -1147,7 +1147,7 @@ class RegisterResponse:
         id: Optional[str],
         object: struct_pb2.Struct,
         propertyDependencies: Optional[Dict[str, PropertyDependencies]],
-        result: Optional[resource_pb2.Result],
+        result: Optional[resource_pb2.Result.ValueType],
     ):
         self.urn = urn
         self.id = id
