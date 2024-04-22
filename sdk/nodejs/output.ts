@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Resource } from "./resource";
+import { registerOutputlessDependencies } from "./runtime/outputless";
 import * as settings from "./runtime/settings";
 import * as utils from "./utils";
 
@@ -166,6 +167,7 @@ class OutputImpl<T> implements OutputInstance<T> {
         isKnown: Promise<boolean>,
         isSecret: Promise<boolean>,
         allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined,
+        proxy: boolean = true
     ) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         const resourcesCopy = copyResources(resources);
@@ -224,6 +226,10 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
             message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
+
+        if (!proxy) {
+            return;
+        }
 
         return new Proxy(this, {
             get: (obj, prop: keyof T) => {
@@ -325,6 +331,86 @@ To manipulate the value of this Output, use '.apply' instead.`);
         );
         return <Output<U>>(<any>result);
     }
+
+    public async asPromise(): Promise<ResolvedOutput<T>> {
+        const [value, known, secret, dependencies] = await Promise.all([
+            this.promise(/*withUnknowns*/ true),
+            this.isKnown,
+            this.isSecret,
+            this.allResources!(),
+        ]);
+
+        const urns: string[] = [];
+        for (const res of dependencies) {
+            const urn = await res.urn.promise();
+            if (urn) {
+                urns.push(urn);
+            }
+        }
+
+        registerOutputlessDependencies(urns);
+
+        return new ResolvedOutputImpl(value, known, secret, dependencies);
+    }
+}
+
+export interface ResolvedOutput<T, _T = unknown> extends OutputInstance<T> {
+    /**
+     * The value of the output.  This is only available after the output has been resolved.
+     */
+    readonly value: _T;
+    /**
+     * Whether or not the value is known. Will be true unless T is `unknown`.
+     */
+    known(): this is ResolvedOutput<T, T>;
+    /**
+     * Whether or not this output wraps a secret value.
+     */
+    readonly secret: boolean;
+    /**
+     * The list of resources that this output value depends on.
+     */
+    readonly dependencies: Readonly<Resource[]>;
+}
+
+class ResolvedOutputImpl<T, _T = unknown> extends OutputImpl<T> implements ResolvedOutput<T, _T> {
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * This is internal instead of being truly private, to support mixins and our serialization model.
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public __pulumiResolvedOutput: boolean = true;
+
+    value: _T;
+    #known: boolean;
+    dependencies: Resource[];
+    secret: boolean;
+    known(): this is ResolvedOutput<T, T> {
+        return this.#known;
+    }
+
+    /**
+     * internal
+     */
+    constructor(value: T, known: boolean, secret: boolean, dependencies: Set<Resource>) {
+        super([], Promise.resolve(value), Promise.resolve(known), Promise.resolve(secret), Promise.resolve(dependencies), false);
+        this.value = value as any;
+        this.#known = known;
+        this.dependencies = [...dependencies];
+        this.secret = secret;
+
+        return this;
+    }
+
+    public toString = () => {
+        return `${this.value}`;
+    };
+
+    public toJSON = () => {
+        return this.value;
+    };
 }
 
 /** @internal */
@@ -697,43 +783,16 @@ function getResourcesAndDetails(
 }
 
 /**
- * Unknown represents a value that is unknown. These values correspond to unknown property values received from the
- * Pulumi engine as part of the result of a resource registration (see runtime/rpc.ts). User code is not typically
- * exposed to these values: any Output<> that contains an Unknown will itself be unknown, so any user callbacks
- * passed to `apply` will not be run. Internal callers of `apply` can request that they are run even with unknown
- * values; the output proxy takes advantage of this to allow proxied property accesses to return known values even
- * if other properties of the containing object are unknown.
- */
-class Unknown {
-    /**
-     * A private field to help with RTTI that works in SxS scenarios.
-     *
-     * This is internal instead of being truly private, to support mixins and our serialization model.
-     * @internal
-     */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiUnknown: boolean = true;
-
-    /**
-     * Returns true if the given object is an instance of Unknown. This is designed to work even when
-     * multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static isInstance(obj: any): obj is Unknown {
-        return utils.isInstance<Unknown>(obj, "__pulumiUnknown");
-    }
-}
-
-/**
  * unknown is the singleton unknown value.
  * @internal
  */
-export const unknown = new Unknown();
+export const unknown: ResolvedOutput<any> = new ResolvedOutputImpl("unknown" as any, false, false, new Set());
 
 /**
  * isUnknown returns true if the given value is unknown.
  */
 export function isUnknown(val: any): boolean {
-    return Unknown.isInstance(val);
+    return utils.isInstance<ResolvedOutputImpl<any>>(val, "__pulumiResolvedOutput") && val.known() !== true;
 }
 
 /**
@@ -888,6 +947,25 @@ export interface OutputInstance<T> {
      * the dependency graph to be changed.
      */
     get(): T;
+
+    /**
+     * Returns this output value as a promise.
+     *
+     * Callers are encouraged to check the "known" and "secret" properties of the return value to
+     * safely handle previews and secrets.
+     *
+     * All future resource operations will depend on this output, which may lead longer `pulumi
+     * destroy` times.
+     *
+     * Due to the behavior of resource replacements, this may cause unexpected resource deletions
+     * during an update. If the source output value is derived from a resource with
+     * delete-before-replace behavior, the deletion of the resource will "condemn" subsequent
+     * resources to deletion and recreation.
+     *
+     * TODO:
+     * - Address delete-before-replace resource condemnation.
+     */
+    asPromise(): Promise<ResolvedOutput<T>>;
 }
 
 /**

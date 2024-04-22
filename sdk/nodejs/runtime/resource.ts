@@ -70,6 +70,7 @@ import { Callback } from "../proto/callback_pb";
 import * as provproto from "../proto/provider_pb";
 import * as resproto from "../proto/resource_pb";
 import * as sourceproto from "../proto/source_pb";
+import { getOutputlessDependencies } from "./outputless";
 
 export interface SourcePosition {
     uri: string;
@@ -825,6 +826,12 @@ export async function prepareResource(
             explicitDirectDependencies,
             exclude,
         );
+
+        const outputlessDependencies = getOutputlessDependencies();
+        for (const urn of outputlessDependencies) {
+            allDirectDependencyURNs.add(urn);
+        }
+
         const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
         for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
@@ -960,6 +967,9 @@ async function addTransitivelyReferencedChildResourcesOfComponentResources(
                     if (exclude.has(resource)) {
                         continue;
                     }
+
+                    // Await async completion of spawned tasks from the ComponentResource constructor.
+                    await resource.__asyncCompletion;
 
                     // This await is safe even if __isConstructed is undefined. Ensure that the
                     // resource has completely finished construction.  That way all parent/child
