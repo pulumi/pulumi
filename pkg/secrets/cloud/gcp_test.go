@@ -16,6 +16,7 @@ package cloud
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -59,6 +60,9 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPCloudManager(t *testing.T) {
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
 	ctx := context.Background()
 	keyName := createGCPKey(ctx, t)
 	url := "gcpkms://" + keyName
@@ -67,6 +71,9 @@ func TestGCPCloudManager(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingKey(t *testing.T) {
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
 	ctx := context.Background()
 
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
@@ -95,6 +102,9 @@ func TestGCPExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingState(t *testing.T) {
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
 	ctx := context.Background()
 
 	//nolint:lll // this includes a base64 encoded key
@@ -123,6 +133,9 @@ func TestGCPExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPKeyEditProjectStack(t *testing.T) {
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
+	}
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
 
 	//nolint:lll // this is a base64 encoded key
