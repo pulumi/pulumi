@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package providers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -28,25 +27,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type failOnCreateProvider struct {
+type SimpleProvider struct {
 	plugin.UnimplementedProvider
 }
 
-var _ plugin.Provider = (*failOnCreateProvider)(nil)
+var _ plugin.Provider = (*SimpleProvider)(nil)
 
-func (p *failOnCreateProvider) Close() error {
+func (p *SimpleProvider) Close() error {
 	return nil
 }
 
-func (p *failOnCreateProvider) Configure(inputs resource.PropertyMap) error {
+func (p *SimpleProvider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 
-func (p *failOnCreateProvider) Pkg() tokens.Package {
-	return "fail_on_create"
+func (p *SimpleProvider) Pkg() tokens.Package {
+	return "simple"
 }
 
-func (p *failOnCreateProvider) GetSchema(version int) ([]byte, error) {
+func (p *SimpleProvider) GetSchema(version int) ([]byte, error) {
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
@@ -57,10 +56,10 @@ func (p *failOnCreateProvider) GetSchema(version int) ([]byte, error) {
 	resourceRequired := []string{"value"}
 
 	pkg := schema.PackageSpec{
-		Name:    "fail_on_create",
-		Version: "4.0.0",
+		Name:    "simple",
+		Version: "2.0.0",
 		Resources: map[string]schema.ResourceSpec{
-			"fail_on_create:index:Resource": {
+			"simple:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: resourceProperties,
@@ -80,7 +79,14 @@ func (p *failOnCreateProvider) GetSchema(version int) ([]byte, error) {
 	return jsonBytes, nil
 }
 
-func (p *failOnCreateProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
+func makeCheckFailure(property resource.PropertyKey, reason string) []plugin.CheckFailure {
+	return []plugin.CheckFailure{{
+		Property: property,
+		Reason:   reason,
+	}}
+}
+
+func (p *SimpleProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
 	allowUnknowns bool,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	// Expect just the version
@@ -91,8 +97,8 @@ func (p *failOnCreateProvider) CheckConfig(urn resource.URN, oldInputs, newInput
 	if !version.IsString() {
 		return nil, makeCheckFailure("version", "version is not a string"), nil
 	}
-	if version.StringValue() != "4.0.0" {
-		return nil, makeCheckFailure("version", "version is not 4.0.0"), nil
+	if version.StringValue() != "2.0.0" {
+		return nil, makeCheckFailure("version", "version is not 2.0.0"), nil
 	}
 
 	if len(newInputs) != 1 {
@@ -102,11 +108,11 @@ func (p *failOnCreateProvider) CheckConfig(urn resource.URN, oldInputs, newInput
 	return newInputs, nil, nil
 }
 
-func (p *failOnCreateProvider) Check(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
+func (p *SimpleProvider) Check(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	// URN should be of the form "fail_on_create:index:Resource"
-	if urn.Type() != "fail_on_create:index:Resource" {
+	// URN should be of the form "simple:index:Resource"
+	if urn.Type() != "simple:index:Resource" {
 		return nil, makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", urn.Type())), nil
 	}
 
@@ -125,47 +131,57 @@ func (p *failOnCreateProvider) Check(urn resource.URN, oldInputs, newInputs reso
 	return newInputs, nil, nil
 }
 
-func (p *failOnCreateProvider) Create(
+func (p *SimpleProvider) Create(
 	urn resource.URN, news resource.PropertyMap,
 	timeout float64, preview bool,
 ) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	return resource.ID(""), nil, resource.StatusOK, errors.New("failed create")
+	// URN should be of the form "simple:index:Resource"
+	if urn.Type() != "simple:index:Resource" {
+		return "", nil, resource.StatusUnknown, fmt.Errorf("invalid URN type: %s", urn.Type())
+	}
+
+	id := "id"
+	if preview {
+		id = ""
+	}
+
+	return resource.ID(id), news, resource.StatusOK, nil
 }
 
-func (p *failOnCreateProvider) GetPluginInfo() (workspace.PluginInfo, error) {
-	ver := semver.MustParse("4.0.0")
+func (p *SimpleProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+	ver := semver.MustParse("2.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *failOnCreateProvider) SignalCancellation() error {
+func (p *SimpleProvider) SignalCancellation() error {
 	return nil
 }
 
-func (p *failOnCreateProvider) GetMapping(key, provider string) ([]byte, string, error) {
+func (p *SimpleProvider) GetMapping(key, provider string) ([]byte, string, error) {
 	return nil, "", nil
 }
 
-func (p *failOnCreateProvider) GetMappings(key string) ([]string, error) {
+func (p *SimpleProvider) GetMappings(key string) ([]string, error) {
 	return nil, nil
 }
 
-func (p *failOnCreateProvider) DiffConfig(
+func (p *SimpleProvider) DiffConfig(
 	urn resource.URN, oldInputs, ouldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, nil
 }
 
-func (p *failOnCreateProvider) Diff(
+func (p *SimpleProvider) Diff(
 	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, nil
 }
 
-func (p *failOnCreateProvider) Delete(
+func (p *SimpleProvider) Delete(
 	urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
 ) (resource.Status, error) {
 	return resource.StatusOK, nil

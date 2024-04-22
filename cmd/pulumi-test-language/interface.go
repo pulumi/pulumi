@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -283,7 +284,11 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
 	diff := expected.SymmetricDifference(actual)
 	if !diff.IsEmpty() {
-		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actual, expected)
+		expectedSlice := expected.ToSlice()
+		slices.Sort(expectedSlice)
+		actualSlice := actual.ToSlice()
+		slices.Sort(actualSlice)
+		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actualSlice, expectedSlice)
 	}
 
 	return nil
