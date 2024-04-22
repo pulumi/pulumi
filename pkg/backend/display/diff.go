@@ -387,20 +387,23 @@ func renderDiff(
 	summary := getResourcePropertiesSummary(metadata, indent)
 
 	var details string
-	if metadata.DetailedDiff != nil {
-		var buf bytes.Buffer
-		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
-			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+	// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+	if metadata.Op != deploy.OpSame {
+		if metadata.DetailedDiff != nil {
+			var buf bytes.Buffer
+			if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
+				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+			} else {
+				PrintObject(
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			}
+			details = buf.String()
 		} else {
-			PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			details = getResourcePropertiesDetails(
+				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 		}
-		details = buf.String()
-	} else {
-		details = getResourcePropertiesDetails(
-			metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 	}
-
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
 	fprintIgnoreError(out, opts.Color.Colorize(details))
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
