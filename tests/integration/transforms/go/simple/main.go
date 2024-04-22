@@ -182,6 +182,33 @@ func main() {
 			return err
 		}
 
+		// Scenario #6 - mutate the provider on the resource
+		provider1, err := NewProvider(ctx, "provider1")
+		if err != nil {
+			return err
+		}
+		provider2, err := NewProvider(ctx, "provider2")
+		if err != nil {
+			return err
+		}
+
+		_, err = NewRandom(ctx, "res6", &RandomArgs{Length: pulumi.Int(10)},
+			pulumi.Provider(provider1),
+			pulumi.XTransforms([]pulumi.XResourceTransform{
+				func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+					fmt.Printf("res6 transform\n")
+					rta.Opts.Provider = provider2
+					return &pulumi.XResourceTransformResult{
+						Props: rta.Props,
+						Opts:  rta.Opts,
+					}
+				},
+			}),
+		)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 }

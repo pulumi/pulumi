@@ -47,3 +47,18 @@ type RandomArgs struct {
 func (RandomArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*randomArgs)(nil)).Elem()
 }
+
+type Provider struct {
+	pulumi.ProviderResourceState
+}
+
+func NewProvider(ctx *pulumi.Context,
+	name string, opts ...pulumi.ResourceOption,
+) (*Provider, error) {
+	var resource Provider
+	err := ctx.RegisterResource("pulumi:providers:testprovider", name, nil, &resource, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &resource, nil
+}

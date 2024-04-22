@@ -1,7 +1,7 @@
 // Copyright 2016-2024, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
-import { Random } from "./random";
+import { Random, TestProvider} from "./random";
 
 class MyComponent extends pulumi.ComponentResource {
     child: Random;
@@ -98,6 +98,23 @@ const res5 = new Random("res5", { length: 10 }, {
                     opts: opts,
                 };
             }
+        },
+    ],
+});
+
+// Scenario #6 - mutate the provider on the resource
+const provider1 = new TestProvider("provider1");
+const provider2 = new TestProvider("provider2");
+
+const res6 = new Random("res6", { length: 10 }, {
+    provider: provider1,
+    xTransforms: [
+        async ({ type, props, opts }) => {
+            console.log("res6 transform");
+            return {
+                props: props,
+                opts: pulumi.mergeOptions(opts, { provider: provider2 }),
+            };
         },
     ],
 });

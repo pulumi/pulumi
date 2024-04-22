@@ -14,3 +14,9 @@ export class Random extends pulumi.CustomResource {
         super("testprovider:index:Random", name, args, opts);
     }
 }
+
+export class TestProvider extends pulumi.ProviderResource {
+    constructor(name: string, opts?: pulumi.ResourceOptions) {
+        super("testprovider", name, {}, opts);
+    }
+}
