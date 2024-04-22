@@ -25,13 +25,13 @@ class StackReferenceOutputDetails:
     At most one of the value and secret_value fields will be set.
     """
 
-    value = Optional[Any]
+    value: Optional[Any]
     """
     Output value returned by the StackReference.
     None if the value is a secret or if it does not exist.
     """
 
-    secret_value = Optional[Any]
+    secret_value: Optional[Any]
     """
     Secret value returned by the StackReference.
     None if the value is not a secret or if it does not exist.

@@ -206,7 +206,10 @@ class Output(Generic[T_co]):
                     result_is_secret.set_result(
                         await transformed_as_output._is_secret or is_secret
                     )
-                    return await transformed.future(with_unknowns=True)
+                    result = await transformed_as_output.future(with_unknowns=True)
+                    # future shouldn't return None because we passed with_unknowns=True, but we can't RTTI check that
+                    # because the U value itself might be None.
+                    return cast(U, result)
 
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):

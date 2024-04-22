@@ -193,7 +193,9 @@ class ProviderServicer(ResourceProviderServicer):
         deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, resources in property_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
-            deps[k] = proto.ConstructResponse.PropertyDependencies(urns=urns)
+            # filter out any unknowns
+            knownUrns = [u for u in urns if u is not None]
+            deps[k] = proto.ConstructResponse.PropertyDependencies(urns=knownUrns)
 
         return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
@@ -276,7 +278,9 @@ class ProviderServicer(ResourceProviderServicer):
         deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, resources in ret_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
-            deps[k] = proto.CallResponse.ReturnDependencies(urns=urns)
+            # filter out any unknowns
+            knownUrns = [u for u in urns if u is not None]
+            deps[k] = proto.CallResponse.ReturnDependencies(urns=knownUrns)
 
         failures = None
         if result.failures:

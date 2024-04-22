@@ -1123,9 +1123,9 @@ def resolve_outputs(
     if transform_using_type_metadata:
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
         # pylint: disable=C3001
-        translate = lambda k: pulumi_to_py_names.get(k) or k
+        translate = lambda prop: pulumi_to_py_names.get(prop) or prop
         # pylint: disable=C3001
-        translate_to_pass = lambda k: k
+        translate_to_pass = lambda prop: prop
 
     for key, value in deserialize_properties(outputs, keep_unknowns).items():
         # Outputs coming from the provider are NOT translated. Do so here.

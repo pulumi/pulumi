@@ -9,7 +9,7 @@ pyyaml~=6.0
 
 # Dev packages only needed during development.
 pylint==3.1.0
-mypy==0.991
+mypy==1.9.0
 pytest~=7.4.4
 pytest-timeout
 types-six
