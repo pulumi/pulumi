@@ -505,6 +505,7 @@ export function registerResource(
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
             req.setTransformsList(callbacks);
+            req.setSupportsresultreporting(true);
 
             if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                 throw new Error(
@@ -587,6 +588,7 @@ export function registerResource(
                             getId: () => undefined,
                             getObject: () => req.getObject(),
                             getPropertydependenciesMap: () => undefined,
+                            getResult: () => 0,
                         };
                     }
                 } catch (e) {
@@ -596,6 +598,7 @@ export function registerResource(
                         getId: () => undefined,
                         getObject: () => req.getObject(),
                         getPropertydependenciesMap: () => undefined,
+                        getResult: () => 0,
                     };
                 }
 
@@ -618,7 +621,8 @@ export function registerResource(
                 }
 
                 // Now resolve the output properties.
-                await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers, err);
+                const keepUnknowns = resp.getResult() !== resproto.Result.SUCCESS;
+                await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers, err, keepUnknowns);
             });
         }),
         label,
@@ -1021,12 +1025,13 @@ async function resolveOutputs(
     deps: Record<string, Resource[]>,
     resolvers: OutputResolvers,
     err?: Error,
+    keepUnknowns?: boolean,
 ): Promise<void> {
     // Produce a combined set of property states, starting with inputs and then applying
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
     if (outputs) {
-        Object.assign(allProps, deserializeProperties(outputs));
+        Object.assign(allProps, deserializeProperties(outputs, keepUnknowns));
     }
 
     const label = `resource:${name}[${t}]#...`;
@@ -1040,12 +1045,12 @@ async function resolveOutputs(
                 if (inputProp === undefined) {
                     continue;
                 }
-                allProps[key] = deserializeProperty(inputProp);
+                allProps[key] = deserializeProperty(inputProp, keepUnknowns);
             }
         }
     }
 
-    resolveProperties(res, resolvers, t, name, allProps, deps, err);
+    resolveProperties(res, resolvers, t, name, allProps, deps, err, keepUnknowns);
 }
 
 /**

@@ -55,6 +55,8 @@ type Step interface {
 	Res() *resource.State    // the latest state for the resource that is known (worst case, old).
 	Logical() bool           // true if this step represents a logical operation in the program.
 	Deployment() *Deployment // the owning deployment.
+	Fail()                   // mark a step as failed.
+	Skip()                   // mark a step as skipped
 }
 
 // SameStep is a mutating step that does nothing.
@@ -144,12 +146,21 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		}
 	}
 
+	// TODO: should this step be marked as skipped if it comes from a targeted up?
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
 
 func (s *SameStep) IsSkippedCreate() bool {
 	return s.skippedCreate
+}
+
+func (s *SameStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *SameStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -289,6 +300,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return resourceStatus, complete, nil
 	}
 	return resourceStatus, complete, resourceError
+}
+
+func (s *CreateStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *CreateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -431,6 +450,14 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resource.StatusOK, func() {}, nil
 }
 
+func (s *DeleteStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *DeleteStep) Skip() {
+	// Nothing to do here.
+}
+
 type RemovePendingReplaceStep struct {
 	deployment *Deployment     // the current deployment.
 	old        *resource.State // the state of the existing resource.
@@ -459,6 +486,14 @@ func (s *RemovePendingReplaceStep) Logical() bool           { return false }
 
 func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
+}
+
+func (s *RemovePendingReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RemovePendingReplaceStep) Skip() {
+	// Nothing to do here.
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
@@ -568,6 +603,14 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resourceStatus, complete, resourceError
 }
 
+func (s *UpdateStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *UpdateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+}
+
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
@@ -624,6 +667,14 @@ func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	contract.Assertf(!s.pendingDelete || s.old.Delete,
 		"old resource %v should be marked for deletion if pending delete", s.old.URN)
 	return resource.StatusOK, func() {}, nil
+}
+
+func (s *ReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *ReplaceStep) Skip() {
+	// Nothing to do here.
 }
 
 // ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
@@ -780,6 +831,14 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	return resourceStatus, complete, resourceError
 }
 
+func (s *ReadStep) Fail() {
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *ReadStep) Skip() {
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+}
+
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
@@ -906,6 +965,14 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	return rst, nil, err
+}
+
+func (s *RefreshStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RefreshStep) Skip() {
+	// Nothing to do here.
 }
 
 type ImportStep struct {
@@ -1185,6 +1252,14 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	return rst, complete, err
+}
+
+func (s *ImportStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *ImportStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 const (

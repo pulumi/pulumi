@@ -932,7 +932,7 @@ func (ctx *Context) ReadResource(
 		var state *structpb.Struct
 		var err error
 		defer func() {
-			res.resolve(ctx, err, inputs, urn, resID, state, nil)
+			res.resolve(ctx, err, inputs, urn, resID, state, nil, false)
 			ctx.endRPC(err)
 		}()
 
@@ -1158,8 +1158,9 @@ func (ctx *Context) registerResource(
 		var state *structpb.Struct
 		deps := make(map[string][]Resource)
 		var err error
+		keepUnknowns := false
 		defer func() {
-			resState.resolve(ctx, err, inputs, urn, resID, state, deps)
+			resState.resolve(ctx, err, inputs, urn, resID, state, deps, keepUnknowns)
 			ctx.endRPC(err)
 		}()
 
@@ -1235,6 +1236,7 @@ func (ctx *Context) registerResource(
 				DeletedWith:             inputs.deletedWith,
 				SourcePosition:          sourcePosition,
 				Transforms:              transforms,
+				SupportsResultReporting: true,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1249,7 +1251,9 @@ func (ctx *Context) registerResource(
 			for key, propertyDependencies := range resp.GetPropertyDependencies() {
 				var resources []Resource
 				for _, urn := range propertyDependencies.GetUrns() {
-					resources = append(resources, &ResourceState{urn: URNInput(URN(urn)).ToURNOutput()})
+					resources = append(resources, &ResourceState{
+						urn: URNInput(URN(urn)).ToURNOutput(),
+					})
 				}
 				deps[key] = resources
 			}
@@ -1536,9 +1540,9 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 
 // resolve resolves the resource outputs using the given error and/or values.
 func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInputs, urn, id string,
-	result *structpb.Struct, deps map[string][]Resource,
+	result *structpb.Struct, deps map[string][]Resource, keepUnknowns bool,
 ) {
-	dryrun := ctx.DryRun()
+	keepUnknowns = keepUnknowns || ctx.DryRun()
 
 	var inprops resource.PropertyMap
 	if inputs != nil {
@@ -1566,7 +1570,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	}
 
 	outprops["urn"] = resource.NewStringProperty(urn)
-	if id != "" || !dryrun {
+	if id != "" || !keepUnknowns {
 		outprops["id"] = resource.NewStringProperty(id)
 	} else {
 		outprops["id"] = resource.MakeComputed(resource.PropertyValue{})
@@ -1576,7 +1580,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		remaining, known := resource.PropertyMap{}, true
 		for k, v := range outprops {
 			if v.IsNull() || v.IsComputed() || v.IsOutput() {
-				known = !dryrun
+				known = !keepUnknowns
 			}
 			if _, ok := state.outputs[string(k)]; !ok {
 				remaining[k] = v
@@ -1596,13 +1600,13 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	for k, output := range state.outputs {
 		// If this is an unknown or missing value during a dry run, do nothing.
 		v, ok := outprops[resource.PropertyKey(k)]
-		if !ok && !dryrun {
+		if !ok && !keepUnknowns {
 			v = inprops[resource.PropertyKey(k)]
 		}
 
 		known := true
 		if v.IsNull() || v.IsComputed() || v.IsOutput() {
-			known = !dryrun
+			known = !keepUnknowns
 		}
 
 		// Allocate storage for the unmarshalled output.

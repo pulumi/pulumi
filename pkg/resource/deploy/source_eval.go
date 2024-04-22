@@ -1896,6 +1896,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 		}
+		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
+			return nil, rpcerror.New(codes.Internal, "resource registration failed")
+		}
 		if result != nil && result.State != nil && result.State.URN != "" {
 			rm.resGoalsLock.Lock()
 			rm.resGoals[result.State.URN] = *goal
@@ -2009,11 +2012,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		!providers.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
+	reason := pulumirpc.Result_SUCCESS
+	if result.Result == ResultStateSkipped {
+		reason = pulumirpc.Result_SKIP
+	} else if result.Result == ResultStateFailed {
+		reason = pulumirpc.Result_FAIL
+	}
 	return &pulumirpc.RegisterResourceResponse{
 		Urn:                  string(result.State.URN),
 		Id:                   string(result.State.ID),
 		Object:               obj,
 		PropertyDependencies: outputDeps,
+		Result:               reason,
 	}, nil
 }
 

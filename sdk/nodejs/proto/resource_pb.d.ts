@@ -238,6 +238,8 @@ export class RegisterResourceRequest extends jspb.Message {
     getTransformsList(): Array<pulumi_callback_pb.Callback>;
     setTransformsList(value: Array<pulumi_callback_pb.Callback>): RegisterResourceRequest;
     addTransforms(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+    getSupportsresultreporting(): boolean;
+    setSupportsresultreporting(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -285,6 +287,7 @@ export namespace RegisterResourceRequest {
         aliasspecs: boolean,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
+        supportsresultreporting: boolean,
     }
 
 
@@ -357,6 +360,8 @@ export class RegisterResourceResponse extends jspb.Message {
 
     getPropertydependenciesMap(): jspb.Map<string, RegisterResourceResponse.PropertyDependencies>;
     clearPropertydependenciesMap(): void;
+    getResult(): Result;
+    setResult(value: Result): RegisterResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceResponse.AsObject;
@@ -377,6 +382,7 @@ export namespace RegisterResourceResponse {
         stablesList: Array<string>,
 
         propertydependenciesMap: Array<[string, RegisterResourceResponse.PropertyDependencies.AsObject]>,
+        result: Result,
     }
 
 
@@ -704,4 +710,10 @@ export namespace TransformResponse {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         options?: TransformResourceOptions.AsObject,
     }
+}
+
+export enum Result {
+    SUCCESS = 0,
+    FAIL = 1,
+    SKIP = 2,
 }

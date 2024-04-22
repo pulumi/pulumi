@@ -925,6 +925,13 @@ func (eng *languageTestServer) RunLanguageTest(
 			if err != nil {
 				return nil, fmt.Errorf("snapshot: %w", err)
 			}
+		} else {
+			// We still want to try to get a snapshot, but won't error out
+			// if we can't.
+			s, err = testBackend.GetStack(ctx, stackReference)
+			if err == nil {
+				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+			}
 		}
 
 		result = WithL(func(l *L) {

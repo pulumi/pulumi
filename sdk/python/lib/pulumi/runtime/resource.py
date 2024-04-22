@@ -780,7 +780,7 @@ def read_resource(
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None
+                        mock_urn or "", None, resolver.serialized_props, None, None
                     )
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -990,6 +990,7 @@ def register_resource(
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
                 transforms=callbacks,
+                supportsResultReporting=True,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1000,7 +1001,7 @@ def register_resource(
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None
+                        mock_urn or "", None, resolver.serialized_props, None, None
                     )
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -1056,6 +1057,7 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
+            keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
             rpc.resolve_outputs(
                 res,
                 resolver.serialized_props,
@@ -1064,6 +1066,7 @@ def register_resource(
                 resolvers,
                 custom,
                 transform_using_type_metadata,
+                keep_unknowns,
             )
             resolve_outputs_called = True
 
@@ -1135,6 +1138,7 @@ class RegisterResponse:
     id: Optional[str]
     object: struct_pb2.Struct
     propertyDependencies: Optional[Dict[str, PropertyDependencies]]
+    result: Optional[resource_pb2.Result.ValueType]
 
     # pylint: disable=redefined-builtin
     def __init__(
@@ -1143,11 +1147,13 @@ class RegisterResponse:
         id: Optional[str],
         object: struct_pb2.Struct,
         propertyDependencies: Optional[Dict[str, PropertyDependencies]],
+        result: Optional[resource_pb2.Result.ValueType],
     ):
         self.urn = urn
         self.id = id
         self.object = object
         self.propertyDependencies = propertyDependencies
+        self.result = result
 
 
 def convert_providers(
