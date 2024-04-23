@@ -170,73 +170,73 @@ class BarDeclared(dict):
 
     @property
     @pulumi.getter(name="thirdArg")
-    def third_arg(self) -> Foo: ...
+    def third_arg(self) -> Foo: ...  # type: ignore
 
     @property
     @pulumi.getter(name="thirdOptionalArg")
-    def third_optional_arg(self) -> Optional[Foo]: ...
+    def third_optional_arg(self) -> Optional[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthArg")
-    def fourth_arg(self) -> Dict[str, Foo]: ...
+    def fourth_arg(self) -> Dict[str, Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthOptionalArg")
-    def fourth_optional_arg(self) -> Dict[str, Optional[Foo]]: ...
+    def fourth_optional_arg(self) -> Dict[str, Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthArg")
-    def fifth_arg(self) -> List[Foo]: ...
+    def fifth_arg(self) -> List[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthOptionalArg")
-    def fifth_optional_arg(self) -> List[Optional[Foo]]: ...
+    def fifth_optional_arg(self) -> List[Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthArg")
-    def sixth_arg(self) -> Dict[str, List[Foo]]: ...
+    def sixth_arg(self) -> Dict[str, List[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalArg")
-    def sixth_optional_arg(self) -> Dict[str, Optional[List[Foo]]]: ...
+    def sixth_optional_arg(self) -> Dict[str, Optional[List[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalOptionalArg")
-    def sixth_optional_optional_arg(
+    def sixth_optional_optional_arg(  # type: ignore
         self,
     ) -> Dict[str, Optional[List[Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="seventhArg")
-    def seventh_arg(self) -> List[Dict[str, Foo]]: ...
+    def seventh_arg(self) -> List[Dict[str, Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalArg")
-    def seventh_optional_arg(self) -> List[Optional[Dict[str, Foo]]]: ...
+    def seventh_optional_arg(self) -> List[Optional[Dict[str, Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalOptionalArg")
-    def seventh_optional_optional_arg(
+    def seventh_optional_optional_arg(  # type: ignore
         self,
     ) -> List[Optional[Dict[str, Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="eighthArg")
-    def eighth_arg(self) -> List[Dict[str, List[Foo]]]: ...
+    def eighth_arg(self) -> List[Dict[str, List[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="eighthOptionalArg")
-    def eighth_optional_arg(self) -> List[Optional[Dict[str, List[Foo]]]]: ...
+    def eighth_optional_arg(self) -> List[Optional[Dict[str, List[Foo]]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalArg")
-    def eighth_optional_optional_arg(
+    def eighth_optional_optional_arg(  # type: ignore
         self,
     ) -> List[Optional[Dict[str, Optional[List[Foo]]]]]: ...
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalOptionalArg")
-    def eighth_optional_optional_optional_arg(
+    def eighth_optional_optional_optional_arg(  # type: ignore
         self,
     ) -> List[Optional[Dict[str, Optional[List[Optional[Foo]]]]]]: ...
 
@@ -292,75 +292,75 @@ class BarMappingSequenceDeclared(dict):
 
     @property
     @pulumi.getter(name="thirdArg")
-    def third_arg(self) -> Foo: ...
+    def third_arg(self) -> Foo: ...  # type: ignore
 
     @property
     @pulumi.getter(name="thirdOptionalArg")
-    def third_optional_arg(self) -> Optional[Foo]: ...
+    def third_optional_arg(self) -> Optional[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthArg")
-    def fourth_arg(self) -> Mapping[str, Foo]: ...
+    def fourth_arg(self) -> Mapping[str, Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthOptionalArg")
-    def fourth_optional_arg(self) -> Mapping[str, Optional[Foo]]: ...
+    def fourth_optional_arg(self) -> Mapping[str, Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthArg")
-    def fifth_arg(self) -> Sequence[Foo]: ...
+    def fifth_arg(self) -> Sequence[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthOptionalArg")
-    def fifth_optional_arg(self) -> Sequence[Optional[Foo]]: ...
+    def fifth_optional_arg(self) -> Sequence[Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthArg")
-    def sixth_arg(self) -> Mapping[str, Sequence[Foo]]: ...
+    def sixth_arg(self) -> Mapping[str, Sequence[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalArg")
-    def sixth_optional_arg(self) -> Mapping[str, Optional[Sequence[Foo]]]: ...
+    def sixth_optional_arg(self) -> Mapping[str, Optional[Sequence[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalOptionalArg")
-    def sixth_optional_optional_arg(
+    def sixth_optional_optional_arg(  # type: ignore
         self,
     ) -> Mapping[str, Optional[Sequence[Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="seventhArg")
-    def seventh_arg(self) -> Sequence[Mapping[str, Foo]]: ...
+    def seventh_arg(self) -> Sequence[Mapping[str, Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalArg")
-    def seventh_optional_arg(self) -> Sequence[Optional[Mapping[str, Foo]]]: ...
+    def seventh_optional_arg(self) -> Sequence[Optional[Mapping[str, Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalOptionalArg")
-    def seventh_optional_optional_arg(
+    def seventh_optional_optional_arg(  # type: ignore
         self,
     ) -> Sequence[Optional[Mapping[str, Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="eighthArg")
-    def eighth_arg(self) -> Sequence[Mapping[str, Sequence[Foo]]]: ...
+    def eighth_arg(self) -> Sequence[Mapping[str, Sequence[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="eighthOptionalArg")
-    def eighth_optional_arg(
+    def eighth_optional_arg(  # type: ignore
         self,
     ) -> Sequence[Optional[Mapping[str, Sequence[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalArg")
-    def eighth_optional_optional_arg(
+    def eighth_optional_optional_arg(  # type: ignore
         self,
     ) -> Sequence[Optional[Mapping[str, Optional[Sequence[Foo]]]]]: ...
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalOptionalArg")
-    def eighth_optional_optional_optional_arg(
+    def eighth_optional_optional_optional_arg(  # type: ignore
         self,
     ) -> Sequence[Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]]: ...
 
@@ -380,7 +380,7 @@ class InvalidTypeDeclaredStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> str: ...
+    def value(self) -> str: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -395,7 +395,7 @@ class InvalidTypeDeclaredOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[str]: ...
+    def value(self) -> Optional[str]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -415,7 +415,7 @@ class InvalidTypeDeclaredDictStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Dict[str, str]: ...
+    def value(self) -> Dict[str, str]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -425,7 +425,7 @@ class InvalidTypeDeclaredMappingStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Mapping[str, str]: ...
+    def value(self) -> Mapping[str, str]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -445,7 +445,7 @@ class InvalidTypeDeclaredOptionalDictStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Dict[str, str]]: ...
+    def value(self) -> Optional[Dict[str, str]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -455,7 +455,7 @@ class InvalidTypeDeclaredOptionalMappingStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Mapping[str, str]]: ...
+    def value(self) -> Optional[Mapping[str, str]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -475,7 +475,7 @@ class InvalidTypeDeclaredDictOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Dict[str, Optional[str]]: ...
+    def value(self) -> Dict[str, Optional[str]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -485,7 +485,7 @@ class InvalidTypeDeclaredMappingOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Mapping[str, Optional[str]]: ...
+    def value(self) -> Mapping[str, Optional[str]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -505,7 +505,7 @@ class InvalidTypeDeclaredOptionalDictOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Dict[str, Optional[str]]]: ...
+    def value(self) -> Optional[Dict[str, Optional[str]]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -515,7 +515,7 @@ class InvalidTypeDeclaredOptionalMappingOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Mapping[str, Optional[str]]]: ...
+    def value(self) -> Optional[Mapping[str, Optional[str]]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -535,7 +535,7 @@ class InvalidTypeDeclaredListStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> List[str]: ...
+    def value(self) -> List[str]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -545,7 +545,7 @@ class InvalidTypeDeclaredSequenceStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Sequence[str]: ...
+    def value(self) -> Sequence[str]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -595,7 +595,7 @@ class InvalidTypeDeclaredListOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> List[Optional[str]]: ...
+    def value(self) -> List[Optional[str]]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -605,7 +605,7 @@ class InvalidTypeDeclaredSequenceOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Sequence[Optional[str]]: ...
+    def value(self) -> Sequence[Optional[str]]: ...  # type: ignore
 
 
 @pulumi.output_type

@@ -27,9 +27,9 @@ def compute(val: int) -> str:
 
 
 class Foo:
-    def empty_a(self) -> str: ...
+    def empty_a(self) -> str: ...  # type: ignore
 
-    def empty_b(self) -> str:
+    def empty_b(self) -> str:  # type: ignore
         """A docstring."""
         ...
 

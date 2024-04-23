@@ -183,7 +183,7 @@ class SupplementaryArgs:
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> pulumi.Input[str]: ...
+    def first_value(self) -> pulumi.Input[str]: ...  # type: ignore
 
     @first_value.setter
     def first_value(self, value: pulumi.Input[str]):
@@ -203,10 +203,10 @@ class SupplementaryArgs:
     # passed to the getter decorator.
     @property
     @pulumi.getter
-    def third(self) -> Optional[pulumi.Input[str]]: ...
+    def third(self) -> Optional[pulumi.Input[str]]: ...  # type: ignore
 
     @third.setter
-    def third(self, value: Optional[pulumi.Input[str]]): ...
+    def third(self, value: Optional[pulumi.Input[str]]): ...  # type: ignore
 
     # Another single word property name that doesn't require a name to be
     # passed to the getter decorator, this time using the decorator with
@@ -232,7 +232,7 @@ class Supplementary(dict):
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str: ...
+    def first_value(self) -> str: ...  # type: ignore
 
     # Property with explicitly specified getter/setter bodies.
     @property
@@ -244,14 +244,14 @@ class Supplementary(dict):
     # passed to the getter decorator.
     @property
     @pulumi.getter
-    def third(self) -> str: ...
+    def third(self) -> str: ...  # type: ignore
 
     # Another single word property name that doesn't require a name to be
     # passed to the getter decorator, this time using the decorator with
     # parens.
     @property
     @pulumi.getter
-    def fourth(self) -> str: ...
+    def fourth(self) -> str: ...  # type: ignore
 
 
 class SupplementaryResource(pulumi.CustomResource):
@@ -330,7 +330,7 @@ class AncillaryArgs:
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> pulumi.Input[str]: ...
+    def first_value(self) -> pulumi.Input[str]: ...  # type: ignore
 
     @first_value.setter
     def first_value(self, value: pulumi.Input[str]):
@@ -350,20 +350,20 @@ class AncillaryArgs:
     # passed to the getter decorator.
     @property
     @pulumi.getter
-    def third(self) -> Optional[pulumi.Input[str]]: ...
+    def third(self) -> Optional[pulumi.Input[str]]: ...  # type: ignore
 
     @third.setter
-    def third(self, value: Optional[pulumi.Input[str]]): ...
+    def third(self, value: Optional[pulumi.Input[str]]): ...  # type: ignore
 
     # Another single word property name that doesn't require a name to be
     # passed to the getter decorator, this time using the decorator with
     # parens.
     @property
     @pulumi.getter()
-    def fourth(self) -> Optional[pulumi.Input[str]]: ...
+    def fourth(self) -> Optional[pulumi.Input[str]]: ...  # type: ignore
 
     @fourth.setter
-    def fourth(self, value: Optional[pulumi.Input[str]]): ...
+    def fourth(self, value: Optional[pulumi.Input[str]]): ...  # type: ignore
 
 
 @pulumi.output_type
@@ -379,7 +379,7 @@ class Ancillary(dict):
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str: ...
+    def first_value(self) -> str: ...  # type: ignore
 
     # Property with explicitly specified getter/setter bodies.
     @property
@@ -391,14 +391,14 @@ class Ancillary(dict):
     # passed to the getter decorator.
     @property
     @pulumi.getter
-    def third(self) -> str: ...
+    def third(self) -> str: ...  # type: ignore
 
     # Another single word property name that doesn't require a name to be
     # passed to the getter decorator, this time using the decorator with
     # parens.
     @property
     @pulumi.getter()
-    def fourth(self) -> str: ...
+    def fourth(self) -> str: ...  # type: ignore
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop

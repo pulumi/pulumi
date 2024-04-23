@@ -120,21 +120,21 @@ class MyOutputTypeDict(dict):
     # Property with empty body.
     @property
     @pulumi.getter
-    def values(self) -> str:
+    def values(self) -> str:  # type: ignore
         """Values docstring."""
         ...
 
     # Property with empty body.
     @property
     @pulumi.getter
-    def items(self) -> str:
+    def items(self) -> str:  # type: ignore
         """Items docstring."""
         ...
 
     # Property with empty body.
     @property
     @pulumi.getter
-    def keys(self) -> str:
+    def keys(self) -> str:  # type: ignore
         """Keys docstring."""
         ...
 
@@ -1350,11 +1350,11 @@ class SomeFooArgs:
 
     @property
     @pulumi.getter(name="theFirst")
-    def the_first(self) -> str: ...
+    def the_first(self) -> str: ...  # type: ignore
 
     @property
     @pulumi.getter(name="theSecond")
-    def the_second(self) -> Mapping[str, str]: ...
+    def the_second(self) -> Mapping[str, str]: ...  # type: ignore
 
 
 @pulumi.input_type
@@ -1373,15 +1373,15 @@ class SerializationArgs:
 
     @property
     @pulumi.getter(name="someValue")
-    def some_value(self) -> pulumi.Input[str]: ...
+    def some_value(self) -> pulumi.Input[str]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="someFoo")
-    def some_foo(self) -> pulumi.Input[pulumi.InputType[SomeFooArgs]]: ...
+    def some_foo(self) -> pulumi.Input[pulumi.InputType[SomeFooArgs]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="someBar")
-    def some_bar(
+    def some_bar(  # type: ignore
         self,
     ) -> pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType[SomeFooArgs]]]]: ...
 
@@ -1394,11 +1394,11 @@ class SomeFooOutput(dict):
 
     @property
     @pulumi.getter(name="theFirst")
-    def the_first(self) -> str: ...
+    def the_first(self) -> str: ...  # type: ignore
 
     @property
     @pulumi.getter(name="theSecond")
-    def the_second(self) -> Mapping[str, str]: ...
+    def the_second(self) -> Mapping[str, str]: ...  # type: ignore
 
 
 @pulumi.output_type
@@ -1415,15 +1415,15 @@ class DeserializationOutput(dict):
 
     @property
     @pulumi.getter(name="someValue")
-    def some_value(self) -> str: ...
+    def some_value(self) -> str: ...  # type: ignore
 
     @property
     @pulumi.getter(name="someFoo")
-    def some_foo(self) -> SomeFooOutput: ...
+    def some_foo(self) -> SomeFooOutput: ...  # type: ignore
 
     @property
     @pulumi.getter(name="someBar")
-    def some_bar(self) -> Mapping[str, SomeFooOutput]: ...
+    def some_bar(self) -> Mapping[str, SomeFooOutput]: ...  # type: ignore
 
 
 class TypeMetaDataSerializationTests(unittest.TestCase):

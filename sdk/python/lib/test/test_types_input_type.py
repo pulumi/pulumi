@@ -54,7 +54,7 @@ class MyDeclaredPropertiesInputType:
     # Property with empty getter/setter bodies.
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> pulumi.Input[str]:
+    def first_value(self) -> pulumi.Input[str]:  # type: ignore
         """First value docstring."""
         ...
 
