@@ -202,9 +202,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
-	    if (opts.continueOnError) {
-		args.push("--continue-on-error");
-	    }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
             applyGlobalOpts(opts, args);
         }
 
