@@ -26,6 +26,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes4Child := false
 	foundRes5 := false
 	foundRes6 := false
+	foundRes7 := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -86,6 +87,12 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urn := ref.URN()
 			assert.Equal(t, "provider2", urn.Name())
 		}
+		// "res7" should have changed the provider
+		if res.URN.Name() == "res7" {
+			foundRes7 = true
+			// we change the provider but because this is a remote component resource it ends up empty in state.
+			assert.Equal(t, "", res.Provider)
+		}
 	}
 	assert.True(t, foundRes1)
 	assert.True(t, foundRes2Child)
@@ -93,4 +100,5 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	assert.True(t, foundRes4Child)
 	assert.True(t, foundRes5)
 	assert.True(t, foundRes6)
+	assert.True(t, foundRes7)
 }
