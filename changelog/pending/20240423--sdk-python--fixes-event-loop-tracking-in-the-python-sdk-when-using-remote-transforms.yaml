@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Fixes event loop tracking in the python SDK when using remote transforms

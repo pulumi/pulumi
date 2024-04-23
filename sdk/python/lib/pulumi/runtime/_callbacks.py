@@ -14,11 +14,11 @@
 
 from __future__ import annotations
 
-from concurrent import futures
 from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Mapping, Union, cast
 import uuid
 
 import grpc
+from grpc import aio
 
 from google.protobuf.message import Message
 
@@ -31,7 +31,6 @@ from .proto import (
     resource_pb2_grpc,
 )
 from .rpc import deserialize_properties, serialize_properties
-from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from ..resource import Alias, ResourceOptions, ResourceTransform
@@ -50,7 +49,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
     _callbacks: Dict[str, _CallbackFunction]
     _monitor: resource_pb2_grpc.ResourceMonitorStub
-    _server: grpc.Server
+    _server: aio.Server
     _target: str
 
     _transforms: Dict[ResourceTransform, str]
@@ -61,23 +60,21 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         self._callbacks = {}
         self._transforms = {}
         self._monitor = monitor
-        self._server = grpc.server(
-            futures.ThreadPoolExecutor(
-                max_workers=4
-            ),  # pylint: disable=consider-using-with
-            options=_GRPC_CHANNEL_OPTIONS,
-        )
+        self._server = aio.server(options=_GRPC_CHANNEL_OPTIONS)
         callback_pb2_grpc.add_CallbacksServicer_to_server(self, self._server)
         port = self._server.add_insecure_port(address="127.0.0.1:0")
-        self._server.start()
         self._target = f"127.0.0.1:{port}"
 
-    @classmethod
-    def shutdown(cls):
-        for servicer in cls._servicers:
-            servicer._server.stop(grace=0)
+    async def serve(self):
+        await self._server.start()
 
-    def Invoke(
+    @classmethod
+    async def shutdown(cls):
+        for servicer in cls._servicers:
+            await servicer._server.stop(grace=0)
+
+    # aio handles this being async but the pyi typings don't expect it.
+    async def Invoke(  # pylint: disable=invalid-overridden-method
         self, request: callback_pb2.CallbackInvokeRequest, context
     ) -> callback_pb2.CallbackInvokeResponse:
         log.debug(f"Invoke callback {request.token}")
@@ -89,7 +86,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             )
             raise Exception("Callback not found!")
 
-        response = _sync_await(callback(request.request))
+        response = await callback(request.request)
         return callback_pb2.CallbackInvokeResponse(
             response=response.SerializeToString()
         )

@@ -26,7 +26,6 @@ from ..resource import (
     ResourceTransformation,
     ResourceTransform,
 )
-from ._callbacks import _CallbackServicer
 from .settings import (
     SETTINGS,
     _get_callbacks,
@@ -51,7 +50,7 @@ async def run_pulumi_func(func: Callable[[], None]):
         func()
     finally:
         await wait_for_rpcs()
-        _shutdown_callbacks()
+        await _shutdown_callbacks()
 
         # By now, all tasks have exited and we're good to go.
         log.debug("run_pulumi_func completed")
@@ -307,7 +306,7 @@ def x_register_stack_transform(t: ResourceTransform):
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
 
-    callbacks = _get_callbacks()
+    callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
         raise Exception("No callback server registered.")
     callbacks.register_stack_transform(t)
