@@ -98,8 +98,13 @@ class IsEmptyFunctionTests(unittest.TestCase):
 def test_lazy_import():
     sys.path.append(os.path.join(os.path.dirname(__file__), "data"))
     x = lazy_import("lazy_import_test.x")
+    y = lazy_import("lazy_import_test.y")
     test = lazy_import("lazy_import_test")
 
     assert test.x.foo() == "foo"
     assert x.foo() == "foo"
     assert id(x) == id(test.x)
+
+    assert test.y.foo == "foo"
+    assert y.foo == "foo"
+    assert id(y) == id(test.y)
