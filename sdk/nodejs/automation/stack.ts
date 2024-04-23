@@ -202,6 +202,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -942,6 +945,10 @@ export interface UpOptions extends GlobalOpts {
      * Include secrets in the UpSummary.
      */
     showSecrets?: boolean;
+    /**
+     * Continue to perform the update operation despite the occurrence of errors.
+     */
+    continueOnError?: boolean;
 }
 
 /**
