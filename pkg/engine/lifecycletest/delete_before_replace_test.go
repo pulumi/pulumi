@@ -170,7 +170,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
+	p.Options.T = t
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -251,7 +251,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	snap := p.Run(t, nil)
@@ -341,6 +341,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	})
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -550,6 +551,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 	})
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -658,26 +660,26 @@ func TestDBRProtect(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := TestUpdateOptions{HostF: hostF}
+	options := TestUpdateOptions{T: t, HostF: hostF}
 	p := &TestPlan{}
 
 	project := p.GetProject()
 
 	// First update just create the two resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 
 	// Update A to trigger a replace this should error because of the protect flag on B.
 	inputsA["A"] = resource.NewStringProperty("bar")
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "unable to replace resource \"urn:pulumi:test::test::pkgA:index:typ::resB\""+
 		" as part of replacing \"urn:pulumi:test::test::pkgA:index:typ::resA\" as it is currently marked for protection.")
 
 	// Remove the protect flag and try again
 	assert.Equal(t, snap.Resources[2].Protect, true)
 	snap.Resources[2].Protect = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }

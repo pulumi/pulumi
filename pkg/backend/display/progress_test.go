@@ -75,7 +75,7 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 			Stdout:               &stdout,
 			Stderr:               &stderr,
 			term:                 terminal.NewMockTerminal(&stdout, width, height, true),
-			deterministicOutput:  true,
+			DeterministicOutput:  true,
 		}, false)
 
 	for _, e := range events {
@@ -271,7 +271,7 @@ func TestProgressPolicyPacks(t *testing.T) {
 			Stdout:               &stdout,
 			Stderr:               &stderr,
 			term:                 terminal.NewMockTerminal(&stdout, 80, 24, true),
-			deterministicOutput:  true,
+			DeterministicOutput:  true,
 		}, false)
 
 	// Send policy pack event to the channel

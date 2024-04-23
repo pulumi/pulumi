@@ -59,6 +59,7 @@ func TestPlannedUpdate(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -94,7 +95,7 @@ func TestPlannedUpdate(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: +-baz[{map[a:{42} b:output<string>{}]}], +-foo[{bar}]<{%reset%}>\n"))
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -120,7 +121,7 @@ func TestPlannedUpdate(t *testing.T) {
 		"zed": "grr",
 	})
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -175,8 +176,10 @@ func TestUnplannedCreate(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+			UpdateOptions:    UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -247,6 +250,7 @@ func TestUnplannedDelete(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -255,7 +259,7 @@ func TestUnplannedDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA and resB exist
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	// Create a plan that resA and resB won't change
@@ -268,7 +272,7 @@ func TestUnplannedDelete(t *testing.T) {
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>\n"))
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -324,6 +328,7 @@ func TestExpectedDelete(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -332,7 +337,7 @@ func TestExpectedDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA and resB exist
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -349,7 +354,7 @@ func TestExpectedDelete(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resB violates plan: "+
 			"resource unexpectedly not deleted<{%reset%}>\n"))
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -397,6 +402,7 @@ func TestExpectedCreate(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -405,7 +411,7 @@ func TestExpectedCreate(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA exists
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -422,7 +428,7 @@ func TestExpectedCreate(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>expected resource operations for "+
 			"urn:pulumi:test::test::pkgA:m:typA::resB but none were seen<{%reset%}>\n"))
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -463,6 +469,7 @@ func TestPropertySetChange(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -518,6 +525,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -531,13 +539,13 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create an a snapshot that resA exists
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
 	// Now run again with the plan set but the snapshot that resA already exists
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -588,6 +596,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -596,7 +605,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA exists
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	// Create a plan that resA is deleted
@@ -605,13 +614,13 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Now run to delete resA
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
 	// Now run again with the plan set but the snapshot that resA is already deleted
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -665,6 +674,7 @@ func TestResoucesWithSames(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -686,7 +696,7 @@ func TestResoucesWithSames(t *testing.T) {
 	// Run an update that creates B
 	createA = false
 	createB = true
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -707,7 +717,7 @@ func TestResoucesWithSames(t *testing.T) {
 		"zed": 24,
 	})
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -756,6 +766,7 @@ func TestPlannedPreviews(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -841,6 +852,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -853,7 +865,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"foo": "bar",
 		"zed": 24,
 	})
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	// Generate a plan that we want to change foo
@@ -869,7 +881,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"foo": "bar",
 		"zed": 26,
 	})
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 
 	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
@@ -881,7 +893,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: =~zed[{24}]<{%reset%}>\n"))
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
 	assert.NoError(t, err)
 
 	// Check the resource's state we shouldn't of changed anything because the update failed
@@ -928,6 +940,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -1002,6 +1015,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -1016,7 +1030,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// Check we can create resA even though its outputs are different to the planned inputs
 	p.Options.Plan = plan.Clone()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -1039,7 +1053,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: ~~frob[{newBazzer}!={differentBazzer}]<{%reset%}>\n"))
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -1049,7 +1063,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 		"frob": "newBazzer",
 	})
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 }
@@ -1090,6 +1104,7 @@ func TestAliasWithPlans(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -1098,7 +1113,7 @@ func TestAliasWithPlans(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial ResA
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -1112,7 +1127,7 @@ func TestAliasWithPlans(t *testing.T) {
 
 	// Now try and run with the plan
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 }
@@ -1155,6 +1170,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -1207,7 +1223,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Attempt to run an update using the plan with all computed values removed
 	resourceInputs = partialPropertySet
 	p.Options.Plan = plan.Clone()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -1221,7 +1237,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Now run an update to set the values of the computed properties...
 	resourceInputs = fullPropertySet
 	p.Options.Plan = nil
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -1240,7 +1256,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Now run the an update with the plan and check the update is allowed to remove these properties
 	resourceInputs = partialPropertySet
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -1307,8 +1323,10 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+			UpdateOptions:    UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1334,7 +1352,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
 			"properties changed: \\+\\+name\\[{res[\\d\\w]{9}}!={res[\\d\\w]{9}}\\]<{%reset%}>\\n")
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "4")
 	assert.NoError(t, err)
 
 	// Check the resource's state.
@@ -1382,6 +1400,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -1445,6 +1464,7 @@ func TestPluginsAreDownloaded(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:             t,
 			HostF:         hostF,
 			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
@@ -1524,8 +1544,10 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
-			HostF:         hostF,
-			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+			UpdateOptions:    UpdateOptions{GeneratePlan: true, Experimental: true},
 		},
 	}
 
@@ -1540,7 +1562,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 	// Run an update, we should get the same name as we saw in preview
 	p.Options.Plan = plan
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -1552,7 +1574,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		"foo": "baz",
 	})
 	p.Options.Plan = nil
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -1609,7 +1631,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{GeneratePlan: true}},
+		Options: TestUpdateOptions{T: t, HostF: hostF, UpdateOptions: UpdateOptions{GeneratePlan: true}},
 	}
 
 	project := p.GetProject()
@@ -1619,7 +1641,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 		"foo": "bar",
 		"zed": "baz",
 	})
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 
@@ -1649,7 +1671,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 
 	// Now try and run with the plan
 	p.Options.Plan = plan.Clone()
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NotNil(t, snap)
 	assert.NoError(t, err)
 }
@@ -1692,6 +1714,7 @@ func TestResoucesTargeted(t *testing.T) {
 
 	// Create the update plan with only targeted resources.
 	plan, err := TestOp(Update).Plan(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Experimental: true,
@@ -1706,18 +1729,20 @@ func TestResoucesTargeted(t *testing.T) {
 
 	// Check that running an update with everything targeted fails due to our plan being constrained
 	// to the resource.
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			// Clone the plan as the plan will be mutated by the engine and useless in future runs.
 			Plan:         plan.Clone(),
 			Experimental: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	assert.Error(t, err)
 
 	// Check that running an update with the same Targets as the Plan succeeds.
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			// Clone the plan as the plan will be mutated by the engine and useless in future runs.
@@ -1727,7 +1752,7 @@ func TestResoucesTargeted(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 }
 
@@ -1767,6 +1792,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 
 	// Create the update plan without targeting the root stack.
 	plan, err := TestOp(Update).Plan(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: p.Options.HostF,
 		UpdateOptions: UpdateOptions{
 			Experimental: true,
@@ -1781,6 +1807,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 
 	// Check that update succeeds despite the root stack not being targeted.
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: p.Options.HostF,
 		UpdateOptions: UpdateOptions{
 			GeneratePlan: true,

@@ -39,7 +39,7 @@ func TestDuplicateURN(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -69,12 +69,12 @@ func TestDuplicateAlias(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -90,7 +90,7 @@ func TestDuplicateAlias(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 }
 
@@ -125,7 +125,8 @@ func TestSecretMasked(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
@@ -154,7 +155,7 @@ func TestReadReplaceStep(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NoError(t, err)
 			assert.NotNil(t, snap)
@@ -176,7 +177,7 @@ func TestReadReplaceStep(t *testing.T) {
 					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "")
 					assert.NoError(t, err)
 					return nil
-				}).
+				}, false).
 				Then(func(snap *deploy.Snapshot, err error) {
 					assert.NoError(t, err)
 
@@ -206,7 +207,7 @@ func TestRelinquishStep(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NotNil(t, snap)
 			assert.Nil(t, snap.VerifyIntegrity())
@@ -228,7 +229,7 @@ func TestRelinquishStep(t *testing.T) {
 					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "")
 					assert.NoError(t, err)
 					return nil
-				}).
+				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
 					assert.NoError(t, err)
 
@@ -258,7 +259,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "")
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NoError(t, err)
 
@@ -282,7 +283,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 					_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 					assert.NoError(t, err)
 					return nil
-				}).
+				}, true).
 				Then(func(snap *deploy.Snapshot, err error) {
 					assert.NoError(t, err)
 
@@ -331,7 +332,7 @@ func TestInitErrorsStep(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			assert.NoError(t, err)
 			return nil
-		}).
+		}, false).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.NoError(t, err)
 
@@ -360,7 +361,7 @@ func TestReadNilOutputs(t *testing.T) {
 			assert.ErrorContains(t, err, "resource 'my-resource-id' does not exist")
 
 			return nil
-		}).
+		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
 			assert.ErrorContains(t, err,
 				"BAIL: step executor errored: step application failed: resource 'my-resource-id' does not exist")

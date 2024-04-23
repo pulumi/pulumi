@@ -303,7 +303,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 
 	var journalEntries engine.JournalEntries
 	p := &lifecycletest.TestPlan{
-		Options: lifecycletest.TestUpdateOptions{HostF: hostF},
+		Options: lifecycletest.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lifecycletest.TestStep{
 			{
 				Op:          engine.Update,

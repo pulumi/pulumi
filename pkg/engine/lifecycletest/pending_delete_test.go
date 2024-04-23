@@ -28,7 +28,8 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -104,7 +105,8 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")

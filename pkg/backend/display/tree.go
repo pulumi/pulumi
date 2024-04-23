@@ -72,7 +72,7 @@ func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Optio
 		keys:      make(chan string),
 		closed:    make(chan bool),
 	}
-	if opts.deterministicOutput {
+	if opts.DeterministicOutput {
 		r.ticker.Stop()
 	}
 	go r.handleEvents()
@@ -189,7 +189,7 @@ func (r *treeRenderer) markDirty() {
 	}
 
 	r.dirty = true
-	if r.opts.deterministicOutput {
+	if r.opts.DeterministicOutput {
 		r.frame(true, false)
 	}
 }
