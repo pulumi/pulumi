@@ -1498,8 +1498,13 @@ func cleanupTempDirs(finalDir string) error {
 
 // Re exporting PluginKind to keep backward compatibility, this should be kept in sync with
 // the definitions in sdk/go/common/apitype/plugins.go
-type PluginKind apitype.PluginKind
+//
+// Deprecated: PluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+type PluginKind = apitype.PluginKind
 
+// ProductKind types definition
+//
+// Deprecated: PluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 const (
 	AnalyzerPlugin  = apitype.AnalyzerPlugin
 	LanguagePlugin  = apitype.LanguagePlugin

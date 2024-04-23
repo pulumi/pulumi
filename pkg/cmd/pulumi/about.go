@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -223,9 +224,9 @@ func (summary *summaryAbout) Print() {
 }
 
 type pluginAbout struct {
-	Name    string               `json:"name"`
-	Version *semver.Version      `json:"version"`
-	Kind    workspace.PluginKind `json:"kind"`
+	Name    string             `json:"name"`
+	Version *semver.Version    `json:"version"`
+	Kind    apitype.PluginKind `json:"kind"`
 }
 
 func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]pluginAbout, error) {
