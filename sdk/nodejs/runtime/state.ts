@@ -19,6 +19,7 @@ import { Stack } from "./stack";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import { OutputlessState } from "./outputless";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",
@@ -73,6 +74,7 @@ export interface Store {
     };
     config: Record<string, string>;
     stackResource?: Stack;
+    outputlessState: OutputlessState;
     leakCandidates: Set<Promise<any>>;
     logErrorCount: number;
 
@@ -147,6 +149,8 @@ export class LocalStore implements Store {
         [config.configSecretKeysEnvKey]: process.env[config.configSecretKeysEnvKey] || "",
     };
     stackResource = undefined;
+
+    outputlessState: OutputlessState = new OutputlessState();
 
     /**
      * leakCandidates tracks the list of potential leak candidates.

@@ -28,6 +28,7 @@ import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
+import { getAsyncComponentCompletion, getAsyncComponentParent } from "./runtime/component-v2/context";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -387,13 +388,25 @@ export abstract class Resource {
         if (!t) {
             throw new ResourceError("Missing resource type argument", opts.parent);
         }
+
+        const parent = opts.parent ?? getAsyncComponentParent() ?? getStackResource();
+        if (ComponentResource.isInstance(parent) && parent.__namingConvention) {
+            name = parent.__namingConvention({
+                parent: { type: parent.__pulumiType, name: parent.__name! },
+                child: {
+                    type: t,
+                    name,
+                    inputs: props,
+                },
+            });
+        }
+
         if (!name) {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
         // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
         // options assigned to this resource.
-        const parent = opts.parent || getStackResource();
         this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
         for (const transformation of this.__transformations) {
             const tres = transformation({ resource: this, type: t, name, props, opts });
@@ -907,6 +920,8 @@ export interface ComponentResourceOptions extends ResourceOptions {
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
+
+    namingConvention?: ComponentNamingTransform;
 }
 
 /**
@@ -1012,6 +1027,20 @@ export abstract class ProviderResource extends CustomResource {
     }
 }
 
+type NamingTransformArgs = {
+    parent: {
+        type: string;
+        name: string;
+    };
+    child: {
+        type: string;
+        name: string;
+        inputs: any;
+    };
+};
+
+export type ComponentNamingTransform = (args: NamingTransformArgs) => string;
+
 /**
  * ComponentResource is a resource that aggregates one or more other child resources into a higher
  * level abstraction. The component resource itself is a resource, but does not require custom CRUD
@@ -1036,6 +1065,14 @@ export class ComponentResource<TData = any> extends Resource {
     /** @internal */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __remote: boolean;
+
+    /** @internal */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public readonly __asyncCompletion: Promise<void> | undefined;
+
+    /** @internal */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public readonly __namingConvention: ComponentNamingTransform | undefined;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -1077,10 +1114,17 @@ export class ComponentResource<TData = any> extends Resource {
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        this.__asyncCompletion = getAsyncComponentCompletion();
+        if (opts.namingConvention) {
+            this.__namingConvention = opts.namingConvention;
+        }
     }
 
     /** @internal */
     private async initializeAndRegisterOutputs(args: Inputs) {
+        if (this.__asyncCompletion) {
+            return undefined as any;
+        }
         const data = await this.initialize(args);
         this.registerOutputs();
         return data;
