@@ -85,8 +85,6 @@ class Settings:
                 )
             else:
                 self.monitor = monitor
-
-            self.callbacks = _CallbackServicer(self.monitor)
         else:
             self.monitor = None
         if engine:
@@ -230,7 +228,7 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
-def _get_callbacks() -> Optional[_CallbackServicer]:
+async def _get_callbacks() -> Optional[_CallbackServicer]:
     """
     Returns the current callbacks for RPC communications.
     """
@@ -245,12 +243,13 @@ def _get_callbacks() -> Optional[_CallbackServicer]:
         return None
 
     callbacks = _CallbackServicer(monitor)
+    await callbacks.serve()
     SETTINGS.callbacks = callbacks
     return callbacks
 
 
-def _shutdown_callbacks():
-    _CallbackServicer.shutdown()
+async def _shutdown_callbacks():
+    await _CallbackServicer.shutdown()
 
 
 def get_root_resource() -> Optional["Resource"]:

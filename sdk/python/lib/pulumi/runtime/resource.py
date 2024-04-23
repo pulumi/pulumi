@@ -915,7 +915,7 @@ def register_resource(
                     raise Exception(
                         "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
                     )
-                callback_server = _get_callbacks()
+                callback_server = await _get_callbacks()
                 if callback_server is None:
                     raise Exception("Callback server not initialized")
                 for transform in opts.x_transforms:
