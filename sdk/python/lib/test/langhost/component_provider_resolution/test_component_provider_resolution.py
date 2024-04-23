@@ -20,11 +20,30 @@ class ComponentDependenciesTest(LanghostTest):
     def test_component_provider_resolution(self):
         self.run_test(
             program=path.join(self.base_path(), "component_provider_resolution"),
-            expected_resource_count=4)
+            expected_resource_count=4,
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         if name == "combined-mine":
             self.assertTrue(protect)
             self.assertEqual(_provider, "")
@@ -37,5 +56,5 @@ class ComponentDependenciesTest(LanghostTest):
             "id": name,
             "object": {
                 "outprop": "qux",
-            }
+            },
         }

@@ -14,6 +14,7 @@
 
 import pulumi
 
+
 @pulumi.output_type
 class MyResourceFoo(dict):
     def __init__(self, *, bar: str, baz: str):

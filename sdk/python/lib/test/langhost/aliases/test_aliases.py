@@ -15,15 +15,34 @@ from os import path
 import unittest
 from ..util import LanghostTest
 
+
 class AliasesTest(LanghostTest):
     def test_component_dependencies(self):
         self.run_test(program=path.join(self.base_path(), "aliases"))
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, _protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        _protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         return {
             "urn": f"urn:pulumi:stack::project::{ty}::{name}",
             "id": "myID",
-            "object": {}
+            "object": {},
         }

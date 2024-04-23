@@ -26,13 +26,14 @@ import pulumi
 
 from copy import deepcopy
 
+
 class MyMocks(pulumi.runtime.Mocks):
 
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
-        raise Exception('new_resource')
+        raise Exception("new_resource")
 
     def call(self, args: pulumi.runtime.MockCallArgs):
-        raise Exception('call')
+        raise Exception("call")
 
 
 class MyMonitor(mocks.MockMonitor):

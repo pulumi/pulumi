@@ -24,15 +24,18 @@ CAMEL_TO_SNAKE_CASE_TABLE = {
     "secondValue": "second_value",
 }
 
+
 @pulumi.output_type
 class MyOutputType:
     first_value: str = pulumi.property("firstValue")
     second_value: Optional[float] = pulumi.property("secondValue", default=None)
 
+
 @pulumi.output_type
 class MyOutputTypeDict(dict):
     first_value: str = pulumi.property("firstValue")
     second_value: Optional[float] = pulumi.property("secondValue", default=None)
+
 
 @pulumi.output_type
 class MyOutputTypeTranslated:
@@ -41,6 +44,7 @@ class MyOutputTypeTranslated:
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
+
 
 @pulumi.output_type
 class MyOutputTypeDictTranslated(dict):
@@ -72,6 +76,7 @@ class MyDeclaredPropertiesOutputType:
         """Second value docstring."""
         return pulumi.get(self, "second_value")
 
+
 @pulumi.output_type
 class MyDeclaredPropertiesOutputTypeDict(dict):
     def __init__(self, first_value: str, second_value: Optional[float] = None):
@@ -92,6 +97,7 @@ class MyDeclaredPropertiesOutputTypeDict(dict):
     def second_value(self) -> Optional[float]:
         """Second value docstring."""
         return pulumi.get(self, "second_value")
+
 
 @pulumi.output_type
 class MyDeclaredPropertiesOutputTypeTranslated:
@@ -116,6 +122,7 @@ class MyDeclaredPropertiesOutputTypeTranslated:
 
     def _translate_property(self, prop):
         return CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
+
 
 @pulumi.output_type
 class MyDeclaredPropertiesOutputTypeDictTranslated(dict):
@@ -145,12 +152,14 @@ class MyDeclaredPropertiesOutputTypeDictTranslated(dict):
 class InputTypeTests(unittest.TestCase):
     def test_decorator_raises(self):
         with self.assertRaises(AssertionError) as cm:
+
             @pulumi.output_type
             @pulumi.input_type
             class Foo:
                 pass
 
         with self.assertRaises(AssertionError) as cm:
+
             @pulumi.output_type
             @pulumi.input_type
             class Bar:
@@ -173,10 +182,13 @@ class InputTypeTests(unittest.TestCase):
             self.assertTrue(hasattr(typ, "__init__"))
 
     def test_output_type_types(self):
-        self.assertEqual({
-            "firstValue": str,
-            "secondValue": float,
-        }, _types.output_type_types(MyOutputType))
+        self.assertEqual(
+            {
+                "firstValue": str,
+                "secondValue": float,
+            },
+            _types.output_type_types(MyOutputType),
+        )
 
     def test_output_type(self):
         types = [
@@ -191,7 +203,9 @@ class InputTypeTests(unittest.TestCase):
         ]
         for typ, has_doc in types:
             self.assertTrue(hasattr(typ, "__init__"))
-            t = _types.output_type_from_dict(typ, {"firstValue": "hello", "secondValue": 42})
+            t = _types.output_type_from_dict(
+                typ, {"firstValue": "hello", "secondValue": 42}
+            )
             self.assertEqual("hello", t.first_value)
             self.assertEqual(42, t.second_value)
 
@@ -223,7 +237,9 @@ class InputTypeTests(unittest.TestCase):
             self.assertFalse(t != t)
             self.assertFalse(t == "not equal")
 
-            t2 = _types.output_type_from_dict(typ, {"firstValue": "hello", "secondValue": 42})
+            t2 = _types.output_type_from_dict(
+                typ, {"firstValue": "hello", "secondValue": 42}
+            )
             self.assertTrue(t.__eq__(t2))
             self.assertTrue(t == t2)
             self.assertFalse(t != t2)
@@ -232,7 +248,9 @@ class InputTypeTests(unittest.TestCase):
                 self.assertEqual("hello", t2["first_value"])
                 self.assertEqual(42, t2["second_value"])
 
-            t3 = _types.output_type_from_dict(typ, {"firstValue": "foo", "secondValue": 1})
+            t3 = _types.output_type_from_dict(
+                typ, {"firstValue": "foo", "secondValue": 1}
+            )
             self.assertFalse(t.__eq__(t3))
             self.assertFalse(t == t3)
             self.assertTrue(t != t3)

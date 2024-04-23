@@ -17,17 +17,21 @@ from pulumi import CustomResource
 
 class MyResource(CustomResource):
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            "falseprop": False,
-            "trueprop": True,
-            "intprop": 42,
-            "listprop": [1, 2, "string", False],
-            "mapprop": {
-                "foo": ["bar", "baz"]
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                "falseprop": False,
+                "trueprop": True,
+                "intprop": 42,
+                "listprop": [1, 2, "string", False],
+                "mapprop": {"foo": ["bar", "baz"]},
+                "outprop": None,
+                "outintprop": None,
             },
-            "outprop": None,
-            "outintprop": None,
-        })
+        )
+
 
 def assert_eq(lhs, rhs):
     assert lhs == rhs

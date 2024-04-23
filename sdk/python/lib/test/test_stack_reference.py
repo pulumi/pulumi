@@ -26,10 +26,10 @@ async def test_stack_reference_output_details(simple_mock):
     ref = StackReference("ref")
 
     non_secret = await ref.get_output_details("bucket")
-    assert StackReferenceOutputDetails(value = "mybucket-1234"), non_secret
+    assert StackReferenceOutputDetails(value="mybucket-1234"), non_secret
 
     secret = await ref.get_output_details("password")
-    assert StackReferenceOutputDetails(secret_value = "mypassword"), non_secret
+    assert StackReferenceOutputDetails(secret_value="mypassword"), non_secret
 
     unknown = await ref.get_output_details("does-not-exist")
     assert StackReferenceOutputDetails(), non_secret
@@ -47,13 +47,13 @@ class StackReferenceOutputMock(pulumi.runtime.Mocks):
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
         assert "pulumi:pulumi:StackReference" == args.typ
         return [
-                args.name + '_id',
-                {
-                    "outputs": {
-                        "bucket": "mybucket-1234",
-                        "password": pulumi.Output.secret("mypassword"),
-                    },
+            args.name + "_id",
+            {
+                "outputs": {
+                    "bucket": "mybucket-1234",
+                    "password": pulumi.Output.secret("mypassword"),
                 },
+            },
         ]
 
     def call(self, args: pulumi.runtime.MockCallArgs):

@@ -21,13 +21,22 @@ import unittest
 from pulumi.automation._stack import _watch_logs
 from pulumi.automation import EngineEvent, StdoutEngineEvent
 
+
 class TestStack(unittest.IsolatedAsyncioTestCase):
     async def test_always_read_complete_lines(self):
         tmp = tempfile.NamedTemporaryFile(delete=False)
 
         async def write_lines(tmp):
-            with open(tmp, 'w') as f:
-                parts = ['{"stdoutEvent": ', '{"message": "hello", "color": "blue"}', '}\n', '{"stdoutEvent": ', '{"message": "world"', ', "color": "red"}}\n', '{"cancelEvent": {}}\n']
+            with open(tmp, "w") as f:
+                parts = [
+                    '{"stdoutEvent": ',
+                    '{"message": "hello", "color": "blue"}',
+                    "}\n",
+                    '{"stdoutEvent": ',
+                    '{"message": "world"',
+                    ', "color": "red"}}\n',
+                    '{"cancelEvent": {}}\n',
+                ]
                 for part in parts:
                     f.write(part)
                     f.flush()
@@ -50,5 +59,6 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
 
         async def watch_async():
             _watch_logs(tmp.name, callback)
+
         watch_task = asyncio.create_task(watch_async())
         await asyncio.gather(write_task, watch_task)
