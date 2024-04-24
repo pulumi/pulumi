@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConvert is an entrypoint for debugging `pulumi convert“. To use this with an editor such as
+// TestYamlConvert is an entrypoint for debugging `pulumi convert“. To use this with an editor such as
 // VS Code, drop a Pulumi.yaml in the convert_testdata folder and with the VS Code Go extension, the
 // code lens (grayed out text above TestConvert) should display an option to "debug test".
 //

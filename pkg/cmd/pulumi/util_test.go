@@ -370,7 +370,7 @@ func TestStackLoadOption(t *testing.T) {
 	}
 }
 
-// TestGetUpdateMetadata tests that the update metadata is correctly populated
+// TestPulumiCLIMetadata tests that the update metadata is correctly populated
 // when running a Pulumi program.
 func TestPulumiCLIMetadata(t *testing.T) {
 	t.Parallel()
