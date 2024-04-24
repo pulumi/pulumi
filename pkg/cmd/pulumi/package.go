@@ -57,7 +57,7 @@ Subcommands of this command are useful to package authors during development.`,
 	return cmd
 }
 
-// schemaFromPackageSource takes a schema source and returns its associated schema. A
+// schemaFromSchemaSource takes a schema source and returns its associated schema. A
 // schema source is either a file (ending with .[json|y[a]ml]) or a plugin with an
 // optional version:
 //
