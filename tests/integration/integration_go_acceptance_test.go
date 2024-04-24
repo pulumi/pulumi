@@ -170,8 +170,8 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	pulumiRoot, err := filepath.Abs("../..")
 	require.NoError(t, err)
 	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
-	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
-	sdkPkg := "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go"
+	componentSDK := filepath.Join(pulumiRoot, "tests/testdata/codegen/methods-return-plain-resource/go")
+	sdkPkg := "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go"
 
 	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
 	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")

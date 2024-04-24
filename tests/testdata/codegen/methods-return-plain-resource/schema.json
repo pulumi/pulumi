@@ -73,8 +73,8 @@
       "respectSchemaVersion": true
     },
     "go": {
-      "modulePath": "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go",
-      "importBasePath": "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider"
+      "modulePath": "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go",
+      "importBasePath": "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go/metaprovider"
     }
   }
 }

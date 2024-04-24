@@ -15,10 +15,10 @@
 package main
 
 import (
-	tls "github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
-	metaprovider "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider"
+	"github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
+	"github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go/metaprovider"
 )
 
 func main() {
