@@ -142,6 +142,86 @@ class GetSchemaResponse(google.protobuf.message.Message):
 global___GetSchemaResponse = GetSchemaResponse
 
 @typing_extensions.final
+class ConfigureCheckRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    OLDS_FIELD_NUMBER: builtins.int
+    NEWS_FIELD_NUMBER: builtins.int
+    RANDOMSEED_FIELD_NUMBER: builtins.int
+    SUB_PACKAGE_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """the Pulumi URN for this resource."""
+    @property
+    def olds(self) -> google.protobuf.struct_pb2.Struct:
+        """the old Pulumi inputs for this resource, if any."""
+    @property
+    def news(self) -> google.protobuf.struct_pb2.Struct:
+        """the new Pulumi inputs for this resource."""
+    randomSeed: builtins.bytes
+    """a deterministically random hash, primarily intended for global unique naming."""
+    sub_package: builtins.str
+    """the sub package this configuration applies to."""
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        olds: google.protobuf.struct_pb2.Struct | None = ...,
+        news: google.protobuf.struct_pb2.Struct | None = ...,
+        randomSeed: builtins.bytes = ...,
+        sub_package: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "olds", b"olds"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "sub_package", b"sub_package", "urn", b"urn"]) -> None: ...
+
+global___ConfigureCheckRequest = ConfigureCheckRequest
+
+@typing_extensions.final
+class ConfigureDiffRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    OLDS_FIELD_NUMBER: builtins.int
+    NEWS_FIELD_NUMBER: builtins.int
+    IGNORECHANGES_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    SUB_PACKAGE_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """the ID of the resource to diff."""
+    urn: builtins.str
+    """the Pulumi URN for this resource."""
+    @property
+    def olds(self) -> google.protobuf.struct_pb2.Struct:
+        """the old output values of resource to diff."""
+    @property
+    def news(self) -> google.protobuf.struct_pb2.Struct:
+        """the new input values of resource to diff."""
+    @property
+    def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """a set of property paths that should be treated as unchanged."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the old input values of the resource to diff."""
+    sub_package: builtins.str
+    """the sub package this configuration applies to."""
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        urn: builtins.str = ...,
+        olds: google.protobuf.struct_pb2.Struct | None = ...,
+        news: google.protobuf.struct_pb2.Struct | None = ...,
+        ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        sub_package: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "sub_package", b"sub_package", "urn", b"urn"]) -> None: ...
+
+global___ConfigureDiffRequest = ConfigureDiffRequest
+
+@typing_extensions.final
 class ConfigureRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -167,6 +247,7 @@ class ConfigureRequest(google.protobuf.message.Message):
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
+    SUB_PACKAGE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """a map of configuration keys to values."""
@@ -181,6 +262,8 @@ class ConfigureRequest(google.protobuf.message.Message):
     """when true, diff and update will be called with the old outputs and the old inputs."""
     sends_old_inputs_to_delete: builtins.bool
     """when true, delete will be called with the old outputs and the old inputs."""
+    sub_package: builtins.str
+    """the sub package this configuration applies to."""
     def __init__(
         self,
         *,
@@ -190,9 +273,10 @@ class ConfigureRequest(google.protobuf.message.Message):
         acceptResources: builtins.bool = ...,
         sends_old_inputs: builtins.bool = ...,
         sends_old_inputs_to_delete: builtins.bool = ...,
+        sub_package: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "variables", b"variables"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "sub_package", b"sub_package", "variables", b"variables"]) -> None: ...
 
 global___ConfigureRequest = ConfigureRequest
 

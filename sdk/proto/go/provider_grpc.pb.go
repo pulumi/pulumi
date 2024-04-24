@@ -28,7 +28,7 @@ type ResourceProviderClient interface {
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(ctx context.Context, in *GetSchemaRequest, opts ...grpc.CallOption) (*GetSchemaResponse, error)
 	// CheckConfig validates the configuration for this resource provider.
-	CheckConfig(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
+	CheckConfig(ctx context.Context, in *ConfigureCheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
@@ -105,7 +105,7 @@ func (c *resourceProviderClient) GetSchema(ctx context.Context, in *GetSchemaReq
 	return out, nil
 }
 
-func (c *resourceProviderClient) CheckConfig(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error) {
+func (c *resourceProviderClient) CheckConfig(ctx context.Context, in *ConfigureCheckRequest, opts ...grpc.CallOption) (*CheckResponse, error) {
 	out := new(CheckResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/CheckConfig", in, out, opts...)
 	if err != nil {
@@ -299,7 +299,7 @@ type ResourceProviderServer interface {
 	// GetSchema fetches the schema for this resource provider.
 	GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error)
 	// CheckConfig validates the configuration for this resource provider.
-	CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error)
+	CheckConfig(context.Context, *ConfigureCheckRequest) (*CheckResponse, error)
 	// DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
@@ -361,7 +361,7 @@ func (UnimplementedResourceProviderServer) Parameterize(context.Context, *Parame
 func (UnimplementedResourceProviderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
 }
-func (UnimplementedResourceProviderServer) CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error) {
+func (UnimplementedResourceProviderServer) CheckConfig(context.Context, *ConfigureCheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig not implemented")
 }
 func (UnimplementedResourceProviderServer) DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error) {
@@ -465,7 +465,7 @@ func _ResourceProvider_GetSchema_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _ResourceProvider_CheckConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckRequest)
+	in := new(ConfigureCheckRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -477,7 +477,7 @@ func _ResourceProvider_CheckConfig_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/pulumirpc.ResourceProvider/CheckConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceProviderServer).CheckConfig(ctx, req.(*CheckRequest))
+		return srv.(ResourceProviderServer).CheckConfig(ctx, req.(*ConfigureCheckRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

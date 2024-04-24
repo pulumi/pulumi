@@ -30,7 +30,7 @@ class ResourceProviderStub(object):
                 )
         self.CheckConfig = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/CheckConfig',
-                request_serializer=pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
+                request_serializer=pulumi_dot_provider__pb2.ConfigureCheckRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.CheckResponse.FromString,
                 )
         self.DiffConfig = channel.unary_unary(
@@ -294,7 +294,7 @@ def add_ResourceProviderServicer_to_server(servicer, server):
             ),
             'CheckConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.CheckConfig,
-                    request_deserializer=pulumi_dot_provider__pb2.CheckRequest.FromString,
+                    request_deserializer=pulumi_dot_provider__pb2.ConfigureCheckRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.CheckResponse.SerializeToString,
             ),
             'DiffConfig': grpc.unary_unary_rpc_method_handler(
@@ -440,7 +440,7 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/CheckConfig',
-            pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ConfigureCheckRequest.SerializeToString,
             pulumi_dot_provider__pb2.CheckResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

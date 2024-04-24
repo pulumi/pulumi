@@ -41,7 +41,7 @@ class ResourceProviderStub:
     ]
     """GetSchema fetches the schema for this resource provider."""
     CheckConfig: grpc.UnaryUnaryMultiCallable[
-        pulumi.provider_pb2.CheckRequest,
+        pulumi.provider_pb2.ConfigureCheckRequest,
         pulumi.provider_pb2.CheckResponse,
     ]
     """CheckConfig validates the configuration for this resource provider."""
@@ -174,7 +174,7 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     
     def CheckConfig(
         self,
-        request: pulumi.provider_pb2.CheckRequest,
+        request: pulumi.provider_pb2.ConfigureCheckRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.CheckResponse:
         """CheckConfig validates the configuration for this resource provider."""

@@ -34,7 +34,7 @@ service ResourceProvider {
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 
     // CheckConfig validates the configuration for this resource provider.
-    rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
+    rpc CheckConfig(ConfigureCheckRequest) returns (CheckResponse) {}
     // DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
     rpc DiffConfig(DiffRequest) returns (DiffResponse) {}
     // Configure configures the resource provider with "globals" that control its behavior.
@@ -126,6 +126,32 @@ message GetSchemaResponse {
     string schema = 1; // the JSON-encoded schema.
 }
 
+message ConfigureCheckRequest {
+    string urn = 1;                  // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
+    google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
+
+    // We used to send sequenceNumber but that has been replaced by randomSeed.
+    reserved 4;
+    reserved "sequenceNumber";
+
+    bytes randomSeed = 5;            // a deterministically random hash, primarily intended for global unique naming.
+
+    string sub_package = 6; // the sub package this configuration applies to.
+}
+
+message ConfigureDiffRequest {
+    string id = 1;                     // the ID of the resource to diff.
+    string urn = 2;                    // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 3;   // the old output values of resource to diff.
+    google.protobuf.Struct news = 4;   // the new input values of resource to diff.
+    repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
+    google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
+    
+    string sub_package = 7; // the sub package this configuration applies to.
+}
+
+
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
     google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
@@ -133,6 +159,8 @@ message ConfigureRequest {
     bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
     bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
     bool sends_old_inputs_to_delete = 6; // when true, delete will be called with the old outputs and the old inputs.
+
+    string sub_package = 7; // the sub package this configuration applies to.
 }
 
 message ConfigureResponse {

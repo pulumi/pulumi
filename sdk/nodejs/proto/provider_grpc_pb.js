@@ -78,6 +78,17 @@ function deserialize_pulumirpc_CheckResponse(buffer_arg) {
   return pulumi_provider_pb.CheckResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConfigureCheckRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ConfigureCheckRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConfigureCheckRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConfigureCheckRequest(buffer_arg) {
+  return pulumi_provider_pb.ConfigureCheckRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ConfigureRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.ConfigureRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConfigureRequest');
@@ -386,10 +397,10 @@ checkConfig: {
     path: '/pulumirpc.ResourceProvider/CheckConfig',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_provider_pb.CheckRequest,
+    requestType: pulumi_provider_pb.ConfigureCheckRequest,
     responseType: pulumi_provider_pb.CheckResponse,
-    requestSerialize: serialize_pulumirpc_CheckRequest,
-    requestDeserialize: deserialize_pulumirpc_CheckRequest,
+    requestSerialize: serialize_pulumirpc_ConfigureCheckRequest,
+    requestDeserialize: deserialize_pulumirpc_ConfigureCheckRequest,
     responseSerialize: serialize_pulumirpc_CheckResponse,
     responseDeserialize: deserialize_pulumirpc_CheckResponse,
   },
