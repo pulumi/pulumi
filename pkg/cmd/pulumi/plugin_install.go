@@ -108,7 +108,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	// Parse the kind, name, and version, if specified.
 	var installs []workspace.PluginSpec
 	if len(args) > 0 {
-		if !workspace.IsPluginKind(args[0]) {
+		if !apitype.IsPluginKind(args[0]) {
 			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")

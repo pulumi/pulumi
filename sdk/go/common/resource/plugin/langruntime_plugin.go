@@ -171,7 +171,7 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 			}
 			version = &sv
 		}
-		if !workspace.IsPluginKind(info.Kind) {
+		if !apitype.IsPluginKind(info.Kind) {
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{

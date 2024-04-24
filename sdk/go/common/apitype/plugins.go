@@ -43,3 +43,14 @@ const (
 	// ToolPlugin is an arbitrary plugin that can be run as a tool.
 	ToolPlugin PluginKind = "tool"
 )
+
+// IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
+func IsPluginKind(k string) bool {
+	switch PluginKind(k) {
+	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin,
+		ConverterPlugin, ToolPlugin:
+		return true
+	default:
+		return false
+	}
+}

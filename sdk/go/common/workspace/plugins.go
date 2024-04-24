@@ -1514,14 +1514,10 @@ const (
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
+//
+// Deprecated: IsPluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 func IsPluginKind(k string) bool {
-	switch apitype.PluginKind(k) {
-	case apitype.AnalyzerPlugin, apitype.LanguagePlugin, apitype.ResourcePlugin,
-		apitype.ConverterPlugin, apitype.ToolPlugin:
-		return true
-	default:
-		return false
-	}
+	return apitype.IsPluginKind(k)
 }
 
 // HasPlugin returns true if the given plugin exists.
