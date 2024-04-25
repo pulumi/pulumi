@@ -101,7 +101,18 @@ class Output(Generic[T_co]):
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
         # keep track of all created outputs so we can check they resolve
-        SETTINGS.outputs.append(future)
+        with SETTINGS.lock:
+            SETTINGS.outputs.append(future)
+
+        def cleanup(fut: "asyncio.Future[T_co]") -> None:
+            if fut.cancelled() or (fut.exception() is not None):
+                # if cancelled or error'd leave it in the deque to pick up at program exit
+                return
+            # else remove it from the deque
+            with SETTINGS.lock:
+                SETTINGS.outputs.remove(fut)
+
+        future.add_done_callback(cleanup)
 
         async def is_value_known() -> bool:
             return await is_known and not contains_unknowns(await future)
