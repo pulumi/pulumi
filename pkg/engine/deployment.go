@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -276,13 +275,6 @@ type runActions interface {
 func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 	preview bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	// Change into the plugin context's working directory.
-	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer chdir()
-
 	// Create a new context for cancellation and tracing.
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -330,6 +322,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 		}
 	}()
 
+	var err error
 	// Wait for the deployment to finish executing or for the user to terminate the run.
 	select {
 	case <-cancelCtx.Cancel.Terminated():
