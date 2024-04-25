@@ -207,12 +207,10 @@ func (h *RuntimeOptionsLanguageHost) Run(
 	return &pulumirpc.RunResponse{}, nil
 }
 
-// Run a simple test with a mocked runtime that uses runtime options
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
+// Run a simple test with a mocked runtime that uses runtime options.
 func TestRuntimeOptions(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}

@@ -245,11 +245,9 @@ func (h *L2DestroyLanguageHost) Run(
 }
 
 // Run a simple successful test with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2Destroy(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}

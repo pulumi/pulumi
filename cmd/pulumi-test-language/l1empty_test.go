@@ -170,11 +170,9 @@ func (h *L1EmptyLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 }
 
 // Run a simple successful test with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL1Empty(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -296,11 +294,9 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL1Empty_BadSnapshot(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{DisableSnapshotWriting: true}
@@ -338,11 +334,9 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL1Empty_MissingStack(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
