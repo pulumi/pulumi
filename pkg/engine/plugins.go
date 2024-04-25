@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -129,7 +130,7 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plug
 	}
 	for _, plug := range langhostPlugins {
 		// Ignore language plugins named "client".
-		if plug.Name == clientRuntimeName && plug.Kind == workspace.LanguagePlugin {
+		if plug.Name == clientRuntimeName && plug.Kind == apitype.LanguagePlugin {
 			continue
 		}
 
@@ -174,7 +175,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
 		set.Add(workspace.PluginSpec{
 			Name:              pkg.String(),
-			Kind:              workspace.ResourcePlugin,
+			Kind:              apitype.ResourcePlugin,
 			Version:           version,
 			PluginDownloadURL: downloadURL,
 			Checksums:         checksums,
@@ -192,7 +193,7 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
-		if plug.Name == "pulumi" && plug.Kind == workspace.ResourcePlugin {
+		if plug.Name == "pulumi" && plug.Kind == apitype.ResourcePlugin {
 			logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): pulumi is a builtin plugin")
 			continue
 		}
@@ -310,7 +311,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
 	for _, plug := range languagePlugins.Values() {
-		if plug.Kind == workspace.ResourcePlugin {
+		if plug.Kind == apitype.ResourcePlugin {
 			languageReportedProviderPlugins = true
 		}
 	}
@@ -337,7 +338,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 	sort.Sort(workspace.SortedPluginSpec(sourcePlugins))
 	for _, p := range sourcePlugins {
 		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
-		if p.Kind != workspace.ResourcePlugin {
+		if p.Kind != apitype.ResourcePlugin {
 			// Default providers are only relevant for resource plugins.
 			logging.V(preparePluginVerboseLog).Infof(
 				"computeDefaultProviderPlugins(): skipping %s, not a resource provider", p)

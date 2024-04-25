@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -168,7 +169,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			var missingError *workspace.MissingError
 			if errors.As(err, &missingError) {
 				spec := workspace.PluginSpec{
-					Kind:    workspace.ResourcePlugin,
+					Kind:    apitype.ResourcePlugin,
 					Name:    pkg,
 					Version: version,
 				}

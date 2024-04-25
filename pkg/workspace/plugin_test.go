@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name: "myplugin",
-					Kind: workspace.ResourcePlugin,
+					Kind: apitype.ResourcePlugin,
 				},
 			},
 			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
@@ -52,7 +53,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name: "myplugin",
-					Kind: workspace.ConverterPlugin,
+					Kind: apitype.ConverterPlugin,
 				},
 			},
 			ExpectedError: "Could not automatically download and install converter plugin 'pulumi-converter-myplugin'," +
@@ -64,7 +65,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name:    "myplugin",
-					Kind:    workspace.ResourcePlugin,
+					Kind:    apitype.ResourcePlugin,
 					Version: &v1,
 				},
 			},
@@ -77,7 +78,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name:              "myplugin",
-					Kind:              workspace.ResourcePlugin,
+					Kind:              apitype.ResourcePlugin,
 					Version:           &v1,
 					PluginDownloadURL: "github://owner/repo",
 				},
@@ -92,7 +93,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name:              "myplugin",
-					Kind:              workspace.ResourcePlugin,
+					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "github://owner/repo",
 				},
 			},

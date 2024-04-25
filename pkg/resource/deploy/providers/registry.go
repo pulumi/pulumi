@@ -24,6 +24,7 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -171,7 +172,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 	}
 
 	pluginSpec := workspace.PluginSpec{
-		Kind:              workspace.ResourcePlugin,
+		Kind:              apitype.ResourcePlugin,
 		Name:              string(pkg),
 		Version:           version,
 		PluginDownloadURL: downloadURL,

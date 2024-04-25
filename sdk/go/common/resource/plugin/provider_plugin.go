@@ -34,6 +34,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -147,7 +148,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
 		path, err := workspace.GetPluginPath(ctx.Diag,
-			workspace.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"),
+			apitype.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"),
 			version, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
@@ -165,7 +166,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
 		}
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
+			apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -225,7 +226,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	env := os.Environ()
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
-		workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
+		apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err
 	}
@@ -1770,7 +1771,7 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    string(p.pkg),
 		Path:    path,
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 		Version: version,
 	}, nil
 }

@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -55,7 +56,7 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
 ) (LanguageRuntime, error) {
 	path, err := workspace.GetPluginPath(ctx.Diag,
-		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
+		apitype.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	}
 
 	plug, err := newPlugin(ctx, workingDirectory, path, runtime,
-		workspace.LanguagePlugin, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
+		apitype.LanguagePlugin, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
 	if err != nil {
 		return nil, err
 	}
@@ -170,12 +171,12 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 			}
 			version = &sv
 		}
-		if !workspace.IsPluginKind(info.Kind) {
+		if !apitype.IsPluginKind(info.Kind) {
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
 			Name:              info.Name,
-			Kind:              workspace.PluginKind(info.Kind),
+			Kind:              apitype.PluginKind(info.Kind),
 			Version:           version,
 			PluginDownloadURL: info.Server,
 			Checksums:         info.Checksums,
@@ -249,7 +250,7 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	plugInfo := workspace.PluginInfo{
 		Name: h.runtime,
-		Kind: workspace.LanguagePlugin,
+		Kind: apitype.LanguagePlugin,
 	}
 
 	plugInfo.Path = h.plug.Bin

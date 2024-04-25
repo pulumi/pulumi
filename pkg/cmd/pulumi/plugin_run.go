@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -38,10 +39,10 @@ type pluginRunCmd struct {
 }
 
 func (cmd *pluginRunCmd) run(args []string) error {
-	if !workspace.IsPluginKind(cmd.kind) {
+	if !apitype.IsPluginKind(cmd.kind) {
 		return fmt.Errorf("unrecognized plugin kind: %s", cmd.kind)
 	}
-	kind := workspace.PluginKind(cmd.kind)
+	kind := apitype.PluginKind(cmd.kind)
 
 	// Parse the name and version from the second argument in the form of "NAME[@VERSION]".
 	name := args[0]

@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -171,7 +172,7 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
+func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 	args, env []string, dialOptions []grpc.DialOption,
 ) (*plugin, error) {
 	if logging.V(9) {
@@ -311,7 +312,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
+func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, env []string,
 ) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
@@ -328,13 +329,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 		pluginDir := filepath.Dir(bin)
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		if kind == workspace.ResourcePlugin || kind == workspace.ConverterPlugin {
+		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else if kind == workspace.AnalyzerPlugin {
+		} else if kind == apitype.AnalyzerPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)

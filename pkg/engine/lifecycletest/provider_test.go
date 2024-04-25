@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1412,7 +1413,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				Name:              "pkgA",
 				Version:           &semver.Version{Major: 1, Minor: 1},
 				PluginDownloadURL: "example.com/default",
-				Kind:              workspace.ResourcePlugin,
+				Kind:              apitype.ResourcePlugin,
 			}},
 			validate: func(t *testing.T, r *resource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
@@ -1428,7 +1429,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			plugins: []workspace.PluginSpec{{
 				Name:    "pkgA",
 				Version: &semver.Version{Major: 1, Minor: 1},
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 			}},
 			validate: func(t *testing.T, r *resource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
@@ -1446,7 +1447,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			plugins: []workspace.PluginSpec{{
 				Name:    "pkgA",
 				Version: &semver.Version{Major: 1, Minor: 1},
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 			}},
 			snapshot: &deploy.Snapshot{
 				Resources: []*resource.State{

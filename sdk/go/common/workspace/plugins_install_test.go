@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -85,7 +86,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 	v1 := semver.MustParse("0.1.0")
 	plugin := PluginSpec{
 		Name:      "test",
-		Kind:      ResourcePlugin,
+		Kind:      apitype.ResourcePlugin,
 		Version:   &v1,
 		PluginDir: dir,
 	}

@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -127,7 +128,7 @@ func (h *L2LargeLanguageHost) GetRequiredPlugins(
 		Plugins: []*pulumirpc.PluginDependency{
 			{
 				Name:    "large",
-				Kind:    string(workspace.ResourcePlugin),
+				Kind:    string(apitype.ResourcePlugin),
 				Version: "4.3.2",
 			},
 		},

@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/plugin
+  description: Move PluginKind type definition into apitype and re-export for backward compatibility

@@ -24,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -621,7 +622,7 @@ type mockHost struct {
 
 	EnsurePluginsF func(plugins []workspace.PluginSpec, kinds plugin.Flags) error
 
-	ResolvePluginF func(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+	ResolvePluginF func(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
 	GetProjectPluginsF func() []workspace.ProjectPlugin
 
@@ -707,7 +708,7 @@ func (h *mockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 }
 
 func (h *mockHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	if h.ResolvePluginF != nil {
 		return h.ResolvePluginF(kind, name, version)

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"github.com/blang/semver"
@@ -55,14 +56,14 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			// Parse the filters.
-			var kind workspace.PluginKind
+			var kind apitype.PluginKind
 			var name string
 			var version *semver.Range
 			if len(args) > 0 {
-				if !workspace.IsPluginKind(args[0]) {
+				if !apitype.IsPluginKind(args[0]) {
 					return fmt.Errorf("unrecognized plugin kind: %s", kind)
 				}
-				kind = workspace.PluginKind(args[0])
+				kind = apitype.PluginKind(args[0])
 			} else if !all {
 				return errors.New("please pass --all if you'd like to remove all plugins")
 			}
