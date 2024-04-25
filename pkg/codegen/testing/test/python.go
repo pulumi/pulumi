@@ -1,7 +1,7 @@
-package python
+package test
 
 import (
-	filesystem "io/fs"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,18 +9,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
-func Check(t *testing.T, path string, _ codegen.StringSet) {
+func CheckPython(t *testing.T, path string, _ codegen.StringSet) {
 	pyCompileCheck(t, filepath.Dir(path))
 }
 
 // Checks generated code for syntax errors with `python -m compile`.
 func pyCompileCheck(t *testing.T, codeDir string) {
 	pythonFiles := []string{}
-	err := filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
+	err := filepath.Walk(codeDir, func(path string, info fs.FileInfo, err error) error {
 		require.NoError(t, err) // an error in the walk
 
 		if info.Mode().IsDir() && info.Name() == "venv" {
@@ -40,17 +39,17 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	ex, _, err := python.CommandPath()
 	require.NoError(t, err)
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
-	test.RunCommand(t, "python syntax check", codeDir, ex, args...)
+	RunCommand(t, "python syntax check", codeDir, ex, args...)
 }
 
-func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
+func generatePythonBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
+	TestProgramCodegen(t,
+		ProgramCodegenOptions{
 			Language:   "python",
 			Extension:  "py",
 			OutputFile: "__main__.py",
-			Check:      Check,
-			GenProgram: GenerateProgram,
+			Check:      CheckPython,
+			GenProgram: generator,
 			TestCases:  testCases,
 		})
 }

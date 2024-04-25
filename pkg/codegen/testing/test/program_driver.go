@@ -223,7 +223,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "typed-enum",
 		Description: "Supply strongly typed enums",
-		Skip:        codegen.NewStringSet(golang),
+		Skip:        codegen.NewStringSet(_golang),
 	},
 	{
 		Directory:   "pulumi-stack-reference",

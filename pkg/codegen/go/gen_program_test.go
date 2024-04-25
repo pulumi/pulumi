@@ -50,7 +50,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, sdkPath)
+				test.CheckGo(t, path, dependencies, sdkPath)
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 				// Prevent tests from interfering with each other

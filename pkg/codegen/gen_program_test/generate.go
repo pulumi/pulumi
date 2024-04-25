@@ -44,16 +44,16 @@ func main() {
 package %s
 
 import (
-  "os"
-  "testing"
+	"os"
+	"testing"
 
-  codegen "github.com/pulumi/pulumi/pkg/v3/codegen/%s"
-  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/%s"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
-  os.Chdir("../../../%[2]s") // chdir into codegen/%[2]s
-  codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(%d, %d))
+	os.Chdir("../../../%[2]s") // chdir into codegen/%[2]s
+	test.GenerateProgramBatchTest("%[2]s")(t, codegen.GenerateProgram, test.ProgramTestBatch(%d, %d))
 }`
 
 	n := 6

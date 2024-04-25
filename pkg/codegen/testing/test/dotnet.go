@@ -1,20 +1,19 @@
-package dotnet
+package test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func CheckDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -46,7 +45,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		for _, pkg := range pkgs {
 			pkg.install(t, ex, dir)
 		}
-		dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
+		dep{"Pulumi", PulumiDotnetSDKVersion}.install(t, ex, dir)
 	} else {
 		// We would like this regardless of other dependencies, but dotnet
 		// packages do not play well with package references.
@@ -56,7 +55,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 				dir, &integration.ProgramTestOptions{})
 			require.NoError(t, err, "Failed to dotnet sdk package reference")
 		} else {
-			dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
+			dep{"Pulumi", PulumiDotnetSDKVersion}.install(t, ex, dir)
 		}
 	}
 
@@ -67,10 +66,10 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		err = os.RemoveAll(filepath.Join(dir, "obj"))
 		assert.NoError(t, err, "Failed to remove obj result")
 	}()
-	TypeCheck(t, path, dependencies, pulumiSDKPath)
+	TypeCheckDotnet(t, path, dependencies, pulumiSDKPath)
 }
 
-func TypeCheck(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func TypeCheckDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -108,38 +107,40 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 	for i, d := range deps.SortedValues() {
 		switch d {
 		case "aws":
-			result[i] = dep{"Pulumi.Aws", test.AwsSchema}
+			result[i] = dep{"Pulumi.Aws", AwsSchema}
 		case "azure-native":
-			result[i] = dep{"Pulumi.AzureNative", test.AzureNativeSchema}
+			result[i] = dep{"Pulumi.AzureNative", AzureNativeSchema}
 		case "azure":
 			// TODO: update constant in test.AzureSchema to v5.x
 			// because it has output-versioned function invokes
 			result[i] = dep{"Pulumi.Azure", "5.12.0"}
 		case "kubernetes":
-			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
+			result[i] = dep{"Pulumi.Kubernetes", KubernetesSchema}
 		case "random":
-			result[i] = dep{"Pulumi.Random", test.RandomSchema}
+			result[i] = dep{"Pulumi.Random", RandomSchema}
 		case "aws-static-website":
-			result[i] = dep{"Pulumi.AwsStaticWebsite", test.AwsStaticWebsiteSchema}
+			result[i] = dep{"Pulumi.AwsStaticWebsite", AwsStaticWebsiteSchema}
 		case "aws-native":
-			result[i] = dep{"Pulumi.AwsNative", test.AwsNativeSchema}
+			result[i] = dep{"Pulumi.AwsNative", AwsNativeSchema}
 		default:
-			result[i] = dep{"Pulumi." + Title(d), ""}
+			runes := []rune(d)
+			titlecase := append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...)
+			result[i] = dep{"Pulumi." + string(titlecase), ""}
 		}
 	}
 	return result
 }
 
-func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
+func generateDotnetBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
+	TestProgramCodegen(t,
+		ProgramCodegenOptions{
 			Language:   "dotnet",
 			Extension:  "cs",
 			OutputFile: "Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, "")
+				CheckDotnet(t, path, dependencies, "")
 			},
-			GenProgram: GenerateProgram,
+			GenProgram: generator,
 			TestCases:  testCases,
 		},
 	)

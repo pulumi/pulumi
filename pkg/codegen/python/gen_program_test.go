@@ -57,7 +57,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Language:   "python",
 			Extension:  "py",
 			OutputFile: "__main__.py",
-			Check:      Check,
+			Check:      test.CheckPython,
 			GenProgram: GenerateProgram,
 			TestCases: []test.ProgramTest{
 				{

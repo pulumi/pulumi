@@ -1,4 +1,4 @@
-package nodejs
+package test
 
 import (
 	"encoding/json"
@@ -6,14 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
 )
 
-func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
+func CheckNodeJS(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
 	dir := filepath.Dir(path)
 
 	removeFile := func(name string) {
@@ -30,7 +28,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 
 	// Write out package.json
 	pkgs := nodejsPackages(t, dependencies)
-	pkgInfo := npmPackage{
+	pkgInfo := pkg{
 		Dependencies: map[string]string{
 			"@pulumi/pulumi": "latest",
 		},
@@ -53,25 +51,25 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0o600)
 	require.NoError(t, err)
 
-	TypeCheck(t, path, dependencies, linkLocal)
+	typeCheckNode(t, path, dependencies, linkLocal)
 }
 
-func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
+func typeCheckNode(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
 	dir := filepath.Dir(path)
 
-	typeCheckGeneratedPackage(t, dir, linkLocal)
+	TypeCheckNodeJSPackage(t, dir, linkLocal)
 }
 
-func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
-	test.RunCommand(t, "npm_install", pwd, "npm", "install")
+func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
+	RunCommand(t, "npm_install", pwd, "npm", "install")
 	if linkLocal {
-		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
 	}
-	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, filepath.Join(pwd, "node_modules", ".bin", "tsc"),
+	RunCommandWithOptions(t, tscOptions, "tsc", pwd, filepath.Join(pwd, "node_modules", ".bin", "tsc"),
 		"--noEmit", "--skipLibCheck", "true", "--skipDefaultLibCheck", "true")
 }
 
@@ -85,21 +83,21 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 		}
 		switch d {
 		case "aws":
-			set(test.AwsSchema)
+			set(AwsSchema)
 		case "azure-native":
-			set(test.AzureNativeSchema)
+			set(AzureNativeSchema)
 		case "azure":
-			set(test.AzureSchema)
+			set(AzureSchema)
 		case "kubernetes":
-			set(test.KubernetesSchema)
+			set(KubernetesSchema)
 		case "random":
-			set(test.RandomSchema)
+			set(RandomSchema)
 		case "eks":
-			set(test.EksSchema)
+			set(EksSchema)
 		case "aws-static-website":
-			set(test.AwsStaticWebsiteSchema)
+			set(AwsStaticWebsiteSchema)
 		case "aws-native":
-			set(test.AwsNativeSchema)
+			set(AwsNativeSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}
@@ -108,16 +106,21 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	return result
 }
 
-func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
+func generateNodeBatchTest(t *testing.T, generator GenProgram, testCases []ProgramTest) {
+	TestProgramCodegen(t,
+		ProgramCodegenOptions{
 			Language:   "nodejs",
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, true)
+				CheckNodeJS(t, path, dependencies, true)
 			},
-			GenProgram: GenerateProgram,
+			GenProgram: generator,
 			TestCases:  testCases,
 		})
+}
+
+type pkg struct {
+	Dependencies    map[string]string `json:"dependencies,omitempty"`
+	DevDependencies map[string]string `json:"devDependencies,omitempty"`
 }

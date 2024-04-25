@@ -27,7 +27,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Extension:  "cs",
 			OutputFile: "Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, "")
+				test.CheckDotnet(t, path, dependencies, "")
 			},
 			GenProgram: GenerateProgram,
 			TestCases: []test.ProgramTest{
