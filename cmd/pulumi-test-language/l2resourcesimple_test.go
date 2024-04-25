@@ -232,11 +232,9 @@ func (h *L2ResourceSimpleLanguageHost) Run(
 }
 
 // Run a simple successful test with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2ResourceSimple(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -272,11 +270,9 @@ func TestL2ResourceSimple(t *testing.T) {
 }
 
 // Run a simple failing test because of a bad sdk snapshot with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2SimpleResource_BadSnapshot(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{DisableSnapshotWriting: true}
@@ -314,11 +310,9 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2SimpleResource_MissingResource(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -359,11 +353,9 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 }
 
 // Run a simple failing test because GetRequiredPlugins doesn't return the right plugins.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
@@ -406,11 +398,9 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 }
 
 // Run a simple successful test with a mocked runtime that edits the snapshot files.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2ResourceSnapshotEdit(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
