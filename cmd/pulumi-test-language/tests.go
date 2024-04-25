@@ -410,4 +410,36 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-large-string": {
+		providers: []plugin.Provider{&providers.LargeProvider{}},
+		runs: []testRun{
+			{
+				updateOptions: engine.UpdateOptions{
+					ContinueOnError: true,
+				},
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					// Check that the large string is in the snapshot
+					largeString := resource.NewStringProperty(strings.Repeat("hello world", 9532509))
+					large := snap.Resources[2]
+					require.Equal(l, "large:index:String", large.Type.String(), "expected large string resource")
+					require.Equal(l,
+						resource.NewStringProperty("hello world"),
+						large.Inputs["value"],
+					)
+					require.Equal(l,
+						largeString,
+						large.Outputs["value"],
+					)
+
+					// Check the stack output value is as well
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
+				},
+			},
+		},
+	},
 }
