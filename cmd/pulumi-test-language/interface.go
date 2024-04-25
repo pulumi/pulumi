@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
@@ -99,6 +100,8 @@ type languageTestServer struct {
 	cancel chan bool
 	done   chan error
 	addr   string
+
+	sdkLock sync.Mutex
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
@@ -568,88 +571,104 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		sdkName := fmt.Sprintf("%s-%s", pkg, spec.Version)
 		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		_, err = os.Stat(sdkTempDir)
-		if err == nil {
-			// If the directory already exists then we don't need to regenerate the SDK
+		// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. There's two
+		// ways to do that. 1 is to generate to a temporary directory and then atomic rename it but Go say it doesn't
+		// support that, so option 2 we just lock around this section.
+		//
+		// TODO[pulumi/issues/16079]: This could probably be a per-sdk lock to be more fine grained and allow more
+		// parallelism.
+		response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+			eng.sdkLock.Lock()
+			defer eng.sdkLock.Unlock()
+
+			_, err = os.Stat(sdkTempDir)
+			if err == nil {
+				// If the directory already exists then we don't need to regenerate the SDK
+				sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
+				if err != nil {
+					return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
+				}
+				localDependencies[pkg] = sdkArtifact
+				return nil, nil
+			}
+
+			err = os.MkdirAll(sdkTempDir, 0o755)
+			if err != nil {
+				return nil, fmt.Errorf("create temp sdks dir: %w", err)
+			}
+
+			schemaBytes, err = boundSpec.MarshalJSON()
+			if err != nil {
+				return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
+			}
+
+			diags, err = languageClient.GeneratePackage(
+				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
+			}
+			// TODO: Might be good to test warning diagnostics here
+			if diags.HasErrors() {
+				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, diags)), nil
+			}
+
+			snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
+			sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+			if err != nil {
+				return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+			}
+			validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+			// If we made a snapshot edit we can clean it up now
+			if sdkSnapshotDir != sdkTempDir {
+				err := os.RemoveAll(sdkSnapshotDir)
+				if err != nil {
+					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				}
+			}
+			if err != nil {
+				return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
+			}
+			if len(validations) > 0 {
+				return makeTestResponse(
+					fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
+						pkg, strings.Join(validations, "\n"))), nil
+			}
+
+			// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
+			// any intermediate build files don't end up getting captured in the snapshot folder.
 			sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
 			if err != nil {
 				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
 			}
 			localDependencies[pkg] = sdkArtifact
-			continue
-		}
 
-		err = os.MkdirAll(sdkTempDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create temp sdks dir: %w", err)
-		}
-
-		schemaBytes, err = boundSpec.MarshalJSON()
-		if err != nil {
-			return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
-		}
-
-		diags, err = languageClient.GeneratePackage(
-			sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
-		}
-		// TODO: Might be good to test warning diagnostics here
-		if diags.HasErrors() {
-			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, diags)), nil
-		}
-
-		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-		sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
-		if err != nil {
-			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
-		}
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-		// If we made a snapshot edit we can clean it up now
-		if sdkSnapshotDir != sdkTempDir {
-			err := os.RemoveAll(sdkSnapshotDir)
+			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
+			// Again we need to make a snapshot edit for this.
+			sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
 			if err != nil {
-				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
 			}
-		}
-		if err != nil {
-			return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
-		}
-		if len(validations) > 0 {
-			return makeTestResponse(
-				fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
-					pkg, strings.Join(validations, "\n"))), nil
-		}
-
-		// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
-		// any intermediate build files don't end up getting captured in the snapshot folder.
-		sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
-		if err != nil {
-			return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
-		}
-		localDependencies[pkg] = sdkArtifact
-
-		// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-		// Again we need to make a snapshot edit for this.
-		sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
-		if err != nil {
-			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
-		}
-		validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-		// If we made a snapshot edit we can clean it up now
-		if sdkSnapshotDir != sdkTempDir {
-			err := os.RemoveAll(sdkSnapshotDir)
+			validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
+			// If we made a snapshot edit we can clean it up now
+			if sdkSnapshotDir != sdkTempDir {
+				err := os.RemoveAll(sdkSnapshotDir)
+				if err != nil {
+					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				}
+			}
 			if err != nil {
-				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg, err)
 			}
-		}
-		if err != nil {
-			return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg, err)
-		}
-		if len(validations) > 0 {
-			return makeTestResponse(
-				fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
-					pkg, strings.Join(validations, "\n"))), nil
+			if len(validations) > 0 {
+				return makeTestResponse(
+					fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
+						pkg, strings.Join(validations, "\n"))), nil
+			}
+
+			return nil, nil
+		}()
+		if response != nil || err != nil {
+			return response, err
 		}
 	}
 
