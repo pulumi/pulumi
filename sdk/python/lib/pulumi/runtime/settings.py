@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 from collections import deque
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 import grpc
 
-from .. import log
 from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
@@ -62,6 +62,7 @@ class Settings:
     ):
         self.rpc_manager = RPCManager()
         self.outputs = deque()
+        self.lock = threading.Lock()
 
         # Save the metadata information.
         self.project = project
@@ -103,6 +104,9 @@ class Settings:
     def rpc_manager(self) -> RPCManager:  # type: ignore
         # The contextproperty decorator will fill the body of this method in, but mypy doesn't know that.
         ...
+
+    @contextproperty
+    def lock(self) -> threading.Lock: ...  # type: ignore
 
     @contextproperty
     def outputs(self) -> deque[asyncio.Task]: ...  # type: ignore

@@ -1135,11 +1135,10 @@ func TestPythonAwaitOutputs(t *testing.T) {
 	//
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("AsyncioTasks", func(t *testing.T) {
-		// Skip if python is < 3.9
 		version, err := exec.Command("python3", "--version").Output()
 		require.NoError(t, err)
 		if strings.Contains(string(version), "3.8") {
-			t.Skip("Skipping test as Python version is < 3.9")
+			t.Skip("Skipping test as Python version is < 3.9 and asyncio.to_thread is only available in 3.9+")
 		}
 
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
