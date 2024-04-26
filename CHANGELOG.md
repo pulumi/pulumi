@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.114.0 (2024-04-26)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Add support for the continue-on-error parameter of the up command to the Automation API
+  [#15953](https://github.com/pulumi/pulumi/pull/15953)
+
+- [engine] Add a --continue-on-error flag to pulumi up
+  [#15740](https://github.com/pulumi/pulumi/pull/15740)
+
+
+### Bug Fixes
+
+- [pkg] Deserialize assets with their sig
+  [#16073](https://github.com/pulumi/pulumi/pull/16073)
+
+- [cli/display] Fix output of the diff display, making sure it shows diffs from refreshes
+  [#16065](https://github.com/pulumi/pulumi/pull/16065)
+
+- [auto/python] Ensure async context is not shared between multiple programs
+  [#16063](https://github.com/pulumi/pulumi/pull/16063)
+
+- [sdk/nodejs] Fix a race condition that could cause the NodeJS runtime to terminate before finishing all work
+  [#16005](https://github.com/pulumi/pulumi/pull/16005)
+
+- [sdk/python] Fix an exception when setting providers resource option with a dict
+  [#16022](https://github.com/pulumi/pulumi/pull/16022)
+
+- [sdk/python] Fix event loop tracking in the python SDK when using remote transforms
+  [#16039](https://github.com/pulumi/pulumi/pull/16039)
+
+- [sdk/python] Workaround lazy module loading regression
+  [#16038](https://github.com/pulumi/pulumi/pull/16038)
+
+- [sdk/python] Fix a memory leak in tracking outputs
+  [#16057](https://github.com/pulumi/pulumi/pull/16057)
+
+
+### Miscellaneous
+
+- [cli/plugin] Move PluginKind type definition into apitype and re-export for backward compatibility
+  [#15946](https://github.com/pulumi/pulumi/pull/15946)
+
 ## 3.113.3 (2024-04-19)
 
 

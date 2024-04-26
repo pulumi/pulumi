@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Fix output of the diff display, making sure it shows diffs from refreshes
