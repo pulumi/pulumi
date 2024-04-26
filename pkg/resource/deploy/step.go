@@ -1305,9 +1305,8 @@ func IsReplacementStep(op display.StepOp) bool {
 		op == OpReadReplacement || op == OpDiscardReplaced || op == OpRemovePendingReplace ||
 		op == OpImportReplacement {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 // Color returns a suggested color for lines of this op type.
