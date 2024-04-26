@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"time"
 
@@ -134,7 +135,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
 			MaybeCorrupt:    p.MaybeCorrupt,
-			DurationSeconds: int(p.Duration.Seconds()),
+			DurationSeconds: int(math.Round(p.Duration.Seconds())),
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 		}
