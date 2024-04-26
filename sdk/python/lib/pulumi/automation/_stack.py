@@ -292,7 +292,6 @@ class Stack:
             server.start()
 
             def on_exit_fn():
-                language_server.on_pulumi_exit()
                 server.stop(0)
 
             on_exit = on_exit_fn
@@ -413,7 +412,6 @@ class Stack:
             server.start()
 
             def on_exit_fn():
-                language_server.on_pulumi_exit()
                 server.stop(0)
 
             on_exit = on_exit_fn

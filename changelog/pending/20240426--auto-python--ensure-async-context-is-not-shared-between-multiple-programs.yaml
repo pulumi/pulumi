@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/python
+  description: Ensure async context is not shared between multiple programs
