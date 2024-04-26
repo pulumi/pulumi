@@ -337,7 +337,7 @@ Event: ${line}\n${e.toString()}`);
                 args.push("--save-plan", opts.plan);
             }
             if (opts.importFile) {
-              args.push("--import-file");
+              args.push("--import-file", opts.importFile);
             }
             applyGlobalOpts(opts, args);
         }
@@ -920,7 +920,7 @@ export interface GlobalOpts {
     /**
      * Save any creates seen during the preview into an import file to use with pulumi import
      */
-    importFile?: boolean;
+    importFile?: string;
 }
 
 /**

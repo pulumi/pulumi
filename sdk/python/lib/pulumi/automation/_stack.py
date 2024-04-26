@@ -350,7 +350,7 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
-        import_file: Optional[bool] = None,
+        import_file: Optional[str] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -390,6 +390,7 @@ class Stack:
 
         if import_file is not None:
             args.append("--import-file")
+            args.append(import_file)
                 
         if plan is not None:
             args.append("--save-plan")
