@@ -930,3 +930,73 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	snap := p.Run(t, old)
 	assert.Equal(t, 0, len(snap.Resources))
 }
+
+func TestRefreshDiff(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					fmt.Println("ReadF called", id)
+					return plugin.ReadResult{
+						ID:      id,
+						Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(plugin.RunInfo, *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	idBefore := resource.ID("myid")
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:    resURN.Type(),
+				URN:     resURN,
+				Custom:  true,
+				ID:      idBefore,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("baz")},
+			},
+		},
+	}
+
+	p.Options.HostF = hostF
+	p.Options.Refresh = true
+
+	p.Steps = []TestStep{
+		{
+			Op: Refresh,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				_ []Event, err error,
+			) error {
+				foundRefresh := false
+				for _, entry := range entries {
+					if entry.Step.Op() != deploy.OpRefresh || entry.Step.URN() != resURN {
+						continue
+					}
+					foundRefresh = true
+
+					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
+					assert.False(t, entry.Step.(*deploy.RefreshStep).Logical())
+					assert.Equal(t, resource.PropertyMap{"foo": resource.NewStringProperty("baz")}, entry.Step.Old().Outputs)
+					assert.Equal(t, resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, entry.Step.New().Outputs)
+
+				}
+				assert.True(t, foundRefresh)
+				return err
+			},
+		},
+	}
+	p.Run(t, old)
+}
