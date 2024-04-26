@@ -151,8 +151,9 @@ def configure(settings: Settings):
     """
     if not settings or not isinstance(settings, Settings):
         raise TypeError("Settings is expected to be non-None and of type Settings")
-    global SETTINGS  # pylint: disable=global-statement
-    SETTINGS = settings
+    # The properties of SETTINGS are contextvars but SETTINGS itself isn't.
+    for key, value in settings.__dict__.items():
+        setattr(SETTINGS, key, value)
 
 
 def is_dry_run() -> bool:
