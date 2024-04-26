@@ -1300,6 +1300,16 @@ var StepOps = []display.StepOp{
 	OpImportReplacement,
 }
 
+func IsReplacementStep(op display.StepOp) bool {
+	if op == OpReplace || op == OpCreateReplacement || op == OpDeleteReplaced ||
+		op == OpReadReplacement || op == OpDiscardReplaced || op == OpRemovePendingReplace ||
+		op == OpImportReplacement {
+		return true
+	} else {
+		return false
+	}
+}
+
 // Color returns a suggested color for lines of this op type.
 func Color(op display.StepOp) string {
 	switch op {
