@@ -136,6 +136,13 @@ func SuppressOutputs() Option {
 	})
 }
 
+// ImportFile save any creates seen during the preview into an import file to use with pulumi import
+func ImportFile() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ImportFile = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -184,6 +191,8 @@ type Options struct {
 	SuppressProgress bool
 	// Suppress display of stack outputs (in case they contain sensitive values)
 	SuppressOutputs bool
+	// Save any creates seen during the preview into an import file to use with pulumi import
+	ImportFile bool
 }
 
 type optionFunc func(*Options)

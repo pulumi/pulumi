@@ -350,6 +350,7 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
+        import_file: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -377,6 +378,7 @@ class Stack:
         :param debug: Print detailed debugging output during resource operations
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
+        :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -386,6 +388,9 @@ class Stack:
         args = ["preview"]
         args.extend(extra_args)
 
+        if import_file is not None:
+            args.append("--import-file")
+                
         if plan is not None:
             args.append("--save-plan")
             args.append(plan)

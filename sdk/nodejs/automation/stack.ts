@@ -336,6 +336,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.plan) {
                 args.push("--save-plan", opts.plan);
             }
+            if (opts.importFile) {
+              args.push("--import-file");
+            } 
             applyGlobalOpts(opts, args);
         }
 
@@ -914,6 +917,10 @@ export interface GlobalOpts {
      * Suppress display of periodic progress dots
      */
     suppressProgress?: boolean;
+    /**
+     * Save any creates seen during the preview into an import file to use with pulumi import
+     */
+    importFile?: boolean;
 }
 
 /**
