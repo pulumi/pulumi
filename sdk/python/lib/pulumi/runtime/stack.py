@@ -95,19 +95,26 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # If the RPCs have successfully completed, now await all remaining outstanding tasks.
         if await_all_outstanding_tasks:
-            while len(SETTINGS.outputs) > 0:
+            while len(SETTINGS.outputs) != 0:
                 await asyncio.sleep(0)
                 log.debug(
                     f"waiting for quiescence; {len(SETTINGS.outputs)} outputs outstanding"
                 )
-                task = SETTINGS.outputs.popleft()
+                with SETTINGS.lock:
+                    # the task may have been removed from the queue by the time we get to it, so we need to re-check if
+                    # its empty.
+                    if len(SETTINGS.outputs) == 0:
+                        break
+                    task: asyncio.Task = SETTINGS.outputs.popleft()
+
                 # check if the task is ready yet, else just add it back to the queue. This is so if a long running task
                 # is added to the queue first, then a short running task that fails is added to the queue we quickly see
                 # that short running failure and exit, not waiting for the long running task to complete.
                 if task.done():
                     await task
                 else:
-                    SETTINGS.outputs.append(task)
+                    with SETTINGS.lock:
+                        SETTINGS.outputs.append(task)
 
             log.debug("All outstanding outputs completed.")
 
