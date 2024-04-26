@@ -338,7 +338,7 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.importFile) {
               args.push("--import-file");
-            } 
+            }
             applyGlobalOpts(opts, args);
         }
 
