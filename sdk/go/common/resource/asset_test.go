@@ -65,6 +65,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, assetDes.IsText())
 		assert.Equal(t, text, assetDes.Text)
 		assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", assetDes.Hash)
+		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		// another text asset with the same contents, should hash the same way.
 		text2 := "a test asset"
@@ -135,6 +136,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, assetDes.IsPath())
 		assert.Equal(t, file, assetDes.Path)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", assetDes.Hash)
+		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
 		assert.NoError(t, err)
@@ -176,6 +178,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, assetDes.IsURI())
 		assert.Equal(t, url, assetDes.URI)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", assetDes.Hash)
+		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
 		assert.NoError(t, err)
@@ -215,6 +218,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, isasset)
 		assert.True(t, emptyDes.IsText())
 		assert.Equal(t, "", emptyDes.Text)
+		assert.Equal(t, AssetSig, emptyDes.Sig)
 
 		// Check that a text asset with it's text removed shows as "no content".
 		asset, err := rasset.FromText("a very different and special test asset")

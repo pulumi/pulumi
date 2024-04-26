@@ -213,7 +213,7 @@ func Deserialize(obj map[string]interface{}) (*Asset, bool, error) {
 		uri = u
 	}
 
-	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
+	return &Asset{Sig: AssetSig, Hash: hash, Text: text, Path: path, URI: uri}, true, nil
 }
 
 // HasContents indicates whether or not an asset's contents can be read.
