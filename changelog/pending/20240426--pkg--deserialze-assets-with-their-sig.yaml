@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: deserialze assets with their sig
