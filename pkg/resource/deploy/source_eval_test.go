@@ -64,7 +64,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		for _, s := range steps {
 			g := s.Goal()
-			urn, id, outs, _, err := resmon.RegisterResource(g.Type, g.Name, g.Custom, deploytest.ResourceOptions{
+			resp, err := resmon.RegisterResource(g.Type, g.Name, g.Custom, deploytest.ResourceOptions{
 				Parent:       g.Parent,
 				Protect:      g.Protect,
 				Dependencies: g.Dependencies,
@@ -76,8 +76,8 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 				return err
 			}
 			s.Done(&RegisterResult{
-				State: resource.NewState(g.Type, urn, g.Custom, false, id, g.Properties, outs, g.Parent, g.Protect,
-					false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
+				State: resource.NewState(g.Type, resp.URN, g.Custom, false, resp.ID, g.Properties, resp.Outputs, g.Parent,
+					g.Protect, false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
 					"", false, "", nil, nil, ""),
 			})
 		}
@@ -874,7 +874,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			give := tt.give
 			give.Remote = true
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
-				_, _, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
+				_, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
 				require.NoError(t, err, "register resource")
 				return nil
 			}
@@ -1073,17 +1073,17 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	//  2. Provider pkgC, version 0.18.0
 // 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 // 		// Triggers pkgA, v0.18.1.
-// 		_, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+// 		_, err := resmon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.1", nil)
 // 		assert.NoError(t, err)
 
 // 		// Re-uses pkgA's already-instantiated provider.
-// 		_, _, _, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
+// 		_, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.1", nil)
 // 		assert.NoError(t, err)
 
 // 		// Triggers pkgA, v0.18.2
-// 		_, _, _, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
+// 		_, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.2", nil)
 // 		assert.NoError(t, err)
 // 		return nil
@@ -2557,15 +2557,14 @@ func TestCall(t *testing.T) {
 							"test": resource.NewStringProperty("test-value"),
 						},
 						args)
-					assert.Equal(t,
-						map[resource.PropertyKey][]resource.URN{
-							"test": {
-								"urn:pulumi:stack::project::type::dep1",
-								"urn:pulumi:stack::project::type::dep2",
-								"urn:pulumi:stack::project::type::dep3",
-							},
+					require.Equal(t, 1, len(options.ArgDependencies))
+					assert.ElementsMatch(t,
+						[]resource.URN{
+							"urn:pulumi:stack::project::type::dep1",
+							"urn:pulumi:stack::project::type::dep2",
+							"urn:pulumi:stack::project::type::dep3",
 						},
-						options.ArgDependencies)
+						options.ArgDependencies["test"])
 					called = true
 					return plugin.CallResult{}, expectedErr
 				},

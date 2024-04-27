@@ -378,27 +378,25 @@ async function applyHelperAsync<T, U>(
     func: (t: T) => Input<U>,
     runWithUnknowns: boolean,
 ) {
-    if (settings.isDryRun()) {
-        // During previews only perform the apply if the engine was able to give us an actual value
-        // for this Output.
-        const applyDuringPreview = isKnown || runWithUnknowns;
+    // Only perform the apply if the engine was able to give us an actual value
+    // for this Output.
+    const doApply = isKnown || runWithUnknowns;
 
-        if (!applyDuringPreview) {
-            // We didn't actually run the function, our new Output is definitely **not** known.
-            return {
-                allResources,
-                value: <U>(<any>undefined),
-                isKnown: false,
-                isSecret,
-            };
-        }
+    if (!doApply) {
+        // We didn't actually run the function, our new Output is definitely **not** known.
+        return {
+            allResources,
+            value: <U>(<any>undefined),
+            isKnown: false,
+            isSecret,
+        };
+    }
 
-        // If we are running with unknown values and the value is explicitly unknown but does not actually
-        // contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
-        // that expect to see unknowns during preview in outputs that are not known will always do so.
-        if (!isKnown && runWithUnknowns && !containsUnknowns(value)) {
-            value = <T>(<any>unknown);
-        }
+    // If we are running with unknown values and the value is explicitly unknown but does not actually
+    // contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
+    // that expect to see unknowns during preview in outputs that are not known will always do so.
+    if (!isKnown && runWithUnknowns && !containsUnknowns(value)) {
+        value = <T>(<any>unknown);
     }
 
     const transformed = await func(value);
@@ -871,8 +869,8 @@ export interface OutputInstance<T> {
      * If you need have multiple Outputs and a single Output is needed that combines both
      * set of resources, then 'pulumi.all' should be used instead.
      *
-     * This function will only be called execution of a 'pulumi up' request.  It will not run
-     * during 'pulumi preview' (as the values of resources are of course not known then). It is not
+     * This function will be called execution of a 'pulumi up' or 'pulumi preview' request, but it
+     * will ont run when the values of the output are unknown. It is not
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime execution, use `get()`.
      */

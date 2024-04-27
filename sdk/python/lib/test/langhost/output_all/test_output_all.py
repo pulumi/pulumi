@@ -16,16 +16,34 @@ from ..util import LanghostTest
 
 
 class OutputAllTest(LanghostTest):
-    """
-    """
+    """ """
+
     def test_output_all(self):
         self.run_test(
-            program=path.join(self.base_path(), "output_all"),
-            expected_resource_count=4)
+            program=path.join(self.base_path(), "output_all"), expected_resource_count=4
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         number = 0
         if name == "testResource1":
             self.assertEqual(ty, "test:index:MyResource")
@@ -48,7 +66,5 @@ class OutputAllTest(LanghostTest):
         return {
             "urn": self.make_urn(ty, name),
             "id": name,
-            "object": {
-                "number": number
-            }
+            "object": {"number": number},
         }

@@ -16,11 +16,18 @@ from pulumi import CustomResource
 
 long_string = "a" * 1024 * 1024 * 5
 
+
 class MyResource(CustomResource):
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyLargeStringResource", name, props={
-            "largeStringProp": long_string,
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:MyLargeStringResource",
+            name,
+            props={
+                "largeStringProp": long_string,
+            },
+        )
+
 
 def assert_eq(lhs, rhs):
     assert lhs == rhs

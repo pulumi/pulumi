@@ -39,7 +39,7 @@ jobs:
           with:
             token: ${{ secrets.PULUMI_BOT_TOKEN }}
             repository: pulumi/pulumi-${{ matrix.provider }}
-            event-type: upgrade-bridge
+            event-type: upgrade-bridge-test
             client-payload: |-
               {
                  "target-pulumi-version": ${{ toJSON( github.event.pull_request.head.sha ) }},
@@ -86,16 +86,16 @@ jobs:
             role-session-name: awsx@githubActions
             role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
         - name: Setup Go
-          uses: actions/setup-go@v2
+          uses: actions/setup-go@v5
           with:
             go-version: ${{ env.GOVERSION }}
             check-latest: true
         - name: Setup Node
-          uses: actions/setup-node@v1
+          uses: actions/setup-node@v4
           with:
             node-version: ${{ env.NODEVERSION }}
         - name: Setup Python
-          uses: actions/setup-python@v3
+          uses: actions/setup-python@v5
           with:
             python-version: ${{ env.PYTHONVERSION }}
         - name: Setup DotNet
@@ -103,20 +103,20 @@ jobs:
           with:
             dotnet-version: ${{ env.DOTNETVERSION }}
         - name: Setup Java
-          uses: actions/setup-java@v3
+          uses: actions/setup-java@v4
           with:
             distribution: temurin
             java-version: ${{ env.JAVAVERSION }}
         - name: Install gotestfmt
-          uses: jaxxstorm/action-install-gh-release@v1.7.1
+          uses: jaxxstorm/action-install-gh-release@v1.11.0
           with:
             repo: gotesttools/gotestfmt
         - name: Install pulumictl
-          uses: jaxxstorm/action-install-gh-release@v1.1.0
+          uses: jaxxstorm/action-install-gh-release@v1.11.0
           with:
             repo: pulumi/pulumictl
         - name: Check out source code
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             ref: ${{ github.event.pull_request.head.sha }}
             token: ${{ secrets.PULUMI_BOT_TOKEN }}

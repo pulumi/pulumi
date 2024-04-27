@@ -273,6 +273,7 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interf
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
 	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
-	return stack.SerializeProperties(display.MassageSecrets(state.Outputs, showSecrets),
+	ctx := context.TODO()
+	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),
 		config.NewPanicCrypter(), showSecrets)
 }

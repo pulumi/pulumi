@@ -17,18 +17,18 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.55.2
+  GOLANGCI_LINT_VERSION: v1.57.2
 
 jobs:
   golangci:
     name: Lint Go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           # golangci-lint-action handles all the caching for Go.
@@ -38,12 +38,12 @@ jobs:
       # and maintain the cache,
       # but we want to run the command ourselves.
       # The action doesn't have an install-only mode,
-      # so we'll ask it to print its version only.
+      # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --version
+          args: --help
 
       - name: Run golangci-lint
         # Print GitHub Actions-friendly output so that errors get marked
@@ -54,11 +54,11 @@ jobs:
     name: go mod tidy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Run go mod tidy
@@ -75,11 +75,11 @@ jobs:
     name: Generate Go SDK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Run make gen
@@ -96,7 +96,7 @@ jobs:
     name: Lint Protobufs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Check Protobufs
@@ -107,21 +107,21 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
@@ -136,7 +136,7 @@ jobs:
       - name: Update path
         run: |
           echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set Go Dep path
@@ -156,11 +156,11 @@ jobs:
     name: Lint GHA
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - run: |

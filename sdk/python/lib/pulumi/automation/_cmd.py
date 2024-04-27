@@ -206,7 +206,7 @@ class PulumiCommand:
         env = {**os.environ, **additional_env}
         if os.path.isabs(self.command):
             env = _fixup_path(env, os.path.dirname(self.command))
-        cmd = ["pulumi"]
+        cmd = [self.command]
         cmd.extend(args)
 
         stdout_chunks: List[str] = []

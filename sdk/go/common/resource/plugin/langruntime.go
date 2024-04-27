@@ -20,7 +20,6 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -137,7 +136,8 @@ type LanguageRuntime interface {
 
 	// GeneratePlugin generates an SDK package.
 	GeneratePackage(
-		directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+		directory string, schema string, extraFiles map[string][]byte,
+		loaderTarget string, localDependencies map[string]string,
 	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program
@@ -145,7 +145,7 @@ type LanguageRuntime interface {
 	GenerateProgram(program map[string]string, loaderTarget string) (map[string][]byte, hcl.Diagnostics, error)
 
 	// Pack packs a library package into a language specific artifact in the given destination directory.
-	Pack(packageDirectory string, version semver.Version, destinationDirectory string) (string, error)
+	Pack(packageDirectory string, destinationDirectory string) (string, error)
 }
 
 // DependencyInfo contains information about a dependency reported by a language runtime.

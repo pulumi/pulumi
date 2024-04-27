@@ -1,5 +1,317 @@
 # Changelog
 
+## 3.114.0 (2024-04-26)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Add support for the continue-on-error parameter of the up command to the Automation API
+  [#15953](https://github.com/pulumi/pulumi/pull/15953)
+
+- [engine] Add a --continue-on-error flag to pulumi up
+  [#15740](https://github.com/pulumi/pulumi/pull/15740)
+
+
+### Bug Fixes
+
+- [pkg] Deserialize assets with their sig
+  [#16073](https://github.com/pulumi/pulumi/pull/16073)
+
+- [cli/display] Fix output of the diff display, making sure it shows diffs from refreshes
+  [#16065](https://github.com/pulumi/pulumi/pull/16065)
+
+- [auto/python] Ensure async context is not shared between multiple programs
+  [#16063](https://github.com/pulumi/pulumi/pull/16063)
+
+- [sdk/nodejs] Fix a race condition that could cause the NodeJS runtime to terminate before finishing all work
+  [#16005](https://github.com/pulumi/pulumi/pull/16005)
+
+- [sdk/python] Fix an exception when setting providers resource option with a dict
+  [#16022](https://github.com/pulumi/pulumi/pull/16022)
+
+- [sdk/python] Fix event loop tracking in the python SDK when using remote transforms
+  [#16039](https://github.com/pulumi/pulumi/pull/16039)
+
+- [sdk/python] Workaround lazy module loading regression
+  [#16038](https://github.com/pulumi/pulumi/pull/16038)
+
+- [sdk/python] Fix a memory leak in tracking outputs
+  [#16057](https://github.com/pulumi/pulumi/pull/16057)
+
+
+### Miscellaneous
+
+- [cli/plugin] Move PluginKind type definition into apitype and re-export for backward compatibility
+  [#15946](https://github.com/pulumi/pulumi/pull/15946)
+
+## 3.113.3 (2024-04-19)
+
+
+### Features
+
+- [cli/about] Add plugin kind to the about output
+  [#15996](https://github.com/pulumi/pulumi/pull/15996)
+
+
+### Bug Fixes
+
+- [engine] Remove locks between snapshot and executor systems
+  [#15998](https://github.com/pulumi/pulumi/pull/15998)
+
+## 3.113.2 (2024-04-18)
+
+
+### Features
+
+- [backend/{diy,service}] Elide state file writes for unchanged component outputs
+  [#15976](https://github.com/pulumi/pulumi/pull/15976)
+
+
+### Bug Fixes
+
+- [engine] Display the entire preview with diff when a protected resource needs replacement
+  [#15969](https://github.com/pulumi/pulumi/pull/15969)
+
+## 3.113.1 (2024-04-18)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Add support for inheritSettings to go, nodejs and python automation API.
+  [#15684](https://github.com/pulumi/pulumi/pull/15684)
+
+
+### Bug Fixes
+
+- [backend] Fix incorrect dependency sorting in snapshot
+
+## 3.113.0 (2024-04-15)
+
+
+### Features
+
+- [sdk/nodejs] Make TypeScript and ts-node optional peer dependencies to allow using user specified versions
+  [#15622](https://github.com/pulumi/pulumi/pull/15622)
+  
+  Note: TypeScript and ts-node are now optional peer dependencies of the Node.js SDK. This makes its possible to chose any version of these packages by adding them as dependency or devDependency to your package.json. If these optional peer dependencies are not installed, Pulumi will fallback to bundled versions included in the Node.js SDK to maintain backwards compatibility. As a side effect of this change, the `tsc` binary is no longer available in `node_modules/.bin/tsc`. If you rely on `tsc` being available in your project, add it as a dependency or devDependency to your package.json.
+
+- [sdk/python] Add 'typeChecker' runtime option to the Python language host
+  [#15725](https://github.com/pulumi/pulumi/pull/15725)
+
+- [auto/{go,nodejs,python}] Add support for continue-on-error parameter of the destroy command to the Automation API
+  [#15921](https://github.com/pulumi/pulumi/pull/15921)
+
+- [cli] Support always fully qualifying stack names in CLI output
+  [#15857](https://github.com/pulumi/pulumi/pull/15857)
+
+- [cli] Add --no-plugins and --no-dependencies to `pulumi install`
+  [#15910](https://github.com/pulumi/pulumi/pull/15910)
+
+- [docs] Implement Java constructor syntax examples
+  [#15805](https://github.com/pulumi/pulumi/pull/15805)
+
+- [sdk/go] Allow unknowns during `pulumi up`
+  [#15942](https://github.com/pulumi/pulumi/pull/15942)
+
+- [sdk/{nodejs,python}] Allow apply to have unknown values during updates
+  [#15898](https://github.com/pulumi/pulumi/pull/15898)
+
+
+### Bug Fixes
+
+- [auto] Tolerate missing stack and bookkeeping files in ProgramTest
+  [#15863](https://github.com/pulumi/pulumi/pull/15863)
+
+- [backend/diy] Fix race condition when listing stacks
+  [#15931](https://github.com/pulumi/pulumi/pull/15931)
+
+- [cli] Fix a panic when user's home directory could not be looked up
+  [#15872](https://github.com/pulumi/pulumi/pull/15872)
+
+- [cli] Fix some commands that didn't respect `--disable-integrity-checking`
+  [#15911](https://github.com/pulumi/pulumi/pull/15911)
+
+- [auto/go] Avoid flakyness when reading the event log from pulumi commands
+  [#15856](https://github.com/pulumi/pulumi/pull/15856)
+
+- [engine] Resource transforms on component resources now apply to children correctly
+  [#15846](https://github.com/pulumi/pulumi/pull/15846)
+
+- [programgen/dotnet] Remove trailing whitespace from emitted DependsOn resource option expressions
+  [#15892](https://github.com/pulumi/pulumi/pull/15892)
+
+- [sdk/go] Fix Provider and Providers options in Go transform functions
+  [#15885](https://github.com/pulumi/pulumi/pull/15885)
+
+- [sdk/nodejs] Handle serialization of aliases for well known native functions
+  [#15873](https://github.com/pulumi/pulumi/pull/15873)
+
+- [sdk/nodejs] Correctly serialise functions whose code would make use of reserved identifiers
+  [#15879](https://github.com/pulumi/pulumi/pull/15879)
+
+- [sdk/nodejs] Serialize function values obtained from Function.bind
+  [#15887](https://github.com/pulumi/pulumi/pull/15887)
+
+- [sdk/python] Improve types of getters in Python SDK
+  [#15865](https://github.com/pulumi/pulumi/pull/15865)
+
+- [sdkgen/{dotnet,go}] Fix SDK-generation when referencing shared types in config variables
+  [#15772](https://github.com/pulumi/pulumi/pull/15772)
+
+
+### Miscellaneous
+
+- [backend/diy] Upgrade gocloud.dev dependency to 0.37
+  [#15924](https://github.com/pulumi/pulumi/pull/15924)
+
+- [sdk/nodejs] Update builtin module list for function serialization
+  [#15830](https://github.com/pulumi/pulumi/pull/15830)
+
+- [sdk/nodejs] Set package.json engines to node >= 18
+  [#15845](https://github.com/pulumi/pulumi/pull/15845)
+
+## 3.112.0 (2024-03-27)
+
+
+### Features
+
+- [docs] Implement constructor syntax examples for every resource in typescript, python, csharp and go
+  [#15624](https://github.com/pulumi/pulumi/pull/15624)
+
+- [docs] Implement YAML constructor syntax examples in the docs
+  [#15791](https://github.com/pulumi/pulumi/pull/15791)
+
+- [engine] Send output values with property dependency information to transform functions
+  [#15637](https://github.com/pulumi/pulumi/pull/15637)
+
+- [engine] Add a --continue-on-error flag to pulumi destroy
+  [#15727](https://github.com/pulumi/pulumi/pull/15727)
+
+- [sdk/go] Make `property.Map` keyed by `string` not `MapKey`
+  [#15767](https://github.com/pulumi/pulumi/pull/15767)
+
+- [sdk/nodejs] Make function serialization work with typescript 4 and 5
+  [#15761](https://github.com/pulumi/pulumi/pull/15761)
+
+- [sdk/python] Improve the error message when depends_on is passed objects of the wrong type
+  [#15737](https://github.com/pulumi/pulumi/pull/15737)
+
+
+### Bug Fixes
+
+- [auto/{go,python}] Make sure to read complete lines before trying to deserialize them as engine events
+  [#15778](https://github.com/pulumi/pulumi/pull/15778)
+  [#15798](https://github.com/pulumi/pulumi/pull/15798)
+
+- [auto/{go,python}] Use the full path when running pulumi from a custom CLI install
+  [#15802](https://github.com/pulumi/pulumi/pull/15802)
+
+- [cli/plugin] Fix installing local language plugins on Windows
+  [#15715](https://github.com/pulumi/pulumi/pull/15715)
+
+- [engine] Don't delete stack outputs on failed deployments
+  [#15754](https://github.com/pulumi/pulumi/pull/15754)
+
+- [engine] Fix a panic when updating provider version in a run using --target
+  [#15716](https://github.com/pulumi/pulumi/pull/15716)
+
+- [engine] Handle that Assets & Archives can be returned from providers without content.
+  [#15736](https://github.com/pulumi/pulumi/pull/15736)
+
+- [engine] Fix the engine trying to delete a protected resource caught in a replace chain
+  [#15776](https://github.com/pulumi/pulumi/pull/15776)
+
+- [sdkgen/docs] Add missing newline for `Coming soon!`
+  [#15783](https://github.com/pulumi/pulumi/pull/15783)
+
+- [programgen/dotnet] Fix generated code for a list of resources used in resource option DependsOn
+  [#15773](https://github.com/pulumi/pulumi/pull/15773)
+
+- [programgen/{dotnet,go}] Fixes emitted code for object expressions assigned to properties of type Any
+  [#15770](https://github.com/pulumi/pulumi/pull/15770)
+
+- [sdk/go] Fix lookup of plugin and program dependencies when using Go workspaces
+  [#15743](https://github.com/pulumi/pulumi/pull/15743)
+
+- [sdk/nodejs] Export automation.tag.TagMap type
+  [#15774](https://github.com/pulumi/pulumi/pull/15774)
+
+- [sdk/python] Wait only for pending outputs in the Python SDK, not all pending asyncio tasks
+  [#15744](https://github.com/pulumi/pulumi/pull/15744)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Reorganize function serialization tests
+  [#15753](https://github.com/pulumi/pulumi/pull/15753)
+
+- [sdk/nodejs] Move mockpackage tests to closure integration tests
+  [#15757](https://github.com/pulumi/pulumi/pull/15757)
+
+## 3.111.1 (2024-03-15)
+
+
+### Bug Fixes
+
+- [cli/display] Fix superfluous newlines being written during updates
+
+- [programgen/{dotnet,go,nodejs,python}] Fix enum resolution from types of the form union[string, enum]
+  [#15696](https://github.com/pulumi/pulumi/pull/15696)
+
+## 3.111.0 (2024-03-15)
+
+
+### Features
+
+- [auto/go] Support remote deployment executor image
+  [#15697](https://github.com/pulumi/pulumi/pull/15697)
+
+
+### Bug Fixes
+
+- [engine] Test and fix the engine filling in property dependencies to provider constructs
+
+- [sdkgen/go] Ensure package generation for Go doesn't panic when encountering overly nested arrays or maps of primitive types
+  [#15680](https://github.com/pulumi/pulumi/pull/15680)
+
+## 3.110.0 (2024-03-14)
+
+
+### Features
+
+- [cli] Make "pulumi dn" an alias for "pulumi destroy"
+  [#15650](https://github.com/pulumi/pulumi/pull/15650)
+
+- [yaml] Update yaml to v1.6.0
+  [#15661](https://github.com/pulumi/pulumi/pull/15661)
+
+- [sdk/python] Add experimental support to the Python SDK for the new transforms system
+  [#15376](https://github.com/pulumi/pulumi/pull/15376)
+
+
+### Bug Fixes
+
+- [cli/state] Add `--yes` to `state upgrade`
+  [#15648](https://github.com/pulumi/pulumi/pull/15648)
+
+- [programgen/{dotnet,go,python}] Fix panic when generating programs for MLC packages where they include type references to external packages
+  [#15605](https://github.com/pulumi/pulumi/pull/15605)
+
+- [programgen/go] Fix optional primitive values being derefrenced
+  [#15592](https://github.com/pulumi/pulumi/pull/15592)
+
+- [sdk/go] Await output properties from Construct/Call before closing the Context
+  [#15611](https://github.com/pulumi/pulumi/pull/15611)
+
+- [sdk/nodejs] Fix codepaths computation when working dir is nested relative to package.json
+  [#15601](https://github.com/pulumi/pulumi/pull/15601)
+
+- [sdk/nodejs] Replace glob with fdir to avoid an indirect dependency on inflight
+  [#15617](https://github.com/pulumi/pulumi/pull/15617)
+
+- [sdkgen/python] Make replace-on-changes values camelCased not kebab_cased
+  [#15666](https://github.com/pulumi/pulumi/pull/15666)
+
 ## 3.109.0 (2024-03-07)
 
 

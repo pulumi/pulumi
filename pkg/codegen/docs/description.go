@@ -64,32 +64,37 @@ func markupBlock(block string) string {
 		{"java", "<div>\n<pulumi-choosable type=\"language\" values=\"java\">\n\n"},
 		{"yaml", "<div>\n<pulumi-choosable type=\"language\" values=\"yaml\">\n\n"},
 	}
-	//nolint:lll
-	chooserStart := "<div>\n<pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser>\n</div>\n"
-	choosableEnd := "</pulumi-choosable>\n</div>\n"
+	const (
+		//nolint:lll
+		chooserStart = "<div>\n<pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser>\n</div>\n"
+		choosableEnd = "</pulumi-choosable>\n</div>\n"
+	)
 
-	var markedUpBlock string
+	var markedUpBlock strings.Builder
 	// first, append the start chooser
-	markedUpBlock += chooserStart
+	markedUpBlock.WriteString(chooserStart)
 
 	for _, lang := range languages {
 		// Add language specific open choosable
-		markedUpBlock += lang.choosable
-		// find our language - because we have no guarantee of order from our input, we need to find both code fences
-		// and then append the content in the order that docsgen expects.
+		markedUpBlock.WriteString(lang.choosable)
+		// find our language - because we have no guarantee of order from our input, we need to find
+		// both code fences and then append the content in the order that docsgen expects.
 		start := strings.Index(block, "```"+lang.tag)
 		if start == -1 {
-			markedUpBlock += "```\n" + defaultMissingExampleSnippetPlaceholder + "```\n"
+			markedUpBlock.WriteString("```\n")
+			markedUpBlock.WriteString(defaultMissingExampleSnippetPlaceholder)
+			markedUpBlock.WriteString("\n```\n")
 		} else {
 			// find end index - this is the next code fence.
 			endLangBlock := start + len("```"+lang.tag) + strings.Index(block[start+len("```"+lang.tag):], "```")
 			// append code to block, and include code fences
-			markedUpBlock += block[start:endLangBlock+len("```")] + "\n"
+			markedUpBlock.WriteString(block[start : endLangBlock+len("```")])
+			markedUpBlock.WriteRune('\n')
 		}
 		// add closing choosable
-		markedUpBlock += choosableEnd
+		markedUpBlock.WriteString(choosableEnd)
 	}
-	return markedUpBlock
+	return markedUpBlock.String()
 }
 
 func (dctx *docGenContext) processDescription(description string) docInfo {

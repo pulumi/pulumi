@@ -12,9 +12,9 @@
             ".nyc_output/",
             ".direnv/",
             "cmd/pulumi-language-nodejs",
-            "tests/runtime/jsClosureCases_*.js",
-            "tests/runtime/tsClosureCases.ts",
-            "tests/mockpackage/lib/"
+            "tests/mockpackage/lib/",
+            "tests/runtime/testdata/closure-tests",
+            "vendor/"
         ]
     },
     "formatter": {

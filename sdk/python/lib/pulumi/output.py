@@ -39,6 +39,7 @@ from typing import (
 from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
+from .runtime.settings import SETTINGS
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -99,6 +100,19 @@ class Output(Generic[T_co]):
     ) -> None:
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
+        # keep track of all created outputs so we can check they resolve
+        with SETTINGS.lock:
+            SETTINGS.outputs.append(future)
+
+        def cleanup(fut: "asyncio.Future[T_co]") -> None:
+            if fut.cancelled() or (fut.exception() is not None):
+                # if cancelled or error'd leave it in the deque to pick up at program exit
+                return
+            # else remove it from the deque
+            with SETTINGS.lock:
+                SETTINGS.outputs.remove(fut)
+
+        future.add_done_callback(cleanup)
 
         async def is_value_known() -> bool:
             return await is_known and not contains_unknowns(await future)
@@ -151,8 +165,8 @@ class Output(Generic[T_co]):
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
 
-        This function will be called during execution of a `pulumi up` request.  It may not run
-        during `pulumi preview` (as the values of resources are of course may not be known then).
+        This function will be called during execution of a `pulumi up` or `pulumi preview` request.
+        It may not run when the values of the resource is unknown.
 
         :param Callable[[T_co],Input[U]] func: A function that will, given this Output's value, transform the value to
                an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
@@ -174,28 +188,22 @@ class Output(Generic[T_co]):
                 is_secret = await self._is_secret
                 value = await self._future
 
-                if runtime.is_dry_run():
-                    # During previews only perform the apply if the engine was able to give us an actual value for this
-                    # Output or if the caller is able to tolerate unknown values.
-                    apply_during_preview = is_known or run_with_unknowns
+                # Only perform the apply if the engine was able to give us an actual value for this
+                # Output or if the caller is able to tolerate unknown values.
+                do_apply = is_known or run_with_unknowns
+                if not do_apply:
+                    # We didn't actually run the function, our new Output is definitely
+                    # **not** known.
+                    result_resources.set_result(resources)
+                    result_is_known.set_result(False)
+                    result_is_secret.set_result(is_secret)
+                    return cast(U, None)
 
-                    if not apply_during_preview:
-                        # We didn't actually run the function, our new Output is definitely
-                        # **not** known.
-                        result_resources.set_result(resources)
-                        result_is_known.set_result(False)
-                        result_is_secret.set_result(is_secret)
-                        return cast(U, None)
-
-                    # If we are running with unknown values and the value is explicitly unknown but does not actually
-                    # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
-                    # that expect to see unknowns during preview in outputs that are not known will always do so.
-                    if (
-                        not is_known
-                        and run_with_unknowns
-                        and not contains_unknowns(value)
-                    ):
-                        value = cast(T_co, UNKNOWN)
+                # If we are running with unknown values and the value is explicitly unknown but does not actually
+                # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
+                # that expect to see unknowns during preview in outputs that are not known will always do so.
+                if not is_known and run_with_unknowns and not contains_unknowns(value):
+                    value = cast(T_co, UNKNOWN)
 
                 transformed: Input[U] = func(value)
                 # Transformed is an Input, meaning there are three cases:
@@ -209,7 +217,10 @@ class Output(Generic[T_co]):
                     result_is_secret.set_result(
                         await transformed_as_output._is_secret or is_secret
                     )
-                    return await transformed.future(with_unknowns=True)
+                    result = await transformed_as_output.future(with_unknowns=True)
+                    # future shouldn't return None because we passed with_unknowns=True, but we can't RTTI check that
+                    # because the U value itself might be None.
+                    return cast(U, result)
 
                 #  2. transformed is an Awaitable[U]
                 if isawaitable(transformed):

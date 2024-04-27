@@ -15,7 +15,7 @@ return await Deployment.RunAsync(() =>
     }, new CustomResourceOptions
     {
         Provider = provider,
-        DependsOn = new[]
+        DependsOn =
         {
             provider,
         },
@@ -24,7 +24,7 @@ return await Deployment.RunAsync(() =>
         {
             "bucket",
             "lifecycleRules[0]",
-        }
+        },
     });
 
 });

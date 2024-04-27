@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -55,7 +56,7 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, info ProgramInfo,
 ) (LanguageRuntime, error) {
 	path, err := workspace.GetPluginPath(ctx.Diag,
-		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
+		apitype.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	}
 
 	plug, err := newPlugin(ctx, workingDirectory, path, runtime,
-		workspace.LanguagePlugin, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
+		apitype.LanguagePlugin, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
 	if err != nil {
 		return nil, err
 	}
@@ -170,12 +171,12 @@ func (h *langhost) GetRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 			}
 			version = &sv
 		}
-		if !workspace.IsPluginKind(info.Kind) {
+		if !apitype.IsPluginKind(info.Kind) {
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
 			Name:              info.Name,
-			Kind:              workspace.PluginKind(info.Kind),
+			Kind:              apitype.PluginKind(info.Kind),
 			Version:           version,
 			PluginDownloadURL: info.Server,
 			Checksums:         info.Checksums,
@@ -249,7 +250,7 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	plugInfo := workspace.PluginInfo{
 		Name: h.runtime,
-		Kind: workspace.LanguagePlugin,
+		Kind: apitype.LanguagePlugin,
 	}
 
 	plugInfo.Path = h.plug.Bin
@@ -475,14 +476,16 @@ func (h *langhost) GenerateProject(
 }
 
 func (h *langhost) GeneratePackage(
-	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
+	directory string, schema string, extraFiles map[string][]byte,
+	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
 	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
-		Directory:    directory,
-		Schema:       schema,
-		ExtraFiles:   extraFiles,
-		LoaderTarget: loaderTarget,
+		Directory:         directory,
+		Schema:            schema,
+		ExtraFiles:        extraFiles,
+		LoaderTarget:      loaderTarget,
+		LocalDependencies: localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -525,9 +528,9 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 }
 
 func (h *langhost) Pack(
-	packageDirectory string, version semver.Version, destinationDirectory string,
+	packageDirectory string, destinationDirectory string,
 ) (string, error) {
-	label := fmt.Sprintf("langhost[%v].Pack(%s, %s, %s)", h.runtime, packageDirectory, version, destinationDirectory)
+	label := fmt.Sprintf("langhost[%v].Pack(%s, %s)", h.runtime, packageDirectory, destinationDirectory)
 	logging.V(7).Infof("%s executing", label)
 
 	// Always send absolute paths to the plugin, as it may be running in a different working directory.
@@ -542,7 +545,6 @@ func (h *langhost) Pack(
 
 	req, err := h.client.Pack(h.ctx.Request(), &pulumirpc.PackRequest{
 		PackageDirectory:     packageDirectory,
-		Version:              version.String(),
 		DestinationDirectory: destinationDirectory,
 	})
 	if err != nil {

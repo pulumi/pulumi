@@ -323,6 +323,20 @@ func convertLiteralToString(from model.Expression) (string, bool) {
 	return "", false
 }
 
+func literalExprValue(expr model.Expression) (cty.Value, bool) {
+	if lit, ok := expr.(*model.LiteralValueExpression); ok {
+		return lit.Value, true
+	}
+
+	if templateExpr, ok := expr.(*model.TemplateExpression); ok {
+		if len(templateExpr.Parts) == 1 {
+			return literalExprValue(templateExpr.Parts[0])
+		}
+	}
+
+	return cty.NilVal, false
+}
+
 // lowerConversion performs the main logic of LowerConversion. nil, false is
 // returned if there is no conversion (safe or unsafe) between `from` and `to`.
 // This can occur when a loosely typed program is converted, or if an other
@@ -332,6 +346,19 @@ func lowerConversion(from model.Expression, to model.Type) (model.Type, bool) {
 	case *model.UnionType:
 		// Assignment: it just works
 		for _, to := range to.ElementTypes {
+			// in general, strings are not assignable to enums, but we allow it here
+			// if the enum has an element that matches the `from` expression
+			switch enumType := to.(type) {
+			case *model.EnumType:
+				if literal, ok := literalExprValue(from); ok {
+					for _, enumCase := range enumType.Elements {
+						if enumCase.RawEquals(literal) {
+							return to, true
+						}
+					}
+				}
+			}
+
 			if to.AssignableFrom(from.Type()) {
 				return to, true
 			}

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -95,6 +96,99 @@ func TestStackOutputsPython(t *testing.T) {
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
+		},
+	})
+}
+
+// TestStackOutputsProgramErrorPython tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorPython(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "python")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",       // Expected to be updated
+					"foo": float64(42), // Expected to remain the same
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorPython tests that when a resource error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorPython(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "python")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
 		},
 	})
 }
@@ -302,46 +396,6 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 	})
 }
 
-func TestMultiStackReferencePython(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-	t.Parallel()
-
-	// build a stack with an export
-	exporterOpts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
-		DestroyOnCleanup: true,
-	}
-	exporterStackName := exporterOpts.GetStackName().String()
-	integration.ProgramTest(t, exporterOpts)
-
-	importerOpts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
-			"exporter_stack_name": exporterStackName,
-		},
-		DestroyOnCleanup: true,
-	}
-	integration.ProgramTest(t, importerOpts)
-}
-
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -405,7 +459,7 @@ func TestPython3NotInstalled(t *testing.T) {
 			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
 			// for Python 3, since anyone running tests surely already has Python 3 installed on their
 			// machine. The code paths are functionally the same.
-			fmt.Sprintf("PULUMI_PYTHON_CMD=%s", badPython),
+			"PULUMI_PYTHON_CMD=" + badPython,
 		},
 		ExpectFailure: true,
 		Stderr:        stderr,
@@ -1076,13 +1130,63 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			},
 		})
 	})
+
+	// This checks we await outputs but not asyncio.tasks
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("AsyncioTasks", func(t *testing.T) {
+		version, err := exec.Command("python3", "--version").Output()
+		require.NoError(t, err)
+		if strings.Contains(string(version), "3.8") {
+			t.Skip("Skipping test as Python version is < 3.9 and asyncio.to_thread is only available in 3.9+")
+		}
+
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "asyncio_tasks"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			Quick: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "PRINT: 42") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
+	// This checks we don't leak futures awaiting outputs. Regression test for
+	// https://github.com/pulumi/pulumi/issues/16055.
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("OutputLeak", func(t *testing.T) {
+		version, err := exec.Command("python3", "--version").Output()
+		require.NoError(t, err)
+		if strings.Contains(string(version), "3.8") {
+			t.Skip("Skipping test as Python version is < 3.9 and asyncio.to_thread is only available in 3.9+")
+		}
+
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "output_leak"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			Quick:   true,
+			Verbose: true,
+		})
+	})
 }
 
 // Test dict key translations.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonTranslation(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{

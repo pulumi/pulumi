@@ -15,8 +15,8 @@ namespace Pulumi.Example
         [Output("rec")]
         public Output<Outputs.Rec?> Rec { get; private set; } = null!;
 
-        [Output("replace")]
-        public Output<string?> Replace { get; private set; } = null!;
+        [Output("replaceMe")]
+        public Output<string?> ReplaceMe { get; private set; } = null!;
 
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace Pulumi.Example
                 Version = Utilities.Version,
                 ReplaceOnChanges =
                 {
-                    "replace",
+                    "replaceMe",
                 },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);

@@ -399,6 +399,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -434,6 +435,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -468,6 +470,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -502,6 +505,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -535,6 +539,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -566,6 +571,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -665,6 +671,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -701,6 +708,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -773,11 +781,13 @@ config:
   test:importantNumber: hello
 `
 
+	ctx := context.Background()
 	project, projectError := loadProjectFromText(t, projectYaml)
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		ctx,
 		"dev",
 		project,
 		esc.Value{},
@@ -789,6 +799,7 @@ config:
 	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError = ValidateStackConfigAndApplyProjectConfig(
+		ctx,
 		"dev",
 		project,
 		esc.Value{},
@@ -817,6 +828,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -846,6 +858,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -877,6 +890,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -903,6 +917,7 @@ config:
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		esc.Value{},
@@ -938,11 +953,13 @@ config:
   test:importantNumber: 20
 `
 
+	ctx := context.Background()
 	project, projectError := loadProjectFromText(t, projectYaml)
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		ctx,
 		"dev",
 		project,
 		esc.Value{},
@@ -954,6 +971,7 @@ config:
 	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError = ValidateStackConfigAndApplyProjectConfig(
+		ctx,
 		"dev",
 		project,
 		esc.Value{},
@@ -1007,6 +1025,7 @@ config:
 	require.NoError(t, stackError, "Should be able to read the stack")
 
 	configError := ValidateStackConfigAndApplyProjectConfig(
+		context.Background(),
 		"dev",
 		project,
 		env,

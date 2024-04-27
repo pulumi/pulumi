@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sort"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -123,7 +124,15 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 // Note that this is completely not thread-safe and defeats the purpose of having a `mutate` callback
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	return sm.mutate(func() bool { return true })
+	return sm.mutate(func() bool {
+		old, new := step.Old(), step.New()
+		if old != nil && new != nil && old.Outputs.DeepEquals(new.Outputs) {
+			logging.V(9).Infof("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
+			return false
+		}
+
+		return true
+	})
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -264,16 +273,19 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
-	// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
-	sortDeps := func(deps []resource.URN) {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
-	}
-	sortDeps(old.Dependencies)
-	sortDeps(new.Dependencies)
 	// reflect.DeepEqual does not treat `nil` and `[]URN{}` as equal, so we must check for both
 	// lists being empty ourselves.
 	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
-		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
+		// Sort dependencies before comparing them. If the dependencies have changed, we must write the checkpoint.
+		sortDeps := func(deps []resource.URN) []resource.URN {
+			result := make([]resource.URN, len(deps))
+			copy(result, deps)
+			slices.Sort(result)
+			return result
+		}
+		oldDeps := sortDeps(old.Dependencies)
+		newDeps := sortDeps(new.Dependencies)
+		if !reflect.DeepEqual(oldDeps, newDeps) {
 			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
 			return true
 		}
@@ -663,8 +675,10 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := sm.persister.Save(snap); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if err := snap.VerifyIntegrity(); err != nil {
-		return fmt.Errorf("failed to verify snapshot: %w", err)
+	if !DisableIntegrityChecking {
+		if err := snap.VerifyIntegrity(); err != nil {
+			return fmt.Errorf("failed to verify snapshot: %w", err)
+		}
 	}
 	return nil
 }
@@ -672,7 +686,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
 	// True if we have elided writes since the last actual write.
-	hasElidedWrites := false
+	hasElidedWrites := true
 
 	// Service each mutation request in turn.
 serviceLoop:

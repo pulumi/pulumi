@@ -1,0 +1,6 @@
+name: l1-main
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+main: subdir

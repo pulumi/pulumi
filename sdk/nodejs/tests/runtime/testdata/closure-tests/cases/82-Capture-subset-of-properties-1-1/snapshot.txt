@@ -1,0 +1,13 @@
+exports.handler = __f0;
+
+var __o = {a: 1};
+
+function __f0() {
+  return (function() {
+    with({ o: __o, this: undefined, arguments: undefined }) {
+
+return function () { console.log(o["a"]); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

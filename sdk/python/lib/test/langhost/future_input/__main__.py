@@ -14,20 +14,24 @@
 import asyncio
 from pulumi import CustomResource, Output, Input
 
+
 async def read_a_file_or_something():
     await asyncio.sleep(0)
     return "here's a file"
 
+
 def assert_eq(l, r):
     assert l == r
+
 
 class FileResource(CustomResource):
     contents: Output[str]
 
     def __init__(self, name: str, file_contents: Input[str]) -> None:
-        CustomResource.__init__(self, "test:index:FileResource", name, {
-            "contents": file_contents
-        })
+        CustomResource.__init__(
+            self, "test:index:FileResource", name, {"contents": file_contents}
+        )
+
 
 # read_a_file_or_something returns a coroutine when called, which needs to be scheduled
 # and awaited in order to yield a value.

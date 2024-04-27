@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -124,7 +123,9 @@ func (p *languageRuntime) GenerateProject(string, string, string,
 	return nil, errors.New("GenerateProject is not supported")
 }
 
-func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, string) (hcl.Diagnostics, error) {
+func (p *languageRuntime) GeneratePackage(
+	string, string, map[string][]byte, string, map[string]string,
+) (hcl.Diagnostics, error) {
 	return nil, errors.New("GeneratePackage is not supported")
 }
 
@@ -132,6 +133,6 @@ func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string
 	return nil, nil, errors.New("GenerateProgram is not supported")
 }
 
-func (p *languageRuntime) Pack(string, semver.Version, string) (string, error) {
+func (p *languageRuntime) Pack(string, string) (string, error) {
 	return "", errors.New("Pack is not supported")
 }

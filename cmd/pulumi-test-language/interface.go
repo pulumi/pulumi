@@ -18,33 +18,32 @@ import (
 	"bytes"
 	"context"
 	b64 "encoding/base64"
+	"errors"
 	"fmt"
-	"io"
-	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/blang/semver"
-	"github.com/hexops/gotextdiff"
-	"github.com/hexops/gotextdiff/myers"
-	"github.com/hexops/gotextdiff/span"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -123,6 +122,10 @@ type providerLoader struct {
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
+	if pkg == "pulumi" {
+		return schema.DefaultPulumiPackage.Reference(), nil
+	}
+
 	// Find the provider with the given package name
 	var provider plugin.Provider
 	for _, p := range l.providers {
@@ -194,166 +197,6 @@ func makeTestResponse(msg string) *testingrpc.RunLanguageTestResponse {
 	}
 }
 
-func copyDirectory(fs iofs.FS, src string, dst string) error {
-	return iofs.WalkDir(fs, src, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relativePath, err := filepath.Rel(src, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, src)
-
-		srcPath := filepath.Join(src, relativePath)
-		dstPath := filepath.Join(dst, relativePath)
-		contract.Assertf(srcPath == path, "srcPath %s should be equal to path %s", srcPath, path)
-
-		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0o700)
-		}
-
-		srcFile, err := fs.Open(srcPath)
-		if err != nil {
-			return fmt.Errorf("open file %s: %w", srcPath, err)
-		}
-		defer srcFile.Close()
-
-		dstFile, err := os.Create(dstPath)
-		if err != nil {
-			return fmt.Errorf("create file %s: %w", dstPath, err)
-		}
-		defer dstFile.Close()
-
-		_, err = io.Copy(dstFile, srcFile)
-		if err != nil {
-			return fmt.Errorf("copy file %s->%s: %w", srcPath, dstPath, err)
-		}
-
-		return nil
-	})
-}
-
-// compareDirectories compares two directories, returning a list of validation failures where files had
-// different contents, or we only present in on of the directories. If allowNewFiles is true then it's ok to
-// have extra files in the actual directory, we use this for checking building SDKs doesn't mutate any files,
-// but doing so might add new build files (which would then normally be .gitignored).
-func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]string, error) {
-	var validations []string
-	// Check that every file in expected is also in actual with the same content
-	err := filepath.WalkDir(expectedDir, func(path string, d iofs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// No need to check directories, just recurse into them
-		if d.IsDir() {
-			return nil
-		}
-
-		relativePath, err := filepath.Rel(expectedDir, path)
-		contract.AssertNoErrorf(err, "path %s should be relative to %s", path, expectedDir)
-
-		// Check that the file is present in the expected directory and has the same contents
-		expectedContents, err := os.ReadFile(filepath.Join(expectedDir, relativePath))
-		if err != nil {
-			return fmt.Errorf("read expected file: %w", err)
-		}
-
-		actualPath := filepath.Join(actualDir, relativePath)
-		actualContents, err := os.ReadFile(actualPath)
-		// An error here is a test failure rather than an error, add this to the validation list
-		if err != nil {
-			validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
-			// Move on to the next file
-			return nil
-		}
-
-		if !bytes.Equal(actualContents, expectedContents) {
-			edits := myers.ComputeEdits(
-				span.URIFromPath("expected"), string(expectedContents), string(actualContents),
-			)
-			diff := gotextdiff.ToUnified("expected", "actual", string(expectedContents), edits)
-
-			validations = append(validations, fmt.Sprintf(
-				"expected file %s does not match actual file:\n\n%s", relativePath, diff),
-			)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("walk expected dir: %w", err)
-	}
-
-	// Now walk the actual directory and check every file found is present in the expected directory, i.e.
-	// there aren't any new files that aren't expected. We've already done contents checking so we just need
-	// existence checks.
-	if !allowNewFiles {
-		err = filepath.WalkDir(actualDir, func(path string, d iofs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// No need to check directories
-			if d.IsDir() {
-				return nil
-			}
-
-			relativePath, err := filepath.Rel(actualDir, path)
-			contract.AssertNoErrorf(err, "path %s should be relative to %s", path, actualDir)
-
-			// Just need to see if this file exists in expected, if it doesn't return add a validation failure.
-			_, err = os.Stat(filepath.Join(expectedDir, relativePath))
-			if err == nil {
-				// File exists in expected, we've already done a contents check so just move on to
-				// the next file.
-				return nil
-			}
-
-			// Check if this was a NotFound error in which case add a validation failure, else return the error
-			if os.IsNotExist(err) {
-				validations = append(validations, fmt.Sprintf("file %s is not expected", relativePath))
-				return nil
-			}
-
-			return err
-		})
-		if err != nil {
-			return nil, fmt.Errorf("walk actual dir: %w", err)
-		}
-	}
-
-	return validations, nil
-}
-
-// Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
-// write the new files instead.
-func doSnapshot(disableSnapshotWriting bool, sourceDirectory, snapshotDirectory string) ([]string, error) {
-	if !disableSnapshotWriting && cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
-		// Write files
-		err := os.RemoveAll(snapshotDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("remove snapshot dir: %w", err)
-		}
-		err = os.MkdirAll(snapshotDirectory, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create snapshot dir: %w", err)
-		}
-		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("copy snapshot dir: %w", err)
-		}
-		return nil, nil
-	}
-	// Validate files, we need to walk twice to get this correct because we need to check all expected
-	// files are present, but also that no unexpected files are present.
-	validations, err := compareDirectories(sourceDirectory, snapshotDirectory, false /* allowNewFiles */)
-	if err != nil {
-		return nil, err
-	}
-
-	return validations, nil
-}
-
 type testHost struct {
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
@@ -393,7 +236,7 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 func (h *testHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	// Look in the providers map for this provider
 	if version == nil {
-		return nil, fmt.Errorf("unexpected provider request with no version")
+		return nil, errors.New("unexpected provider request with no version")
 	}
 
 	key := fmt.Sprintf("%s@%s", pkg, version)
@@ -441,14 +284,18 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
 	diff := expected.SymmetricDifference(actual)
 	if !diff.IsEmpty() {
-		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actual, expected)
+		expectedSlice := expected.ToSlice()
+		slices.Sort(expectedSlice)
+		actualSlice := actual.ToSlice()
+		slices.Sort(actualSlice)
+		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actualSlice, expectedSlice)
 	}
 
 	return nil
 }
 
 func (h *testHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	panic("not implemented")
 }
@@ -467,12 +314,26 @@ func (h *testHost) Close() error {
 	return nil
 }
 
+type replacement struct {
+	Path        string
+	Pattern     string
+	Replacement string
+}
+
+type compiledReplacement struct {
+	Path        *regexp.Regexp
+	Pattern     *regexp.Regexp
+	Replacement string
+}
+
 type testToken struct {
 	LanguagePluginName   string
 	LanguagePluginTarget string
 	TemporaryDirectory   string
 	SnapshotDirectory    string
 	CoreArtifact         string
+	CoreVersion          string
+	SnapshotEdits        []replacement
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -480,16 +341,16 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	req *testingrpc.PrepareLanguageTestsRequest,
 ) (*testingrpc.PrepareLanguageTestsResponse, error) {
 	if req.LanguagePluginName == "" {
-		return nil, fmt.Errorf("language plugin name must be specified")
+		return nil, errors.New("language plugin name must be specified")
 	}
 	if req.LanguagePluginTarget == "" {
-		return nil, fmt.Errorf("language plugin target must be specified")
+		return nil, errors.New("language plugin target must be specified")
 	}
 	if req.SnapshotDirectory == "" {
-		return nil, fmt.Errorf("snapshot directory must be specified")
+		return nil, errors.New("snapshot directory must be specified")
 	}
 	if req.TemporaryDirectory == "" {
-		return nil, fmt.Errorf("temporary directory must be specified")
+		return nil, errors.New("temporary directory must be specified")
 	}
 
 	err := os.MkdirAll(req.SnapshotDirectory, 0o755)
@@ -538,11 +399,19 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}
 
 	// Build the core SDK, use a slightly odd version so we can test dependencies later.
-	version := semver.MustParse("1.0.1")
 	coreArtifact, err := languageClient.Pack(
-		req.CoreSdkDirectory, version, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 	if err != nil {
 		return nil, fmt.Errorf("pack core SDK: %w", err)
+	}
+
+	edits := []replacement{}
+	for _, replace := range req.SnapshotEdits {
+		edits = append(edits, replacement{
+			Path:        replace.Path,
+			Pattern:     replace.Pattern,
+			Replacement: replace.Replacement,
+		})
 	}
 
 	tokenBytes, err := json.Marshal(&testToken{
@@ -551,6 +420,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		TemporaryDirectory:   req.TemporaryDirectory,
 		SnapshotDirectory:    req.SnapshotDirectory,
 		CoreArtifact:         coreArtifact,
+		CoreVersion:          req.CoreSdkVersion,
+		SnapshotEdits:        edits,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -593,6 +464,24 @@ func (eng *languageTestServer) RunLanguageTest(
 	err = json.Unmarshal(tokenBytes, &token)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	// If the language defines any snapshot edits compile those regexs to apply now
+	snapshotEdits := []compiledReplacement{}
+	for _, replace := range token.SnapshotEdits {
+		pathRegex, err := regexp.Compile(replace.Path)
+		if err != nil {
+			return nil, fmt.Errorf("invalid path regex %s: %w", replace.Path, err)
+		}
+		editRegex, err := regexp.Compile(replace.Pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid edit regex %s: %w", replace.Pattern, err)
+		}
+		snapshotEdits = append(snapshotEdits, compiledReplacement{
+			Path:        pathRegex,
+			Pattern:     editRegex,
+			Replacement: replace.Replacement,
+		})
 	}
 
 	// Create a diagnostics sink for the test
@@ -655,28 +544,6 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
-		version, err := getProviderVersion(provider)
-		if err != nil {
-			return nil, err
-		}
-
-		sdkName := fmt.Sprintf("%s-%s", pkg, version)
-		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		_, err = os.Stat(sdkTempDir)
-		if err == nil {
-			// If the directory already exists then we don't need to regenerate the SDK
-			sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
-			if err != nil {
-				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
-			}
-			localDependencies[pkg] = sdkArtifact
-			continue
-		}
-
-		err = os.MkdirAll(sdkTempDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create temp sdks dir: %w", err)
-		}
 
 		schemaBytes, err := provider.GetSchema(0)
 		if err != nil {
@@ -696,13 +563,34 @@ func (eng *languageTestServer) RunLanguageTest(
 		if diags.HasErrors() {
 			return nil, fmt.Errorf("bind schema for provider %s: %v", pkg, diags)
 		}
+		// Unconditionally set SupportPack
+		boundSpec.SupportPack = true
+
+		sdkName := fmt.Sprintf("%s-%s", pkg, spec.Version)
+		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+		_, err = os.Stat(sdkTempDir)
+		if err == nil {
+			// If the directory already exists then we don't need to regenerate the SDK
+			sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
+			if err != nil {
+				return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
+			}
+			localDependencies[pkg] = sdkArtifact
+			continue
+		}
+
+		err = os.MkdirAll(sdkTempDir, 0o755)
+		if err != nil {
+			return nil, fmt.Errorf("create temp sdks dir: %w", err)
+		}
 
 		schemaBytes, err = boundSpec.MarshalJSON()
 		if err != nil {
 			return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
 		}
 
-		diags, err = languageClient.GeneratePackage(sdkTempDir, string(schemaBytes), nil, grpcServer.Addr())
+		diags, err = languageClient.GeneratePackage(
+			sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
 		}
@@ -712,7 +600,18 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir)
+		sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
+		// If we made a snapshot edit we can clean it up now
+		if sdkSnapshotDir != sdkTempDir {
+			err := os.RemoveAll(sdkSnapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg, err)
 		}
@@ -724,14 +623,26 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 		// any intermediate build files don't end up getting captured in the snapshot folder.
-		sdkArtifact, err := languageClient.Pack(sdkTempDir, version, artifactsDir)
+		sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
 		if err != nil {
 			return nil, fmt.Errorf("sdk packing for %s: %w", pkg, err)
 		}
 		localDependencies[pkg] = sdkArtifact
 
 		// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-		validations, err = compareDirectories(sdkTempDir, snapshotDir, true /* allowNewFiles */)
+		// Again we need to make a snapshot edit for this.
+		sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg, err)
+		}
+		validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
+		// If we made a snapshot edit we can clean it up now
+		if sdkSnapshotDir != sdkTempDir {
+			err := os.RemoveAll(sdkSnapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg, err)
 		}
@@ -739,6 +650,71 @@ func (eng *languageTestServer) RunLanguageTest(
 			return makeTestResponse(
 				fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
 					pkg, strings.Join(validations, "\n"))), nil
+		}
+	}
+
+	// Just use base64 "secrets" for these tests
+	sm := b64secrets.NewBase64SecretsManager()
+	dec, err := sm.Decrypter()
+	contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
+
+	// Create a temp dir for the a diy backend to run in for the test
+	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
+	err = os.MkdirAll(backendDir, 0o755)
+	if err != nil {
+		return nil, fmt.Errorf("create temp backend dir: %w", err)
+	}
+	testBackend, err := diy.New(ctx, snk, "file://"+backendDir, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create diy backend: %w", err)
+	}
+
+	// Create any stack references needed for the test
+	for name, outputs := range test.stackReferences {
+		ref, err := testBackend.ParseStackReference(name)
+		if err != nil {
+			return nil, fmt.Errorf("parse test stack reference: %w", err)
+		}
+
+		s, err := testBackend.CreateStack(ctx, ref, "", nil)
+		if err != nil {
+			return nil, fmt.Errorf("create test stack reference: %w", err)
+		}
+
+		stackName := ref.Name()
+		projectName, has := ref.Project()
+		if !has {
+			return nil, fmt.Errorf("stack reference %s has no project", ref)
+		}
+		name := fmt.Sprintf("%s-%s", projectName, stackName)
+
+		// Import the deployment for the stack reference
+		snap := &deploy.Snapshot{
+			SecretsManager: sm,
+			Resources: []*resource.State{
+				{
+					Type:    resource.RootStackType,
+					URN:     resource.CreateURN(name, string(resource.RootStackType), "", string(projectName), stackName.String()),
+					Outputs: outputs,
+				},
+			},
+		}
+		serializedDeployment, err := stack.SerializeDeployment(ctx, snap, false)
+		if err != nil {
+			return nil, fmt.Errorf("serialize deployment: %w", err)
+		}
+		jsonDeployment, err := json.Marshal(serializedDeployment)
+		if err != nil {
+			return nil, fmt.Errorf("serialize deployment: %w", err)
+		}
+
+		untypedDeployment := &apitype.UntypedDeployment{
+			Version:    apitype.DeploymentSchemaVersionCurrent,
+			Deployment: jsonDeployment,
+		}
+		err = s.ImportDeployment(ctx, untypedDeployment)
+		if err != nil {
+			return nil, fmt.Errorf("import deployment: %w", err)
 		}
 	}
 
@@ -759,7 +735,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir)
+		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
@@ -796,12 +772,23 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.runs) > 1 {
 			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 		}
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDir, snapshotDir)
+		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+		if err != nil {
+			return nil, fmt.Errorf("program snapshot creation: %w", err)
+		}
+		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
 		if err != nil {
 			return nil, fmt.Errorf("program snapshot validation: %w", err)
 		}
 		if len(validations) > 0 {
-			return makeTestResponse(fmt.Sprintf("program snapshot validation failed:\n%s", strings.Join(validations, "\n"))), nil
+			return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
+		}
+		// If we made a snapshot edit we can clean it up now
+		if projectDirSnapshot != projectDir {
+			err = os.RemoveAll(projectDirSnapshot)
+			if err != nil {
+				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+			}
 		}
 
 		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
@@ -837,8 +824,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 		}
-		expectedDependencies := []plugin.DependencyInfo{
-			{Name: "pulumi", Version: "1.0.1"},
+		expectedDependencies := []plugin.DependencyInfo{}
+		if token.CoreVersion != "" {
+			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
+				Name: "pulumi", Version: token.CoreVersion,
+			})
 		}
 		for _, provider := range test.providers {
 			pkg := string(provider.Pkg())
@@ -870,23 +860,14 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			if found == nil {
-				return makeTestResponse(fmt.Sprintf("missing expected dependency %s", expectedDependency.Name)), nil
+				return makeTestResponse("missing expected dependency " + expectedDependency.Name), nil
 			} else if expectedDependency.Version != *found {
 				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
 					expectedDependency.Name, *found, expectedDependency.Version)), nil
 			}
 		}
 
-		// Create a temp dir for the a diy backend to run in for the test
-		backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
-		err = os.MkdirAll(backendDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create temp backend dir: %w", err)
-		}
-		testBackend, err := diy.New(ctx, snk, "file://"+backendDir, project)
-		if err != nil {
-			return nil, fmt.Errorf("create diy backend: %w", err)
-		}
+		testBackend.SetCurrentProject(project)
 
 		// Create a new stack for the test
 		stackReference, err := testBackend.ParseStackReference("test")
@@ -920,9 +901,6 @@ func (eng *languageTestServer) RunLanguageTest(
 			},
 			Engine: updateOptions,
 		}
-		sm := b64secrets.NewBase64SecretsManager()
-		dec, err := sm.Decrypter()
-		contract.AssertNoErrorf(err, "base64 must be able to create a Decrypter")
 
 		cfg := backend.StackConfiguration{
 			Config:    run.config,
@@ -951,6 +929,13 @@ func (eng *languageTestServer) RunLanguageTest(
 			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
 			if err != nil {
 				return nil, fmt.Errorf("snapshot: %w", err)
+			}
+		} else {
+			// We still want to try to get a snapshot, but won't error out
+			// if we can't.
+			s, err = testBackend.GetStack(ctx, stackReference)
+			if err == nil {
+				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
 			}
 		}
 

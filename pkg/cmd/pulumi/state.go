@@ -177,11 +177,11 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
-	if !stackIsAlreadyHosed {
+	if !stackIsAlreadyHosed && !backend.DisableIntegrityChecking {
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
+	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}

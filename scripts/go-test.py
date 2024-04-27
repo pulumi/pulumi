@@ -69,7 +69,7 @@ def heartbeat():
     if not sys:
         # occurs during interpreter shutdown
         return
-    print(heartbeat_str, file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
+    print(heartbeat_str + " " + str(datetime.now()), file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
     sys.stdout.flush()
     sys.stderr.flush()
 
@@ -89,14 +89,19 @@ if shutil.which('gotestsum') is not None:
         os.mkdir(str(test_results_dir))
 
     json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
-    args = ['gotestsum', '--jsonfile', json_file, '--rerun-fails=1', '--packages', pkgs, '--'] + \
+    args = ['gotestsum', '--jsonfile', json_file, '--packages', pkgs, '--'] + \
         opts
 else:
     args = ['go', 'test'] + args
 
 if not dryrun:
-    print("Running: " + ' '.join(args))
-    sp.check_call(args, shell=False)
+    try:
+        print("Running: " + ' '.join(args))
+        sp.check_call(args, shell=False)
+        print("Completed: " + ' '.join(args))
+    except sp.CalledProcessError as e:
+        print("Failed: " + ' '.join(args))
+        raise e
 else:
     print("Would have run: " + ' '.join(args))
 

@@ -15,9 +15,11 @@ from pulumi import Output, ResourceOptions
 from pulumi.resource import Alias, CustomResource
 from pulumi.runtime.resource import all_aliases
 
+
 class MyResource(CustomResource):
     def __init__(self, name, opts=None):
         CustomResource.__init__(self, "test:resource:type", name, props={}, opts=opts)
+
 
 test_cases = [
     {
@@ -64,8 +66,15 @@ test_cases = [
     },
     {
         "resource_name": "myres6",
-        "parent_aliases": [Alias(name="myres62"), Alias(type_="test:resource:type3"), Alias(name="myres63")],
-        "child_aliases": [Alias(name="myres6-child2"), Alias(type_="test:resource:child2")],
+        "parent_aliases": [
+            Alias(name="myres62"),
+            Alias(type_="test:resource:type3"),
+            Alias(name="myres63"),
+        ],
+        "child_aliases": [
+            Alias(name="myres6-child2"),
+            Alias(type_="test:resource:child2"),
+        ],
         "results": [
             "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres6-child2",
             "urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres6-child",
@@ -88,14 +97,18 @@ for test_case in test_cases:
     child_aliases = test_case["child_aliases"]
     results = test_case["results"]
     res = MyResource(resource_name, ResourceOptions(aliases=parent_aliases))
-    aliases = all_aliases(child_aliases, resource_name+"-child", "test:resource:child", res)
+    aliases = all_aliases(
+        child_aliases, resource_name + "-child", "test:resource:child", res
+    )
     print(len(aliases))
     if len(aliases) != len(results):
         raise Exception(f"expected ${len(results)} aliases but got ${len(aliases)}")
     for i in range(len(aliases)):
         result = results[i]
-        def validate(alias_urn: str, result=result): 
+
+        def validate(alias_urn: str, result=result):
             print(f"validating {alias_urn}")
             if alias_urn != result:
                 raise Exception(f"expected {result} but got {alias_urn}")
+
         Output.from_input(aliases[i]).apply(validate)

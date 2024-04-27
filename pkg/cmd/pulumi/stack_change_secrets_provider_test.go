@@ -106,7 +106,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			return snapshot, nil
 		},
 		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(snapshot, nil, false)
+			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
 			if err != nil {
 				return nil, err
 			}
@@ -207,7 +207,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			return snapshot, nil
 		},
 		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(snapshot, nil, false)
+			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
 			if err != nil {
 				return nil, err
 			}

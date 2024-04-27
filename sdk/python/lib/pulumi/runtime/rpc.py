@@ -265,6 +265,12 @@ async def _add_dependency(
     * Comp2 because it is a non-remote component resoruce
     * Comp3 and Cust5 because Comp3 is a child of a remote component resource
     """
+    from ..resource import Resource  # pylint: disable=import-outside-toplevel
+
+    if not isinstance(res, Resource):
+        raise TypeError(
+            f"'depends_on' was passed a value {res} that was not a Resource."
+        )
 
     # Exit early if there are cycles to avoid hangs.
     no_cycles = declare_dependency(from_resource, res) if from_resource else True
@@ -1101,6 +1107,7 @@ def resolve_outputs(
     resolvers: Dict[str, Resolver],
     custom: bool,
     transform_using_type_metadata: bool = False,
+    keep_unknowns: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -1116,11 +1123,11 @@ def resolve_outputs(
     if transform_using_type_metadata:
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
         # pylint: disable=C3001
-        translate = lambda k: pulumi_to_py_names.get(k) or k
+        translate = lambda prop: pulumi_to_py_names.get(prop) or prop
         # pylint: disable=C3001
-        translate_to_pass = lambda k: k
+        translate_to_pass = lambda prop: prop
 
-    for key, value in deserialize_properties(outputs).items():
+    for key, value in deserialize_properties(outputs, keep_unknowns).items():
         # Outputs coming from the provider are NOT translated. Do so here.
         translated_key = translate(key)
 

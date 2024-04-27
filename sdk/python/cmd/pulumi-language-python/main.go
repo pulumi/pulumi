@@ -96,6 +96,7 @@ func main() {
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.String("virtualenv", "", "[obsolete] Virtual environment path to use")
 	flag.String("root", "", "[obsolete] Project root path to use")
+	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -153,7 +154,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, false)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -180,13 +181,29 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+
+	// used by lanaguge conformace tests to enable the PyProject.Enabled schema option
+	useToml bool
 }
+
+type typeChecker int
+
+const (
+	// TypeCheckerNone is the default typeChecker
+	TypeCheckerNone typeChecker = iota
+	// TypeCheckerMypy is the mypy typeChecker
+	TypeCheckerMypy
+	// TypeCheckerPyright is the pyright typeChecker
+	TypeCheckerPyright
+)
 
 type pythonOptions struct {
 	// Virtual environment path to use.
 	virtualenv string
 	// The resolved virtual environment path.
 	virtualenvPath string
+	// Use a typechecker to type check
+	typechecker typeChecker
 }
 
 func parseOptions(root string, options map[string]interface{}) (pythonOptions, error) {
@@ -202,15 +219,31 @@ func parseOptions(root string, options map[string]interface{}) (pythonOptions, e
 	// Resolve virtualenv path relative to root.
 	pythonOptions.virtualenvPath = resolveVirtualEnvironmentPath(root, pythonOptions.virtualenv)
 
+	if typechecker, ok := options["typechecker"]; ok {
+		if typechecker, ok := typechecker.(string); ok {
+			switch typechecker {
+			case "mypy":
+				pythonOptions.typechecker = TypeCheckerMypy
+			case "pyright":
+				pythonOptions.typechecker = TypeCheckerPyright
+			default:
+				return pythonOptions, fmt.Errorf("unsupported typechecker option: %s", typechecker)
+			}
+		} else {
+			return pythonOptions, errors.New("typechecker option must be a string")
+		}
+	}
+
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing string,
+func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		useToml:       useToml,
 	}
 }
 
@@ -270,21 +303,11 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
 
-	// translate the semver Version into a PEP440 version
-	version := "0.0.0"
-	if v, err := semver.Parse(req.Version); err == nil {
-		version = codegen.PypiVersion(v)
-	} else if req.Version != "" {
-		return nil, fmt.Errorf("invalid version: %w", err)
-	}
-
 	buildCmd, err := python.Command(ctx, "-m", "build", "--outdir", tmp)
 	if err != nil {
 		return nil, err
 	}
 	buildCmd.Dir = req.PackageDirectory
-	buildCmd.Env = os.Environ()
-	buildCmd.Env = append(buildCmd.Env, "PULUMI_PYTHON_VERSION="+version)
 
 	var stdout, stderr bytes.Buffer
 	buildCmd.Stdout = &stdout
@@ -571,7 +594,7 @@ func determinePluginDependency(
 	}
 	if !strings.HasPrefix(version, "v") {
 		// Add "v" prefix if not already present.
-		version = fmt.Sprintf("v%s", version)
+		version = "v" + version
 	}
 
 	result := &pulumirpc.PluginDependency{
@@ -609,7 +632,7 @@ func determinePluginDependency(
 // Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
 	if len(packageVersion) == 0 {
-		return "", fmt.Errorf("cannot parse empty string")
+		return "", errors.New("cannot parse empty string")
 	}
 	// Verify ASCII
 	for i := 0; i < len(packageVersion); i++ {
@@ -632,7 +655,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 	// Explicitly err on epochs
 	if num, maybeEpoch := parseNumber(packageVersion); num != "" && strings.HasPrefix(maybeEpoch, "!") {
-		return "", fmt.Errorf("epochs are not supported")
+		return "", errors.New("epochs are not supported")
 	}
 
 	segments := []string{}
@@ -767,28 +790,31 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	var errResult string
-	var cmd *exec.Cmd
-	var virtualenv string
-	if opts.virtualenv != "" {
-		virtualenv = opts.virtualenvPath
-		if !python.IsVirtualEnv(virtualenv) {
-			return nil, python.NewVirtualEnvError(opts.virtualenv, virtualenv)
+	mkCmd := func(args []string) (*exec.Cmd, error) {
+		if opts.virtualenv != "" {
+			virtualenv := opts.virtualenvPath
+			if !python.IsVirtualEnv(virtualenv) {
+				return nil, python.NewVirtualEnvError(opts.virtualenv, virtualenv)
+			}
+			return python.VirtualEnvCommand(virtualenv, "python", args...), nil
 		}
-		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
-	} else {
-		cmd, err = python.Command(ctx, args...)
+		cmd, err := python.Command(ctx, args...)
 		if err != nil {
 			return nil, err
 		}
+		return cmd, nil
 	}
 
+	cmd, err := mkCmd(args)
+	if err != nil {
+		return nil, err
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if virtualenv != "" || config != "" || configSecretKeys != "" {
+	if opts.virtualenvPath != "" || config != "" || configSecretKeys != "" {
 		env := os.Environ()
-		if virtualenv != "" {
-			env = python.ActivateVirtualEnv(env, virtualenv)
+		if opts.virtualenvPath != "" {
+			env = python.ActivateVirtualEnv(env, opts.virtualenvPath)
 		}
 		if config != "" {
 			env = append(env, pulumiConfigVar+"="+config)
@@ -798,6 +824,34 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		cmd.Env = env
 	}
+	// Before running the command, we might need to run typechecker first
+	var typechecker string
+	switch opts.typechecker {
+	case TypeCheckerNone:
+		break
+	case TypeCheckerMypy:
+		typechecker = "mypy"
+	case TypeCheckerPyright:
+		typechecker = "pyright"
+	}
+
+	if typechecker != "" {
+		typecheckerCmd, err := mkCmd([]string{"-m", typechecker, req.Info.ProgramDirectory})
+		if err != nil {
+			return nil, err
+		}
+		env := os.Environ()
+		if opts.virtualenvPath != "" {
+			env = python.ActivateVirtualEnv(env, opts.virtualenvPath)
+		}
+		typecheckerCmd.Env = env
+		typecheckerCmd.Stdout = os.Stdout
+		typecheckerCmd.Stderr = os.Stderr
+		if err := typecheckerCmd.Run(); err != nil {
+			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
+		}
+	}
+	var errResult string
 	if err := cmd.Run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
 		// need to explicitly flush our output streams so that, when we exit, the engine picks up the child Python
@@ -1197,7 +1251,7 @@ func (host *pythonLanguageHost) GenerateProgram(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error program was nil")
+		return nil, errors.New("internal error program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
@@ -1236,6 +1290,17 @@ func (host *pythonLanguageHost) GeneratePackage(
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
+
+	if host.useToml {
+		var info codegen.PackageInfo
+		var ok bool
+		if info, ok = pkg.Language["python"].(codegen.PackageInfo); !ok {
+			info = codegen.PackageInfo{}
+		}
+		info.PyProject.Enabled = true
+		pkg.Language["python"] = info
+	}
+
 	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)
 	if err != nil {
 		return nil, err

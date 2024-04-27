@@ -169,6 +169,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -190,7 +191,12 @@ func GenerateProject(
 	}
 
 	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	project.Runtime = workspace.NewProjectRuntimeInfo("nodejs", nil)
+	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
+	if forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
@@ -198,25 +204,6 @@ func GenerateProject(
 	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
 	if err != nil {
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
-	}
-
-	// The local dependencies map is a map of package name to the path to the package, the path could be
-	// absolute or a relative path but we want to ensure we emit relative paths in the package.json.
-	for k, v := range localDependencies {
-		absPath := v
-		if !filepath.IsAbs(v) {
-			absPath, err = filepath.Abs(v)
-			if err != nil {
-				return fmt.Errorf("absolute path of %s: %w", v, err)
-			}
-		}
-
-		relPath, err := filepath.Rel(directory, absPath)
-		if err != nil {
-			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
-		}
-
-		localDependencies[k] = relPath
 	}
 
 	// Build the package.json

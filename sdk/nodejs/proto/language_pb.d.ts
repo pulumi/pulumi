@@ -564,6 +564,9 @@ export class GeneratePackageRequest extends jspb.Message {
     getLoaderTarget(): string;
     setLoaderTarget(value: string): GeneratePackageRequest;
 
+    getLocalDependenciesMap(): jspb.Map<string, string>;
+    clearLocalDependenciesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GeneratePackageRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GeneratePackageRequest): GeneratePackageRequest.AsObject;
@@ -581,6 +584,8 @@ export namespace GeneratePackageRequest {
 
         extraFilesMap: Array<[string, Uint8Array | string]>,
         loaderTarget: string,
+
+        localDependenciesMap: Array<[string, string]>,
     }
 }
 
@@ -609,8 +614,6 @@ export namespace GeneratePackageResponse {
 export class PackRequest extends jspb.Message { 
     getPackageDirectory(): string;
     setPackageDirectory(value: string): PackRequest;
-    getVersion(): string;
-    setVersion(value: string): PackRequest;
     getDestinationDirectory(): string;
     setDestinationDirectory(value: string): PackRequest;
 
@@ -627,7 +630,6 @@ export class PackRequest extends jspb.Message {
 export namespace PackRequest {
     export type AsObject = {
         packageDirectory: string,
-        version: string,
         destinationDirectory: string,
     }
 }

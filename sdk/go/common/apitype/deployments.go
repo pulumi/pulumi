@@ -36,14 +36,21 @@ const (
 // CreateDeploymentRequest defines the request payload that is expected when
 // creating a new deployment.
 type CreateDeploymentRequest struct {
+	// Op
+	Op PulumiOperation `json:"operation"`
+
+	// InheritSettings is a flag that indicates whether the deployment should inherit
+	// deployment settings from the stack.
+	InheritSettings bool `json:"inheritSettings"`
+
 	// Executor defines options that the executor is going to use to run the job.
-	Executor *ExecutorContext `json:"executorContext"`
+	Executor *ExecutorContext `json:"executorContext,omitempty"`
 
 	// Source defines how the source code to the Pulumi program will be gathered.
 	Source *SourceContext `json:"sourceContext,omitempty"`
 
 	// Operation defines the options that the executor will use to run the Pulumi commands.
-	Operation *OperationContext `json:"operationContext"`
+	Operation *OperationContext `json:"operationContext,omitempty"`
 }
 
 type ExecutorContext struct {
@@ -51,7 +58,19 @@ type ExecutorContext struct {
 	WorkingDirectory string `json:"workingDirectory"`
 
 	// Defines the image that the pulumi operations should run in.
-	ExecutorImage string `json:"executorImage,omitempty"`
+	ExecutorImage *DockerImage `json:"executorImage,omitempty"`
+}
+
+// A DockerImage describes a Docker image reference + optional credentials for use with a job definition.
+type DockerImage struct {
+	Reference   string                  `json:"reference"`
+	Credentials *DockerImageCredentials `json:"credentials,omitempty"`
+}
+
+// DockerImageCredentials describes the credentials needed to access a Docker repository.
+type DockerImageCredentials struct {
+	Username string      `json:"username"`
+	Password SecretValue `json:"password"`
 }
 
 // SourceContext describes some source code, and how to obtain it.

@@ -19,40 +19,70 @@ from ..util import LanghostTest
 class TestTypes(LanghostTest):
     def test_types(self):
         self.run_test(
-            program=path.join(self.base_path(), "types"),
-            expected_resource_count=16)
+            program=path.join(self.base_path(), "types"), expected_resource_count=16
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         if name in ["testres", "testres2", "testres3", "testres4"]:
             self.assertIn("additional", _resource)
-            self.assertEqual({
-                "firstValue": "hello",
-                "secondValue": 42,
-            }, _resource["additional"])
+            self.assertEqual(
+                {
+                    "firstValue": "hello",
+                    "secondValue": 42,
+                },
+                _resource["additional"],
+            )
         elif name in ["testres5", "testres6", "testres7", "testres8"]:
             self.assertIn("extra", _resource)
-            self.assertEqual({
-                "firstValue": "foo",
-                "secondValue": 100,
-            }, _resource["extra"])
+            self.assertEqual(
+                {
+                    "firstValue": "foo",
+                    "secondValue": 100,
+                },
+                _resource["extra"],
+            )
         elif name in ["testres9", "testres10", "testres11", "testres12"]:
             self.assertIn("supplementary", _resource)
-            self.assertEqual({
-                "firstValue": "bar",
-                "secondValue": 200,
-                "third": "third value",
-                "fourth": "fourth value",
-            }, _resource["supplementary"])
+            self.assertEqual(
+                {
+                    "firstValue": "bar",
+                    "secondValue": 200,
+                    "third": "third value",
+                    "fourth": "fourth value",
+                },
+                _resource["supplementary"],
+            )
         elif name in ["testres13", "testres14", "testres15", "testres16"]:
             self.assertIn("ancillary", _resource)
-            self.assertEqual({
-                "firstValue": "baz",
-                "secondValue": 500,
-                "third": "third value!",
-                "fourth": "fourth!",
-            }, _resource["ancillary"])
+            self.assertEqual(
+                {
+                    "firstValue": "baz",
+                    "secondValue": 500,
+                    "third": "third value!",
+                    "fourth": "fourth!",
+                },
+                _resource["ancillary"],
+            )
         else:
             self.fail(f"unknown resource: {name}")
         return {

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,10 +74,6 @@ func (h *RuntimeOptionsLanguageHost) Pack(
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.1" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
 	return &pulumirpc.PackResponse{
 		ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 	}, nil
@@ -89,7 +86,7 @@ func (h *RuntimeOptionsLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
 	if !req.Strict {
-		return nil, fmt.Errorf("expected strict to be true")
+		return nil, errors.New("expected strict to be true")
 	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
@@ -210,12 +207,10 @@ func (h *RuntimeOptionsLanguageHost) Run(
 	return &pulumirpc.RunResponse{}, nil
 }
 
-// Run a simple test with a mocked runtime that uses runtime options
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
+// Run a simple test with a mocked runtime that uses runtime options.
 func TestRuntimeOptions(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}

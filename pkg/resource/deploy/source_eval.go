@@ -53,6 +53,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
@@ -550,6 +552,12 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 type resmon struct {
 	pulumirpc.UnsafeResourceMonitorServer
 
+	pendingTransforms     map[string][]TransformFunction // pending transformation functions for a constructed resource
+	pendingTransformsLock sync.Mutex
+
+	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
+	parentsLock sync.Mutex
+
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.
 	diagostics                diag.Sink                          // logger for user-facing messages
@@ -601,6 +609,8 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		providers:                 provs,
 		defaultProviders:          d,
 		sourcePositions:           newSourcePositions(src.runinfo.ProjectRoot),
+		pendingTransforms:         map[string][]TransformFunction{},
+		parents:                   map[resource.URN]resource.URN{},
 		resGoals:                  map[resource.URN]resource.Goal{},
 		componentProviders:        map[resource.URN]map[string]string{},
 		regChan:                   regChan,
@@ -909,7 +919,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
 	for key, output := range args {
-		argDependencies[key] = addOutputDependencies(argDependencies[key], output)
+		argDependencies[key] = extendOutputDependencies(argDependencies[key], output)
 	}
 
 	info := plugin.CallInfo{
@@ -936,7 +946,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
 	for k, v := range ret.Return {
-		ret.ReturnDependencies[k] = addOutputDependencies(ret.ReturnDependencies[k], v)
+		ret.ReturnDependencies[k] = extendOutputDependencies(ret.ReturnDependencies[k], v)
 	}
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
@@ -1443,6 +1453,45 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 
+	// Before we pass the props to the transform function we need to ensure that they correctly carry any dependency
+	// information.
+	dependencies := mapset.NewSet[resource.URN]()
+	for _, dependingURN := range req.GetDependencies() {
+		urn, err := resource.ParseURN(dependingURN)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
+		}
+		dependencies.Add(urn)
+	}
+
+	propertyDependencies := make(map[resource.PropertyKey]mapset.Set[resource.URN])
+	if len(req.GetPropertyDependencies()) == 0 && !remote {
+		// If this request did not specify property dependencies, treat each property as depending on every resource
+		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
+		// support remote already support passing property dependencies, so there's no need to backfill here.
+		for pk := range props {
+			propertyDependencies[pk] = dependencies
+		}
+	} else {
+		// Otherwise, unmarshal the per-property dependency information.
+		for pk, pd := range req.GetPropertyDependencies() {
+			deps := mapset.NewSet[resource.URN]()
+			for _, d := range pd.Urns {
+				urn, err := resource.ParseURN(d)
+				if err != nil {
+					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency on property %s URN: %s", pk, err))
+				}
+				deps.Add(urn)
+			}
+			propertyDependencies[resource.PropertyKey(pk)] = deps
+		}
+	}
+
+	// If we're running any transforms we need to update all the property values to Outputs to track dependencies.
+	if len(req.Transforms) > 0 {
+		props = upgradeOutputValues(props, propertyDependencies)
+	}
+
 	opts := &pulumirpc.TransformResourceOptions{
 		DependsOn:               req.GetDependencies(),
 		Protect:                 req.GetProtect(),
@@ -1461,12 +1510,34 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		PluginChecksums:         req.GetPluginChecksums(),
 	}
 
-	// Before we calculate anything else run the transformations. First run the transforms for this resource,
-	// then it's parents etc etc
-	transforms, err := slice.MapError(req.Transforms, rm.wrapTransformCallback)
+	// This might be a resource registation for a resource that another process requested to be constructed. If so we'll
+	// have saved the pending transforms for this and we should use those rather than what is on the request.
+	var transforms []TransformFunction
+	pendingKey := fmt.Sprintf("%s::%s::%s", parent, t, name)
+	err = func() error {
+		rm.pendingTransformsLock.Lock()
+		defer rm.pendingTransformsLock.Unlock()
+
+		if pending, ok := rm.pendingTransforms[pendingKey]; ok {
+			transforms = pending
+		} else {
+			transforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
+			if err != nil {
+				return err
+			}
+			// We only need to save this for remote calls
+			if remote && len(transforms) > 0 {
+				rm.pendingTransforms[pendingKey] = transforms
+			}
+		}
+		return nil
+	}()
 	if err != nil {
 		return nil, err
 	}
+
+	// Before we calculate anything else run the transformations. First run the transforms for this resource,
+	// then it's parents etc etc
 	for _, transform := range transforms {
 		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
 		if err != nil {
@@ -1480,8 +1551,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Function exists to scope the lock
 		rm.resourceTransformsLock.Lock()
 		defer rm.resourceTransformsLock.Unlock()
-		rm.resGoalsLock.Lock()
-		defer rm.resGoalsLock.Unlock()
+		rm.parentsLock.Lock()
+		defer rm.parentsLock.Unlock()
 
 		current := parent
 		for current != "" {
@@ -1495,7 +1566,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 					opts = newOpts
 				}
 			}
-			current = rm.resGoals[current].Parent
+			current = rm.parents[current]
 		}
 		return nil
 	}()
@@ -1603,13 +1674,42 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		parsedAliases = append(parsedAliases, alias)
 	}
 
-	dependencies := []resource.URN{}
-	for _, dependingURN := range opts.GetDependsOn() {
-		urn, err := resource.ParseURN(dependingURN)
-		if err != nil {
-			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
+	// Reparse the dependency information from any transformation results
+	if len(req.Transforms) > 0 {
+		dependencies = mapset.NewSet[resource.URN]()
+		for _, dependingURN := range opts.DependsOn {
+			urn, err := resource.ParseURN(dependingURN)
+			if err != nil {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
+			}
+			dependencies.Add(urn)
 		}
-		dependencies = append(dependencies, urn)
+		// Now we've run the transforms we can rebuild the property dependency maps. If we have output values we can add the
+		// dependencies from them to the dependencies map we send to the provider and save to state.
+		propertyDependencies = make(map[resource.PropertyKey]mapset.Set[resource.URN])
+		for key, output := range props {
+			deps := mapset.NewSet[resource.URN]()
+			addOutputDependencies(deps, output)
+			propertyDependencies[key] = deps
+
+			// Also add these to the overall dependencies
+			dependencies = dependencies.Union(deps)
+		}
+	} else {
+		// If we ran transforms we would have merged all the dependencies togther already, but if we didn't we want to
+		// ensure any output values add their dependencies to the dependencies map we send to the provider.
+		for key, output := range props {
+			if propertyDependencies[key] == nil {
+				propertyDependencies[key] = mapset.NewSet[resource.URN]()
+			}
+			addOutputDependencies(propertyDependencies[key], output)
+		}
+	}
+
+	rawDependencies := dependencies.ToSlice()
+	rawPropertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	for key, deps := range propertyDependencies {
+		rawPropertyDependencies[key] = deps.ToSlice()
 	}
 
 	if providers.IsProviderType(t) {
@@ -1634,29 +1734,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if defaultProvider.PluginDownloadURL != "" {
 				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
 			}
-		}
-	}
-
-	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
-	if len(req.GetPropertyDependencies()) == 0 && !remote {
-		// If this request did not specify property dependencies, treat each property as depending on every resource
-		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
-		// support remote already support passing property dependencies, so there's no need to backfill here.
-		for pk := range props {
-			propertyDependencies[pk] = dependencies
-		}
-	} else {
-		// Otherwise, unmarshal the per-property dependency information.
-		for pk, pd := range req.GetPropertyDependencies() {
-			var deps []resource.URN
-			for _, d := range pd.Urns {
-				urn, err := resource.ParseURN(d)
-				if err != nil {
-					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency on property %s URN: %s", pk, err))
-				}
-				deps = append(deps, urn)
-			}
-			propertyDependencies[resource.PropertyKey(pk)] = deps
 		}
 	}
 
@@ -1686,7 +1763,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
-		t, name, custom, len(props), parent, protect, providerRef, dependencies, opts.DeleteBeforeReplace, ignoreChanges,
+		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
@@ -1708,9 +1785,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			// We don't actually need to send a list of aliases to construct anymore because the engine does
 			// all alias construction.
 			Aliases:                 []resource.Alias{},
-			Dependencies:            dependencies,
+			Dependencies:            rawDependencies,
 			Protect:                 protect,
-			PropertyDependencies:    propertyDependencies,
+			PropertyDependencies:    rawPropertyDependencies,
 			Providers:               providerRefs,
 			AdditionalSecretOutputs: additionalSecretOutputs,
 			DeletedWith:             deletedWith,
@@ -1742,7 +1819,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
 		for k, v := range result.State.Outputs {
-			constructResult.OutputDependencies[k] = addOutputDependencies(constructResult.OutputDependencies[k], v)
+			constructResult.OutputDependencies[k] = extendOutputDependencies(constructResult.OutputDependencies[k], v)
 		}
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
@@ -1785,8 +1862,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		}
 
-		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
-			providerRef.String(), nil, propertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
+		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
+			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
 			sourcePosition,
 		)
@@ -1819,6 +1896,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 		}
+		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
+			return nil, rpcerror.New(codes.Internal, "resource registration failed")
+		}
 		if result != nil && result.State != nil && result.State.URN != "" {
 			rm.resGoalsLock.Lock()
 			rm.resGoals[result.State.URN] = *goal
@@ -1827,7 +1907,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if result != nil && result.State != nil && result.State.URN != "" {
-		// We've got a safe URN now, save the transformations
+		// We've got a safe URN now, save the parent and transformations
+		func() {
+			rm.parentsLock.Lock()
+			defer rm.parentsLock.Unlock()
+			rm.parents[result.State.URN] = parent
+		}()
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()
@@ -1927,11 +2012,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		!providers.IsProviderType(result.State.Type) || result.State.ID != providers.UnconfiguredID,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
+	reason := pulumirpc.Result_SUCCESS
+	if result.Result == ResultStateSkipped {
+		reason = pulumirpc.Result_SKIP
+	} else if result.Result == ResultStateFailed {
+		reason = pulumirpc.Result_FAIL
+	}
 	return &pulumirpc.RegisterResourceResponse{
 		Urn:                  string(result.State.URN),
 		Id:                   string(result.State.ID),
 		Object:               obj,
 		PropertyDependencies: outputDeps,
+		Result:               reason,
 	}, nil
 }
 
@@ -2119,9 +2211,9 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			return resource.NewObjectProperty(downgradeOutputValues(v.ObjectValue()))
 		}
 		if v.IsArray() {
-			var result []resource.PropertyValue
-			for _, elem := range v.ArrayValue() {
-				result = append(result, downgradeOutputPropertyValue(elem))
+			result := make([]resource.PropertyValue, len(v.ArrayValue()))
+			for i, elem := range v.ArrayValue() {
+				result[i] = downgradeOutputPropertyValue(elem)
 			}
 			return resource.NewArrayProperty(result)
 		}
@@ -2147,30 +2239,77 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 	return result
 }
 
-func addOutputDependencies(deps []resource.URN, v resource.PropertyValue) []resource.URN {
+func upgradeOutputValues(
+	v resource.PropertyMap, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
+) resource.PropertyMap {
+	// We assume that by the time this is being called we've upgraded all Secret/Computed values to outputs. We just
+	// need to add the dependency information from propertyDependencies.
+
+	result := make(resource.PropertyMap)
+	for k, pv := range v {
+		if deps, has := propertyDependencies[k]; has {
+			currentDeps := mapset.NewSet[resource.URN]()
+			addOutputDependencies(currentDeps, pv)
+			if currentDeps.IsSuperset(deps) {
+				// already has the deps, just copy across
+				result[k] = pv
+			} else {
+				var output resource.Output
+				if pv.IsOutput() {
+					output = pv.OutputValue()
+				} else {
+					output = resource.Output{
+						Element: pv,
+						Known:   true,
+					}
+				}
+
+				// Merge all the dependencies from the propertyDependencies map with any current dependencies on this
+				// output value.
+				currentDeps.Clear()
+				currentDeps.Append(output.Dependencies...)
+				currentDeps = currentDeps.Union(deps)
+
+				output.Dependencies = currentDeps.ToSlice()
+				result[k] = resource.NewOutputProperty(output)
+			}
+		} else {
+			// no deps just copy across
+			result[k] = pv
+		}
+	}
+	return result
+}
+
+func extendOutputDependencies(deps []resource.URN, v resource.PropertyValue) []resource.URN {
+	set := mapset.NewSet(deps...)
+	addOutputDependencies(set, v)
+	return set.ToSlice()
+}
+
+func addOutputDependencies(deps mapset.Set[resource.URN], v resource.PropertyValue) {
 	if v.IsOutput() {
 		output := v.OutputValue()
 		if output.Known {
-			deps = addOutputDependencies(deps, output.Element)
+			addOutputDependencies(deps, output.Element)
 		}
-		deps = append(deps, output.Dependencies...)
+		deps.Append(output.Dependencies...)
 	}
 	if v.IsResourceReference() {
 		ref := v.ResourceReferenceValue()
-		deps = addOutputDependencies(deps, ref.ID)
+		addOutputDependencies(deps, ref.ID)
 	}
 	if v.IsObject() {
 		for _, elem := range v.ObjectValue() {
-			deps = addOutputDependencies(deps, elem)
+			addOutputDependencies(deps, elem)
 		}
 	}
 	if v.IsArray() {
 		for _, elem := range v.ArrayValue() {
-			deps = addOutputDependencies(deps, elem)
+			addOutputDependencies(deps, elem)
 		}
 	}
 	if v.IsSecret() {
-		deps = addOutputDependencies(deps, v.SecretValue().Element)
+		addOutputDependencies(deps, v.SecretValue().Element)
 	}
-	return deps
 }

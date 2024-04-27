@@ -33,13 +33,13 @@ func TestManifest(t *testing.T) {
 				{
 					Name:    "plug-1",
 					Path:    "/foo",
-					Kind:    workspace.LanguagePlugin,
+					Kind:    apitype.LanguagePlugin,
 					Version: &ver,
 				},
 				{
 					Name:    "plug-2",
 					Path:    "/bar",
-					Kind:    workspace.ResourcePlugin,
+					Kind:    apitype.ResourcePlugin,
 					Version: &ver,
 				},
 			},

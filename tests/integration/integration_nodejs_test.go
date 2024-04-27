@@ -231,6 +231,97 @@ func TestStackOutputsNodeJS(t *testing.T) {
 	})
 }
 
+// TestStackOutputsProgramErrorNodeJS tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "nodejs")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// A program error in TypeScript means we won't get any new stack outputs from the module exports,
+				// so we expect the values to remain the same.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorNodeJS ensures that prior stack outputs aren't overwritten when a
+// resource operation error occurs during an update.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "nodejs")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
+		},
+	})
+}
+
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
 	t.Parallel()
@@ -713,39 +804,6 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackReferenceSecretsNodejs(t *testing.T) {
-	owner := os.Getenv("PULUMI_TEST_OWNER")
-	if owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	d := "stack_reference_secrets"
-
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir:          filepath.Join(d, "nodejs", "step1"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:             filepath.Join(d, "nodejs", "step2"),
-				Additive:        true,
-				ExpectNoChanges: true,
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					_, isString := stackInfo.Outputs["refNormal"].(string)
-					assert.Truef(t, isString, "referenced non-secret output was not a string")
-
-					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
-					assert.Truef(t, ok, "secret output was not serialized as a secret")
-					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
-				},
-			},
-		},
-	})
-}
-
 //nolint:paralleltest // mutates environment variables
 func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
@@ -820,7 +878,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("awskms://alias/%s", awsKmsKeyAlias),
+		SecretsProvider: "awskms://alias/" + awsKmsKeyAlias,
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
@@ -845,11 +903,11 @@ func TestCloudSecretProvider(t *testing.T) {
 	})
 
 	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("azurekeyvault://%s", azureKeyVault),
+		SecretsProvider: "azurekeyvault://" + azureKeyVault,
 	})
 
 	gcpTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
+		SecretsProvider: "gcpkms://projects/" + gcpKmsKey,
 	})
 
 	// Run with default Pulumi service backend
@@ -1902,6 +1960,29 @@ func TestEnvironmentsMergeNodeJS(t *testing.T) {
 		OrderedConfig: []integration.ConfigValue{
 			{Key: "outer.inner", Value: "value", Path: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+	})
+}
+
+// Tests errors that would occur when generating code that shadows reserved
+// identifiers (e.g. "const exports = ...").
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodeJSReservedIdentifierShadowing(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("dynamic", "nodejs-reserved-identifier-shadowing"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: false,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			noError := true
+			for _, event := range stack.Events {
+				if event.ResOpFailedEvent != nil {
+					noError = false
+					assert.Equal(t, apitype.OpType("create"), event.ResOpFailedEvent.Metadata.Op)
+				}
+			}
+
+			assert.True(t, noError, "An error occurred when testing shadowing of reserved identifiers")
 		},
 	})
 }

@@ -16,7 +16,7 @@ package deploytest
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
@@ -230,7 +230,7 @@ func (prov *Provider) StreamInvoke(
 	onNext func(resource.PropertyMap) error,
 ) ([]plugin.CheckFailure, error) {
 	if prov.StreamInvokeF == nil {
-		return []plugin.CheckFailure{}, fmt.Errorf("StreamInvoke unimplemented")
+		return []plugin.CheckFailure{}, errors.New("StreamInvoke unimplemented")
 	}
 	return prov.StreamInvokeF(tok, args, onNext)
 }

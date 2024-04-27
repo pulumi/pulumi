@@ -51,6 +51,7 @@ type {{.PtrType}} {{.ElemElementType}}
 func {{.Name}}(v {{.ElemElementType}}) {{.Name}}Input {
 	return ({{.InputType}})(&v)
 }
+
 func {{.Name}}FromPtr(v *{{.ElemElementType}}) {{.Name}}Input {
 	if v == nil {
 		return nil

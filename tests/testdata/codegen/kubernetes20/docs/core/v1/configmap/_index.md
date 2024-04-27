@@ -18,6 +18,10 @@ A non-overlay, non-component, Kubernetes resource.
 
 
 ## Create ConfigMap Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -25,56 +29,59 @@ A non-overlay, non-component, Kubernetes resource.
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">ConfigMap</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">ConfigMap</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ConfigMapInitArgs]</a></span> = None<span class="p">,</span>
+              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
               <span class="nx">binary_data</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, str]]</span> = None<span class="p">,</span>
               <span class="nx">data</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, str]]</span> = None<span class="p">,</span>
               <span class="nx">immutable</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[_meta.v1.ObjectMetaArgs]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ConfigMapInitArgs]</a></span> = None<span class="p">,</span>
-              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[_meta.v1.ObjectMetaArgs]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewConfigMap</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">ConfigMapArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">ConfigMap</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewConfigMap</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">ConfigMapArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">ConfigMap</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ConfigMapArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ConfigMapArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ConfigMapArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">ConfigMap</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ConfigMapArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">kubernetes:core/v1:ConfigMap</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">kubernetes:core/v1:ConfigMap</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -211,6 +218,373 @@ A non-overlay, non-component, Kubernetes resource.
 
 </pulumi-choosable>
 </div>
+
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var configMapResource = new Kubernetes.Core.V1.ConfigMap("configMapResource", new()
+{
+    ApiVersion = "string",
+    BinaryData = 
+    {
+        { "string", "string" },
+    },
+    Data = 
+    {
+        { "string", "string" },
+    },
+    Immutable = false,
+    Kind = "string",
+    Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+    {
+        Annotations = 
+        {
+            { "string", "string" },
+        },
+        ClusterName = "string",
+        CreationTimestamp = "string",
+        DeletionGracePeriodSeconds = 0,
+        DeletionTimestamp = "string",
+        Finalizers = new[]
+        {
+            "string",
+        },
+        GenerateName = "string",
+        Generation = 0,
+        Labels = 
+        {
+            { "string", "string" },
+        },
+        ManagedFields = new[]
+        {
+            new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
+            {
+                ApiVersion = "string",
+                FieldsType = "string",
+                FieldsV1 = "{}",
+                Manager = "string",
+                Operation = "string",
+                Subresource = "string",
+                Time = "string",
+            },
+        },
+        Name = "string",
+        Namespace = "string",
+        OwnerReferences = new[]
+        {
+            new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
+            {
+                ApiVersion = "string",
+                Kind = "string",
+                Name = "string",
+                Uid = "string",
+                BlockOwnerDeletion = false,
+                Controller = false,
+            },
+        },
+        ResourceVersion = "string",
+        SelfLink = "string",
+        Uid = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := corev1.NewConfigMap(ctx, "configMapResource", &corev1.ConfigMapArgs{
+ApiVersion: pulumi.String("string"),
+BinaryData: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+Data: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+Immutable: pulumi.Bool(false),
+Kind: pulumi.String("string"),
+Metadata: &metav1.ObjectMetaArgs{
+Annotations: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+ClusterName: pulumi.String("string"),
+CreationTimestamp: pulumi.String("string"),
+DeletionGracePeriodSeconds: pulumi.Int(0),
+DeletionTimestamp: pulumi.String("string"),
+Finalizers: pulumi.StringArray{
+pulumi.String("string"),
+},
+GenerateName: pulumi.String("string"),
+Generation: pulumi.Int(0),
+Labels: pulumi.StringMap{
+"string": pulumi.String("string"),
+},
+ManagedFields: metav1.ManagedFieldsEntryArray{
+&metav1.ManagedFieldsEntryArgs{
+ApiVersion: pulumi.String("string"),
+FieldsType: pulumi.String("string"),
+FieldsV1: pulumi.Any("{}"),
+Manager: pulumi.String("string"),
+Operation: pulumi.String("string"),
+Subresource: pulumi.String("string"),
+Time: pulumi.String("string"),
+},
+},
+Name: pulumi.String("string"),
+Namespace: pulumi.String("string"),
+OwnerReferences: metav1.OwnerReferenceArray{
+&metav1.OwnerReferenceArgs{
+ApiVersion: pulumi.String("string"),
+Kind: pulumi.String("string"),
+Name: pulumi.String("string"),
+Uid: pulumi.String("string"),
+BlockOwnerDeletion: pulumi.Bool(false),
+Controller: pulumi.Bool(false),
+},
+},
+ResourceVersion: pulumi.String("string"),
+SelfLink: pulumi.String("string"),
+Uid: pulumi.String("string"),
+},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var configMapResource = new ConfigMap("configMapResource", ConfigMapArgs.builder()        
+    .apiVersion("string")
+    .binaryData(Map.of("string", "string"))
+    .data(Map.of("string", "string"))
+    .immutable(false)
+    .kind("string")
+    .metadata(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+config_map_resource = kubernetes.core.v1.ConfigMap("configMapResource",
+    api_version="string",
+    binary_data={
+        "string": "string",
+    },
+    data={
+        "string": "string",
+    },
+    immutable=False,
+    kind="string",
+    metadata=kubernetes.meta.v1.ObjectMetaArgs(
+        annotations={
+            "string": "string",
+        },
+        cluster_name="string",
+        creation_timestamp="string",
+        deletion_grace_period_seconds=0,
+        deletion_timestamp="string",
+        finalizers=["string"],
+        generate_name="string",
+        generation=0,
+        labels={
+            "string": "string",
+        },
+        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+            api_version="string",
+            fields_type="string",
+            fields_v1="{}",
+            manager="string",
+            operation="string",
+            subresource="string",
+            time="string",
+        )],
+        name="string",
+        namespace="string",
+        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+            api_version="string",
+            kind="string",
+            name="string",
+            uid="string",
+            block_owner_deletion=False,
+            controller=False,
+        )],
+        resource_version="string",
+        self_link="string",
+        uid="string",
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const configMapResource = new kubernetes.core.v1.ConfigMap("configMapResource", {
+    apiVersion: "string",
+    binaryData: {
+        string: "string",
+    },
+    data: {
+        string: "string",
+    },
+    immutable: false,
+    kind: "string",
+    metadata: {
+        annotations: {
+            string: "string",
+        },
+        clusterName: "string",
+        creationTimestamp: "string",
+        deletionGracePeriodSeconds: 0,
+        deletionTimestamp: "string",
+        finalizers: ["string"],
+        generateName: "string",
+        generation: 0,
+        labels: {
+            string: "string",
+        },
+        managedFields: [{
+            apiVersion: "string",
+            fieldsType: "string",
+            fieldsV1: "{}",
+            manager: "string",
+            operation: "string",
+            subresource: "string",
+            time: "string",
+        }],
+        name: "string",
+        namespace: "string",
+        ownerReferences: [{
+            apiVersion: "string",
+            kind: "string",
+            name: "string",
+            uid: "string",
+            blockOwnerDeletion: false,
+            controller: false,
+        }],
+        resourceVersion: "string",
+        selfLink: "string",
+        uid: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: kubernetes:core/v1:ConfigMap
+properties:
+    apiVersion: string
+    binaryData:
+        string: string
+    data:
+        string: string
+    immutable: false
+    kind: string
+    metadata:
+        annotations:
+            string: string
+        clusterName: string
+        creationTimestamp: string
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: string
+        finalizers:
+            - string
+        generateName: string
+        generation: 0
+        labels:
+            string: string
+        managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+        name: string
+        namespace: string
+        ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+        resourceVersion: string
+        selfLink: string
+        uid: string
+```
+
+</pulumi-choosable>
+</div>
+
+
 
 ## ConfigMap Resource Properties {#properties}
 
@@ -406,7 +780,7 @@ The ConfigMap resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_python" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">meta.v1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata</dd></dl>
 </pulumi-choosable>
@@ -1606,7 +1980,7 @@ Object<wbr>Meta<pulumi-choosable type="language" values="python,go" class="inlin
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#managed_fields_python" style="color: inherit; text-decoration: inherit;">managed_<wbr>fields</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#managedfieldsentry">Managed<wbr>Fields<wbr>Entry]</a></span>
+        <span class="property-type"><a href="#managedfieldsentry">Sequence[meta.v1.<wbr>Managed<wbr>Fields<wbr>Entry]</a></span>
     </dt>
     <dd>ManagedFields maps workflow-id and version to the set of fields that are managed by that workflow. This is mostly for internal housekeeping, and users typically shouldn't need to set or understand this field. A workflow can be the user's name, a controller's name, or the name of a specific apply path like &quot;ci-cd&quot;. The set of fields is always in the version that the workflow used when modifying the object.</dd><dt class="property-optional"
             title="Optional">
@@ -1632,7 +2006,7 @@ Object<wbr>Meta<pulumi-choosable type="language" values="python,go" class="inlin
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owner_references_python" style="color: inherit; text-decoration: inherit;">owner_<wbr>references</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ownerreference">Owner<wbr>Reference]</a></span>
+        <span class="property-type"><a href="#ownerreference">Sequence[meta.v1.<wbr>Owner<wbr>Reference]</a></span>
     </dt>
     <dd>List of objects depended by this object. If ALL objects in the list have been deleted, this object will be garbage collected. If this object is managed by a controller, then an entry in this list will point to this controller, with the controller field set to true. There cannot be more than one managing controller.</dd><dt class="property-optional"
             title="Optional">

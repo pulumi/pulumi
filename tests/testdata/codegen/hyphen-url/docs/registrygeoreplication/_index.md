@@ -16,6 +16,10 @@ no_edit_this_page: true
 
 
 ## Create RegistryGeoReplication Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,53 +27,56 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-                           <span class="nx">resource_group</span><span class="p">:</span> <span class="nx">Optional[pulumi_azure_native.resources.ResourceGroup]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                            <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span>
-                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+                           <span class="nx">resource_group</span><span class="p">:</span> <span class="nx">Optional[pulumi_azure_native.resources.ResourceGroup]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewRegistryGeoReplication</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RegistryGeoReplication</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewRegistryGeoReplication</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RegistryGeoReplication</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">registrygeoreplication:RegistryGeoReplication</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">registrygeoreplication:RegistryGeoReplication</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -207,6 +214,92 @@ no_edit_this_page: true
 </pulumi-choosable>
 </div>
 
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var registryGeoReplicationResource = new Registrygeoreplication.RegistryGeoReplication("registryGeoReplicationResource", new()
+{
+    ResourceGroup = resourceGroup,
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := registrygeoreplication.NewRegistryGeoReplication(ctx, "registryGeoReplicationResource", &registrygeoreplication.RegistryGeoReplicationArgs{
+	ResourceGroup: pulumi.Any(resourceGroup),
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var registryGeoReplicationResource = new RegistryGeoReplication("registryGeoReplicationResource", RegistryGeoReplicationArgs.builder()        
+    .resourceGroup(resourceGroup)
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+registry_geo_replication_resource = registrygeoreplication.RegistryGeoReplication("registryGeoReplicationResource", resource_group=resource_group)
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const registryGeoReplicationResource = new registrygeoreplication.RegistryGeoReplication("registryGeoReplicationResource", {resourceGroup: resourceGroup});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: registrygeoreplication:RegistryGeoReplication
+properties:
+    resourceGroup: ${resourceGroup}
+```
+
+</pulumi-choosable>
+</div>
+
+
+
 ## RegistryGeoReplication Resource Properties {#properties}
 
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
@@ -227,7 +320,8 @@ The RegistryGeoReplication resource accepts the following [input](/docs/intro/co
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Resources.<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>The resource group that hosts the component resource</dd></dl>
+    <dd>The resource group that hosts the component resource
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -241,7 +335,8 @@ The RegistryGeoReplication resource accepts the following [input](/docs/intro/co
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
     </dt>
-    <dd>The resource group that hosts the component resource</dd></dl>
+    <dd>The resource group that hosts the component resource
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -255,7 +350,8 @@ The RegistryGeoReplication resource accepts the following [input](/docs/intro/co
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
     </dt>
-    <dd>The resource group that hosts the component resource</dd></dl>
+    <dd>The resource group that hosts the component resource
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -269,7 +365,8 @@ The RegistryGeoReplication resource accepts the following [input](/docs/intro/co
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativeresources<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>The resource group that hosts the component resource</dd></dl>
+    <dd>The resource group that hosts the component resource
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -281,9 +378,10 @@ The RegistryGeoReplication resource accepts the following [input](/docs/intro/co
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Resource<wbr>Group</span>
+        <span class="property-type">pulumi_<wbr>azure_<wbr>native.resources.<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>The resource group that hosts the component resource</dd></dl>
+    <dd>The resource group that hosts the component resource
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -297,7 +395,8 @@ The RegistryGeoReplication resource accepts the following [input](/docs/intro/co
         <span class="property-indicator"></span>
         <span class="property-type">azure-native:resources:Resource<wbr>Group</span>
     </dt>
-    <dd>The resource group that hosts the component resource</dd></dl>
+    <dd>The resource group that hosts the component resource
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -326,7 +425,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Registry</span>
     </dt>
-    <dd>The Registry</dd><dt class="property-"
+    <dd>The Registry
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
             title="">
         <span id="replication_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_csharp" style="color: inherit; text-decoration: inherit;">Replication</a>
@@ -334,7 +434,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Replication</span>
     </dt>
-    <dd>The replication policy</dd></dl>
+    <dd>The replication policy
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -356,7 +457,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
     </dt>
-    <dd>The Registry</dd><dt class="property-"
+    <dd>The Registry
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
             title="">
         <span id="replication_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_go" style="color: inherit; text-decoration: inherit;">Replication</a>
@@ -364,7 +466,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
     </dt>
-    <dd>The replication policy</dd></dl>
+    <dd>The replication policy
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -386,7 +489,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
     </dt>
-    <dd>The Registry</dd><dt class="property-"
+    <dd>The Registry
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
             title="">
         <span id="replication_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_java" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -394,7 +498,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
     </dt>
-    <dd>The replication policy</dd></dl>
+    <dd>The replication policy
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -416,7 +521,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Registry</span>
     </dt>
-    <dd>The Registry</dd><dt class="property-"
+    <dd>The Registry
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
             title="">
         <span id="replication_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_nodejs" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -424,7 +530,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Replication</span>
     </dt>
-    <dd>The replication policy</dd></dl>
+    <dd>The replication policy
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -444,17 +551,19 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_python" style="color: inherit; text-decoration: inherit;">registry</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Registry</span>
+        <span class="property-type">pulumi_<wbr>azure_<wbr>native.containerregistry.<wbr>Registry</span>
     </dt>
-    <dd>The Registry</dd><dt class="property-"
+    <dd>The Registry
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
             title="">
         <span id="replication_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_python" style="color: inherit; text-decoration: inherit;">replication</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Replication</span>
+        <span class="property-type">pulumi_<wbr>azure_<wbr>native.containerregistry.<wbr>Replication</span>
     </dt>
-    <dd>The replication policy</dd></dl>
+    <dd>The replication policy
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -476,7 +585,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">azure-native:containerregistry:Registry</span>
     </dt>
-    <dd>The Registry</dd><dt class="property-"
+    <dd>The Registry
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd><dt class="property-"
             title="">
         <span id="replication_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_yaml" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -484,7 +594,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">azure-native:containerregistry:Replication</span>
     </dt>
-    <dd>The replication policy</dd></dl>
+    <dd>The replication policy
+This type is defined in the <a href="/registry/packages/azure-native">Azure Native</a> package.</dd></dl>
 </pulumi-choosable>
 </div>
 

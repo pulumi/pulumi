@@ -625,10 +625,27 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class LocalDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     DIRECTORY_FIELD_NUMBER: builtins.int
     SCHEMA_FIELD_NUMBER: builtins.int
     EXTRA_FILES_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the directory to generate the package in."""
     schema: builtins.str
@@ -638,6 +655,11 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         """extra files to copy to the package output."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    @property
+    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """local dependencies to use instead of using the package system. This is a map of package name to a local
+        path of a language specific artifact to use for the SDK for that package.
+        """
     def __init__(
         self,
         *,
@@ -645,8 +667,9 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         schema: builtins.str = ...,
         extra_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         loader_target: builtins.str = ...,
+        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "schema", b"schema"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "schema", b"schema"]) -> None: ...
 
 global___GeneratePackageRequest = GeneratePackageRequest
 
@@ -672,22 +695,18 @@ class PackRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGE_DIRECTORY_FIELD_NUMBER: builtins.int
-    VERSION_FIELD_NUMBER: builtins.int
     DESTINATION_DIRECTORY_FIELD_NUMBER: builtins.int
     package_directory: builtins.str
     """the directory of a package to pack."""
-    version: builtins.str
-    """the version to tag the artifact with."""
     destination_directory: builtins.str
     """the directory to write the packed artifact to."""
     def __init__(
         self,
         *,
         package_directory: builtins.str = ...,
-        version: builtins.str = ...,
         destination_directory: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory"]) -> None: ...
 
 global___PackRequest = PackRequest
 

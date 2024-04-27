@@ -16,6 +16,10 @@ no_edit_this_page: true
 
 
 ## Create TypeUses Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,56 +27,59 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[TypeUsesArgs]</a></span> = None<span class="p">,</span>
+             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
              <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[SomeOtherObjectArgs]</span> = None<span class="p">,</span>
              <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[ObjectWithNodeOptionalInputsArgs]</span> = None<span class="p">,</span>
              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[ObjectArgs]</span> = None<span class="p">,</span>
-             <span class="nx">qux</span><span class="p">:</span> <span class="nx">Optional[RubberTreeVariety]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[TypeUsesArgs]</a></span> = None<span class="p">,</span>
-             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+             <span class="nx">qux</span><span class="p">:</span> <span class="nx">Optional[RubberTreeVariety]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewTypeUses</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">TypeUses</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewTypeUses</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">TypeUses</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">TypeUsesArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:TypeUses</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:TypeUses</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -209,6 +216,243 @@ no_edit_this_page: true
 
 </pulumi-choosable>
 </div>
+
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var typeUsesResource = new Example.TypeUses("typeUsesResource", new()
+{
+    Bar = new Example.Inputs.SomeOtherObjectArgs
+    {
+        Baz = "string",
+    },
+    Baz = new Example.Inputs.ObjectWithNodeOptionalInputsArgs
+    {
+        Foo = "string",
+        Bar = 0,
+    },
+    Foo = new Example.Inputs.ObjectArgs
+    {
+        Bar = "string",
+        Configs = new[]
+        {
+            new Example.Inputs.ConfigMapArgs
+            {
+                Config = "string",
+            },
+        },
+        Foo = resource,
+        Others = new[]
+        {
+            new[]
+            {
+                new Example.Inputs.SomeOtherObjectArgs
+                {
+                    Baz = "string",
+                },
+            },
+        },
+        StillOthers = 
+        {
+            { "string", new[]
+            {
+                new Example.Inputs.SomeOtherObjectArgs
+                {
+                    Baz = "string",
+                },
+            } },
+        },
+    },
+    Qux = Example.RubberTreeVariety.Burgundy,
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewTypeUses(ctx, "typeUsesResource", &example.TypeUsesArgs{
+	Bar: &example.SomeOtherObjectArgs{
+		Baz: pulumi.String("string"),
+	},
+	Baz: &example.ObjectWithNodeOptionalInputsArgs{
+		Foo: pulumi.String("string"),
+		Bar: pulumi.Int(0),
+	},
+	Foo: &example.ObjectArgs{
+		Bar: pulumi.String("string"),
+		Configs: example.ConfigMapArray{
+			&example.ConfigMapArgs{
+				Config: pulumi.String("string"),
+			},
+		},
+		Foo: pulumi.Any(resource),
+		Others: example.SomeOtherObjectArrayArray{
+			example.SomeOtherObjectArray{
+				&example.SomeOtherObjectArgs{
+					Baz: pulumi.String("string"),
+				},
+			},
+		},
+		StillOthers: example.SomeOtherObjectArrayMap{
+			"string": example.SomeOtherObjectArray{
+				&example.SomeOtherObjectArgs{
+					Baz: pulumi.String("string"),
+				},
+			},
+		},
+	},
+	Qux: example.RubberTreeVarietyBurgundy,
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()        
+    .bar(SomeOtherObjectArgs.builder()
+        .baz("string")
+        .build())
+    .baz(ObjectWithNodeOptionalInputsArgs.builder()
+        .foo("string")
+        .bar(0)
+        .build())
+    .foo(ObjectArgs.builder()
+        .bar("string")
+        .configs(ConfigMapArgs.builder()
+            .config("string")
+            .build())
+        .foo(resource)
+        .others(SomeOtherObjectArgs.builder()
+            .baz("string")
+            .build())
+        .stillOthers(Map.of("string", Map.of("baz", "string")))
+        .build())
+    .qux("Burgundy")
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+type_uses_resource = example.TypeUses("typeUsesResource",
+    bar=example.SomeOtherObjectArgs(
+        baz="string",
+    ),
+    baz=example.ObjectWithNodeOptionalInputsArgs(
+        foo="string",
+        bar=0,
+    ),
+    foo=example.ObjectArgs(
+        bar="string",
+        configs=[example.ConfigMapArgs(
+            config="string",
+        )],
+        foo=resource,
+        others=[[example.SomeOtherObjectArgs(
+            baz="string",
+        )]],
+        still_others={
+            "string": [example.SomeOtherObjectArgs(
+                baz="string",
+            )],
+        },
+    ),
+    qux=example.RubberTreeVariety.BURGUNDY)
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const typeUsesResource = new example.TypeUses("typeUsesResource", {
+    bar: {
+        baz: "string",
+    },
+    baz: {
+        foo: "string",
+        bar: 0,
+    },
+    foo: {
+        bar: "string",
+        configs: [{
+            config: "string",
+        }],
+        foo: resource,
+        others: [[{
+            baz: "string",
+        }]],
+        stillOthers: {
+            string: [{
+                baz: "string",
+            }],
+        },
+    },
+    qux: example.RubberTreeVariety.Burgundy,
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: example:TypeUses
+properties:
+    bar:
+        baz: string
+    baz:
+        bar: 0
+        foo: string
+    foo:
+        bar: string
+        configs:
+            - config: string
+        foo: ${resource}
+        others:
+            - - baz: string
+        stillOthers:
+            string:
+                - baz: string
+    qux: Burgundy
+```
+
+</pulumi-choosable>
+</div>
+
+
 
 ## TypeUses Resource Properties {#properties}
 

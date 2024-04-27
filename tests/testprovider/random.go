@@ -22,12 +22,42 @@ import (
 	"fmt"
 	"math/big"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func init() {
+	providerSchema.Resources["testprovider:index:Random"] = pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "A test resource that generates a random string of a given length and with an optional prefix.",
+			Properties: map[string]pschema.PropertySpec{
+				"length": {
+					TypeSpec:    pschema.TypeSpec{Type: "integer"},
+					Description: "The length of the random string (not including the prefix, if any).",
+				},
+				"result": {
+					TypeSpec:    pschema.TypeSpec{Type: "string"},
+					Description: "A random string.",
+				},
+			},
+			Type: "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{
+			"length": {
+				TypeSpec:    pschema.TypeSpec{Type: "integer"},
+				Description: "The length of the random string (not including the prefix, if any).",
+			},
+			"prefix": {
+				TypeSpec:    pschema.TypeSpec{Type: "string"},
+				Description: "An optional prefix.",
+			},
+		},
+	}
+}
 
 type randomResourceProvider struct{}
 

@@ -325,10 +325,6 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
@@ -337,7 +333,12 @@ func newPreviewCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, args[0], remoteArgs)
+				var url string
+				if len(args) > 0 {
+					url = args[0]
+				}
+
+				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(displayOpts)
@@ -391,6 +392,7 @@ func newPreviewCmd() *cobra.Command {
 
 			stackName := s.Ref().Name().String()
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
 				stackName,
 				proj,
 				cfg.Environment,
@@ -525,7 +527,7 @@ func newPreviewCmd() *cobra.Command {
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
-		"Config to use during the preview")
+		"Config to use during the preview and save to the stack config file")
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")

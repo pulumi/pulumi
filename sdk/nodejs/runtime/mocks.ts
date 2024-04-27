@@ -98,14 +98,14 @@ export interface Mocks {
     /**
      * Mocks provider-implemented function calls (e.g. aws.get_availability_zones).
      *
-     * @param args: MockCallArgs
+     * @param args MockCallArgs
      */
     call(args: MockCallArgs): MockCallResult | Promise<MockCallResult>;
     /**
      * Mocks resource construction calls. This function should return the physical identifier and the output properties
      * for the resource being constructed.
      *
-     * @param args: MockResourceArgs
+     * @param args MockResourceArgs
      */
     newResource(args: MockResourceArgs): MockResourceResult | Promise<MockResourceResult>;
 }
@@ -239,11 +239,11 @@ export class MockMonitor {
 /**
  * setMocks configures the Pulumi runtime to use the given mocks for testing.
  *
- * @param mocks: The mocks to use for calls to provider functions and resource construction.
- * @param project: If provided, the name of the Pulumi project. Defaults to "project".
- * @param stack: If provided, the name of the Pulumi stack. Defaults to "stack".
- * @param preview: If provided, indicates whether or not the program is running a preview. Defaults to false.
- * @param organization: If provided, the name of the Pulumi organization. Defaults to nothing.
+ * @param mocks The mocks to use for calls to provider functions and resource construction.
+ * @param project If provided, the name of the Pulumi project. Defaults to "project".
+ * @param stack If provided, the name of the Pulumi stack. Defaults to "stack".
+ * @param preview If provided, indicates whether or not the program is running a preview. Defaults to false.
+ * @param organization If provided, the name of the Pulumi organization. Defaults to nothing.
  */
 export async function setMocks(
     mocks: Mocks,

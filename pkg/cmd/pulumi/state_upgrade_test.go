@@ -111,6 +111,30 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	assert.True(t, called, "Upgrade was never called")
 }
 
+func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
+	t.Parallel()
+
+	var called bool
+	cmd := stateUpgradeCmd{
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &stubDIYBackend{
+				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
+					called = true
+					return nil
+				},
+			}, nil
+		},
+		Stdin:  strings.NewReader(""),
+		Stdout: io.Discard,
+	}
+
+	cmd.yes = true
+	err := cmd.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.True(t, called, "Upgrade was never called")
+}
+
 func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	t.Parallel()
 

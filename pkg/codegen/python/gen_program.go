@@ -334,25 +334,6 @@ func GenerateProject(
 		return err
 	}
 
-	// The local dependencies map is a map of package name to the path to the package, the path could be
-	// absolute or a relative path but we want to ensure we emit relative paths in the requirments.txt.
-	for k, v := range localDependencies {
-		absPath := v
-		if !filepath.IsAbs(v) {
-			absPath, err = filepath.Abs(v)
-			if err != nil {
-				return fmt.Errorf("absolute path of %s: %w", v, err)
-			}
-		}
-
-		relPath, err := filepath.Rel(directory, absPath)
-		if err != nil {
-			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
-		}
-
-		localDependencies[k] = relPath
-	}
-
 	// Build a requirements.txt based on the packages used by program
 	var requirementsTxt bytes.Buffer
 	if path, ok := localDependencies["pulumi"]; ok {
@@ -524,8 +505,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if r.Schema != nil && r.Schema.PackageReference != nil {
 				pkg, err := r.Schema.PackageReference.Definition()
 				if err == nil {
-					if info, ok := pkg.Language["python"].(PackageInfo); ok && info.PackageName != "" {
-						packageName = info.PackageName
+					if pkgInfo, ok := pkg.Language["python"].(PackageInfo); ok && pkgInfo.PackageName != "" {
+						packageName = pkgInfo.PackageName
 					}
 				}
 			}
@@ -652,9 +633,10 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
 			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkg.Name)
 			if lang, ok := pkg.Language["python"]; ok {
-				pkgInfo := lang.(PackageInfo)
-				if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-					module = m
+				if pkgInfo, ok := lang.(PackageInfo); ok {
+					if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+						module = m
+					}
 				}
 			}
 		}
@@ -690,9 +672,10 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	pkg, err := objType.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
 	if lang, ok := pkg.Language["python"]; ok {
-		pkgInfo := lang.(PackageInfo)
-		if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-			modName = m
+		if pkgInfo, ok := lang.(PackageInfo); ok {
+			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+				modName = m
+			}
 		}
 	}
 	return tokenToQualifiedName(pkgName, modName, member) + "Args"

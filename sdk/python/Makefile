@@ -11,7 +11,7 @@ endif
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
-BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
+BLACK_FLAGS := ./lib/test ./lib/pulumi --exclude lib/pulumi/runtime/proto
 
 PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
 

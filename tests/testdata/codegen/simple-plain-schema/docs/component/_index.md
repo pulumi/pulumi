@@ -16,6 +16,10 @@ no_edit_this_page: true
 
 
 ## Create Component Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,62 +27,65 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Component</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Component</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span>
+              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
               <span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+              <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
+              <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
               <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
               <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">,</span>
               <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[Sequence[FooArgs]]</span> = None<span class="p">,</span>
               <span class="nx">baz_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, FooArgs]]</span> = None<span class="p">,</span>
-              <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
-              <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
               <span class="nx">f</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span>
-              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewComponent</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Component</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewComponent</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Component</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Component</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Component</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -215,6 +222,332 @@ no_edit_this_page: true
 
 </pulumi-choosable>
 </div>
+
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var componentResource = new Example.Component("componentResource", new()
+{
+    A = false,
+    C = 0,
+    E = "string",
+    B = false,
+    Bar = new Example.Inputs.FooArgs
+    {
+        A = false,
+        C = 0,
+        E = "string",
+        B = false,
+        D = 0,
+        F = "string",
+    },
+    Baz = new()
+    {
+        new Example.Inputs.FooArgs
+        {
+            A = false,
+            C = 0,
+            E = "string",
+            B = false,
+            D = 0,
+            F = "string",
+        },
+    },
+    BazMap = 
+    {
+        { "string", new Example.Inputs.FooArgs
+        {
+            A = false,
+            C = 0,
+            E = "string",
+            B = false,
+            D = 0,
+            F = "string",
+        } },
+    },
+    D = 0,
+    F = "string",
+    Foo = new Example.Inputs.FooArgs
+    {
+        A = false,
+        C = 0,
+        E = "string",
+        B = false,
+        D = 0,
+        F = "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewComponent(ctx, "componentResource", &example.ComponentArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+Bar: &example.FooArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+Baz: []example.FooArgs{
+{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+},
+BazMap: interface{}{
+String: &example.FooArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+},
+D: 0,
+F: "string",
+Foo: &example.FooArgs{
+A: false,
+C: 0,
+E: "string",
+B: false,
+D: 0,
+F: "string",
+},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var componentResource = new Component("componentResource", ComponentArgs.builder()        
+    .a(false)
+    .c(0)
+    .e("string")
+    .b(false)
+    .bar(FooArgs.builder()
+        .a(false)
+        .c(0)
+        .e("string")
+        .b(false)
+        .d(0)
+        .f("string")
+        .build())
+    .baz(FooArgs.builder()
+        .a(false)
+        .c(0)
+        .e("string")
+        .b(false)
+        .d(0)
+        .f("string")
+        .build())
+    .bazMap(Map.of("string", Map.ofEntries(
+        Map.entry("a", false),
+        Map.entry("c", 0),
+        Map.entry("e", "string"),
+        Map.entry("b", false),
+        Map.entry("d", 0),
+        Map.entry("f", "string")
+    )))
+    .d(0)
+    .f("string")
+    .foo(FooArgs.builder()
+        .a(false)
+        .c(0)
+        .e("string")
+        .b(false)
+        .d(0)
+        .f("string")
+        .build())
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+component_resource = example.Component("componentResource",
+    a=False,
+    c=0,
+    e="string",
+    b=False,
+    bar=example.FooArgs(
+        a=False,
+        c=0,
+        e="string",
+        b=False,
+        d=0,
+        f="string",
+    ),
+    baz=[example.FooArgs(
+        a=False,
+        c=0,
+        e="string",
+        b=False,
+        d=0,
+        f="string",
+    )],
+    baz_map={
+        "string": example.FooArgs(
+            a=False,
+            c=0,
+            e="string",
+            b=False,
+            d=0,
+            f="string",
+        ),
+    },
+    d=0,
+    f="string",
+    foo=example.FooArgs(
+        a=False,
+        c=0,
+        e="string",
+        b=False,
+        d=0,
+        f="string",
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const componentResource = new example.Component("componentResource", {
+    a: false,
+    c: 0,
+    e: "string",
+    b: false,
+    bar: {
+        a: false,
+        c: 0,
+        e: "string",
+        b: false,
+        d: 0,
+        f: "string",
+    },
+    baz: [{
+        a: false,
+        c: 0,
+        e: "string",
+        b: false,
+        d: 0,
+        f: "string",
+    }],
+    bazMap: {
+        string: {
+            a: false,
+            c: 0,
+            e: "string",
+            b: false,
+            d: 0,
+            f: "string",
+        },
+    },
+    d: 0,
+    f: "string",
+    foo: {
+        a: false,
+        c: 0,
+        e: "string",
+        b: false,
+        d: 0,
+        f: "string",
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: example:Component
+properties:
+    a: false
+    b: false
+    bar:
+        a: false
+        b: false
+        c: 0
+        d: 0
+        e: string
+        f: string
+    baz:
+        - a: false
+          b: false
+          c: 0
+          d: 0
+          e: string
+          f: string
+    bazMap:
+        string:
+            a: false
+            b: false
+            c: 0
+            d: 0
+            e: string
+            f: string
+    c: 0
+    d: 0
+    e: string
+    f: string
+    foo:
+        a: false
+        b: false
+        c: 0
+        d: 0
+        e: string
+        f: string
+```
+
+</pulumi-choosable>
+</div>
+
+
 
 ## Component Resource Properties {#properties}
 

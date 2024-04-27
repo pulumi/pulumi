@@ -2348,11 +2348,15 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs) error {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies)
+	if err != nil {
+		return err
+	}
+	fs.Add("package.json", []byte(packageJSON))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
 	return nil
 }
@@ -2373,7 +2377,7 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		packageName = "@pulumi/" + pkg.Name
@@ -2392,6 +2396,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	if pkg.Version != nil && info.RespectSchemaVersion {
 		version = pkg.Version.String()
 		pluginVersion = version
+	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		pluginVersion = pkg.Version.String()
+		version = pluginVersion
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2420,7 +2431,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		if npminfo.Dependencies == nil {
 			npminfo.Dependencies = make(map[string]string)
 		}
-		npminfo.Dependencies[depk] = depv
+		if path, ok := localDependencies[depk]; ok {
+			npminfo.Dependencies[depk] = path
+		} else {
+			npminfo.Dependencies[depk] = depv
+		}
 	}
 	for depk, depv := range info.DevDependencies {
 		if npminfo.DevDependencies == nil {
@@ -2449,13 +2464,17 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		if npminfo.Dependencies == nil {
 			npminfo.Dependencies = make(map[string]string)
 		}
-		npminfo.Dependencies["@pulumi/pulumi"] = MinimumValidSDKVersion
+		if path, ok := localDependencies["pulumi"]; ok {
+			npminfo.Dependencies[sdkPack] = path
+		} else {
+			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
+		}
 	}
 
 	// Now write out the serialized form.
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
-	return string(npmjson) + "\n"
+	return string(npmjson) + "\n", nil
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
@@ -2725,7 +2744,9 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func GeneratePackage(tool string, pkg *schema.Package,
+	extraFiles map[string][]byte, localDependencies map[string]string,
+) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
 		return nil, err
@@ -2743,7 +2764,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies); err != nil {
 		return nil, err
 	}
 	return files, nil

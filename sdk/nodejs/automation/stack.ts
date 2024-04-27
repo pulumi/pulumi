@@ -132,7 +132,6 @@ export class Stack {
                 log.warn(`Failed to parse engine event
 If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
 details about your environment.
-
 Event: ${line}\n${e.toString()}`);
             }
         });
@@ -202,6 +201,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.plan) {
                 args.push("--plan", opts.plan);
+            }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
             }
             applyGlobalOpts(opts, args);
         }
@@ -492,6 +494,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.excludeProtected) {
                 args.push("--exclude-protected");
+            }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
@@ -940,6 +945,10 @@ export interface UpOptions extends GlobalOpts {
      * Include secrets in the UpSummary.
      */
     showSecrets?: boolean;
+    /**
+     * Continue to perform the update operation despite the occurrence of errors.
+     */
+    continueOnError?: boolean;
 }
 
 /**
@@ -1004,6 +1013,8 @@ export interface DestroyOptions extends GlobalOpts {
      * Do not destroy protected resources.
      */
     excludeProtected?: boolean;
+    // Continue to perform the destroy operation despite the occurrence of errors.
+    continueOnError?: boolean;
 }
 
 const execKind = {

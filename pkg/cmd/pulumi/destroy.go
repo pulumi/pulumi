@@ -71,6 +71,7 @@ func newDestroyCmd() *cobra.Command {
 	var targets *[]string
 	var targetDependents bool
 	var excludeProtected bool
+	var continueOnError bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if remoteSupported() {
@@ -79,7 +80,7 @@ func newDestroyCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        use,
-		Aliases:    []string{"down"},
+		Aliases:    []string{"down", "dn"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
 		Short:      "Destroy all existing resources in the stack",
 		Long: "Destroy all existing resources in the stack, but not the stack itself\n" +
@@ -142,10 +143,6 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
@@ -154,7 +151,12 @@ func newDestroyCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, args[0], remoteArgs)
+				var url string
+				if len(args) > 0 {
+					url = args[0]
+				}
+
+				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
@@ -229,6 +231,7 @@ func newDestroyCmd() *cobra.Command {
 
 			stackName := s.Ref().Name().String()
 			configError := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
 				stackName,
 				proj,
 				cfg.Environment,
@@ -278,6 +281,7 @@ func newDestroyCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
 				Experimental:              hasExperimentalCommands(),
+				ContinueOnError:           continueOnError,
 			}
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{
@@ -387,6 +391,9 @@ func newDestroyCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	cmd.PersistentFlags().BoolVar(
+		&continueOnError, "continue-on-error", false,
+		"Continue to perform the destroy operation despite the occurrence of errors")
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,

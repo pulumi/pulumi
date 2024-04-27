@@ -55,6 +55,8 @@ type Step interface {
 	Res() *resource.State    // the latest state for the resource that is known (worst case, old).
 	Logical() bool           // true if this step represents a logical operation in the program.
 	Deployment() *Deployment // the owning deployment.
+	Fail()                   // mark a step as failed.
+	Skip()                   // mark a step as skipped
 }
 
 // SameStep is a mutating step that does nothing.
@@ -144,12 +146,21 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		}
 	}
 
+	// TODO: should this step be marked as skipped if it comes from a targeted up?
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
 
 func (s *SameStep) IsSkippedCreate() bool {
 	return s.skippedCreate
+}
+
+func (s *SameStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *SameStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -238,6 +249,10 @@ func (s *CreateStep) Logical() bool                                { return !s.r
 func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
+
+	id := s.new.ID
+	outs := s.new.Outputs
+
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
 		prov, err := getProvider(s, s.provider)
@@ -245,7 +260,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
+		var rst resource.Status
+		id, outs, rst, err = prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -262,11 +278,11 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if !preview && id == "" {
 			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 		}
-
-		// Copy any of the default and output properties on the live object state.
-		s.new.ID = id
-		s.new.Outputs = outs
 	}
+
+	// Copy any of the default and output properties on the live object state.
+	s.new.ID = id
+	s.new.Outputs = outs
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -275,6 +291,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
+		contract.Assertf(s.old != s.new, "old and new states should not be the same")
 		s.old.Delete = true
 	}
 
@@ -283,6 +300,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return resourceStatus, complete, nil
 	}
 	return resourceStatus, complete, resourceError
+}
+
+func (s *CreateStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *CreateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -425,6 +450,14 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resource.StatusOK, func() {}, nil
 }
 
+func (s *DeleteStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *DeleteStep) Skip() {
+	// Nothing to do here.
+}
+
 type RemovePendingReplaceStep struct {
 	deployment *Deployment     // the current deployment.
 	old        *resource.State // the state of the existing resource.
@@ -453,6 +486,14 @@ func (s *RemovePendingReplaceStep) Logical() bool           { return false }
 
 func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
+}
+
+func (s *RemovePendingReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RemovePendingReplaceStep) Skip() {
+	// Nothing to do here.
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
@@ -562,6 +603,14 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resourceStatus, complete, resourceError
 }
 
+func (s *UpdateStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *UpdateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+}
+
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
@@ -618,6 +667,14 @@ func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	contract.Assertf(!s.pendingDelete || s.old.Delete,
 		"old resource %v should be marked for deletion if pending delete", s.old.URN)
 	return resource.StatusOK, func() {}, nil
+}
+
+func (s *ReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *ReplaceStep) Skip() {
+	// Nothing to do here.
 }
 
 // ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
@@ -774,6 +831,14 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	return resourceStatus, complete, resourceError
 }
 
+func (s *ReadStep) Fail() {
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *ReadStep) Skip() {
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+}
+
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
@@ -902,6 +967,14 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	return rst, nil, err
 }
 
+func (s *RefreshStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RefreshStep) Skip() {
+	// Nothing to do here.
+}
+
 type ImportStep struct {
 	deployment    *Deployment                    // the current deployment.
 	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
@@ -1008,7 +1081,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
 		}
 		if s.new.Parent.QualifiedType() != resource.RootStackType {
-			_, ok := s.deployment.news.get(s.new.Parent)
+			_, ok := s.deployment.news.Load(s.new.Parent)
 			if !ok {
 				return resource.StatusOK, nil, fmt.Errorf("unknown parent '%v' for resource '%v'",
 					s.new.Parent, s.new.URN)
@@ -1181,6 +1254,14 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return rst, complete, err
 }
 
+func (s *ImportStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *ImportStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+}
+
 const (
 	OpSame                 display.StepOp = "same"                   // nothing to do.
 	OpCreate               display.StepOp = "create"                 // creating a new resource.
@@ -1217,6 +1298,15 @@ var StepOps = []display.StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+}
+
+func IsReplacementStep(op display.StepOp) bool {
+	if op == OpReplace || op == OpCreateReplacement || op == OpDeleteReplaced ||
+		op == OpReadReplacement || op == OpDiscardReplaced || op == OpRemovePendingReplace ||
+		op == OpImportReplacement {
+		return true
+	}
+	return false
 }
 
 // Color returns a suggested color for lines of this op type.

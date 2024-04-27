@@ -205,7 +205,7 @@ func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockSt
 			duration time.Duration,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
-			assert.Equal(t, []byte(`{"imports":["test"]}`), yaml)
+			assert.NotEmpty(t, yaml)
 			assert.Equal(t, 2*time.Hour, duration)
 			return &esc.Environment{Properties: env}, nil, nil
 		},
@@ -243,6 +243,121 @@ func TestOpenStackEnv(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestOpenStackEnvLiteral(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+		"environmentVariables": esc.NewValue(map[string]esc.Value{
+			"TEST_VAR": esc.NewSecret("hunter2"),
+		}),
+		"files": esc.NewValue(map[string]esc.Value{
+			"TEST_FILE": esc.NewSecret("sensitive"),
+		}),
+	}
+
+	stack := getMockStackWithEnv(t, env)
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  imports:\n    - test"), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	require.NoError(t, err)
+	assert.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestStackEnvConfig(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"string":     esc.NewValue("esc"),
+			"aws:region": esc.NewValue("us-west-2"),
+			"api:domain": esc.NewValue("test"),
+			"ui:domain":  esc.NewValue("test"),
+		}),
+		"environmentVariables": esc.NewValue(map[string]esc.Value{
+			"TEST_VAR": esc.NewSecret("hunter2"),
+		}),
+		"files": esc.NewValue(map[string]esc.Value{
+			"TEST_FILE": esc.NewSecret("sensitive"),
+		}),
+	}
+
+	mockSecretsManager := &secrets.MockSecretsManager{
+		EncrypterF: func() (config.Encrypter, error) {
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			return encrypter, nil
+		},
+		DecrypterF: func() (config.Decrypter, error) {
+			decrypter := &secrets.MockDecrypter{
+				DecryptValueF: func() string {
+					return "plaintext"
+				},
+				BulkDecryptF: func() map[string]string {
+					return map[string]string{
+						"idontknow": "whatiamdoing",
+					}
+				},
+			}
+
+			return decrypter, nil
+		},
+	}
+
+	getMockStack := func(name string) *backend.MockStack {
+		stack := getMockStackWithEnv(t, env)
+		stack.RefF = func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "org/project/" + name,
+				NameV:               tokens.MustParseStackName(name),
+				ProjectV:            "project",
+				FullyQualifiedNameV: tokens.QName("org/project/" + name),
+			}
+		}
+		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+			return mockSecretsManager, nil
+		}
+
+		return stack
+	}
+
+	stack := getMockStack("mystack")
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
+	require.NoError(t, err)
+
+	project := workspace.Project{Name: tokens.PackageName("project")}
+
+	ctx := context.Background()
+	cfg, err := getStackConfigurationFromProjectStack(
+		ctx,
+		stack,
+		&project,
+		mockSecretsManager,
+		&projectStack,
+	)
+	require.NoError(t, err)
+
+	assert.Nil(t, cfg.Config)
+	cfg.Config = config.Map{}
+
+	err = workspace.ApplyProjectConfig(ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
+	require.NoError(t, err)
+
+	assert.Equal(t, config.Map{
+		config.MustMakeKey("project", "string"): config.NewValue("esc"),
+		config.MustMakeKey("aws", "region"):     config.NewValue("us-west-2"),
+		config.MustMakeKey("api", "domain"):     config.NewValue("test"),
+		config.MustMakeKey("ui", "domain"):      config.NewValue("test"),
+	}, cfg.Config)
 }
 
 func TestCopyConfig(t *testing.T) {

@@ -2,7 +2,6 @@ package gen
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -223,7 +222,7 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 			Name: fn,
 		})
 
-		assert.Contains(t, content.String(), fmt.Sprintf("call %s", fn))
+		assert.Contains(t, content.String(), "call "+fn)
 	}
 }
 

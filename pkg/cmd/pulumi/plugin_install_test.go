@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -49,7 +50,7 @@ func TestBundledDev(t *testing.T) {
 		pluginGetLatestVersion: func(ps workspace.PluginSpec) (*semver.Version, error) {
 			getLatestVersionCalled = true
 			assert.Equal(t, "nodejs", ps.Name)
-			assert.Equal(t, workspace.LanguagePlugin, ps.Kind)
+			assert.Equal(t, apitype.LanguagePlugin, ps.Kind)
 			return nil, errors.New("404 HTTP error fetching plugin")
 		},
 	}

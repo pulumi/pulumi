@@ -14,8 +14,8 @@ import (
 type NoRecursive struct {
 	pulumi.CustomResourceState
 
-	Rec     RecPtrOutput           `pulumi:"rec"`
-	Replace pulumi.StringPtrOutput `pulumi:"replace"`
+	Rec       RecPtrOutput           `pulumi:"rec"`
+	ReplaceMe pulumi.StringPtrOutput `pulumi:"replaceMe"`
 }
 
 // NewNoRecursive registers a new resource with the given unique name, arguments, and options.
@@ -26,7 +26,7 @@ func NewNoRecursive(ctx *pulumi.Context,
 	}
 
 	replaceOnChanges := pulumi.ReplaceOnChanges([]string{
-		"replace",
+		"replaceMe",
 	})
 	opts = append(opts, replaceOnChanges)
 	opts = internal.PkgResourceDefaultOpts(opts)
@@ -159,8 +159,8 @@ func (o NoRecursiveOutput) Rec() RecPtrOutput {
 	return o.ApplyT(func(v *NoRecursive) RecPtrOutput { return v.Rec }).(RecPtrOutput)
 }
 
-func (o NoRecursiveOutput) Replace() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *NoRecursive) pulumi.StringPtrOutput { return v.Replace }).(pulumi.StringPtrOutput)
+func (o NoRecursiveOutput) ReplaceMe() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *NoRecursive) pulumi.StringPtrOutput { return v.ReplaceMe }).(pulumi.StringPtrOutput)
 }
 
 type NoRecursiveArrayOutput struct{ *pulumi.OutputState }

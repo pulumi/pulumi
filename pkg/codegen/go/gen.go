@@ -1148,7 +1148,7 @@ func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType 
 			// skip deprecated enum cases
 			continue
 		}
-		enumCases = append(enumCases, fmt.Sprintf("\t\t%s", enumCase.Name))
+		enumCases = append(enumCases, "\t\t"+enumCase.Name)
 	}
 
 	enumUsage := strings.Join([]string{
@@ -3286,6 +3286,21 @@ type nestedTypeInfo struct {
 	names               map[string]bool
 }
 
+func innerMostType(t schema.Type) schema.Type {
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		return innerMostType(t.ElementType)
+	case *schema.MapType:
+		return innerMostType(t.ElementType)
+	case *schema.OptionalType:
+		return innerMostType(t.ElementType)
+	case *schema.InputType:
+		return innerMostType(t.ElementType)
+	default:
+		return t
+	}
+}
+
 // collectNestedCollectionTypes builds a deduped mapping of element types -> associated collection types.
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
@@ -3295,7 +3310,7 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 	switch t := typ.(type) {
 	case *schema.ArrayType:
 		// Builtins already cater to primitive arrays
-		if schema.IsPrimitiveType(t.ElementType) {
+		if schema.IsPrimitiveType(innerMostType(t.ElementType)) {
 			return
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
@@ -3309,7 +3324,7 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
 	case *schema.MapType:
 		// Builtins already cater to primitive maps
-		if schema.IsPrimitiveType(t.ElementType) {
+		if schema.IsPrimitiveType(innerMostType(t.ElementType)) {
 			return
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
@@ -3771,7 +3786,6 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config": "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":        "",
 	}
-	pkg.getImports(variables, importsAndAliases)
 	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	pkg.genHeader(w, nil, importsAndAliases, false /* isUtil */)
 

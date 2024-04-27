@@ -242,7 +242,13 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		language[name] = json.RawMessage(v)
 	}
 
+	supportPack := false
+	if info.Meta != nil {
+		supportPack = info.Meta.SupportPack
+	}
+
 	pkg := &Package{
+		SupportPack:         supportPack,
 		moduleFormat:        moduleFormatRegexp,
 		Name:                info.Name,
 		DisplayName:         info.DisplayName,

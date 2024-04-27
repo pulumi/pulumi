@@ -22,8 +22,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -63,6 +65,12 @@ func tokenToName(tok string) string {
 	return components[2]
 }
 
+func tokenToPackageName(tok string) string {
+	components := strings.Split(tok, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+	return components[0]
+}
+
 func title(s, lang string) string {
 	switch lang {
 	case "go":
@@ -96,4 +104,32 @@ func getResourceLink(name string) string {
 
 func getFunctionLink(name string) string {
 	return strings.ToLower(name)
+}
+
+// isExternalType checks if the type is external to the given package.
+func isExternalType(t schema.Type, pkg schema.PackageReference) (isExternal bool) {
+	switch typ := t.(type) {
+	case *schema.ObjectType:
+		return typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
+	case *schema.ResourceType:
+		return typ.Resource != nil && pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg)
+	case *schema.EnumType:
+		return pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg)
+	}
+	return
+}
+
+// Iterate character by character and remove underscores if that underscore
+// is at the very front of an identifier, follows a special character, and is not a delimeter
+// within an identifier.
+func removeLeadingUnderscores(s string) string {
+	var sb strings.Builder
+	lastChar := ' '
+	for _, ch := range s {
+		if ch != '_' || (unicode.IsLetter(lastChar)) {
+			sb.WriteRune(ch)
+		}
+		lastChar = ch
+	}
+	return sb.String()
 }

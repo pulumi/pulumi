@@ -32,13 +32,10 @@ lint:: ensure
 
 build_package:: ensure
 	yarn run tsc
-	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
-	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	mkdir -p bin/tests/automation/data/
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp README.md ../../LICENSE ./dist/* bin/
-# safely remove mockpackage dependency see [pulumi/pulumi#9026]
-	cp package.json yarn.lock bin/ && cd bin && yarn remove mockpackage && rm yarn.lock
+	cp -R ./vendor/ ./bin/vendor/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	mkdir -p bin/proto
@@ -63,15 +60,18 @@ install_plugin:: build
 install:: install_package install_plugin
 
 unit_tests:: $(TEST_ALL_DEPS)
-	yarn run nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 \
+	yarn run nyc -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
-		--exclude 'bin/tests/runtime/closureLoader.spec.js' \
+		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
 		'bin/tests/**/*.spec.js'
-	yarn run mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
 	yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
 	yarn run nyc -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
+
+test_integration:: $(TEST_ALL_DEPS)
+	node 'bin/tests/runtime/closure-integration-tests.js'
+	node 'bin/tests/runtime/install-package-tests.js'
 
 TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4
 
@@ -102,7 +102,7 @@ test_go:: $(TEST_ALL_DEPS)
 	@cd cmd/pulumi-language-nodejs && $(GO_TEST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
 	$(GO_TEST) $(shell go list ./...)
 
-test_all:: sxs_tests unit_tests test_auto test_go
+test_all:: sxs_tests unit_tests test_auto test_go test_integration
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif

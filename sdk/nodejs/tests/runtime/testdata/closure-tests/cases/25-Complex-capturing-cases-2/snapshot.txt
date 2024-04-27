@@ -1,0 +1,16 @@
+exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ cap1: 100, this: undefined, arguments: undefined }) {
+
+return () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    let { nocap1 = cap1 } = {};
+    console.log(nocap1);
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

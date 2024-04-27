@@ -15,6 +15,7 @@
 """
 Mocks for testing.
 """
+import asyncio
 import functools
 import logging
 from abc import ABC, abstractmethod
@@ -25,7 +26,14 @@ from google.protobuf import empty_pb2
 from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
 from . import rpc, rpc_manager
-from .settings import Settings, configure, get_project, get_root_resource, get_stack
+from .settings import (
+    Settings,
+    configure,
+    get_project,
+    get_root_resource,
+    get_stack,
+    SETTINGS,
+)
 from .sync_await import _ensure_event_loop, _sync_await
 
 if TYPE_CHECKING:
@@ -41,6 +49,9 @@ def test(fn):
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         from .. import Output  # pylint: disable=import-outside-toplevel
+
+        SETTINGS.rpc_manager.clear()
+        SETTINGS.outputs.clear()
 
         _sync_await(
             run_pulumi_func(

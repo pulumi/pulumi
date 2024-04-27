@@ -1435,7 +1435,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
 	if len(replaceOnChangesProps) > 0 {
-		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps, PyName)
+		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+			func(x string) string { return x })
 		fmt.Fprintf(w, `        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, strings.Join(replaceOnChangesStrings, `", "`))
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n")
 	}
@@ -2086,6 +2087,9 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
 		plugin.Version = pkg.Version.String()
 	}
+	if pkg.SupportPack {
+		plugin.Version = pkg.Version.String()
+	}
 
 	return plugin.JSON()
 }
@@ -2099,16 +2103,21 @@ func genPackageMetadata(
 
 	// Now create a standard Python package from the metadata.
 	fmt.Fprintf(w, "import errno\n")
-	fmt.Fprintf(w, "import os\n")
 	fmt.Fprintf(w, "from setuptools import setup, find_packages\n")
 	fmt.Fprintf(w, "from setuptools.command.install import install\n")
 	fmt.Fprintf(w, "from subprocess import check_call\n")
 	fmt.Fprintf(w, "\n\n")
 
 	// Create a constant for the version number to replace during build
-	version := "os.getenv(\"PULUMI_PYTHON_VERSION\", \"0.0.0\")"
+	version := "\"0.0.0\""
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
+		version = "\"" + PypiVersion(*pkg.Version) + "\""
+	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
 	fmt.Fprintf(w, "VERSION = %s\n", version)
@@ -3042,6 +3051,12 @@ func genPyprojectTOML(tool string,
 	version := "0.0.0"
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
+		version = PypiVersion(*pkg.Version)
+	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
 		version = PypiVersion(*pkg.Version)
 	}
 	schema.Project.Version = &version

@@ -20,7 +20,7 @@ server = aws.ec2.Instance("server",
     tags={
         "Name": "web-server-www",
     },
-    instance_type="t2.micro",
+    instance_type=aws.ec2.InstanceType.T2_MICRO,
     security_groups=[security_group.name],
     ami=ami.id,
     user_data="""#!/bin/bash

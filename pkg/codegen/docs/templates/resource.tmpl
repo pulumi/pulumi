@@ -16,6 +16,10 @@
 <!-- Create resource -->
 ## Create {{ .Header.Title }} Resource {#create}
 
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
+
 {{- if eq .LangChooserLanguages "" }}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
@@ -33,47 +37,50 @@
 */}}
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
-<span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.pythonargs }}<span class="p">)</span>
+<span></span>
 <span class=nd>@overload</span>
-<span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.pythonargs }}<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ template "linkify_go_param" .ConstructorResource.go }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ template "linkify_go_param" .ConstructorResource.go }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.javaargs }}<span class="p">)</span>
 <span class="k">public </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.java }}<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: {{ template "linkify_param" .ConstructorResource.yaml }}<span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: {{ template "linkify_param" .ConstructorResource.yaml }}<span class="p"></span>
 {{ template "yaml_constructor" .ConstructorParamsTyped.yaml }}
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -104,6 +111,36 @@
 {{ template "constructor_args" .ConstructorParamsTyped.java }}
 </pulumi-choosable>
 </div>
+
+{{ if ne (len .CreationExampleSyntax) 0 }}
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+
+{{- if eq .LangChooserLanguages "" }}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+{{- else }}
+<div>
+<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+</div>
+{{- end }}
+
+{{ range $lang, $code := .CreationExampleSyntax }}
+<div>
+{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $lang }}{{ htmlSafe "\">" }}
+
+```{{ $lang }}
+{{ htmlSafe $code }}
+```
+
+</pulumi-choosable>
+</div>
+
+{{ end }}
+{{- end }}
 
 ## {{ .Header.Title }} Resource Properties {#properties}
 
@@ -204,42 +241,42 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">public static </span><span class="nf">get</span><span class="p">(</span>{{ htmlSafe .LookupParams.nodejs }}<span class="p">): </span>{{ template "linkify_param" .ConstructorResource.nodejs }}</code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">public static </span><span class="nf">get</span><span class="p">(</span>{{ htmlSafe .LookupParams.nodejs }}<span class="p">): </span>{{ template "linkify_param" .ConstructorResource.nodejs }}</code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@staticmethod</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@staticmethod</span>
 <span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         {{ htmlSafe .LookupParams.python }}<span class="p">) -&gt;</span> {{ .ConstructorResource.python.Name }}</code></pre></div>
-</pulumi-choosable>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>Get{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .LookupParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>Get{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .LookupParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="nf"> Get</span><span class="p">(</span>{{ htmlSafe .LookupParams.csharp }}<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="nf"> Get</span><span class="p">(</span>{{ htmlSafe .LookupParams.csharp }}<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="nf"> get</span><span class="p">(</span>{{ htmlSafe .LookupParams.java }}<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="nf"> get</span><span class="p">(</span>{{ htmlSafe .LookupParams.java }}<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource lookup is not supported in YAML</code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource lookup is not supported in YAML</code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
@@ -319,6 +356,8 @@ Only the first 200 types are included in this documentation.
 ## Import
 
 {{ htmlSafe .ImportDocs }}
+
+To learn more about importing existing cloud resources, see [Importing resources](/docs/using-pulumi/adopting-pulumi/import/).
 
 {{ end }}
 

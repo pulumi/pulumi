@@ -6,10 +6,12 @@ package ints
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var Dirs = []string{
@@ -23,6 +25,8 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes3 := false
 	foundRes4Child := false
 	foundRes5 := false
+	foundRes6 := false
+	foundRes7 := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -46,7 +50,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			optionalPrefix := res.Inputs["prefix"]
 			assert.NotNil(t, optionalPrefix)
-			assert.Equal(t, "stackDefault", optionalPrefix.(string))
+			assert.Equal(t, "stackDefault", optionalPrefix)
 			length := res.Inputs["length"]
 			assert.NotNil(t, length)
 			// length should be secret
@@ -65,7 +69,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 			optionalPrefix := res.Inputs["prefix"]
 			assert.NotNil(t, optionalPrefix)
-			assert.Equal(t, "stackDefault", optionalPrefix.(string))
+			assert.Equal(t, "stackDefault", optionalPrefix)
 		}
 		// "res5" should have mutated the length
 		if res.URN.Name() == "res5" {
@@ -73,7 +77,21 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			length := res.Inputs["length"]
 			assert.NotNil(t, length)
-			assert.Equal(t, 20.0, length.(float64))
+			assert.Equal(t, 20.0, length)
+		}
+		// "res6" should have changed the provider
+		if res.URN.Name() == "res6" {
+			foundRes6 = true
+			ref, err := providers.ParseReference(res.Provider)
+			require.NoError(t, err)
+			urn := ref.URN()
+			assert.Equal(t, "provider2", urn.Name())
+		}
+		// "res7" should have changed the provider
+		if res.URN.Name() == "res7" {
+			foundRes7 = true
+			// we change the provider but because this is a remote component resource it ends up empty in state.
+			assert.Equal(t, "", res.Provider)
 		}
 	}
 	assert.True(t, foundRes1)
@@ -81,4 +99,6 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	assert.True(t, foundRes3)
 	assert.True(t, foundRes4Child)
 	assert.True(t, foundRes5)
+	assert.True(t, foundRes6)
+	assert.True(t, foundRes7)
 }

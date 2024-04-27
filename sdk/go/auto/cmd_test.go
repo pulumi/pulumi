@@ -25,6 +25,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/require"
 )
 
@@ -112,6 +114,37 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 	// Succeeds when disabling version check
 	_, err = NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: requestedVersion, SkipVersionCheck: true})
 
+	require.NoError(t, err)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestNoGlobalPulumi(t *testing.T) {
+	dir, err := os.MkdirTemp("", "automation-test-")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
+
+	// Install before we mutate path, we need some system binaries available to run the install script.
+	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	require.NoError(t, err)
+
+	t.Setenv("PATH", "") // Clear path so we don't have access to a globally installed pulumi command.
+
+	// Grab a new pulumi command for our installation, but now env.PATH is
+	// empty, so we can't accidentally use a globally installed pulumi.
+	pulumiCommand, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	require.NoError(t, err)
+
+	deployFunc := func(ctx *pulumi.Context) error {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	projectName := "autoInstall"
+	stackName := ptesting.RandomStackName()
+
+	_, err = UpsertStackInlineSource(ctx, stackName, projectName, deployFunc, Pulumi(pulumiCommand))
 	require.NoError(t, err)
 }
 

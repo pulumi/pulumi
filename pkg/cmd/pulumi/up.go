@@ -76,6 +76,7 @@ func newUpCmd() *cobra.Command {
 	var showFullOutput bool
 	var suppressOutputs bool
 	var suppressProgress bool
+	var continueOnError bool
 	var suppressPermalink string
 	var yes bool
 	var secretsProvider string
@@ -123,6 +124,7 @@ func newUpCmd() *cobra.Command {
 
 		stackName := s.Ref().Name().String()
 		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			ctx,
 			stackName,
 			proj,
 			cfg.Environment,
@@ -160,8 +162,9 @@ func newUpCmd() *cobra.Command {
 			TargetDependents:          targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan: true,
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan:    true,
+			Experimental:    hasExperimentalCommands(),
+			ContinueOnError: continueOnError,
 		}
 
 		if planFilePath != "" {
@@ -356,7 +359,9 @@ func newUpCmd() *cobra.Command {
 		}
 
 		stackName := s.Ref().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName,
+		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			ctx,
+			stackName,
 			proj,
 			cfg.Environment,
 			cfg.Config,
@@ -378,8 +383,9 @@ func newUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
-			Experimental: hasExperimentalCommands(),
+			GeneratePlan:    hasExperimentalCommands(),
+			Experimental:    hasExperimentalCommands(),
+			ContinueOnError: continueOnError,
 		}
 
 		// TODO for the URL case:
@@ -482,10 +488,6 @@ func newUpCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
@@ -494,7 +496,11 @@ func newUpCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Update, stackName, args[0], remoteArgs)
+				var url string
+				if len(args) > 0 {
+					url = args[0]
+				}
+				return runDeployment(ctx, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
@@ -530,7 +536,7 @@ func newUpCmd() *cobra.Command {
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
-		"Config to use during the update")
+		"Config to use during the update and save to the stack config file")
 	cmd.PersistentFlags().BoolVar(
 		&path, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
@@ -620,6 +626,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
+	cmd.PersistentFlags().BoolVar(
+		&continueOnError, "continue-on-error", false,
+		"Continue updating resources even if an error is encountered")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",

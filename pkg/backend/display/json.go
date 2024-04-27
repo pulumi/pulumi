@@ -15,6 +15,7 @@
 package display
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -176,9 +177,10 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					DetailedDiff:   detailedDiff,
 				}
 
+				ctx := context.TODO()
 				if m.Old != nil {
 					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.OldState = &res
 					} else {
@@ -187,7 +189,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 				}
 				if m.New != nil {
 					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.NewState = &res
 					} else {

@@ -16,7 +16,11 @@ package main
 
 import (
 	"embed"
+	"math"
 	"sort"
+	"strings"
+
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -43,8 +47,19 @@ type languageTest struct {
 	// TODO: This should be a function so we don't have to load all providers in memory all the time.
 	providers []plugin.Provider
 
+	// stackReferences specifies other stack data that this test depends on.
+	stackReferences map[string]resource.PropertyMap
+
 	runs []testRun
 }
+
+// lorem is a long string used for testing large string values.
+const lorem string = "Lorem ipsum dolor sit amet, consectetur adipiscing elit," +
+	" sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." +
+	" Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat." +
+	" Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur." +
+	" Excepteur sint occaecat cupidatat non proident," +
+	" sunt in culpa qui officia deserunt mollit anim id est laborum."
 
 //go:embed testdata
 var languageTestdata embed.FS
@@ -54,7 +69,7 @@ var languageTests = map[string]languageTest{
 	// INTERNAL
 	// ==========
 	"internal-bad-schema": {
-		providers: []plugin.Provider{&badProvider{}},
+		providers: []plugin.Provider{&providers.BadProvider{}},
 	},
 	// ==========
 	// L1 (Tests not using providers)
@@ -87,6 +102,101 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l1-output-number": {
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 6, "expected 6 outputs")
+					assertPropertyMapMember(l, outputs, "zero", resource.NewNumberProperty(0))
+					assertPropertyMapMember(l, outputs, "one", resource.NewNumberProperty(1))
+					assertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
+					assertPropertyMapMember(l, outputs, "minInt32", resource.NewNumberProperty(math.MinInt32))
+					assertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
+					assertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
+				},
+			},
+		},
+	},
+	"l1-output-string": {
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 6, "expected 6 outputs")
+					assertPropertyMapMember(l, outputs, "empty", resource.NewStringProperty(""))
+					assertPropertyMapMember(l, outputs, "small", resource.NewStringProperty("Hello world!"))
+					assertPropertyMapMember(l, outputs, "emoji", resource.NewStringProperty("👋 \"Hello \U0001019b!\" 😊"))
+					assertPropertyMapMember(l, outputs, "escape", resource.NewStringProperty(
+						"Some ${common} \"characters\" 'that' need escaping: "+
+							"\\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
+					assertPropertyMapMember(l, outputs, "escapeNewline", resource.NewStringProperty(
+						"Some ${common} \"characters\" 'that' need escaping: "+
+							"\\ (backslash), \n (newline), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
+
+					large := strings.Repeat(lorem+"\n", 150)
+					assertPropertyMapMember(l, outputs, "large", resource.NewStringProperty(large))
+				},
+			},
+		},
+	},
+	"l1-output-array": {
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 5, "expected 5 outputs")
+					assertPropertyMapMember(l, outputs, "empty", resource.NewArrayProperty([]resource.PropertyValue{}))
+					assertPropertyMapMember(l, outputs, "small", resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewStringProperty("Hello"),
+						resource.NewStringProperty("World"),
+					}))
+					assertPropertyMapMember(l, outputs, "numbers", resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewNumberProperty(0), resource.NewNumberProperty(1), resource.NewNumberProperty(2),
+						resource.NewNumberProperty(3), resource.NewNumberProperty(4), resource.NewNumberProperty(5),
+					}))
+					assertPropertyMapMember(l, outputs, "nested", resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewNumberProperty(1), resource.NewNumberProperty(2), resource.NewNumberProperty(3),
+						}),
+						resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewNumberProperty(4), resource.NewNumberProperty(5), resource.NewNumberProperty(6),
+						}),
+						resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewNumberProperty(7), resource.NewNumberProperty(8), resource.NewNumberProperty(9),
+						}),
+					}))
+
+					large := []resource.PropertyValue{}
+					for i := 0; i < 150; i++ {
+						large = append(large, resource.NewStringProperty(lorem))
+					}
+					assertPropertyMapMember(l, outputs, "large", resource.NewArrayProperty(large))
+				},
+			},
+		},
+	},
 	"l1-main": {
 		runs: []testRun{
 			{
@@ -106,11 +216,40 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l1-stack-reference": {
+		stackReferences: map[string]resource.PropertyMap{
+			"organization/other/dev": {
+				"plain":  resource.NewStringProperty("plain"),
+				"secret": resource.MakeSecret(resource.NewStringProperty("secret")),
+			},
+		},
+		runs: []testRun{
+			{
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+
+					require.Len(l, snap.Resources, 3, "expected at least 3 resources")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					prov := snap.Resources[1]
+					require.Equal(l, "pulumi:providers:pulumi", prov.Type.String(), "expected a default pulumi provider resource")
+					ref := snap.Resources[2]
+					require.Equal(l, "pulumi:pulumi:StackReference", ref.Type.String(), "expected a stack reference resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 2, "expected 2 outputs")
+					assertPropertyMapMember(l, outputs, "plain", resource.NewStringProperty("plain"))
+					assertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewStringProperty("secret")))
+				},
+			},
+		},
+	},
 	// ==========
 	// L2 (Tests using providers)
 	// ==========
 	"l2-resource-simple": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -133,7 +272,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-engine-update-options": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
@@ -158,7 +297,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-destroy": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -170,7 +309,9 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
 
 					// Make sure we can assert the resource names in a consistent order
-					sort.Slice(snap.Resources[2:3], func(i, j int) bool {
+					sort.Slice(snap.Resources[2:4], func(i, j int) bool {
+						i = i + 2
+						j = j + 2
 						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
 					})
 
@@ -199,7 +340,7 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-target-up-with-new-dependency": {
-		providers: []plugin.Provider{&simpleProvider{}},
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
 				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
@@ -241,6 +382,62 @@ var languageTests = map[string]languageTest{
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
 					require.Equal(l, "unrelated", unrelated.URN.Name(), "expected target resource")
 					require.Equal(l, 0, len(unrelated.Dependencies), "expected still no dependencies")
+				},
+			},
+		},
+	},
+	"l2-failed-create-continue-on-error": {
+		providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
+		runs: []testRun{
+			{
+				updateOptions: engine.UpdateOptions{
+					ContinueOnError: true,
+				},
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					require.True(l, res.IsBail(), "expected a bail result")
+					require.Equal(l, 1, len(changes), "expected 1 StepOp")
+					require.Equal(l, 2, changes[deploy.OpCreate], "expected 2 Creates")
+					require.NotNil(l, snap, "expected snapshot to be non-nil")
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot") // 1 stack, 2 providers, 1 resource
+					require.NoError(l, snap.VerifyIntegrity(), "expected snapshot to be valid")
+
+					sort.Slice(snap.Resources, func(i, j int) bool {
+						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
+					})
+
+					require.Equal(l, "independent", snap.Resources[2].URN.Name(), "expected independent resource")
+				},
+			},
+		},
+	},
+	"l2-large-string": {
+		providers: []plugin.Provider{&providers.LargeProvider{}},
+		runs: []testRun{
+			{
+				updateOptions: engine.UpdateOptions{
+					ContinueOnError: true,
+				},
+				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+					requireStackResource(l, res, changes)
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					// Check that the large string is in the snapshot
+					largeString := resource.NewStringProperty(strings.Repeat("hello world", 9532509))
+					large := snap.Resources[2]
+					require.Equal(l, "large:index:String", large.Type.String(), "expected large string resource")
+					require.Equal(l,
+						resource.NewStringProperty("hello world"),
+						large.Inputs["value"],
+					)
+					require.Equal(l,
+						largeString,
+						large.Outputs["value"],
+					)
+
+					// Check the stack output value is as well
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
 				},
 			},
 		},

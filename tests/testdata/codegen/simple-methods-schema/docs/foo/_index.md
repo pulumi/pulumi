@@ -16,6 +16,10 @@ no_edit_this_page: true
 
 
 ## Create Foo Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,52 +27,55 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[FooArgs]</a></span> = None<span class="p">,</span>
+        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewFoo</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Foo</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewFoo</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Foo</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Foo</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Foo</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -205,6 +212,84 @@ no_edit_this_page: true
 
 </pulumi-choosable>
 </div>
+
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var fooResource = new Example.Foo("fooResource");
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewFoo(ctx, "fooResource", nil)
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var fooResource = new Foo("fooResource");
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+foo_resource = example.Foo("fooResource")
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const fooResource = new example.Foo("fooResource", {});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: example:Foo
+properties: {}
+```
+
+</pulumi-choosable>
+</div>
+
+
 
 ## Foo Resource Properties {#properties}
 
@@ -382,7 +467,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Required</a>
@@ -430,7 +515,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Plain</a>
@@ -438,7 +523,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value</a>
@@ -484,7 +569,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Required</a>
@@ -532,7 +617,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Plain</a>
@@ -540,7 +625,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value</a>
@@ -586,7 +671,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -634,7 +719,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_java" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -642,7 +727,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
@@ -688,7 +773,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -736,7 +821,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -744,7 +829,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
@@ -772,7 +857,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_required_python" style="color: inherit; text-decoration: inherit;">baz_<wbr>required</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Baz</a></span>
+        <span class="property-type"><a href="#baz">nested.<wbr>Baz</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -788,9 +873,9 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_required_python" style="color: inherit; text-decoration: inherit;">name_<wbr>required</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_string_value_required_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_required_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value_<wbr>required</a>
@@ -804,7 +889,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_python" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Baz</a></span>
+        <span class="property-type"><a href="#baz">nested.<wbr>Baz</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -812,7 +897,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_plain_python" style="color: inherit; text-decoration: inherit;">baz_<wbr>plain</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Baz</a></span>
+        <span class="property-type"><a href="#baz">nested.<wbr>Baz</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -836,17 +921,17 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_plain_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_plain_python" style="color: inherit; text-decoration: inherit;">name_<wbr>plain</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_string_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value</a>
@@ -892,7 +977,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -940,7 +1025,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -948,7 +1033,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>

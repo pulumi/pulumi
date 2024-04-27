@@ -18,14 +18,41 @@ package main
 
 import (
 	"context"
-	"fmt"
 
+	"strconv"
+
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func init() {
+	providerSchema.Resources["testprovider:index:Echo"] = pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "A test resource that echoes its input.",
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Ref: "pulumi.json#/Any",
+					},
+					Description: "Input to echo.",
+				},
+			},
+			Type: "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{
+			"echo": {
+				TypeSpec: pschema.TypeSpec{
+					Ref: "pulumi.json#/Any",
+				},
+				Description: "An echoed input.",
+			},
+		},
+	}
+}
 
 type echoResourceProvider struct {
 	id int
@@ -81,7 +108,7 @@ func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateReques
 
 	p.id++
 	return &rpc.CreateResponse{
-		Id:         fmt.Sprintf("%v", p.id),
+		Id:         strconv.Itoa(p.id),
 		Properties: outputProperties,
 	}, nil
 }

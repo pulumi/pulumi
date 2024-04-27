@@ -15,32 +15,50 @@ import asyncio
 from pulumi import CustomResource, Output, log
 from pulumi.runtime import invoke, invoke_async
 
+
 def assert_eq(l, r):
     assert l == r
+
 
 class MyResource(CustomResource):
     value: Output[int]
 
     def __init__(self, name, value):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            "value": value,
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                "value": value,
+            },
+        )
+
 
 async def get_value2():
     await asyncio.sleep(0)
     return 42
 
+
 def do_invoke():
-    value = invoke("test:index:MyFunction", props={"value": 41, "value2": get_value2()}).value
+    value = invoke(
+        "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
+    ).value
     return value["value"]
+
 
 async def await_invoke():
-    value = await invoke("test:index:MyFunction", props={"value": 41, "value2": get_value2()})
+    value = await invoke(
+        "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
+    )
     return value["value"]
 
+
 async def await_invoke_async():
-    value = await invoke_async("test:index:MyFunction", props={"value": 41, "value2": get_value2()})
+    value = await invoke_async(
+        "test:index:MyFunction", props={"value": 41, "value2": get_value2()}
+    )
     return value["value"]
+
 
 res = MyResource("resourceA", do_invoke())
 res.value.apply(lambda v: assert_eq(v, 42))

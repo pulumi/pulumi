@@ -229,6 +229,19 @@ func TestParseImportFile_errors(t *testing.T) {
 				"resource 'res-2' of type 'foo:bar:a' has an ambiguous provider",
 			},
 		},
+		{
+			desc: "component with ID",
+			give: importFile{Resources: []importSpec{{
+				Name:      "comp",
+				ID:        "some-id",
+				Type:      "foo:bar:baz",
+				Component: true,
+			}}},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'comp' of type 'foo:bar:baz' has an ID, but is marked as a component",
+			},
+		},
 	}
 
 	for _, tt := range tests {

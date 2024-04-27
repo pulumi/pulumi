@@ -1,0 +1,18 @@
+name: Flaky Test
+description: Report a test that's flaky
+labels: ["kind/flaky-test", "area/engineering"]
+body:
+  - type: textarea
+    id: test-output
+    attributes:
+      label: Test Output
+      description: Please copy paste the output of the failure of the flaky test here
+    validations:
+      required: true
+  - type: textarea
+    id: CI Link
+    attributes:
+      label: CI Link
+      description: Please provide a link to the CI job that failed
+    validations:
+      required: true

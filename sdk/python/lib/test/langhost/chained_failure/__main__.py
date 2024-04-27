@@ -19,20 +19,23 @@ class ResourceA(CustomResource):
     outprop: Output[int]
 
     def __init__(self, name: str) -> None:
-        CustomResource.__init__(self, "test:index:ResourceA", name, {
-            "inprop": 777,
-            "outprop": None
-        })
+        CustomResource.__init__(
+            self, "test:index:ResourceA", name, {"inprop": 777, "outprop": None}
+        )
+
 
 class ResourceB(CustomResource):
     other_in: Output[int]
     other_out: Output[str]
 
     def __init__(self, name: str, res: Input[int]) -> None:
-        CustomResource.__init__(self, "test:index:ResourceB", name, {
-            "other_in": res.inprop,
-            "other_out": None
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:ResourceB",
+            name,
+            {"other_in": res.inprop, "other_out": None},
+        )
+
 
 a = ResourceA("resourceA")
 # Dividing by zero always throws an exception. This will throw whenever ResourceB tries to prepare itself

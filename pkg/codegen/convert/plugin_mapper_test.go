@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -69,7 +70,7 @@ func TestPluginMapper_InstalledPluginMatches(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "provider",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -111,7 +112,7 @@ func TestPluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProvider",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -156,7 +157,7 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProvider",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -238,12 +239,12 @@ func TestPluginMapper_UseMatchingNameFirst(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "otherProvider",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 			{
 				Name:    "provider",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -285,12 +286,12 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProviderAws",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 			{
 				Name:    "pulumiProviderGcp",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -353,12 +354,12 @@ func TestPluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProviderAws",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 			{
 				Name:    "pulumiProviderGcp",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -440,7 +441,7 @@ func TestPluginMapper_GetMappingsIsUsed(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProviderK8s",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -507,12 +508,12 @@ func TestPluginMapper_GetMappingIsntCalledOnValidMappings(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProviderAws",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 			{
 				Name:    "pulumiProviderGcp",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},
@@ -579,7 +580,7 @@ func TestPluginMapper_InfiniteLoopRegression(t *testing.T) {
 		infos: []workspace.PluginInfo{
 			{
 				Name:    "pulumiProviderAws",
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: semverMustParse("1.0.0"),
 			},
 		},

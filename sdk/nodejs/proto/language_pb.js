@@ -4570,7 +4570,8 @@ proto.pulumirpc.GeneratePackageRequest.toObject = function(includeInstance, msg)
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     schema: jspb.Message.getFieldWithDefault(msg, 2, ""),
     extraFilesMap: (f = msg.getExtraFilesMap()) ? f.toObject(includeInstance, undefined) : [],
-    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, "")
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -4625,6 +4626,12 @@ proto.pulumirpc.GeneratePackageRequest.deserializeBinaryFromReader = function(ms
       var value = /** @type {string} */ (reader.readString());
       msg.setLoaderTarget(value);
       break;
+    case 5:
+      var value = msg.getLocalDependenciesMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
+      break;
     default:
       reader.skipField();
       break;
@@ -4678,6 +4685,10 @@ proto.pulumirpc.GeneratePackageRequest.serializeBinaryToWriter = function(messag
       4,
       f
     );
+  }
+  f = message.getLocalDependenciesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -4756,6 +4767,28 @@ proto.pulumirpc.GeneratePackageRequest.prototype.getLoaderTarget = function() {
 proto.pulumirpc.GeneratePackageRequest.prototype.setLoaderTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
 };
+
+
+/**
+ * map<string, string> local_dependencies = 5;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.GeneratePackageRequest.prototype.getLocalDependenciesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.GeneratePackageRequest} returns this
+ */
+proto.pulumirpc.GeneratePackageRequest.prototype.clearLocalDependenciesMap = function() {
+  this.getLocalDependenciesMap().clear();
+  return this;};
 
 
 
@@ -4951,8 +4984,7 @@ proto.pulumirpc.PackRequest.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.PackRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     packageDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    destinationDirectory: jspb.Message.getFieldWithDefault(msg, 3, "")
+    destinationDirectory: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -4995,10 +5027,6 @@ proto.pulumirpc.PackRequest.deserializeBinaryFromReader = function(msg, reader) 
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
       msg.setDestinationDirectory(value);
       break;
     default:
@@ -5037,17 +5065,10 @@ proto.pulumirpc.PackRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
   f = message.getDestinationDirectory();
   if (f.length > 0) {
     writer.writeString(
-      3,
+      2,
       f
     );
   }
@@ -5073,10 +5094,10 @@ proto.pulumirpc.PackRequest.prototype.setPackageDirectory = function(value) {
 
 
 /**
- * optional string version = 2;
+ * optional string destination_directory = 2;
  * @return {string}
  */
-proto.pulumirpc.PackRequest.prototype.getVersion = function() {
+proto.pulumirpc.PackRequest.prototype.getDestinationDirectory = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -5085,26 +5106,8 @@ proto.pulumirpc.PackRequest.prototype.getVersion = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.PackRequest} returns this
  */
-proto.pulumirpc.PackRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string destination_directory = 3;
- * @return {string}
- */
-proto.pulumirpc.PackRequest.prototype.getDestinationDirectory = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.PackRequest} returns this
- */
 proto.pulumirpc.PackRequest.prototype.setDestinationDirectory = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

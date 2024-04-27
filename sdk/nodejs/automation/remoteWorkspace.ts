@@ -73,7 +73,7 @@ export interface RemoteGitProgramArgs {
     /**
      * The URL of the repository.
      */
-    url: string;
+    url?: string;
 
     /**
      * Optional path relative to the repo root specifying location of the Pulumi program.
@@ -150,6 +150,11 @@ export interface RemoteWorkspaceOptions {
      * Whether to skip the default dependency installation step. Defaults to false.
      */
     skipInstallDependencies?: boolean;
+
+    /**
+     * Whether to inherit the deployment settings set on the stack. Defaults to false.
+     */
+    inheritSettings?: boolean;
 }
 
 async function createLocalWorkspace(
@@ -160,14 +165,14 @@ async function createLocalWorkspace(
         throw new Error(`stack name "${args.stackName}" must be fully qualified.`);
     }
 
-    if (!args.url) {
-        throw new Error("url is required.");
+    if (!args.url && !opts?.inheritSettings) {
+        throw new Error("url is required if inheritSettings is not set.");
     }
     if (args.branch && args.commitHash) {
         throw new Error("branch and commitHash cannot both be specified.");
     }
-    if (!args.branch && !args.commitHash) {
-        throw new Error("either branch or commitHash is required.");
+    if (!args.branch && !args.commitHash && !opts?.inheritSettings) {
+        throw new Error("either branch or commitHash is required if inheritSettings is not set.");
     }
     if (args.auth) {
         if (args.auth.sshPrivateKey && args.auth.sshPrivateKeyPath) {
@@ -181,6 +186,7 @@ async function createLocalWorkspace(
         remoteEnvVars: opts?.envVars,
         remotePreRunCommands: opts?.preRunCommands,
         remoteSkipInstallDependencies: opts?.skipInstallDependencies,
+        remoteInheritSettings: opts?.inheritSettings,
     };
     return await LocalWorkspace.create(localOpts);
 }

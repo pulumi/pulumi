@@ -65,6 +65,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, assetDes.IsText())
 		assert.Equal(t, text, assetDes.Text)
 		assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", assetDes.Hash)
+		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		// another text asset with the same contents, should hash the same way.
 		text2 := "a test asset"
@@ -80,7 +81,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, text3, asset3.Text)
 		assert.Equal(t, "9a6ed070e1ff834427105844ffd8a399a634753ce7a60ec5aae541524bbe7036", asset3.Hash)
 
-		// check that an empty asset also works correctly.
+		// check that an empty text asset also works correctly.
 		empty, err := rasset.FromText("")
 		assert.NoError(t, err)
 		assert.Equal(t, "", empty.Text)
@@ -135,6 +136,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, assetDes.IsPath())
 		assert.Equal(t, file, assetDes.Path)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", assetDes.Hash)
+		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
 		assert.NoError(t, err)
@@ -176,6 +178,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, assetDes.IsURI())
 		assert.Equal(t, url, assetDes.URI)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", assetDes.Hash)
+		assert.Equal(t, AssetSig, assetDes.Sig)
 
 		arch, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
 		assert.NoError(t, err)
@@ -202,6 +205,38 @@ func TestAssetSerialize(t *testing.T) {
 			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", archDes.Hash)
 		}
 	})
+	t.Run("empty asset", func(t *testing.T) {
+		t.Parallel()
+
+		// Check that a _fully_ empty asset is treated as an empty text asset.
+		empty := &rasset.Asset{}
+		assert.True(t, empty.IsText())
+		assert.Equal(t, "", empty.Text)
+		emptySer := empty.Serialize()
+		emptyDes, isasset, err := rasset.Deserialize(emptySer)
+		assert.NoError(t, err)
+		assert.True(t, isasset)
+		assert.True(t, emptyDes.IsText())
+		assert.Equal(t, "", emptyDes.Text)
+		assert.Equal(t, AssetSig, emptyDes.Sig)
+
+		// Check that a text asset with it's text removed shows as "no content".
+		asset, err := rasset.FromText("a very different and special test asset")
+		assert.NoError(t, err)
+		asset.Text = ""
+		assert.False(t, asset.IsText())
+		assert.False(t, asset.HasContents())
+		asset, isasset, err = rasset.Deserialize(asset.Serialize())
+		assert.NoError(t, err)
+		assert.True(t, isasset)
+		assert.False(t, asset.IsText())
+		assert.False(t, asset.HasContents())
+	})
+}
+
+func TestArchiveSerialize(t *testing.T) {
+	t.Parallel()
+
 	t.Run("path archive", func(t *testing.T) {
 		t.Parallel()
 
@@ -282,6 +317,72 @@ func TestAssetSerialize(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, arch4.EnsureHash())
 		assert.False(t, arch2.Equals(arch4))
+	})
+	t.Run("nested archives", func(t *testing.T) {
+		t.Parallel()
+
+		skipWindows(t)
+		file, err := tempArchive("test", true)
+		assert.NoError(t, err)
+		defer func() { contract.IgnoreError(os.Remove(file)) }()
+		arch1, err := rarchive.FromPath(file)
+		assert.NoError(t, err)
+		assert.Nil(t, arch1.EnsureHash())
+		url := "file:///" + file
+		arch2, err := rarchive.FromURI(url)
+		assert.NoError(t, err)
+		assert.Nil(t, arch2.EnsureHash())
+
+		assert.Nil(t, os.Truncate(file, 0))
+		arch3, err := rarchive.FromPath(file)
+		assert.NoError(t, err)
+		assert.Nil(t, arch3.EnsureHash())
+		assert.False(t, arch1.Equals(arch3))
+		arch4, err := rarchive.FromURI(url)
+		assert.NoError(t, err)
+		assert.Nil(t, arch4.EnsureHash())
+		assert.False(t, arch2.Equals(arch4))
+	})
+	t.Run("assets archive", func(t *testing.T) {
+		t.Parallel()
+
+		archive, err := rarchive.FromAssets(map[string]interface{}{})
+		require.NoError(t, err)
+		assert.True(t, archive.IsAssets())
+		assert.Equal(t, "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef", archive.Hash)
+		archiveSer := archive.Serialize()
+		archiveDes, isarchive, err := rarchive.Deserialize(archiveSer)
+		require.NoError(t, err)
+		assert.True(t, isarchive)
+		assert.True(t, archiveDes.IsAssets())
+		assert.Equal(t, 0, len(archiveDes.Assets))
+	})
+	t.Run("empty archive", func(t *testing.T) {
+		t.Parallel()
+
+		// Check that a fully empty archive is treated as an empty assets archive.
+		empty := &rarchive.Archive{}
+		assert.True(t, empty.IsAssets())
+		assert.Equal(t, 0, len(empty.Assets))
+		emptySer := empty.Serialize()
+		emptyDes, isarchive, err := rarchive.Deserialize(emptySer)
+		require.NoError(t, err)
+		assert.True(t, isarchive)
+		assert.True(t, emptyDes.IsAssets())
+
+		// Check that an assets archive with it's assets removed shows as "no content".
+		asset, err := rasset.FromText("hello world")
+		require.NoError(t, err)
+		archive, err := rarchive.FromAssets(map[string]interface{}{"foo": asset})
+		require.NoError(t, err)
+		archive.Assets = nil
+		assert.False(t, archive.IsAssets())
+		assert.False(t, archive.HasContents())
+		archive, isarchive, err = rarchive.Deserialize(archive.Serialize())
+		require.NoError(t, err)
+		assert.True(t, isarchive)
+		assert.False(t, archive.IsAssets())
+		assert.False(t, archive.HasContents())
 	})
 }
 

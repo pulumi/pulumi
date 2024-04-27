@@ -20,10 +20,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -32,7 +32,7 @@ import (
 func TestNewAnalyzerLoaderWithHost(t *testing.T) {
 	t.Parallel()
 	a := NewAnalyzerLoaderWithHost("pkgA", nil)
-	assert.Equal(t, workspace.PluginKind("analyzer"), a.kind)
+	assert.Equal(t, apitype.PluginKind("analyzer"), a.kind)
 	assert.Equal(t, "pkgA", a.name)
 	assert.Equal(t, semver.Version{}, a.version)
 	assert.Equal(t, "", a.path)

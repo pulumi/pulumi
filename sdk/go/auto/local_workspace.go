@@ -56,7 +56,9 @@ type LocalWorkspace struct {
 	remoteEnvVars                 map[string]EnvVarValue
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
+	remoteInheritSettings         bool
 	pulumiCommand                 PulumiCommand
+	remoteExecutorImage           *ExecutorImage
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -137,7 +139,7 @@ func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, stackName stri
 func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, envs ...string) error {
 	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
-		return fmt.Errorf("AddEnvironments requires Pulumi CLI version >= 3.95.0")
+		return errors.New("AddEnvironments requires Pulumi CLI version >= 3.95.0")
 	}
 	args := []string{"config", "env", "add"}
 	args = append(args, envs...)
@@ -153,7 +155,7 @@ func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, 
 func (l *LocalWorkspace) ListEnvironments(ctx context.Context, stackName string) ([]string, error) {
 	// 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 99}) {
-		return nil, fmt.Errorf("ListEnvironments requires Pulumi CLI version >= 3.99.0")
+		return nil, errors.New("ListEnvironments requires Pulumi CLI version >= 3.99.0")
 	}
 	args := []string{"config", "env", "ls", "--stack", stackName, "--json"}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -172,7 +174,7 @@ func (l *LocalWorkspace) ListEnvironments(ctx context.Context, stackName string)
 func (l *LocalWorkspace) RemoveEnvironment(ctx context.Context, stackName string, env string) error {
 	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
-		return fmt.Errorf("RemoveEnvironments requires Pulumi CLI version >= 3.95.0")
+		return errors.New("RemoveEnvironments requires Pulumi CLI version >= 3.95.0")
 	}
 	args := []string{"config", "env", "rm", env, "--yes", "--stack", stackName}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -525,7 +527,7 @@ func (l *LocalWorkspace) ChangeStackSecretsProvider(
 	var reader io.Reader
 	if newSecretsProvider == "passphrase" {
 		if opts == nil || opts.NewPassphrase == nil {
-			return fmt.Errorf("new passphrase must be provided")
+			return errors.New("new passphrase must be provided")
 		}
 		reader = strings.NewReader(*opts.NewPassphrase)
 	}
@@ -870,6 +872,8 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remote:                        lwOpts.Remote,
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
+		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
+		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
 		repo:                          lwOpts.Repo,
 		pulumiCommand:                 pulumiCommand,
 	}
@@ -964,6 +968,10 @@ type localWorkspaceOptions struct {
 	PreRunCommands []string
 	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
 	RemoteSkipInstallDependencies bool
+	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
+	RemoteExecutorImage *ExecutorImage
+	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
+	RemoteInheritSettings bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -1120,6 +1128,18 @@ func preRunCommands(commands ...string) LocalWorkspaceOption {
 func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteSkipInstallDependencies = skipInstallDependencies
+	})
+}
+
+func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteExecutorImage = image
+	})
+}
+
+func remoteInheritSettings(inheritSettings bool) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteInheritSettings = inheritSettings
 	})
 }
 

@@ -18,12 +18,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -33,6 +38,27 @@ const (
 	providerName = "testprovider"
 	version      = "0.0.1"
 )
+
+var providerSchema = pschema.PackageSpec{
+	Name:        "testprovider",
+	Description: "A test provider.",
+	DisplayName: "testprovider",
+
+	Config: pschema.ConfigSpec{},
+
+	Provider: pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "The provider type for the testprovider package.",
+			Type:        "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{},
+	},
+
+	Types:     map[string]pschema.ComplexTypeSpec{},
+	Resources: map[string]pschema.ResourceSpec{},
+	Functions: map[string]pschema.FunctionSpec{},
+	Language:  map[string]pschema.RawMessage{},
+}
 
 // Minimal set of methods to implement a basic provider.
 type resourceProvider interface {
@@ -95,7 +121,9 @@ func (k *testproviderProvider) DiffConfig(ctx context.Context, req *rpc.DiffRequ
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (k *testproviderProvider) Configure(_ context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
-	return &rpc.ConfigureResponse{}, nil
+	return &rpc.ConfigureResponse{
+		AcceptSecrets: true,
+	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
@@ -173,8 +201,28 @@ func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteReques
 }
 
 // Construct creates a new component resource.
-func (k *testproviderProvider) Construct(_ context.Context, _ *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
-	panic("Construct not implemented")
+func (k *testproviderProvider) Construct(ctx context.Context, req *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
+	if req.Type != "testprovider:index:Component" {
+		return nil, fmt.Errorf("unknown resource type %s", req.Type)
+	}
+
+	return pulumiprovider.Construct(
+		ctx, req, k.host.EngineConn(),
+		func(ctx *pulumi.Context, typ, name string, inputs pulumiprovider.ConstructInputs,
+			options pulumi.ResourceOption,
+		) (*pulumiprovider.ConstructResult, error) {
+			args := &ComponentArgs{}
+			if err := inputs.CopyTo(args); err != nil {
+				return nil, fmt.Errorf("setting args: %w", err)
+			}
+
+			component, err := NewComponent(ctx, name, args, options)
+			if err != nil {
+				return nil, err
+			}
+
+			return pulumiprovider.NewConstructResult(component)
+		})
 }
 
 // GetPluginInfo returns generic information about this plugin, like its version.
@@ -192,7 +240,23 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest,
 ) (*rpc.GetSchemaResponse, error) {
-	return &rpc.GetSchemaResponse{}, nil
+	makeJSONString := func(v any) ([]byte, error) {
+		var out bytes.Buffer
+		encoder := json.NewEncoder(&out)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "    ")
+		if err := encoder.Encode(v); err != nil {
+			return nil, err
+		}
+		return out.Bytes(), nil
+	}
+	schemaJSON, err := makeJSONString(providerSchema)
+	if err != nil {
+		return nil, err
+	}
+	return &rpc.GetSchemaResponse{
+		Schema: string(schemaJSON),
+	}, nil
 }
 
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.

@@ -34,7 +34,7 @@ export class NoRecursive extends pulumi.CustomResource {
     }
 
     public /*out*/ readonly rec!: pulumi.Output<outputs.Rec | undefined>;
-    public /*out*/ readonly replace!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly replaceMe!: pulumi.Output<string | undefined>;
 
     /**
      * Create a NoRecursive resource with the given unique name, arguments, and options.
@@ -48,13 +48,13 @@ export class NoRecursive extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["rec"] = undefined /*out*/;
-            resourceInputs["replace"] = undefined /*out*/;
+            resourceInputs["replaceMe"] = undefined /*out*/;
         } else {
             resourceInputs["rec"] = undefined /*out*/;
-            resourceInputs["replace"] = undefined /*out*/;
+            resourceInputs["replaceMe"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        const replaceOnChanges = { replaceOnChanges: ["replace"] };
+        const replaceOnChanges = { replaceOnChanges: ["replaceMe"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
         super(NoRecursive.__pulumiType, name, resourceInputs, opts);
     }

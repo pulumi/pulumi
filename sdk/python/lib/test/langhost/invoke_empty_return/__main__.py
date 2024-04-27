@@ -23,4 +23,6 @@ def assert_eq(l, r):
 ret = invoke("test:index:MyFunction", {})
 assert ret.value == {}, "Expected the return value of the invoke to be an empty dict"
 
-ret2 = Output.from_input(invoke_async("test:index:MyFunction", {})).apply(lambda v: assert_eq(v, {}))
+ret2 = Output.from_input(invoke_async("test:index:MyFunction", {})).apply(
+    lambda v: assert_eq(v, {})
+)

@@ -17,9 +17,7 @@
 package ints
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -48,31 +46,6 @@ func TestEmptyPython(t *testing.T) {
 		},
 		Quick: true,
 	})
-}
-
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackReferencePython(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      filepath.Join("stack_reference", "python", "step1"),
-				Additive: true,
-			},
-			{
-				Dir:      filepath.Join("stack_reference", "python", "step2"),
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
 }
 
 // Tests dynamic provider in Python.
@@ -222,11 +195,10 @@ func optsForConstructPython(
 	}
 }
 
+//nolint:paralleltest // Sets env vars
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
-	t.Parallel()
-
-	err := exec.Command("pulumi", "plugin", "install", "resource", "tls", "v4.10.0").Run()
-	assert.NoError(t, err)
+	// This uses the tls plugin so needs to be able to download it
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)
@@ -274,7 +246,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		}
 		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
 			"virtualenv: venv",
-			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
+			"virtualenv: >-\n      "+venvPath))
 
 		if err := os.WriteFile(pulumiYaml, newYaml, 0o600); err != nil {
 			t.Error(err)
@@ -350,5 +322,59 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		//     `no such file or directory`
 		assert.NotContains(t, stdout, "fork/exec")
 		assert.NotContains(t, stderr, "fork/exec")
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestMypySupport(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the mypy failure.
+		messages := []string{}
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				messages = append(messages,
+					strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1))
+			}
+		}
+		expected := "__main__.py:8: error: " +
+			"Argument 1 to \"export\" has incompatible type \"int\"; expected \"str\"" +
+			"  [arg-type]\n\n"
+		assert.Contains(t, messages, expected, "Did not find expected mypy diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "mypy"),
+		// mypy doesn't really support editable packages, so we install pulumi normally from pip for this test.
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPyrightSupport(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the pyright failure.
+		found := false
+		expected := "__main__.py:8:15 - error:" +
+			" Argument of type \"Literal[42]\" cannot be assigned to parameter \"name\"" +
+			" of type \"str\" in function \"export\"\n\n"
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				message := strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1)
+				if strings.HasSuffix(message, expected) {
+					found = true
+				}
+			}
+		}
+		assert.True(t, found, "Did not find expected pyright diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "pyright"),
+		// to match the mypy test we install pulumi normally from pip for this test.
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
 	})
 }

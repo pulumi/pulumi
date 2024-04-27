@@ -20,6 +20,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -368,6 +370,12 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 func enumName(enum *model.EnumType) (string, string) {
 	components := strings.Split(enum.Token, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	modParts := strings.Split(components[1], "/")
+	// if the token has the format {pkg}:{mod}/{name}:{Name}
+	// then we simplify into {pkg}:{mod}:{Name}
+	if len(modParts) == 2 && strings.EqualFold(modParts[1], components[2]) {
+		components[1] = modParts[0]
+	}
 	enumName := tokenToName(enum.Token)
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
@@ -799,6 +807,13 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	if len(expr.Items) == 0 {
 		g.Fgenf(w, "null")
 		return
+	}
+
+	if schemaType, ok := g.toSchemaType(destType); ok {
+		if codegen.ResolvedType(schemaType) == schema.AnyType {
+			g.genDictionaryOrTuple(w, expr)
+			return
+		}
 	}
 
 	destTypeName := g.argumentTypeName(expr, destType)

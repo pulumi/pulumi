@@ -60,7 +60,7 @@ var _ Analyzer = (*analyzer)(nil)
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(ctx.Diag,
-		workspace.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
+		apitype.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 		nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
@@ -70,7 +70,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		workspace.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func NewPolicyAnalyzer(
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	pluginPath, err := workspace.GetPluginPath(ctx.Diag,
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
+		apitype.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
 
 	var e *workspace.MissingError
 	if errors.As(err, &e) {
@@ -136,7 +136,7 @@ func NewPolicyAnalyzer(
 	}
 
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		workspace.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
+		apitype.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
@@ -443,7 +443,7 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    string(a.name),
 		Path:    a.plug.Bin,
-		Kind:    workspace.AnalyzerPlugin,
+		Kind:    apitype.AnalyzerPlugin,
 		Version: version,
 	}, nil
 }

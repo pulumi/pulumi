@@ -265,7 +265,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
 	args = withNonInteractiveArg(args)
-	cmd := exec.CommandContext(ctx, "pulumi", args...)
+	cmd := exec.CommandContext(ctx, p.command, args...) //nolint:gosec
 	cmd.Dir = workdir
 	env := append(os.Environ(), additionalEnv...)
 	if filepath.IsAbs(p.command) {
@@ -332,9 +332,9 @@ func fixupPath(env []string, pulumiBin string) []string {
 		if oldPath != "" {
 			pathEntry = pulumiBin + string(os.PathListSeparator) + oldPath
 		}
-		newEnv[pathIndex] = fmt.Sprintf("PATH=%s", pathEntry)
+		newEnv[pathIndex] = "PATH=" + pathEntry
 	} else {
-		newEnv = append(newEnv, fmt.Sprintf("PATH=%s", pulumiBin))
+		newEnv = append(newEnv, "PATH="+pulumiBin)
 	}
 	return newEnv
 }

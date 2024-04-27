@@ -16,6 +16,10 @@ no_edit_this_page: true
 
 
 ## Create Component Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,58 +27,61 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Component</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Component</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">,</span>
-              <span class="nx">metadata_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
-              <span class="nx">metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
-              <span class="nx">required_metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">,</span>
-              <span class="nx">required_metadata_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
-              <span class="nx">required_metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span>
-              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+              <span class="nx">required_metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">,</span>
+              <span class="nx">required_metadata_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
+              <span class="nx">required_metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
+              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">,</span>
+              <span class="nx">metadata_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
+              <span class="nx">metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewComponent</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Component</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewComponent</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Component</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Component</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Component</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -212,6 +219,1523 @@ no_edit_this_page: true
 </pulumi-choosable>
 </div>
 
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var componentResource = new Example.Component("componentResource", new()
+{
+    RequiredMetadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+    {
+        Annotations = 
+        {
+            { "string", "string" },
+        },
+        ClusterName = "string",
+        CreationTimestamp = "string",
+        DeletionGracePeriodSeconds = 0,
+        DeletionTimestamp = "string",
+        Finalizers = new[]
+        {
+            "string",
+        },
+        GenerateName = "string",
+        Generation = 0,
+        Labels = 
+        {
+            { "string", "string" },
+        },
+        ManagedFields = new[]
+        {
+            new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+            {
+                ApiVersion = "string",
+                FieldsType = "string",
+                FieldsV1 = "{}",
+                Manager = "string",
+                Operation = "string",
+                Subresource = "string",
+                Time = "string",
+            },
+        },
+        Name = "string",
+        Namespace = "string",
+        OwnerReferences = new[]
+        {
+            new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+            {
+                ApiVersion = "string",
+                Kind = "string",
+                Name = "string",
+                Uid = "string",
+                BlockOwnerDeletion = false,
+                Controller = false,
+            },
+        },
+        ResourceVersion = "string",
+        SelfLink = "string",
+        Uid = "string",
+    },
+    RequiredMetadataArray = new[]
+    {
+        new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        {
+            Annotations = 
+            {
+                { "string", "string" },
+            },
+            ClusterName = "string",
+            CreationTimestamp = "string",
+            DeletionGracePeriodSeconds = 0,
+            DeletionTimestamp = "string",
+            Finalizers = new[]
+            {
+                "string",
+            },
+            GenerateName = "string",
+            Generation = 0,
+            Labels = 
+            {
+                { "string", "string" },
+            },
+            ManagedFields = new[]
+            {
+                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                {
+                    ApiVersion = "string",
+                    FieldsType = "string",
+                    FieldsV1 = "{}",
+                    Manager = "string",
+                    Operation = "string",
+                    Subresource = "string",
+                    Time = "string",
+                },
+            },
+            Name = "string",
+            Namespace = "string",
+            OwnerReferences = new[]
+            {
+                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                {
+                    ApiVersion = "string",
+                    Kind = "string",
+                    Name = "string",
+                    Uid = "string",
+                    BlockOwnerDeletion = false,
+                    Controller = false,
+                },
+            },
+            ResourceVersion = "string",
+            SelfLink = "string",
+            Uid = "string",
+        },
+    },
+    RequiredMetadataMap = 
+    {
+        { "string", new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        {
+            Annotations = 
+            {
+                { "string", "string" },
+            },
+            ClusterName = "string",
+            CreationTimestamp = "string",
+            DeletionGracePeriodSeconds = 0,
+            DeletionTimestamp = "string",
+            Finalizers = new[]
+            {
+                "string",
+            },
+            GenerateName = "string",
+            Generation = 0,
+            Labels = 
+            {
+                { "string", "string" },
+            },
+            ManagedFields = new[]
+            {
+                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                {
+                    ApiVersion = "string",
+                    FieldsType = "string",
+                    FieldsV1 = "{}",
+                    Manager = "string",
+                    Operation = "string",
+                    Subresource = "string",
+                    Time = "string",
+                },
+            },
+            Name = "string",
+            Namespace = "string",
+            OwnerReferences = new[]
+            {
+                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                {
+                    ApiVersion = "string",
+                    Kind = "string",
+                    Name = "string",
+                    Uid = "string",
+                    BlockOwnerDeletion = false,
+                    Controller = false,
+                },
+            },
+            ResourceVersion = "string",
+            SelfLink = "string",
+            Uid = "string",
+        } },
+    },
+    Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+    {
+        Annotations = 
+        {
+            { "string", "string" },
+        },
+        ClusterName = "string",
+        CreationTimestamp = "string",
+        DeletionGracePeriodSeconds = 0,
+        DeletionTimestamp = "string",
+        Finalizers = new[]
+        {
+            "string",
+        },
+        GenerateName = "string",
+        Generation = 0,
+        Labels = 
+        {
+            { "string", "string" },
+        },
+        ManagedFields = new[]
+        {
+            new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+            {
+                ApiVersion = "string",
+                FieldsType = "string",
+                FieldsV1 = "{}",
+                Manager = "string",
+                Operation = "string",
+                Subresource = "string",
+                Time = "string",
+            },
+        },
+        Name = "string",
+        Namespace = "string",
+        OwnerReferences = new[]
+        {
+            new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+            {
+                ApiVersion = "string",
+                Kind = "string",
+                Name = "string",
+                Uid = "string",
+                BlockOwnerDeletion = false,
+                Controller = false,
+            },
+        },
+        ResourceVersion = "string",
+        SelfLink = "string",
+        Uid = "string",
+    },
+    MetadataArray = new[]
+    {
+        new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        {
+            Annotations = 
+            {
+                { "string", "string" },
+            },
+            ClusterName = "string",
+            CreationTimestamp = "string",
+            DeletionGracePeriodSeconds = 0,
+            DeletionTimestamp = "string",
+            Finalizers = new[]
+            {
+                "string",
+            },
+            GenerateName = "string",
+            Generation = 0,
+            Labels = 
+            {
+                { "string", "string" },
+            },
+            ManagedFields = new[]
+            {
+                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                {
+                    ApiVersion = "string",
+                    FieldsType = "string",
+                    FieldsV1 = "{}",
+                    Manager = "string",
+                    Operation = "string",
+                    Subresource = "string",
+                    Time = "string",
+                },
+            },
+            Name = "string",
+            Namespace = "string",
+            OwnerReferences = new[]
+            {
+                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                {
+                    ApiVersion = "string",
+                    Kind = "string",
+                    Name = "string",
+                    Uid = "string",
+                    BlockOwnerDeletion = false,
+                    Controller = false,
+                },
+            },
+            ResourceVersion = "string",
+            SelfLink = "string",
+            Uid = "string",
+        },
+    },
+    MetadataMap = 
+    {
+        { "string", new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        {
+            Annotations = 
+            {
+                { "string", "string" },
+            },
+            ClusterName = "string",
+            CreationTimestamp = "string",
+            DeletionGracePeriodSeconds = 0,
+            DeletionTimestamp = "string",
+            Finalizers = new[]
+            {
+                "string",
+            },
+            GenerateName = "string",
+            Generation = 0,
+            Labels = 
+            {
+                { "string", "string" },
+            },
+            ManagedFields = new[]
+            {
+                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                {
+                    ApiVersion = "string",
+                    FieldsType = "string",
+                    FieldsV1 = "{}",
+                    Manager = "string",
+                    Operation = "string",
+                    Subresource = "string",
+                    Time = "string",
+                },
+            },
+            Name = "string",
+            Namespace = "string",
+            OwnerReferences = new[]
+            {
+                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                {
+                    ApiVersion = "string",
+                    Kind = "string",
+                    Name = "string",
+                    Uid = "string",
+                    BlockOwnerDeletion = false,
+                    Controller = false,
+                },
+            },
+            ResourceVersion = "string",
+            SelfLink = "string",
+            Uid = "string",
+        } },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewComponent(ctx, "componentResource", &example.ComponentArgs{
+	RequiredMetadata: &metav1.ObjectMetaArgs{
+		Annotations: pulumi.StringMap{
+			"string": pulumi.String("string"),
+		},
+		ClusterName:                pulumi.String("string"),
+		CreationTimestamp:          pulumi.String("string"),
+		DeletionGracePeriodSeconds: pulumi.Int(0),
+		DeletionTimestamp:          pulumi.String("string"),
+		Finalizers: pulumi.StringArray{
+			pulumi.String("string"),
+		},
+		GenerateName: pulumi.String("string"),
+		Generation:   pulumi.Int(0),
+		Labels: pulumi.StringMap{
+			"string": pulumi.String("string"),
+		},
+		ManagedFields: metav1.ManagedFieldsEntryArray{
+			&metav1.ManagedFieldsEntryArgs{
+				ApiVersion:  pulumi.String("string"),
+				FieldsType:  pulumi.String("string"),
+				FieldsV1:    pulumi.Any("{}"),
+				Manager:     pulumi.String("string"),
+				Operation:   pulumi.String("string"),
+				Subresource: pulumi.String("string"),
+				Time:        pulumi.String("string"),
+			},
+		},
+		Name:      pulumi.String("string"),
+		Namespace: pulumi.String("string"),
+		OwnerReferences: metav1.OwnerReferenceArray{
+			&metav1.OwnerReferenceArgs{
+				ApiVersion:         pulumi.String("string"),
+				Kind:               pulumi.String("string"),
+				Name:               pulumi.String("string"),
+				Uid:                pulumi.String("string"),
+				BlockOwnerDeletion: pulumi.Bool(false),
+				Controller:         pulumi.Bool(false),
+			},
+		},
+		ResourceVersion: pulumi.String("string"),
+		SelfLink:        pulumi.String("string"),
+		Uid:             pulumi.String("string"),
+	},
+	RequiredMetadataArray: metav1.ObjectMetaArray{
+		&metav1.ObjectMetaArgs{
+			Annotations: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ClusterName:                pulumi.String("string"),
+			CreationTimestamp:          pulumi.String("string"),
+			DeletionGracePeriodSeconds: pulumi.Int(0),
+			DeletionTimestamp:          pulumi.String("string"),
+			Finalizers: pulumi.StringArray{
+				pulumi.String("string"),
+			},
+			GenerateName: pulumi.String("string"),
+			Generation:   pulumi.Int(0),
+			Labels: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ManagedFields: metav1.ManagedFieldsEntryArray{
+				&metav1.ManagedFieldsEntryArgs{
+					ApiVersion:  pulumi.String("string"),
+					FieldsType:  pulumi.String("string"),
+					FieldsV1:    pulumi.Any("{}"),
+					Manager:     pulumi.String("string"),
+					Operation:   pulumi.String("string"),
+					Subresource: pulumi.String("string"),
+					Time:        pulumi.String("string"),
+				},
+			},
+			Name:      pulumi.String("string"),
+			Namespace: pulumi.String("string"),
+			OwnerReferences: metav1.OwnerReferenceArray{
+				&metav1.OwnerReferenceArgs{
+					ApiVersion:         pulumi.String("string"),
+					Kind:               pulumi.String("string"),
+					Name:               pulumi.String("string"),
+					Uid:                pulumi.String("string"),
+					BlockOwnerDeletion: pulumi.Bool(false),
+					Controller:         pulumi.Bool(false),
+				},
+			},
+			ResourceVersion: pulumi.String("string"),
+			SelfLink:        pulumi.String("string"),
+			Uid:             pulumi.String("string"),
+		},
+	},
+	RequiredMetadataMap: metav1.ObjectMetaMap{
+		"string": &metav1.ObjectMetaArgs{
+			Annotations: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ClusterName:                pulumi.String("string"),
+			CreationTimestamp:          pulumi.String("string"),
+			DeletionGracePeriodSeconds: pulumi.Int(0),
+			DeletionTimestamp:          pulumi.String("string"),
+			Finalizers: pulumi.StringArray{
+				pulumi.String("string"),
+			},
+			GenerateName: pulumi.String("string"),
+			Generation:   pulumi.Int(0),
+			Labels: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ManagedFields: metav1.ManagedFieldsEntryArray{
+				&metav1.ManagedFieldsEntryArgs{
+					ApiVersion:  pulumi.String("string"),
+					FieldsType:  pulumi.String("string"),
+					FieldsV1:    pulumi.Any("{}"),
+					Manager:     pulumi.String("string"),
+					Operation:   pulumi.String("string"),
+					Subresource: pulumi.String("string"),
+					Time:        pulumi.String("string"),
+				},
+			},
+			Name:      pulumi.String("string"),
+			Namespace: pulumi.String("string"),
+			OwnerReferences: metav1.OwnerReferenceArray{
+				&metav1.OwnerReferenceArgs{
+					ApiVersion:         pulumi.String("string"),
+					Kind:               pulumi.String("string"),
+					Name:               pulumi.String("string"),
+					Uid:                pulumi.String("string"),
+					BlockOwnerDeletion: pulumi.Bool(false),
+					Controller:         pulumi.Bool(false),
+				},
+			},
+			ResourceVersion: pulumi.String("string"),
+			SelfLink:        pulumi.String("string"),
+			Uid:             pulumi.String("string"),
+		},
+	},
+	Metadata: &metav1.ObjectMetaArgs{
+		Annotations: pulumi.StringMap{
+			"string": pulumi.String("string"),
+		},
+		ClusterName:                pulumi.String("string"),
+		CreationTimestamp:          pulumi.String("string"),
+		DeletionGracePeriodSeconds: pulumi.Int(0),
+		DeletionTimestamp:          pulumi.String("string"),
+		Finalizers: pulumi.StringArray{
+			pulumi.String("string"),
+		},
+		GenerateName: pulumi.String("string"),
+		Generation:   pulumi.Int(0),
+		Labels: pulumi.StringMap{
+			"string": pulumi.String("string"),
+		},
+		ManagedFields: metav1.ManagedFieldsEntryArray{
+			&metav1.ManagedFieldsEntryArgs{
+				ApiVersion:  pulumi.String("string"),
+				FieldsType:  pulumi.String("string"),
+				FieldsV1:    pulumi.Any("{}"),
+				Manager:     pulumi.String("string"),
+				Operation:   pulumi.String("string"),
+				Subresource: pulumi.String("string"),
+				Time:        pulumi.String("string"),
+			},
+		},
+		Name:      pulumi.String("string"),
+		Namespace: pulumi.String("string"),
+		OwnerReferences: metav1.OwnerReferenceArray{
+			&metav1.OwnerReferenceArgs{
+				ApiVersion:         pulumi.String("string"),
+				Kind:               pulumi.String("string"),
+				Name:               pulumi.String("string"),
+				Uid:                pulumi.String("string"),
+				BlockOwnerDeletion: pulumi.Bool(false),
+				Controller:         pulumi.Bool(false),
+			},
+		},
+		ResourceVersion: pulumi.String("string"),
+		SelfLink:        pulumi.String("string"),
+		Uid:             pulumi.String("string"),
+	},
+	MetadataArray: metav1.ObjectMetaArray{
+		&metav1.ObjectMetaArgs{
+			Annotations: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ClusterName:                pulumi.String("string"),
+			CreationTimestamp:          pulumi.String("string"),
+			DeletionGracePeriodSeconds: pulumi.Int(0),
+			DeletionTimestamp:          pulumi.String("string"),
+			Finalizers: pulumi.StringArray{
+				pulumi.String("string"),
+			},
+			GenerateName: pulumi.String("string"),
+			Generation:   pulumi.Int(0),
+			Labels: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ManagedFields: metav1.ManagedFieldsEntryArray{
+				&metav1.ManagedFieldsEntryArgs{
+					ApiVersion:  pulumi.String("string"),
+					FieldsType:  pulumi.String("string"),
+					FieldsV1:    pulumi.Any("{}"),
+					Manager:     pulumi.String("string"),
+					Operation:   pulumi.String("string"),
+					Subresource: pulumi.String("string"),
+					Time:        pulumi.String("string"),
+				},
+			},
+			Name:      pulumi.String("string"),
+			Namespace: pulumi.String("string"),
+			OwnerReferences: metav1.OwnerReferenceArray{
+				&metav1.OwnerReferenceArgs{
+					ApiVersion:         pulumi.String("string"),
+					Kind:               pulumi.String("string"),
+					Name:               pulumi.String("string"),
+					Uid:                pulumi.String("string"),
+					BlockOwnerDeletion: pulumi.Bool(false),
+					Controller:         pulumi.Bool(false),
+				},
+			},
+			ResourceVersion: pulumi.String("string"),
+			SelfLink:        pulumi.String("string"),
+			Uid:             pulumi.String("string"),
+		},
+	},
+	MetadataMap: metav1.ObjectMetaMap{
+		"string": &metav1.ObjectMetaArgs{
+			Annotations: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ClusterName:                pulumi.String("string"),
+			CreationTimestamp:          pulumi.String("string"),
+			DeletionGracePeriodSeconds: pulumi.Int(0),
+			DeletionTimestamp:          pulumi.String("string"),
+			Finalizers: pulumi.StringArray{
+				pulumi.String("string"),
+			},
+			GenerateName: pulumi.String("string"),
+			Generation:   pulumi.Int(0),
+			Labels: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			ManagedFields: metav1.ManagedFieldsEntryArray{
+				&metav1.ManagedFieldsEntryArgs{
+					ApiVersion:  pulumi.String("string"),
+					FieldsType:  pulumi.String("string"),
+					FieldsV1:    pulumi.Any("{}"),
+					Manager:     pulumi.String("string"),
+					Operation:   pulumi.String("string"),
+					Subresource: pulumi.String("string"),
+					Time:        pulumi.String("string"),
+				},
+			},
+			Name:      pulumi.String("string"),
+			Namespace: pulumi.String("string"),
+			OwnerReferences: metav1.OwnerReferenceArray{
+				&metav1.OwnerReferenceArgs{
+					ApiVersion:         pulumi.String("string"),
+					Kind:               pulumi.String("string"),
+					Name:               pulumi.String("string"),
+					Uid:                pulumi.String("string"),
+					BlockOwnerDeletion: pulumi.Bool(false),
+					Controller:         pulumi.Bool(false),
+				},
+			},
+			ResourceVersion: pulumi.String("string"),
+			SelfLink:        pulumi.String("string"),
+			Uid:             pulumi.String("string"),
+		},
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var componentResource = new Component("componentResource", ComponentArgs.builder()        
+    .requiredMetadata(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .requiredMetadataArray(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .requiredMetadataMap(Map.of("string", Map.ofEntries(
+        Map.entry("annotations", Map.of("string", "string")),
+        Map.entry("clusterName", "string"),
+        Map.entry("creationTimestamp", "string"),
+        Map.entry("deletionGracePeriodSeconds", 0),
+        Map.entry("deletionTimestamp", "string"),
+        Map.entry("finalizers", "string"),
+        Map.entry("generateName", "string"),
+        Map.entry("generation", 0),
+        Map.entry("labels", Map.of("string", "string")),
+        Map.entry("managedFields", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("fieldsType", "string"),
+            Map.entry("fieldsV1", "{}"),
+            Map.entry("manager", "string"),
+            Map.entry("operation", "string"),
+            Map.entry("subresource", "string"),
+            Map.entry("time", "string")
+        )),
+        Map.entry("name", "string"),
+        Map.entry("namespace", "string"),
+        Map.entry("ownerReferences", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("kind", "string"),
+            Map.entry("name", "string"),
+            Map.entry("uid", "string"),
+            Map.entry("blockOwnerDeletion", false),
+            Map.entry("controller", false)
+        )),
+        Map.entry("resourceVersion", "string"),
+        Map.entry("selfLink", "string"),
+        Map.entry("uid", "string")
+    )))
+    .metadata(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .metadataArray(ObjectMetaArgs.builder()
+        .annotations(Map.of("string", "string"))
+        .clusterName("string")
+        .creationTimestamp("string")
+        .deletionGracePeriodSeconds(0)
+        .deletionTimestamp("string")
+        .finalizers("string")
+        .generateName("string")
+        .generation(0)
+        .labels(Map.of("string", "string"))
+        .managedFields(ManagedFieldsEntryArgs.builder()
+            .apiVersion("string")
+            .fieldsType("string")
+            .fieldsV1("{}")
+            .manager("string")
+            .operation("string")
+            .subresource("string")
+            .time("string")
+            .build())
+        .name("string")
+        .namespace("string")
+        .ownerReferences(OwnerReferenceArgs.builder()
+            .apiVersion("string")
+            .kind("string")
+            .name("string")
+            .uid("string")
+            .blockOwnerDeletion(false)
+            .controller(false)
+            .build())
+        .resourceVersion("string")
+        .selfLink("string")
+        .uid("string")
+        .build())
+    .metadataMap(Map.of("string", Map.ofEntries(
+        Map.entry("annotations", Map.of("string", "string")),
+        Map.entry("clusterName", "string"),
+        Map.entry("creationTimestamp", "string"),
+        Map.entry("deletionGracePeriodSeconds", 0),
+        Map.entry("deletionTimestamp", "string"),
+        Map.entry("finalizers", "string"),
+        Map.entry("generateName", "string"),
+        Map.entry("generation", 0),
+        Map.entry("labels", Map.of("string", "string")),
+        Map.entry("managedFields", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("fieldsType", "string"),
+            Map.entry("fieldsV1", "{}"),
+            Map.entry("manager", "string"),
+            Map.entry("operation", "string"),
+            Map.entry("subresource", "string"),
+            Map.entry("time", "string")
+        )),
+        Map.entry("name", "string"),
+        Map.entry("namespace", "string"),
+        Map.entry("ownerReferences", Map.ofEntries(
+            Map.entry("apiVersion", "string"),
+            Map.entry("kind", "string"),
+            Map.entry("name", "string"),
+            Map.entry("uid", "string"),
+            Map.entry("blockOwnerDeletion", false),
+            Map.entry("controller", false)
+        )),
+        Map.entry("resourceVersion", "string"),
+        Map.entry("selfLink", "string"),
+        Map.entry("uid", "string")
+    )))
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+component_resource = example.Component("componentResource",
+    required_metadata=kubernetes.meta.v1.ObjectMetaArgs(
+        annotations={
+            "string": "string",
+        },
+        cluster_name="string",
+        creation_timestamp="string",
+        deletion_grace_period_seconds=0,
+        deletion_timestamp="string",
+        finalizers=["string"],
+        generate_name="string",
+        generation=0,
+        labels={
+            "string": "string",
+        },
+        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+            api_version="string",
+            fields_type="string",
+            fields_v1="{}",
+            manager="string",
+            operation="string",
+            subresource="string",
+            time="string",
+        )],
+        name="string",
+        namespace="string",
+        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+            api_version="string",
+            kind="string",
+            name="string",
+            uid="string",
+            block_owner_deletion=False,
+            controller=False,
+        )],
+        resource_version="string",
+        self_link="string",
+        uid="string",
+    ),
+    required_metadata_array=[kubernetes.meta.v1.ObjectMetaArgs(
+        annotations={
+            "string": "string",
+        },
+        cluster_name="string",
+        creation_timestamp="string",
+        deletion_grace_period_seconds=0,
+        deletion_timestamp="string",
+        finalizers=["string"],
+        generate_name="string",
+        generation=0,
+        labels={
+            "string": "string",
+        },
+        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+            api_version="string",
+            fields_type="string",
+            fields_v1="{}",
+            manager="string",
+            operation="string",
+            subresource="string",
+            time="string",
+        )],
+        name="string",
+        namespace="string",
+        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+            api_version="string",
+            kind="string",
+            name="string",
+            uid="string",
+            block_owner_deletion=False,
+            controller=False,
+        )],
+        resource_version="string",
+        self_link="string",
+        uid="string",
+    )],
+    required_metadata_map={
+        "string": kubernetes.meta.v1.ObjectMetaArgs(
+            annotations={
+                "string": "string",
+            },
+            cluster_name="string",
+            creation_timestamp="string",
+            deletion_grace_period_seconds=0,
+            deletion_timestamp="string",
+            finalizers=["string"],
+            generate_name="string",
+            generation=0,
+            labels={
+                "string": "string",
+            },
+            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+                api_version="string",
+                fields_type="string",
+                fields_v1="{}",
+                manager="string",
+                operation="string",
+                subresource="string",
+                time="string",
+            )],
+            name="string",
+            namespace="string",
+            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+                api_version="string",
+                kind="string",
+                name="string",
+                uid="string",
+                block_owner_deletion=False,
+                controller=False,
+            )],
+            resource_version="string",
+            self_link="string",
+            uid="string",
+        ),
+    },
+    metadata=kubernetes.meta.v1.ObjectMetaArgs(
+        annotations={
+            "string": "string",
+        },
+        cluster_name="string",
+        creation_timestamp="string",
+        deletion_grace_period_seconds=0,
+        deletion_timestamp="string",
+        finalizers=["string"],
+        generate_name="string",
+        generation=0,
+        labels={
+            "string": "string",
+        },
+        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+            api_version="string",
+            fields_type="string",
+            fields_v1="{}",
+            manager="string",
+            operation="string",
+            subresource="string",
+            time="string",
+        )],
+        name="string",
+        namespace="string",
+        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+            api_version="string",
+            kind="string",
+            name="string",
+            uid="string",
+            block_owner_deletion=False,
+            controller=False,
+        )],
+        resource_version="string",
+        self_link="string",
+        uid="string",
+    ),
+    metadata_array=[kubernetes.meta.v1.ObjectMetaArgs(
+        annotations={
+            "string": "string",
+        },
+        cluster_name="string",
+        creation_timestamp="string",
+        deletion_grace_period_seconds=0,
+        deletion_timestamp="string",
+        finalizers=["string"],
+        generate_name="string",
+        generation=0,
+        labels={
+            "string": "string",
+        },
+        managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+            api_version="string",
+            fields_type="string",
+            fields_v1="{}",
+            manager="string",
+            operation="string",
+            subresource="string",
+            time="string",
+        )],
+        name="string",
+        namespace="string",
+        owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+            api_version="string",
+            kind="string",
+            name="string",
+            uid="string",
+            block_owner_deletion=False,
+            controller=False,
+        )],
+        resource_version="string",
+        self_link="string",
+        uid="string",
+    )],
+    metadata_map={
+        "string": kubernetes.meta.v1.ObjectMetaArgs(
+            annotations={
+                "string": "string",
+            },
+            cluster_name="string",
+            creation_timestamp="string",
+            deletion_grace_period_seconds=0,
+            deletion_timestamp="string",
+            finalizers=["string"],
+            generate_name="string",
+            generation=0,
+            labels={
+                "string": "string",
+            },
+            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
+                api_version="string",
+                fields_type="string",
+                fields_v1="{}",
+                manager="string",
+                operation="string",
+                subresource="string",
+                time="string",
+            )],
+            name="string",
+            namespace="string",
+            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
+                api_version="string",
+                kind="string",
+                name="string",
+                uid="string",
+                block_owner_deletion=False,
+                controller=False,
+            )],
+            resource_version="string",
+            self_link="string",
+            uid="string",
+        ),
+    })
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const componentResource = new example.Component("componentResource", {
+    requiredMetadata: {
+        annotations: {
+            string: "string",
+        },
+        clusterName: "string",
+        creationTimestamp: "string",
+        deletionGracePeriodSeconds: 0,
+        deletionTimestamp: "string",
+        finalizers: ["string"],
+        generateName: "string",
+        generation: 0,
+        labels: {
+            string: "string",
+        },
+        managedFields: [{
+            apiVersion: "string",
+            fieldsType: "string",
+            fieldsV1: "{}",
+            manager: "string",
+            operation: "string",
+            subresource: "string",
+            time: "string",
+        }],
+        name: "string",
+        namespace: "string",
+        ownerReferences: [{
+            apiVersion: "string",
+            kind: "string",
+            name: "string",
+            uid: "string",
+            blockOwnerDeletion: false,
+            controller: false,
+        }],
+        resourceVersion: "string",
+        selfLink: "string",
+        uid: "string",
+    },
+    requiredMetadataArray: [{
+        annotations: {
+            string: "string",
+        },
+        clusterName: "string",
+        creationTimestamp: "string",
+        deletionGracePeriodSeconds: 0,
+        deletionTimestamp: "string",
+        finalizers: ["string"],
+        generateName: "string",
+        generation: 0,
+        labels: {
+            string: "string",
+        },
+        managedFields: [{
+            apiVersion: "string",
+            fieldsType: "string",
+            fieldsV1: "{}",
+            manager: "string",
+            operation: "string",
+            subresource: "string",
+            time: "string",
+        }],
+        name: "string",
+        namespace: "string",
+        ownerReferences: [{
+            apiVersion: "string",
+            kind: "string",
+            name: "string",
+            uid: "string",
+            blockOwnerDeletion: false,
+            controller: false,
+        }],
+        resourceVersion: "string",
+        selfLink: "string",
+        uid: "string",
+    }],
+    requiredMetadataMap: {
+        string: {
+            annotations: {
+                string: "string",
+            },
+            clusterName: "string",
+            creationTimestamp: "string",
+            deletionGracePeriodSeconds: 0,
+            deletionTimestamp: "string",
+            finalizers: ["string"],
+            generateName: "string",
+            generation: 0,
+            labels: {
+                string: "string",
+            },
+            managedFields: [{
+                apiVersion: "string",
+                fieldsType: "string",
+                fieldsV1: "{}",
+                manager: "string",
+                operation: "string",
+                subresource: "string",
+                time: "string",
+            }],
+            name: "string",
+            namespace: "string",
+            ownerReferences: [{
+                apiVersion: "string",
+                kind: "string",
+                name: "string",
+                uid: "string",
+                blockOwnerDeletion: false,
+                controller: false,
+            }],
+            resourceVersion: "string",
+            selfLink: "string",
+            uid: "string",
+        },
+    },
+    metadata: {
+        annotations: {
+            string: "string",
+        },
+        clusterName: "string",
+        creationTimestamp: "string",
+        deletionGracePeriodSeconds: 0,
+        deletionTimestamp: "string",
+        finalizers: ["string"],
+        generateName: "string",
+        generation: 0,
+        labels: {
+            string: "string",
+        },
+        managedFields: [{
+            apiVersion: "string",
+            fieldsType: "string",
+            fieldsV1: "{}",
+            manager: "string",
+            operation: "string",
+            subresource: "string",
+            time: "string",
+        }],
+        name: "string",
+        namespace: "string",
+        ownerReferences: [{
+            apiVersion: "string",
+            kind: "string",
+            name: "string",
+            uid: "string",
+            blockOwnerDeletion: false,
+            controller: false,
+        }],
+        resourceVersion: "string",
+        selfLink: "string",
+        uid: "string",
+    },
+    metadataArray: [{
+        annotations: {
+            string: "string",
+        },
+        clusterName: "string",
+        creationTimestamp: "string",
+        deletionGracePeriodSeconds: 0,
+        deletionTimestamp: "string",
+        finalizers: ["string"],
+        generateName: "string",
+        generation: 0,
+        labels: {
+            string: "string",
+        },
+        managedFields: [{
+            apiVersion: "string",
+            fieldsType: "string",
+            fieldsV1: "{}",
+            manager: "string",
+            operation: "string",
+            subresource: "string",
+            time: "string",
+        }],
+        name: "string",
+        namespace: "string",
+        ownerReferences: [{
+            apiVersion: "string",
+            kind: "string",
+            name: "string",
+            uid: "string",
+            blockOwnerDeletion: false,
+            controller: false,
+        }],
+        resourceVersion: "string",
+        selfLink: "string",
+        uid: "string",
+    }],
+    metadataMap: {
+        string: {
+            annotations: {
+                string: "string",
+            },
+            clusterName: "string",
+            creationTimestamp: "string",
+            deletionGracePeriodSeconds: 0,
+            deletionTimestamp: "string",
+            finalizers: ["string"],
+            generateName: "string",
+            generation: 0,
+            labels: {
+                string: "string",
+            },
+            managedFields: [{
+                apiVersion: "string",
+                fieldsType: "string",
+                fieldsV1: "{}",
+                manager: "string",
+                operation: "string",
+                subresource: "string",
+                time: "string",
+            }],
+            name: "string",
+            namespace: "string",
+            ownerReferences: [{
+                apiVersion: "string",
+                kind: "string",
+                name: "string",
+                uid: "string",
+                blockOwnerDeletion: false,
+                controller: false,
+            }],
+            resourceVersion: "string",
+            selfLink: "string",
+            uid: "string",
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: example:Component
+properties:
+    metadata:
+        annotations:
+            string: string
+        clusterName: string
+        creationTimestamp: string
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: string
+        finalizers:
+            - string
+        generateName: string
+        generation: 0
+        labels:
+            string: string
+        managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+        name: string
+        namespace: string
+        ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+        resourceVersion: string
+        selfLink: string
+        uid: string
+    metadataArray:
+        - annotations:
+            string: string
+          clusterName: string
+          creationTimestamp: string
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: string
+          finalizers:
+            - string
+          generateName: string
+          generation: 0
+          labels:
+            string: string
+          managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+          name: string
+          namespace: string
+          ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+          resourceVersion: string
+          selfLink: string
+          uid: string
+    metadataMap:
+        string:
+            annotations:
+                string: string
+            clusterName: string
+            creationTimestamp: string
+            deletionGracePeriodSeconds: 0
+            deletionTimestamp: string
+            finalizers:
+                - string
+            generateName: string
+            generation: 0
+            labels:
+                string: string
+            managedFields:
+                - apiVersion: string
+                  fieldsType: string
+                  fieldsV1: '{}'
+                  manager: string
+                  operation: string
+                  subresource: string
+                  time: string
+            name: string
+            namespace: string
+            ownerReferences:
+                - apiVersion: string
+                  blockOwnerDeletion: false
+                  controller: false
+                  kind: string
+                  name: string
+                  uid: string
+            resourceVersion: string
+            selfLink: string
+            uid: string
+    requiredMetadata:
+        annotations:
+            string: string
+        clusterName: string
+        creationTimestamp: string
+        deletionGracePeriodSeconds: 0
+        deletionTimestamp: string
+        finalizers:
+            - string
+        generateName: string
+        generation: 0
+        labels:
+            string: string
+        managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+        name: string
+        namespace: string
+        ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+        resourceVersion: string
+        selfLink: string
+        uid: string
+    requiredMetadataArray:
+        - annotations:
+            string: string
+          clusterName: string
+          creationTimestamp: string
+          deletionGracePeriodSeconds: 0
+          deletionTimestamp: string
+          finalizers:
+            - string
+          generateName: string
+          generation: 0
+          labels:
+            string: string
+          managedFields:
+            - apiVersion: string
+              fieldsType: string
+              fieldsV1: '{}'
+              manager: string
+              operation: string
+              subresource: string
+              time: string
+          name: string
+          namespace: string
+          ownerReferences:
+            - apiVersion: string
+              blockOwnerDeletion: false
+              controller: false
+              kind: string
+              name: string
+              uid: string
+          resourceVersion: string
+          selfLink: string
+          uid: string
+    requiredMetadataMap:
+        string:
+            annotations:
+                string: string
+            clusterName: string
+            creationTimestamp: string
+            deletionGracePeriodSeconds: 0
+            deletionTimestamp: string
+            finalizers:
+                - string
+            generateName: string
+            generation: 0
+            labels:
+                string: string
+            managedFields:
+                - apiVersion: string
+                  fieldsType: string
+                  fieldsV1: '{}'
+                  manager: string
+                  operation: string
+                  subresource: string
+                  time: string
+            name: string
+            namespace: string
+            ownerReferences:
+                - apiVersion: string
+                  blockOwnerDeletion: false
+                  controller: false
+                  kind: string
+                  name: string
+                  uid: string
+            resourceVersion: string
+            selfLink: string
+            uid: string
+```
+
+</pulumi-choosable>
+</div>
+
+
+
 ## Component Resource Properties {#properties}
 
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
@@ -232,7 +1756,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
@@ -256,7 +1780,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
@@ -286,7 +1810,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
@@ -310,7 +1834,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
@@ -340,7 +1864,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
@@ -364,7 +1888,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
@@ -394,7 +1918,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
@@ -418,7 +1942,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
@@ -446,15 +1970,15 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="required_metadata_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type"><a href="#objectmeta">Sequence[pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -462,7 +1986,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -470,15 +1994,15 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_python" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_array_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type"><a href="#objectmeta">Sequence[pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -486,7 +2010,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_map_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>kubernetes.meta.v1.<wbr>Object<wbr>Meta<wbr>Args]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -502,7 +2026,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Property Map</a></span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
@@ -526,7 +2050,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#objectmeta">Property Map</a></span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/kubernetes">Kubernetes</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
@@ -571,7 +2095,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Aws.<wbr>Ec2.<wbr>Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_csharp" style="color: inherit; text-decoration: inherit;">Provider</a>
@@ -579,7 +2103,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Kubernetes.<wbr>Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_csharp" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
@@ -609,7 +2133,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_go" style="color: inherit; text-decoration: inherit;">Provider</a>
@@ -617,7 +2141,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_go" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
@@ -647,7 +2171,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_java" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -655,7 +2179,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_java" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
@@ -685,7 +2209,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Awsec2Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_nodejs" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -693,7 +2217,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Kubernetes<wbr>Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_nodejs" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
@@ -721,23 +2245,23 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#security_group_python" style="color: inherit; text-decoration: inherit;">security_<wbr>group</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Security<wbr>Group</span>
+        <span class="property-type">pulumi_<wbr>aws.ec2.<wbr>Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_python" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Provider</span>
+        <span class="property-type">pulumi_<wbr>kubernetes.<wbr>Provider</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storage_classes_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storage_classes_python" style="color: inherit; text-decoration: inherit;">storage_<wbr>classes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Storage<wbr>Class]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>kubernetes.storage.v1.<wbr>Storage<wbr>Class]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -761,7 +2285,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">aws:ec2:Security<wbr>Group</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/aws">AWS Classic</a> package.</dd><dt class="property-"
             title="">
         <span id="provider_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_yaml" style="color: inherit; text-decoration: inherit;">provider</a>
@@ -769,7 +2293,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi:providers:kubernetes</span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd>This type is defined in the <a href="/registry/packages/pulumi">pulumi</a> package.</dd><dt class="property-"
             title="">
         <span id="storageclasses_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_yaml" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>

@@ -130,7 +130,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing)
+			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -178,6 +178,9 @@ type nodeLanguageHost struct {
 
 	engineAddress string
 	tracing       string
+
+	// used by language conformance tests to force TSC usage
+	forceTsc bool
 }
 
 type nodeOptions struct {
@@ -223,11 +226,12 @@ func parseOptions(root string, options map[string]interface{}) (nodeOptions, err
 }
 
 func newLanguageHost(
-	engineAddress, tracing string,
+	engineAddress, tracing string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		forceTsc:      forceTsc,
 	}
 }
 
@@ -483,7 +487,7 @@ func getPluginVersion(info packageJSON) (string, error) {
 		}
 	}
 	if strings.IndexRune(version, 'v') != 0 {
-		return fmt.Sprintf("v%s", version), nil
+		return "v" + version, nil
 	}
 	return version, nil
 }
@@ -569,7 +573,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin)
+	// If we're forcing tsc the program directory for running is actually ./bin
+	programDirectory := req.Info.ProgramDirectory
+	if host.forceTsc {
+		req.Info.ProgramDirectory = filepath.Join(programDirectory, "bin")
+	}
+
+	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
@@ -825,6 +835,19 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if host.forceTsc {
+		// If we're forcing tsc for conformance testing this is our chance to run it before actually running the program.
+		// We probably want to see about making something like this an explicit "pulumi build" step, but for now shim'ing this
+		// in here works well enough for conformance testing.
+		tscCmd := exec.Command("npx", "tsc")
+		tscCmd.Dir = req.Info.ProgramDirectory
+		tscCmd.Stdout = stdout
+		tscCmd.Stderr = stderr
+		if err := tscCmd.Run(); err != nil {
+			return fmt.Errorf("failed to run tsc: %w", err)
+		}
+	}
 
 	return closer.Close()
 }
@@ -1093,7 +1116,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.forceTsc)
 	if err != nil {
 		return nil, err
 	}
@@ -1140,7 +1163,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error program was nil")
+		return nil, errors.New("internal error program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
@@ -1179,7 +1202,8 @@ func (host *nodeLanguageHost) GeneratePackage(
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
-	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles)
+
+	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -1278,42 +1302,20 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
 
-		// Safely remove mockpackage dependency see [pulumi/pulumi#9026]
-		// Need to copy in the yarn.lock to do this
-		err = fsutil.CopyFile(
-			filepath.Join(req.PackageDirectory, "bin", "yarn.lock"),
-			filepath.Join(req.PackageDirectory, "yarn.lock"),
-			nil)
-		if err != nil {
-			return nil, fmt.Errorf("copy yarn.lock: %w", err)
-		}
-
-		err = writeString("$ yarn remove mockpackage\n")
-		if err != nil {
-			return nil, fmt.Errorf("write to output: %w", err)
-		}
-		yarnRmCmd := exec.Command(yarn, "remove", "mockpackage")
-		yarnRmCmd.Dir = filepath.Join(req.PackageDirectory, "bin")
-		yarnRmCmd.Stdout = os.Stdout
-		yarnRmCmd.Stderr = os.Stderr
-		err = yarnRmCmd.Run()
-		if err != nil {
-			return nil, fmt.Errorf("yarn remove mockpackage: %w", err)
-		}
-
-		// Cleanup the lock file, it's not needed anymore except for this mockpackage hackery
-		err = os.Remove(filepath.Join(req.PackageDirectory, "bin", "yarn.lock"))
-		if err != nil {
-			return nil, fmt.Errorf("remove yarn.lock: %w", err)
-		}
-
-		// "tsc" doesn't copy in the "proto" directory of .js files.
+		// "tsc" doesn't copy in the "proto" and "vendor" directories.
 		err = fsutil.CopyFile(
 			filepath.Join(req.PackageDirectory, "bin", "proto"),
 			filepath.Join(req.PackageDirectory, "proto"),
 			nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy proto: %w", err)
+		}
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "vendor"),
+			filepath.Join(req.PackageDirectory, "vendor"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy vendor: %w", err)
 		}
 
 	} else {
@@ -1354,22 +1356,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("copy package.json: %w", err)
 		}
-	}
-
-	// Mutate the package.json to replace version with the version we've been given.
-	packageJSONPath := filepath.Join(req.PackageDirectory, "bin", "package.json")
-	packageJSON, err = readPackageJSON(packageJSONPath)
-	if err != nil {
-		return nil, err
-	}
-	packageJSON["version"] = req.Version
-	packageJSONData, err := json.Marshal(packageJSON)
-	if err != nil {
-		return nil, fmt.Errorf("marshal package.json: %w", err)
-	}
-	err = os.WriteFile(packageJSONPath, packageJSONData, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("write package.json: %w", err)
 	}
 
 	err = writeString("$ npm pack\n")

@@ -21,12 +21,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,6 +38,7 @@ func newGenSdkCommand() *cobra.Command {
 	var overlays string
 	var language string
 	var out string
+	var version string
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source>",
 		Args:  cobra.ExactArgs(1),
@@ -46,9 +49,20 @@ func newGenSdkCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
+			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 			pkg, err := schemaFromSchemaSource(source)
 			if err != nil {
 				return err
+			}
+			if version != "" {
+				pkgVersion, err := semver.Parse(version)
+				if err != nil {
+					return fmt.Errorf("invalid version %q: %w", version, err)
+				}
+				if pkg.Version != nil {
+					d.Infof(diag.Message("", "overriding package version %s with %s"), pkg.Version, pkgVersion)
+				}
+				pkg.Version = &pkgVersion
 			}
 			// Normalize from well known language names the the matching runtime names.
 			switch language {
@@ -75,6 +89,7 @@ func newGenSdkCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
 		"The directory to write the SDK to")
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
+	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
@@ -116,7 +131,9 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 	var generatePackage func(string, *schema.Package, map[string][]byte) error
 	switch language {
 	case "dotnet":
-		generatePackage = writeWrapper(dotnet.GeneratePackage)
+		generatePackage = writeWrapper(func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
+			return dotnet.GeneratePackage(t, p, e, nil)
+		})
 	case "java":
 		generatePackage = writeWrapper(javagen.GeneratePackage)
 	default:
@@ -155,7 +172,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			}
 			defer contract.IgnoreClose(grpcServer)
 
-			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr())
+			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil)
 			if err != nil {
 				return err
 			}

@@ -38,7 +38,7 @@ type cloudSnapshotPersister struct {
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	ctx := persister.context
 
-	deploymentV3, err := stack.SerializeDeployment(snapshot, nil, false /* showSecrets */)
+	deploymentV3, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}

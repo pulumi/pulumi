@@ -25,14 +25,17 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"go/format"
 	"html"
 	"html/template"
 	"path"
 	"sort"
 	"strings"
 
-	"github.com/golang/glog"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 
+	"github.com/golang/glog"
 	"github.com/pgavlin/goldmark"
 
 	"github.com/pulumi/pulumi-java/pkg/codegen/java"
@@ -160,6 +163,38 @@ func titleLookup(shortName string) (string, bool) {
 // property and language (e.g. property~lang).
 const propertyLangSeparator = "_"
 
+type languageConstructorSyntax struct {
+	resources map[string]string
+	invokes   map[string]string
+}
+
+type constructorSyntaxData struct {
+	typescript *languageConstructorSyntax
+	python     *languageConstructorSyntax
+	golang     *languageConstructorSyntax
+	csharp     *languageConstructorSyntax
+	java       *languageConstructorSyntax
+	yaml       *languageConstructorSyntax
+}
+
+func emptyLanguageConstructorSyntax() *languageConstructorSyntax {
+	return &languageConstructorSyntax{
+		resources: map[string]string{},
+		invokes:   map[string]string{},
+	}
+}
+
+func newConstructorSyntaxData() *constructorSyntaxData {
+	return &constructorSyntaxData{
+		typescript: emptyLanguageConstructorSyntax(),
+		python:     emptyLanguageConstructorSyntax(),
+		golang:     emptyLanguageConstructorSyntax(),
+		csharp:     emptyLanguageConstructorSyntax(),
+		java:       emptyLanguageConstructorSyntax(),
+		yaml:       emptyLanguageConstructorSyntax(),
+	}
+}
+
 type docGenContext struct {
 	internalModMap map[string]*modContext
 
@@ -180,6 +215,8 @@ type docGenContext struct {
 
 	// Maps a *modContext, *schema.Resource, or *schema.Function to the link that was assigned to it.
 	moduleConflictLinkMap map[interface{}]string
+
+	constructorSyntaxData *constructorSyntaxData
 }
 
 // modules is a map of a module name and information
@@ -324,6 +361,11 @@ type resourceDocArgs struct {
 	// resource. By default, the language chooser will show all languages supported
 	// by Pulumi for all resources.
 	LangChooserLanguages string
+
+	// CreationExampleSyntax is a map from language to the rendered HTML for the
+	// creation example syntax where the key is the language name and the value is
+	// a piece of code that shows how to create a new instance of the resource with default placeholder values.
+	CreationExampleSyntax map[string]string
 
 	// Comment represents the introductory resource comment.
 	Comment            string
@@ -513,7 +555,7 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 // The result of this function should be used display purposes only.
 func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modName string, isInput bool) string {
 	switch lang {
-	case "go", "python":
+	case "go":
 		langTypeString = cleanOptionalIdentifier(langTypeString, lang)
 		parts := strings.Split(langTypeString, ".")
 		return parts[len(parts)-1]
@@ -553,6 +595,24 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 		return strings.ReplaceAll(langTypeString, objModName, "")
 	}
 
+	cleanPythonName := func(objModName string) string {
+		// SDK codegen aliases imported top-level inputs as _root_inputs and _root_enums, e.g.
+		// from .. import _inputs as _root_inputs
+		// This is our implementation detail, so we shouldn't show this prefix
+		// in end-user documentation. Remove them here.
+		// Top-level arg types will be displayed without any module prefix.
+		objModName = strings.Replace(objModName, "root_enums.", "", 1)
+		objModName = strings.Replace(objModName, "root_inputs.", "", 1)
+
+		// SDK codegen aliases imported modules with underscored names, e.g.
+		// from ... import meta as _meta
+		// Therefore, type references for Python all have _ before module names.
+		// This is our implementation detail, so we shouldn't show those underscores
+		// in end-user documentation. Remove them here.
+		// We need to keep underscores inside module names though, as in 'pulumi_random'.
+		return removeLeadingUnderscores(objModName)
+	}
+
 	switch t := t.(type) {
 	case *schema.ObjectType:
 		// Strip "Args" suffixes from display names for everything but Python inputs.
@@ -587,13 +647,16 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 		}
 	}
 
-	if lang == "nodejs" {
+	switch lang {
+	case "nodejs":
 		return cleanNodeJSName(modName)
-	} else if lang == "csharp" {
+	case "csharp":
 		return cleanCSharpName(mod.pkg.Name(), modName)
+	case "python":
+		return cleanPythonName(langTypeString)
+	default:
+		return strings.ReplaceAll(langTypeString, modName, "")
 	}
-
-	return strings.ReplaceAll(langTypeString, modName, "")
 }
 
 // typeString returns a property type suitable for docs with its display name and the anchor link to
@@ -1132,6 +1195,17 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 		}
 
 		comment := prop.Comment
+		link := "#" + propID
+
+		// Check if type is defined in a package external to the current package. If
+		// it is external, update comment to indicate to user that type is defined
+		// in another package and link there.
+		if isExt := isExternalType(codegen.UnwrapType(prop.Type), mod.pkg); isExt {
+			packageName := tokenToPackageName(fmt.Sprintf("%v", codegen.UnwrapType(prop.Type)))
+			extPkgLink := "/registry/packages/" + packageName
+			comment += fmt.Sprintf("\nThis type is defined in the [%s](%s) package.", getPackageDisplayName(packageName), extPkgLink)
+		}
+
 		// Default values for Provider inputs correspond to environment variables, so add that info to the docs.
 		if isProvider && input && prop.DefaultValue != nil && len(prop.DefaultValue.Environment) > 0 {
 			var suffix string
@@ -1159,7 +1233,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 			// a) we will force the replace at the engine level
 			// b) we are told that the provider will require a replace
 			IsReplaceOnChanges: prop.ReplaceOnChanges || prop.WillReplaceOnChanges,
-			Link:               "#" + propID,
+			Link:               link,
 			Types:              propTypes,
 		})
 	}
@@ -1666,8 +1740,54 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	}
 
 	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
-
 	stateParam := name + "State"
+	creationExampleSyntax := map[string]string{}
+	if !r.IsProvider && err == nil {
+		if example, found := dctx.constructorSyntaxData.typescript.resources[r.Token]; found {
+			if strings.Contains(example, "notImplemented") || strings.Contains(example, "PANIC") {
+				example = "Coming soon!"
+			}
+			creationExampleSyntax["typescript"] = example
+		} else {
+			creationExampleSyntax["typescript"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.python.resources[r.Token]; found {
+			if strings.Contains(example, "not_implemented") || strings.Contains(example, "PANIC") {
+				example = "Coming soon!"
+			}
+			creationExampleSyntax["python"] = example
+		} else {
+			creationExampleSyntax["python"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.csharp.resources[r.Token]; found {
+			if strings.Contains(example, "NotImplemented") || strings.Contains(example, "PANIC") {
+				example = "Coming soon!"
+			}
+			creationExampleSyntax["csharp"] = example
+		} else {
+			creationExampleSyntax["csharp"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.golang.resources[r.Token]; found {
+			modified := strings.ReplaceAll(example, "_, err =", "example, err :=")
+			modified = strings.ReplaceAll(modified, "_, err :=", "example, err :=")
+			if strings.Contains(modified, "notImplemented") || strings.Contains(modified, "PANIC") {
+				modified = "Coming soon!"
+			}
+			creationExampleSyntax["go"] = modified
+		} else {
+			creationExampleSyntax["go"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.java.resources[r.Token]; found {
+			creationExampleSyntax["java"] = example
+		} else {
+			creationExampleSyntax["java"] = "Coming soon!"
+		}
+		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
+			creationExampleSyntax["yaml"] = example
+		} else {
+			creationExampleSyntax["yaml"] = "Coming soon!"
+		}
+	}
 
 	docInfo := dctx.decomposeDocstring(r.Comment)
 	data := resourceDocArgs{
@@ -1675,11 +1795,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 		Tool: mod.tool,
 
-		Comment:            docInfo.description,
-		DeprecationMessage: r.DeprecationMessage,
-		ExamplesSection:    docInfo.examples,
-		ImportDocs:         docInfo.importDetails,
-
+		Comment:                docInfo.description,
+		DeprecationMessage:     r.DeprecationMessage,
+		ExamplesSection:        docInfo.examples,
+		ImportDocs:             docInfo.importDetails,
+		CreationExampleSyntax:  creationExampleSyntax,
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,
 
@@ -2144,6 +2264,167 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 	return modules
 }
 
+// generateModules generates constructor syntax examples for all resources of the input the package in the given
+// input languages. We first generate a PCL program from the resource definitions, then for each language
+// we call `GenerateProgram` to generate a language program that has all resources with their inputs being default
+// values. After that, we extract the resource declarations from each program into a structured map.
+//
+// The reason we generate a full program a schema with all the resources is that if we did every resource separately,
+// it would take too long to generate the programs and the rest of the docs. That is why we batch generate them and
+// split the resource declarations by comment delimiters.
+func generateConstructorSyntaxData(pkg *schema.Package, languages []string) *constructorSyntaxData {
+	loader := NewStaticSchemaLoader(pkg)
+	constructorGenerator := &constructorSyntaxGenerator{
+		indentSize:             0,
+		requiredPropertiesOnly: false,
+	}
+
+	schemaProgram := constructorGenerator.generateAll(pkg, generateAllOptions{
+		includeResources: true,
+		includeFunctions: false,
+		resourcesToSkip: []string{
+			// Skipping problematic resources which block example generation
+			"aws:wafv2/ruleGroup:RuleGroup",
+			"aws:wafv2/webAcl:WebAcl",
+		},
+	})
+
+	packagesToSkip := map[string]codegen.StringSet{
+		"aws-native": codegen.NewStringSet("python", "typescript", "go", "csharp", "yaml", "java"),
+	}
+
+	type ProgramGenerator = func(program *pcl.Program) (files map[string][]byte, diags hcl.Diagnostics, err error)
+
+	constructorSyntax := newConstructorSyntaxData()
+	for _, lang := range languages {
+		if skippedLanguages, ok := packagesToSkip[pkg.Name]; ok && skippedLanguages.Has(lang) {
+			continue
+		}
+
+		boundProgram, err := constructorGenerator.bindProgram(loader, schemaProgram)
+		if err != nil {
+			continue
+		}
+
+		safeExtract := func(generator ProgramGenerator) (files map[string][]byte, diags hcl.Diagnostics, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("panic: %v", r)
+					files = map[string][]byte{}
+				}
+			}()
+			return generator(boundProgram)
+		}
+
+		switch lang {
+		case "nodejs":
+			files, diags, err := safeExtract(nodejs.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["index.ts"])
+				constructorSyntax.typescript = extractConstructorSyntaxExamples(
+					program, /* program */
+					"",      /* indentation to trim */
+					"//",    /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(line, "});") })
+			}
+		case "python":
+			files, diags, err := safeExtract(python.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["__main__.py"])
+				constructorSyntax.python = extractConstructorSyntaxExamples(
+					program, /* program */
+					"",      /* indentation to trim */
+					"#",     /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(line, ")") })
+			}
+		case "csharp":
+			files, diags, err := safeExtract(dotnet.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				exampleEnd := func(line string) bool {
+					return strings.HasSuffix(line, "});") || strings.HasSuffix(line, `");`)
+				}
+				program := string(files["Program.cs"])
+				constructorSyntax.csharp = extractConstructorSyntaxExamples(
+					program, /* program */
+					"    ",  /* indentation to trim */
+					"//",    /* comment prefix */
+					exampleEnd)
+			}
+		case "go":
+			files, diags, err := safeExtract(go_gen.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				var program string
+				content := files["main.go"]
+				if formatted, err := format.Source(content); err == nil {
+					program = string(formatted)
+				} else {
+					program = string(content)
+				}
+
+				constructorSyntax.golang = extractConstructorSyntaxExamples(
+					program, /* program */
+					"\t\t",  /* indentation to trim */
+					"//",    /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(strings.TrimSpace(line), ")") })
+			}
+		case "yaml":
+			files, diags, err := safeExtract(yaml.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["Main.yaml"])
+				constructorSyntax.yaml = extractConstructorSyntaxExamplesFromYAML(program)
+			}
+		case "java":
+			files, diags, err := safeExtract(java.GenerateProgram)
+			if !diags.HasErrors() && err == nil {
+				program := string(files["MyStack.java"])
+				constructorSyntax.java = extractConstructorSyntaxExamples(
+					program,    /* program */
+					"        ", /* indentation to trim */
+					"//",       /* comment prefix */
+					func(line string) bool { return strings.HasSuffix(line, ");") })
+			}
+		}
+	}
+
+	return constructorSyntax
+}
+
+// collapseToken converts an exact token to a token more suitable for
+// display. For example, it converts
+//
+//	  fizz:index/buzz:Buzz => fizz:Buzz
+//	  fizz:mode/buzz:Buzz  => fizz:mode:Buzz
+//		 foo:index:Bar	      => foo:Bar
+//		 foo::Bar             => foo:Bar
+//		 fizz:mod:buzz        => fizz:mod:buzz
+func collapseYAMLToken(token string) string {
+	tokenParts := strings.Split(token, ":")
+
+	if len(tokenParts) == 3 {
+		title := func(s string) string {
+			r := []rune(s)
+			if len(r) == 0 {
+				return ""
+			}
+			return strings.ToTitle(string(r[0])) + string(r[1:])
+		}
+		if mod := strings.Split(tokenParts[1], "/"); len(mod) == 2 && title(mod[1]) == tokenParts[2] {
+			// aws:s3/bucket:Bucket => aws:s3:Bucket
+			// We handle the case foo:index/bar:Bar => foo:index:Bar
+			tokenParts = []string{tokenParts[0], mod[0], tokenParts[2]}
+		}
+
+		if tokenParts[1] == "index" || tokenParts[1] == "" {
+			// foo:index:Bar => foo:Bar
+			// or
+			// foo::Bar => foo:Bar
+			tokenParts = []string{tokenParts[0], tokenParts[2]}
+		}
+	}
+
+	return strings.Join(tokenParts, ":")
+}
+
 func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 	dctx.templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
@@ -2183,6 +2464,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 		glog.Fatalf("initializing templates: %v", err)
 	}
 
+	dctx.constructorSyntaxData = generateConstructorSyntaxData(pkg, dctx.supportedLanguages)
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
 	dctx.setModules(dctx.generateModulesFromSchemaPackage(tool, pkg))

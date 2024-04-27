@@ -14,13 +14,21 @@
 from pulumi import CustomResource, Output, ResourceOptions
 from pulumi.runtime import invoke
 
+
 class MyResource(CustomResource):
     value: Output[str]
 
     def __init__(self, name, value, opts):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            "value": value,
-        }, opts=opts)
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                "value": value,
+            },
+            opts=opts,
+        )
+
 
 # We run this invoke first because of the way in which it interacts with the RPC manager. Prior to #3170, the RPC
 # manager would decide that all outstanding RPCs had finished on any non-zero -> zero transition in the number of

@@ -39,7 +39,7 @@ service = kubernetes.core.v1.Service("service",
         },
     ),
     spec=kubernetes.core.v1.ServiceSpecArgs(
-        type="ClusterIP",
+        type=kubernetes.core.v1.ServiceSpecType.CLUSTER_IP,
         ports=[kubernetes.core.v1.ServicePortArgs(
             port=80,
             target_port=80,

@@ -913,7 +913,7 @@ func listConfig(
 
 	// when listing configuration values
 	// also show values coming from the project and environment
-	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	err = workspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}
@@ -1080,7 +1080,7 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 	}
 
 	// when asking for a configuration value, include values from the project and environment
-	err = workspace.ApplyProjectConfig(stackName, project, pulumiEnv, cfg, envCrypter)
+	err = workspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter)
 	if err != nil {
 		return err
 	}
@@ -1330,13 +1330,27 @@ func getStackConfigurationWithFallback(
 		}
 	}
 
+	config, err := getStackConfigurationFromProjectStack(ctx, stack, project, sm, workspaceStack)
+	if err != nil {
+		return backend.StackConfiguration{}, nil, err
+	}
+	return config, sm, nil
+}
+
+func getStackConfigurationFromProjectStack(
+	ctx context.Context,
+	stack backend.Stack,
+	project *workspace.Project,
+	sm secrets.Manager,
+	workspaceStack *workspace.ProjectStack,
+) (backend.StackConfiguration, error) {
 	env, diags, err := openStackEnv(ctx, stack, workspaceStack)
 	if err != nil {
-		return backend.StackConfiguration{}, nil, fmt.Errorf("opening environment: %w", err)
+		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
 	if len(diags) != 0 {
 		printESCDiagnostics(os.Stderr, diags)
-		return backend.StackConfiguration{}, nil, errors.New("opening environment: too many errors")
+		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
 	}
 
 	var pulumiEnv esc.Value
@@ -1347,7 +1361,7 @@ func getStackConfigurationWithFallback(
 
 		_, environ, secrets, err := cli.PrepareEnvironment(env, nil)
 		if err != nil {
-			return backend.StackConfiguration{}, nil, fmt.Errorf("preparing environment: %w", err)
+			return backend.StackConfiguration{}, fmt.Errorf("preparing environment: %w", err)
 		}
 		if len(secrets) != 0 {
 			logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
@@ -1356,7 +1370,7 @@ func getStackConfigurationWithFallback(
 		for _, kvp := range environ {
 			if name, value, ok := strings.Cut(kvp, "="); ok {
 				if err := os.Setenv(name, value); err != nil {
-					return backend.StackConfiguration{}, nil, fmt.Errorf("setting environment variable %v: %w", name, err)
+					return backend.StackConfiguration{}, fmt.Errorf("setting environment variable %v: %w", name, err)
 				}
 			}
 		}
@@ -1370,19 +1384,19 @@ func getStackConfigurationWithFallback(
 			Environment: pulumiEnv,
 			Config:      workspaceStack.Config,
 			Decrypter:   config.NewPanicCrypter(),
-		}, sm, nil
+		}, nil
 	}
 
 	crypter, err := sm.Decrypter()
 	if err != nil {
-		return backend.StackConfiguration{}, nil, fmt.Errorf("getting configuration decrypter: %w", err)
+		return backend.StackConfiguration{}, fmt.Errorf("getting configuration decrypter: %w", err)
 	}
 
 	return backend.StackConfiguration{
 		Environment: pulumiEnv,
 		Config:      workspaceStack.Config,
 		Decrypter:   crypter,
-	}, sm, nil
+	}, nil
 }
 
 func warnOnNoEnvironmentEffects(out io.Writer, env *esc.Environment) {

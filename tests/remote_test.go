@@ -38,8 +38,8 @@ func TestInvalidRemoteFlags(t *testing.T) {
 		args []string
 		err  string
 	}{
-		"no url": {
-			err: "error: must specify remote URL",
+		"no url and no inherit-settings": {
+			err: "error: the url arg must be specified if not passing --remote-inherit-settings",
 		},
 		"no branch or commit": {
 			args: []string{remoteTestRepo},

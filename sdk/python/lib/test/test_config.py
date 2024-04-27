@@ -16,11 +16,14 @@
 import pytest
 
 
-@pytest.mark.parametrize("key,default", [
-    ("string", None),
-    ("bar", "baz"),
-    ("doesnt-exist", None),
-])
+@pytest.mark.parametrize(
+    "key,default",
+    [
+        ("string", None),
+        ("bar", "baz"),
+        ("doesnt-exist", None),
+    ],
+)
 @pytest.mark.asyncio
 async def test_config_with_defaults(key, default, mock_config, config_settings):
     expected = config_settings.get(f"test-config:{key}", default)

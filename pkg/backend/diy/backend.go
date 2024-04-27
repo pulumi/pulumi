@@ -141,6 +141,12 @@ func (r *diyBackendReference) String() string {
 		return r.name.String()
 	}
 
+	// If the user has asked us to fully qualify names, we won't elide any
+	// information.
+	if cmdutil.FullyQualifyStackNames {
+		return fmt.Sprintf("organization/%s/%s", r.project, r.name)
+	}
+
 	if r.currentProject != nil {
 		proj := r.currentProject()
 		// For project scoped references when stringifying backend references,
@@ -769,7 +775,13 @@ func (b *diyBackend) ListStacks(
 
 		chk, err := b.getCheckpoint(ctx, stackRef)
 		if err != nil {
+			// There is a race between listing stacks and getting their checkpoints.  If there's an error getting
+			// the checkpoint, check if the stack still exists before returning an error.
+			if _, existsErr := b.stackExists(ctx, stackRef); existsErr == errCheckpointNotFound {
+				continue
+			}
 			return nil, nil, err
+
 		}
 		results = append(results, newDIYStackSummary(stackRef, chk))
 	}
@@ -1072,8 +1084,12 @@ func (b *diyBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(ctx, diyStackRef)
-	manager := backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
+	// We only need a snapshot manager if we're doing an update.
+	var manager *backend.SnapshotManager
+	if kind != apitype.PreviewUpdate && !opts.DryRun {
+		persister := b.newSnapshotPersister(ctx, diyStackRef)
+		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
+	}
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
 		Events:          engineEvents,
@@ -1109,11 +1125,13 @@ func (b *diyBackend) apply(
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	err = manager.Close()
-	// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
-	// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
-	if err != nil {
-		cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+	if manager != nil {
+		err = manager.Close()
+		// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
+		// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+		if err != nil {
+			cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+		}
 	}
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.

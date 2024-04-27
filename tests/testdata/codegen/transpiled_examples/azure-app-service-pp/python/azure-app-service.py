@@ -9,9 +9,9 @@ if sql_admin is None:
 appservicegroup = azure_native.resources.ResourceGroup("appservicegroup")
 sa = azure_native.storage.StorageAccount("sa",
     resource_group_name=appservicegroup.name,
-    kind="StorageV2",
+    kind=azure_native.storage.Kind.STORAGE_V2,
     sku=azure_native.storage.SkuArgs(
-        name="Standard_LRS",
+        name=azure_native.storage.SkuName.STANDARD_LRS,
     ))
 container = azure_native.storage.BlobContainer("container",
     resource_group_name=appservicegroup.name,
@@ -21,9 +21,9 @@ blob_access_token = pulumi.Output.secret(pulumi.Output.all(sa.name, appservicegr
     protocols=azure_native.storage.HttpProtocol.HTTPS,
     shared_access_start_time="2022-01-01",
     shared_access_expiry_time="2030-01-01",
-    resource="c",
+    resource=azure_native.storage.SignedResource.C,
     resource_group_name=appservicegroup_name,
-    permissions="r",
+    permissions=azure_native.storage.Permissions.R,
     canonicalized_resource=f"/blob/{sa_name1}/{container_name}",
     content_type="application/json",
     cache_control="max-age=5",
@@ -44,7 +44,7 @@ blob = azure_native.storage.Blob("blob",
     source=pulumi.FileArchive("./www"))
 app_insights = azure_native.insights.Component("appInsights",
     resource_group_name=appservicegroup.name,
-    application_type="web",
+    application_type=azure_native.insights.ApplicationType.WEB,
     kind="web")
 sql_password = random.RandomPassword("sqlPassword",
     length=16,

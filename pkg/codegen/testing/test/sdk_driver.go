@@ -267,6 +267,13 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
+		Directory:   "regress-go-15478",
+		Description: "Regress pulumi/pulumi#15478 affecting Go ensuring SDK-gen doesn't panic",
+		Skip:        allLanguages.Except("go/any"),
+		// skipping the compile step because the generated code emits nested types that are not supported by the Go SDK
+		SkipCompileCheck: codegen.NewStringSet(golang),
+	},
+	{
 		Directory:   "regress-py-12546",
 		Description: "Regress pulumi/pulumi#12546 affecting Python",
 		Skip:        allLanguages.Except("python/any"),
@@ -275,6 +282,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "docs-collision",
 		Description: "Tests that resources and functions with the same name do not clobber each other.",
 		Skip:        allLanguages.Except("docs/any"),
+	},
+	{
+		Directory:   "using-shared-types-in-config",
+		Description: "Tests that shared types can be used in config.",
 	},
 	{
 		Directory:   "other-owned",

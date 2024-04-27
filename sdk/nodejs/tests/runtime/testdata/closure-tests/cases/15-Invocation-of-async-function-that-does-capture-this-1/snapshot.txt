@@ -1,0 +1,62 @@
+exports.handler = __f0;
+
+var __task_proto = {};
+Object.defineProperty(__task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __task = Object.create(__task_proto);
+__task.run = __f3;
+
+function __f1(__0, __1, __2, __3) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
+
+return function /*constructor*/() {
+        this.run = function () {
+            return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+        };
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
+
+return function () {
+            return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __task, this: undefined, arguments: undefined }) {
+
+return function () {
+    return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

@@ -1191,10 +1191,13 @@ func (b *cloudBackend) PromptAI(
 	ctx context.Context, requestBody AIPromptRequestBody,
 ) (*http.Response, error) {
 	res, err := b.client.SubmitAIPrompt(ctx, requestBody)
+	if err != nil {
+		return nil, err
+	}
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
 	}
-	return res, err
+	return res, nil
 }
 
 type updateMetadata struct {
@@ -1366,8 +1369,12 @@ func (b *cloudBackend) runEngineAction(
 		close(eventsDone)
 	}()
 
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	snapshotManager := backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+	// We only need a snapshot manager if we're doing an update.
+	var snapshotManager *backend.SnapshotManager
+	if kind != apitype.PreviewUpdate && !dryRun {
+		persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
+		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
@@ -1407,11 +1414,13 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	err = snapshotManager.Close()
-	// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
-	// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
-	if err != nil {
-		cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+	if snapshotManager != nil {
+		err = snapshotManager.Close()
+		// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
+		// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+		if err != nil {
+			cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+		}
 	}
 
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
@@ -1980,8 +1989,9 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
-		return nil, errors.New("a stack reference's name should be of the form " +
-			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
+		return nil, errors.New("a stack reference's name should be of the form '<organization>/<project>/<stack>'. " +
+			"See https://www.pulumi.com/docs/using-pulumi/stack-outputs-and-references/#using-stack-references " +
+			"for more information.")
 	}
 
 	return c.backend.GetStackOutputs(ctx, name)

@@ -30,6 +30,7 @@ import (
 	"github.com/segmentio/encoding/json"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -234,7 +235,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		return schemaBytes, version, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, version)
+	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		if env.DisableAutomaticPluginAcquisition.Value() {
@@ -244,7 +245,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		var missingError *workspace.MissingError
 		if errors.As(err, &missingError) {
 			spec := workspace.PluginSpec{
-				Kind:    workspace.ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Name:    pkg,
 				Version: version,
 			}
@@ -258,7 +259,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 				return nil, nil, err
 			}
 
-			pluginInfo, err = l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, version)
+			pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
 			if err != nil {
 				return nil, version, err
 			}

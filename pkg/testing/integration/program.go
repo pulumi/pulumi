@@ -1742,11 +1742,22 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		if err := fsutil.CopyFile(newProjectYaml, oldProjectYaml, nil); err != nil {
 			return fmt.Errorf("Couldn't copy Pulumi.yaml: %w", err)
 		}
-		if err := fsutil.CopyFile(newConfigYaml, oldConfigYaml, nil); err != nil {
-			return fmt.Errorf("Couldn't copy Pulumi.%s.yaml: %w", pt.opts.StackName, err)
+
+		// Copy the config file over if it exists.
+		//
+		// Pulumi is not required to write a config file if there is no config, so
+		// it might not.
+		if _, err := os.Stat(oldConfigYaml); !os.IsNotExist(err) {
+			if err := fsutil.CopyFile(newConfigYaml, oldConfigYaml, nil); err != nil {
+				return fmt.Errorf("Couldn't copy Pulumi.%s.yaml: %w", pt.opts.StackName, err)
+			}
 		}
-		if err := fsutil.CopyFile(newProjectDir, oldProjectDir, nil); err != nil {
-			return fmt.Errorf("Couldn't copy .pulumi: %w", err)
+
+		// Likewise, pulumi is not required to write a book-keeping (.pulumi) file.
+		if _, err := os.Stat(oldProjectDir); !os.IsNotExist(err) {
+			if err := fsutil.CopyFile(newProjectDir, oldProjectDir, nil); err != nil {
+				return fmt.Errorf("Couldn't copy .pulumi: %w", err)
+			}
 		}
 
 		// Finally, replace our current temp directory with the new one.

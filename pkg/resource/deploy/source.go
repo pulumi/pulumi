@@ -26,6 +26,14 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+type ResultState int
+
+const (
+	ResultStateSuccess ResultState = iota
+	ResultStateFailed
+	ResultStateSkipped
+)
+
 // A ProviderSource allows a Source to lookup provider plugins.
 type ProviderSource interface {
 	// GetProvider fetches the provider plugin for the given reference.
@@ -88,7 +96,8 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State *resource.State // the resource state.
+	State  *resource.State // the resource state.
+	Result ResultState     // the result of the registration.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -129,5 +138,6 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State *resource.State
+	State  *resource.State
+	Result ResultState
 }

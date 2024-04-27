@@ -70,12 +70,12 @@ jobs:
         language: ["nodejs", "python", "go"]
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         if: ${{ matrix.language == 'python' }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache-dependency-path: sdk/python/requirements.txt
@@ -85,7 +85,7 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         if: ${{ matrix.language == 'nodejs' }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           registry-url: https://registry.npmjs.org
@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure AWS Credentials
@@ -165,11 +165,11 @@ jobs:
             run-command: pulumictl dispatch -r pulumi/pulumi-docker-containers -c release-build "${PULUMI_VERSION}"
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
@@ -183,6 +183,7 @@ jobs:
   update-homebrew-tap:
     name: Update Homebrew Tap
     if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
+    needs: [dispatch]
     uses: ./.github/workflows/release-homebrew-tap.yml
     permissions:
       contents: read

@@ -7,7 +7,7 @@
         "rec": {
           "$ref": "#/types/example::Rec"
         },
-        "replace": {
+        "replaceMe": {
           "type": "string",
           "replaceOnChanges": true
         }

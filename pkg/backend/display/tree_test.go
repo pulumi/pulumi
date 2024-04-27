@@ -16,7 +16,7 @@ package display
 
 import (
 	"bytes"
-	"runtime"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -51,18 +51,11 @@ func TestTreeFrameSize(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
 			term := terminal.NewMockTerminal(&buf, tt.width, tt.height, true)
-			treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
-				Color: colors.Always,
-			}).(*treeRenderer)
-			display := &ProgressDisplay{}
-			treeRenderer.initializeDisplay(display)
+			treeRenderer, display := createRendererAndDisplay(term, true)
 
 			// Fill the renderer with too many rows of strings to fit in the terminal.
-			for i := 0; i < 1000; i++ {
-				// Fill the renderer with strings that are too long to fit in the terminal.
-				treeRenderer.systemMessages = append(treeRenderer.systemMessages, strings.Repeat("a", 1000))
-			}
-			treeRenderer.treeTableRows = treeRenderer.systemMessages
+			addManySystemEvents(display, 1000, strings.Repeat("a", 1000))
+			addManyNormalEvents(display, 1000, strings.Repeat("a", 1000))
 
 			// Required to get the frame to render.
 			treeRenderer.markDirty()
@@ -73,23 +66,53 @@ func TestTreeFrameSize(t *testing.T) {
 	}
 }
 
+func createRendererAndDisplay(term terminal.Terminal, initializeDisplay bool) (*treeRenderer, *ProgressDisplay) {
+	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
+		Color: colors.Always,
+	}).(*treeRenderer)
+	display := &ProgressDisplay{
+		stack:                 tokens.MustParseStackName("stack"),
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		renderer:              treeRenderer,
+	}
+	treeRenderer.ticker.Stop()
+
+	if initializeDisplay {
+		treeRenderer.initializeDisplay(display)
+	}
+
+	return treeRenderer, display
+}
+
+func addManySystemEvents(display *ProgressDisplay, count int, message string) {
+	for i := 0; i < count; i++ {
+		display.handleSystemEvent(engine.StdoutEventPayload{
+			Message: message,
+			Color:   colors.Always,
+		})
+	}
+}
+
+func addManyNormalEvents(display *ProgressDisplay, count int, message string) {
+	for i := 0; i < count; i++ {
+		display.processNormalEvent(engine.NewEvent(
+			engine.DiagEventPayload{
+				URN:     resource.NewURN("stack", "project", "qualifier", "typ", fmt.Sprintf("row-%d", i)),
+				Message: message,
+			}))
+	}
+}
+
 func TestTreeKeyboardHandling(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	term := terminal.NewMockTerminal(&buf, 80, 24, true)
-	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
-		Color: colors.Always,
-	}).(*treeRenderer)
-	display := &ProgressDisplay{}
-	treeRenderer.initializeDisplay(display)
+	treeRenderer, display := createRendererAndDisplay(term, true)
 
-	// Fill the renderer with too many rows of strings to fit in the terminal.
-	for i := 0; i < 1000; i++ {
-		// Fill the renderer with strings that are too long to fit in the terminal.
-		treeRenderer.systemMessages = append(treeRenderer.systemMessages, strings.Repeat("a", 1000))
-	}
-	treeRenderer.treeTableRows = treeRenderer.systemMessages
+	// Fill the renderer with strings that are too long to fit in the terminal.
+	addManySystemEvents(display, 1000, strings.Repeat("a", 1000))
+	addManyNormalEvents(display, 1000, strings.Repeat("a", 1000))
 
 	// Required to get the frame to render.
 	treeRenderer.markDirty()
@@ -122,14 +145,13 @@ func TestTreeKeyboardHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		initialValue := treeRenderer.treeTableOffset
-		treeRenderer.keys <- tt.key
-		// allow the key handler the opportunity to run
-		runtime.Gosched()
+		treeRenderer.handleKey(tt.key)
 		treeRenderer.frame(false /* locked */, false /* done */)
 
 		if tt.expectedChange != 0 {
 			assert.Equal(t, tt.expectedChange+initialValue, treeRenderer.treeTableOffset,
-				"Current line was not moved to the expected value of %d for %v", tt.expectedChange+initialValue, tt.name)
+				"Current line was not moved to the expected value of %d(%d) for %v",
+				tt.expectedChange+initialValue, tt.expectedChange, tt.name)
 		} else {
 			assert.Equal(t, tt.expectedAbsolute, treeRenderer.treeTableOffset,
 				"Current line was not moved to the expected value of %d for %v", tt.expectedAbsolute, tt.name)
@@ -142,27 +164,9 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 
 	var buf bytes.Buffer
 	term := terminal.NewMockTerminal(&buf, 80, 24, true)
-	treeRenderer := newInteractiveRenderer(term, "this-is-a-fake-permalink", Options{
-		Color: colors.Always,
-	}).(*treeRenderer)
-	display := &ProgressDisplay{
-		stack:                 tokens.MustParseStackName("stack"),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		renderer:              treeRenderer,
-	}
-	treeRenderer.initializeDisplay(display)
-	// Stop the ticker, this prevents the eventHandler from calling the frame method
-	// and rendering the tree.
-	treeRenderer.ticker.Stop()
+	treeRenderer, display := createRendererAndDisplay(term, true)
 
-	// Fill the renderer with too many rows of strings to fit in the terminal.
-	for i := 0; i < 1000; i++ {
-		// Fill the renderer with strings that are too long to fit in the terminal.
-		display.handleSystemEvent(engine.StdoutEventPayload{
-			Message: strings.Repeat("a", 1000),
-			Color:   colors.Always,
-		})
-	}
+	addManySystemEvents(display, 1000, strings.Repeat("a", 1000))
 
 	// Mark a row as updated, this used to invoke render, it should now
 	// only mark the renderer as dirty. This is only cleared when the
@@ -202,4 +206,60 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 	assert.Contains(t, terminalText, "pulumi:pulumi:Stack")
 	assert.Contains(t, terminalText, "System Messages")
 	assert.Contains(t, terminalText, strings.Repeat("a", 1000))
+}
+
+func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer, display := createRendererAndDisplay(term, false)
+
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Falsef(t, treeRenderer.dirty, "Expecting the renderer to not be dirty when initialized")
+	}()
+
+	// Call the external tick, this normally happens once a second
+	display.processTick()
+
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Falsef(t, treeRenderer.dirty,
+			"Expecting the renderer to not be after a tick without display initialized")
+	}()
+
+	treeRenderer.initializeDisplay(display)
+	display.processTick()
+
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Falsef(t, treeRenderer.dirty,
+			"Expecting the renderer to not be dirty after a tick before row headers are initialized")
+	}()
+
+	func() {
+		display.m.Lock()
+		defer display.m.Unlock()
+		display.ensureHeaderAndStackRows()
+	}()
+
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Falsef(t, treeRenderer.dirty,
+			"Expecting the renderer to not be dirty after row headers are initialized, but before a tick")
+	}()
+
+	display.processTick()
+
+	func() {
+		treeRenderer.m.Lock()
+		defer treeRenderer.m.Unlock()
+		assert.Truef(t, treeRenderer.dirty,
+			"Expecting the renderer to be dirty after headers are initialized, and after a tick has happened")
+	}()
 }

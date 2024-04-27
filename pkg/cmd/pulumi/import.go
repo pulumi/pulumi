@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -580,7 +581,7 @@ func newImportCmd() *cobra.Command {
 			"\n" +
 			"    pulumi import 'aws:iam/user:User' name id\n" +
 			"\n" +
-			"The type token and property used for resource lookup are available in the Import section of" +
+			"The type token and property used for resource lookup are available in the Import section of\n" +
 			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
 			"\n" +
 			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
@@ -607,7 +608,11 @@ func newImportCmd() *cobra.Command {
 			"                \"parent\": \"optional-parent-name\",\n" +
 			"                \"provider\": \"optional-provider-name\",\n" +
 			"                \"version\": \"optional-provider-version\",\n" +
+			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
+			"                \"logicalName\": \"optionalLogicalName\",\n" +
 			"                \"properties\": [\"optional-property-names\"],\n" +
+			"                \"component\": false,\n" +
+			"                \"remote\": false,\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -628,6 +633,12 @@ func newImportCmd() *cobra.Command {
 			"specify a provider, it will be imported using the default provider for its type. A\n" +
 			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n" +
+			"\n" +
+			"A resource can define a logical name as well as its name for the name table.\n" +
+			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
+			"\n" +
+			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
+			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
 			"\n" +
 			"Each resource may specify which input properties to import with;\n" +
 			"\n" +
@@ -688,7 +699,7 @@ func newImportCmd() *cobra.Command {
 
 					pluginSpec := workspace.PluginSpec{
 						Name: string(provider),
-						Kind: workspace.ResourcePlugin,
+						Kind: apitype.ResourcePlugin,
 					}
 					version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
 					if err != nil {
@@ -910,6 +921,7 @@ func newImportCmd() *cobra.Command {
 
 			stackName := s.Ref().Name().String()
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
 				stackName,
 				proj,
 				cfg.Environment,

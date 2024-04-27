@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/spf13/cobra"
 
@@ -32,8 +31,8 @@ import (
 func newPackagePackCmd() *cobra.Command {
 	var packCmd packCmd
 	cmd := &cobra.Command{
-		Use:    "pack-sdk <language> <version> <path>",
-		Args:   cobra.ExactArgs(3),
+		Use:    "pack-sdk <language> <path>",
+		Args:   cobra.ExactArgs(2),
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -59,20 +58,15 @@ func (cmd *packCmd) Run(ctx context.Context, args []string) error {
 	defer contract.IgnoreClose(pCtx.Host)
 
 	language := args[0]
-	version := args[1]
-	path := args[2]
+	path := args[1]
 
-	var v semver.Version
-	if v, err = semver.ParseTolerant(version); err != nil {
-		return fmt.Errorf("invalid version %q: %w", version, err)
-	}
 	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, "", nil)
 	languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 	if err != nil {
 		return err
 	}
 
-	artifact, err := languagePlugin.Pack(path, v, cwd)
+	artifact, err := languagePlugin.Pack(path, cwd)
 	if err != nil {
 		return err
 	}

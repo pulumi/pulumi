@@ -16,12 +16,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -52,16 +54,10 @@ func (h *L2DestroyLanguageHost) Pack(
 	}
 
 	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
-		if req.Version != "2.0.0" {
-			return nil, fmt.Errorf("unexpected version %s", req.Version)
-		}
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-2.0.0.sdk"),
 		}, nil
 	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
-		if req.Version != "1.0.1" {
-			return nil, fmt.Errorf("unexpected version %s", req.Version)
-		}
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
 		}, nil
@@ -84,7 +80,7 @@ func (h *L2DestroyLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("unexpected simple sdk %s", req.LocalDependencies["simple"])
 	}
 	if !req.Strict {
-		return nil, fmt.Errorf("expected strict to be true")
+		return nil, errors.New("expected strict to be true")
 	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l2-destroy", strconv.Itoa(h.currentRun)) {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
@@ -136,7 +132,7 @@ func (h *L2DestroyLanguageHost) GetRequiredPlugins(
 		Plugins: []*pulumirpc.PluginDependency{
 			{
 				Name:    "simple",
-				Kind:    string(workspace.ResourcePlugin),
+				Kind:    string(apitype.ResourcePlugin),
 				Version: "2.0.0",
 			},
 		},
@@ -249,11 +245,9 @@ func (h *L2DestroyLanguageHost) Run(
 }
 
 // Run a simple successful test with a mocked runtime.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-//
-//nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2Destroy(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}

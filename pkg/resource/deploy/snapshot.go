@@ -30,7 +30,7 @@ import (
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
 	Manifest          Manifest             // a deployment manifest of versions, checksums, and so on.
-	SecretsManager    secrets.Manager      // the manager to use use when seralizing this snapshot.
+	SecretsManager    secrets.Manager      // the manager to use use when serializing this snapshot.
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
 }

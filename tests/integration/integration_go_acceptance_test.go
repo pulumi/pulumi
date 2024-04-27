@@ -45,37 +45,6 @@ func TestEmptyGo(t *testing.T) {
 	})
 }
 
-// Tests that stack references work in Go.
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestStackReferenceGo(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#14765")
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference", "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Quick: true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      filepath.Join("stack_reference", "go", "step1"),
-				Additive: true,
-			},
-			{
-				Dir:      filepath.Join("stack_reference", "go", "step2"),
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
-}
-
 // Test remote component construction in Go.
 func TestConstructGo(t *testing.T) {
 	t.Parallel()
@@ -201,8 +170,8 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	pulumiRoot, err := filepath.Abs("../..")
 	require.NoError(t, err)
 	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
-	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
-	sdkPkg := "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go"
+	componentSDK := filepath.Join(pulumiRoot, "tests/testdata/codegen/methods-return-plain-resource/go")
+	sdkPkg := "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go"
 
 	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
 	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
@@ -222,7 +191,7 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	opts = opts.With(integration.ProgramTestOptions{
 		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
-			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
+			"github.com/pulumi/pulumi/sdk/v3=" + pulumiGoSDK,
 			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
 		},
 		NoParallel: true,

@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -144,10 +143,6 @@ type deploymentOptions struct {
 
 	// true if we're executing a refresh.
 	isRefresh bool
-
-	// true if we should trust the dependency graph reported by the language host. Not all Pulumi-supported languages
-	// correctly report their dependencies, in which case this will be false.
-	trustDependencies bool
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -195,7 +190,6 @@ func newDeployment(ctx *Context, info *deploymentContext, opts *deploymentOption
 		cancelFunc()
 	}()
 
-	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
@@ -281,13 +275,6 @@ type runActions interface {
 func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 	preview bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	// Change into the plugin context's working directory.
-	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer chdir()
-
 	// Create a new context for cancellation and tracing.
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -314,11 +301,11 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 			ReplaceTargets:            deployment.Options.ReplaceTargets,
 			Targets:                   deployment.Options.Targets,
 			TargetDependents:          deployment.Options.TargetDependents,
-			TrustDependencies:         deployment.Options.trustDependencies,
 			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
 			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
+			ContinueOnError:           deployment.Options.ContinueOnError,
 		}
 		newPlan, walkError = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
@@ -335,6 +322,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions,
 		}
 	}()
 
+	var err error
 	// Wait for the deployment to finish executing or for the user to terminate the run.
 	select {
 	case <-cancelCtx.Cancel.Terminated():

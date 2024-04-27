@@ -23,7 +23,7 @@ jobs:
     name: gather-info
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
 
@@ -46,7 +46,7 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: build matrix
@@ -102,7 +102,7 @@ jobs:
 
   sign:
     name: sign
-    needs: [build-release]
+    needs: [build-release, build-sdks]
     uses: ./.github/workflows/sign.yml
     with:
       ref: ${{ inputs.ref }}
@@ -119,13 +119,15 @@ jobs:
       - name: Check for changes
         id: check-changes
         run: |
-          if ! git diff --exit-code master...HEAD sdk/nodejs; then
+          # We need to fetch one more commit to compare to
+          git fetch --deepen 1
+          if ! git diff --exit-code HEAD~...HEAD sdk/nodejs; then
             echo "nodejs-release=true" >>"${GITHUB_OUTPUT}"
           else
             echo "nodejs-release=false" >>"${GITHUB_OUTPUT}"
           fi
 
-          if ! git diff --exit-code master...HEAD sdk/python; then
+          if ! git diff --exit-code HEAD~...HEAD sdk/python; then
             echo "python-release=true" >>"${GITHUB_OUTPUT}"
           else
             echo "python-release=false" >>"${GITHUB_OUTPUT}"
@@ -137,7 +139,7 @@ jobs:
   nodejs-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
-    if: ${{ needs.sdk-check-release.outputs.nodejs-release }}
+    if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -159,7 +161,7 @@ jobs:
             done
           )
       - name: Set up Node ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
           registry-url: https://registry.npmjs.org
@@ -181,7 +183,7 @@ jobs:
   python-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release]
     runs-on: ubuntu-latest
-    if: ${{ needs.sdk-check-release.outputs.python-release }}
+    if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

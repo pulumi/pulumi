@@ -17,15 +17,16 @@ package deploy
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
@@ -53,7 +54,7 @@ func TestImportDeployment(t *testing.T) {
 				Decrypter: &decrypterMock{
 					DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
 						decrypterCalled = true
-						return "", fmt.Errorf("expected fail")
+						return "", errors.New("expected fail")
 					},
 				},
 			}, "projectName", nil, true)
@@ -93,7 +94,7 @@ func TestImporter(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			i := &importer{
 				deployment: &Deployment{
-					goals: &goalMap{},
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -144,7 +145,7 @@ func TestImporter(t *testing.T) {
 								},
 							},
 						},
-						goals:  &goalMap{},
+						goals:  &gsync.Map[urn.URN, *resource.Goal]{},
 						source: &nullSource{},
 						target: &Target{},
 						imports: []Import{

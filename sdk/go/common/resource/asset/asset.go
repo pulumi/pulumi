@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
 
-// Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
+// Asset is a serialized asset reference. It is a union: thus, at most one of its fields will be non-nil. Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
 type Asset struct {
 	// Sig is the unique asset type signature (see properties.go).
@@ -56,6 +56,10 @@ const (
 // FromText produces a new asset and its corresponding SHA256 hash from the given text.
 func FromText(text string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, Text: text}
+	// Special case the empty string otherwise EnsureHash will fail.
+	if text == "" {
+		a.Hash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	}
 	err := a.EnsureHash()
 	return a, err
 }
@@ -74,7 +78,22 @@ func FromURI(uri string) (*Asset, error) {
 	return a, err
 }
 
-func (a *Asset) IsText() bool { return !a.IsPath() && !a.IsURI() }
+func (a *Asset) IsText() bool {
+	if a.IsPath() || a.IsURI() {
+		return false
+	}
+	if a.Text != "" {
+		return true
+	}
+	// We can't easily tell the difference between an Asset that really has the empty string as its text and one that
+	// has no text at all. If we have a hash we can check if that's the "zero hash" and if so then we know the text is
+	// just empty. If the hash does not equal the empty hash then we know this is a _placeholder_ asset where the text is
+	// just currently not known. If we don't have a hash then we can't tell the difference and assume it's just empty.
+	if a.Hash == "" || a.Hash == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+		return true
+	}
+	return false
+}
 func (a *Asset) IsPath() bool { return a.Path != "" }
 func (a *Asset) IsURI() bool  { return a.URI != "" }
 
@@ -194,7 +213,7 @@ func Deserialize(obj map[string]interface{}) (*Asset, bool, error) {
 		uri = u
 	}
 
-	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
+	return &Asset{Sig: AssetSig, Hash: hash, Text: text, Path: path, URI: uri}, true, nil
 }
 
 // HasContents indicates whether or not an asset's contents can be read.

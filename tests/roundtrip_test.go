@@ -16,7 +16,6 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -66,7 +65,7 @@ resources:
 `
 
 	integration.CreatePulumiRepo(e, pulumiProject)
-	projFilename := filepath.Join(e.CWD, fmt.Sprintf("%s.yaml", workspace.ProjectFile))
+	projFilename := filepath.Join(e.CWD, workspace.ProjectFile+".yaml")
 	// TODO: Replace this with config set --project after implemented.
 	proj, err := workspace.LoadProject(projFilename)
 	require.NoError(t, err)
@@ -131,7 +130,7 @@ runtime: yaml
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "test")
 	e.Passphrase = "TestConfigRoundtripComments"
-	configFilename := filepath.Join(e.CWD, fmt.Sprintf("%s.test.yaml", workspace.ProjectFile))
+	configFilename := filepath.Join(e.CWD, workspace.ProjectFile+".test.yaml")
 
 	err := os.WriteFile(configFilename, []byte(`
 encryptionsalt: v1:ThS5UPxP9qc=:v1:UZYAXF+ylaJ0rGhv:9OTvBnOEDFgxs7btjzSu+LZ470vLpg==

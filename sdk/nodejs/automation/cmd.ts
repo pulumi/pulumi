@@ -47,7 +47,14 @@ export class CommandResult {
 }
 
 export interface PulumiCommandOptions {
+    /**
+     * The version of the CLI to use. Defaults to the CLI version matching the SDK version.
+     */
     version?: semver.SemVer;
+    /**
+     * The directory to install the CLI in or where to look for an existing
+     * installation. Defaults to $HOME/.pulumi/versions/$VERSION.
+     */
     root?: string;
     /**
      * Skips the minimum CLI version check, see `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK`.
@@ -83,10 +90,6 @@ export class PulumiCommand {
 
     /**
      * Installs the Pulumi CLI.
-     *
-     * @param opts.version the version of the CLI. Defaults to the CLI version matching the SDK version.
-     * @param opts.root the directory to install the CLI in. Defaults to $HOME/.pulumi/versions/$VERSION.
-     * @param opts.skipVersionCheck skips the CLI version check.
      */
     static async install(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const optsWithDefaults = withDefaults(opts);

@@ -20,8 +20,10 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -256,13 +258,27 @@ func GenerateProject(
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
 	// Set the runtime to "dotnet" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("dotnet", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
 	}
-	files["Pulumi.yaml"] = projectBytes
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
+	}
 
 	// Build a .csproj based on the packages used by program
 	var csproj bytes.Buffer
@@ -273,10 +289,36 @@ func GenerateProject(
 		<TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="Pulumi" Version="3.*" />
 `)
+
+	// Find all the local dependency folders
+	folders := mapset.NewSet[string]()
+	for _, dep := range localDependencies {
+		folders.Add(path.Dir(dep))
+	}
+	if len(folders.ToSlice()) > 0 {
+		csproj.WriteString(`	<PropertyGroup>
+		<RestoreSources>`)
+		csproj.WriteString(strings.Join(folders.ToSlice(), ";"))
+		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
+	</PropertyGroup>
+`)
+	}
+
+	csproj.WriteString("	<ItemGroup>\n")
+
+	// Add the Pulumi package reference
+	if path, has := localDependencies[pulumiPackage]; has {
+		filename := filepath.Base(path)
+		pkg, rest, _ := strings.Cut(filename, ".")
+		version, _ := strings.CutSuffix(rest, ".nupkg")
+
+		csproj.WriteString(fmt.Sprintf(
+			"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
+			pkg, version))
+	} else {
+		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
+	}
 
 	// For each package add a PackageReference line
 	packages, err := program.CollectNestedPackageSnapshots()
@@ -1051,9 +1093,14 @@ func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType m
 		qualifier = ""
 	}
 
-	pkg, _, member, diags := pcl.DecomposeToken(token, tokenRange)
+	pkg, modName, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
-	module := g.tokenToModules[pkg](token)
+	var module string
+	if getModule, ok := g.tokenToModules[pkg]; ok {
+		module = getModule(token)
+	} else {
+		module = strings.SplitN(modName, "/", 2)[0]
+	}
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
@@ -1115,7 +1162,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 						g.Fgenf(&result, "\n%s\"%.v\",", g.Indent, v)
 					}
 				})
-				g.Fgenf(&result, "\n%s}", g.Indent)
+				g.Fgenf(&result, "\n%s},", g.Indent)
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
@@ -1127,6 +1174,22 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 				} else {
 					g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 				}
+			} else {
+				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+			}
+		} else if name == "DependsOn" {
+			// depends on need to be special cased
+			// because new [] { resourceA, resourceB } cannot be implicitly casted to InputList<Resource>
+			// use syntax DependsOn = { resourceA, resourceB } instead
+			if resourcesList, isTuple := value.(*model.TupleConsExpression); isTuple {
+				g.Fgenf(&result, "\n%sDependsOn =", g.Indent)
+				g.Fgenf(&result, "\n%s{", g.Indent)
+				g.Indented(func() {
+					for _, resource := range resourcesList.Expressions {
+						g.Fgenf(&result, "\n%s%v,", g.Indent, resource)
+					}
+				})
+				g.Fgenf(&result, "\n%s},", g.Indent)
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}

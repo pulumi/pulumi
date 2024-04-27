@@ -13,8 +13,10 @@
 # limitations under the License.
 from pulumi import CustomResource, ResourceOptions
 
+
 class MyResource(CustomResource):
     def __init__(self, name, opts=None):
         CustomResource.__init__(self, "test:index:MyResource", name, opts=opts)
+
 
 res = MyResource("foo", opts=ResourceOptions(delete_before_replace=True))

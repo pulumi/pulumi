@@ -117,6 +117,11 @@ export class LocalWorkspace implements Workspace {
     private remoteSkipInstallDependencies?: boolean;
 
     /**
+     * Whether to inherit the deployment settings set on the stack.
+     */
+    private remoteInheritSettings?: boolean;
+
+    /**
      * Creates a workspace using the specified options. Used for maximal control and customization
      * of the underlying environment before any stacks are created or selected.
      *
@@ -276,6 +281,7 @@ export class LocalWorkspace implements Workspace {
                 remotePreRunCommands,
                 remoteEnvVars,
                 remoteSkipInstallDependencies,
+                remoteInheritSettings,
             } = opts;
             if (workDir) {
                 // Verify that the workdir exists.
@@ -292,6 +298,7 @@ export class LocalWorkspace implements Workspace {
             this.remotePreRunCommands = remotePreRunCommands;
             this.remoteEnvVars = { ...remoteEnvVars };
             this.remoteSkipInstallDependencies = remoteSkipInstallDependencies;
+            this.remoteInheritSettings = remoteInheritSettings;
             envs = { ...envVars };
         }
 
@@ -729,7 +736,6 @@ export class LocalWorkspace implements Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
-     * @param kind the kind of plugin, defaults to "resource"
      * @param server the server to install the plugin from
      */
     async installPluginFromServer(name: string, version: string, server: string): Promise<void> {
@@ -925,6 +931,10 @@ export class LocalWorkspace implements Workspace {
             args.push("--remote-skip-install-dependencies");
         }
 
+        if (this.remoteInheritSettings) {
+            args.push("--remote-inherit-settings");
+        }
+
         return args;
     }
 }
@@ -1024,6 +1034,12 @@ export interface LocalWorkspaceOptions {
      * @internal
      */
     remoteSkipInstallDependencies?: boolean;
+    /**
+     * Whether to inherit deployment settings from the stack.
+     *
+     * @internal
+     */
+    remoteInheritSettings?: boolean;
 }
 
 /**

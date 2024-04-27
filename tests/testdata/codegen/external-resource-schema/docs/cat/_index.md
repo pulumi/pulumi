@@ -16,6 +16,10 @@ no_edit_this_page: true
 
 
 ## Create Cat Resource {#create}
+
+Resources are created with functions called constructors. To learn more about declaring and configuring resources, see [Resources](/docs/concepts/resources/).
+
+### Constructor syntax
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,54 +27,57 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+        <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[CatArgs]</a></span> = None<span class="p">,</span>
+        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span></span>
+<span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">age</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
-        <span class="nx">pet</span><span class="p">:</span> <span class="nx">Optional[PetArgs]</span> = None<span class="p">)</span>
-<span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-        <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[CatArgs]</a></span> = None<span class="p">,</span>
-        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+        <span class="nx">pet</span><span class="p">:</span> <span class="nx">Optional[PetArgs]</span> = None<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewCat</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Cat</span>, error)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewCat</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Cat</span>, error)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-</pulumi-choosable>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</div></pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma">
+<div class="no-copy"><div class="highlight"><pre class="chroma">
 <code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
 <span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Cat</span><span class="p"></span>
+<div class="no-copy"><div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Cat</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
-</code></pre></div>
+</code></pre></div></div>
 </pulumi-choosable>
 </div>
+
+#### Parameters
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -207,6 +214,181 @@ no_edit_this_page: true
 
 </pulumi-choosable>
 </div>
+
+
+
+### Example
+
+The following reference example uses placeholder values for all [input properties](#inputs).
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+```csharp
+var catResource = new Example.Cat("catResource", new()
+{
+    Age = 0,
+    Pet = new Example.Inputs.PetArgs
+    {
+        RequiredName = randomPet,
+        RequiredNameArray = new[]
+        {
+            randomPet,
+        },
+        RequiredNameMap = 
+        {
+            { "string", randomPet },
+        },
+        Age = 0,
+        Name = randomPet,
+        NameArray = new[]
+        {
+            randomPet,
+        },
+        NameMap = 
+        {
+            { "string", randomPet },
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+
+```go
+example, err := example.NewCat(ctx, "catResource", &example.CatArgs{
+	Age: pulumi.Int(0),
+	Pet: &example.PetArgs{
+		RequiredName: pulumi.Any(randomPet),
+		RequiredNameArray: random.RandomPetArray{
+			randomPet,
+		},
+		RequiredNameMap: random.RandomPetMap{
+			"string": pulumi.Any(randomPet),
+		},
+		Age:  pulumi.Int(0),
+		Name: pulumi.Any(randomPet),
+		NameArray: random.RandomPetArray{
+			randomPet,
+		},
+		NameMap: random.RandomPetMap{
+			"string": pulumi.Any(randomPet),
+		},
+	},
+})
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+```java
+var catResource = new Cat("catResource", CatArgs.builder()        
+    .age(0)
+    .pet(PetArgs.builder()
+        .requiredName(randomPet)
+        .requiredNameArray(randomPet)
+        .requiredNameMap(Map.of("string", randomPet))
+        .age(0)
+        .name(randomPet)
+        .nameArray(randomPet)
+        .nameMap(Map.of("string", randomPet))
+        .build())
+    .build());
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+
+```python
+cat_resource = example.Cat("catResource",
+    age=0,
+    pet=example.PetArgs(
+        required_name=random_pet,
+        required_name_array=[random_pet],
+        required_name_map={
+            "string": random_pet,
+        },
+        age=0,
+        name=random_pet,
+        name_array=[random_pet],
+        name_map={
+            "string": random_pet,
+        },
+    ))
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="typescript">
+
+```typescript
+const catResource = new example.Cat("catResource", {
+    age: 0,
+    pet: {
+        requiredName: randomPet,
+        requiredNameArray: [randomPet],
+        requiredNameMap: {
+            string: randomPet,
+        },
+        age: 0,
+        name: randomPet,
+        nameArray: [randomPet],
+        nameMap: {
+            string: randomPet,
+        },
+    },
+});
+```
+
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+
+```yaml
+type: example:Cat
+properties:
+    age: 0
+    pet:
+        age: 0
+        name: ${randomPet}
+        nameArray:
+            - ${randomPet}
+        nameMap:
+            string: ${randomPet}
+        requiredName: ${randomPet}
+        requiredNameArray:
+            - ${randomPet}
+        requiredNameMap:
+            string: ${randomPet}
+```
+
+</pulumi-choosable>
+</div>
+
+
 
 ## Cat Resource Properties {#properties}
 
@@ -513,7 +695,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
@@ -545,7 +727,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
@@ -575,7 +757,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
@@ -607,7 +789,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
@@ -637,7 +819,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
@@ -669,7 +851,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_java" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
@@ -699,7 +881,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
@@ -731,7 +913,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
@@ -759,15 +941,15 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="required_name_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Sequence[pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -775,7 +957,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -791,15 +973,15 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet</span>
+        <span class="property-type">pulumi_<wbr>random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="name_array_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_array_python" style="color: inherit; text-decoration: inherit;">name_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Sequence[pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -807,7 +989,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_map_python" style="color: inherit; text-decoration: inherit;">name_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Mapping[str, pulumi_<wbr>random.<wbr>Random<wbr>Pet]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -823,7 +1005,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-required"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
@@ -855,7 +1037,7 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
     </dt>
-    <dd></dd><dt class="property-optional"
+    <dd>This type is defined in the <a href="/registry/packages/random">random</a> package.</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>

@@ -108,6 +108,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/nxadm/tail"
@@ -405,6 +406,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.SuppressProgress {
 		sharedArgs = append(sharedArgs, "--suppress-progress")
 	}
+	if upOpts.ContinueOnError {
+		sharedArgs = append(sharedArgs, "--continue-on-error")
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
@@ -474,7 +478,7 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 
 	// 3.105.0 added this flag (https://github.com/pulumi/pulumi/releases/tag/v3.105.0)
 	if s.Workspace().PulumiCommand().Version().LT(semver.Version{Major: 3, Minor: 105}) {
-		return res, fmt.Errorf("PreviewRefresh requires Pulumi CLI version >= 3.105.0")
+		return res, errors.New("PreviewRefresh requires Pulumi CLI version >= 3.105.0")
 	}
 
 	refreshOpts := &optrefresh.Options{}
@@ -686,6 +690,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	if destroyOpts.SuppressProgress {
 		args = append(args, "--suppress-progress")
+	}
+	if destroyOpts.ContinueOnError {
+		args = append(args, "--continue-on-error")
 	}
 
 	execKind := constant.ExecKindAutoLocal
@@ -1139,13 +1146,17 @@ func (s *Stack) remoteArgs() []string {
 	var repo *GitRepo
 	var preRunCommands []string
 	var envvars map[string]EnvVarValue
+	var executorImage *ExecutorImage
 	var skipInstallDependencies bool
+	var inheritSettings bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
 		remote = lws.remote
 		repo = lws.repo
 		preRunCommands = lws.preRunCommands
 		envvars = lws.remoteEnvVars
 		skipInstallDependencies = lws.remoteSkipInstallDependencies
+		executorImage = lws.remoteExecutorImage
+		inheritSettings = lws.remoteInheritSettings
 	}
 	if !remote {
 		return nil
@@ -1198,8 +1209,24 @@ func (s *Stack) remoteArgs() []string {
 		args = append(args, "--remote-pre-run-command="+command)
 	}
 
+	if executorImage != nil {
+		args = append(args, "--remote-executor-image="+executorImage.Image)
+		if executorImage.Credentials != nil {
+			if executorImage.Credentials.Username != "" {
+				args = append(args, "--remote-executor-image-username="+executorImage.Credentials.Username)
+			}
+			if executorImage.Credentials.Password != "" {
+				args = append(args, "--remote-executor-image-password="+executorImage.Credentials.Password)
+			}
+		}
+	}
+
 	if skipInstallDependencies {
 		args = append(args, "--remote-skip-install-dependencies")
+	}
+
+	if inheritSettings {
+		args = append(args, "--remote-inherit-settings")
 	}
 
 	return args
@@ -1377,9 +1404,10 @@ type fileWatcher struct {
 
 func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
 	t, err := tail.TailFile(path, tail.Config{
-		Follow: true,
-		Poll:   runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
-		Logger: tail.DiscardingLogger,
+		Follow:        true,
+		Poll:          runtime.GOOS == "windows", // on Windows poll for file changes instead of using the default inotify
+		Logger:        tail.DiscardingLogger,
+		CompleteLines: true,
 	})
 	if err != nil {
 		return nil, err
@@ -1439,6 +1467,24 @@ func (fw *fileWatcher) Close() {
 	}
 
 	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
+
+	// The tail library we're using is racy when shutting down.
+	// If it gets the shutdown signal before reading the data, it
+	// will just shut down before finding the EoF.  This problem
+	// is exacerbated on Windows, where we use the poller, which
+	// polls for changes every 250ms.  Sleep a little bit longer
+	// than that to ensure the tail library had a chance to read
+	// the whole file.  On OSs that don't use the poller we still
+	// want to try to avoid the problem so we sleep for a short
+	// amount of time.
+	//
+	// TODO: remove this once https://github.com/nxadm/tail/issues/67
+	// is fixed and we can upgrade nxadm/tail.
+	if runtime.GOOS == "windows" {
+		time.Sleep(300 * time.Millisecond)
+	} else {
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	//nolint:errcheck
 	fw.tail.StopAtEOF()

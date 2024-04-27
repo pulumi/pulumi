@@ -63,8 +63,12 @@ func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
 // Check that cloudSnapshotPersister can talk the diff-based
 // "checkpointverbatim" and "checkpointdelta" protocol when saving
 // snapshots.
+//
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 
 	expectationsFile := "testdata/snapshot_test.json"
@@ -326,16 +330,18 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
 		require.NoError(t, err)
-		deployment, err := stack.SerializeDeployment(snap, nil, true)
+		deployment, err := stack.SerializeDeployment(context.Background(), snap, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
 	}
 	return snaps
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
-	t.Parallel()
-
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
 		expected, err := dds.MarshalDeployment(s)
@@ -355,9 +361,11 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 	}
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
-	t.Parallel()
-
 	ctx := context.Background()
 
 	dds := newDeploymentDiffState(0)
@@ -498,9 +506,11 @@ func BenchmarkDiffStack(b *testing.B) {
 	testOrBenchmarkDiffStack(b, benchmarkDiffStack, dynamicCases)
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func TestDiffStack(t *testing.T) {
-	t.Parallel()
-
 	testOrBenchmarkDiffStack(t, testDiffStack, dynamicCases)
 }
 
@@ -548,13 +558,19 @@ func BenchmarkDiffStackRecorded(b *testing.B) {
 	testOrBenchmarkDiffStack(b, benchmarkDiffStack, recordedCases)
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func TestDiffStackRecorded(t *testing.T) {
-	t.Parallel()
 	testOrBenchmarkDiffStack(t, testDiffStack, recordedCases)
 }
 
+// TODO: This test is currently flaky when run in parallel parallelism
+// is temporarily disabled.  See also https://github.com/pulumi/pulumi/issues/15461.
+//
+//nolint:paralleltest
 func TestMarshalDeployment(t *testing.T) {
-	t.Parallel()
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, dynamicCases)
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, recordedCases)
 }

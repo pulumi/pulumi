@@ -53,16 +53,18 @@ func TestResourceReferences(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		urnA, _, _, _, err = monitor.RegisterResource("component", "resA", false)
+		respA, err := monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
+		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
+		urnB, idB = respB.URN, respB.ID
 
-		_, _, props, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"resA": resource.MakeComponentResourceReference(urnA, ""),
 				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
@@ -70,7 +72,7 @@ func TestResourceReferences(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		assert.True(t, props.DeepEquals(resource.PropertyMap{
+		assert.True(t, resp.Outputs.DeepEquals(resource.PropertyMap{
 			"resA": resource.MakeComponentResourceReference(urnA, ""),
 			"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 		}))
@@ -128,23 +130,25 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	opts := deploytest.ResourceOptions{DisableResourceReferences: true}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		urnA, _, _, _, err = monitor.RegisterResource("component", "resA", false, opts)
+		respA, err := monitor.RegisterResource("component", "resA", false, opts)
 		assert.NoError(t, err)
+		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
+		assert.NoError(t, err)
+		urnB, idB = respB.URN, respB.ID
+
+		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
 		assert.NoError(t, err)
 
-		_, _, props, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
-		assert.NoError(t, err)
-
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), props["resA"])
+		assert.Equal(t, resource.NewStringProperty(string(urnA)), respC.Outputs["resA"])
 		if idB != "" {
-			assert.Equal(t, resource.NewStringProperty(string(idB)), props["resB"])
+			assert.Equal(t, resource.NewStringProperty(string(idB)), respC.Outputs["resB"])
 		} else {
-			assert.True(t, props["resB"].IsComputed())
+			assert.True(t, respC.Outputs["resB"].IsComputed())
 		}
 		return nil
 	})
@@ -196,17 +200,18 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		urnA, _, _, _, err = monitor.RegisterResource("component", "resA", false)
+		respA, err := monitor.RegisterResource("component", "resA", false)
 		assert.NoError(t, err)
+		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
-		refB = resource.MakeCustomResourceReference(urnB, idB, "")
-		_, _, props, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+		refB = resource.MakeCustomResourceReference(respB.URN, respB.ID, "")
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"resA": resource.MakeComponentResourceReference(urnA, ""),
 				"resB": refB,
@@ -214,11 +219,11 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), props["resA"])
+		assert.Equal(t, resource.NewStringProperty(string(urnA)), resp.Outputs["resA"])
 		if refB.ResourceReferenceValue().ID.IsComputed() {
-			assert.True(t, props["resB"].IsComputed())
+			assert.True(t, resp.Outputs["resB"].IsComputed())
 		} else {
-			assert.True(t, refB.ResourceReferenceValue().ID.DeepEquals(props["resB"]))
+			assert.True(t, refB.ResourceReferenceValue().ID.DeepEquals(resp.Outputs["resB"]))
 		}
 		return nil
 	})
@@ -260,11 +265,11 @@ func TestResourceReferences_GetResource(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnChild, idChild, _, _, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
+		childResp, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
 		assert.NoError(t, err)
 
-		refChild := resource.MakeCustomResourceReference(urnChild, idChild, "")
-		urnContainer, idContainer, _, _, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
+		refChild := resource.MakeCustomResourceReference(childResp.URN, childResp.ID, "")
+		resp, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
 			deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
 					"child": refChild,
@@ -275,12 +280,12 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		// Expect the `child` property from `resContainer`'s state to come back from 'pulumi:pulumi:getResource'
 		// as a resource reference.
 		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-			"urn": resource.NewStringProperty(string(urnContainer)),
+			"urn": resource.NewStringProperty(string(resp.URN)),
 		}, "", "")
 		assert.NoError(t, err)
 		assert.Empty(t, failures)
-		assert.Equal(t, resource.NewStringProperty(string(urnContainer)), result["urn"])
-		assert.Equal(t, resource.NewStringProperty(string(idContainer)), result["id"])
+		assert.Equal(t, resource.NewStringProperty(string(resp.URN)), result["urn"])
+		assert.Equal(t, resource.NewStringProperty(string(resp.ID)), result["id"])
 		state := result["state"].ObjectValue()
 		assert.Equal(t, refChild, state["child"])
 

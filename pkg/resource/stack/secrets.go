@@ -126,9 +126,7 @@ func (c *cachingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) 
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
-func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
-	ctx := context.TODO()
-
+func (c *cachingCrypter) encryptSecret(ctx context.Context, secret *resource.Secret, plaintext string) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
 	//
 	// Otherwise, re-encrypt the plaintext and update the cache.
