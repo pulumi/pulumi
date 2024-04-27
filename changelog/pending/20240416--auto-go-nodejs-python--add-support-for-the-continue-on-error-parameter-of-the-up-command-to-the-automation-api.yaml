@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs,python
-  description: Add support for the continue-on-error parameter of the up command to the Automation API
