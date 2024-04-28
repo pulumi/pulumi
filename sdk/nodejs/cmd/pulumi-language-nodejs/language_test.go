@@ -152,8 +152,8 @@ func TestLanguage(t *testing.T) {
 	require.NoError(t, err)
 
 	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
-	//nolint:paralleltest // These aren't yet safe to run in parallel
 	for _, forceTsc := range []bool{false, true} {
+		forceTsc := forceTsc
 		cancel := make(chan bool)
 
 		// Run the language plugin
@@ -200,11 +200,11 @@ func TestLanguage(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
-		//nolint:paralleltest // These aren't yet safe to run in parallel
 		for _, tt := range tests.Tests {
 			tt := tt
-			t.Run(tt, func(t *testing.T) {
+			t.Run(fmt.Sprintf("forceTsc=%v-/%s", forceTsc, tt), func(t *testing.T) {
+				t.Parallel()
+
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 					Token: prepare.Token,
 					Test:  tt,
@@ -220,7 +220,9 @@ func TestLanguage(t *testing.T) {
 			})
 		}
 
-		close(cancel)
-		assert.NoError(t, <-handle.Done)
+		t.Cleanup(func() {
+			close(cancel)
+			assert.NoError(t, <-handle.Done)
+		})
 	}
 }
