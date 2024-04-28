@@ -18,6 +18,7 @@ def _protoc_action(ctx, proto_info, outputs, options = {
     args.add("--ts_out=grpc_js:{}".format(ctx.bin_dir.path))
     args.add("--grpc_out=grpc_js,minimum_node_version=6:{}".format(ctx.bin_dir.path))
 
+    args.add("--plugin=protoc-gen-js={}".format(ctx.executable._protoc_gen_js.path))
     args.add("--plugin=protoc-gen-grpc={}".format(ctx.executable._grpc_tools_node_protoc.path))
     args.add("--plugin=protoc-gen-ts={}".format(ctx.executable._grpc_tools_node_protoc_ts.path))
 
@@ -34,9 +35,10 @@ def _protoc_action(ctx, proto_info, outputs, options = {
         mnemonic = "TsProtoLibrary",
         arguments = [args],
         tools = [
-            ctx.executable._protoc,
             ctx.executable._grpc_tools_node_protoc,
             ctx.executable._grpc_tools_node_protoc_ts,
+            ctx.executable._protoc,
+            ctx.executable._protoc_gen_js,
         ],
         env = {
             "BAZEL_BINDIR": ctx.bin_dir.path
@@ -44,7 +46,9 @@ def _protoc_action(ctx, proto_info, outputs, options = {
     )
 
 def _declare_outs(ctx, info, ext):
-    outs = proto_common.declare_generated_files(ctx.actions, info, "_pb" + ext)
+    pb_outs = proto_common.declare_generated_files(ctx.actions, info, "_pb" + ext)
+    grpc_outs = proto_common.declare_generated_files(ctx.actions, info, "_grpc_pb" + ext)
+    outs = pb_outs + grpc_outs
     return outs
 
 def _ts_proto_library_impl(ctx):
@@ -97,6 +101,11 @@ ts_proto_library = rule(
         ),
         "_protoc": attr.label(
             default = "@com_google_protobuf//:protoc",
+            executable = True,
+            cfg = "exec"
+        ),
+        "_protoc_gen_js": attr.label(
+            default = "@//bazel/nodejs:protoc_gen_js",
             executable = True,
             cfg = "exec"
         ),

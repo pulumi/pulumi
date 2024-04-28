@@ -1,5 +1,6 @@
 load("@npm//:grpc-tools/package_json.bzl", grpc_tools = "bin")
 load("@npm//:grpc_tools_node_protoc_ts/package_json.bzl", grpc_tools_node_protoc_ts = "bin")
+load("@npm//:protoc-gen-js/package_json.bzl", protoc_gen_js = "bin")
 
 grpc_tools.grpc_tools_node_protoc_plugin_binary(
     name = "grpc_tools_node_protoc",
@@ -8,5 +9,10 @@ grpc_tools.grpc_tools_node_protoc_plugin_binary(
 
 grpc_tools_node_protoc_ts.protoc_gen_ts_binary(
     name = "grpc_tools_node_protoc_ts",
+    visibility = ["__pkg__"],
+)
+
+protoc_gen_js.protoc_gen_js_binary(
+    name = "protoc_gen_js",
     visibility = ["__pkg__"],
 )

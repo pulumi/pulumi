@@ -80,5 +80,7 @@ ts_project(
         #"//:node_modules/sinon",
         "//:node_modules/ts-node",
         "//:node_modules/typescript",
+
+        "//proto/pulumi:pulumirpc_ts_proto",
     ],
 )

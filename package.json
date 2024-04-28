@@ -56,8 +56,13 @@
         "eslint": "^7.32.0",
         "eslint-plugin-header": "^3.1.1",
         "eslint-plugin-import": "^2.23.4",
+        "grpc": "1.24.2",
+        "grpc-tools": "1.12.4",
+        "grpc_tools_node_protoc_ts": "5.3.3",
         "mocha": "^9.0.0",
+        "node-pre-gyp": "^0.17.0",
         "nyc": "^15.1.0",
+        "protoc-gen-js": "3.21.2",
         "rome": "^12.1.0",
         "sinon": "^14.0.0",
         "ts-node": "^7.0.1",
@@ -74,6 +79,16 @@
         },
         "ts-node": {
             "optional": true
+        }
+    },
+    "pnpm": {
+        "packageExtensions": {
+            "grpc@1.24.2": {
+                "peerDependencies": {
+                    "node-gyp": "10.1.0",
+                    "node-pre-gyp": "0.17.0"
+                }
+            }
         }
     },
     "pulumi": {

@@ -20,10 +20,12 @@ import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
 import { getLocalStore, getStore } from "./state";
 
-import * as engrpc from "../proto/engine_grpc_pb";
-import * as engproto from "../proto/engine_pb";
-import * as resrpc from "../proto/resource_grpc_pb";
-import * as resproto from "../proto/resource_pb";
+console.log(process.cwd())
+
+import * as engrpc from "../../../proto/pulumi/engine_grpc_pb";
+import * as engproto from "../../../proto/pulumi/engine_pb";
+import * as resrpc from "../../../proto/pulumi/resource_grpc_pb";
+import * as resproto from "../../../proto/pulumi/resource_pb";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
