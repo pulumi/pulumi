@@ -337,7 +337,7 @@ Event: ${line}\n${e.toString()}`);
                 args.push("--save-plan", opts.plan);
             }
             if (opts.importFile) {
-              args.push("--import-file", opts.importFile);
+                args.push("--import-file", opts.importFile);
             }
             applyGlobalOpts(opts, args);
         }
