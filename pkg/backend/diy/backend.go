@@ -33,10 +33,6 @@ import (
 
 	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -240,7 +236,7 @@ func newDIYBackend(
 
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
-	if p.Scheme == gcsblob.Scheme {
+	if p.Scheme == "gs" {
 		blobmux, err = authhelpers.GoogleCredentialsMux(ctx)
 		if err != nil {
 			return nil, err

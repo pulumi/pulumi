@@ -26,10 +26,7 @@ import (
 	"strings"
 
 	gosecrets "gocloud.dev/secrets"
-	_ "gocloud.dev/secrets/awskms"        // support for awskms://
-	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
-	"gocloud.dev/secrets/gcpkms"          // support for gcpkms://
-	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
+	"gocloud.dev/secrets/gcpkms" // support for gcpkms://
 	"google.golang.org/api/cloudkms/v1"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"

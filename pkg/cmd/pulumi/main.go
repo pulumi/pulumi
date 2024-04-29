@@ -20,6 +20,15 @@ import (
 	"runtime"
 	"runtime/debug"
 
+	_ "gocloud.dev/blob/azureblob" // driver for azblob://
+	_ "gocloud.dev/blob/fileblob"  // driver for file://
+	_ "gocloud.dev/blob/gcsblob"   // driver for gs://
+	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+
+	_ "gocloud.dev/secrets/awskms"        // support for awskms://
+	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
+	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
+
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
