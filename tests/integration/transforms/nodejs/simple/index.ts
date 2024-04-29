@@ -17,7 +17,7 @@ class MyComponent extends pulumi.ComponentResource {
 
 // Scenario #1 - apply a transform to a CustomResource
 const res1 = new Random("res1", { length: 5 }, {
-    xTransforms: [
+    transforms: [
         async ({ props, opts }) => {
             console.log("res1 transform");
             return {
@@ -30,7 +30,7 @@ const res1 = new Random("res1", { length: 5 }, {
 
 // Scenario #2 - apply a transform to a Component to transform it's children
 const res2 = new MyComponent("res2", {
-    xTransforms: [
+    transforms: [
         async ({ type, props, opts }) => {
             console.log("res2 transform");
             if (type === "testprovider:index:Random") {
@@ -62,7 +62,7 @@ const res3 = new Random("res3", { length: pulumi.secret(5) });
 // 3. Second parent transform
 // 4. Stack transform
 const res4 = new MyComponent("res4", {
-    xTransforms: [
+    transforms: [
         async ({ type, props, opts }) => {
             console.log("res4 transform");
             if (type === "testprovider:index:Random") {
@@ -87,7 +87,7 @@ const res4 = new MyComponent("res4", {
 
 // Scenario #5 - mutate the properties of a resource
 const res5 = new Random("res5", { length: 10 }, {
-    xTransforms: [
+    transforms: [
         async ({ type, props, opts }) => {
             console.log("res5 transform");
             if (type === "testprovider:index:Random") {
@@ -108,7 +108,7 @@ const provider2 = new TestProvider("provider2");
 
 const res6 = new Random("res6", { length: 10 }, {
     provider: provider1,
-    xTransforms: [
+    transforms: [
         async ({ type, props, opts }) => {
             console.log("res6 transform");
             return {
@@ -122,7 +122,7 @@ const res6 = new Random("res6", { length: 10 }, {
 // Scenario #7 - mutate the provider on a component resource
 const res7 = new Component("res7", { length: 10 }, {
     provider: provider1,
-    xTransforms: [
+    transforms: [
         async ({ type, props, opts }) => {
             console.log("res7 transform");
             return {

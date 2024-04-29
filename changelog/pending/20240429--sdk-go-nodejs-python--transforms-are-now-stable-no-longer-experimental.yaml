@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go,nodejs,python
+  description: Make transforms a stable, non-experimental feature

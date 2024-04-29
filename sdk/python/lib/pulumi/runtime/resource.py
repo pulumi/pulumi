@@ -910,7 +910,7 @@ def register_resource(
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
             callbacks: List[callback_pb2.Callback] = []
-            if opts.x_transforms:
+            if opts.transforms:
                 if not _sync_monitor_supports_transforms():
                     raise Exception(
                         "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
@@ -918,7 +918,7 @@ def register_resource(
                 callback_server = await _get_callbacks()
                 if callback_server is None:
                     raise Exception("Callback server not initialized")
-                for transform in opts.x_transforms:
+                for transform in opts.transforms:
                     callbacks.append(callback_server.register_transform(transform))
 
             property_dependencies = {}

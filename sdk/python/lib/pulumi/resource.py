@@ -421,7 +421,7 @@ class ResourceOptions:
     parents walking from the resource up to the stack.
     """
 
-    x_transforms: Optional[List[ResourceTransform]]
+    transforms: Optional[List[ResourceTransform]]
     """
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
@@ -487,7 +487,7 @@ class ResourceOptions:
         import_: Optional[str] = None,
         custom_timeouts: Optional["CustomTimeouts"] = None,
         transformations: Optional[List[ResourceTransformation]] = None,
-        x_transforms: Optional[List[ResourceTransform]] = None,
+        transforms: Optional[List[ResourceTransform]] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
@@ -525,7 +525,7 @@ class ResourceOptions:
         :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
-        :param Optional[List[ResourceTransform]] x_transforms: If provided, a list of transforms to apply
+        :param Optional[List[ResourceTransform]] transforms: If provided, a list of transforms to apply
                to this resource during construction. This is experimental.
         :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
@@ -558,7 +558,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
-        self.x_transforms = x_transforms
+        self.transforms = transforms
         self.urn = urn
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
@@ -701,7 +701,7 @@ class ResourceOptions:
         dest.transformations = _merge_lists(
             dest.transformations, source.transformations
         )
-        dest.x_transforms = _merge_lists(dest.x_transforms, source.x_transforms)
+        dest.transforms = _merge_lists(dest.transforms, source.transforms)
 
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
