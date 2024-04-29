@@ -135,7 +135,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
 			MaybeCorrupt:    p.MaybeCorrupt,
-			DurationSeconds: int(math.Round(p.Duration.Seconds())),
+			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 		}

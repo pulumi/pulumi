@@ -302,9 +302,9 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, diffSty
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
-		// Round to the nearest second.  It's not useful to spit out time with 9 digits of
+		// Round up to the nearest second.  It's not useful to spit out time with 9 digits of
 		// precision.
-		roundedSeconds := int64(math.Round(event.Duration.Seconds()))
+		roundedSeconds := int64(math.Ceil(event.Duration.Seconds()))
 		roundedDuration := time.Duration(roundedSeconds) * time.Second
 
 		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration:%s %s\n",
