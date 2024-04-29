@@ -305,6 +305,126 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 	}
 }
 
+func TestRefreshDeletePropertyDependencies(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					if urn.Name() == "resA" {
+						return plugin.ReadResult{}, resource.StatusOK, nil
+					}
+
+					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"propB1": {resA.URN},
+			},
+		})
+
+		assert.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[2].PropertyDependencies["propB1"][0].Name(), "resA")
+
+	err := snap.VerifyIntegrity()
+	assert.NoError(t, err)
+
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap = p.Run(t, snap)
+
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
+	assert.Empty(t, snap.Resources[1].PropertyDependencies)
+
+	err = snap.VerifyIntegrity()
+	assert.NoError(t, err)
+}
+
+func TestRefreshDeleteDeletedWith(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					if urn.Name() == "resA" {
+						return plugin.ReadResult{}, resource.StatusOK, nil
+					}
+
+					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+
+		assert.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[2].DeletedWith.Name(), "resA")
+
+	err := snap.VerifyIntegrity()
+	assert.NoError(t, err)
+
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap = p.Run(t, snap)
+
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
+	assert.Empty(t, snap.Resources[1].DeletedWith)
+
+	err = snap.VerifyIntegrity()
+	assert.NoError(t, err)
+}
+
 // Looks up the provider ID in newResources and sets "Provider" to reference that in every resource in oldResources.
 func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, provURN resource.URN) {
 	for _, r := range newResources {
