@@ -18,6 +18,5 @@ jobs:
           issue-type: pull-request
           repository: pulumi/pulumi
           commands: |
-            run-acceptance-tests
             run-docs-gen
             run-codegen
