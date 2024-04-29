@@ -391,7 +391,7 @@ class Stack:
         if import_file is not None:
             args.append("--import-file")
             args.append(import_file)
-                
+
         if plan is not None:
             args.append("--save-plan")
             args.append(plan)
