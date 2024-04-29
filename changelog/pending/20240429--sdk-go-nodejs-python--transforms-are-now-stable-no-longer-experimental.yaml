@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/go,nodejs,python
-  description: Transforms are now stable, no longer experimental.
+  description: Make transforms a stable, non-experimental feature
