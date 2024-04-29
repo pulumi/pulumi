@@ -539,7 +539,7 @@ func newPreviewCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVar(
 		&importFilePath, "import-file", "",
-		"Save any creates seen during the preview into an import file to use with pulumi import")
+		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
 
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
