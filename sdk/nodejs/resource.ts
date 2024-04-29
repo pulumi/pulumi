@@ -710,7 +710,7 @@ export interface ResourceOptions {
      *
      * This property is experimental.
      */
-    xTransforms?: ResourceTransform[];
+    transforms?: ResourceTransform[];
 
     /**
      * The URN of a previously-registered resource of this type to read from the engine.

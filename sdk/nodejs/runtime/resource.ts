@@ -463,7 +463,7 @@ export function registerResource(
             await awaitStackRegistrations();
 
             const callbacks: Callback[] = [];
-            if (opts.xTransforms !== undefined && opts.xTransforms.length > 0) {
+            if (opts.transforms !== undefined && opts.transforms.length > 0) {
                 if (!getStore().supportsTransforms) {
                     throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
                 }
@@ -473,7 +473,7 @@ export function registerResource(
                     throw new Error("Callback server could not initialize");
                 }
 
-                for (const transform of opts.xTransforms) {
+                for (const transform of opts.transforms) {
                     callbacks.push(await callbackServer.registerTransform(transform));
                 }
             }

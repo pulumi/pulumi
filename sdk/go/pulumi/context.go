@@ -1168,8 +1168,8 @@ func (ctx *Context) registerResource(
 		}()
 
 		// Register the transform functions
-		transforms := make([]*pulumirpc.Callback, 0, len(options.XTransforms))
-		for _, t := range options.XTransforms {
+		transforms := make([]*pulumirpc.Callback, 0, len(options.Transforms))
+		for _, t := range options.Transforms {
 			var cb *pulumirpc.Callback
 			cb, err = ctx.registerTransform(t)
 			if err != nil {

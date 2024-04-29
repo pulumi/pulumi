@@ -379,11 +379,11 @@ type ResourceOptions struct {
 	// the resource's properties during construction.
 	Transformations []ResourceTransformation
 
-	// XTransforms is a list of functions that transform
+	// Transforms is a list of functions that transform
 	// the resource's properties during construction.
 	//
 	// Experimental.
-	XTransforms []XResourceTransform
+	Transforms []XResourceTransform
 
 	// URN is the URN of a previously-registered resource of this type.
 	URN string
@@ -434,7 +434,7 @@ type resourceOptions struct {
 	Providers               map[string]ProviderResource
 	ReplaceOnChanges        []string
 	Transformations         []ResourceTransformation
-	XTransforms             []XResourceTransform
+	Transforms              []XResourceTransform
 	URN                     string
 	Version                 string
 	PluginDownloadURL       string
@@ -490,7 +490,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
 		Transformations:         ro.Transformations,
-		XTransforms:             ro.XTransforms,
+		Transforms:              ro.Transforms,
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
@@ -855,12 +855,12 @@ func Transformations(o []ResourceTransformation) ResourceOption {
 	})
 }
 
-// XTransforms is an optional list of transforms to be applied to the resource.
+// Transforms is an optional list of transforms to be applied to the resource.
 //
 // Experimental.
-func XTransforms(o []XResourceTransform) ResourceOption {
+func Transforms(o []XResourceTransform) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.XTransforms = append(ro.XTransforms, o...)
+		ro.Transforms = append(ro.Transforms, o...)
 	})
 }
 
