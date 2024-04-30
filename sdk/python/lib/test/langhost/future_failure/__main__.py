@@ -40,7 +40,7 @@ invoke("test:index:MyFunction", props={})
 
 resA = MyResource("resourceA", "foo", None)
 
-fut = asyncio.Future()
+fut: asyncio.Future[str] = asyncio.Future()
 fut.set_exception(Exception("oh no"))
 resB = MyResource("resourceB", fut, ResourceOptions(depends_on=[resA]))
 

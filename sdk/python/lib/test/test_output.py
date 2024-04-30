@@ -171,7 +171,9 @@ class OutputFromInputTests(unittest.TestCase):
             foo: Optional[pulumi.Input[str]] = None,
             bar: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
             baz: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
-            nested: Optional[pulumi.Input[pulumi.InputType["NestedArgs"]]] = None
+            nested: Optional[
+                pulumi.Input[pulumi.InputType["OutputFromInputTests.NestedArgs"]]
+            ] = None
         ):
             if foo is not None:
                 pulumi.set(self, "foo", foo)
@@ -199,7 +201,11 @@ class OutputFromInputTests(unittest.TestCase):
 
         @property
         @pulumi.getter
-        def nested(self) -> Optional[pulumi.Input[pulumi.InputType["NestedArgs"]]]:
+        def nested(
+            self,
+        ) -> Optional[
+            pulumi.Input[pulumi.InputType["OutputFromInputTests.NestedArgs"]]
+        ]:
             return pulumi.get(self, "nested")
 
     @pulumi.input_type

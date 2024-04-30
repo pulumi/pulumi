@@ -13,6 +13,8 @@
 # limitations under the License.
 import pulumi
 
+from typing import Any, Dict
+
 
 class TestClass:
     def __init__(self):
@@ -22,7 +24,7 @@ class TestClass:
 
 my_test_class_instance = TestClass()
 
-recursive = {"a": 1}
+recursive: Dict[str, Any] = {"a": 1}
 recursive["b"] = 2
 recursive["c"] = recursive
 

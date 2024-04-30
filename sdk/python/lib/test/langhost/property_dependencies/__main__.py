@@ -16,6 +16,8 @@ from pulumi import CustomResource, Output, ResourceOptions
 
 
 class MyResource(CustomResource):
+    outprop: Output[str]
+
     def __init__(self, name, args, opts=None):
         CustomResource.__init__(
             self,
