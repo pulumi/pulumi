@@ -144,6 +144,9 @@ type ProgressDisplay struct {
 
 	// Indicates whether we already printed the loading policy packs message.
 	shownPolicyLoadEvent bool
+
+	// Number of sames we've seen.
+	sameResources int
 }
 
 type opStopwatch struct {
@@ -985,6 +988,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		row.SetStep(step)
 		row.AddOutputStep(step)
+
+		// Track the number of same resources.
+		if step.Op == deploy.OpSame {
+			display.sameResources++
+		}
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.

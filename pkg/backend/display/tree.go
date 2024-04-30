@@ -44,6 +44,7 @@ type treeRenderer struct {
 	rewind int  // The number of lines we need to rewind to redraw the entire screen.
 
 	treeTableRows         []string
+	sameResources         int
 	systemMessages        []string
 	statusMessage         string
 	statusMessageDeadline time.Time
@@ -169,6 +170,8 @@ func (r *treeRenderer) render() {
 		rendered := renderRow(row, maxColumnLengths)
 		r.treeTableRows = append(r.treeTableRows, rendered)
 	}
+
+	r.sameResources = r.display.sameResources
 
 	// Convert system events into lines.
 	r.systemMessages = r.systemMessages[:0]
@@ -316,6 +319,9 @@ func (r *treeRenderer) frame(locked, done bool) {
 			prefix = r.clampLine(statusMessage, padding-1) + " "
 			padding -= colors.MeasureColorizedString(prefix)
 			statusMessageHeight, statusMessage = 0, ""
+		} else if r.sameResources != 0 {
+			prefix = r.clampLine(colors.BrightBlack+fmt.Sprintf("%v unchanged", r.sameResources)+colors.Reset, padding-1) + " "
+			padding -= colors.MeasureColorizedString(prefix)
 		}
 
 		if padding < 0 {
@@ -329,6 +335,8 @@ func (r *treeRenderer) frame(locked, done bool) {
 		if systemMessagesHeight > 0 {
 			treeTableFooter += "\n"
 		}
+	} else if r.sameResources != 0 {
+		treeTableFooter = r.clampLine(colors.BrightBlack+fmt.Sprintf("%v unchanged", r.sameResources)+colors.Reset, termWidth)
 	}
 
 	// Re-home the cursor.
