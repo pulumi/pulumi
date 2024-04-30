@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -1018,8 +1019,8 @@ func TestStepGenerator_randomActions(t *testing.T) {
 			},
 			source: &nullSource{},
 			ctx:    ctx,
-			goals:  &goalMap{},
-			news:   &resourceMap{},
+			goals:  &gsync.Map[resource.URN, *resource.Goal]{},
+			news:   &gsync.Map[resource.URN, *resource.State]{},
 		}
 		sg := newStepGenerator(deployment, Options{})
 		sg.urns["urn:pulumi::stack::project::qualified$type$name::parent"] = true

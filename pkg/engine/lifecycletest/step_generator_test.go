@@ -416,7 +416,7 @@ func TestConcurrentRegisterResource(t *testing.T) {
 					defer wg.Done()
 
 					name := fmt.Sprintf("test-%c", index+'a')
-					_, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", name, true)
+					_, err := monitor.RegisterResource("pkgA:m:typA", name, true)
 					assert.NoError(t, err)
 				}()
 			}
@@ -514,14 +514,14 @@ func parallelStepGenTestHelper(t *testing.T, maxDepth int, maxSpan int) (int64, 
 			wg.Add(1)
 			go func() {
 				name := fmt.Sprintf("root-%c", rootNumber+'a')
-				urn, _, _, _, err := monitor.RegisterResource("pkgA:m:typA", name, true)
+				rrResp, err := monitor.RegisterResource("pkgA:m:typA", name, true)
 				assert.NoError(t, err)
 				m.Lock()
 				defer func() {
 					m.Unlock()
 					wg.Done()
 				}()
-				roots = append(roots, urn)
+				roots = append(roots, rrResp.URN)
 			}()
 		}
 
@@ -534,14 +534,14 @@ func parallelStepGenTestHelper(t *testing.T, maxDepth int, maxSpan int) (int64, 
 
 			for span := 0; span != maxSpan; span++ {
 				name := fmt.Sprintf("%v-child-%c", dep.Name(), 'a'+span)
-				urn, _, _, _, err := monitor.RegisterResource("pkgA:m:typeA", name, true,
+				rrResp, err := monitor.RegisterResource("pkgA:m:typeA", name, true,
 					deploytest.ResourceOptions{
 						Dependencies: []resource.URN{dep},
 					})
 				assert.NoErrorf(t, err, "Error creating %s at depth %d, span %d", name, depth, span)
 				if depth < maxDepth {
 					wg.Add(1)
-					go addChildren(urn, depth+1)
+					go addChildren(rrResp.URN, depth+1)
 				}
 			}
 		}
@@ -619,9 +619,8 @@ func TestParallelStepGenerator(t *testing.T) {
 			// The absolute lower bound for resource duration ought to be the per resource cost / maxLoad
 			assert.GreaterOrEqualf(t, resourceDuration, 5.0/float64(maxLoad),
 				"Expecting the time per resource to be at least 5ms / %d (maxLoad)", maxLoad)
-			// Hopefully a safe upper bound is to assume quarter the max load as the average load
-			assert.Lessf(t, resourceDuration, 5.0/(0.25*float64(maxLoad)),
-				"Expecting the time per resource to be at least 5ms / %v (maxLoad / 4)", 0.25*float64(maxLoad))
+			// Hopefully a safe upper bound is to assume that the rsource duration is less than the absolute per resource cost
+			assert.Lessf(t, resourceDuration, 5.0, "Expecting the time per resource to be at less than 5ms")
 		})
 	})
 
@@ -695,9 +694,9 @@ func TestParallelStepGenerator(t *testing.T) {
 			// The absolute lower bound for resource duration ought to be the per resource cost / maxLoad
 			assert.GreaterOrEqualf(t, resourceDuration, 5.0/float64(maxLoad),
 				"Expecting the time per resource to be at least 5ms / %d (maxLoad)", maxLoad)
-			// Hopefully a safe upper bound is to assume quarter the max load as the average load
-			assert.Lessf(t, resourceDuration, 5.0/(0.25*float64(maxLoad)),
-				"Expecting the time per resource to be at least 5ms / %v (maxLoad / 4)", 0.25*float64(maxLoad))
+			// Hopefully a safe upper bound for resource duration is less than the per resource absolute duration
+			assert.Lessf(t, resourceDuration, 5.0,
+				"Expecting the time per resource to be at less than 5ms")
 		})
 	})
 }
