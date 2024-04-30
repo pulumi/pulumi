@@ -38,11 +38,11 @@ class MyOtherFunctionNestedResult:
 
     @property
     @pulumi.getter(name="firstValue")
-    def first_value(self) -> str: ...
+    def first_value(self) -> str: ...  # type: ignore
 
     @property
     @pulumi.getter(name="secondValue")
-    def second_value(self) -> float: ...
+    def second_value(self) -> float: ...  # type: ignore
 
 
 @pulumi.output_type
