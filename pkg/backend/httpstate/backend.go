@@ -1416,10 +1416,14 @@ func (b *cloudBackend) runEngineAction(
 	close(engineEvents)
 	if snapshotManager != nil {
 		err = snapshotManager.Close()
-		// Historically we ignored this error (using IgnoreClose so it would log to the V11 log).
-		// To minimize the immediate blast radius of this to start with we're just going to write an error to the user.
+		// If the snapshot manager failed to close, we should return that error.
+		// Even though all the parts of the operation have potentially succeeded, a
+		// snapshotting failure is likely to rear its head on the next
+		// operation/invocation (e.g. an invalid snapshot that fails integrity
+		// checks, or a failure to write that means the snapshot is incomplete).
+		// Reporting now should make debugging and reporting easier.
 		if err != nil {
-			cmdutil.Diag().Errorf(diag.Message("", "Snapshot write failed: %v"), err)
+			return plan, changes, result.FromError(fmt.Errorf("writing snapshot: %w", err))
 		}
 	}
 
