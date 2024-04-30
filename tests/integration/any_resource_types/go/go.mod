@@ -2,7 +2,10 @@ module github.com/pulumi/pulumi/tests/deleted_with
 
 go 1.18
 
-require github.com/pulumi/pulumi/sdk/v3 v3.51.1
+require (
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/pulumi/pulumi/sdk/v3 v3.51.1
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -10,7 +13,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cheggaaa/pb v1.0.29 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
