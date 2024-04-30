@@ -23,6 +23,7 @@ import typing
 import dill
 import grpc
 from google.protobuf import empty_pb2
+from pulumi.runtime._serialization import _deserialize
 from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider
@@ -50,9 +51,14 @@ def get_provider(props) -> ResourceProvider:
         with _PROVIDER_LOCK:
             provider = _PROVIDER_CACHE.get(providerStr)
             if provider is None:
-                byts = base64.b64decode(providerStr)
-                provider = dill.loads(byts)
+
+                def deserialize():
+                    byts = base64.b64decode(providerStr)
+                    return dill.loads(byts)
+
+                provider = _deserialize(deserialize)
                 _PROVIDER_CACHE[providerStr] = provider
+
     return provider
 
 

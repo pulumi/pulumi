@@ -22,6 +22,7 @@ import dill
 import pulumi
 
 from .. import CustomResource, ResourceOptions
+from ..runtime._serialization import _serialize
 
 if TYPE_CHECKING:
     from ..output import Inputs, Output
@@ -168,6 +169,14 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
+    auto_secret: bool = False
+    """
+    auto_secret controls whether the serialized provider is a secret.
+    By default this is False which makes the serialized provider a secret always.
+    Set to True in a subclass to make the serialized provider a secret only
+    if any secret Outputs were captured during serialization of the provider.
+    """
+
     def check(self, _olds: Any, news: Any) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
@@ -281,6 +290,19 @@ class Resource(CustomResource):
             raise Exception("A dynamic resource must not define the __provider key")
 
         props = cast(dict, props)
-        props[PROVIDER_KEY] = pulumi.Output.secret(serialize_provider(provider))
+
+        # Serialize the provider, allowing secret Outputs to be captured.
+        serialized_provider, contains_secrets = _serialize(
+            True, serialize_provider, provider
+        )
+
+        # auto_secret == False is the default, which makes the serialized provider a secret always, which
+        # is the existing behavior as of v3.75.0. When auto_secret == True, the serialized provider is a
+        # secret only if any secret Outputs were captured during serialization of the provider.
+        auto_secret: bool = getattr(provider, "auto_secret", False)
+        if not auto_secret or contains_secrets:
+            serialized_provider = pulumi.Output.secret(serialized_provider)
+
+        props[PROVIDER_KEY] = serialized_provider
 
         super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)
