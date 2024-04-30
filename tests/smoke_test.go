@@ -37,9 +37,6 @@ func TestLanguageNewSmoke(t *testing.T) {
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
-			if runtime == "java" {
-				t.Skip("this test is currently broken for java, see https://github.com/pulumi/pulumi/issues/16086")
-			}
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
