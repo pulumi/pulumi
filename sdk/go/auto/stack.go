@@ -275,6 +275,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.SuppressProgress {
 		sharedArgs = append(sharedArgs, "--suppress-progress")
 	}
+	if preOpts.ImportFile != "" {
+		sharedArgs = append(sharedArgs, "--import-file="+preOpts.ImportFile)
+	}
 
 	// Apply the remote args, if needed.
 	sharedArgs = append(sharedArgs, s.remoteArgs()...)
