@@ -152,6 +152,7 @@ load("@aspect_rules_js//npm:repositories.bzl", "npm_translate_lock")
 npm_translate_lock(
     # Creates a new repository named "@npm" - you could choose any name you like
     name = "npm",
+    npmrc = "//:.npmrc",
     pnpm_lock = "//:pnpm-lock.yaml",
     # Recommended attribute that also checks the .bazelignore file
     verify_node_modules_ignored = "//:.bazelignore",

@@ -34,8 +34,8 @@ import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
-import * as resourceproto from "../proto/resource_pb";
-import * as providerproto from "../proto/provider_pb";
+import * as resourceproto from "../../../proto/pulumi/resource_pb";
+import * as providerproto from "../../../proto/pulumi/provider_pb";
 
 /**
  * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`

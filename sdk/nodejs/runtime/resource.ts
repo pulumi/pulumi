@@ -65,11 +65,11 @@ import {
 
 import * as gempty from "google-protobuf/google/protobuf/empty_pb";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
-import * as aliasproto from "../proto/alias_pb";
-import { Callback } from "../proto/callback_pb";
-import * as provproto from "../proto/provider_pb";
-import * as resproto from "../proto/resource_pb";
-import * as sourceproto from "../proto/source_pb";
+import * as aliasproto from "../../../proto/pulumi/alias_pb";
+import { Callback } from "../../../proto/pulumi/callback_pb";
+import * as provproto from "../../../proto/pulumi/provider_pb";
+import * as resproto from "../../../proto/pulumi/resource_pb";
+import * as sourceproto from "../../../proto/pulumi/source_pb";
 
 export interface SourcePosition {
     uri: string;

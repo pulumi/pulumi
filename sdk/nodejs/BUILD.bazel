@@ -10,6 +10,7 @@ load("@bazel_skylib//lib:partial.bzl", "partial")
 ts_project(
     name = "sdk",
     srcs = glob([
+        "package.json",
         "*.ts",
         "asset/*.ts",
         "automation/**/*.ts",
@@ -17,6 +18,7 @@ ts_project(
         "dynamic/**/*.ts",
         "iterable/**/*.ts",
         "log/**/*.ts",
+        "queryable/**/*.ts",
         "provider/**/*.ts",
         "runtime/**/*.ts",
         "types/**/*.ts",
@@ -81,6 +83,7 @@ ts_project(
         "//:node_modules/ts-node",
         "//:node_modules/typescript",
 
+        "//proto/google/protobuf:status_ts_proto",
         "//proto/pulumi:pulumirpc_ts_proto",
     ],
 )

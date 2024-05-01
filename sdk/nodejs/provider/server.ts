@@ -28,10 +28,10 @@ import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
-import * as plugproto from "../proto/plugin_pb";
-import * as provrpc from "../proto/provider_grpc_pb";
-import * as provproto from "../proto/provider_pb";
-import * as statusproto from "../proto/status_pb";
+import * as plugproto from "../../../proto/pulumi/plugin_pb";
+import * as provrpc from "../../../proto/pulumi/provider_grpc_pb";
+import * as provproto from "../../../proto/pulumi/provider_pb";
+import * as statusproto from "../../../proto/google/protobuf/status_pb";
 
 class Server implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;

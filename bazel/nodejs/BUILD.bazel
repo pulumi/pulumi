@@ -1,6 +1,13 @@
 load("@npm//:grpc-tools/package_json.bzl", grpc_tools = "bin")
 load("@npm//:grpc_tools_node_protoc_ts/package_json.bzl", grpc_tools_node_protoc_ts = "bin")
 load("@npm//:protoc-gen-js/package_json.bzl", protoc_gen_js = "bin")
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "protoc_wrapper",
+    srcs = ["protoc_wrapper.py"],
+    visibility = ["__pkg__"],
+)
 
 grpc_tools.grpc_tools_node_protoc_plugin_binary(
     name = "grpc_tools_node_protoc",

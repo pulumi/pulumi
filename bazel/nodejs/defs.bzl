@@ -4,44 +4,40 @@ load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "COPY_FILE_TO_BIN_TOOLCHAINS")
 load("@aspect_rules_js//js:libs.bzl", "js_lib_helpers")
 load("@aspect_rules_js//js:providers.bzl", "JsInfo", "js_info")
 
-def _protoc_action(ctx, proto_info, outputs, options = {
-    "keep_empty_files": True,
-    "target": "js+dts",
-}):
+def _protoc_action(ctx, proto_info, outputs):
     inputs = depset(
         proto_info.direct_sources,
         transitive = [proto_info.transitive_descriptor_sets]
     )
 
     args = ctx.actions.args()
-    args.add("--js_out=import_style=commonjs,binary:{}".format(ctx.bin_dir.path))
-    args.add("--ts_out=grpc_js:{}".format(ctx.bin_dir.path))
-    args.add("--grpc_out=grpc_js,minimum_node_version=6:{}".format(ctx.bin_dir.path))
 
-    args.add("--plugin=protoc-gen-js={}".format(ctx.executable._protoc_gen_js.path))
-    args.add("--plugin=protoc-gen-grpc={}".format(ctx.executable._grpc_tools_node_protoc.path))
-    args.add("--plugin=protoc-gen-ts={}".format(ctx.executable._grpc_tools_node_protoc_ts.path))
+    args.add("--protoc", ctx.executable._protoc.path)
+    args.add("--protoc-gen-grpc", ctx.executable._grpc_tools_node_protoc.path)
+    args.add("--protoc-gen-js", ctx.executable._protoc_gen_js.path)
+    args.add("--protoc-gen-ts", ctx.executable._grpc_tools_node_protoc_ts.path)
 
-    args.add("--descriptor_set_in")
-    args.add_joined(proto_info.transitive_descriptor_sets, join_with = ":")
-
-    args.add_all(proto_info.direct_sources)
+    args.add("--output-directory", ctx.bin_dir.path)
+    args.add_all("--descriptor-sets", proto_info.transitive_descriptor_sets)
+    args.add_all("--proto-files", proto_info.direct_sources)
+    args.add_all("--output-files", outputs)
 
     ctx.actions.run(
-        executable = ctx.executable._protoc,
+        executable = ctx.executable._protoc_wrapper,
         progress_message = "Generating .js/.d.ts from %{label}",
         outputs = outputs,
         inputs = inputs,
-        mnemonic = "TsProtoLibrary",
         arguments = [args],
+        mnemonic = "TsProtoLibrary",
         tools = [
-            ctx.executable._grpc_tools_node_protoc,
-            ctx.executable._grpc_tools_node_protoc_ts,
+            ctx.executable._protoc_wrapper,
             ctx.executable._protoc,
             ctx.executable._protoc_gen_js,
+            ctx.executable._grpc_tools_node_protoc,
+            ctx.executable._grpc_tools_node_protoc_ts,
         ],
         env = {
-            "BAZEL_BINDIR": ctx.bin_dir.path
+            "BAZEL_BINDIR": ctx.bin_dir.path,
         },
     )
 
@@ -98,6 +94,11 @@ ts_proto_library = rule(
         "deps": attr.label_list(
             providers = [JsInfo],
             doc = "Other ts_proto_library rules.",
+        ),
+        "_protoc_wrapper": attr.label(
+            default = "@//bazel/nodejs:protoc_wrapper",
+            executable = True,
+            cfg = "exec"
         ),
         "_protoc": attr.label(
             default = "@com_google_protobuf//:protoc",

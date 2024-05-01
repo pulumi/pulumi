@@ -17,8 +17,8 @@ import { getProject, getStack, setMockOptions } from "./settings";
 import { getStore } from "./state";
 
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
-import * as provproto from "../proto/provider_pb";
-import * as resproto from "../proto/resource_pb";
+import * as provproto from "../../../proto/pulumi/provider_pb";
+import * as resproto from "../../../proto/pulumi/resource_pb";
 
 /**
  * MockResourceArgs is used to construct a newResource Mock.

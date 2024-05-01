@@ -21,8 +21,8 @@ import * as settings from "../runtime/settings";
 import * as stack from "../runtime/stack";
 import * as localState from "../runtime/state";
 
-import * as langproto from "../proto/language_pb";
-import * as plugproto from "../proto/plugin_pb";
+import * as langproto from "../../../proto/pulumi/language_pb";
+import * as plugproto from "../../../proto/pulumi/plugin_pb";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */

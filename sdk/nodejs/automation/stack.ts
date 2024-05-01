@@ -31,7 +31,7 @@ import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-import * as langrpc from "../proto/language_grpc_pb";
+import * as langrpc from "../../../proto/pulumi/language_grpc_pb";
 
 interface ReadlineResult {
     tail: TailFile;

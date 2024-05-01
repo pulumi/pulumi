@@ -17,8 +17,8 @@ import { ICallbackServer } from "./callbacks";
 import * as config from "./config";
 import { Stack } from "./stack";
 
-import * as engrpc from "../proto/engine_grpc_pb";
-import * as resrpc from "../proto/resource_grpc_pb";
+import * as engrpc from "../../../proto/pulumi/engine_grpc_pb";
+import * as resrpc from "../../../proto/pulumi/resource_grpc_pb";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",

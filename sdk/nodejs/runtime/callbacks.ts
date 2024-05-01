@@ -18,11 +18,11 @@ import * as jspb from "google-protobuf";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as log from "../log";
 import { output } from "../output";
-import * as callrpc from "../proto/callback_grpc_pb";
-import * as callproto from "../proto/callback_pb";
-import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../proto/callback_pb";
-import * as resrpc from "../proto/resource_grpc_pb";
-import * as resproto from "../proto/resource_pb";
+import * as callrpc from "../../../proto/pulumi/callback_grpc_pb";
+import * as callproto from "../../../proto/pulumi/callback_pb";
+import { Callback, CallbackInvokeRequest, CallbackInvokeResponse } from "../../../proto/pulumi/callback_pb";
+import * as resrpc from "../../../proto/pulumi/resource_grpc_pb";
+import * as resproto from "../../../proto/pulumi/resource_pb";
 import {
     Alias,
     ComponentResourceOptions,

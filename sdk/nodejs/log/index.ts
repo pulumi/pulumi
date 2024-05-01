@@ -14,8 +14,8 @@
 
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
-import * as engrpc from "../proto/engine_grpc_pb";
-import * as engproto from "../proto/engine_pb";
+import * as engrpc from "../../../proto/pulumi/engine_grpc_pb";
+import * as engproto from "../../../proto/pulumi/engine_pb";
 import * as resourceTypes from "../resource";
 import { getEngine, rpcKeepAlive } from "../runtime/settings";
 import { getStore } from "../runtime/state";
