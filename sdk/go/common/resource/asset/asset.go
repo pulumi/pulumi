@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -68,6 +69,13 @@ func FromText(text string) (*Asset, error) {
 func FromPath(path string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, Path: path}
 	err := a.EnsureHash()
+	return a, err
+}
+
+// FromPathWithWD produces a new asset and its corresponding SHA256 hash from the given filesystem path.
+func FromPathWithWD(path string, wd string) (*Asset, error) {
+	a := &Asset{Sig: AssetSig, Path: path}
+	err := a.EnsureHashWithWD(wd)
 	return a, err
 }
 
@@ -237,10 +245,20 @@ func (a *Asset) Bytes() ([]byte, error) {
 
 // Read begins reading an asset.
 func (a *Asset) Read() (*Blob, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	return a.ReadWithWD(wd)
+}
+
+// ReadWithWD begins reading an asset.
+func (a *Asset) ReadWithWD(wd string) (*Blob, error) {
 	if a.IsText() {
 		return a.readText()
 	} else if a.IsPath() {
-		return a.readPath()
+		return a.readPath(wd)
 	} else if a.IsURI() {
 		return a.readURI()
 	}
@@ -253,9 +271,13 @@ func (a *Asset) readText() (*Blob, error) {
 	return NewByteBlob([]byte(text)), nil
 }
 
-func (a *Asset) readPath() (*Blob, error) {
+func (a *Asset) readPath(wd string) (*Blob, error) {
 	path, ispath := a.GetPath()
 	contract.Assertf(ispath, "Expected a path-based asset")
+
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(wd, path)
+	}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -314,6 +336,28 @@ func (a *Asset) readURI() (*Blob, error) {
 func (a *Asset) EnsureHash() error {
 	if a.Hash == "" {
 		blob, err := a.Read()
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(blob)
+
+		hash := sha256.New()
+		n, err := io.Copy(hash, blob)
+		if err != nil {
+			return err
+		}
+		if n != blob.Size() {
+			return fmt.Errorf("incorrect blob size: expected %v, got %v", blob.Size(), n)
+		}
+		a.Hash = hex.EncodeToString(hash.Sum(nil))
+	}
+	return nil
+}
+
+// EnsureHash computes the SHA256 hash of the asset's contents and stores it on the object.
+func (a *Asset) EnsureHashWithWD(wd string) error {
+	if a.Hash == "" {
+		blob, err := a.ReadWithWD(wd)
 		if err != nil {
 			return err
 		}

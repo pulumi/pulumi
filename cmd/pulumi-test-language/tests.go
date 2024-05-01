@@ -17,6 +17,7 @@ package main
 import (
 	"embed"
 	"math"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -38,7 +39,7 @@ type testRun struct {
 	// This can be used to set a main value for the test.
 	main string
 	// TODO: This should just return "string", if == "" then ok, else fail
-	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
+	assert func(*L, string, result.Result, *deploy.Snapshot, display.ResourceChanges)
 	// updateOptions can be used to set the update options for the engine.
 	updateOptions engine.UpdateOptions
 }
@@ -77,7 +78,10 @@ var languageTests = map[string]languageTest{
 	"l1-empty": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					assertStackResource(l, res, changes)
 				},
 			},
@@ -86,7 +90,10 @@ var languageTests = map[string]languageTest{
 	"l1-output-bool": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					// Check we have two outputs in the stack for true and false
@@ -105,7 +112,10 @@ var languageTests = map[string]languageTest{
 	"l1-output-number": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -128,7 +138,10 @@ var languageTests = map[string]languageTest{
 	"l1-output-string": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -157,7 +170,10 @@ var languageTests = map[string]languageTest{
 	"l1-output-array": {
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
@@ -201,7 +217,10 @@ var languageTests = map[string]languageTest{
 		runs: []testRun{
 			{
 				main: "subdir",
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					// Check we have an output in the stack for true
@@ -225,7 +244,10 @@ var languageTests = map[string]languageTest{
 		},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					require.Len(l, snap.Resources, 3, "expected at least 3 resources")
@@ -252,7 +274,10 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 
 					// Check we have the one simple resource in the snapshot, it's provider and the stack.
@@ -271,6 +296,63 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-resource-asset-archive": {
+		providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
+		runs: []testRun{
+			{
+				main: "subdir",
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					// Check we have the the asset and archive resources in the snapshot, the provider and the stack.
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
+
+					// We don't know what order the asset and archive resources will be in, so check both.
+					var asset, archive *resource.State
+					if snap.Resources[2].Type == "asset-archive:index:AssetResource" {
+						asset = snap.Resources[2]
+						archive = snap.Resources[3]
+					} else {
+						asset = snap.Resources[3]
+						archive = snap.Resources[2]
+					}
+
+					assert.Equal(l, "asset-archive:index:AssetResource", asset.Type.String(), "expected asset resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", archive.Type.String(), "expected archive resource")
+
+					main := filepath.Join(projectDirectory, "subdir")
+
+					assetValue, err := resource.NewPathAssetWithWD("../test.txt", main)
+					require.NoError(l, err)
+					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", assetValue.Hash)
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"value": assetValue,
+					})
+
+					assert.Equal(l, want, asset.Inputs, "expected inputs to be {value: %v}", assetValue)
+					assert.Equal(l, asset.Inputs, asset.Outputs, "expected inputs and outputs to match")
+
+					archiveValue, err := resource.NewPathArchiveWithWD("../archive.tar", main)
+					require.NoError(l, err)
+					assert.Equal(l, "2eee410fe85d360552a8c21238d67d43f4b64e60288914f893b67165e8ebfbcf", archiveValue.Hash)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": archiveValue,
+					})
+
+					assert.Equal(l, want, archive.Inputs, "expected inputs to be {value: %v}", archiveValue)
+					assert.Equal(l, archive.Inputs, archive.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
 	"l2-engine-update-options": {
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
@@ -280,7 +362,10 @@ var languageTests = map[string]languageTest{
 						"**target**",
 					}),
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 					require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
 
@@ -300,7 +385,10 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
@@ -324,7 +412,10 @@ var languageTests = map[string]languageTest{
 				},
 			},
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					assert.Equal(l, 1, changes[deploy.OpDelete], "expected a delete operation")
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
@@ -343,7 +434,10 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{
 			{
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 					err := snap.VerifyIntegrity()
@@ -368,7 +462,10 @@ var languageTests = map[string]languageTest{
 						"**targetOnly**",
 					}),
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					sort.Slice(snap.Resources, func(i, j int) bool {
@@ -393,7 +490,10 @@ var languageTests = map[string]languageTest{
 				updateOptions: engine.UpdateOptions{
 					ContinueOnError: true,
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					require.True(l, res.IsBail(), "expected a bail result")
 					require.Equal(l, 1, len(changes), "expected 1 StepOp")
 					require.Equal(l, 2, changes[deploy.OpCreate], "expected 2 Creates")
@@ -417,7 +517,10 @@ var languageTests = map[string]languageTest{
 				updateOptions: engine.UpdateOptions{
 					ContinueOnError: true,
 				},
-				assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
 					requireStackResource(l, res, changes)
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 

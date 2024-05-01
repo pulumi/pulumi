@@ -66,6 +66,9 @@ func (h *L1MainLanguageHost) GenerateProject(
 	if !req.Strict {
 		return nil, errors.New("expected strict to be true")
 	}
+	if filepath.Base(req.SourceDirectory) != "subdir" {
+		return nil, fmt.Errorf("unexpected source directory %s", req.SourceDirectory)
+	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l1-main") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
 	}

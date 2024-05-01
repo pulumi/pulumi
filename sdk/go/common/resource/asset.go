@@ -62,6 +62,11 @@ func NewTextAsset(text string) (*Asset, error) { return asset.FromText(text) }
 // NewPathAsset produces a new asset and its corresponding SHA256 hash from the given filesystem path.
 func NewPathAsset(path string) (*Asset, error) { return asset.FromPath(path) }
 
+// NewPathAsset produces a new asset and its corresponding SHA256 hash from the given filesystem path.
+func NewPathAssetWithWD(path string, cwd string) (*Asset, error) {
+	return asset.FromPathWithWD(path, cwd)
+}
+
 // NewURIAsset produces a new asset and its corresponding SHA256 hash from the given network URI.
 func NewURIAsset(uri string) (*Asset, error) { return asset.FromURI(uri) }
 
@@ -85,6 +90,10 @@ func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
 
 func NewPathArchive(path string) (*Archive, error) {
 	return archive.FromPath(path)
+}
+
+func NewPathArchiveWithWD(path string, wd string) (*Archive, error) {
+	return archive.FromPathWithWD(path, wd)
 }
 
 func NewURIArchive(uri string) (*Archive, error) {
