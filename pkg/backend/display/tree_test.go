@@ -182,7 +182,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		// should be empty at this point
 		assert.Emptyf(t, treeRenderer.systemMessages,
 			"Not expecting system messages to be populated until rendering happens.")
-		assert.Equalf(t, "", buf.String(), "Nothing should have been written to the terminal yet")
+		assert.Equalf(t, buf.String(), "<%{hide-cursor}%>", "No content should have been written to the terminal yet")
 	}()
 
 	// This should trigger a render, and reset the dirty flag to false.
@@ -198,7 +198,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 
 		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
 		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
-			"Expecting 1000 system messages to now be in  the tree renderer")
+			"Expecting 1000 system messages to now be in the tree renderer")
 	}()
 
 	// Check that at least one system messages was written to the mock terminal
