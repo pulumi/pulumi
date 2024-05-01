@@ -287,8 +287,7 @@ func (r *messageRenderer) render(done bool) {
 
 	systemID := len(rows)
 
-	printedHeader := false
-	for _, payload := range r.display.systemEventPayloads {
+	for i, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		lines := splitIntoDisplayableLines(msg)
 
@@ -296,8 +295,7 @@ func (r *messageRenderer) render(done bool) {
 			continue
 		}
 
-		if !printedHeader {
-			printedHeader = true
+		if i == 0 {
 			r.colorizeAndWriteProgress(makeActionProgress(
 				strconv.Itoa(systemID), " "))
 			systemID++
@@ -324,7 +322,6 @@ func (r *messageRenderer) render(done bool) {
 
 		for i, key := range keys {
 			if i == 0 {
-				printedHeader = true
 				r.colorizeAndWriteProgress(makeActionProgress(
 					strconv.Itoa(systemID),
 					colors.Yellow+"Downloads"+colors.Reset))
