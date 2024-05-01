@@ -199,6 +199,7 @@ async def prepare_resource(
         translate,
         typ,
         keep_output_values=remote,
+        resource_obj=res,
     )
 
     # Wait for our parent to resolve

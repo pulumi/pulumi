@@ -486,7 +486,9 @@ class NextSerializationTests(unittest.TestCase):
             error = err
 
         self.assertIsNotNone(error)
-        self.assertEqual("unexpected input of type MyClass", str(error))
+        self.assertEqual(
+            "unexpected input of type MyClass for None in NoneType", str(error)
+        )
 
     @pulumi_test
     async def test_string(self):

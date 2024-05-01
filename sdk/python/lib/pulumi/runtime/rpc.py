@@ -174,6 +174,7 @@ async def serialize_properties(
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: Optional[bool] = None,
+    resource_obj=None,
 ) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
@@ -213,7 +214,7 @@ async def serialize_properties(
         v = inputs[k]
         deps: List["Resource"] = []
         result = await serialize_property(
-            v, deps, input_transformer, get_type(k), keep_output_values
+            v, deps, input_transformer, get_type(k), keep_output_values, resource_obj, k
         )
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
@@ -328,6 +329,8 @@ async def serialize_property(
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: Optional[bool] = None,
+    resource_obj=None,
+    property_key=None,
 ) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
@@ -581,7 +584,9 @@ async def serialize_property(
 
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):
-        raise ValueError(f"unexpected input of type {type(value).__name__}")
+        raise ValueError(
+            f"unexpected input of type {type(value).__name__} for {property_key} in {type(resource_obj).__name__}"
+        )
 
     return value
 
