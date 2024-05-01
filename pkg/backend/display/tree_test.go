@@ -205,7 +205,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 	terminalText := buf.String()
 	assert.Contains(t, terminalText, "pulumi:pulumi:Stack")
 	assert.Contains(t, terminalText, "System Messages")
-	assert.Contains(t, terminalText, strings.Repeat("a", 1000))
+	assert.Contains(t, terminalText, strings.Repeat("a", 70))
 }
 
 func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
@@ -315,22 +315,21 @@ func (r *messageRenderer) render(done bool) {
 		}
 	}
 
-	if len(r.display.systemEventPayloads) > 0 {
-		ids := make([]string, 0, len(r.display.systemEventPayloads))
-		for id := range r.display.downloadProgressPayloads {
-			ids = append(ids, id)
+	if len(r.display.downloadProgressPayloads) > 0 {
+		keys := make([]string, 0, len(r.display.downloadProgressPayloads))
+		for key := range r.display.downloadProgressPayloads {
+			keys = append(keys, key)
 		}
-		sort.Strings(ids)
+		slices.Sort(keys)
 
-		printedHeader = false
-		for _, id := range ids {
-			if !printedHeader {
+		for i, key := range keys {
+			if i == 0 {
 				printedHeader = true
 				r.colorizeAndWriteProgress(makeActionProgress(
 					strconv.Itoa(systemID),
 					colors.Yellow+"Downloads"+colors.Reset))
 			}
-			payload := r.display.downloadProgressPayloads[id]
+			payload := r.display.downloadProgressPayloads[key]
 			renderedPayload := renderDownloadProgress(payload, r.terminalWidth, true)
 			r.colorizeAndWriteProgress(makeActionProgress(payload.ID, renderedPayload))
 		}
