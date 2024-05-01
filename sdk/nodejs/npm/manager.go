@@ -2,6 +2,7 @@ package npm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -100,8 +101,8 @@ func ResolvePackageManager(pwd string) (PackageManager, error) {
 	// Finally, fall back to npm.
 	node, err := newNPM()
 	if err != nil {
-		return nil, fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+
-			"available at https://nodejs.org/: %w", err)
+		return nil, errors.New("could not find npm on the $PATH; make sure npm is installed and run " +
+			"'pulumi install' to complete the project setup")
 	}
 
 	return node, nil

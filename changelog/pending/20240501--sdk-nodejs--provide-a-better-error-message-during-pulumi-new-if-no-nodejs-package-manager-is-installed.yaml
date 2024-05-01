@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Provide a better error message during pulumi new if no nodejs package manager is installed
