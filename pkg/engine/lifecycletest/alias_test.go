@@ -189,7 +189,7 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 					Op:            Update,
 					ExpectFailure: expectFailure,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, err error,
+						events []Event, changes display.ResourceChanges, err error,
 					) error {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
@@ -1595,7 +1595,7 @@ func TestParentAlias(t *testing.T) {
 	firstRun = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(project workspace.Project, target deploy.Target,
-			entries JournalEntries, events []Event, err error,
+			entries JournalEntries, events []Event, changes display.ResourceChanges, err error,
 		) error {
 			for _, entry := range entries {
 				assert.Equal(t, deploy.OpSame, entry.Step.Op())
@@ -1669,7 +1669,7 @@ func TestEmptyParentAlias(t *testing.T) {
 	firstRun = false
 	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(project workspace.Project, target deploy.Target,
-			entries JournalEntries, events []Event, err error,
+			entries JournalEntries, events []Event, changes display.ResourceChanges, err error,
 		) error {
 			for _, entry := range entries {
 				assert.Equal(t, deploy.OpSame, entry.Step.Op())

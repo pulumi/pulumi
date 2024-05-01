@@ -6,6 +6,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -60,7 +61,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
@@ -136,7 +137,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.

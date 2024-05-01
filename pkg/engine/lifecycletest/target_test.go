@@ -131,7 +131,7 @@ func destroySpecificTargets(
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
@@ -240,7 +240,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
@@ -390,7 +390,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
@@ -452,7 +452,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
@@ -614,7 +614,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
@@ -679,7 +679,7 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)
@@ -918,7 +918,7 @@ func destroySpecificTargetsWithChildren(
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			assert.True(t, len(entries) > 0)

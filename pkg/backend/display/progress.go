@@ -1137,6 +1137,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				opText = "discarding failed"
 			case deploy.OpImport, deploy.OpImportReplacement:
 				opText = "importing failed"
+			case deploy.OpOutputChange:
+				opText = "changing output failed"
 			default:
 				contract.Failf("Unrecognized resource step op: %v", op)
 				return ""
@@ -1171,6 +1173,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				opText = "imported"
 			case deploy.OpImportReplacement:
 				opText = "imported replacement"
+			case deploy.OpOutputChange:
+				opText = "output changed"
 			default:
 				contract.Failf("Unrecognized resource step op: %v", op)
 				return ""

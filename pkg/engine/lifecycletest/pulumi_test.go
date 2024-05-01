@@ -87,7 +87,7 @@ func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
-		err error,
+		changes display.ResourceChanges, err error,
 	) error {
 		assert.Error(t, err)
 
@@ -188,7 +188,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	// Now run a preview. Expect a warning because the diff is unavailable.
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, err error,
+			events []Event, changes display.ResourceChanges, err error,
 		) error {
 			found := false
 			for _, e := range events {
@@ -237,7 +237,7 @@ func TestCheckFailureRecord(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, err error,
+				evts []Event, changes display.ResourceChanges, err error,
 			) error {
 				sawFailure := false
 				for _, evt := range evts {
@@ -290,7 +290,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, err error,
+				evts []Event, changes display.ResourceChanges, err error,
 			) error {
 				sawFailure := false
 				for _, evt := range evts {
@@ -337,7 +337,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, err error,
+				evts []Event, changes display.ResourceChanges, err error,
 			) error {
 				assert.Error(t, err)
 				sawExitCode := false
@@ -400,7 +400,7 @@ func TestBrokenDecrypter(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, err error,
+				evts []Event, changes display.ResourceChanges, err error,
 			) error {
 				assert.Error(t, err)
 				decryptErr := err.(DecryptError)
@@ -861,7 +861,7 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
-		err error,
+		changes display.ResourceChanges, err error,
 	) error {
 		for i := range events {
 			if events[i].Type == "diag" {
@@ -936,7 +936,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 		ExpectFailure: true,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.Error(t, err)
 			for _, entry := range entries {
@@ -1046,7 +1046,7 @@ func TestStackReference(t *testing.T) {
 		Op:          Update,
 		SkipPreview: true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			for _, entry := range entries {
@@ -1124,7 +1124,7 @@ func TestStackReferenceRegister(t *testing.T) {
 	for i := range steps {
 		v := steps[i].Validate
 		steps[i].Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			// Check if we registered a stack reference resource (i.e. same/update/create). Ideally we'd warn on refresh
 			// as well but that's just a Read so it's hard to tell in the built-in provider if that's a Read for a
@@ -1156,7 +1156,7 @@ func TestStackReferenceRegister(t *testing.T) {
 				assert.True(t, found, "diagnostic warning not found in: %+v", evts)
 			}
 
-			return v(project, target, entries, evts, err)
+			return v(project, target, entries, evts, nil, err)
 		}
 	}
 
@@ -1201,7 +1201,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		Op:          Update,
 		SkipPreview: true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, err error,
+			evts []Event, changes display.ResourceChanges, err error,
 		) error {
 			assert.NoError(t, err)
 			for _, entry := range entries {
@@ -1390,7 +1390,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, err error,
+						events []Event, changes display.ResourceChanges, err error,
 					) error {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
@@ -1648,7 +1648,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					{
 						Op: Update,
 						Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-							events []Event, err error,
+							events []Event, changes display.ResourceChanges, err error,
 						) error {
 							for _, event := range events {
 								if event.Type == ResourcePreEvent {
@@ -1797,7 +1797,7 @@ func TestPersistentDiff(t *testing.T) {
 	// provider diffing.
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, err error,
+			events []Event, changes display.ResourceChanges, err error,
 		) error {
 			found := false
 			for _, e := range events {
@@ -1818,7 +1818,7 @@ func TestPersistentDiff(t *testing.T) {
 	p.Options.UseLegacyDiff = true
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, err error,
+			events []Event, changes display.ResourceChanges, err error,
 		) error {
 			found := false
 			for _, e := range events {
@@ -1880,7 +1880,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	// provider diffing.
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, err error,
+			events []Event, changes display.ResourceChanges, err error,
 		) error {
 			found := false
 			for _, e := range events {
@@ -1999,7 +1999,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, err error,
+			_ []Event, changes display.ResourceChanges, err error,
 		) error {
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -3066,7 +3066,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 			Op:          Destroy,
 			SkipPreview: true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, err error,
+				evts []Event, changes display.ResourceChanges, err error,
 			) error {
 				assert.NoError(t, err)
 
@@ -3182,7 +3182,7 @@ func TestProtect(t *testing.T) {
 	// Both updates below should give a diagnostic event
 	validate := func(project workspace.Project,
 		target deploy.Target, entries JournalEntries,
-		events []Event, err error,
+		events []Event, changes display.ResourceChanges, err error,
 	) error {
 		for _, event := range events {
 			if event.Type == DiagEvent {
@@ -3669,7 +3669,7 @@ func TestEventSecrets(t *testing.T) {
 		})),
 	}
 	p.Steps[0].Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		evts []Event, err error,
+		evts []Event, changes display.ResourceChanges, err error,
 	) error {
 		for _, e := range evts {
 			var step StepEventMetadata
@@ -3739,7 +3739,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
-		err error,
+		changes display.ResourceChanges, err error,
 	) error {
 		if err != nil {
 			return err
@@ -4791,7 +4791,7 @@ func TestAutomaticDiff(t *testing.T) {
 	}
 	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, err error,
+			events []Event, changes display.ResourceChanges, err error,
 		) error {
 			found := false
 			for _, e := range events {
@@ -5698,4 +5698,83 @@ func TestStackOutputsResourceError(t *testing.T) {
 		"first":  resource.NewProperty("step 3"),
 		"second": resource.NewProperty("step 3"),
 	})
+}
+
+func TestOutputChanges(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	outs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+	})
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		rrResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(rrResp.URN, outs)
+		assert.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+		},
+	}
+
+	project := p.GetProject()
+
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			events []Event, changes display.ResourceChanges, err error,
+		) error {
+			// Adding two outputs
+			assert.Equal(t, 2, changes[deploy.OpOutputChange], "Expecting two output changes")
+			assert.Equal(t, 1, changes[deploy.OpCreate], "Expecting one OpCreate for the new resource")
+			return nil
+		})
+	assert.NotNil(t, snap)
+	assert.NoError(t, err)
+
+	// Without changing outputs, there should be no OpOutputChange
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			events []Event, changes display.ResourceChanges, err error,
+		) error {
+			assert.Equal(t, 0, changes[deploy.OpOutputChange], "Expecting no output changes")
+			assert.Equal(t, 1, changes[deploy.OpSame], "Expecting one OpSame")
+			return nil
+		})
+	assert.NotNil(t, snap)
+	assert.NoError(t, err)
+
+	// Now change the outputs, there should now be one OpOutputChange
+	outs = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			events []Event, changes display.ResourceChanges, err error,
+		) error {
+			assert.Equal(t, 1, changes[deploy.OpSame], "Expecting one OpSame")
+			assert.Equal(t, 1, changes[deploy.OpOutputChange], "Expecting one output to have changed")
+			return nil
+		})
+	assert.NotNil(t, snap)
+	assert.NoError(t, err)
 }
