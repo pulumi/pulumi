@@ -313,54 +313,44 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 	// especially onerous because the engine selects the "newest" plugin available on the machine, which is generally
 	// problematic for a lot of reasons.
 	if req.Version() != nil {
-		logging.V(5).Infof("handleRequest(%s): using version %s from request", req, req.Version())
+		logging.V(5).Infof("normalizeProviderRequest(%s): using version %s from request", req, req.Version())
 	} else {
-		logging.V(5).Infof(
-			"handleRequest(%s): no version specified, falling back to default version", req)
 		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
-			logging.V(5).Infof("handleRequest(%s): default version hit on version %s", req, version)
+			logging.V(5).Infof("normalizeProviderRequest(%s): default version hit on version %s", req, version)
 			req = providers.NewProviderRequest(version, req.Package(), req.PluginDownloadURL(), req.PluginChecksums())
 		} else {
 			logging.V(5).Infof(
-				"handleRequest(%s): default provider miss, sending nil version to engine", req)
+				"normalizeProviderRequest(%s): default provider miss, sending nil version to engine", req)
 		}
 	}
 
 	if req.PluginDownloadURL() != "" {
-		logging.V(5).Infof("handleRequest(%s): using pluginDownloadURL %s from request",
+		logging.V(5).Infof("normalizeProviderRequest(%s): using pluginDownloadURL %s from request",
 			req, req.PluginDownloadURL())
 	} else {
-		logging.V(5).Infof(
-			"handleRequest(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL",
-			req)
 		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
-			logging.V(5).Infof("handleRequest(%s): default pluginDownloadURL hit on %s",
+			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginDownloadURL hit on %s",
 				req, pluginDownloadURL)
 			req = providers.NewProviderRequest(req.Version(), req.Package(), pluginDownloadURL, req.PluginChecksums())
 		} else {
 			logging.V(5).Infof(
-				"handleRequest(%s): default pluginDownloadURL miss, sending empty string to engine", req)
+				"normalizeProviderRequest(%s): default pluginDownloadURL miss, sending empty string to engine", req)
 		}
 	}
 
 	if req.PluginChecksums() != nil {
-		logging.V(5).Infof("handleRequest(%s): using pluginChecksums %v from request",
+		logging.V(5).Infof("normalizeProviderRequest(%s): using pluginChecksums %v from request",
 			req, req.PluginChecksums())
 	} else {
-		logging.V(5).Infof(
-			"handleRequest(%s): no pluginChecksums specified, falling back to default pluginChecksums",
-			req)
 		if pluginChecksums := d.defaultProviderInfo[req.Package()].Checksums; pluginChecksums != nil {
-			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginChecksums hit on %v",
+			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginChecksums hit on %v",
 				req, pluginChecksums)
 			req = providers.NewProviderRequest(req.Version(), req.Package(), req.PluginDownloadURL(), pluginChecksums)
 		} else {
 			logging.V(5).Infof(
-				"newRegisterDefaultProviderEvent(%s): default pluginChecksums miss, sending empty map to engine", req)
+				"normalizeProviderRequest(%s): default pluginChecksums miss, sending empty map to engine", req)
 		}
 	}
-
-	logging.V(5).Infof("normalized default provider request to %s", req)
 
 	return req
 }

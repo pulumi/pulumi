@@ -2042,6 +2042,32 @@ func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (resource.Proper
 
 func TestDefaultProviders(t *testing.T) {
 	t.Parallel()
+	t.Run("normalizeProviderRequest", func(t *testing.T) {
+		t.Parallel()
+		t.Run("use defaultProvider", func(t *testing.T) {
+			t.Parallel()
+			v1 := semver.MustParse("0.1.0")
+			d := &defaultProviders{
+				defaultProviderInfo: map[tokens.Package]workspace.PluginSpec{
+					tokens.Package(""): {
+						Version:           &v1,
+						PluginDownloadURL: "github://owner/repo",
+						Checksums:         map[string][]byte{"key": []byte("expected-checksum-value")},
+					},
+				},
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return resource.PropertyMap{}, nil
+					},
+				},
+			}
+			req := d.normalizeProviderRequest(providers.ProviderRequest{})
+			assert.NotNil(t, req)
+			assert.Equal(t, &v1, req.Version())
+			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
+			assert.Equal(t, map[string][]byte{"key": []byte("expected-checksum-value")}, req.PluginChecksums())
+		})
+	})
 	t.Run("newRegisterDefaultProviderEvent", func(t *testing.T) {
 		t.Parallel()
 		t.Run("error in GetPackageConfig()", func(t *testing.T) {
@@ -2056,33 +2082,6 @@ func TestDefaultProviders(t *testing.T) {
 			}
 			_, _, err := d.newRegisterDefaultProviderEvent(providers.ProviderRequest{})
 			assert.ErrorIs(t, err, expectedErr)
-		})
-		t.Run("use defaultProvider checksums", func(t *testing.T) {
-			t.Parallel()
-			d := &defaultProviders{
-				defaultProviderInfo: map[tokens.Package]workspace.PluginSpec{
-					tokens.Package(""): {
-						Checksums: map[string][]byte{"key": []byte("expected-checksum-value")},
-					},
-				},
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return resource.PropertyMap{}, nil
-					},
-				},
-			}
-			evt, done, err := d.newRegisterDefaultProviderEvent(providers.ProviderRequest{})
-			assert.NoError(t, err)
-			assert.NotNil(t, done)
-			assert.Equal(t,
-				resource.PropertyValue{
-					V: resource.PropertyMap{
-						"key": resource.PropertyValue{
-							V: "65787065637465642d636865636b73756d2d76616c7565",
-						},
-					},
-				},
-				evt.goal.Properties["pluginChecksums"])
 		})
 	})
 	t.Run("handleRequest", func(t *testing.T) {
