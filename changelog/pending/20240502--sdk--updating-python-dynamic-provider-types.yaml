@@ -1,4 +1,4 @@
 changes:
 - type: feat
-  scope: sdk
-  description: Updating python dynamic provider types for inputs to Dict[str, Any], from Any. I also added a Union so it was backward compatible, and doesn't immediately throw type errors for users.
+  scope: sdk/python
+  description: Update python dynamic provider types for inputs to Dict[str, Any], from Any
