@@ -257,3 +257,9 @@ func (p *monitorProxy) RegisterStackTransform(
 ) (*emptypb.Empty, error) {
 	return p.target.RegisterStackTransform(ctx, req)
 }
+
+func (p *monitorProxy) RegisterDefaultProvider(
+	ctx context.Context, req *pulumirpc.RegisterDefaultProviderRequest,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterDefaultProvider(ctx, req)
+}

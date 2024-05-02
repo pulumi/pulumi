@@ -36,6 +36,8 @@ service ResourceMonitor {
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
+    rpc RegisterDefaultProvider(RegisterDefaultProviderRequest) returns (google.protobuf.Empty) {}
+
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -237,4 +239,10 @@ message TransformRequest {
 message TransformResponse {
     google.protobuf.Struct properties = 1; // the transformed input properties.
     TransformResourceOptions options = 2; // the options for the resource.
+}
+
+message RegisterDefaultProviderRequest {
+    string provider = 1; // the provider to register as the default provider.
+    string version = 2;  // the version of the provider to register as the default provider.
+    string plugin_download_url = 3; // the plugin download URL of the provider to register as the default provider.
 }

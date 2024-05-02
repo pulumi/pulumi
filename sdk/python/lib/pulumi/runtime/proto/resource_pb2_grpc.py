@@ -58,6 +58,11 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.RegisterDefaultProvider = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterDefaultProvider',
+                request_serializer=pulumi_dot_resource__pb2.RegisterDefaultProviderRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class ResourceMonitorServicer(object):
@@ -112,6 +117,12 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RegisterDefaultProvider(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -153,6 +164,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
             'RegisterStackTransform': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterStackTransform,
                     request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'RegisterDefaultProvider': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterDefaultProvider,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterDefaultProviderRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -298,6 +314,23 @@ class ResourceMonitor(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterStackTransform',
             pulumi_dot_callback__pb2.Callback.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RegisterDefaultProvider(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterDefaultProvider',
+            pulumi_dot_resource__pb2.RegisterDefaultProviderRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -486,6 +486,11 @@ func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) 
 	return err
 }
 
+func (rm *ResourceMonitor) RegisterDefaultProvider(req *pulumirpc.RegisterDefaultProviderRequest) error {
+	_, err := rm.resmon.RegisterDefaultProvider(context.Background(), req)
+	return err
+}
+
 func prepareTestTimeout(timeout float64) string {
 	if timeout == 0 {
 		return ""

@@ -31,6 +31,7 @@ type ResourceMonitorClient interface {
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RegisterStackTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RegisterDefaultProvider(ctx context.Context, in *RegisterDefaultProviderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type resourceMonitorClient struct {
@@ -136,6 +137,15 @@ func (c *resourceMonitorClient) RegisterStackTransform(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *resourceMonitorClient) RegisterDefaultProvider(ctx context.Context, in *RegisterDefaultProviderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/RegisterDefaultProvider", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceMonitorServer is the server API for ResourceMonitor service.
 // All implementations must embed UnimplementedResourceMonitorServer
 // for forward compatibility
@@ -148,6 +158,7 @@ type ResourceMonitorServer interface {
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 	RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error)
+	RegisterDefaultProvider(context.Context, *RegisterDefaultProviderRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedResourceMonitorServer()
 }
 
@@ -178,6 +189,9 @@ func (UnimplementedResourceMonitorServer) RegisterResourceOutputs(context.Contex
 }
 func (UnimplementedResourceMonitorServer) RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterStackTransform not implemented")
+}
+func (UnimplementedResourceMonitorServer) RegisterDefaultProvider(context.Context, *RegisterDefaultProviderRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterDefaultProvider not implemented")
 }
 func (UnimplementedResourceMonitorServer) mustEmbedUnimplementedResourceMonitorServer() {}
 
@@ -339,6 +353,24 @@ func _ResourceMonitor_RegisterStackTransform_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceMonitor_RegisterDefaultProvider_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterDefaultProviderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).RegisterDefaultProvider(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceMonitor/RegisterDefaultProvider",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).RegisterDefaultProvider(ctx, req.(*RegisterDefaultProviderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceMonitor_ServiceDesc is the grpc.ServiceDesc for ResourceMonitor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -373,6 +405,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterStackTransform",
 			Handler:    _ResourceMonitor_RegisterStackTransform_Handler,
+		},
+		{
+			MethodName: "RegisterDefaultProvider",
+			Handler:    _ResourceMonitor_RegisterDefaultProvider_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

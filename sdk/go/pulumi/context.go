@@ -72,6 +72,8 @@ type contextState struct {
 	rpcError            error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
+
+	defaultProviderLock sync.RWMutex // Lock for default provider registration
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -1053,6 +1055,28 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	}, nil
 }
 
+func (ctx *Context) SetDefaultProvider(provider ProviderResource) error {
+	ctx.state.defaultProviderLock.Lock()
+	defer ctx.state.defaultProviderLock.Unlock()
+
+	if provider == nil {
+		return errors.New("provider must not be nil")
+	}
+	providerRef, err := ctx.resolveProviderReference(provider)
+	if err != nil {
+		return err
+	}
+	_, err = ctx.state.monitor.RegisterDefaultProvider(ctx.ctx, &pulumirpc.RegisterDefaultProviderRequest{
+		Provider:          providerRef,
+		Version:           provider.getVersion(),
+		PluginDownloadUrl: provider.getPluginDownloadURL(),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption,
 ) error {
@@ -1154,7 +1178,16 @@ func (ctx *Context) registerResource(
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
+	//
+	// Resource registration requests should not be happening concurrently with default provider
+	// registration.  Take a read lock here, so resource registration can happen in parallel, but will be
+	// blocked once the default provider registration starts.
+	//
+	// We take the lock before the goroutine starts, and keep it until it finishes.
+	ctx.state.defaultProviderLock.RLock()
 	go func() {
+		defer ctx.state.defaultProviderLock.RUnlock()
+
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var urn, resID string
 		var inputs *resourceInputs

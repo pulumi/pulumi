@@ -286,6 +286,8 @@ type defaultProviders struct {
 	providers map[string]providers.Reference
 	config    plugin.ConfigSource
 
+	explicitDefaultProviders map[string]bool
+
 	requests        chan defaultProviderRequest
 	providerRegChan chan<- *registerResourceEvent
 	cancel          <-chan bool
@@ -415,6 +417,12 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 		return ref, nil
 	}
 
+	if d.explicitDefaultProviders[req.Package().Name().String()] {
+		logging.V(9).Infof("package %s has an explicit default provider.  Denying creation of an implicit one",
+			req.Package().Name())
+		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
+	}
+
 	event, done, err := d.newRegisterDefaultProviderEvent(req)
 	if err != nil {
 		return providers.Reference{}, err
@@ -445,6 +453,10 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	d.providers[req.String()] = ref
 
 	return ref, nil
+}
+
+func (d *defaultProviders) RegisterDefaultProvider(provider providers.Reference) {
+	d.providers[provider.String()] = provider
 }
 
 // If req should be allowed, or if we should prevent the request.
@@ -520,6 +532,24 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 	}
 	res := <-response
 	return res.ref, res.err
+}
+
+func (d *defaultProviders) setProviderAsDefault(ref providers.Reference, pkg, version, pluginDownloadURL string) error {
+	if version != "" {
+		version = "-" + version
+	}
+	if pluginDownloadURL != "" {
+		pluginDownloadURL = "-" + pluginDownloadURL
+	}
+	key := pkg + version + pluginDownloadURL
+	// TODO: this is a bit awkward with versioning.  E.g. should we also set `d.providers[pkg] = ref` here?
+	d.providers[key] = ref
+	if d.explicitDefaultProviders == nil {
+		d.explicitDefaultProviders = make(map[string]bool)
+	}
+	d.explicitDefaultProviders[pkg] = true
+
+	return nil
 }
 
 // A transformation function that can be applied to a resource.
@@ -2093,6 +2123,27 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 type registerResourceEvent struct {
 	goal *resource.Goal       // the resource goal state produced by the iterator.
 	done chan *RegisterResult // the channel to communicate with after the resource state is available.
+}
+
+func (rm *resmon) RegisterDefaultProvider(
+	ctx context.Context,
+	req *pulumirpc.RegisterDefaultProviderRequest,
+) (*emptypb.Empty, error) {
+	ref, err := providers.ParseReference(req.GetProvider())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid provider reference: %v", err))
+	}
+	// Need version, plugindownloadurl and pluginchecksum(???) here
+	provider, ok := rm.providers.GetProvider(ref)
+	if !ok {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("unknown provider '%v'", ref))
+	}
+	if err := rm.defaultProviders.setProviderAsDefault(
+		ref, provider.Pkg().String(), req.Version, req.PluginDownloadUrl,
+	); err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to set default provider: %v", err))
+	}
+	return &emptypb.Empty{}, nil
 }
 
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)

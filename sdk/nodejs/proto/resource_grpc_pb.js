@@ -91,6 +91,17 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterDefaultProviderRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterDefaultProviderRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterDefaultProviderRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterDefaultProviderRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterDefaultProviderRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
@@ -256,6 +267,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_Callback,
     requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  registerDefaultProvider: {
+    path: '/pulumirpc.ResourceMonitor/RegisterDefaultProvider',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterDefaultProviderRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterDefaultProviderRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterDefaultProviderRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

@@ -712,6 +712,32 @@ export namespace TransformResponse {
     }
 }
 
+export class RegisterDefaultProviderRequest extends jspb.Message { 
+    getProvider(): string;
+    setProvider(value: string): RegisterDefaultProviderRequest;
+    getVersion(): string;
+    setVersion(value: string): RegisterDefaultProviderRequest;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): RegisterDefaultProviderRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterDefaultProviderRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterDefaultProviderRequest): RegisterDefaultProviderRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterDefaultProviderRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterDefaultProviderRequest;
+    static deserializeBinaryFromReader(message: RegisterDefaultProviderRequest, reader: jspb.BinaryReader): RegisterDefaultProviderRequest;
+}
+
+export namespace RegisterDefaultProviderRequest {
+    export type AsObject = {
+        provider: string,
+        version: string,
+        pluginDownloadUrl: string,
+    }
+}
+
 export enum Result {
     SUCCESS = 0,
     FAIL = 1,
