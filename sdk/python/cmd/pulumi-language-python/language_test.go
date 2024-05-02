@@ -206,7 +206,7 @@ func TestLanguage(t *testing.T) {
 		//nolint:paralleltest // These aren't yet safe to run in parallel
 		for _, tt := range tests.Tests {
 			tt := tt
-			t.Run(tt, func(t *testing.T) {
+			t.Run(fmt.Sprintf("toml=%t/%s", useToml, tt), func(t *testing.T) {
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 					Token: prepare.Token,
 					Test:  tt,

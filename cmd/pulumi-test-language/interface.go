@@ -754,7 +754,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.runs) > 1 {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil)
+		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
@@ -770,10 +770,12 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		// Generate the project and read in the Pulumi.yaml
+		rootDirectory := sourceDir
 		projectJSON := func() string {
 			if run.main == "" {
 				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
 			}
+			sourceDir = filepath.Join(sourceDir, run.main)
 			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
 		}()
 
@@ -785,6 +787,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 		if diagnostics.HasErrors() {
 			return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
+		}
+
+		// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
+		// them across here.
+		err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
+		if err != nil {
+			return nil, fmt.Errorf("copy testdata: %w", err)
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
@@ -870,7 +879,15 @@ func (eng *languageTestServer) RunLanguageTest(
 			var found *string
 			for _, actual := range dependencies {
 				actual := actual
-				if strings.Contains(strings.ToLower(actual.Name), strings.ToLower(expectedDependency.Name)) {
+
+				sanatize := func(s string) string {
+					return strings.ToLower(
+						strings.ReplaceAll(
+							strings.ReplaceAll(s, "_", ""),
+							"-", ""))
+				}
+
+				if strings.Contains(sanatize(actual.Name), sanatize(expectedDependency.Name)) {
 					found = &actual.Version
 					if expectedDependency.Version == actual.Version {
 						break
@@ -959,7 +976,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		result = WithL(func(l *L) {
-			run.assert(l, res, snap, changes)
+			run.assert(l, projectDir, res, snap, changes)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

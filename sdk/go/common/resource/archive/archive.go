@@ -90,11 +90,19 @@ func FromAssets(assets map[string]interface{}) (*Archive, error) {
 }
 
 func FromPath(path string) (*Archive, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return FromPathWithWD(path, wd)
+}
+
+func FromPathWithWD(path string, wd string) (*Archive, error) {
 	if path == "" {
 		return nil, errors.New("path cannot be empty when constructing a path archive")
 	}
 	a := &Archive{Sig: ArchiveSig, Path: path}
-	err := a.EnsureHash()
+	err := a.EnsureHashWithWD(wd)
 	return a, err
 }
 
@@ -723,7 +731,19 @@ func (a *Archive) archiveZIP(w io.Writer) error {
 
 // ReadSourceArchive returns a stream to the underlying archive, if there is one.
 func (a *Archive) ReadSourceArchive() (Format, io.ReadCloser, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return NotArchive, nil, err
+	}
+	return a.ReadSourceArchiveWithWD(wd)
+}
+
+// ReadSourceArchiveWithWD returns a stream to the underlying archive, if there is one.
+func (a *Archive) ReadSourceArchiveWithWD(wd string) (Format, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(wd, path)
+		}
 		if format := detectArchiveFormat(path); format != NotArchive {
 			f, err := os.Open(path)
 			return format, f, err
@@ -739,12 +759,23 @@ func (a *Archive) ReadSourceArchive() (Format, io.ReadCloser, error) {
 
 // EnsureHash computes the SHA256 hash of the archive's contents and stores it on the object.
 func (a *Archive) EnsureHash() error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	return a.EnsureHashWithWD(wd)
+}
+
+// EnsureHash computes the SHA256 hash of the archive's contents and stores it on the object.
+func (a *Archive) EnsureHashWithWD(wd string) error {
+	contract.Requiref(wd != "", "wd", "must not be empty")
+
 	if a.Hash == "" {
 		hash := sha256.New()
 
 		// Attempt to compute the hash in the most efficient way.  First try to open the archive directly and copy it
 		// to the hash.  This avoids traversing any of the contents and just treats it as a byte stream.
-		f, r, err := a.ReadSourceArchive()
+		f, r, err := a.ReadSourceArchiveWithWD(wd)
 		if err != nil {
 			return err
 		}

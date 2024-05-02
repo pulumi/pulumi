@@ -30,10 +30,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplacement) error {
+func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplacement, filter []string) error {
 	return iofs.WalkDir(fs, src, func(path string, d iofs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+
+		include := true
+		for _, f := range filter {
+			if strings.Contains(path, f) {
+				include = false
+			}
+		}
+		if !include {
+			return nil
 		}
 
 		relativePath, err := filepath.Rel(src, path)
@@ -220,7 +230,7 @@ func editSnapshot(snapshotDirectory string, edits []compiledReplacement) (string
 			return "", fmt.Errorf("create temp dir: %w", err)
 		}
 
-		err = copyDirectory(os.DirFS(snapshotDirectory), ".", result, edits)
+		err = copyDirectory(os.DirFS(snapshotDirectory), ".", result, edits, nil)
 		if err != nil {
 			return "", fmt.Errorf("copy source dir: %w", err)
 		}
@@ -244,7 +254,7 @@ func doSnapshot(
 		if err != nil {
 			return nil, fmt.Errorf("create snapshot dir: %w", err)
 		}
-		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory, nil)
+		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy snapshot dir: %w", err)
 		}
