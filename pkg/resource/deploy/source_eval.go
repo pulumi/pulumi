@@ -301,17 +301,7 @@ type defaultProviderRequest struct {
 	response chan<- defaultProviderResponse
 }
 
-// newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
-// engine to register a default provider resource for the indicated package.
-func (d *defaultProviders) newRegisterDefaultProviderEvent(
-	req providers.ProviderRequest,
-) (*registerResourceEvent, <-chan *RegisterResult, error) {
-	// Attempt to get the config for the package.
-	inputs, err := d.config.GetPackageConfig(req.Package())
-	if err != nil {
-		return nil, nil, err
-	}
-
+func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderRequest) providers.ProviderRequest {
 	// Request that the engine instantiate a specific version of this provider, if one was requested. We'll figure out
 	// what version to request by:
 	//   1. Providing the Version field of the ProviderRequest verbatim, if it was provided, otherwise
@@ -323,54 +313,76 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// especially onerous because the engine selects the "newest" plugin available on the machine, which is generally
 	// problematic for a lot of reasons.
 	if req.Version() != nil {
-		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using version %s from request", req, req.Version())
-		providers.SetProviderVersion(inputs, req.Version())
+		logging.V(5).Infof("handleRequest(%s): using version %s from request", req, req.Version())
 	} else {
 		logging.V(5).Infof(
-			"newRegisterDefaultProviderEvent(%s): no version specified, falling back to default version", req)
+			"handleRequest(%s): no version specified, falling back to default version", req)
 		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
-			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default version hit on version %s", req, version)
-			providers.SetProviderVersion(inputs, version)
+			logging.V(5).Infof("handleRequest(%s): default version hit on version %s", req, version)
+			req = providers.NewProviderRequest(version, req.Package(), req.PluginDownloadURL(), req.PluginChecksums())
 		} else {
 			logging.V(5).Infof(
-				"newRegisterDefaultProviderEvent(%s): default provider miss, sending nil version to engine", req)
+				"handleRequest(%s): default provider miss, sending nil version to engine", req)
 		}
 	}
 
 	if req.PluginDownloadURL() != "" {
-		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using pluginDownloadURL %s from request",
+		logging.V(5).Infof("handleRequest(%s): using pluginDownloadURL %s from request",
 			req, req.PluginDownloadURL())
-		providers.SetProviderURL(inputs, req.PluginDownloadURL())
 	} else {
 		logging.V(5).Infof(
-			"newRegisterDefaultProviderEvent(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL",
+			"handleRequest(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL",
 			req)
 		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
-			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginDownloadURL hit on %s",
+			logging.V(5).Infof("handleRequest(%s): default pluginDownloadURL hit on %s",
 				req, pluginDownloadURL)
-			providers.SetProviderURL(inputs, pluginDownloadURL)
+			req = providers.NewProviderRequest(req.Version(), req.Package(), pluginDownloadURL, req.PluginChecksums())
 		} else {
 			logging.V(5).Infof(
-				"newRegisterDefaultProviderEvent(%s): default pluginDownloadURL miss, sending empty string to engine", req)
+				"handleRequest(%s): default pluginDownloadURL miss, sending empty string to engine", req)
 		}
 	}
 
 	if req.PluginChecksums() != nil {
-		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using pluginChecksums %v from request",
+		logging.V(5).Infof("handleRequest(%s): using pluginChecksums %v from request",
 			req, req.PluginChecksums())
-		providers.SetProviderChecksums(inputs, req.PluginChecksums())
 	} else {
 		logging.V(5).Infof(
-			"newRegisterDefaultProviderEvent(%s): no pluginChecksums specified, falling back to default pluginChecksums",
+			"handleRequest(%s): no pluginChecksums specified, falling back to default pluginChecksums",
 			req)
 		if pluginChecksums := d.defaultProviderInfo[req.Package()].Checksums; pluginChecksums != nil {
 			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginChecksums hit on %v",
 				req, pluginChecksums)
-			providers.SetProviderChecksums(inputs, pluginChecksums)
+			req = providers.NewProviderRequest(req.Version(), req.Package(), req.PluginDownloadURL(), pluginChecksums)
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default pluginChecksums miss, sending empty map to engine", req)
 		}
+	}
+
+	logging.V(5).Infof("normalized default provider request to %s", req)
+
+	return req
+}
+
+// newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
+// engine to register a default provider resource for the indicated package.
+func (d *defaultProviders) newRegisterDefaultProviderEvent(
+	req providers.ProviderRequest,
+) (*registerResourceEvent, <-chan *RegisterResult, error) {
+	// Attempt to get the config for the package.
+	inputs, err := d.config.GetPackageConfig(req.Package())
+	if err != nil {
+		return nil, nil, err
+	}
+	if req.Version() != nil {
+		providers.SetProviderVersion(inputs, req.Version())
+	}
+	if req.PluginDownloadURL() != "" {
+		providers.SetProviderURL(inputs, req.PluginDownloadURL())
+	}
+	if req.PluginChecksums() != nil {
+		providers.SetProviderChecksums(inputs, req.PluginChecksums())
 	}
 
 	// Create the result channel and the event.
@@ -394,6 +406,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 // to ensure this.
 func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
+
+	req = d.normalizeProviderRequest(req)
 
 	denyCreation, err := d.shouldDenyRequest(req)
 	if err != nil {
