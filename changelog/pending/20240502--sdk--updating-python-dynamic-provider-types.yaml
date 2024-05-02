@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Update python dynamic provider types for inputs to Dict[str, Any], from Any

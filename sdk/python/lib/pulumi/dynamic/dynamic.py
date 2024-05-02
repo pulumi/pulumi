@@ -15,7 +15,16 @@
 import asyncio
 import base64
 import pickle
-from typing import TYPE_CHECKING, Any, ClassVar, List, Optional, cast, no_type_check
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    cast,
+    no_type_check,
+)
 
 import dill
 
@@ -34,7 +43,7 @@ class CheckResult:
     CheckResult represents the results of a call to `ResourceProvider.check`.
     """
 
-    inputs: Any
+    inputs: Dict[str, Any]
     """
     The inputs to use, if any.
     """
@@ -44,7 +53,7 @@ class CheckResult:
     Any validation failures that occurred.
     """
 
-    def __init__(self, inputs: Any, failures: List["CheckFailure"]) -> None:
+    def __init__(self, inputs: Dict[str, Any], failures: List["CheckFailure"]) -> None:
         self.inputs = inputs
         self.failures = failures
 
@@ -118,12 +127,12 @@ class CreateResult:
     The ID of the created resource.
     """
 
-    outs: Optional[Any]
+    outs: Optional[Dict[str, Any]]
     """
     Any properties that were computed during creation.
     """
 
-    def __init__(self, id_: str, outs: Optional[Any] = None) -> None:
+    def __init__(self, id_: str, outs: Optional[Dict[str, Any]] = None) -> None:
         self.id = id_
         self.outs = outs
 
@@ -138,12 +147,16 @@ class ReadResult:
     The ID of the resource ready back (or blank if missing).
     """
 
-    outs: Optional[Any]
+    outs: Optional[Dict[str, Any]]
     """
     The current property state read from the live environment.
     """
 
-    def __init__(self, id_: Optional[str] = None, outs: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        id_: Optional[str] = None,
+        outs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self.id = id_
         self.outs = outs
 
@@ -153,12 +166,12 @@ class UpdateResult:
     UpdateResult represents the results of a call to `ResourceProvider.update`.
     """
 
-    outs: Optional[Any]
+    outs: Optional[Dict[str, Any]]
     """
     Any properties that were computed during updating.
     """
 
-    def __init__(self, outs: Optional[Any] = None) -> None:
+    def __init__(self, outs: Optional[Dict[str, Any]] = None) -> None:
         self.outs = outs
 
 
@@ -168,19 +181,24 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
-    def check(self, _olds: Any, news: Any) -> CheckResult:
+    def check(self, _olds: Dict[str, Any], news: Dict[str, Any]) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
         """
         return CheckResult(news, [])
 
-    def diff(self, _id: str, _olds: Any, _news: Any) -> DiffResult:
+    def diff(
+        self,
+        _id: str,
+        _olds: Dict[str, Any],
+        _news: Dict[str, Any],
+    ) -> DiffResult:
         """
         Diff checks what impacts a hypothetical update will have on the resource's properties.
         """
         return DiffResult()
 
-    def create(self, props: Any) -> CreateResult:
+    def create(self, props: Dict[str, Any]) -> CreateResult:
         """
         Create allocates a new instance of the provided resource and returns its unique ID
         afterwards. If this call fails, the resource must not have been created (i.e., it is
@@ -188,7 +206,7 @@ class ResourceProvider:
         """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
 
-    def read(self, id_: str, props: Any) -> ReadResult:
+    def read(self, id_: str, props: Dict[str, Any]) -> ReadResult:
         """
         Reads the current live state associated with a resource.  Enough state must be included in
         the inputs to uniquely identify the resource; this is typically just the resource ID, but it
@@ -196,13 +214,18 @@ class ResourceProvider:
         """
         return ReadResult(id_, props)
 
-    def update(self, _id: str, _olds: Any, _news: Any) -> UpdateResult:
+    def update(
+        self,
+        _id: str,
+        _olds: Dict[str, Any],
+        _news: Dict[str, Any],
+    ) -> UpdateResult:
         """
         Update updates an existing resource with new values.
         """
         return UpdateResult()
 
-    def delete(self, _id: str, _props: Any) -> None:
+    def delete(self, _id: str, _props: Dict[str, Any]) -> None:
         """
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.
