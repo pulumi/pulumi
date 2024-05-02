@@ -28,7 +28,7 @@ class MyResourceArgs:
 
     @in_prop.setter
     def in_prop(self, value: pulumi.Input[str]):
-        pulumi.set(self, "in_prop")
+        pulumi.set(self, "in_prop", value)
 
 
 class MyResource(pulumi.ComponentResource):

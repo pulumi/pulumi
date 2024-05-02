@@ -2,5 +2,5 @@
 
 import pulumi
 
-lst = []
+lst: list[int] = []
 lst[0]

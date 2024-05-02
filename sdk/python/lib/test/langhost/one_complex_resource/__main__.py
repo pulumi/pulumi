@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-from pulumi import CustomResource
+from pulumi import CustomResource, Output
 
 
 class MyResource(CustomResource):
+    outprop: Output[str]
+    outintprop: Output[int]
+
     def __init__(self, name):
         CustomResource.__init__(
             self,

@@ -527,12 +527,12 @@ class NextSerializationTests(unittest.TestCase):
         self.assertFalse(await out.is_known())
 
     def create_output(self, val: Any, is_known: bool, is_secret: Optional[bool] = None):
-        fut = asyncio.Future()
+        fut: asyncio.Future[Any] = asyncio.Future()
         fut.set_result(val)
-        known_fut = asyncio.Future()
+        known_fut: asyncio.Future[bool] = asyncio.Future()
         known_fut.set_result(is_known)
         if is_secret is not None:
-            is_secret_fut = asyncio.Future()
+            is_secret_fut: asyncio.Future[bool] = asyncio.Future()
             is_secret_fut.set_result(True)
             return Output(set(), fut, known_fut, is_secret_fut)
         return Output(set(), fut, known_fut)
