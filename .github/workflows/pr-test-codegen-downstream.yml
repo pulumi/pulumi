@@ -69,7 +69,7 @@ jobs:
       runs-on: ubuntu-latest
       env:
         GOVERSION: ">=1.19.0" # from awsx: decoupled from version sets, track latest for codegen
-        NODEVERSION: "14.x"
+        NODEVERSION: "18.x"
         PYTHONVERSION: "3.9.x"
         DOTNETVERSION: "6.x"
         JAVAVERSION: "11"

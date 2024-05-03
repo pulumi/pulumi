@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -335,11 +336,11 @@ func GenerateProject(
 	}
 
 	// Build a requirements.txt based on the packages used by program
-	var requirementsTxt bytes.Buffer
+	requirementsTxtLines := []string{}
 	if path, ok := localDependencies["pulumi"]; ok {
-		fmt.Fprintf(&requirementsTxt, "%s\n", path)
+		requirementsTxtLines = append(requirementsTxtLines, path)
 	} else {
-		requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+		requirementsTxtLines = append(requirementsTxtLines, "pulumi>=3.0.0,<4.0.0")
 	}
 
 	// For each package add a PackageReference line
@@ -348,12 +349,13 @@ func GenerateProject(
 	if err != nil {
 		return err
 	}
+
 	for _, p := range packages {
 		if p.Name == "pulumi" {
 			continue
 		}
 		if path, ok := localDependencies[p.Name]; ok {
-			fmt.Fprintf(&requirementsTxt, "%s\n", path)
+			requirementsTxtLines = append(requirementsTxtLines, path)
 		} else {
 			if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 				return err
@@ -366,14 +368,17 @@ func GenerateProject(
 				}
 			}
 			if p.Version != nil {
-				fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
+				requirementsTxtLines = append(requirementsTxtLines, fmt.Sprintf("%s==%s", packageName, p.Version.String()))
 			} else {
-				fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
+				requirementsTxtLines = append(requirementsTxtLines, packageName)
 			}
 		}
 	}
 
-	files["requirements.txt"] = requirementsTxt.Bytes()
+	// We want the requirements.txt files we generate to be stable, so we sort the
+	// lines before obtaining the bytes.
+	slices.Sort(requirementsTxtLines)
+	files["requirements.txt"] = []byte(strings.Join(requirementsTxtLines, "\n") + "\n")
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`*.pyc
