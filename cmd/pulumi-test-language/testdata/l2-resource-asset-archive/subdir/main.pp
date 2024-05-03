@@ -5,3 +5,7 @@ resource "ass" "asset-archive:index:AssetResource" {
 resource "arc" "asset-archive:index:ArchiveResource" {
     value = fileArchive("../archive.tar")
 }
+
+resource "dir" "asset-archive:index:ArchiveResource" {
+    value = fileArchive("../folder")
+}
