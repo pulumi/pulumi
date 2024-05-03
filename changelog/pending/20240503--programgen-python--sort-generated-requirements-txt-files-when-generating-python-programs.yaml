@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/python
+  description: Sort generated requirements.txt files when generating Python programs
