@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/engine
-  description: "Make --expect-no-changes fail even if the only changes are output changes"

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/diy,service
-  description: Promote snapshot closure errors from diagnostics to actual errors

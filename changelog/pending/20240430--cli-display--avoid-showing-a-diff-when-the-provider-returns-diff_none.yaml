@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Avoid showing a diff when the provider returns DIFF_NONE
