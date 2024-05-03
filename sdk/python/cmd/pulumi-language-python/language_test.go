@@ -216,8 +216,10 @@ func TestLanguage(t *testing.T) {
 				for _, msg := range result.Messages {
 					t.Log(msg)
 				}
-				t.Logf("stdout: %s", result.Stdout)
-				t.Logf("stderr: %s", result.Stderr)
+				if !result.Success {
+					t.Logf("stdout: %s", result.Stdout)
+					t.Logf("stderr: %s", result.Stderr)
+				}
 				assert.True(t, result.Success)
 			})
 		}
