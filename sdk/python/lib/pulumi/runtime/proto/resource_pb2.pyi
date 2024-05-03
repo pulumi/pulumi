@@ -904,21 +904,13 @@ class RegisterDefaultProviderRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROVIDER_FIELD_NUMBER: builtins.int
-    VERSION_FIELD_NUMBER: builtins.int
-    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
     provider: builtins.str
-    """the provider to register as the default provider."""
-    version: builtins.str
-    """the version of the provider to register as the default provider."""
-    plugin_download_url: builtins.str
-    """the plugin download URL of the provider to register as the default provider."""
+    """the provider ref to register as the default provider."""
     def __init__(
         self,
         *,
         provider: builtins.str = ...,
-        version: builtins.str = ...,
-        plugin_download_url: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["plugin_download_url", b"plugin_download_url", "provider", b"provider", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["provider", b"provider"]) -> None: ...
 
 global___RegisterDefaultProviderRequest = RegisterDefaultProviderRequest

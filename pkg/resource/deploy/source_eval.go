@@ -541,8 +541,8 @@ func (d *defaultProviders) setProviderAsDefault(ref providers.Reference, pkg, ve
 	if pluginDownloadURL != "" {
 		pluginDownloadURL = "-" + pluginDownloadURL
 	}
+
 	key := pkg + version + pluginDownloadURL
-	// TODO: this is a bit awkward with versioning.  E.g. should we also set `d.providers[pkg] = ref` here?
 	d.providers[key] = ref
 	if d.explicitDefaultProviders == nil {
 		d.explicitDefaultProviders = make(map[string]bool)
@@ -2138,8 +2138,20 @@ func (rm *resmon) RegisterDefaultProvider(
 	if !ok {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("unknown provider '%v'", ref))
 	}
+	goal, ok := rm.resGoals[ref.URN()]
+	if !ok {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("unknown provider '%v'", ref))
+	}
+	version, err := providers.GetProviderVersion(goal.Properties)
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to get provider version: %v", err))
+	}
+	pluginDownloadURL, err := providers.GetProviderDownloadURL(goal.Properties)
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to get plugin download URL: %v", err))
+	}
 	if err := rm.defaultProviders.setProviderAsDefault(
-		ref, provider.Pkg().String(), req.Version, req.PluginDownloadUrl,
+		ref, provider.Pkg().String(), version.String(), pluginDownloadURL,
 	); err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to set default provider: %v", err))
 	}

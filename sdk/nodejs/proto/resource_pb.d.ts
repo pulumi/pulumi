@@ -715,10 +715,6 @@ export namespace TransformResponse {
 export class RegisterDefaultProviderRequest extends jspb.Message { 
     getProvider(): string;
     setProvider(value: string): RegisterDefaultProviderRequest;
-    getVersion(): string;
-    setVersion(value: string): RegisterDefaultProviderRequest;
-    getPluginDownloadUrl(): string;
-    setPluginDownloadUrl(value: string): RegisterDefaultProviderRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterDefaultProviderRequest.AsObject;
@@ -733,8 +729,6 @@ export class RegisterDefaultProviderRequest extends jspb.Message {
 export namespace RegisterDefaultProviderRequest {
     export type AsObject = {
         provider: string,
-        version: string,
-        pluginDownloadUrl: string,
     }
 }
 

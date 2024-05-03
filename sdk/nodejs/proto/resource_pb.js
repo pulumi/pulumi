@@ -5962,9 +5962,7 @@ proto.pulumirpc.RegisterDefaultProviderRequest.prototype.toObject = function(opt
  */
 proto.pulumirpc.RegisterDefaultProviderRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 3, "")
+    provider: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -6005,14 +6003,6 @@ proto.pulumirpc.RegisterDefaultProviderRequest.deserializeBinaryFromReader = fun
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
       break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPluginDownloadUrl(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -6049,20 +6039,6 @@ proto.pulumirpc.RegisterDefaultProviderRequest.serializeBinaryToWriter = functio
       f
     );
   }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getPluginDownloadUrl();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
 };
 
 
@@ -6081,42 +6057,6 @@ proto.pulumirpc.RegisterDefaultProviderRequest.prototype.getProvider = function(
  */
 proto.pulumirpc.RegisterDefaultProviderRequest.prototype.setProvider = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string version = 2;
- * @return {string}
- */
-proto.pulumirpc.RegisterDefaultProviderRequest.prototype.getVersion = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.RegisterDefaultProviderRequest} returns this
- */
-proto.pulumirpc.RegisterDefaultProviderRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string plugin_download_url = 3;
- * @return {string}
- */
-proto.pulumirpc.RegisterDefaultProviderRequest.prototype.getPluginDownloadUrl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.RegisterDefaultProviderRequest} returns this
- */
-proto.pulumirpc.RegisterDefaultProviderRequest.prototype.setPluginDownloadUrl = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

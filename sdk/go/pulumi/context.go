@@ -1067,9 +1067,7 @@ func (ctx *Context) SetDefaultProvider(provider ProviderResource) error {
 		return err
 	}
 	_, err = ctx.state.monitor.RegisterDefaultProvider(ctx.ctx, &pulumirpc.RegisterDefaultProviderRequest{
-		Provider:          providerRef,
-		Version:           provider.getVersion(),
-		PluginDownloadUrl: provider.getPluginDownloadURL(),
+		Provider: providerRef,
 	})
 	if err != nil {
 		return err
