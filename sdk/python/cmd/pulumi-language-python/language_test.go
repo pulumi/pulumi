@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"testing"
@@ -59,10 +60,18 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
+	message := req.Message
+	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
+		// Cut down logs so they don't overwhelm the test output
+		if len(message) > 100 {
+			message = message[:100] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		}
+	}
+
 	if req.StreamId != 0 {
-		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, req.Message)
+		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
 	} else {
-		e.t.Logf("%s[%s]: %s", sev, req.Urn, req.Message)
+		e.t.Logf("%s[%s]: %s", sev, req.Urn, message)
 	}
 	return &pbempty.Empty{}, nil
 }
