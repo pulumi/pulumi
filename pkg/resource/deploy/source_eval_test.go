@@ -2049,7 +2049,7 @@ func TestDefaultProviders(t *testing.T) {
 			v1 := semver.MustParse("0.1.0")
 			d := &defaultProviders{
 				defaultProviderInfo: map[tokens.Package]workspace.PluginSpec{
-					tokens.Package(""): {
+					tokens.Package("pkg"): {
 						Version:           &v1,
 						PluginDownloadURL: "github://owner/repo",
 						Checksums:         map[string][]byte{"key": []byte("expected-checksum-value")},
@@ -2061,7 +2061,7 @@ func TestDefaultProviders(t *testing.T) {
 					},
 				},
 			}
-			req := d.normalizeProviderRequest(providers.ProviderRequest{})
+			req := d.normalizeProviderRequest(providers.NewProviderRequest(nil, tokens.Package("pkg"), "", nil))
 			assert.NotNil(t, req)
 			assert.Equal(t, &v1, req.Version())
 			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
