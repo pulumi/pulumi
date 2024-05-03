@@ -930,7 +930,15 @@ func (ctx *Context) ReadResource(
 	sourcePosition := ctx.getSourcePosition(2)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
+	//
+	// Resource read requests should not be happening concurrently with default provider
+	// registration.  Take a read lock here, so resource reads can happen in parallel, but will be
+	// blocked once the default provider registration starts.
+	//
+	// We take the lock before the goroutine starts, and keep it until it finishes.
+	ctx.state.defaultProviderLock.RLock()
 	go func() {
+		defer ctx.state.defaultProviderLock.RUnlock()
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var urn, resID string
 		var inputs *resourceInputs
