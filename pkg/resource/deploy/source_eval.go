@@ -534,15 +534,18 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 	return res.ref, res.err
 }
 
-func (d *defaultProviders) setProviderAsDefault(ref providers.Reference, pkg, version, pluginDownloadURL string) error {
-	if version != "" {
-		version = "-" + version
+func (d *defaultProviders) setProviderAsDefault(
+	ref providers.Reference, pkg, pluginDownloadURL string, version *semver.Version,
+) error {
+	var versionStr string
+	if version != nil {
+		versionStr = "-" + version.String()
 	}
 	if pluginDownloadURL != "" {
 		pluginDownloadURL = "-" + pluginDownloadURL
 	}
 
-	key := pkg + version + pluginDownloadURL
+	key := pkg + versionStr + pluginDownloadURL
 	d.providers[key] = ref
 	if d.explicitDefaultProviders == nil {
 		d.explicitDefaultProviders = make(map[string]bool)
@@ -2151,7 +2154,7 @@ func (rm *resmon) RegisterDefaultProvider(
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to get plugin download URL: %v", err))
 	}
 	if err := rm.defaultProviders.setProviderAsDefault(
-		ref, provider.Pkg().String(), version.String(), pluginDownloadURL,
+		ref, provider.Pkg().String(), pluginDownloadURL, version,
 	); err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to set default provider: %v", err))
 	}
