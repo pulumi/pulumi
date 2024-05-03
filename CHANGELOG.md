@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.115.0 (2024-05-02)
+
+
+### Features
+
+- [auto/{go,nodejs,python}] Add support for --import-file option on Preview with Automation API
+  [#16071](https://github.com/pulumi/pulumi/pull/16071)
+
+- [sdk/{go,nodejs,python}] Make transforms a stable, non-experimental feature
+  [#16080](https://github.com/pulumi/pulumi/pull/16080)
+
+- [sdk/python] Update python dynamic provider types for inputs to Dict[str, Any], from Any
+  [#16102](https://github.com/pulumi/pulumi/pull/16102)
+
+- [components/yaml] Upgrade pulumi-yaml to 1.7.0
+  [#16082](https://github.com/pulumi/pulumi/pull/16082)
+
+
+### Bug Fixes
+
+- [engine] Fix an issue with archives/assets at paths outside cwd.
+  [#16100](https://github.com/pulumi/pulumi/pull/16100)
+
+- [cli/display] Avoid showing a diff when the provider returns DIFF_NONE
+  [#16024](https://github.com/pulumi/pulumi/pull/16024)
+
+- [backend/{diy,service}] Promote snapshot closure errors from diagnostics to actual errors
+  [#16090](https://github.com/pulumi/pulumi/pull/16090)
+
+- [cli/engine] Make --expect-no-changes fail even if the only changes are output changes
+  [#15903](https://github.com/pulumi/pulumi/pull/15903)
+
 ## 3.114.0 (2024-04-26)
 
 
