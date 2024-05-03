@@ -645,6 +645,31 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			new.Dependencies = deps
 		}
 
+		// Remove any deleted resources from this resource's property dependencies
+		// lists. If we end up emptying a property dependency list, we'll remove the
+		// property from the map altogether.
+		for prop, deps := range new.PropertyDependencies {
+			if len(deps) != 0 {
+				newDeps := slice.Prealloc[resource.URN](len(deps))
+				for _, d := range deps {
+					if referenceable[d] {
+						newDeps = append(newDeps, d)
+					}
+				}
+
+				if len(newDeps) > 0 {
+					new.PropertyDependencies[prop] = newDeps
+				} else {
+					delete(new.PropertyDependencies, prop)
+				}
+			}
+		}
+
+		// Remove any deleted resources from DeletedWith properties.
+		if new.DeletedWith != "" && !referenceable[new.DeletedWith] {
+			new.DeletedWith = ""
+		}
+
 		// Add this resource to the resource list and mark it as referenceable.
 		resources = append(resources, new)
 		referenceable[new.URN] = true

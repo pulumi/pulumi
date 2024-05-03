@@ -163,10 +163,20 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
+			// For each resource, we'll ensure that all its dependencies are declared
+			// before it in the snapshot. In this case, "dependencies" includes the
+			// Dependencies field, as well as the resource's Parent (if it has one),
+			// any PropertyDependencies, and the DeletedWith field.
+			//
+			// If a dependency is missing, we'll return an error. In such cases, we'll
+			// walk through the remaining resources in the snapshot to see if the
+			// missing dependency is declared later in the snapshot or whether it is
+			// missing entirely, producing a specific error message depending on the
+			// outcome.
+
+			// Parent dependencies
 			if par := state.Parent; par != "" {
 				if _, has := urns[par]; !has {
-					// The parent isn't there; to give a good error message, see whether it's missing entirely, or
-					// whether it comes later in the snapshot (neither of which should ever happen).
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == par {
 							return fmt.Errorf("child resource %s's parent %s comes after it", urn, par)
@@ -188,16 +198,50 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
+			// Dependencies
 			for _, dep := range state.Dependencies {
 				if _, has := urns[dep]; !has {
-					// same as above - doing this for better error messages
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == dep {
 							return fmt.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
 						}
 					}
 
-					return fmt.Errorf("resource %s dependency %s refers to missing resource", urn, dep)
+					return fmt.Errorf("resource %s's dependency %s refers to missing resource", urn, dep)
+				}
+			}
+
+			// Property dependencies
+			for prop, deps := range state.PropertyDependencies {
+				for _, dep := range deps {
+					if _, has := urns[dep]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep {
+								return fmt.Errorf(
+									"resource %s's property dependency %s (from property %s) comes after it",
+									urn, other.URN, prop,
+								)
+							}
+						}
+
+						return fmt.Errorf(
+							"resource %s's property dependency %s (from property %s) refers to missing resource",
+							urn, dep, prop,
+						)
+					}
+				}
+			}
+
+			// DeletedWith
+			if dw := state.DeletedWith; dw != "" {
+				if _, has := urns[dw]; !has {
+					for _, other := range snap.Resources[i+1:] {
+						if other.URN == dw {
+							return fmt.Errorf("resource %s is specified as being deleted with %s, which comes after it", urn, other.URN)
+						}
+					}
+
+					return fmt.Errorf("resource %s is specified as being deleted with %s, which is missing", urn, dw)
 				}
 			}
 

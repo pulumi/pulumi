@@ -1510,11 +1510,14 @@ func TestProviderVersionAssignment(t *testing.T) {
 func TestDeletedWithOptionInheritance(t *testing.T) {
 	t.Parallel()
 
-	expectedUrn := resource.CreateURN("expect-this", "pkg:index:type", "", "project", "stack")
+	var deletionDepURN resource.URN
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		deletionDep, err := monitor.RegisterResource("pkgA:m:typA", "deletable", false)
+		assert.NoError(t, err)
+
 		parentResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			DeletedWith: expectedUrn,
+			DeletedWith: deletionDep.URN,
 		})
 		assert.NoError(t, err)
 
@@ -1523,6 +1526,7 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
+		deletionDepURN = deletionDep.URN
 		return nil
 	})
 
@@ -1546,8 +1550,8 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	for _, res := range snap.Resources[1:] {
-		assert.Equal(t, expectedUrn, res.DeletedWith)
+	for _, res := range snap.Resources[2:] {
+		assert.Equal(t, deletionDepURN, res.DeletedWith)
 	}
 	assert.NoError(t, err)
 }
@@ -1558,12 +1562,15 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	t.Parallel()
 
-	expectedUrn := resource.CreateURN("expect-this", "pkg:index:type", "", "project", "stack")
+	var deletionDepURN resource.URN
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		deletionDep, err := monitor.RegisterResource("pkgA:m:typComponent", "deletable", false)
+		assert.NoError(t, err)
+
 		parentResp, err := monitor.RegisterResource("pkgA:m:typComponent", "resA", false, deploytest.ResourceOptions{
 			Remote:      true,
-			DeletedWith: expectedUrn,
+			DeletedWith: deletionDep.URN,
 		})
 		assert.NoError(t, err)
 
@@ -1572,6 +1579,7 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
+		deletionDepURN = deletionDep.URN
 		return nil
 	})
 
@@ -1615,8 +1623,8 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	for _, res := range snap.Resources[1:] {
-		assert.Equal(t, expectedUrn, res.DeletedWith)
+	for _, res := range snap.Resources[2:] {
+		assert.Equal(t, deletionDepURN, res.DeletedWith)
 	}
 	assert.NoError(t, err)
 }

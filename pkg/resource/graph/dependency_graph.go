@@ -48,6 +48,16 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 				return true
 			}
 		}
+		for _, deps := range candidate.PropertyDependencies {
+			for _, dep := range deps {
+				if dependentSet[dep] {
+					return true
+				}
+			}
+		}
+		if candidate.DeletedWith != "" && dependentSet[candidate.DeletedWith] {
+			return true
+		}
 		if candidate.Provider != "" {
 			ref, err := providers.ParseReference(candidate.Provider)
 			contract.AssertNoErrorf(err, "cannot parse provider reference %q", candidate.Provider)
@@ -110,6 +120,18 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 				return true
 			}
 		}
+		for _, deps := range candidate.PropertyDependencies {
+			for _, dep := range deps {
+				if len(dependentSet[dep]) == 1 && len(nonDependentSet[dep]) == 0 {
+					return true
+				}
+			}
+		}
+		if candidate.DeletedWith != "" {
+			if len(dependentSet[candidate.DeletedWith]) == 1 && len(nonDependentSet[candidate.DeletedWith]) == 0 {
+				return true
+			}
+		}
 		if candidate.Provider != "" {
 			ref, err := providers.ParseReference(candidate.Provider)
 			contract.AssertNoErrorf(err, "cannot parse provider reference %q", candidate.Provider)
@@ -155,14 +177,27 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 	return dependents
 }
 
-// DependenciesOf returns a set of resources upon which the given resource depends. The resource's parent is
-// included in the returned set.
+// DependenciesOf returns a set of resources upon which the given resource
+// depends directly. This includes the resource's provider, parent, any
+// resources in the `Dependencies` list, any resources in the
+// `PropertyDependencies` map, and any resource referenced by the `DeletedWith`
+// field.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resource.State] {
 	set := mapset.NewSet[*resource.State]()
 
 	dependentUrns := make(map[resource.URN]bool)
 	for _, dep := range res.Dependencies {
 		dependentUrns[dep] = true
+	}
+
+	for _, deps := range res.PropertyDependencies {
+		for _, dep := range deps {
+			dependentUrns[dep] = true
+		}
+	}
+
+	if res.DeletedWith != "" {
+		dependentUrns[res.DeletedWith] = true
 	}
 
 	if res.Provider != "" {
@@ -201,9 +236,11 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resou
 	return set
 }
 
-// `TransitiveDependenciesOf` calculates the set of resources that `r` depends
-// on, directly or indirectly. This includes as a `Parent`, a member of r's
-// `Dependencies` list or as a provider.
+// `TransitiveDependenciesOf` calculates the set of resources upon which the
+// given resource depends, directly or indirectly. This includes the resource's
+// provider, parent, any resources in the `Dependencies` list, any resources in
+// the `PropertyDependencies` map, and any resource referenced by the
+// `DeletedWith` field.
 //
 // This function is linear in the number of resources in the `DependencyGraph`.
 func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) mapset.Set[*resource.State] {
@@ -231,12 +268,14 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) mapset.Se
 			dependencies.Add(r.resource)
 		}
 	}
-	// We don't want to include `r` as it's own dependency.
+	// We don't want to include `r` as its own dependency.
 	dependencies.Remove(r)
 	return dependencies
 }
 
-// Mark a resource and its parents as a dependency. This is a helper function for `TransitiveDependenciesOf`.
+// Mark a resource and its provider, parent, dependencies, property
+// dependencies, and deletion dependencies, as a dependency. This is a helper
+// function for `TransitiveDependenciesOf`.
 func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedProviders map[resource.URN]struct{}) {
 	r := urns[urn]
 	for {
@@ -249,10 +288,18 @@ func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedPro
 		for _, dep := range r.resource.Dependencies {
 			markAsDependency(dep, urns, dependedProviders)
 		}
+		for _, deps := range r.resource.PropertyDependencies {
+			for _, dep := range deps {
+				markAsDependency(dep, urns, dependedProviders)
+			}
+		}
+		if r.resource.DeletedWith != "" {
+			markAsDependency(r.resource.DeletedWith, urns, dependedProviders)
+		}
 
-		// If p is already marked, we don't need to continue to traverse. All
-		// nodes above p will have already been marked. This is a property of
-		// `resources` being topologically sorted.
+		// If the resource's parent is already marked, we don't need to continue to
+		// traverse. All nodes above its parent will have already been marked. This
+		// is a property of the set of resources being topologically sorted.
 		if p, ok := urns[r.resource.Parent]; ok && !p.marked {
 			r = p
 		} else {
