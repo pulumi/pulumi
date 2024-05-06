@@ -41,6 +41,9 @@ import (
 type hostEngine struct {
 	pulumirpc.UnimplementedEngineServer
 	t *testing.T
+
+	logRepeat       int
+	previousMessage string
 }
 
 func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
@@ -65,6 +68,17 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 			message = message[:100] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
 		}
 	}
+
+	if e.previousMessage == message {
+		e.logRepeat++
+		return &pbempty.Empty{}, nil
+	}
+
+	if e.logRepeat > 1 {
+		e.t.Logf("Last message repeated %d times", e.logRepeat)
+	}
+	e.logRepeat = 1
+	e.previousMessage = message
 
 	if req.StreamId != 0 {
 		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
