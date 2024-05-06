@@ -307,24 +307,29 @@ var languageTests = map[string]languageTest{
 				) {
 					requireStackResource(l, res, changes)
 
-					// Check we have the the asset and archive resources in the snapshot, the provider and the stack.
-					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
 
 					provider := snap.Resources[1]
 					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
 
-					// We don't know what order the asset and archive resources will be in, so check both.
-					var asset, archive *resource.State
-					if snap.Resources[2].Type == "asset-archive:index:AssetResource" {
-						asset = snap.Resources[2]
-						archive = snap.Resources[3]
-					} else {
-						asset = snap.Resources[3]
-						archive = snap.Resources[2]
+					// We don't know what order the resources will be in so we map by name
+					resources := map[string]*resource.State{}
+					for _, r := range snap.Resources[2:] {
+						resources[r.URN.Name()] = r
 					}
 
+					asset, ok := resources["ass"]
+					require.True(l, ok, "expected asset resource")
 					assert.Equal(l, "asset-archive:index:AssetResource", asset.Type.String(), "expected asset resource")
+
+					archive, ok := resources["arc"]
+					require.True(l, ok, "expected archive resource")
 					assert.Equal(l, "asset-archive:index:ArchiveResource", archive.Type.String(), "expected archive resource")
+
+					folder, ok := resources["dir"]
+					require.True(l, ok, "expected folder resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", folder.Type.String(), "expected archive resource")
 
 					main := filepath.Join(projectDirectory, "subdir")
 
@@ -349,6 +354,17 @@ var languageTests = map[string]languageTest{
 
 					assert.Equal(l, want, archive.Inputs, "expected inputs to be {value: %v}", archiveValue)
 					assert.Equal(l, archive.Inputs, archive.Outputs, "expected inputs and outputs to match")
+
+					folderValue, err := resource.NewPathArchiveWithWD("../folder", main)
+					require.NoError(l, err)
+					assert.Equal(l, "25df47ed6b3c8e07479e5d9c908eff93d624ec693b6aa7559a9bcb084db70774", folderValue.Hash)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": folderValue,
+					})
+
+					assert.Equal(l, want, folder.Inputs, "expected inputs to be {value: %v}", folderValue)
+					assert.Equal(l, folder.Inputs, folder.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

@@ -238,7 +238,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		Path: "../archive.tar",
 	}, plugin.MarshalOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal asset: %w", err)
+		return nil, fmt.Errorf("could not marshal archive: %w", err)
 	}
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
@@ -248,6 +248,27 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": archive,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register resource: %w", err)
+	}
+
+	folder, err := plugin.MarshalArchive(&resource.Archive{
+		Path: "../folder",
+	}, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal folder: %w", err)
+	}
+
+	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "asset-archive:index:ArchiveResource",
+		Custom: true,
+		Name:   "dir",
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": folder,
 			},
 		},
 	})

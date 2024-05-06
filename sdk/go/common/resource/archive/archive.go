@@ -321,11 +321,20 @@ type Reader interface {
 
 // Open returns an ArchiveReader that can be used to iterate over the named blobs that comprise the archive.
 func (a *Archive) Open() (Reader, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return a.OpenWithWD(wd)
+}
+
+// Open returns an ArchiveReader that can be used to iterate over the named blobs that comprise the archive.
+func (a *Archive) OpenWithWD(wd string) (Reader, error) {
 	contract.Assertf(a.HasContents(), "cannot read an archive that has no contents")
 	if a.IsAssets() {
 		return a.readAssets()
 	} else if a.IsPath() {
-		return a.readPath()
+		return a.readPath(wd)
 	} else if a.IsURI() {
 		return a.readURI()
 	}
@@ -452,10 +461,14 @@ func (r *directoryArchiveReader) Close() error {
 	return nil
 }
 
-func (a *Archive) readPath() (Reader, error) {
+func (a *Archive) readPath(wd string) (Reader, error) {
 	// To read a path-based archive, read that file and use its extension to ascertain what format to use.
 	path, ispath := a.GetPath()
 	contract.Assertf(ispath, "Expected a path-based asset")
+
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(wd, path)
+	}
 
 	format := detectArchiveFormat(path)
 
@@ -580,8 +593,18 @@ func (a *Archive) Bytes(format Format) ([]byte, error) {
 // Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
 // copying as is feasible, however if the desired format is different from the source, it will need to translate.
 func (a *Archive) Archive(format Format, w io.Writer) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	return a.ArchiveWithWD(format, w, wd)
+}
+
+// Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
+// copying as is feasible, however if the desired format is different from the source, it will need to translate.
+func (a *Archive) ArchiveWithWD(format Format, w io.Writer, wd string) error {
 	// If the source format is the same, just return that.
-	if sf, ss, err := a.ReadSourceArchive(); sf != NotArchive && sf == format {
+	if sf, ss, err := a.ReadSourceArchiveWithWD(wd); sf != NotArchive && sf == format {
 		if err != nil {
 			return err
 		}
@@ -591,11 +614,11 @@ func (a *Archive) Archive(format Format, w io.Writer) error {
 
 	switch format {
 	case TarArchive:
-		return a.archiveTar(w)
+		return a.archiveTar(w, wd)
 	case TarGZIPArchive:
-		return a.archiveTarGZIP(w)
+		return a.archiveTarGZIP(w, wd)
 	case ZIPArchive:
-		return a.archiveZIP(w)
+		return a.archiveZIP(w, wd)
 	default:
 		contract.Failf("Illegal archive type: %v", format)
 		return nil
@@ -639,9 +662,9 @@ func addNextFileToTar(r Reader, tw *tar.Writer, seenFiles map[string]bool) error
 	return err
 }
 
-func (a *Archive) archiveTar(w io.Writer) error {
+func (a *Archive) archiveTar(w io.Writer, wd string) error {
 	// Open the archive.
-	reader, err := a.Open()
+	reader, err := a.OpenWithWD(wd)
 	if err != nil {
 		return err
 	}
@@ -660,9 +683,9 @@ func (a *Archive) archiveTar(w io.Writer) error {
 	return tw.Close()
 }
 
-func (a *Archive) archiveTarGZIP(w io.Writer) error {
+func (a *Archive) archiveTarGZIP(w io.Writer, wd string) error {
 	z := gzip.NewWriter(w)
-	return a.archiveTar(z)
+	return a.archiveTar(z, wd)
 }
 
 // addNextFileToZIP adds the next file in the given archive to the given ZIP file. Returns io.EOF if the archive
@@ -708,9 +731,9 @@ func addNextFileToZIP(r Reader, zw *zip.Writer, seenFiles map[string]bool) error
 	return nil
 }
 
-func (a *Archive) archiveZIP(w io.Writer) error {
+func (a *Archive) archiveZIP(w io.Writer, wd string) error {
 	// Open the archive.
-	reader, err := a.Open()
+	reader, err := a.OpenWithWD(wd)
 	if err != nil {
 		return err
 	}
@@ -788,7 +811,7 @@ func (a *Archive) EnsureHashWithWD(wd string) error {
 		} else {
 			// Otherwise, it's not an archive; we'll need to transform it into one.  Pick tar since it avoids
 			// any superfluous compression which doesn't actually help us in this situation.
-			err := a.Archive(TarArchive, hash)
+			err := a.ArchiveWithWD(TarArchive, hash, wd)
 			if err != nil {
 				return err
 			}
