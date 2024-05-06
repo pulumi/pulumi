@@ -6,8 +6,10 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from .component import *
+from .my_function import *
 from .provider import *
 from ._inputs import *
+from . import outputs
 _utilities.register(
     resource_modules="""
 [

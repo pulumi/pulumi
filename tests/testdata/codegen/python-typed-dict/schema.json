@@ -17,6 +17,50 @@
                 "myProp"
             ],
             "type": "object"
+        },
+        "typedDictExample:index:MyOutputType": {
+            "properties": {
+                "someResult": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "someResult"
+            ],
+            "type": "object"
+        }
+    },
+    "functions": {
+        "typedDictExample:index:MyFunction": {
+            "inputs": {
+                "properties": {
+                    "simpleProp": {
+                        "type": "string"
+                    },
+                    "myType": {
+                        "$ref": "#/types/typedDictExample:index:MyType"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "myType"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "simpleOutput": {
+                        "type": "string"
+                    },
+                    "myOutput": {
+                        "$ref": "#/types/typedDictExample:index:MyOutputType"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "simpleOutput",
+                    "myOutput"
+                ]
+            }
         }
     },
     "resources": {

@@ -16,9 +16,56 @@ from . import _utilities
 import pulumi_kubernetes
 
 __all__ = [
+    'MyType',
+    'MyTypeDict',
     'MyTypeArgs',
     'MyTypeArgsDict',
 ]
+
+class MyTypeDict(TypedDict):
+    my_prop: str
+    external_prop: NotRequired['pulumi_kubernetes.core.v1.PodArgs']
+    my_other_prop: NotRequired[float]
+
+@pulumi.input_type
+class MyType:
+    def __init__(__self__, *,
+                 my_prop: str,
+                 external_prop: Optional['pulumi_kubernetes.core.v1.PodArgs'] = None,
+                 my_other_prop: Optional[float] = None):
+        pulumi.set(__self__, "my_prop", my_prop)
+        if external_prop is not None:
+            pulumi.set(__self__, "external_prop", external_prop)
+        if my_other_prop is not None:
+            pulumi.set(__self__, "my_other_prop", my_other_prop)
+
+    @property
+    @pulumi.getter(name="myProp")
+    def my_prop(self) -> str:
+        return pulumi.get(self, "my_prop")
+
+    @my_prop.setter
+    def my_prop(self, value: str):
+        pulumi.set(self, "my_prop", value)
+
+    @property
+    @pulumi.getter(name="externalProp")
+    def external_prop(self) -> Optional['pulumi_kubernetes.core.v1.PodArgs']:
+        return pulumi.get(self, "external_prop")
+
+    @external_prop.setter
+    def external_prop(self, value: Optional['pulumi_kubernetes.core.v1.PodArgs']):
+        pulumi.set(self, "external_prop", value)
+
+    @property
+    @pulumi.getter(name="myOtherProp")
+    def my_other_prop(self) -> Optional[float]:
+        return pulumi.get(self, "my_other_prop")
+
+    @my_other_prop.setter
+    def my_other_prop(self, value: Optional[float]):
+        pulumi.set(self, "my_other_prop", value)
+
 
 class MyTypeArgsDict(TypedDict):
     my_prop: pulumi.Input[str]
