@@ -156,20 +156,20 @@ class NextSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_list(self):
         test_list = [1, 2, 3]
-        props = await rpc.serialize_property(test_list, [])
+        props = await rpc.serialize_property(test_list, [], None)
         self.assertEqual(test_list, props)
 
     @pulumi_test
     async def test_tuple(self):
         test_tuple = tuple([1, 2, 3])
-        props = await rpc.serialize_property(test_tuple, [])
+        props = await rpc.serialize_property(test_tuple, [], None)
         self.assertEqual([1, 2, 3], props)
 
     @pulumi_test
     async def test_future(self):
         fut = asyncio.Future()
         fut.set_result(42)
-        prop = await rpc.serialize_property(fut, [])
+        prop = await rpc.serialize_property(fut, [], None)
         self.assertEqual(42, prop)
 
     @pulumi_test
@@ -178,7 +178,7 @@ class NextSerializationTests(unittest.TestCase):
             await asyncio.sleep(0.1)
             return 42
 
-        prop = await rpc.serialize_property(fun(), [])
+        prop = await rpc.serialize_property(fun(), [], None)
         self.assertEqual(42, prop)
 
     @pulumi_test
@@ -186,7 +186,7 @@ class NextSerializationTests(unittest.TestCase):
         fut = asyncio.Future()
         fut.set_result(99)
         test_dict = {"a": 42, "b": fut}
-        prop = await rpc.serialize_property(test_dict, [])
+        prop = await rpc.serialize_property(test_dict, [], None)
         self.assertDictEqual({"a": 42, "b": 99}, prop)
 
     @pulumi_test
@@ -201,13 +201,13 @@ class NextSerializationTests(unittest.TestCase):
 
         settings.SETTINGS.feature_support["resourceReferences"] = False
         deps = []
-        prop = await rpc.serialize_property(res, deps)
+        prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(id, prop)
 
         settings.SETTINGS.feature_support["resourceReferences"] = True
         deps = []
-        prop = await rpc.serialize_property(res, deps)
+        prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res, res], deps)
         self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
         self.assertEqual(urn, prop["urn"])
@@ -231,13 +231,13 @@ class NextSerializationTests(unittest.TestCase):
 
         settings.SETTINGS.feature_support["resourceReferences"] = False
         deps = []
-        prop = await rpc.serialize_property(res, deps)
+        prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(id, prop)
 
         settings.SETTINGS.feature_support["resourceReferences"] = True
         deps = []
-        prop = await rpc.serialize_property(res, deps)
+        prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res, res], deps)
         self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
         self.assertEqual(urn, prop["urn"])
@@ -260,13 +260,13 @@ class NextSerializationTests(unittest.TestCase):
 
         settings.SETTINGS.feature_support["resourceReferences"] = False
         deps = []
-        prop = await rpc.serialize_property(res, deps)
+        prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(urn, prop)
 
         settings.SETTINGS.feature_support["resourceReferences"] = True
         deps = []
-        prop = await rpc.serialize_property(res, deps)
+        prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
         self.assertEqual(urn, prop["urn"])
@@ -281,21 +281,21 @@ class NextSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_string_asset(self):
         asset = StringAsset("Python 3 is cool")
-        prop = await rpc.serialize_property(asset, [])
+        prop = await rpc.serialize_property(asset, [], None)
         self.assertEqual(rpc._special_asset_sig, prop[rpc._special_sig_key])
         self.assertEqual("Python 3 is cool", prop["text"])
 
     @pulumi_test
     async def test_file_asset(self):
         asset = FileAsset("hello.txt")
-        prop = await rpc.serialize_property(asset, [])
+        prop = await rpc.serialize_property(asset, [], None)
         self.assertEqual(rpc._special_asset_sig, prop[rpc._special_sig_key])
         self.assertEqual("hello.txt", prop["path"])
 
     @pulumi_test
     async def test_remote_asset(self):
         asset = RemoteAsset("https://pulumi.com")
-        prop = await rpc.serialize_property(asset, [])
+        prop = await rpc.serialize_property(asset, [], None)
         self.assertEqual(rpc._special_asset_sig, prop[rpc._special_sig_key])
         self.assertEqual("https://pulumi.com", prop["uri"])
 
@@ -310,7 +310,7 @@ class NextSerializationTests(unittest.TestCase):
         out = Output({res}, fut, known_fut)
 
         deps = [existing]
-        prop = await rpc.serialize_property(out, deps)
+        prop = await rpc.serialize_property(out, deps, None)
         self.assertListEqual(deps, [existing, res])
         self.assertEqual(42, prop)
 
@@ -349,8 +349,8 @@ class NextSerializationTests(unittest.TestCase):
         combined = Output.all(out, other)
         combined_dict = Output.all(out=out, other=other)
         deps = []
-        prop = await rpc.serialize_property(combined, deps)
-        prop_dict = await rpc.serialize_property(combined_dict, deps)
+        prop = await rpc.serialize_property(combined, deps, None)
+        prop_dict = await rpc.serialize_property(combined_dict, deps, None)
         self.assertSetEqual(set(deps), {res})
         self.assertEqual([42, 99], prop)
         self.assertEqual({"out": 42, "other": 99}, prop_dict)
@@ -359,7 +359,7 @@ class NextSerializationTests(unittest.TestCase):
     async def test_output_all_no_inputs(self):
         empty_all = Output.all()
         deps = []
-        prop = await rpc.serialize_property(empty_all, deps)
+        prop = await rpc.serialize_property(empty_all, deps, None)
         self.assertEqual([], prop)
 
     @pulumi_test
@@ -396,8 +396,8 @@ class NextSerializationTests(unittest.TestCase):
         combined = Output.all(out, other_out)
         combined_dict = Output.all(out=out, other_out=other_out)
         deps = []
-        prop = await rpc.serialize_property(combined, deps)
-        prop_dict = await rpc.serialize_property(combined_dict, deps)
+        prop = await rpc.serialize_property(combined, deps, None)
+        prop_dict = await rpc.serialize_property(combined_dict, deps, None)
         self.assertSetEqual(set(deps), {res, other})
         self.assertEqual([42, 99], prop)
         self.assertEqual({"out": 42, "other_out": 99}, prop_dict)
@@ -421,8 +421,8 @@ class NextSerializationTests(unittest.TestCase):
         combined = Output.all(out, other_out)
         combined_dict = Output.all(out=out, other_out=other_out)
         deps = []
-        prop = await rpc.serialize_property(combined, deps)
-        prop_dict = await rpc.serialize_property(combined_dict, deps)
+        prop = await rpc.serialize_property(combined, deps, None)
+        prop_dict = await rpc.serialize_property(combined_dict, deps, None)
         self.assertSetEqual(set(deps), {res, other})
 
         # The contents of the list are unknown if any of the Outputs used to
@@ -439,7 +439,7 @@ class NextSerializationTests(unittest.TestCase):
         known_fut.set_result(False)
         out = Output({res}, fut, known_fut)
         deps = []
-        prop = await rpc.serialize_property(out, deps)
+        prop = await rpc.serialize_property(out, deps, None)
         self.assertListEqual(deps, [res])
         self.assertEqual(rpc.UNKNOWN, prop)
 
@@ -448,7 +448,7 @@ class NextSerializationTests(unittest.TestCase):
         archive = AssetArchive({"foo": StringAsset("bar")})
 
         deps = []
-        prop = await rpc.serialize_property(archive, deps)
+        prop = await rpc.serialize_property(archive, deps, None)
         self.assertDictEqual(
             {
                 rpc._special_sig_key: rpc._special_archive_sig,
@@ -462,14 +462,14 @@ class NextSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_remote_archive(self):
         asset = RemoteArchive("https://pulumi.com")
-        prop = await rpc.serialize_property(asset, [])
+        prop = await rpc.serialize_property(asset, [], None)
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
         self.assertEqual("https://pulumi.com", prop["uri"])
 
     @pulumi_test
     async def test_file_archive(self):
         asset = FileArchive("foo.tar.gz")
-        prop = await rpc.serialize_property(asset, [])
+        prop = await rpc.serialize_property(asset, [], None)
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
         self.assertEqual("foo.tar.gz", prop["path"])
 
@@ -481,7 +481,7 @@ class NextSerializationTests(unittest.TestCase):
 
         error = None
         try:
-            prop = await rpc.serialize_property(MyClass(), [])
+            prop = await rpc.serialize_property(MyClass(), [], None)
         except ValueError as err:
             error = err
 
@@ -493,7 +493,7 @@ class NextSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_string(self):
         # Ensure strings are serialized as strings (and not sequences).
-        prop = await rpc.serialize_property("hello world", [])
+        prop = await rpc.serialize_property("hello world", [], None)
         self.assertEqual("hello world", prop)
 
     @pulumi_test
@@ -507,7 +507,7 @@ class NextSerializationTests(unittest.TestCase):
 
         for case in cases:
             with self.assertRaises(ValueError):
-                await rpc.serialize_property(case, [])
+                await rpc.serialize_property(case, [], None)
 
     @pulumi_test
     async def test_distinguished_unknown_output(self):
@@ -1013,7 +1013,7 @@ class NextSerializationTests(unittest.TestCase):
             ),
             is_known=True,
         )
-        prop = await rpc.serialize_property(out, [])
+        prop = await rpc.serialize_property(out, [], None)
 
         self.assertTrue(await out.is_known())
         self.assertEqual(prop["values"], ["foo", "bar"])
@@ -1271,7 +1271,7 @@ class InputTypeSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_simple_input_type(self):
         it = FooArgs(first_arg="hello", second_arg=42)
-        prop = await rpc.serialize_property(it, [])
+        prop = await rpc.serialize_property(it, [], None)
         self.assertEqual({"firstArg": "hello", "secondArg": 42}, prop)
 
     @pulumi_test
@@ -1279,7 +1279,7 @@ class InputTypeSerializationTests(unittest.TestCase):
         it = ListDictInputArgs(
             a=["hi"], b=["there"], c={"hello": "world"}, d={"foo": "bar"}
         )
-        prop = await rpc.serialize_property(it, [])
+        prop = await rpc.serialize_property(it, [], None)
         self.assertEqual(
             {"a": ["hi"], "b": ["there"], "c": {"hello": "world"}, "d": {"foo": "bar"}},
             prop,
@@ -1295,7 +1295,7 @@ class InputTypeSerializationTests(unittest.TestCase):
             }.get(prop) or prop
 
         it = BarArgs({"foo_bar": "hello", "foo_baz": "world"})
-        prop = await rpc.serialize_property(it, [], transformer)
+        prop = await rpc.serialize_property(it, [], None, None, transformer)
         # Input type keys are not transformed, but keys of nested
         # dicts are still transformed.
         self.assertEqual(
@@ -1328,19 +1328,19 @@ class EnumSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_string_enum(self):
         one = StrEnum.ONE
-        prop = await rpc.serialize_property(one, [])
+        prop = await rpc.serialize_property(one, [], None)
         self.assertEqual(StrEnum.ONE, prop)
 
     @pulumi_test
     async def test_int_enum(self):
         one = IntEnum.ONE
-        prop = await rpc.serialize_property(one, [])
+        prop = await rpc.serialize_property(one, [], None)
         self.assertEqual(IntEnum.ONE, prop)
 
     @pulumi_test
     async def test_float_enum(self):
         one = FloatEnum.ZERO_POINT_ONE
-        prop = await rpc.serialize_property(one, [])
+        prop = await rpc.serialize_property(one, [], None)
         self.assertEqual(FloatEnum.ZERO_POINT_ONE, prop)
 
 
@@ -1462,7 +1462,7 @@ class TypeMetaDataSerializationTests(unittest.TestCase):
 
         for props in tests:
             result = await rpc.serialize_properties(
-                props, {}, transformer, SerializationArgs
+                props, {}, None, transformer, SerializationArgs
             )
 
             self.assertEqual("hello", result["someValue"])
