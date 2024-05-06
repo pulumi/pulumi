@@ -67,10 +67,40 @@ type DockerImage struct {
 	Credentials *DockerImageCredentials `json:"credentials,omitempty"`
 }
 
+func (d *DockerImage) MarshalJSON() ([]byte, error) {
+	if d.Credentials != nil {
+		return json.Marshal(dockerImageJSON{
+			Reference:   d.Reference,
+			Credentials: d.Credentials,
+		})
+	}
+	return json.Marshal(d.Reference)
+}
+
+func (d *DockerImage) UnmarshalJSON(bytes []byte) error {
+	var image dockerImageJSON
+	if err := json.Unmarshal(bytes, &image); err == nil {
+		d.Reference, d.Credentials = image.Reference, image.Credentials
+		return nil
+	}
+
+	var reference string
+	if err := json.Unmarshal(bytes, &reference); err != nil {
+		return err
+	}
+	d.Reference, d.Credentials = reference, nil
+	return nil
+}
+
 // DockerImageCredentials describes the credentials needed to access a Docker repository.
 type DockerImageCredentials struct {
 	Username string      `json:"username"`
 	Password SecretValue `json:"password"`
+}
+
+type dockerImageJSON struct {
+	Reference   string                  `json:"reference" yaml:"reference"`
+	Credentials *DockerImageCredentials `json:"credentials,omitempty" yaml:"credentials,omitempty"`
 }
 
 // SourceContext describes some source code, and how to obtain it.
