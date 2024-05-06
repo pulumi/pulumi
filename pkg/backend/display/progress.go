@@ -76,10 +76,12 @@ type progressRenderer interface {
 
 // ProgressDisplay organizes all the information needed for a dynamically updated "progress" view of an update.
 type ProgressDisplay struct {
-	// m is used to synchronize access to eventUrnToResourceRow, which is accessed
-	// by the treeRenderer, and to opStopwatch, which is used to track the times
+	// eventMutex is used to synchronize access to eventUrnToResourceRow, which is accessed
+	// by the treeRenderer
+	eventMutex sync.RWMutex
+	// stopwatchMutex is used to synchronixe access to o opStopwatch, which is used to track the times
 	// taken to perform actions on resources.
-	m sync.RWMutex
+	stopwatchMutex sync.RWMutex
 
 	opts Options
 
@@ -316,8 +318,8 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	// We take the reader lock here because this is called from the renderer and reads from
 	// the eventUrnToResourceRow map
-	display.m.RLock()
-	defer display.m.RUnlock()
+	display.eventMutex.RLock()
+	defer display.eventMutex.RUnlock()
 
 	result := []*treeNode{}
 
@@ -450,8 +452,8 @@ func removeInfoColumnIfUnneeded(rows [][]string) {
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
 	// Take the read lock here because we are reading from the eventUrnToResourceRow map
-	display.m.RLock()
-	defer display.m.RUnlock()
+	display.eventMutex.RLock()
+	defer display.eventMutex.RUnlock()
 
 	// Figure out the rows that are currently in progress.
 	var inProgressRows []ResourceRow
@@ -825,8 +827,8 @@ func (display *ProgressDisplay) processTick() {
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
 	// Take the write lock here because this can write the the eventUrnToResourceRow map
-	display.m.Lock()
-	defer display.m.Unlock()
+	display.eventMutex.Lock()
+	defer display.eventMutex.Unlock()
 
 	// If there's already a row for this URN, return it.
 	row, has := display.eventUrnToResourceRow[urn]
@@ -967,12 +969,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// Register the resource update start time to calculate duration
 		// and time elapsed.
 		start := time.Now()
-		display.m.Lock()
+		display.stopwatchMutex.Lock()
 		display.opStopwatch.start[step.URN] = start
 
 		// Clear out potential event end timings for prior operations on the same resource.
 		delete(display.opStopwatch.end, step.URN)
-		display.m.Unlock()
+		display.stopwatchMutex.Unlock()
 
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
@@ -982,9 +984,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// Register the resource update end time to calculate duration
 		// to display.
 		end := time.Now()
-		display.m.Lock()
+		display.stopwatchMutex.Lock()
 		display.opStopwatch.end[step.URN] = end
-		display.m.Unlock()
+		display.stopwatchMutex.Unlock()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -1022,8 +1024,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
 	// We need too take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock
-	display.m.Lock()
-	defer display.m.Unlock()
+	display.eventMutex.Lock()
+	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
@@ -1034,7 +1036,7 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 }
 
 func (display *ProgressDisplay) ensureHeaderAndStackRows() {
-	contract.Assertf(!display.m.TryLock(), "ProgressDisplay.ensureHeaderAndStackRows MUST be called "+
+	contract.Assertf(!display.eventMutex.TryLock(), "ProgressDisplay.ensureHeaderAndStackRows MUST be called "+
 		"under the write lock")
 	if display.headerRow == nil {
 		// about to make our first status message.  make sure we present the header line first.
@@ -1192,17 +1194,17 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			return opText
 		}
 
-		display.m.RLock()
+		display.stopwatchMutex.RLock()
 		start, ok := display.opStopwatch.start[step.URN]
-		display.m.RUnlock()
+		display.stopwatchMutex.RUnlock()
 
 		if !ok {
 			return opText
 		}
 
-		display.m.RLock()
+		display.stopwatchMutex.RLock()
 		end, ok := display.opStopwatch.end[step.URN]
-		display.m.RUnlock()
+		display.stopwatchMutex.RUnlock()
 
 		if !ok {
 			return opText
@@ -1372,9 +1374,9 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		}
 
 		// Calculate operation time elapsed.
-		display.m.RLock()
+		display.stopwatchMutex.RLock()
 		start, ok := display.opStopwatch.start[step.URN]
-		display.m.RUnlock()
+		display.stopwatchMutex.RUnlock()
 
 		if !ok {
 			return opText
