@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -177,7 +176,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		ExpectFailure: false,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -351,7 +350,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -375,7 +374,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -400,7 +399,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -424,7 +423,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -448,7 +447,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -474,7 +473,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -576,7 +575,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, changes display.ResourceChanges, err error,
+				evts []Event, err error,
 			) error {
 				assert.NoError(t, err)
 				assert.True(t, len(entries) > 0)

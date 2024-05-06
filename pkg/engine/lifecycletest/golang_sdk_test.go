@@ -160,7 +160,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, changes display.ResourceChanges, err error,
+						events []Event, err error,
 					) error {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
@@ -262,7 +262,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 
@@ -286,7 +286,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, changes display.ResourceChanges, err error,
+			evts []Event, err error,
 		) error {
 			assert.NoError(t, err)
 			AssertSameSteps(t, []StepSummary{
@@ -349,7 +349,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						evts []Event, changes display.ResourceChanges, err error,
+						evts []Event, err error,
 					) error {
 						assert.NoError(t, err)
 
@@ -598,7 +598,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 			{
 				Op: Update,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-					events []Event, changes display.ResourceChanges, err error,
+					events []Event, err error,
 				) error {
 					collectedOps := make([]display.StepOp, 0)
 					for _, event := range events {
