@@ -36,7 +36,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.115.0
+	github.com/pulumi/pulumi/sdk/v3 v3.115.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/spf13/cobra v1.8.0
