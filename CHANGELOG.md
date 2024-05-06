@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.115.2 (2024-05-06)
+
+
+### Bug Fixes
+
+- [cli/display] Fix a deadlock in the display code
+  [#16129](https://github.com/pulumi/pulumi/pull/16129)
+
+- [cli/engine] Revert "Make --expect-no-changes fail even if the only changes are output changes"
+  [#16131](https://github.com/pulumi/pulumi/pull/16131)
+
+- [engine] Normalize provider version during default provider lookup
+  [#16109](https://github.com/pulumi/pulumi/pull/16109)
+
 ## 3.115.1 (2024-05-06)
 
 
