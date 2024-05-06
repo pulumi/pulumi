@@ -76,9 +76,7 @@ type progressRenderer interface {
 
 // ProgressDisplay organizes all the information needed for a dynamically updated "progress" view of an update.
 type ProgressDisplay struct {
-	// m is used to synchronize access to eventUrnToResourceRow, which is accessed
-	// by the treeRenderer, and to opStopwatch, which is used to track the times
-	// taken to perform actions on resources.
+	// mutex is used to synchronize access to eventUrnToResourceRow, which is accessed by the treeRenderer
 	m sync.RWMutex
 
 	opts Options
@@ -966,13 +964,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		// Register the resource update start time to calculate duration
 		// and time elapsed.
-		start := time.Now()
-		display.m.Lock()
-		display.opStopwatch.start[step.URN] = start
+		display.opStopwatch.start[step.URN] = time.Now()
 
 		// Clear out potential event end timings for prior operations on the same resource.
 		delete(display.opStopwatch.end, step.URN)
-		display.m.Unlock()
 
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
@@ -981,10 +976,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		// Register the resource update end time to calculate duration
 		// to display.
-		end := time.Now()
-		display.m.Lock()
-		display.opStopwatch.end[step.URN] = end
-		display.m.Unlock()
+		display.opStopwatch.end[step.URN] = time.Now()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -1192,18 +1184,12 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			return opText
 		}
 
-		display.m.RLock()
 		start, ok := display.opStopwatch.start[step.URN]
-		display.m.RUnlock()
-
 		if !ok {
 			return opText
 		}
 
-		display.m.RLock()
 		end, ok := display.opStopwatch.end[step.URN]
-		display.m.RUnlock()
-
 		if !ok {
 			return opText
 		}
@@ -1372,10 +1358,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		}
 
 		// Calculate operation time elapsed.
-		display.m.RLock()
 		start, ok := display.opStopwatch.start[step.URN]
-		display.m.RUnlock()
-
 		if !ok {
 			return opText
 		}
