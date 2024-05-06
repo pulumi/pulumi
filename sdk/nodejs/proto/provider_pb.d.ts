@@ -892,6 +892,8 @@ export class ConstructRequest extends jspb.Message {
     setRetainondelete(value: boolean): ConstructRequest;
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): ConstructRequest;
+    getAcceptsFailures(): boolean;
+    setAcceptsFailures(value: boolean): ConstructRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
@@ -933,6 +935,7 @@ export namespace ConstructRequest {
         replaceonchangesList: Array<string>,
         retainondelete: boolean,
         acceptsOutputValues: boolean,
+        acceptsFailures: boolean,
     }
 
 

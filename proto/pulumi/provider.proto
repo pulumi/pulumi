@@ -381,6 +381,7 @@ message ConstructRequest {
     bool retainOnDelete                     = 24; // whether to retain the resource in the cloud provider when it is deleted
 
     bool accepts_output_values = 25; // the engine can be passed output values back, stateDependencies can be left blank if returning output values.
+    bool accepts_failures = 26;      // the engine can be passed failures back.
 }
 
 message ConstructResponse {

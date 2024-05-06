@@ -6793,7 +6793,8 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
     retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false),
-    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
+    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
+    acceptsFailures: jspb.Message.getBooleanFieldWithDefault(msg, 26, false)
   };
 
   if (includeInstance) {
@@ -6937,6 +6938,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 25:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsOutputValues(value);
+      break;
+    case 26:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsFailures(value);
       break;
     default:
       reader.skipField();
@@ -7132,6 +7137,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       25,
+      f
+    );
+  }
+  f = message.getAcceptsFailures();
+  if (f) {
+    writer.writeBool(
+      26,
       f
     );
   }
@@ -8095,6 +8107,24 @@ proto.pulumirpc.ConstructRequest.prototype.getAcceptsOutputValues = function() {
  */
 proto.pulumirpc.ConstructRequest.prototype.setAcceptsOutputValues = function(value) {
   return jspb.Message.setProto3BooleanField(this, 25, value);
+};
+
+
+/**
+ * optional bool accepts_failures = 26;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getAcceptsFailures = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 26, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setAcceptsFailures = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 26, value);
 };
 
 

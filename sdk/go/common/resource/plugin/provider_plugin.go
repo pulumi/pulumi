@@ -1456,6 +1456,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, p
 		ReplaceOnChanges:        options.ReplaceOnChanges,
 		RetainOnDelete:          options.RetainOnDelete,
 		AcceptsOutputValues:     true,
+		AcceptsFailures:         true,
 	}
 	if ct := options.CustomTimeouts; ct != nil {
 		req.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{

@@ -192,6 +192,10 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		}
 	}
 
+	if len(failures) > 0 && !req.AcceptsFailures {
+		// if the caller doesn't accept failures, and we have some, then we need to return an error.
+		return nil, errors.New("resource has a problem; please upgrade the Pulumi CLI to see a more detailed error message")
+	}
 	var rpcFailures []*pulumirpc.CheckFailure
 	if len(failures) > 0 {
 		rpcFailures = make([]*pulumirpc.CheckFailure, len(failures))
