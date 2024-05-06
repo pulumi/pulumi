@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.115.1 (2024-05-06)
+
+
+### Bug Fixes
+
+- [backend] Fix concurrent reads from and writes to display resource timer maps
+  [#16101](https://github.com/pulumi/pulumi/pull/16101)
+
+- [engine] Better handle property dependencies and deleted-with relationships when pruning URNs, verifying snapshot integrity and computing dependency graphs.
+  [#16088](https://github.com/pulumi/pulumi/pull/16088)
+
+- [engine] Fix folder archive outside of cwd.
+
+- [programgen/python] Sort generated requirements.txt files when generating Python programs
+  [#16115](https://github.com/pulumi/pulumi/pull/16115)
+
 ## 3.115.0 (2024-05-02)
 
 
