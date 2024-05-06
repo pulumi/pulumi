@@ -11,7 +11,6 @@ import (
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -508,7 +507,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				// Should see only refreshes.
 				for _, entry := range entries {
@@ -683,7 +682,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	p.Steps = []TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, changes display.ResourceChanges, err error,
+			_ []Event, err error,
 		) error {
 			// Should see only refreshes.
 			for _, entry := range entries {
@@ -858,7 +857,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, changes display.ResourceChanges, err error,
+		_ []Event, err error,
 	) error {
 		for _, entry := range entries {
 			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())

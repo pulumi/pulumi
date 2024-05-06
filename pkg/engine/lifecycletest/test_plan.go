@@ -112,7 +112,7 @@ func ImportOp(imports []deploy.Import) TestOp {
 type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, error)
 
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
-	events []Event, changes display.ResourceChanges, err error) error
+	events []Event, err error) error
 
 func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts TestUpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc,
@@ -189,7 +189,7 @@ func (op TestOp) runWithContext(
 	})
 
 	// Run the step and its validator.
-	plan, changes, opErr := op(info, ctx, updateOpts, dryRun)
+	plan, _, opErr := op(info, ctx, updateOpts, dryRun)
 	close(events)
 	closeErr := combined.Close()
 
@@ -202,7 +202,7 @@ func (op TestOp) runWithContext(
 	}
 
 	if validate != nil {
-		opErr = validate(project, target, journal.Entries(), firedEvents, changes, opErr)
+		opErr = validate(project, target, journal.Entries(), firedEvents, opErr)
 	}
 
 	errs := []error{opErr, closeErr}
@@ -247,13 +247,13 @@ type TestStep struct {
 func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	o := t.Validate
 	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		events []Event, changes display.ResourceChanges, err error,
+		events []Event, err error,
 	) error {
-		r := o(project, target, entries, events, changes, err)
+		r := o(project, target, entries, events, err)
 		if r != nil {
 			return r
 		}
-		return f(project, target, entries, events, changes, err)
+		return f(project, target, entries, events, err)
 	}
 }
 
@@ -405,7 +405,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -424,7 +424,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -443,7 +443,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -462,7 +462,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -481,7 +481,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Destroy,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				require.NoError(t, err)
 
@@ -504,7 +504,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, changes display.ResourceChanges, err error,
+				_ []Event, err error,
 			) error {
 				require.NoError(t, err)
 
