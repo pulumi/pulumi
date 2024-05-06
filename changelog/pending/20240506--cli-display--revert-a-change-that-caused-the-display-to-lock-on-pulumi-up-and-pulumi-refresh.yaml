@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Revert a change that caused the display to lock on pulumi up and pulumi refresh
