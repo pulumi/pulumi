@@ -79,7 +79,7 @@ type ProgressDisplay struct {
 	// eventMutex is used to synchronize access to eventUrnToResourceRow, which is accessed
 	// by the treeRenderer
 	eventMutex sync.RWMutex
-	// stopwatchMutex is used to synchronixe access to o opStopwatch, which is used to track the times
+	// stopwatchMutex is used to synchronixe access to opStopwatch, which is used to track the times
 	// taken to perform actions on resources.
 	stopwatchMutex sync.RWMutex
 
