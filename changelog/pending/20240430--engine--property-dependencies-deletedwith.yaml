@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Better handle property dependencies and deleted-with relationships when pruning URNs, verifying snapshot integrity and computing dependency graphs.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend
-  description: Fix concurrent reads from and writes to display resource timer maps
