@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix a deadlock in the display code

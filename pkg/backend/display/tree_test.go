@@ -242,8 +242,8 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 	}()
 
 	func() {
-		display.m.Lock()
-		defer display.m.Unlock()
+		display.eventMutex.Lock()
+		defer display.eventMutex.Unlock()
 		display.ensureHeaderAndStackRows()
 	}()
 
