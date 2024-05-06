@@ -997,6 +997,10 @@ export class ConstructResponse extends jspb.Message {
 
     getStatedependenciesMap(): jspb.Map<string, ConstructResponse.PropertyDependencies>;
     clearStatedependenciesMap(): void;
+    clearFailuresList(): void;
+    getFailuresList(): Array<CheckFailure>;
+    setFailuresList(value: Array<CheckFailure>): ConstructResponse;
+    addFailures(value?: CheckFailure, index?: number): CheckFailure;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructResponse.AsObject;
@@ -1014,6 +1018,7 @@ export namespace ConstructResponse {
         state?: google_protobuf_struct_pb.Struct.AsObject,
 
         statedependenciesMap: Array<[string, ConstructResponse.PropertyDependencies.AsObject]>,
+        failuresList: Array<CheckFailure.AsObject>,
     }
 
 

@@ -185,7 +185,11 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
-	case reg := <-iter.regChan:
+	case reg, ok := <-iter.regChan:
+		if !ok {
+			logging.V(5).Infoln("EvalSourceIterator bailed on close of registration channel")
+			return nil, result.BailErrorf("registration channel has closed")
+		}
 		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
 		goal := reg.Goal()
 		logging.V(5).Infof("EvalSourceIterator produced a registration: t=%v,name=%v,#props=%v",
@@ -1845,6 +1849,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 
+		if rm.issueConstructErrors(result.State, result.State.URN, constructResult.Failures) {
+			logging.V(5).Infof(
+				"ResourceMonitor.RegisterResource got construct failures: t=%v, urn=%v, #failures=%v",
+				t, result.State.URN, len(constructResult.Failures))
+
+			// Since the resource isn't valid, fail the deployment by closing the registration channel
+			// and then waiting for the resource monitor to shut down. This is similar to how Check failures
+			// are handled during processing of registerResourceEvent.
+			close(rm.regChan)
+			<-rm.cancel
+			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down")
+		}
 	} else {
 		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
 		for _, name := range additionalSecretOutputs {
@@ -1903,7 +1919,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
 		}
 
-		// Now block waiting for the operation to finish.
+		// Now block waiting for the operation to finish. Note that the operation never finishes if the resource
+		// has check failures; in that case, the deployment fails and the resource monitor shuts down.
 		select {
 		case result = <-step.done:
 		case <-rm.cancel:
@@ -2051,6 +2068,33 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 		logging.V(10).Infof("The option '%s' has no automatic effect on component resource '%s', "+
 			"ensure it is handled correctly in the component code.", optName, urn)
 	}
+}
+
+// issueCheckErrors prints any check errors to the diagnostics error sink.
+func (rm *resmon) issueConstructErrors(new *resource.State, urn resource.URN,
+	failures []plugin.CheckFailure,
+) bool {
+	return rm.issueConstructFailures(rm.diagostics.Errorf, new, urn, failures)
+}
+
+// issueCheckErrors prints any check errors to the given printer function.
+func (rm *resmon) issueConstructFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
+	failures []plugin.CheckFailure,
+) bool {
+	if len(failures) == 0 {
+		return false
+	}
+	inputs := new.Inputs
+	for _, failure := range failures {
+		if failure.Property != "" {
+			printf(diag.GetResourcePropertyInvalidValueError(urn),
+				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+		} else {
+			printf(
+				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
+		}
+	}
+	return true
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial

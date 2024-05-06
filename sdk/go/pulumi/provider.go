@@ -32,8 +32,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+// constructFailure indicates that a call to Construct failed; it contains the property and reason for the failure.
+type constructFailure struct {
+	Property string
+	Reason   string
+}
+
 type constructFunc func(ctx *Context, typ, name string, inputs map[string]interface{},
-	options ResourceOption) (URNInput, Input, error)
+	options ResourceOption) (URNInput, Input, []interface{}, error)
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
@@ -136,7 +142,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.RetainOnDelete = req.GetRetainOnDelete()
 	})
 
-	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
+	urn, state, failures, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -186,10 +192,23 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		}
 	}
 
+	var rpcFailures []*pulumirpc.CheckFailure
+	if len(failures) > 0 {
+		rpcFailures = make([]*pulumirpc.CheckFailure, len(failures))
+		for i, v := range failures {
+			failure := v.(constructFailure)
+			rpcFailures[i] = &pulumirpc.CheckFailure{
+				Property: failure.Property,
+				Reason:   failure.Reason,
+			}
+		}
+	}
+
 	return &pulumirpc.ConstructResponse{
 		Urn:               string(rpcURN),
 		State:             rpcProps,
 		StateDependencies: rpcPropertyDeps,
+		Failures:          rpcFailures,
 	}, nil
 }
 
@@ -737,6 +756,14 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 	}
 
 	return resource.URN(), state, nil
+}
+
+// newConstructFailure creates a construct failure.
+func newConstructFailure(property, reason string) interface{} {
+	return constructFailure{
+		Property: property,
+		Reason:   reason,
+	}
 }
 
 // callFailure indicates that a call to Call failed; it contains the property and reason for the failure.

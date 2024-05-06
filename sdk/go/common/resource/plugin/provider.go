@@ -417,6 +417,8 @@ type ConstructResult struct {
 	Outputs resource.PropertyMap
 	// The resources that each output property depends on.
 	OutputDependencies map[resource.PropertyKey][]resource.URN
+	// The failures if any arguments didn't pass verification.
+	Failures []CheckFailure
 }
 
 // CallInfo contains all of the information required to register resources as part of a call to Construct.

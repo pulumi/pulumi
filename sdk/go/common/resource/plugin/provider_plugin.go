@@ -1490,11 +1490,18 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name string, p
 		outputDependencies[resource.PropertyKey(k)] = urns
 	}
 
-	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
+	// And now any properties that failed verification.
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
+	logging.V(7).Infof("%s success: #outputs=%d,#failures=%d", label, len(outputs), len(failures))
 	return ConstructResult{
 		URN:                resource.URN(resp.GetUrn()),
 		Outputs:            outputs,
 		OutputDependencies: outputDependencies,
+		Failures:           failures,
 	}, nil
 }
 

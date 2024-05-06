@@ -1172,6 +1172,7 @@ class ConstructResponse(google.protobuf.message.Message):
     URN_FIELD_NUMBER: builtins.int
     STATE_FIELD_NUMBER: builtins.int
     STATEDEPENDENCIES_FIELD_NUMBER: builtins.int
+    FAILURES_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN of the component resource."""
     @property
@@ -1180,15 +1181,19 @@ class ConstructResponse(google.protobuf.message.Message):
     @property
     def stateDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructResponse.PropertyDependencies]:
         """a map from property keys to the dependencies of the property."""
+    @property
+    def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
+        """the failures if any arguments didn't pass verification."""
     def __init__(
         self,
         *,
         urn: builtins.str = ...,
         state: google.protobuf.struct_pb2.Struct | None = ...,
         stateDependencies: collections.abc.Mapping[builtins.str, global___ConstructResponse.PropertyDependencies] | None = ...,
+        failures: collections.abc.Iterable[global___CheckFailure] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["state", b"state"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["state", b"state", "stateDependencies", b"stateDependencies", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["failures", b"failures", "state", b"state", "stateDependencies", b"stateDependencies", "urn", b"urn"]) -> None: ...
 
 global___ConstructResponse = ConstructResponse
 

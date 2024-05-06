@@ -392,6 +392,7 @@ message ConstructResponse {
     string urn = 1;                                          // the URN of the component resource.
     google.protobuf.Struct state = 2;                        // any properties that were computed during construction.
     map<string, PropertyDependencies> stateDependencies = 3; // a map from property keys to the dependencies of the property.
+    repeated CheckFailure failures = 4;                     // the failures if any arguments didn't pass verification.
 }
 
 // ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
