@@ -72,11 +72,13 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	if e.previousMessage == message {
 		e.logRepeat++
 		return &pbempty.Empty{}, nil
-	} else if e.logRepeat > 1 {
-		e.t.Logf("Last message repeated %d times", e.logRepeat)
-		e.logRepeat = 1
-		e.previousMessage = message
 	}
+
+	if e.logRepeat > 1 {
+		e.t.Logf("Last message repeated %d times", e.logRepeat)
+	}
+	e.logRepeat = 1
+	e.previousMessage = message
 
 	if req.StreamId != 0 {
 		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
