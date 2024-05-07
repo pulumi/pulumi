@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Make continue-on-error work on step generation failures
