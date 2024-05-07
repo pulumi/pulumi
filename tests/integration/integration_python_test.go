@@ -916,6 +916,11 @@ func TestConstructProviderPython(t *testing.T) {
 	}
 }
 
+func TestConstructFailuresPython(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

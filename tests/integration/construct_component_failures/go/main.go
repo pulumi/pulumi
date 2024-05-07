@@ -10,12 +10,8 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		component, err := NewComponent(ctx, "component")
-		if err != nil {
-			return err
-		}
-		_, err = component.GetMessage(ctx, &ComponentGetMessageArgs{
-			Echo: pulumi.String("hello"),
+		_, err := NewComponent(ctx, "component", &ComponentArgs{
+			Foo: pulumi.String("bar"),
 		})
 		if err != nil {
 			return err

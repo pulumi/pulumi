@@ -1147,6 +1147,11 @@ func TestConstructProviderNode(t *testing.T) {
 	}
 }
 
+func TestConstructFailuresNode(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "nodejs", "@pulumi/pulumi")
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

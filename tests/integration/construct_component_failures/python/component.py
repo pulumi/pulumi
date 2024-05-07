@@ -5,28 +5,9 @@ from typing import Optional
 import pulumi
 
 class Component(pulumi.ComponentResource):
-    def __init__(self,
-                 name: str,
-                 opts: Optional[pulumi.ResourceOptions] = None):
-        super().__init__("testcomponent:index:Component", name, {}, opts, True)
+    foo: pulumi.Output[str]
 
-    @pulumi.output_type
-    class GetMessageResult:
-        def __init__(self, message: str):
-            if message and not isinstance(message, str):
-                raise TypeError("Expected argument 'message' to be a str")
-            pulumi.set(self, "message", message)
-
-        @property
-        @pulumi.getter
-        def message(self) -> str:
-            return pulumi.get(self, "message")
-
-    def get_message(__self__, echo: pulumi.Input[str]) -> pulumi.Output['Component.GetMessageResult']:
-        __args__ = dict()
-        __args__['__self__'] = __self__
-        __args__['echo'] = echo
-        return pulumi.runtime.call('testcomponent:index:Component/getMessage',
-                                   __args__,
-                                   res=__self__,
-                                   typ=Component.GetMessageResult)
+    def __init__(self, name: str, foo: pulumi.Input[str], opts: Optional[pulumi.ResourceOptions] = None):
+        props = dict()
+        props["foo"] = foo
+        super().__init__("testcomponent:index:Component", name, props, opts, True)

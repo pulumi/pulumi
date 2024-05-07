@@ -2,5 +2,6 @@
 
 import { Component } from "./component"
 
-const component = new Component("component");
-const result = component.getMessage({ echo: "hello" });
+const component = new Component("component", {
+    foo: "bar"
+});

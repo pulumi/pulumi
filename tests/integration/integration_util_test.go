@@ -503,6 +503,49 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 	}
 }
 
+// Test failures returned from construct.
+func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_failures"
+	runComponentSetup(t, testDir)
+
+	tests := []struct {
+		componentDir string
+	}{
+		// {
+		// 	componentDir: "testcomponent",
+		// },
+		// {
+		// 	componentDir: "testcomponent-python",
+		// },
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := "property foo value {bar} has a problem: the failure reason"
+
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				Stderr:         stderr,
+				ExpectFailure:  true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
+
 var previewSummaryRegex = regexp.MustCompile(
 	`{\s+"steps": \[[\s\S]+],\s+"duration": \d+,\s+"changeSummary": {[\s\S]+}\s+}`)
 

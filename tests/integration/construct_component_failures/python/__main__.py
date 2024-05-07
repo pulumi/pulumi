@@ -3,5 +3,5 @@
 from component import Component
 
 
-component = Component("component")
-result = component.get_message("hello")
+component = Component("component", foo="bar")
+

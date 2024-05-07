@@ -15,16 +15,24 @@ import (
 
 type Component struct {
 	pulumi.ResourceState
+
+	Foo pulumi.StringOutput `pulumi:"foo"`
 }
 
-func NewComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*Component, error) {
+type ComponentArgs struct {
+	Foo pulumi.StringInput `pulumi:"foo"`
+}
+
+func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
 	component := &Component{}
 	err := ctx.RegisterComponentResource("testcomponent:index:Component", name, component, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{}); err != nil {
+	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
+		"foo": args.Foo,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -47,16 +55,21 @@ func main() {
 				return nil, fmt.Errorf("unknown resource type %s", typ)
 			}
 
-			component, err := NewComponent(ctx, name, options)
+			args := &ComponentArgs{}
+			if err := inputs.CopyTo(args); err != nil {
+				return nil, fmt.Errorf("setting args: %w", err)
+			}
+
+			component, err := NewComponent(ctx, name, args, options)
 			if err != nil {
 				return nil, fmt.Errorf("creating component: %w", err)
 			}
 
 			failures := []pulumiprovider.ConstructFailure{
 				{
-					Property: "the failure property",
+					Property: "foo",
 					Reason:   "the failure reason",
-				}
+				},
 			}
 			return pulumiprovider.NewConstructResult(component, pulumiprovider.Failures(failures))
 		},
