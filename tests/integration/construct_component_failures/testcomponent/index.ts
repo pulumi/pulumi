@@ -4,8 +4,16 @@ import * as pulumi from "@pulumi/pulumi";
 import * as provider from "@pulumi/pulumi/provider";
 
 class Component extends pulumi.ComponentResource {
-    constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
+    public readonly foo: pulumi.Output<string>;
+
+    constructor(name: string, foo: pulumi.Input<string>, opts?: pulumi.ComponentResourceOptions) {
         super("testcomponent:index:Component", name, undefined, opts);
+
+        this.foo = pulumi.output(foo);
+
+        this.registerOutputs({
+            foo: this.foo,
+        })
     }
 }
 
@@ -18,23 +26,12 @@ class Provider implements provider.Provider {
             throw new Error(`unknown resource type ${type}`);
         }
 
-        const component = new Component(name, options);
+        const component = new Component(name, inputs["foo"], options);
         return {
             urn: component.urn,
             state: inputs,
+            failures: [{property: "foo", reason: "the failure reason"}],
         };
-    }
-
-    async call(token: string, inputs: pulumi.Inputs): Promise<provider.InvokeResult> {
-        switch (token) {
-            case "testcomponent:index:Component/getMessage":
-                return {
-                    failures: [{ property: "the failure property", reason: "the failure reason" }],
-                };
-
-            default:
-                throw new Error(`unknown method ${token}`);
-        }
     }
 }
 

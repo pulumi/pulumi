@@ -105,7 +105,7 @@ class ProviderServicer(ResourceProviderServicer):
             options=self._construct_options(request),
         )
 
-        response = await self._construct_response(result)
+        response = await self._construct_response(request, result)
 
         # Wait for outstanding RPCs such as more provider Construct
         # calls. This can happen if i.e. provider creates child
@@ -178,7 +178,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
     async def _construct_response(
-        self, result: ConstructResult
+        self, request: proto.ConstructRequest, result: ConstructResult
     ) -> proto.ConstructResponse:
         urn = await pulumi.Output.from_input(result.urn).future()
         assert urn is not None
@@ -197,7 +197,17 @@ class ProviderServicer(ResourceProviderServicer):
             knownUrns = [u for u in urns if u is not None]
             deps[k] = proto.ConstructResponse.PropertyDependencies(urns=knownUrns)
 
-        return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
+        failures = None
+        if result.failures and len(result.failures) > 0:
+            if not request.accepts_failures:
+                raise Exception("resource has a problem; please upgrade the Pulumi CLI " +
+                        "to see a more detailed error message")
+            failures = [
+                proto.CheckFailure(property=f.property, reason=f.reason)
+                for f in result.failures
+            ]
+
+        return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps, failures=failures)
 
     async def Call(
         self, request: proto.CallRequest, context

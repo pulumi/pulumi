@@ -511,12 +511,12 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 	tests := []struct {
 		componentDir string
 	}{
-		// {
-		// 	componentDir: "testcomponent",
-		// },
-		// {
-		// 	componentDir: "testcomponent-python",
-		// },
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
 		{
 			componentDir: "testcomponent-go",
 		},

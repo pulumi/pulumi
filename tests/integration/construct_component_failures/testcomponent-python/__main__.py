@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2024, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,20 @@
 from typing import Optional
 import sys
 
+from pulumi import Input, Inputs, ComponentResource, ResourceOptions
 import pulumi
 import pulumi.provider as provider
-
 
 class Component(pulumi.ComponentResource):
     def __init__(self,
                  resource_name: str,
+                 foo: Input[str],
                  opts: Optional[pulumi.ResourceOptions] = None) -> None:
         super().__init__("testcomponent:index:Component", resource_name, {}, opts)
+        self.foo = pulumi.Output.from_input(foo)
+        self.register_outputs({
+            'foo': self.foo
+        })
 
 class Provider(provider.Provider):
     VERSION = "0.0.1"
@@ -48,20 +53,12 @@ class Provider(provider.Provider):
         if resource_type != "testcomponent:index:Component":
             raise Exception(f"unknown resource type {resource_type}")
 
-        component = Component(name, options)
+        component = Component(name, inputs['foo'], options)
 
         return provider.ConstructResult(
             urn=component.urn,
-            state=inputs)
-
-    def call(self, token: str, args: pulumi.Inputs) -> provider.CallResult:
-        if token != "testcomponent:index:Component/getMessage":
-            raise Exception(f'unknown method {token}')
-
-        return provider.CallResult(
-            outputs={},
-            failures=[provider.CheckFailure(property="the failure property", reason="the failure reason")])
-
+            state=inputs,
+            failures=[provider.CheckFailure(property="foo", reason="the failure reason")])
 
 if __name__ == "__main__":
     provider.main(Provider(), sys.argv[1:])

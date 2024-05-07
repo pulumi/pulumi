@@ -351,6 +351,21 @@ class Server implements grpc.UntypedServiceImplementation {
             }
             resp.setState(structproto.Struct.fromJavaScript(state));
 
+            if ((result.failures || []).length !== 0) {
+                if (!req.getAcceptsFailures()) {
+                    throw new Error("resource has a problem; please upgrade the Pulumi CLI " +
+                        "to see a more detailed error message");
+                }
+                const failureList = [];
+                for (const f of result.failures!) {
+                    const failure = new provproto.CheckFailure();
+                    failure.setProperty(f.property);
+                    failure.setReason(f.reason);
+                    failureList.push(failure);
+                }
+                resp.setFailuresList(failureList);
+            }
+
             // Wait for RPC operations to complete.
             await settings.waitForRPCs();
 
@@ -421,7 +436,6 @@ class Server implements grpc.UntypedServiceImplementation {
                 }
                 resp.setReturn(structproto.Struct.fromJavaScript(ret));
             }
-
             if ((result.failures || []).length !== 0) {
                 const failureList = [];
                 for (const f of result.failures!) {
