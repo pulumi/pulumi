@@ -44,12 +44,14 @@ class _ResultEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTyp
     SUCCESS: _Result.ValueType  # 0
     FAIL: _Result.ValueType  # 1
     SKIP: _Result.ValueType  # 2
+    FAILED_STEP_GENERATION: _Result.ValueType  # 3
 
 class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
 
 SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
 SKIP: Result.ValueType  # 2
+FAILED_STEP_GENERATION: Result.ValueType  # 3
 global___Result = Result
 
 @typing_extensions.final

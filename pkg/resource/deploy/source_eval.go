@@ -1917,6 +1917,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
 			return nil, rpcerror.New(codes.Internal, "resource registration failed")
 		}
+		if result != nil && result.Result == ResultStateFailedStepGeneration {
+			// If we failed the step generation, we know nothing about this step at all. Return an error
+			// result to the SDK.
+			return &pulumirpc.RegisterResourceResponse{
+				Result: pulumirpc.Result_FAILED_STEP_GENERATION,
+			}, nil
+		}
 		if result != nil && result.State != nil && result.State.URN != "" {
 			rm.resGoalsLock.Lock()
 			rm.resGoals[result.State.URN] = *goal

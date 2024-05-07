@@ -716,4 +716,5 @@ export enum Result {
     SUCCESS = 0,
     FAIL = 1,
     SKIP = 2,
+    FAILED_STEP_GENERATION = 3,
 }

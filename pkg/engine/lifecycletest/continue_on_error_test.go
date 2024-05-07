@@ -454,3 +454,82 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
 	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[5].Inputs["foo"])
 }
+
+func TestContinueOnErrorCheckFailure(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(
+					urn resource.URN, olds, news resource.PropertyMap, randomSeed []byte,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return nil, nil, errors.New("intentionally failed check")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  ins,
+		})
+		assert.NoError(t, err)
+
+		respIndependent1, err := monitor.RegisterResource(
+			"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+			})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent1.Result)
+
+		respIndependent2, err := monitor.RegisterResource(
+			"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				Dependencies:            []resource.URN{respIndependent1.URN},
+			})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
+
+		respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Dependencies:            []resource.URN{respIndependent2.URN},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, snap)
+	require.Equal(t, 5, len(snap.Resources)) // 3 resources + 2 providers
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
+}

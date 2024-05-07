@@ -32,6 +32,7 @@ const (
 	ResultStateSuccess ResultState = iota
 	ResultStateFailed
 	ResultStateSkipped
+	ResultStateFailedStepGeneration
 )
 
 // A ProviderSource allows a Source to lookup provider plugins.

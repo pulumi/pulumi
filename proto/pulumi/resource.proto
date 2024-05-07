@@ -146,6 +146,7 @@ enum Result {
 	SUCCESS = 0;
 	FAIL = 1;
 	SKIP = 2;
+	FAILED_STEP_GENERATION = 3;
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

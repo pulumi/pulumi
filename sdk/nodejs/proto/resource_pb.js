@@ -5914,7 +5914,8 @@ proto.pulumirpc.TransformResponse.prototype.hasOptions = function() {
 proto.pulumirpc.Result = {
   SUCCESS: 0,
   FAIL: 1,
-  SKIP: 2
+  SKIP: 2,
+  FAILED_STEP_GENERATION: 3
 };
 
 goog.object.extend(exports, proto.pulumirpc);

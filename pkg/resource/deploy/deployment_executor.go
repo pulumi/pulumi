@@ -447,6 +447,23 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	}
 
 	if err != nil {
+		if ex.stepExec.opts.ContinueOnError {
+			// If ContinueOnError is set, we want to skip the errored step and continue with the next one.
+			logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): error generating steps: %v", err)
+			switch e := event.(type) {
+			case RegisterResourceEvent:
+				e.Done(&RegisterResult{
+					Result: ResultStateFailedStepGeneration,
+				})
+			case ReadResourceEvent:
+				e.Done(&ReadResult{
+					Result: ResultStateFailedStepGeneration,
+				})
+			case RegisterResourceOutputsEvent:
+				e.Done()
+			}
+			return nil
+		}
 		return err
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
