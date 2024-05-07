@@ -245,7 +245,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		}
 
 		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
-		if res != nil || kind == apitype.PreviewUpdate {
+		if (!op.Opts.Engine.ContinueOnError && res != nil) || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
 
