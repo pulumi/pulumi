@@ -154,7 +154,7 @@ class Output(Generic[T_co]):
         return self._is_secret
 
     def apply(
-        self, func: Callable[[T_co], Input[U]], run_with_unknowns: Optional[bool] = None
+        self, func: Callable[[T_co], Input[U]], run_with_unknowns: bool = False
     ) -> "Output[U]":
         """
         Transforms the data of the output with the provided func.  The result remains an
@@ -284,6 +284,14 @@ class Output(Generic[T_co]):
         raise TypeError(
             "'Output' object is not iterable, consider iterating the underlying value inside an 'apply'"
         )
+
+    @overload
+    @staticmethod
+    def from_input(val: "Output[T_co]") -> "Output[T_co]": ...
+
+    @overload
+    @staticmethod
+    def from_input(val: Input[T_co]) -> "Output[T_co]": ...
 
     @staticmethod
     def from_input(val: Input[T_co]) -> "Output[T_co]":
@@ -425,15 +433,22 @@ class Output(Generic[T_co]):
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
     @overload
     @staticmethod
-    def all(*args: Input[T]) -> "Output[List[T]]":  # type: ignore
-        ...
+    def all(*args: "Output[T_co]") -> "Output[List[T_co]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[T]) -> "Output[Dict[str, T]]": ...
+    def all(**kwargs: "Output[T_co]") -> "Output[Dict[str, T_co]]": ...  # type: ignore
+
+    @overload
+    @staticmethod
+    def all(*args: Input[T_co]) -> "Output[List[T_co]]": ...  # type: ignore
+
+    @overload
+    @staticmethod
+    def all(**kwargs: Input[T_co]) -> "Output[Dict[str, T_co]]": ...  # type: ignore
 
     @staticmethod
-    def all(*args: Input[T], **kwargs: Input[T]):
+    def all(*args: Input[T_co], **kwargs: Input[T_co]):
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
@@ -486,19 +501,15 @@ class Output(Generic[T_co]):
             }
             return await _gather_from_dict(value_futures_dict)
 
-        from_input = cast(
-            Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input
-        )
-
         if args and kwargs:
             raise ValueError(
                 "Output.all() was supplied a mix of named and unnamed inputs"
             )
         # First, map all inputs to outputs using `from_input`.
         all_outputs: Union[list, dict] = (
-            {k: from_input(v) for k, v in kwargs.items()}
+            {k: Output.from_input(v) for k, v in kwargs.items()}
             if kwargs
-            else [from_input(x) for x in args]
+            else [Output.from_input(x) for x in args]
         )
 
         # Aggregate the list or dict of futures into a future of list or dict.
