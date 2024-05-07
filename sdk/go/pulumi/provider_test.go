@@ -1761,7 +1761,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 			typ, name string,
 			inputs map[string]interface{},
 			opts ResourceOption,
-		) (URNInput, Input, error) {
+		) (URNInput, Input, []interface{}, error) {
 			urn := resource.NewURN(
 				tokens.QName(ctx.Stack()),
 				tokens.PackageName(ctx.Project()),
@@ -1774,7 +1774,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 			require.NoError(t, err, "failed to create snapshot")
 			got = snap
 
-			return URN(urn), nil, nil
+			return URN(urn), nil, nil, nil
 		})
 		require.NoError(t, err, "failed to construct")
 		require.NotNil(t, got, "Construct was never called")
@@ -1955,7 +1955,7 @@ func TestConstruct_await(t *testing.T) {
 			typ, name string,
 			inputs map[string]interface{},
 			opts ResourceOption,
-		) (URNInput, Input, error) {
+		) (URNInput, Input, []interface{}, error) {
 			urn := resource.NewURN(
 				tokens.QName(ctx.Stack()),
 				tokens.PackageName(ctx.Project()),
@@ -1965,7 +1965,7 @@ func TestConstruct_await(t *testing.T) {
 			)
 			state := make(Map)
 			stateF(ctx, state)
-			return URN(urn), state, nil
+			return URN(urn), state, nil, nil
 		})
 		return err
 	}
@@ -2025,6 +2025,59 @@ func TestConstruct_await(t *testing.T) {
 			})
 		})
 		require.NoError(t, err, "failed to construct")
+	})
+}
+
+func TestConstruct_failures(t *testing.T) {
+	t.Parallel()
+
+	constructWithFailures := func(t *testing.T, req *pulumirpc.ConstructRequest,
+		failures []interface{},
+	) (*pulumirpc.ConstructResponse, error) {
+		// Keep test cases simple:
+		req.Stack = "mystack"
+		req.Project = "myproject"
+
+		ctx := context.Background()
+		return construct(ctx, req, nil, func(
+			ctx *Context,
+			typ, name string,
+			inputs map[string]interface{},
+			opts ResourceOption,
+		) (URNInput, Input, []interface{}, error) {
+			urn := resource.NewURN(
+				tokens.QName(ctx.Stack()),
+				tokens.PackageName(ctx.Project()),
+				"", // parent
+				tokens.Type(typ),
+				name,
+			)
+			state := make(Map)
+			return URN(urn), state, failures, nil
+		})
+	}
+
+	t.Run("backwards compatibility", func(t *testing.T) {
+		t.Parallel()
+		_, err := constructWithFailures(t, &pulumirpc.ConstructRequest{
+			AcceptsFailures: false,
+		}, []interface{}{constructFailure{
+			Property: "foo",
+			Reason:   "the failure reason",
+		}})
+		require.ErrorContains(t, err, "resource has a problem")
+	})
+
+	t.Run("acceptsFailures", func(t *testing.T) {
+		t.Parallel()
+		resp, err := constructWithFailures(t, &pulumirpc.ConstructRequest{
+			AcceptsFailures: true,
+		}, []interface{}{constructFailure{
+			Property: "foo",
+			Reason:   "the failure reason",
+		}})
+		require.NoError(t, err, "failed to construct")
+		require.Equal(t, resp.Failures, []*pulumirpc.CheckFailure{{Property: "foo", Reason: "the failure reason"}})
 	})
 }
 
