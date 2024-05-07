@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -1957,6 +1958,17 @@ func TestEvalSourceIterator(t *testing.T) {
 			assert.Nil(t, evt)
 			assert.NoError(t, err)
 		})
+		t.Run("iter.regChan (closed)", func(t *testing.T) {
+			t.Parallel()
+			regChan := make(chan *registerResourceEvent, 1)
+			close(regChan)
+			iter := &evalSourceIterator{
+				regChan: regChan,
+			}
+			_, err := iter.Next()
+			assert.Error(t, err)
+			assert.True(t, result.IsBail(err))
+		})
 	})
 }
 
@@ -3164,6 +3176,68 @@ func TestRegisterResource(t *testing.T) {
 			}
 			_, err := rm.RegisterResource(context.Background(), req)
 			assert.ErrorContains(t, err, "unknown provider")
+		})
+		t.Run("validation failures", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool)
+			regChan := make(chan *registerResourceEvent, 1)
+			go func() {
+				// the resource monitor should close the registration channel to poison the iterator.
+				_, ok := <-regChan
+				assert.False(t, ok)
+				close(cancel)
+			}()
+			requests := make(chan defaultProviderRequest, 1)
+			go func() {
+				evt := <-requests
+				ref, err := providers.NewReference(
+					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+					"b2562429-e255-4b8f-904b-2bd239301ff2")
+				require.NoError(t, err)
+				evt.response <- defaultProviderResponse{
+					ref: ref,
+				}
+			}()
+			rm := &resmon{
+				diagostics: diagtest.LogSink(t),
+				cancel:     cancel,
+				regChan:    regChan,
+				defaultProviders: &defaultProviders{
+					requests: requests,
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return nil, nil
+						},
+					},
+				},
+				providers: &providerSourceMock{
+					Provider: &deploytest.Provider{
+						DialMonitorF: func(
+							ctx context.Context, endpoint string,
+						) (*deploytest.ResourceMonitor, error) {
+							return nil, nil
+						},
+						ConstructF: func(monitor *deploytest.ResourceMonitor,
+							typ, name string, parent resource.URN, inputs resource.PropertyMap,
+							info plugin.ConstructInfo, options plugin.ConstructOptions,
+						) (plugin.ConstructResult, error) {
+							return plugin.ConstructResult{
+								URN: "urn:pulumi:stack::project::pulumi:providers:some-type::foo",
+								Failures: []plugin.CheckFailure{
+									{Property: "foo", Reason: "expected failure"},
+								},
+							}, nil
+						},
+					},
+				},
+			}
+			req := &pulumirpc.RegisterResourceRequest{
+				Version: "1.0.0",
+				Type:    "pulumi:providers:some-type",
+				Remote:  true,
+			}
+			_, err := rm.RegisterResource(context.Background(), req)
+			assert.ErrorContains(t, err, "resource monitor shut down")
 		})
 	})
 	t.Run("output dependencies", func(t *testing.T) {

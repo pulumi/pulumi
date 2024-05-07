@@ -2074,6 +2074,10 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 func (rm *resmon) issueConstructErrors(inputs resource.PropertyMap, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
+	if len(failures) == 0 {
+		return false
+	}
+	contract.Assertf(rm.diagostics != nil, "received a nil rm.diagostics")
 	return rm.issueConstructFailures(rm.diagostics.Errorf, inputs, urn, failures)
 }
 
@@ -2084,6 +2088,7 @@ func (rm *resmon) issueConstructFailures(printf func(*diag.Diag, ...interface{})
 	if len(failures) == 0 {
 		return false
 	}
+	contract.Assertf(urn.IsValid(), "received an invalid urn")
 	for _, failure := range failures {
 		if failure.Property != "" {
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
