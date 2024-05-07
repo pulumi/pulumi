@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/google/uuid"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -699,4 +701,375 @@ func TestParallelStepGenerator(t *testing.T) {
 				"Expecting the time per resource to be at less than 5ms")
 		})
 	})
+}
+
+func TestDeleteBeforeCreate(t *testing.T) {
+	t.Parallel()
+
+	makeProvider := func() *deploytest.Provider {
+		return &deploytest.Provider{
+			CheckF: func(urn resource.URN, olds, news resource.PropertyMap, randomSeed []byte) (
+				resource.PropertyMap, []plugin.CheckFailure, error,
+			) {
+				return news, nil, nil
+			},
+			DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
+				newInputs resource.PropertyMap, ignoreChanges []string) (
+				plugin.DiffResult, error,
+			) {
+				diff := oldInputs.Diff(newInputs)
+				if diff == nil {
+					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+				}
+
+				if diff.Updated("state") {
+					newNoDbr, ok := newInputs["noDBR"]
+					if !ok {
+						newNoDbr = resource.NewPropertyValue(false)
+					}
+
+					return plugin.DiffResult{
+						Changes:             plugin.DiffSome,
+						ReplaceKeys:         []resource.PropertyKey{"state"},
+						DeleteBeforeReplace: !newNoDbr.BoolValue(),
+					}, nil
+				}
+
+				if diff.Updated("noReplace") {
+					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+				}
+
+				return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+			},
+			CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64, preview bool) (
+				resource.ID, resource.PropertyMap, resource.Status, error,
+			) {
+				return resource.ID(uuid.NewString()), inputs, resource.StatusOK, nil
+			},
+		}
+	}
+
+	step1Result := newTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", makeProvider()).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			aState := 42
+			a, err := monitor.RegisterResource("pkgA:m:typA", "base", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 1,
+							"state":     aState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step1: RegisterResource base")
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "dependent", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": aState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {a.URN},
+					},
+				})
+			assert.NoError(t, err, "Step1: RegisterResource dependent")
+			bState := aState
+
+			cState := 99
+			c, err := monitor.RegisterResource("pkgA:m:typA", "dependent-2", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": cState,
+						}),
+					Dependencies: []resource.URN{a.URN, b.URN},
+				})
+			assert.NoError(t, err, "Step1: RegisterResource dependent-2")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent-3", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state":     99,
+							"noReplace": aState + bState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"noReplace": {a.URN, b.URN},
+					},
+				})
+			assert.NoError(t, err, "Step1: RegisterResource dependent-3")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent-4", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": bState + cState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {b.URN, c.URN},
+					},
+				})
+			assert.NoError(t, err, "Step1: RegisterResource dependent-4")
+
+			return nil
+		})
+
+	assert.NoErrorf(t, step1Result.err, "Finished Step1")
+	assert.NotNil(t, step1Result.snap)
+
+	step1Snap := step1Result.snap
+
+	assert.Nil(t, step1Snap.VerifyIntegrity())
+	assert.Len(t, step1Snap.Resources, 1+5)
+
+	step2Result := newTestBuilder(t, step1Snap).
+		WithProvider("pkgA", "1.0.0", makeProvider()).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			aState := 99
+			a, err := monitor.RegisterResource("pkgA:m:typA", "base", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 1,
+							"state":     aState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step2: RegisterResource base")
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "dependent", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": aState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {a.URN},
+					},
+				})
+			assert.NoError(t, err, "Step2: RegisterResource dependent")
+			bState := aState
+
+			cState := 99
+			c, err := monitor.RegisterResource("pkgA:m:typA", "dependent-2", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": cState,
+						}),
+					Dependencies: []resource.URN{a.URN, b.URN},
+				})
+			assert.NoError(t, err, "Step2: RegisterResource dependent-2")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent-3", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state":     99,
+							"noReplace": aState + bState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"noReplace": {a.URN, b.URN},
+					},
+				})
+			assert.NoError(t, err, "Step2: RegisterResource dependent-3")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent-4", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": bState + cState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {b.URN, c.URN},
+					},
+				})
+			assert.NoError(t, err, "Step2: RegisterResource dependent-4")
+			return nil
+		})
+
+	assert.NoErrorf(t, step2Result.err, "Finished Step2")
+	assert.NotNil(t, step2Result.snap)
+
+	step2Snap := step2Result.snap
+	assert.Nil(t, step2Snap.VerifyIntegrity())
+	assert.Len(t, step2Snap.Resources, 1+5)
+
+	step3Result := newTestBuilder(t, step2Snap).
+		WithProvider("pkgA", "1.0.0", makeProvider()).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			aState := 100
+			a, err := monitor.RegisterResource("pkgA:m:typA", "base", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 1,
+							"state":     aState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step3: RegisterResource base")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": aState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {a.URN},
+					},
+				})
+			assert.NoError(t, err, "Step3: RegisterResource dependent")
+			return nil
+		})
+
+	assert.NoErrorf(t, step3Result.err, "Finished Step3")
+	assert.NotNil(t, step3Result.snap)
+
+	step3Snap := step3Result.snap
+	assert.Nil(t, step3Snap.VerifyIntegrity())
+	assert.Len(t, step3Snap.Resources, 1+2)
+
+	step4Result := newTestBuilder(t, step3Snap).
+		WithProvider("pkgA", "1.0.0", makeProvider()).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			aState := 100
+			a, err := monitor.RegisterResource("pkgA:m:typA", "base", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 1,
+							"state":     aState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step4: RegisterResource base")
+
+			bState := 100
+			b, err := monitor.RegisterResource("pkgA:m:typA", "base-2", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 2,
+							"state":     bState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step4: RegisterResource base-2")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": aState + bState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {a.URN, b.URN},
+					},
+				})
+			assert.NoErrorf(t, err, "Step4: RegisterResource dependent")
+
+			return nil
+		})
+
+	assert.NoErrorf(t, step4Result.err, "Finished Step4")
+	assert.NotNil(t, step4Result.snap)
+
+	step4Snap := step4Result.snap
+	assert.Nil(t, step4Snap.VerifyIntegrity())
+	assert.Len(t, step4Snap.Resources, 1+3)
+
+	step5Result := newTestBuilder(t, step4Snap).
+		WithProvider("pkgA", "1.0.0", makeProvider()).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			aState := 200
+			a, err := monitor.RegisterResource("pkgA:m:typA", "base", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 1,
+							"state":     aState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step5: RegisterResource base")
+
+			bState := 50
+			b, err := monitor.RegisterResource("pkgA:m:typA", "base-2", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 2,
+							"state":     bState,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step5: RegisterResource base-2")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": aState + bState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {a.URN, b.URN},
+					},
+				})
+			assert.NoErrorf(t, err, "Step5: RegisterResource dependent")
+
+			return nil
+		})
+
+	assert.NoErrorf(t, step5Result.err, "Finished Step5")
+	assert.NotNil(t, step5Result.snap)
+
+	step5Snap := step5Result.snap
+	assert.Nil(t, step5Snap.VerifyIntegrity())
+	assert.Len(t, step5Snap.Resources, 1+3)
+
+	step6Result := newTestBuilder(t, step5Snap).
+		WithProvider("pkgA", "1.0.0", makeProvider()).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			aState := 42
+			a, err := monitor.RegisterResource("pkgA:m:typA", "base", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 1,
+							"state":     aState,
+							"noDBR":     true,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step6: RegisterResource base")
+
+			bState := 42
+			b, err := monitor.RegisterResource("pkgA:m:typA", "base-2", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"uniqueKey": 2,
+							"state":     bState,
+							"noDBR":     true,
+						}),
+				})
+			assert.NoErrorf(t, err, "Step6: RegisterResource base-2")
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true,
+				deploytest.ResourceOptions{
+					Inputs: resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"state": aState + bState,
+						}),
+					PropertyDeps: map[resource.PropertyKey][]urn.URN{
+						"state": {a.URN, b.URN},
+					},
+				})
+			assert.NoErrorf(t, err, "Step6: RegisterResource dependent")
+
+			return nil
+		})
+
+	assert.NoErrorf(t, step6Result.err, "Finished Step6")
+	assert.NotNil(t, step6Result.snap)
+
+	step6Snap := step6Result.snap
+	assert.Nil(t, step6Snap.VerifyIntegrity())
+	assert.Len(t, step6Snap.Resources, 1+3)
 }

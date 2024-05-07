@@ -1155,6 +1155,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				if err != nil {
 					return nil, err
 				}
+				defer sg.urnLock.UnlockDependentReplaces(toReplace)
 
 				// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
 				// order, so we iterate in reverse.
@@ -1165,7 +1166,6 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					if sg.pendingDeletes[dependentResource] {
 						continue
 					}
-					defer sg.urnLock.UnlockDependentReplaces(toReplace)
 
 					// If we're generating plans create a plan for this delete
 					if sg.opts.GeneratePlan {

@@ -70,7 +70,10 @@ func (rl *resourceLock) UnlockResource(urn resource.URN) {
 	contract.Assertf(!rl.mu.TryLock(), "the mutex must be locked")
 
 	delete(rl.locks, urn)
-	rl.cond.Signal()
+	// Note: We always use broadcast rather than signal, because we sometimes
+	// lock URNS in groups and then unlock them singly, there is no way of knowing if
+	// signal will wake the correct thread
+	rl.cond.Broadcast()
 }
 
 // Locks a set of resources. This will
@@ -119,11 +122,9 @@ func (rl *resourceLock) UnlockResources(resources []*resource.State) {
 	contract.Assertf(!rl.mu.TryLock(), "the mutex must be locked")
 
 	for _, r := range resources {
-		if _, ok := rl.locks[r.URN]; ok {
-			delete(rl.locks, r.URN)
-			rl.cond.Signal()
-		}
+		delete(rl.locks, r.URN)
 	}
+	rl.cond.Broadcast()
 }
 
 // Unlocks a list of previously locked resources provided as a list of
@@ -138,11 +139,9 @@ func (rl *resourceLock) UnlockDependentReplaces(toReplace []dependentReplace) {
 	contract.Assertf(!rl.mu.TryLock(), "the mutex must be locked")
 
 	for _, r := range toReplace {
-		if _, ok := rl.locks[r.res.URN]; ok {
-			delete(rl.locks, r.res.URN)
-			rl.cond.Signal()
-		}
+		delete(rl.locks, r.res.URN)
 	}
+	rl.cond.Broadcast()
 }
 
 // Inverts the mutex lock and runs the supplied function outside the lock
