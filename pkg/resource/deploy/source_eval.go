@@ -1849,7 +1849,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 
-		if rm.issueConstructErrors(result.State, result.State.URN, constructResult.Failures) {
+		if rm.issueConstructErrors(props, result.State.URN, constructResult.Failures) {
 			logging.V(5).Infof(
 				"ResourceMonitor.RegisterResource got construct failures: t=%v, urn=%v, #failures=%v",
 				t, result.State.URN, len(constructResult.Failures))
@@ -2071,27 +2071,26 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 }
 
 // issueCheckErrors prints any check errors to the diagnostics error sink.
-func (rm *resmon) issueConstructErrors(new *resource.State, urn resource.URN,
+func (rm *resmon) issueConstructErrors(inputs resource.PropertyMap, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	return rm.issueConstructFailures(rm.diagostics.Errorf, new, urn, failures)
+	return rm.issueConstructFailures(rm.diagostics.Errorf, inputs, urn, failures)
 }
 
 // issueCheckErrors prints any check errors to the given printer function.
-func (rm *resmon) issueConstructFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
-	failures []plugin.CheckFailure,
+func (rm *resmon) issueConstructFailures(printf func(*diag.Diag, ...interface{}), inputs resource.PropertyMap,
+	urn resource.URN, failures []plugin.CheckFailure,
 ) bool {
 	if len(failures) == 0 {
 		return false
 	}
-	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
-				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				urn.Type(), urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
 			printf(
-				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
+				diag.GetResourceInvalidError(urn), urn.Type(), urn.Name(), failure.Reason)
 		}
 	}
 	return true
