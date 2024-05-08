@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix mangled diffs of strings containing url-encoded chars
