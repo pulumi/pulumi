@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-
 	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
