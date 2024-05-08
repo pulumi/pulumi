@@ -1093,9 +1093,9 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 	for _, d := range diffs {
 		switch d.Type {
 		case diffmatchpatch.DiffDelete:
-			p.withOp(deploy.OpDelete).write(escape(d.Text))
+			p.withOp(deploy.OpDelete).writeVerbatim(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
-			p.withOp(deploy.OpSame).write(escape(d.Text))
+			p.withOp(deploy.OpSame).writeVerbatim(escape(d.Text))
 		case diffmatchpatch.DiffInsert:
 			// An insert has no old text
 		}
@@ -1109,9 +1109,9 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 	for _, d := range diffs {
 		switch d.Type {
 		case diffmatchpatch.DiffInsert:
-			p.withOp(deploy.OpCreate).write(escape(d.Text))
+			p.withOp(deploy.OpCreate).writeVerbatim(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
-			p.withOp(deploy.OpSame).write(escape(d.Text))
+			p.withOp(deploy.OpSame).writeVerbatim(escape(d.Text))
 		case diffmatchpatch.DiffDelete:
 			// A delete has no new text
 		}
