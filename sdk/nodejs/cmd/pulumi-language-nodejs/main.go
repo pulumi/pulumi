@@ -582,7 +582,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
+			"It looks like the Pulumi SDK has not been installed. Have you run pulumi install?")
 	}
 
 	// Channel producing the final response we want to issue to our caller. Will get the result of
