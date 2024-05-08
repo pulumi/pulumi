@@ -435,7 +435,6 @@ func (data *resourceRowData) getInfoColumn() string {
 }
 
 func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
-	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
@@ -444,10 +443,6 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		if step.Op != deploy.OpSame {
 			if step.DetailedDiff != nil {
 				diff = engine.TranslateDetailedDiff(&step)
-			} else if diffOutputs {
-				if step.Old.Outputs != nil && step.New.Outputs != nil {
-					diff = step.Old.Outputs.Diff(step.New.Outputs)
-				}
 			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
 				diff = step.Old.Inputs.Diff(step.New.Inputs)
 			}

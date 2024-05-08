@@ -17,7 +17,6 @@ package deploy
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -844,11 +843,12 @@ func (s *ReadStep) Skip() {
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
 type RefreshStep struct {
-	deployment *Deployment     // the deployment that produced this refresh
-	old        *resource.State // the old resource state, if one exists for this urn
-	new        *resource.State // the new resource state, to be used to query the provider
-	done       chan<- bool     // the channel to use to signal completion, if any
-	provider   plugin.Provider // the optional provider to use.
+	deployment *Deployment       // the deployment that produced this refresh
+	old        *resource.State   // the old resource state, if one exists for this urn
+	new        *resource.State   // the new resource state, to be used to query the provider
+	done       chan<- bool       // the channel to use to signal completion, if any
+	provider   plugin.Provider   // the optional provider to use.
+	diff       plugin.DiffResult // the diff between the cloud provider and the state file
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -864,15 +864,17 @@ func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- boo
 	}
 }
 
-func (s *RefreshStep) Op() display.StepOp      { return OpRefresh }
-func (s *RefreshStep) Deployment() *Deployment { return s.deployment }
-func (s *RefreshStep) Type() tokens.Type       { return s.old.Type }
-func (s *RefreshStep) Provider() string        { return s.old.Provider }
-func (s *RefreshStep) URN() resource.URN       { return s.old.URN }
-func (s *RefreshStep) Old() *resource.State    { return s.old }
-func (s *RefreshStep) New() *resource.State    { return s.new }
-func (s *RefreshStep) Res() *resource.State    { return s.old }
-func (s *RefreshStep) Logical() bool           { return false }
+func (s *RefreshStep) Op() display.StepOp                           { return OpRefresh }
+func (s *RefreshStep) Deployment() *Deployment                      { return s.deployment }
+func (s *RefreshStep) Type() tokens.Type                            { return s.old.Type }
+func (s *RefreshStep) Provider() string                             { return s.old.Provider }
+func (s *RefreshStep) URN() resource.URN                            { return s.old.URN }
+func (s *RefreshStep) Old() *resource.State                         { return s.old }
+func (s *RefreshStep) New() *resource.State                         { return s.new }
+func (s *RefreshStep) Res() *resource.State                         { return s.old }
+func (s *RefreshStep) Logical() bool                                { return false }
+func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
+func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
@@ -880,7 +882,7 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 	if s.new == nil {
 		return OpDelete
 	}
-	if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
+	if s.new == s.old || s.diff.Changes == plugin.DiffNone {
 		return OpSame
 	}
 	return OpUpdate
@@ -932,21 +934,6 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		inputs = refreshed.Inputs
 	}
 
-	// Process ignoreChanges for this resource, replacing the outputs and inputs with the old
-	// state's outputs and inputs. Ignore any errors due to missing paths since the path may
-	// be in either the inputs or outputs.
-	if outputs != nil {
-		inputs, _ = processIgnoreChanges(inputs, s.old.Inputs, s.old.IgnoreChanges)
-		outputs, _ = processIgnoreChanges(outputs, s.old.Outputs, s.old.IgnoreChanges)
-	} else {
-		// The resource doesn't exist in the cloud, but if "*" is ignored, we pretend it does
-		// still exist and just keep the old inputs and outputs.
-		if slices.Contains(s.old.IgnoreChanges, "*") {
-			inputs = s.old.Inputs
-			outputs = s.old.Outputs
-		}
-	}
-
 	if outputs != nil {
 		// There is a chance that the ID has changed. We want to allow this change to happen
 		// it will have changed already in the outputs, but we need to persist this change
@@ -964,8 +951,8 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		)
 		var inputsChange, outputsChange bool
 		if s.old != nil {
-			inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-			outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+			inputsChange = !inputs.DeepEquals(s.old.Inputs)
+			outputsChange = !outputs.DeepEquals(s.old.Outputs)
 		}
 
 		// Only update the Modified timestamp if refresh provides new values that differ
@@ -976,7 +963,29 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			now := time.Now().UTC()
 			s.new.Modified = &now
 		}
+
+		// We compute the diff that a user would see if they immediately ran an `up` on a no-change program
+		// after this refresh.  This will return the opposite of what we want - so we'll invert it below.
+		// We pass:
+		// * newInputs where oldInputs are expected
+		// * newOutputs where oldOutputs are expected
+		// * oldInputs where newInputs are expected
+		diff, err := diffResource(s.new.URN, s.new.ID, s.new.Inputs, s.new.Outputs, s.old.Inputs, prov, preview,
+			s.old.IgnoreChanges)
+		if err != nil {
+			return rst, nil, err
+		}
+
+		// We actually want to show the user the *opposite* of the diff above, since we want to show
+		// what changes are coming from the outputs into the inputs, not what changes are coming from
+		// the inputs into the outputs!
+		s.diff = diff.Invert()
+		logging.V(7).Infof("Refresh diff: %v", s.diff)
 	} else {
+		// TODO: Should it be possible to ignore the entire discard and put the old state back in full?
+		// Perhaps via `ignoreChanges: "*"`?  This is a case where the resource is gone in the cloud provider,
+		// but we want to ignore the notification of this - perhaps to have clean drift reports.  We would need
+		// to compute a diff with this change ignored and store it on the step.
 		s.new = nil
 	}
 
