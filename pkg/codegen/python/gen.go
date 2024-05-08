@@ -3291,7 +3291,7 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 	// This is just legacy functionality; there's no obvious reason this should be the case.
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": "",
+			"pulumi": ">=3.0.0,<4.0.0",
 		}
 		return result, nil
 	}
