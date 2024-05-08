@@ -353,8 +353,10 @@ class Server implements grpc.UntypedServiceImplementation {
 
             if ((result.failures || []).length !== 0) {
                 if (!req.getAcceptsFailures()) {
-                    throw new Error("resource has a problem; please upgrade the Pulumi CLI " +
-                        "to see a more detailed error message");
+                    throw new Error(
+                        "resource has a problem; please upgrade the Pulumi CLI " +
+                            "to see a more detailed error message",
+                    );
                 }
                 const failureList = [];
                 for (const f of result.failures!) {
