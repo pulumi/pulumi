@@ -1422,7 +1422,7 @@ func TestStreamInvoke(t *testing.T) {
 					return nil, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1484,7 +1484,7 @@ func TestStreamInvoke(t *testing.T) {
 					return nil, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1550,7 +1550,7 @@ func TestStreamInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1612,7 +1612,7 @@ func TestStreamInvoke(t *testing.T) {
 				},
 			},
 			plugctx: plugctx,
-		}, reg, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, reg, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1958,12 +1958,12 @@ func TestEvalSourceIterator(t *testing.T) {
 			assert.Nil(t, evt)
 			assert.NoError(t, err)
 		})
-		t.Run("iter.regChan (closed)", func(t *testing.T) {
+		t.Run("iter.abortChan", func(t *testing.T) {
 			t.Parallel()
-			regChan := make(chan *registerResourceEvent, 1)
-			close(regChan)
+			abortChan := make(chan bool)
+			close(abortChan)
 			iter := &evalSourceIterator{
-				regChan: regChan,
+				abortChan: abortChan,
 			}
 			_, err := iter.Next()
 			assert.Error(t, err)
@@ -2354,7 +2354,7 @@ func TestInvoke(t *testing.T) {
 					return nil, nil, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2417,7 +2417,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2493,7 +2493,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResult{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2581,7 +2581,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResult{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2654,7 +2654,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResult{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2739,7 +2739,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, nil, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -3180,10 +3180,10 @@ func TestRegisterResource(t *testing.T) {
 		t.Run("validation failures", func(t *testing.T) {
 			t.Parallel()
 			cancel := make(chan bool)
-			regChan := make(chan *registerResourceEvent, 1)
+			abortChan := make(chan bool)
 			go func() {
-				// the resource monitor should close the registration channel to poison the iterator.
-				_, ok := <-regChan
+				// the resource monitor should close the abort channel to poison the iterator.
+				_, ok := <-abortChan
 				assert.False(t, ok)
 				close(cancel)
 			}()
@@ -3201,7 +3201,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				diagostics: diagtest.LogSink(t),
 				cancel:     cancel,
-				regChan:    regChan,
+				abortChan:  abortChan,
 				defaultProviders: &defaultProviders{
 					requests: requests,
 					config: &configSourceMock{

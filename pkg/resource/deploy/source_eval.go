@@ -131,11 +131,12 @@ func (src *evalSource) Iterate(
 	}
 
 	// First, fire up a resource monitor that will watch for and record resource creation.
+	abortChan := make(chan bool)
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
 	mon, err := newResourceMonitor(
-		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
+		src, providers, abortChan, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
@@ -144,6 +145,7 @@ func (src *evalSource) Iterate(
 	iter := &evalSourceIterator{
 		mon:         mon,
 		src:         src,
+		abortChan:   abortChan,
 		regChan:     regChan,
 		regOutChan:  regOutChan,
 		regReadChan: regReadChan,
@@ -161,6 +163,7 @@ func (src *evalSource) Iterate(
 type evalSourceIterator struct {
 	mon         SourceResourceMonitor              // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
+	abortChan   chan bool                          // the channel to abort the iteration.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
@@ -185,11 +188,10 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
-	case reg, ok := <-iter.regChan:
-		if !ok {
-			logging.V(5).Infoln("EvalSourceIterator bailed on close of registration channel")
-			return nil, result.BailErrorf("registration channel has closed")
-		}
+	case <-iter.abortChan:
+		logging.V(5).Infof("EvalSourceIterator ended with abort.")
+		return nil, result.BailErrorf("EvalSourceIterator aborted")
+	case reg := <-iter.regChan:
 		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
 		goal := reg.Goal()
 		logging.V(5).Infof("EvalSourceIterator produced a registration: t=%v,name=%v,#props=%v",
@@ -571,6 +573,7 @@ type resmon struct {
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	sourcePositions           *sourcePositions                   // source position manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
+	abortChan                 chan bool                          // a channel to send aborts to.
 	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
 	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
 	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
@@ -593,7 +596,7 @@ type resmon struct {
 var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
+func newResourceMonitor(src *evalSource, provs ProviderSource, abortChan chan bool, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent, opts Options,
 	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span,
 ) (*resmon, error) {
@@ -621,6 +624,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		parents:                   map[resource.URN]resource.URN{},
 		resGoals:                  map[resource.URN]resource.Goal{},
 		componentProviders:        map[resource.URN]map[string]string{},
+		abortChan:                 abortChan,
 		regChan:                   regChan,
 		regOutChan:                regOutChan,
 		regReadChan:               regReadChan,
@@ -1854,10 +1858,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"ResourceMonitor.RegisterResource got construct failures: t=%v, urn=%v, #failures=%v",
 				t, result.State.URN, len(constructResult.Failures))
 
-			// Since the resource isn't valid, fail the deployment by closing the registration channel
+			// Since the resource isn't valid, fail the deployment by closing the abort channel
 			// and then waiting for the resource monitor to shut down. This is similar to how Check failures
 			// are handled during processing of registerResourceEvent.
-			close(rm.regChan)
+			close(rm.abortChan)
 			<-rm.cancel
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down")
 		}
