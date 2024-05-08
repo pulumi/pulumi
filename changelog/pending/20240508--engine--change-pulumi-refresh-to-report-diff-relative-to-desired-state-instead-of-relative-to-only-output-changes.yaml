@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Change pulumi refresh to report diff relative to desired state instead of relative to only output changes
