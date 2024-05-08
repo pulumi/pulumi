@@ -23,11 +23,12 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -75,7 +76,7 @@ func WithPath(path string) func(p *PluginLoader) {
 }
 
 type PluginLoader struct {
-	kind         workspace.PluginKind
+	kind         apitype.PluginKind
 	name         string
 	version      semver.Version
 	load         LoadPluginFunc
@@ -93,7 +94,7 @@ func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProv
 	opts ...ProviderOption,
 ) *ProviderLoader {
 	p := &ProviderLoader{
-		kind:    workspace.ResourcePlugin,
+		kind:    apitype.ResourcePlugin,
 		name:    string(pkg),
 		version: version,
 		load:    func(_ interface{}) (interface{}, error) { return load() },
@@ -109,7 +110,7 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 	load LoadProviderWithHostFunc, opts ...ProviderOption,
 ) *ProviderLoader {
 	p := &ProviderLoader{
-		kind:         workspace.ResourcePlugin,
+		kind:         apitype.ResourcePlugin,
 		name:         string(pkg),
 		version:      version,
 		loadWithHost: func(_ interface{}, host plugin.Host) (interface{}, error) { return load(host) },
@@ -123,7 +124,7 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 
 func NewAnalyzerLoader(name string, load LoadAnalyzerFunc, opts ...PluginOption) *PluginLoader {
 	p := &PluginLoader{
-		kind: workspace.AnalyzerPlugin,
+		kind: apitype.AnalyzerPlugin,
 		name: name,
 		load: func(optsI interface{}) (interface{}, error) {
 			opts, _ := optsI.(*plugin.PolicyAnalyzerOptions)
@@ -138,7 +139,7 @@ func NewAnalyzerLoader(name string, load LoadAnalyzerFunc, opts ...PluginOption)
 
 func NewAnalyzerLoaderWithHost(name string, load LoadAnalyzerWithHostFunc, opts ...PluginOption) *PluginLoader {
 	p := &PluginLoader{
-		kind: workspace.AnalyzerPlugin,
+		kind: apitype.AnalyzerPlugin,
 		name: name,
 		loadWithHost: func(optsI interface{}, host plugin.Host) (interface{}, error) {
 			opts, _ := optsI.(*plugin.PolicyAnalyzerOptions)
@@ -188,7 +189,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	)
 	if err != nil {
 		contract.IgnoreClose(wrapper)
-		return nil, nil, fmt.Errorf("could not connect to resource provider service: %v", err)
+		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
@@ -204,7 +205,7 @@ type hostEngine struct {
 	stop    chan bool
 }
 
-func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
 	case pulumirpc.LogSeverity_DEBUG:
@@ -224,7 +225,7 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	} else {
 		e.sink.Logf(sev, diag.StreamMessage(resource.URN(req.Urn), req.Message, req.StreamId))
 	}
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (e *hostEngine) GetRootResource(_ context.Context,
@@ -286,7 +287,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		panic(fmt.Errorf("could not start engine service: %v", err))
+		panic(fmt.Errorf("could not start engine service: %w", err))
 	}
 	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
 
@@ -306,7 +307,7 @@ func (host *pluginHost) isClosed() bool {
 	return host.closed
 }
 
-func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *semver.Version,
+func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *semver.Version,
 	opts interface{},
 ) (interface{}, error) {
 	var best *PluginLoader
@@ -352,10 +353,12 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 	defer host.m.Unlock()
 
 	switch kind {
-	case workspace.AnalyzerPlugin:
+	case apitype.AnalyzerPlugin:
 		host.analyzers = append(host.analyzers, plug.(plugin.Analyzer))
-	case workspace.ResourcePlugin:
+	case apitype.ResourcePlugin:
 		host.providers = append(host.providers, plug.(plugin.Provider))
+	case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
+		// Nothing to do for these to plugins.
 	}
 
 	host.plugins[plug] = closer
@@ -366,7 +369,7 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
-	plug, err := host.plugin(workspace.ResourcePlugin, string(pkg), version, nil)
+	plug, err := host.plugin(apitype.ResourcePlugin, string(pkg), version, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -380,9 +383,7 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
-) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -463,7 +464,7 @@ func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plug
 }
 
 func (host *pluginHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
@@ -490,15 +491,16 @@ func (host *pluginHost) ResolvePlugin(
 		semverRange = version.EQ
 	}
 
-	match, err := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
-	if err == nil {
-		return &match, nil
+	match := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
+	if match == nil {
+		return nil, errors.New("could not locate a compatible plugin in deploytest, the makefile and " +
+			"& constructor of the plugin host must define the location of the schema")
 	}
-	return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and "+
-		"& constructor of the plugin host must define the location of the schema: %w", err)
+	return match, nil
 }
 
-func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
+func (host *pluginHost) GetRequiredPlugins(
+	info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginSpec, error) {
 	return host.languageRuntime.GetRequiredPlugins(info)
@@ -514,7 +516,7 @@ func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
-	plug, err := host.plugin(workspace.AnalyzerPlugin, string(name), nil, opts)
+	plug, err := host.plugin(apitype.AnalyzerPlugin, string(name), nil, opts)
 	if err != nil || plug == nil {
 		return nil, err
 	}

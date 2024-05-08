@@ -47,7 +47,7 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return socmd.Run(commandContext(), args)
+			return socmd.Run(cmd.Context(), args)
 		}),
 	}
 
@@ -273,6 +273,7 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interf
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
 	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
-	return stack.SerializeProperties(display.MassageSecrets(state.Outputs, showSecrets),
+	ctx := context.TODO()
+	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),
 		config.NewPanicCrypter(), showSecrets)
 }

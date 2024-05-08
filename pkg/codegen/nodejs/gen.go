@@ -127,7 +127,7 @@ func pascal(s string) string {
 // externalModuleName Formats the name of package to comply with an external
 // module.
 func externalModuleName(s string) string {
-	return fmt.Sprintf("pulumi%s", pascal(s))
+	return "pulumi" + pascal(s)
 }
 
 type modContext struct {
@@ -248,7 +248,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 			pkgName = externalModuleName(pkgName)
 		}
 
-		return fmt.Sprintf("%s.Provider", pkgName)
+		return pkgName + ".Provider"
 	}
 
 	pkg := mod.pkg
@@ -532,6 +532,7 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // Only a subset of types has default values.
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {
@@ -669,7 +670,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "            return false;\n")
 	fmt.Fprintf(w, "        }\n")
 
-	typeExpression := fmt.Sprintf("%s.__pulumiType", name)
+	typeExpression := name + ".__pulumiType"
 	if r.IsProvider {
 		// We pass __pulumiType to the ProviderResource constructor as the "type" for this provider, the
 		// ProviderResource constructor in the SDK then prefixes "pulumi:providers:" to that token and passes that
@@ -767,7 +768,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults(fmt.Sprintf("args.%s", prop.Name))
+			argValue := applyDefaults("args." + prop.Name)
 			if prop.Secret {
 				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
@@ -1223,7 +1224,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
-			body := fmt.Sprintf("args.%s", p.Name)
+			body := "args." + p.Name
 			if fun.MultiArgumentInputs {
 				body = p.Name
 			}
@@ -1292,10 +1293,10 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 
 	originalName := tokenToFunctionName(fun.Token)
-	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	fnOutput := originalName + "Output"
 	returnType := mod.functionReturnType(fun)
 	info.functionOutputVersionName = fnOutput
-	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
+	argTypeName := title(fnOutput) + "Args"
 
 	argsig := ""
 	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
@@ -2153,7 +2154,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
 			}
-			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
+			importPath := "./" + strings.TrimSuffix(rel, ".ts")
 			ll.genReexport(w, exp, importPath)
 		}
 	}
@@ -2177,7 +2178,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if mod.mod == "" {
 				filePath = ""
 			} else {
-				filePath = fmt.Sprintf("/%s", mod.mod)
+				filePath = "/" + mod.mod
 			}
 			fmt.Fprintf(w, "export * from \"%s/types/enums%s\";\n", rel, filePath)
 		}
@@ -2348,11 +2349,15 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs) error {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies)
+	if err != nil {
+		return err
+	}
+	fs.Add("package.json", []byte(packageJSON))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
 	return nil
 }
@@ -2373,10 +2378,10 @@ type npmPackage struct {
 	Pulumi           *plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
-		packageName = fmt.Sprintf("@pulumi/%s", pkg.Name)
+		packageName = "@pulumi/" + pkg.Name
 	}
 
 	devDependencies := map[string]string{}
@@ -2392,6 +2397,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	if pkg.Version != nil && info.RespectSchemaVersion {
 		version = pkg.Version.String()
 		pluginVersion = version
+	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		pluginVersion = pkg.Version.String()
+		version = pluginVersion
 	}
 
 	// If this is an extension library than it is _not_ a plugin library itself, it will depend on the library that
@@ -2427,7 +2439,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		if npminfo.Dependencies == nil {
 			npminfo.Dependencies = make(map[string]string)
 		}
-		npminfo.Dependencies[depk] = depv
+		if path, ok := localDependencies[depk]; ok {
+			npminfo.Dependencies[depk] = path
+		} else {
+			npminfo.Dependencies[depk] = depv
+		}
 	}
 	// Add the extension dependency, if any.
 	if pkg.Extension != nil {
@@ -2469,13 +2485,17 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		if npminfo.Dependencies == nil {
 			npminfo.Dependencies = make(map[string]string)
 		}
-		npminfo.Dependencies["@pulumi/pulumi"] = MinimumValidSDKVersion
+		if path, ok := localDependencies["pulumi"]; ok {
+			npminfo.Dependencies[sdkPack] = path
+		} else {
+			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
+		}
 	}
 
 	// Now write out the serialized form.
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
-	return string(npmjson) + "\n"
+	return string(npmjson) + "\n", nil
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
@@ -2747,7 +2767,9 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func GeneratePackage(tool string, pkg *schema.Package,
+	extraFiles map[string][]byte, localDependencies map[string]string,
+) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
 		return nil, err
@@ -2765,7 +2787,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies); err != nil {
 		return nil, err
 	}
 	return files, nil

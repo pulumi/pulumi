@@ -39,6 +39,7 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
+      enable-coverage: true
     secrets: inherit
 
   prepare-release:

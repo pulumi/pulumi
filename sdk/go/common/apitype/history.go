@@ -30,6 +30,7 @@ const (
 	// RefreshUpdate is an update that came from a refresh operation.
 	RefreshUpdate UpdateKind = "refresh"
 	// RenameUpdate is an update that changes the stack name or project name of a Pulumi program.
+	// NOTE: Do not remove this type - it is used by Pulumi Cloud code.
 	RenameUpdate UpdateKind = "rename"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"

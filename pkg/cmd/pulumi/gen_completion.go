@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
+// newGenCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
 func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:     "gen-completion <SHELL>",

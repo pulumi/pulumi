@@ -12,6 +12,8 @@ import (
 // TestDependencySteps tests a case where the dependency graph between two
 // resources is inverted between updates. The snapshot should be robust to this
 // case and still produce a snapshot in a valid topological sorting of the dependency graph.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDependencySteps(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

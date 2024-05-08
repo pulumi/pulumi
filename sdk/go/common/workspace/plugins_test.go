@@ -29,12 +29,94 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestLegacyPluginSelection_Prerelease(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	v2 := semver.MustParse("0.2.0")
+	v3 := semver.MustParse("0.3.0-alpha")
+	candidatePlugins := []PluginInfo{
+		{
+			Name:    "myplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v2,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "notmyplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    apitype.AnalyzerPlugin,
+			Version: &v3,
+		},
+	}
+
+	result := LegacySelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", nil)
+	assert.NotNil(t, result)
+	assert.Equal(t, "myplugin", result.Name)
+	assert.Equal(t, "0.2.0", result.Version.String())
+}
+
+func TestLegacyPluginSelection_PrereleaseRequested(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	v2 := semver.MustParse("0.2.0-alpha")
+	v3 := semver.MustParse("0.3.0-alpha")
+	candidatePlugins := []PluginInfo{
+		{
+			Name:    "myplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v2,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "notmyplugin",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v3,
+		},
+		{
+			Name:    "myplugin",
+			Kind:    apitype.AnalyzerPlugin,
+			Version: &v3,
+		},
+	}
+
+	v := semver.MustParse("0.2.0")
+	result := LegacySelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", &v)
+	assert.NotNil(t, result)
+	assert.Equal(t, "myplugin", result.Name)
+	assert.Equal(t, "0.3.0-alpha", result.Version.String())
+}
 
 func TestPluginSelection_ExactMatch(t *testing.T) {
 	t.Parallel()
@@ -45,34 +127,34 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 	candidatePlugins := []PluginInfo{
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v1,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v2,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "notmyplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    AnalyzerPlugin,
+			Kind:    apitype.AnalyzerPlugin,
 			Version: &v3,
 		},
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -86,34 +168,34 @@ func TestPluginSelection_ExactMatchNotFound(t *testing.T) {
 	candidatePlugins := []PluginInfo{
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v1,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v2,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "notmyplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    AnalyzerPlugin,
+			Kind:    apitype.AnalyzerPlugin,
 			Version: &v3,
 		},
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	_, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.Error(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	assert.Nil(t, result)
 }
 
 func TestPluginSelection_PatchVersionSlide(t *testing.T) {
@@ -126,39 +208,39 @@ func TestPluginSelection_PatchVersionSlide(t *testing.T) {
 	candidatePlugins := []PluginInfo{
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v1,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v2,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v21,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "notmyplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    AnalyzerPlugin,
+			Kind:    apitype.AnalyzerPlugin,
 			Version: &v3,
 		},
 	}
 
 	requested := semver.MustParseRange(">=0.2.0 <0.3.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.1", result.Version.String())
 }
@@ -172,39 +254,39 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 	candidatePlugins := []PluginInfo{
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v1,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v2,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: nil,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "notmyplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    AnalyzerPlugin,
+			Kind:    apitype.AnalyzerPlugin,
 			Version: &v3,
 		},
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Nil(t, result.Version)
 }
@@ -218,44 +300,44 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	candidatePlugins := []PluginInfo{
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v1,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v2,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: nil,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: nil,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "notmyplugin",
-			Kind:    ResourcePlugin,
+			Kind:    apitype.ResourcePlugin,
 			Version: &v3,
 		},
 		{
 			Name:    "myplugin",
-			Kind:    AnalyzerPlugin,
+			Kind:    apitype.AnalyzerPlugin,
 			Version: &v3,
 		},
 	}
 
 	requested := semver.MustParseRange("0.2.0")
-	result, err := SelectCompatiblePlugin(candidatePlugins, ResourcePlugin, "myplugin", requested)
-	assert.NoError(t, err)
+	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
@@ -280,7 +362,7 @@ func TestPluginDownload(t *testing.T) {
 			PluginDownloadURL: "",
 			Name:              "mockdl",
 			Version:           &version,
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
@@ -321,7 +403,7 @@ func TestPluginDownload(t *testing.T) {
 			PluginDownloadURL: "",
 			Name:              "otherdl",
 			Version:           &version,
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
@@ -348,7 +430,7 @@ func TestPluginDownload(t *testing.T) {
 			PluginDownloadURL: "http://customurl.jfrog.io/artifactory/pulumi-packages/package-name/v${VERSION}/${OS}/${ARCH}",
 			Name:              "mockdl",
 			Version:           &version,
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
@@ -373,7 +455,7 @@ func TestPluginDownload(t *testing.T) {
 				"package-name/${NAME}/v${VERSION}/${OS}/${ARCH}/",
 			Name:    "mockdl",
 			Version: &version,
-			Kind:    PluginKind("resource"),
+			Kind:    apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
@@ -398,13 +480,13 @@ func TestPluginDownload(t *testing.T) {
 			PluginDownloadURL: "",
 			Name:              "mockdl",
 			Version:           &version,
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -423,7 +505,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -441,7 +523,7 @@ func TestPluginDownload(t *testing.T) {
 			PluginDownloadURL: "github://api.git.org/ourorg/mock",
 			Name:              "mockdl",
 			Version:           &version,
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
@@ -452,7 +534,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/tags/v4.32.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -471,7 +553,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 
 			assert.Equal(t, "https://api.git.org/repos/ourorg/mock/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -517,7 +599,7 @@ func TestPluginDownload(t *testing.T) {
 				PluginDownloadURL: "",
 				Name:              "mockdl",
 				Version:           &version,
-				Kind:              PluginKind("resource"),
+				Kind:              apitype.PluginKind("resource"),
 				Checksums: map[string][]byte{
 					"darwin-amd64": {0},
 				},
@@ -540,7 +622,7 @@ func TestPluginDownload(t *testing.T) {
 				PluginDownloadURL: "",
 				Name:              "mockdl",
 				Version:           &version,
-				Kind:              PluginKind("resource"),
+				Kind:              apitype.PluginKind("resource"),
 				Checksums: map[string][]byte{
 					"darwin-amd64": checksum,
 				},
@@ -565,7 +647,7 @@ func TestPluginDownload(t *testing.T) {
 				PluginDownloadURL: "",
 				Name:              "mockdl",
 				Version:           &version,
-				Kind:              PluginKind("resource"),
+				Kind:              apitype.PluginKind("resource"),
 				Checksums: map[string][]byte{
 					"windows-amd64": {0},
 				},
@@ -587,7 +669,7 @@ func TestPluginDownload(t *testing.T) {
 			PluginDownloadURL: "gitlab://gitlab.com/278964",
 			Name:              "mock-gitlab",
 			Version:           &version,
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
@@ -595,7 +677,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t,
 				"https://gitlab.com/api/v4/projects/278964/releases/v1.23.4/downloads/"+
 					"pulumi-resource-mock-gitlab-v1.23.4-windows-arm64.tar.gz", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("Bearer %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "Bearer "+token, req.Header.Get("Authorization"))
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -617,7 +699,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "",
 			Name:              "mock-latest",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
@@ -639,39 +721,39 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "http://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
 			Name:              "mock-latest",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
 	t.Run("Custom https URL", func(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
 			Name:              "mock-latest",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
 	t.Run("Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
 		spec := PluginSpec{
 			PluginDownloadURL: "",
 			Name:              "mock-private",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mock-private/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -690,14 +772,14 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "github://api.git.org/ourorg/mock",
 			Name:              "mock-private",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("4.37.5")
 		source, err := spec.GetSource()
 		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -716,14 +798,14 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "gitlab://gitlab.com/278964",
 			Name:              "mock-gitlab",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("1.23.0")
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://gitlab.com/api/v4/projects/278964/releases/permalink/latest" {
-				assert.Equal(t, fmt.Sprintf("Bearer %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "Bearer "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 
 				// Minimal JSON from the releases API to get the test to pass
@@ -743,7 +825,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "",
 			Name:              "mock-latest",
-			Kind:              PluginKind("resource"),
+			Kind:              apitype.PluginKind("resource"),
 		}
 		source, err := spec.GetSource()
 		assert.NoError(t, err)
@@ -751,9 +833,8 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
 		}
 		_, err = source.GetLatestVersion(getHTTPResponse)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "rate limit exceeded")
-		assert.Contains(t, err.Error(), "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
+		assert.ErrorContains(t, err, "rate limit exceeded")
+		assert.ErrorContains(t, err, "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
 	})
 }
 
@@ -767,10 +848,10 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}
 
 	tests := []struct {
-		input       string
-		expected    pluginDownloadOverrideArray
-		matches     []match
-		expectError bool
+		input         string
+		expected      pluginDownloadOverrideArray
+		matches       []match
+		expectedError string
 	}{
 		{
 			input:    "",
@@ -868,24 +949,24 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			},
 		},
 		{
-			input:       "=", // missing regex and url
-			expectError: true,
+			input:         "=", // missing regex and url
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"=\"",
 		},
 		{
-			input:       "^foo.*=", // missing url
-			expectError: true,
+			input:         "^foo.*=", // missing url
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"^foo.*=\"",
 		},
 		{
-			input:       "=https://foo", // missing regex
-			expectError: true,
+			input:         "=https://foo", // missing regex
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"=https://foo\"",
 		},
 		{
-			input:       "^foo.*=https://foo,", // trailing comma
-			expectError: true,
+			input:         "^foo.*=https://foo,", // trailing comma
+			expectedError: "expected format to be \"regexp1=URL1,regexp2=URL2\"; got \"^foo.*=https://foo,\"",
 		},
 		{
-			input:       "[=https://foo", // invalid regex
-			expectError: true,
+			input:         "[=https://foo", // invalid regex
+			expectedError: "error parsing regexp: missing closing ]: `[`",
 		},
 	}
 	for _, tt := range tests {
@@ -894,8 +975,8 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			t.Parallel()
 
 			actual, err := parsePluginDownloadURLOverrides(tt.input)
-			if tt.expectError {
-				assert.Error(t, err)
+			if tt.expectedError != "" {
+				assert.EqualError(t, err, tt.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -944,7 +1025,7 @@ func TestDownloadToFile_retries(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 	spec := PluginSpec{
 		Name:              "myplugin",
-		Kind:              LanguagePlugin,
+		Kind:              apitype.LanguagePlugin,
 		Version:           &version,
 		PluginDownloadURL: server.URL,
 		PluginDir:         t.TempDir(),
@@ -1007,7 +1088,7 @@ func TestPluginBadSource(t *testing.T) {
 		PluginDownloadURL: "strange-scheme://what.is.this?oh-no",
 		Name:              "mockdl",
 		Version:           &version,
-		Kind:              PluginKind("resource"),
+		Kind:              apitype.PluginKind("resource"),
 	}
 	source, err := spec.GetSource()
 	assert.ErrorContains(t, err, "unknown plugin source scheme: strange-scheme")
@@ -1028,7 +1109,7 @@ func TestMissingErrorText(t *testing.T) {
 			Name: "ResourceWithVersion",
 			Plugin: PluginInfo{
 				Name:    "myplugin",
-				Kind:    ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: &v1,
 			},
 			IncludeAmbient: true,
@@ -1039,7 +1120,7 @@ func TestMissingErrorText(t *testing.T) {
 			Name: "ResourceWithVersion_ExcludeAmbient",
 			Plugin: PluginInfo{
 				Name:    "myplugin",
-				Kind:    ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: &v1,
 			},
 			IncludeAmbient: false,
@@ -1049,7 +1130,7 @@ func TestMissingErrorText(t *testing.T) {
 			Name: "ResourceWithoutVersion",
 			Plugin: PluginInfo{
 				Name:    "myplugin",
-				Kind:    ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: nil,
 			},
 			IncludeAmbient: true,
@@ -1059,7 +1140,7 @@ func TestMissingErrorText(t *testing.T) {
 			Name: "ResourceWithoutVersion_ExcludeAmbient",
 			Plugin: PluginInfo{
 				Name:    "myplugin",
-				Kind:    ResourcePlugin,
+				Kind:    apitype.ResourcePlugin,
 				Version: nil,
 			},
 			IncludeAmbient: false,
@@ -1069,7 +1150,7 @@ func TestMissingErrorText(t *testing.T) {
 			Name: "LanguageWithoutVersion",
 			Plugin: PluginInfo{
 				Name:    "dotnet",
-				Kind:    LanguagePlugin,
+				Kind:    apitype.LanguagePlugin,
 				Version: nil,
 			},
 			IncludeAmbient: true,
@@ -1082,7 +1163,7 @@ func TestMissingErrorText(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.IncludeAmbient)
-			assert.Equal(t, tt.ExpectedError, err.Error())
+			assert.EqualError(t, err, tt.ExpectedError)
 		})
 	}
 }
@@ -1114,13 +1195,13 @@ func TestBundledPluginSearch(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
 	// Lookup the plugin with ambient search turned off
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-	path, err = GetPluginPath(d, LanguagePlugin, "nodejs", nil, nil)
+	path, err = GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 }
@@ -1143,7 +1224,7 @@ func TestAmbientPluginsWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, ResourcePlugin, "mock", nil, nil)
+	path, err := GetPluginPath(d, apitype.ResourcePlugin, "mock", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1179,7 +1260,7 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 
@@ -1220,7 +1301,7 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
 	require.NoError(t, err)
 	// We expect the ambient path to be returned, but not to warn because it resolves to the same file as the
 	// bundled path.

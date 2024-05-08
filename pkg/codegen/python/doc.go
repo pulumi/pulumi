@@ -55,7 +55,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modNam
 		path = modName
 		fqdnTypeName = fmt.Sprintf("%s.%s", modName, typeName)
 	case pkg.Name != "" && modName == "":
-		path = fmt.Sprintf("pulumi_%s", pkg.Name)
+		path = "pulumi_" + pkg.Name
 		fqdnTypeName = fmt.Sprintf("pulumi_%s.%s", pkg.Name, typeName)
 	}
 
@@ -154,6 +154,6 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	} else {
 		displayName = fmt.Sprintf("%s/%s", pyPack(pkg.Name), strings.ToLower(modName))
 	}
-	link = fmt.Sprintf("/docs/reference/pkg/python/%s", displayName)
+	link = "/docs/reference/pkg/python/" + displayName
 	return displayName, link
 }

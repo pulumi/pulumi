@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type snapshotText []byte
@@ -30,17 +31,16 @@ type snapshotEncoder interface {
 	// Convert snapshot to bytes for use with a backing file.
 	SnapshotToText(*deploy.Snapshot) (snapshotText, error)
 	// Convert bytes to a snapshot.
-	TextToSnapshot(snapshotText) (*deploy.Snapshot, error)
+	TextToSnapshot(context.Context, snapshotText) (*deploy.Snapshot, error)
 }
 
-type jsonSnapshotEncoder struct {
-	ctx context.Context
-}
+type jsonSnapshotEncoder struct{}
 
 var _ snapshotEncoder = &jsonSnapshotEncoder{}
 
 func (se *jsonSnapshotEncoder) SnapshotToText(snap *deploy.Snapshot) (snapshotText, error) {
-	dep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false)
+	ctx := context.TODO()
+	dep, err := stack.SerializeDeployment(ctx, snap, false)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +49,10 @@ func (se *jsonSnapshotEncoder) SnapshotToText(snap *deploy.Snapshot) (snapshotTe
 	return snapshotText(s), err
 }
 
-func (se *jsonSnapshotEncoder) TextToSnapshot(s snapshotText) (*deploy.Snapshot, error) {
-	dep, err := stack.DeserializeUntypedDeployment(se.ctx, &apitype.UntypedDeployment{
+func (se *jsonSnapshotEncoder) TextToSnapshot(ctx context.Context, s snapshotText) (*deploy.Snapshot, error) {
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
+
+	dep, err := stack.DeserializeUntypedDeployment(ctx, &apitype.UntypedDeployment{
 		Version:    3,
 		Deployment: []byte(s),
 	}, stack.DefaultSecretsProvider)

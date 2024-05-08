@@ -18,6 +18,7 @@ import asyncio
 import copy
 import warnings
 from typing import (
+    Awaitable,
     Optional,
     List,
     Any,
@@ -246,7 +247,90 @@ ResourceTransformation is the callback signature for the `transformations` resou
 transformation is passed the same set of inputs provided to the `Resource` constructor, and can
 optionally return back alternate values for the `props` and/or `opts` prior to the resource
 actually being created.  The effect will be as though those props and opts were passed in place
-of the original call to the `Resource` constructor.  If the transformation returns undefined,
+of the original call to the `Resource` constructor.  If the transformation returns None,
+this indicates that the resource will not be transformed.
+"""
+
+
+class ResourceTransformArgs:
+    """
+    ResourceTransformArgs is the argument bag passed to a resource transform.
+    """
+
+    custom: bool
+    """
+    If the resource is a custom or component resource.
+    """
+
+    type_: str
+    """
+    The type of the Resource.
+    """
+
+    name: str
+    """
+    The name of the Resource.
+    """
+
+    props: "Inputs"
+    """
+    The original properties passed to the Resource constructor.
+    """
+
+    opts: "ResourceOptions"
+    """
+    The original resource options passed to the Resource constructor.
+    """
+
+    def __init__(
+        self,
+        custom: bool,
+        type_: str,
+        name: str,
+        props: "Inputs",
+        opts: "ResourceOptions",
+    ) -> None:
+        self.custom = custom
+        self.type_ = type_
+        self.name = name
+        self.props = props
+        self.opts = opts
+
+
+class ResourceTransformResult:
+    """
+    ResourceTransformResult is the result that must be returned by a resource transform callback.
+    It includes new values to use for the `props` and `opts` of the `Resource` in place of the
+    originally provided values.
+    """
+
+    props: "Inputs"
+    """
+    The new properties to use in place of the original `props`.
+    """
+
+    opts: "ResourceOptions"
+    """
+    The new resource options to use in place of the original `opts`
+    """
+
+    def __init__(self, props: "Inputs", opts: "ResourceOptions") -> None:
+        self.props = props
+        self.opts = opts
+
+
+ResourceTransform = Callable[
+    [ResourceTransformArgs],
+    Optional[
+        Union[Awaitable[Optional[ResourceTransformResult]], ResourceTransformResult]
+    ],
+]
+"""
+ResourceTransform is the callback signature for the `transforms` resource option.  A
+transform is passed the same set of inputs provided to the `Resource` constructor, and can
+optionally return back alternate values for the `props` and/or `opts` prior to the resource
+actually being created.  The effect will be as though those props and opts were passed in place
+of the original call to the `Resource` constructor.  If the transform returns None,
 this indicates that the resource will not be transformed.
 """
 
@@ -337,6 +421,15 @@ class ResourceOptions:
     parents walking from the resource up to the stack.
     """
 
+    transforms: Optional[List[ResourceTransform]]
+    """
+    Optional list of transforms to apply to this resource during construction. The
+    transforms are applied in order, and are applied prior to transform applied to
+    parents walking from the resource up to the stack.
+
+    This is experimental.
+    """
+
     id: Optional["Input[str]"]
     """
     An optional existing ID to load, rather than create.
@@ -394,6 +487,7 @@ class ResourceOptions:
         import_: Optional[str] = None,
         custom_timeouts: Optional["CustomTimeouts"] = None,
         transformations: Optional[List[ResourceTransformation]] = None,
+        transforms: Optional[List[ResourceTransform]] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
@@ -431,6 +525,8 @@ class ResourceOptions:
         :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
+        :param Optional[List[ResourceTransform]] transforms: If provided, a list of transforms to apply
+               to this resource during construction. This is experimental.
         :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
                If this list includes `"*"`, changes to any properties will force a replacement.  Initialization errors
@@ -462,6 +558,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
+        self.transforms = transforms
         self.urn = urn
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
@@ -475,7 +572,7 @@ class ResourceOptions:
         if isinstance(deps, list):
             for dep in deps:
                 if _is_prompt(dep) and not isinstance(dep, Resource):
-                    raise Exception(
+                    raise TypeError(
                         f"'depends_on' was passed a value {dep} that was not a Resource."
                     )
 
@@ -604,6 +701,7 @@ class ResourceOptions:
         dest.transformations = _merge_lists(
             dest.transformations, source.transformations
         )
+        dest.transforms = _merge_lists(dest.transforms, source.transforms)
 
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
@@ -661,7 +759,7 @@ def _collapse_providers(opts: "ResourceOptions"):
                 for prov in providers:
                     opts.providers[prov.package] = prov
             elif isinstance(providers, dict):
-                for key, prov in providers:
+                for key, prov in providers.items():
                     opts.providers[key] = prov
 
 
@@ -856,9 +954,7 @@ class Resource:
             action = (
                 "get"
                 if opts.urn is not None
-                else "read"
-                if opts.id is not None
-                else "register"
+                else "read" if opts.id is not None else "register"
             )
             raise ValueError(
                 f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'"
@@ -1062,7 +1158,8 @@ class ComponentResource(Resource):
         :param bool remote: True if this is a remote component resource.
         """
         Resource.__init__(self, t, name, False, props, opts, remote, False)
-        self.__dict__["id"] = None
+        if not remote:
+            self.__dict__["id"] = None
         self._remote = remote
 
     def register_outputs(self, outputs: "Inputs"):

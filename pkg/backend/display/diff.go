@@ -53,7 +53,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
 	if stdout == os.Stdout && stderr == os.Stderr {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/, opts.SuppressProgress)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -206,7 +206,7 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 
 	// The message may span multiple lines, so we massage it so it will be indented properly.
 	message := strings.TrimSuffix(payload.Message, "\n")
-	message = strings.ReplaceAll(message, "\n", fmt.Sprintf("\n%s", linePrefix))
+	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
 	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
 	return opts.Color.Colorize(policyLine + "\n")
 }
@@ -387,20 +387,23 @@ func renderDiff(
 	summary := getResourcePropertiesSummary(metadata, indent)
 
 	var details string
-	if metadata.DetailedDiff != nil {
-		var buf bytes.Buffer
-		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
-			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+	// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+	if metadata.Op != deploy.OpSame {
+		if metadata.DetailedDiff != nil {
+			var buf bytes.Buffer
+			if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
+				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+			} else {
+				PrintObject(
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			}
+			details = buf.String()
 		} else {
-			PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			details = getResourcePropertiesDetails(
+				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 		}
-		details = buf.String()
-	} else {
-		details = getResourcePropertiesDetails(
-			metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 	}
-
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
 	fprintIgnoreError(out, opts.Color.Colorize(details))
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))

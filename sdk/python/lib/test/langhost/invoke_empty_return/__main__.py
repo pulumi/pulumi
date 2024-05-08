@@ -12,8 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi.runtime import invoke
+from pulumi import Output
+from pulumi.runtime import invoke, invoke_async
+
+
+def assert_eq(l, r):
+    assert l == r
 
 
 ret = invoke("test:index:MyFunction", {})
 assert ret.value == {}, "Expected the return value of the invoke to be an empty dict"
+
+ret2 = Output.from_input(invoke_async("test:index:MyFunction", {})).apply(
+    lambda v: assert_eq(v, {})
+)

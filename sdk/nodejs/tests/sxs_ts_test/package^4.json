@@ -1,0 +1,12 @@
+{
+    "name": "sxs",
+    "version": "${VERSION}",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@pulumi/pulumi": "latest",
+        "typescript": "^4"
+    },
+    "devDependencies": {
+        "@types/node": "^18.0.0"
+    }
+}

@@ -38,7 +38,7 @@ func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNam
 
 	// Ensure that exactly the provided resources are in the array.
 	for _, res := range resources {
-		name := string(res.URN.Name())
+		name := res.URN.Name()
 		_, ok := expectedNamesTable[name]
 		assert.True(t, ok)
 		delete(expectedNamesTable, name)
@@ -46,6 +46,8 @@ func validateResources(t *testing.T, resources []apitype.ResourceV3, expectedNam
 }
 
 // TestSteps tests many combinations of creates, updates, deletes, replacements, and so on.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestSteps(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

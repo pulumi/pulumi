@@ -459,7 +459,7 @@ func TestConfigPaths(t *testing.T) {
 			args = append(args, "--path")
 		}
 		stdout, stderr := e.RunCommand("pulumi", args...)
-		assert.Equal(t, fmt.Sprintf("%s\n", value), stdout)
+		assert.Equal(t, value+"\n", stdout)
 		assert.Equal(t, "", stderr)
 	}
 
@@ -564,12 +564,22 @@ func TestDestroyStackRef_LocalProject(t *testing.T) {
 }
 
 //nolint:paralleltest // uses parallel programtest
-func TestDestroyStackRef_LocalNonProject(t *testing.T) {
+func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
+		e.DeleteIfNotFailed()
+	}()
+
+	t.Setenv("PULUMI_DIY_BACKEND_LEGACY_LAYOUT", "true")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	testDestroyStackRef(e, "")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		e.DeleteIfNotFailed()
 	}()
 
 	t.Setenv("PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT", "true")
@@ -1093,7 +1103,8 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 
-	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
 	assert.NoError(t, err)
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 }
@@ -1117,7 +1128,8 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 
-	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
@@ -1150,5 +1162,5 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 	assert.Contains(t, stdout, "error: update failed")
-	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
+	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: advisory_policy_pack; mandatory_policy_pack)")
 }

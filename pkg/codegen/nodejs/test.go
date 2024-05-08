@@ -2,7 +2,6 @@ package nodejs
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,20 +63,15 @@ func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
-	// NOTE: previous attempt used npm. It may be more popular and
-	// better target than yarn, however our build uses yarn in
-	// other places at the moment, and yarn does not run into the
-	// ${VERSION} problem; use yarn for now.
-
+	test.RunCommand(t, "npm_install", pwd, "npm", "install")
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
-	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
 	}
-	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc",
+	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, filepath.Join(pwd, "node_modules", ".bin", "tsc"),
 		"--noEmit", "--skipLibCheck", "true", "--skipDefaultLibCheck", "true")
 }
 
@@ -85,7 +79,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	result := make(map[string]string, len(deps))
 	for _, d := range deps.SortedValues() {
-		pkgName := fmt.Sprintf("@pulumi/%s", d)
+		pkgName := "@pulumi/" + d
 		set := func(pkgVersion string) {
 			result[pkgName] = "^" + pkgVersion
 		}
@@ -102,6 +96,10 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			set(test.RandomSchema)
 		case "eks":
 			set(test.EksSchema)
+		case "aws-static-website":
+			set(test.AwsStaticWebsiteSchema)
+		case "aws-native":
+			set(test.AwsNativeSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}

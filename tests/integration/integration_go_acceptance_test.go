@@ -33,6 +33,8 @@ import (
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
@@ -41,34 +43,6 @@ func TestEmptyGo(t *testing.T) {
 		},
 		Quick: true,
 	})
-}
-
-// Tests that stack references work in Go.
-func TestStackReferenceGo(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference", "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Quick: true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      "step1",
-				Additive: true,
-			},
-			{
-				Dir:      "step2",
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
 }
 
 // Test remote component construction in Go.
@@ -104,6 +78,7 @@ func TestConstructGo(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -116,6 +91,8 @@ func TestConstructGo(t *testing.T) {
 }
 
 // Test remote component construction in Go.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNestedConstructGo(t *testing.T) {
 	testDir := "construct_component"
 	runComponentSetup(t, testDir)
@@ -127,7 +104,9 @@ func TestNestedConstructGo(t *testing.T) {
 	integration.ProgramTest(t, optsForConstructGo(t, "construct_nested_component", 18, localProviders))
 }
 
-func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructGo(
+	t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join(dir, "go"),
@@ -153,7 +132,7 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -178,7 +157,10 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 	}
 }
 
+//nolint:paralleltest // Mutates environment variables.
 func TestConstructComponentConfigureProviderGo(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")
 	}
@@ -188,8 +170,8 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	pulumiRoot, err := filepath.Abs("../..")
 	require.NoError(t, err)
 	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
-	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
-	sdkPkg := "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go"
+	componentSDK := filepath.Join(pulumiRoot, "tests/testdata/codegen/methods-return-plain-resource/go")
+	sdkPkg := "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go"
 
 	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
 	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
@@ -209,9 +191,10 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	opts = opts.With(integration.ProgramTestOptions{
 		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
-			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
+			"github.com/pulumi/pulumi/sdk/v3=" + pulumiGoSDK,
 			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
 		},
+		NoParallel: true,
 	})
 	integration.ProgramTest(t, &opts)
 }

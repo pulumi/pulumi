@@ -2,21 +2,24 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -243,7 +246,7 @@ func TestNestedSecret(t *testing.T) {
 func TestRestoreElidedAssetContents(t *testing.T) {
 	t.Parallel()
 	textAsset := func(text string) resource.PropertyValue {
-		asset, err := resource.NewTextAsset(text)
+		asset, err := asset.FromText(text)
 		require.NoError(t, err)
 		return resource.NewAssetProperty(asset)
 	}
@@ -477,6 +480,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			tt.want.Name = "name"
 			tt.want.Config = make(map[string]string)
 			tt.want.Inputs = &structpb.Struct{Fields: make(map[string]*structpb.Value)}
+			tt.want.AcceptsOutputValues = true
 
 			var got *pulumirpc.ConstructRequest
 			client := &stubClient{
@@ -663,7 +667,7 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	diffErr := status.Errorf(codes.Unknown, "failed to parse kubeconfig: %s",
 		fmt.Errorf("couldn't get version/kind; json parse error: %w",
-			fmt.Errorf("json: cannot unmarshal string into Go value of type struct "+
+			errors.New("json: cannot unmarshal string into Go value of type struct "+
 				"{ APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }")))
 
 	client := &stubClient{
@@ -678,7 +682,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
 		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
 		false, nil)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
 	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
@@ -695,5 +699,45 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
 		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
 		false, nil)
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "some other error")
+}
+
+//nolint:paralleltest // using t.Setenv which is incompatible with t.Parallel
+func TestGetProviderAttachPort(t *testing.T) {
+	t.Run("no attach", func(t *testing.T) {
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.Nil(t, port)
+	})
+	t.Run("aws:12345", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "aws:12345")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.NotNil(t, port)
+		require.Equal(t, 12345, *port)
+	})
+	t.Run("gcp:999,aws:12345", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "gcp:999,aws:12345")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.NotNil(t, port)
+		require.Equal(t, 12345, *port)
+	})
+	t.Run("gcp:999", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "gcp:999")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.NoError(t, err)
+		require.Nil(t, port)
+	})
+	t.Run("invalid", func(t *testing.T) {
+		t.Setenv("PULUMI_DEBUG_PROVIDERS", "aws:port")
+		aws := tokens.Package("aws")
+		port, err := GetProviderAttachPort(aws)
+		require.Error(t, err)
+		require.Nil(t, port)
+	})
 }

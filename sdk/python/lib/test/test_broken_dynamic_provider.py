@@ -62,20 +62,14 @@ class XInputs(object):
 class XProvider(dyn.ResourceProvider):
     def create(self, args):
         # intentional bug changing the type
-        outs = {
-            'x': {
-                'my_key_1': {
-                    'extra_buggy_key': args['x']['my_key_1'] + '!'
-                }
-            }
-        }
-        return dyn.CreateResult(f'schema-{uuid.uuid4()}', outs=outs)
+        outs = {"x": {"my_key_1": {"extra_buggy_key": args["x"]["my_key_1"] + "!"}}}
+        return dyn.CreateResult(f"schema-{uuid.uuid4()}", outs=outs)
 
 
 class X(dyn.Resource):
     x: Output[Dict[str, str]]
 
-    def __init__(self, name: str, args: XInputs, opts = None):
+    def __init__(self, name: str, args: XInputs, opts=None):
         super().__init__(XProvider(), name, vars(args), opts)
 
 
@@ -83,5 +77,5 @@ class X(dyn.Resource):
 @pytest.mark.timeout(10)
 @pulumi.runtime.test
 def test_pulumi_broken_dynamic_provider(my_mocks):
-    x = X(name='my_x', args=XInputs({'my_key_1': 'my_value_1'}))
+    x = X(name="my_x", args=XInputs({"my_key_1": "my_value_1"}))
     return x.x.apply(print)

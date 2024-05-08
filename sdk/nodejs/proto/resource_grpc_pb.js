@@ -23,6 +23,7 @@ var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_
 var pulumi_provider_pb = require('./provider_pb.js');
 var pulumi_alias_pb = require('./alias_pb.js');
 var pulumi_source_pb = require('./source_pb.js');
+var pulumi_callback_pb = require('./callback_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
@@ -35,17 +36,6 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_CallRequest(arg) {
-  if (!(arg instanceof pulumi_provider_pb.CallRequest)) {
-    throw new Error('Expected argument of type pulumirpc.CallRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_CallRequest(buffer_arg) {
-  return pulumi_provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_CallResponse(arg) {
   if (!(arg instanceof pulumi_provider_pb.CallResponse)) {
     throw new Error('Expected argument of type pulumirpc.CallResponse');
@@ -55,6 +45,17 @@ function serialize_pulumirpc_CallResponse(arg) {
 
 function deserialize_pulumirpc_CallResponse(buffer_arg) {
   return pulumi_provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_Callback(arg) {
+  if (!(arg instanceof pulumi_callback_pb.Callback)) {
+    throw new Error('Expected argument of type pulumirpc.Callback');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_Callback(buffer_arg) {
+  return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_InvokeResponse(arg) {
@@ -121,6 +122,17 @@ function serialize_pulumirpc_RegisterResourceResponse(arg) {
 
 function deserialize_pulumirpc_RegisterResourceResponse(buffer_arg) {
   return pulumi_resource_pb.RegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ResourceCallRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ResourceCallRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ResourceCallRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResourceCallRequest(buffer_arg) {
+  return pulumi_resource_pb.ResourceCallRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ResourceInvokeRequest(arg) {
@@ -196,10 +208,10 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     path: '/pulumirpc.ResourceMonitor/Call',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_provider_pb.CallRequest,
+    requestType: pulumi_resource_pb.ResourceCallRequest,
     responseType: pulumi_provider_pb.CallResponse,
-    requestSerialize: serialize_pulumirpc_CallRequest,
-    requestDeserialize: deserialize_pulumirpc_CallRequest,
+    requestSerialize: serialize_pulumirpc_ResourceCallRequest,
+    requestDeserialize: deserialize_pulumirpc_ResourceCallRequest,
     responseSerialize: serialize_pulumirpc_CallResponse,
     responseDeserialize: deserialize_pulumirpc_CallResponse,
   },
@@ -233,6 +245,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_RegisterResourceOutputsRequest,
     requestDeserialize: deserialize_pulumirpc_RegisterResourceOutputsRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  registerStackTransform: {
+    path: '/pulumirpc.ResourceMonitor/RegisterStackTransform',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_callback_pb.Callback,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_Callback,
+    requestDeserialize: deserialize_pulumirpc_Callback,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

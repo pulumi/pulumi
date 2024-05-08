@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -65,15 +66,23 @@ type DiagInfo struct {
 type progressRenderer interface {
 	io.Closer
 
-	tick(display *ProgressDisplay)
-	rowUpdated(display *ProgressDisplay, row Row)
-	systemMessage(display *ProgressDisplay, payload engine.StdoutEventPayload)
-	done(display *ProgressDisplay)
-	println(display *ProgressDisplay, line string)
+	initializeDisplay(display *ProgressDisplay)
+	tick()
+	rowUpdated(row Row)
+	systemMessage(payload engine.StdoutEventPayload)
+	done()
+	println(line string)
 }
 
 // ProgressDisplay organizes all the information needed for a dynamically updated "progress" view of an update.
 type ProgressDisplay struct {
+	// eventMutex is used to synchronize access to eventUrnToResourceRow, which is accessed
+	// by the treeRenderer
+	eventMutex sync.RWMutex
+	// stopwatchMutex is used to synchronixe access to opStopwatch, which is used to track the times
+	// taken to perform actions on resources.
+	stopwatchMutex sync.RWMutex
+
 	opts Options
 
 	renderer progressRenderer
@@ -134,9 +143,6 @@ type ProgressDisplay struct {
 	// the list of suffixes to rotate through
 	suffixesArray []string
 
-	// Maps used so we can generate short IDs for resource urns.
-	urnToID map[resource.URN]string
-
 	// Structure that tracks the time taken to perform an action on a resource.
 	opStopwatch opStopwatch
 
@@ -163,6 +169,7 @@ var policyPayloads []engine.PolicyViolationEventPayload
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
+	//nolint:exhaustive // Only a subset of events have urns.
 	switch event.Type {
 	case engine.ResourcePreEvent:
 		payload := event.Payload().(engine.ResourcePreEventPayload)
@@ -234,10 +241,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
 		suffixColumn:          int(statusColumn),
 		suffixesArray:         []string{"", ".", "..", "..."},
-		urnToID:               make(map[resource.URN]string),
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
 	}
+	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
 	if opts.deterministicOutput {
@@ -252,7 +259,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 }
 
 func (display *ProgressDisplay) println(line string) {
-	display.renderer.println(display, line)
+	display.renderer.println(line)
 }
 
 type treeNode struct {
@@ -309,6 +316,11 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 }
 
 func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
+	// We take the reader lock here because this is called from the renderer and reads from
+	// the eventUrnToResourceRow map
+	display.eventMutex.RLock()
+	defer display.eventMutex.RUnlock()
+
 	result := []*treeNode{}
 
 	result = append(result, &treeNode{
@@ -439,6 +451,10 @@ func removeInfoColumnIfUnneeded(rows [][]string) {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
+	// Take the read lock here because we are reading from the eventUrnToResourceRow map
+	display.eventMutex.RLock()
+	defer display.eventMutex.RUnlock()
+
 	// Figure out the rows that are currently in progress.
 	var inProgressRows []ResourceRow
 	if !display.isTerminal {
@@ -457,7 +473,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// since the display was marked 'done'.
 	if !display.isTerminal {
 		for _, v := range inProgressRows {
-			display.renderer.rowUpdated(display, v)
+			display.renderer.rowUpdated(v)
 		}
 	}
 
@@ -465,7 +481,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// messages from a status message (since we're going to print them all) below.  Note, this will
 	// only do something in a terminal.  This is what we want, because if we're not in a terminal we
 	// don't really want to reprint any finished items we've already printed.
-	display.renderer.done(display)
+	display.renderer.done()
 
 	// Render the policies section; this will print all policy packs that ran plus any specific
 	// policies that led to violations or remediations. This comes before diagnostics since policy
@@ -562,8 +578,8 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 }
 
 type policyPackSummary struct {
-	IsLocal           bool
-	LocalPath         string
+	HasCloudPack      bool
+	LocalPaths        []string
 	ViolationEvents   []engine.PolicyViolationEventPayload
 	RemediationEvents []engine.PolicyRemediationEventPayload
 }
@@ -584,12 +600,23 @@ func (display *ProgressDisplay) printPolicies() bool {
 	for name, version := range display.summaryEventPayload.PolicyPacks {
 		var summary policyPackSummary
 		baseName, path := engine.GetLocalPolicyPackInfoFromEventName(name)
+		var key string
 		if baseName != "" {
-			summary.IsLocal = true
-			summary.LocalPath = path
-			name = baseName
+			key = fmt.Sprintf("%s@v%s", baseName, version)
+			if s, has := policyPackInfos[key]; has {
+				summary = s
+				summary.LocalPaths = append(summary.LocalPaths, path)
+			} else {
+				summary.LocalPaths = []string{path}
+			}
+		} else {
+			key = fmt.Sprintf("%s@v%s", name, version)
+			if s, has := policyPackInfos[key]; has {
+				summary = s
+				summary.HasCloudPack = true
+			}
 		}
-		policyPackInfos[fmt.Sprintf("%s@v%s", name, version)] = summary
+		policyPackInfos[key] = summary
 	}
 
 	// Next associate all violation events with the corresponding policy pack in the list.
@@ -639,8 +666,20 @@ func (display *ProgressDisplay) printPolicies() bool {
 		}
 
 		var localMark string
-		if info.IsLocal {
-			localMark = fmt.Sprintf(" (local: %s)", info.LocalPath)
+		if len(info.LocalPaths) > 0 {
+			localMark = " (local: "
+			sort.Strings(info.LocalPaths)
+			for i, path := range info.LocalPaths {
+				if i > 0 {
+					localMark += "; "
+				}
+				localMark += path
+			}
+			localMark += ")"
+
+			if info.HasCloudPack {
+				localMark += " + (cloud)"
+			}
 		}
 
 		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
@@ -653,7 +692,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 			for _, remediationEvent := range info.RemediationEvents {
 				// Print the individual policy event.
 				remediationLine := renderDiffPolicyRemediationEvent(
-					remediationEvent, fmt.Sprintf("%s- ", subItemIndent), false, display.opts)
+					remediationEvent, subItemIndent+"- ", false, display.opts)
 				remediationLine = strings.TrimSuffix(remediationLine, "\n")
 				if remediationLine != "" {
 					display.println(remediationLine)
@@ -670,7 +709,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 				}
 				policyRemediationCounts[name]++
 			}
-			sort.Strings(policyKeys)
+			sort.Strings(policyNames)
 			for _, policyName := range policyNames {
 				count := policyRemediationCounts[policyName]
 				display.println(fmt.Sprintf("%s- %s[remediate]  %s%s  (%d %s)",
@@ -695,7 +734,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 		for _, policyEvent := range info.ViolationEvents {
 			// Print the individual policy event.
 			policyLine := renderDiffPolicyViolationEvent(
-				policyEvent, fmt.Sprintf("%s- ", subItemIndent), subItemIndent+"  ", display.opts)
+				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
 		}
@@ -783,10 +822,14 @@ func (display *ProgressDisplay) processTick() {
 	// often timeout a process if output is not seen in a while.
 	display.currentTick++
 
-	display.renderer.tick(display)
+	display.renderer.tick()
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
+	// Take the write lock here because this can write the the eventUrnToResourceRow map
+	display.eventMutex.Lock()
+	defer display.eventMutex.Unlock()
+
 	// If there's already a row for this URN, return it.
 	row, has := display.eventUrnToResourceRow[urn]
 	if has {
@@ -829,6 +872,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	//nolint:exhaustive // we are only interested in a subset of events
 	switch event.Type {
 	case engine.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.
@@ -924,10 +968,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		// Register the resource update start time to calculate duration
 		// and time elapsed.
-		display.opStopwatch.start[step.URN] = time.Now()
+		start := time.Now()
+		display.stopwatchMutex.Lock()
+		display.opStopwatch.start[step.URN] = start
 
 		// Clear out potential event end timings for prior operations on the same resource.
 		delete(display.opStopwatch.end, step.URN)
+		display.stopwatchMutex.Unlock()
 
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
@@ -936,7 +983,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		// Register the resource update end time to calculate duration
 		// to display.
-		display.opStopwatch.end[step.URN] = time.Now()
+		end := time.Now()
+		display.stopwatchMutex.Lock()
+		display.opStopwatch.end[step.URN] = end
+		display.stopwatchMutex.Unlock()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -968,19 +1018,26 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
-	display.renderer.rowUpdated(display, row)
+	display.renderer.rowUpdated(row)
 }
 
 func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
+	// We need too take the writer lock here because ensureHeaderAndStackRows expects to be
+	// called under the write lock
+	display.eventMutex.Lock()
+	defer display.eventMutex.Unlock()
+
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
 
-	display.renderer.systemMessage(display, payload)
+	display.renderer.systemMessage(payload)
 }
 
 func (display *ProgressDisplay) ensureHeaderAndStackRows() {
+	contract.Assertf(!display.eventMutex.TryLock(), "ProgressDisplay.ensureHeaderAndStackRows MUST be called "+
+		"under the write lock")
 	if display.headerRow == nil {
 		// about to make our first status message.  make sure we present the header line first.
 		display.headerRow = &headerRowData{display: display}
@@ -1133,12 +1190,18 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			return opText
 		}
 
+		display.stopwatchMutex.RLock()
 		start, ok := display.opStopwatch.start[step.URN]
+		display.stopwatchMutex.RUnlock()
+
 		if !ok {
 			return opText
 		}
 
+		display.stopwatchMutex.RLock()
 		end, ok := display.opStopwatch.end[step.URN]
+		display.stopwatchMutex.RUnlock()
+
 		if !ok {
 			return opText
 		}
@@ -1307,7 +1370,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		}
 
 		// Calculate operation time elapsed.
+		display.stopwatchMutex.RLock()
 		start, ok := display.opStopwatch.start[step.URN]
+		display.stopwatchMutex.RUnlock()
+
 		if !ok {
 			return opText
 		}

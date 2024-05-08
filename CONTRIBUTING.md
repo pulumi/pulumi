@@ -83,7 +83,7 @@ Across our projects, we try to use a regular set of make targets. The ones you'l
 
 We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.  Additionally, before running integration tests, be sure to set the environment variable `PULUMI_TEST_ORG` to your pulumi username.
 
-The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
+The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
 
 ### Regenerate Test Baselines
 
@@ -105,6 +105,10 @@ $ pulumi preview --logtostderr -v=5
 
 is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
+### Go Language Server
+
+Since this repository contains multiple go modules, `gopls` requires a go workspace. Run `make work` to setup a suitable go workspace.
+
 ## Submitting a Pull Request
 
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
@@ -118,7 +122,7 @@ $ make lint
 If you see formatting failures, fix them by running [gofumpt](https://github.com/mvdan/gofumpt) on your code:
 
 ```bash
-$ gofumpt -w path/to/file.go 
+$ gofumpt -w path/to/file.go
 # or
 $ gofumpt -w path/to/dir
 ```
@@ -129,6 +133,19 @@ We require a changelog entry for all PR that aren't labeled `impact/no-changelog
 $ make changelog
 ````
 …and follow the prompts on screen.
+
+### Changelog messages
+
+Changelog notes are written in the active imperative form.  They should not end with a period.  The simple rule is to pretend the message starts with "This change will ..."
+
+Good examples for changelog entries are:
+- Exit immediately from state edit when no change was made
+- Fix root and program paths to always be absolute
+
+Here's some examples of what we're trying to avoid:
+- Fixes a bug
+- Adds a feature
+- Feature now does something
 
 ### Pulumi employees
 

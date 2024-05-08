@@ -43,15 +43,15 @@ func newStackCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "stack",
-		Short: "Manage stacks",
-		Long: "Manage stacks\n" +
+		Short: "Manage stacks and view stack state",
+		Long: "Manage stacks and view stack state\n" +
 			"\n" +
 			"A stack is a named update target, and a single project may have many of them.\n" +
 			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -294,7 +294,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 				nodes[res.Parent] = p
 			}
 			p.children = append(p.children, node)
-		case res.Type == resource.RootStackType:
+		case res.Type == resource.RootStackType && res.Parent == "":
 			root = node
 		default:
 			orphans = append(orphans, node)

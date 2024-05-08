@@ -11,6 +11,8 @@ import (
 
 // TestDeleteBeforeCreate tests a few different operational modes for
 // replacements done by deleting before creating.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDeleteBeforeCreate(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

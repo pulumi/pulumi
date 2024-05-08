@@ -22,16 +22,16 @@ import * as grpc from "@grpc/grpc-js";
 import TailFile from "@logdna/tail-file";
 
 import * as log from "../log";
-import { CommandResult, runPulumiCmd } from "./cmd";
+import { CommandResult } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
-import { LanguageServer, maxRPCMessageSize } from "./server";
-import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { LocalWorkspace } from "./localWorkspace";
+import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-const langrpc = require("../proto/language_grpc_pb.js");
+import * as langrpc from "../proto/language_grpc_pb";
 
 interface ReadlineResult {
     tail: TailFile;
@@ -132,7 +132,6 @@ export class Stack {
                 log.warn(`Failed to parse engine event
 If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
 details about your environment.
-
 Event: ${line}\n${e.toString()}`);
             }
         });
@@ -203,6 +202,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -227,7 +229,6 @@ Event: ${line}\n${e.toString()}`);
                     }
                 });
             });
-            server.start();
             onExit = (hasError: boolean) => {
                 languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
@@ -335,6 +336,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.plan) {
                 args.push("--save-plan", opts.plan);
             }
+            if (opts.importFile) {
+                args.push("--import-file", opts.importFile);
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -359,7 +363,6 @@ Event: ${line}\n${e.toString()}`);
                     }
                 });
             });
-            server.start();
             onExit = (hasError: boolean) => {
                 languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
@@ -454,9 +457,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let refResult: CommandResult;
+        try {
+            refResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -492,6 +498,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.excludeProtected) {
                 args.push("--exclude-protected");
             }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
@@ -517,9 +526,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let desResult: CommandResult;
+        try {
+            desResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -529,6 +541,30 @@ Event: ${line}\n${e.toString()}`);
             stderr: desResult.stderr,
             summary: summary!,
         };
+    }
+    /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    async addEnvironments(...environments: string[]): Promise<void> {
+        await this.workspace.addEnvironments(this.name, ...environments);
+    }
+    /**
+     * Returns the list of environments currently in the stack's import list.
+     */
+    async listEnvironments(): Promise<string[]> {
+        return this.workspace.listEnvironments(this.name);
+    }
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    async removeEnvironment(environment: string): Promise<void> {
+        await this.workspace.removeEnvironment(this.name, environment);
     }
     /**
      * Returns the config value associated with the specified key.
@@ -660,7 +696,7 @@ Event: ${line}\n${e.toString()}`);
      * Cancel stops a stack's currently running update. It returns an error if no update is currently running.
      * Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
      * if a resource operation was pending when the update was canceled.
-     * This command is not supported for local backends.
+     * This command is not supported for diy backends.
      */
     async cancel(): Promise<void> {
         await this.runPulumiCmd(["cancel", "--yes"]);
@@ -698,7 +734,7 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
+        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -733,15 +769,22 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
     if (opts.debug) {
         args.push("--debug");
     }
+    if (opts.suppressOutputs) {
+        args.push("--suppress-outputs");
+    }
+    if (opts.suppressProgress) {
+        args.push("--suppress-progress");
+    }
 }
 
 /**
  * Returns a stack name formatted with the greatest possible specificity:
  * org/project/stack or user/project/stack
  * Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
- * Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
+ * Note that legacy diy backends (local file, S3, Azure Blob) do not support stack names in this
  * format, and instead only use the stack name without an org/user or project to qualify it.
  * See: https://github.com/pulumi/pulumi/issues/2522
+ * Non-legacy diy backends do support the org/project/stack format but org must be set to "organization".
  *
  * @param org The org (or user) that contains the Stack.
  * @param project The project that parents the Stack.
@@ -866,6 +909,18 @@ export interface GlobalOpts {
     tracing?: string;
     /** Print detailed debugging output during resource operations */
     debug?: boolean;
+    /**
+     * Suppress display of stack outputs (in case they contain sensitive values)
+     */
+    suppressOutputs?: boolean;
+    /**
+     * Suppress display of periodic progress dots
+     */
+    suppressProgress?: boolean;
+    /**
+     * Save any creates seen during the preview into an import file to use with pulumi import
+     */
+    importFile?: string;
 }
 
 /**
@@ -897,6 +952,10 @@ export interface UpOptions extends GlobalOpts {
      * Include secrets in the UpSummary.
      */
     showSecrets?: boolean;
+    /**
+     * Continue to perform the update operation despite the occurrence of errors.
+     */
+    continueOnError?: boolean;
 }
 
 /**
@@ -961,6 +1020,8 @@ export interface DestroyOptions extends GlobalOpts {
      * Do not destroy protected resources.
      */
     excludeProtected?: boolean;
+    // Continue to perform the destroy operation despite the occurrence of errors.
+    continueOnError?: boolean;
 }
 
 const execKind = {

@@ -1,0 +1,9 @@
+{
+    "name": "codepaths-workspaces",
+    "description": "A project that uses npm and yarn workspaces. CodePaths computation should discover dependencies across the workspaces.",
+    "private": true,
+    "workspaces": [
+        "packages/*",
+        "infra/"
+    ]
+}

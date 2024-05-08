@@ -153,6 +153,7 @@ func validateUnsupportedRemoteFlags(
 // Flags for remote operations.
 type RemoteArgs struct {
 	remote                   bool
+	inheritSettings          bool
 	envVars                  []string
 	secretEnvVars            []string
 	preRunCommands           []string
@@ -165,6 +166,9 @@ type RemoteArgs struct {
 	gitAuthSSHPrivateKeyPath string
 	gitAuthPassword          string
 	gitAuthUsername          string
+	executorImage            string
+	executorImageUsername    string
+	executorImagePassword    string
 }
 
 // Add flags to support remote operations
@@ -176,6 +180,9 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(
 		&r.remote, "remote", false,
 		"[EXPERIMENTAL] Run the operation remotely")
+	cmd.PersistentFlags().BoolVar(
+		&r.inheritSettings, "remote-inherit-settings", false,
+		"[EXPERIMENTAL] Inherit deployment settings from the current stack")
 	cmd.PersistentFlags().StringArrayVar(
 		&r.envVars, "remote-env", []string{},
 		"[EXPERIMENTAL] Environment variables to use in the remote operation of the form NAME=value "+
@@ -192,7 +199,7 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 		"[EXPERIMENTAL] Whether to skip the default dependency installation step")
 	cmd.PersistentFlags().StringVar(
 		&r.gitBranch, "remote-git-branch", "",
-		"[EXPERIMENTAL] Git branch to deploy; this is mutually exclusive with --remote-git-branch; "+
+		"[EXPERIMENTAL] Git branch to deploy; this is mutually exclusive with --remote-git-commit; "+
 			"either value needs to be specified")
 	cmd.PersistentFlags().StringVar(
 		&r.gitCommit, "remote-git-commit", "",
@@ -217,6 +224,15 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(
 		&r.gitAuthUsername, "remote-git-auth-username", "",
 		"[EXPERIMENTAL] Git username")
+	cmd.PersistentFlags().StringVar(
+		&r.executorImage, "remote-executor-image", "",
+		"[EXPERIMENTAL] The Docker image to use for the executor")
+	cmd.PersistentFlags().StringVar(
+		&r.executorImageUsername, "remote-executor-image-username", "",
+		"[EXPERIMENTAL] The username for the credentials with access to the Docker image to use for the executor")
+	cmd.PersistentFlags().StringVar(
+		&r.executorImagePassword, "remote-executor-image-password", "",
+		"[EXPERIMENTAL] The password for the credentials with access to the Docker image to use for the executor")
 }
 
 // runDeployment kicks off a remote deployment.
@@ -224,18 +240,28 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	args RemoteArgs,
 ) result.Result {
 	// Validate args.
-	if url == "" {
-		return result.FromError(errors.New("the url arg must be specified"))
+	if url == "" && !args.inheritSettings {
+		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings"))
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
 		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
 	}
-	if args.gitBranch == "" && args.gitCommit == "" {
-		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required"))
+	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
+		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required " +
+			"if not passing --remote-inherit-settings"))
 	}
 	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
 		return result.FromError(errors.New("`--remote-git-auth-ssh-private-key` and " +
 			"`--remote-git-auth-ssh-private-key-path` cannot both be specified"))
+	}
+	if args.executorImage == "" && (args.executorImageUsername != "" || args.executorImagePassword != "") {
+		return result.FromError(errors.New("`--remote-executor-image-username` and `--remote-executor-image-password` " +
+			"cannot be specified without `--remote-executor-image`"))
+	}
+	if (args.executorImagePassword != "" && args.executorImageUsername == "") ||
+		(args.executorImageUsername != "" && args.executorImagePassword == "") {
+		return result.FromError(errors.New("`--remote-executor-image-username` and `--remote-executor-image-password` " +
+			"must both be specified"))
 	}
 
 	// Parse and validate the environment args.
@@ -312,6 +338,20 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		}
 	}
 
+	var executorImage *apitype.DockerImage
+	if args.executorImage != "" {
+		executorImage = &apitype.DockerImage{
+			Reference: args.executorImage,
+		}
+	}
+	if args.executorImageUsername != "" && args.executorImagePassword != "" {
+		if executorImage.Credentials == nil {
+			executorImage.Credentials = &apitype.DockerImageCredentials{}
+		}
+		executorImage.Credentials.Username = args.executorImageUsername
+		executorImage.Credentials.Password = apitype.SecretValue{Value: args.executorImagePassword, Secret: true}
+	}
+
 	var operationOptions *apitype.OperationContextOptions
 	if args.skipInstallDependencies {
 		operationOptions = &apitype.OperationContextOptions{
@@ -319,24 +359,46 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		}
 	}
 
+	var sourceContext *apitype.SourceContext
+	if url != "" || args.gitBranch != "" || args.gitCommit != "" || args.gitRepoDir != "" || gitAuth != nil {
+		sourceContext = &apitype.SourceContext{
+			Git: &apitype.SourceContextGit{},
+		}
+		if url != "" {
+			sourceContext.Git.RepoURL = url
+		}
+		if args.gitBranch != "" {
+			sourceContext.Git.Branch = args.gitBranch
+		}
+		if args.gitCommit != "" {
+			sourceContext.Git.Commit = args.gitCommit
+		}
+		if args.gitRepoDir != "" {
+			sourceContext.Git.RepoDir = args.gitRepoDir
+		}
+		if gitAuth != nil {
+			sourceContext.Git.GitAuth = gitAuth
+		}
+	}
+
 	req := apitype.CreateDeploymentRequest{
-		Source: &apitype.SourceContext{
-			Git: &apitype.SourceContextGit{
-				RepoURL: url,
-				Branch:  args.gitBranch,
-				Commit:  args.gitCommit,
-				RepoDir: args.gitRepoDir,
-				GitAuth: gitAuth,
-			},
+		Op:              operation,
+		InheritSettings: args.inheritSettings,
+		Executor: &apitype.ExecutorContext{
+			ExecutorImage: executorImage,
 		},
+		Source: sourceContext,
 		Operation: &apitype.OperationContext{
-			Operation:            operation,
 			PreRunCommands:       args.preRunCommands,
 			EnvironmentVariables: env,
 			Options:              operationOptions,
 		},
 	}
-	err = cb.RunDeployment(ctx, stackRef, req, opts)
+	// For now, these commands are only used by automation API, so we can unilaterally set the initiator
+	// to "automation-api".
+	// In the future, we may want to expose initiating deployments from the CLI, in which case we would need to
+	// pass this value in from the CLI as a flag or environment variable.
+	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/)
 	if err != nil {
 		return result.FromError(err)
 	}

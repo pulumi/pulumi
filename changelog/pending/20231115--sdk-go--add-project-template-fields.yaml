@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: add optional display name and tag fields to project templates

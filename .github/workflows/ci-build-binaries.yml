@@ -23,6 +23,10 @@ on:
         default: ubuntu-latest
         description: 'Build platform (i.e.: runs-on) for job'
         type: string
+      dev-version:
+        required: false
+        description: "Dev version to bake into the binary"
+        type: string
       version:
         required: true
         description: "Version to produce"
@@ -36,6 +40,11 @@ on:
         default: false
         required: false
         type: boolean
+      enable-race-detection:
+        description: "Build binaries with race detection"
+        default: false
+        required: false
+        type: boolean
 
 defaults:
   run:
@@ -43,15 +52,11 @@ defaults:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  PULUMI_VERSION: ${{ inputs.version }}
 
 jobs:
   build:
     name: ${{ inputs.os }}-${{ inputs.arch }}
     runs-on: ${{ inputs.build-platform }}
-
-    env:
-      PULUMI_VERSION: ${{ inputs.version }}
 
     permissions:
       id-token: write
@@ -71,14 +76,14 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           cache: true
@@ -115,14 +120,16 @@ jobs:
         shell: bash
         env:
           GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+          PULUMI_VERSION: ${{ inputs.dev-version || inputs.version }}
           PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && 'coverage' || 'normal' }}
+          PULUMI_ENABLE_RACE_DETECTION: ${{ inputs.enable-race-detection && 'true' || 'false' }}
         run: |
           set -euxo pipefail
           # Spurious, this command requires piping via stdin
           # shellcheck disable=SC2002
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
-            | goreleaser release -f - -p 5 --skip-validate --rm-dist --snapshot
+            | goreleaser release -f - -p 5 --skip-validate --clean --snapshot
       - uses: actions/upload-artifact@v2
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}

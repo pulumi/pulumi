@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as ts from "typescript";
+// The typescript import is used for type-checking only. Do not reference it in the emitted code.
+// Use `ts` instead to access typescript library functions.
+import * as typescript from "typescript";
 import * as log from "../../log";
 import * as utils from "./utils";
+
+const ts: typeof typescript = require("../../typescript-shim");
 
 /** @internal */
 export interface ParsedFunctionCode {
@@ -133,16 +137,20 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
 
     return ["", result];
 }
+/** @internal */
+export function isNativeFunction(funcString: string): boolean {
+    // Split this constant out so that if this function *itself* is closure serialized,
+    // it will not be thought to be native code itself.
+    const nativeCodeString = "[native " + "code]";
+    return funcString.indexOf(nativeCodeString) !== -1;
+}
 
 function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     if (funcString.startsWith("[Function:")) {
         return [`the function form was not understood.`, <any>undefined];
     }
 
-    // Split this constant out so that if this function *itself* is closure serialized,
-    // it will not be thought to be native code itself.
-    const nativeCodeString = "[native " + "code]";
-    if (funcString.indexOf(nativeCodeString) !== -1) {
+    if (isNativeFunction(funcString)) {
         return [`it was a native code function.`, <any>undefined];
     }
 
@@ -181,12 +189,14 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             return [`the class could not be parsed: ${firstDiagnostic}`, <any>undefined];
         }
 
-        const classDecl = <ts.ClassDeclaration>file!.statements.find((x) => ts.isClassDeclaration(x));
+        const classDecl = <typescript.ClassDeclaration>file!.statements.find((x) => ts.isClassDeclaration(x));
         if (!classDecl) {
             return [`the class form was not understood:\n${funcString}`, <any>undefined];
         }
 
-        const constructor = <ts.ConstructorDeclaration>classDecl.members.find((m) => ts.isConstructorDeclaration(m));
+        const constructor = <typescript.ConstructorDeclaration>(
+            classDecl.members.find((m) => ts.isConstructorDeclaration(m))
+        );
         if (!constructor) {
             // class without explicit constructor.
             const isSubClass = classDecl.heritageClauses?.some((c) => c.token === ts.SyntaxKind.ExtendsKeyword);
@@ -309,7 +319,7 @@ function isComputed(v: string, openParenIndex: number) {
     return false;
 }
 
-function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.SourceFile | null] {
+function createSourceFile(serializedFunction: ParsedFunctionCode): [string, typescript.SourceFile | null] {
     const funcstr = serializedFunction.funcExprWithName || serializedFunction.funcExprWithoutName;
 
     // Wrap with parens to make into something parseable.  This is necessary as many
@@ -326,10 +336,10 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.S
     return ["", file!];
 }
 
-function tryCreateSourceFile(toParse: string): [ts.SourceFile | undefined, string | undefined] {
+function tryCreateSourceFile(toParse: string): [typescript.SourceFile | undefined, string | undefined] {
     const file = ts.createSourceFile("", toParse, ts.ScriptTarget.Latest, /*setParentNodes:*/ true, ts.ScriptKind.TS);
 
-    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
+    const diagnostics: typescript.Diagnostic[] = (<any>file).parseDiagnostics;
     if (diagnostics.length) {
         return [undefined, `${diagnostics[0].messageText}`];
     }
@@ -337,7 +347,7 @@ function tryCreateSourceFile(toParse: string): [ts.SourceFile | undefined, strin
     return [file, undefined];
 }
 
-function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
+function computeUsesNonLexicalThis(file: typescript.SourceFile): boolean {
     let inTopmostFunction = false;
     let usesNonLexicalThis = false;
 
@@ -345,7 +355,7 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
 
     return usesNonLexicalThis;
 
-    function walk(node: ts.Node | undefined) {
+    function walk(node: typescript.Node | undefined) {
         if (!node) {
             return;
         }
@@ -357,12 +367,12 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
                 break;
 
             case ts.SyntaxKind.CallExpression:
-                return visitCallExpression(<ts.CallExpression>node);
+                return visitCallExpression(<typescript.CallExpression>node);
 
             case ts.SyntaxKind.MethodDeclaration:
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
-                return visitBaseFunction(<ts.FunctionLikeDeclarationBase>node);
+                return visitBaseFunction(<typescript.FunctionLikeDeclarationBase>node);
 
             // Note: it is intentional that we ignore ArrowFunction.  If we use 'this' inside of it,
             // then that should be considered a use of the non-lexical-this from an outer function.
@@ -377,7 +387,7 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
         ts.forEachChild(node, walk);
     }
 
-    function visitBaseFunction(node: ts.FunctionLikeDeclarationBase): void {
+    function visitBaseFunction(node: typescript.FunctionLikeDeclarationBase): void {
         if (inTopmostFunction) {
             // we're already in the topmost function.  No need to descend into any
             // further functions.
@@ -393,7 +403,7 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
         inTopmostFunction = false;
     }
 
-    function visitCallExpression(node: ts.CallExpression) {
+    function visitCallExpression(node: typescript.CallExpression) {
         // Most call expressions are normal.  But we must special case one kind of function:
         // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0,
         // function* (){})`,
@@ -404,7 +414,7 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
         walk(node.expression);
 
         if (isAwaiterCall(node)) {
-            const lastFunction = <ts.FunctionExpression>node.arguments[3];
+            const lastFunction = <typescript.FunctionExpression>node.arguments[3];
             walk(lastFunction.body);
             return;
         }
@@ -420,7 +430,7 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
  * computeCapturedVariableNames computes the set of free variables in a given function string.  Note that this string is
  * expected to be the usual V8-serialized function expression text.
  */
-function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
+function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVariables {
     // Now that we've parsed the file, compute the free variables, and return them.
 
     let required: CapturedVariableMap = new Map();
@@ -468,6 +478,22 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
             return false;
         }
 
+        // crypto is never considered a built-in. Starting with nodejs 19
+        // there is global.crypto builtin that references
+        // `require("crypto").webcrypto`. If we treat crypto as a builtin, we
+        // would never serialize a require expression for it, even if the user
+        // shadowed global.crypto by required the node:crypto module under the
+        // name `crypto`.
+        //
+        // If crypto was required as a module, createClosure will add a module
+        // entry for it, and we will correctly serialize a require expression.
+        // Otherwise we'll pick up the entry that was added in
+        // addEntriesForWellKnownGlobalObjectsAsync and serialize it as
+        // `global.crypto`.
+        if (ident === "crypto") {
+            return false;
+        }
+
         // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
         // note that these only exist in the scope of modules, and so are not truly global in the usual sense.
         // See https://nodejs.org/api/globals.html for more details.
@@ -478,7 +504,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         return scopes[scopes.length - 1];
     }
 
-    function visitIdentifier(node: ts.Identifier): void {
+    function visitIdentifier(node: typescript.Identifier): void {
         // Remember undeclared identifiers during the walk, as they are possibly free.
         const name = node.text;
         for (let i = scopes.length - 1; i >= 0; i--) {
@@ -500,39 +526,43 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
     }
 
-    function walk(node: ts.Node | undefined) {
+    function walk(node: typescript.Node | undefined) {
         if (!node) {
             return;
         }
 
         switch (node.kind) {
             case ts.SyntaxKind.Identifier:
-                return visitIdentifier(<ts.Identifier>node);
+                return visitIdentifier(<typescript.Identifier>node);
             case ts.SyntaxKind.ThisKeyword:
-                return visitThisExpression(<ts.ThisExpression>node);
+                return visitThisExpression(<typescript.ThisExpression>node);
             case ts.SyntaxKind.Block:
-                return visitBlockStatement(<ts.Block>node);
+                return visitBlockStatement(<typescript.Block>node);
             case ts.SyntaxKind.CallExpression:
-                return visitCallExpression(<ts.CallExpression>node);
+                return visitCallExpression(<typescript.CallExpression>node);
             case ts.SyntaxKind.CatchClause:
-                return visitCatchClause(<ts.CatchClause>node);
+                return visitCatchClause(<typescript.CatchClause>node);
             case ts.SyntaxKind.MethodDeclaration:
-                return visitMethodDeclaration(<ts.MethodDeclaration>node);
+                return visitMethodDeclaration(<typescript.MethodDeclaration>node);
             case ts.SyntaxKind.MetaProperty:
                 // don't walk down an es6 metaproperty (i.e. "new.target").  It doesn't
                 // capture anything.
                 return;
             case ts.SyntaxKind.PropertyAssignment:
-                return visitPropertyAssignment(<ts.PropertyAssignment>node);
+                return visitPropertyAssignment(<typescript.PropertyAssignment>node);
             case ts.SyntaxKind.PropertyAccessExpression:
-                return visitPropertyAccessExpression(<ts.PropertyAccessExpression>node);
+                return visitPropertyAccessExpression(<typescript.PropertyAccessExpression>node);
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
-                return visitFunctionDeclarationOrExpression(<ts.FunctionDeclaration>node);
+                return visitFunctionDeclarationOrExpression(<typescript.FunctionDeclaration>node);
             case ts.SyntaxKind.ArrowFunction:
-                return visitBaseFunction(<ts.ArrowFunction>node, /*isArrowFunction:*/ true, /*name:*/ undefined);
+                return visitBaseFunction(
+                    <typescript.ArrowFunction>node,
+                    /*isArrowFunction:*/ true,
+                    /*name:*/ undefined,
+                );
             case ts.SyntaxKind.VariableDeclaration:
-                return visitVariableDeclaration(<ts.VariableDeclaration>node);
+                return visitVariableDeclaration(<typescript.VariableDeclaration>node);
             default:
                 break;
         }
@@ -540,7 +570,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         ts.forEachChild(node, walk);
     }
 
-    function visitThisExpression(node: ts.ThisExpression): void {
+    function visitThisExpression(node: typescript.ThisExpression): void {
         required.set("this", combineProperties(required.get("this"), determineCapturedPropertyChain(node)));
     }
 
@@ -570,8 +600,8 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     // Finds nodes of the form `(...expr...).PropName` or `(...expr...)["PropName"]`
     // For element access expressions, the argument must be a string literal.
     function isPropertyOrElementAccessExpression(
-        node: ts.Node,
-    ): node is ts.PropertyAccessExpression | ts.ElementAccessExpression {
+        node: typescript.Node,
+    ): node is typescript.PropertyAccessExpression | typescript.ElementAccessExpression {
         if (ts.isPropertyAccessExpression(node)) {
             return true;
         }
@@ -583,7 +613,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         return false;
     }
 
-    function determineCapturedPropertyChain(node: ts.Node): CapturedPropertyChain | undefined {
+    function determineCapturedPropertyChain(node: typescript.Node): CapturedPropertyChain | undefined {
         let infos: CapturedPropertyInfo[] | undefined;
 
         // Walk up a sequence of property-access'es, recording the names we hit, until we hit
@@ -597,7 +627,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
             const name = ts.isPropertyAccessExpression(propOrElementAccess)
                 ? propOrElementAccess.name.text
-                : (<ts.StringLiteral>propOrElementAccess.argumentExpression).text;
+                : (<typescript.StringLiteral>propOrElementAccess.argumentExpression).text;
 
             const invoked =
                 propOrElementAccess.parent !== undefined &&
@@ -629,14 +659,16 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         return undefined;
     }
 
-    function visitBlockStatement(node: ts.Block): void {
+    function visitBlockStatement(node: typescript.Block): void {
         // Push new scope, visit all block statements, and then restore the scope.
         scopes.push(new Set());
         ts.forEachChild(node, walk);
         scopes.pop();
     }
 
-    function visitFunctionDeclarationOrExpression(node: ts.FunctionDeclaration | ts.FunctionExpression): void {
+    function visitFunctionDeclarationOrExpression(
+        node: typescript.FunctionDeclaration | typescript.FunctionExpression,
+    ): void {
         // A function declaration is special in one way: its identifier is added to the current function's
         // var-style variables, so that its name is in scope no matter the order of surrounding references to it.
 
@@ -648,9 +680,9 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     }
 
     function visitBaseFunction(
-        node: ts.FunctionLikeDeclarationBase,
+        node: typescript.FunctionLikeDeclarationBase,
         isArrowFunction: boolean,
-        functionName: ts.Identifier | undefined,
+        functionName: typescript.Identifier | undefined,
     ): void {
         // First, push new free vars list, scope, and function vars
         const savedRequired = required;
@@ -723,7 +755,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
     }
 
-    function visitCatchClause(node: ts.CatchClause): void {
+    function visitCatchClause(node: typescript.CatchClause): void {
         scopes.push(new Set());
 
         // Add the catch pattern to the scope as a variable.  Note that it is scoped to our current
@@ -739,7 +771,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         scopes.pop();
     }
 
-    function visitCallExpression(node: ts.CallExpression): void {
+    function visitCallExpression(node: typescript.CallExpression): void {
         // Most call expressions are normal.  But we must special case one kind of function:
         // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0, function* (){})`,
 
@@ -757,7 +789,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
         if (isAwaiterCall(node)) {
             return visitBaseFunction(
-                <ts.FunctionLikeDeclarationBase>(<ts.FunctionExpression>node.arguments[3]),
+                <typescript.FunctionLikeDeclarationBase>(<typescript.FunctionExpression>node.arguments[3]),
                 /*isArrowFunction*/ true,
                 /*name*/ undefined,
             );
@@ -769,7 +801,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
     }
 
-    function visitMethodDeclaration(node: ts.MethodDeclaration): void {
+    function visitMethodDeclaration(node: typescript.MethodDeclaration): void {
         if (ts.isComputedPropertyName(node.name)) {
             // Don't walk down the 'name' part of the property assignment if it is an identifier. It
             // does not capture any variables.  However, if it is a computed property name, walk it
@@ -782,7 +814,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         visitBaseFunction(node, /*isArrowFunction:*/ false, /*name:*/ undefined);
     }
 
-    function visitPropertyAssignment(node: ts.PropertyAssignment): void {
+    function visitPropertyAssignment(node: typescript.PropertyAssignment): void {
         if (ts.isComputedPropertyName(node.name)) {
             // Don't walk down the 'name' part of the property assignment if it is an identifier. It
             // is not capturing any variables.  However, if it is a computed property name, walk it
@@ -794,23 +826,23 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         walk(node.initializer);
     }
 
-    function visitPropertyAccessExpression(node: ts.PropertyAccessExpression): void {
+    function visitPropertyAccessExpression(node: typescript.PropertyAccessExpression): void {
         // Don't walk down the 'name' part of the property access.  It could not capture a free variable.
         // i.e. if you have "A.B", we should analyze the "A" part and not the "B" part.
         walk(node.expression);
     }
 
-    function nameWalk(n: ts.BindingName | undefined, isVar: boolean): void {
+    function nameWalk(n: typescript.BindingName | undefined, isVar: boolean): void {
         if (!n) {
             return;
         }
 
         switch (n.kind) {
             case ts.SyntaxKind.Identifier:
-                return visitVariableDeclarationIdentifier(<ts.Identifier>n, isVar);
+                return visitVariableDeclarationIdentifier(<typescript.Identifier>n, isVar);
             case ts.SyntaxKind.ObjectBindingPattern:
             case ts.SyntaxKind.ArrayBindingPattern:
-                const bindingPattern = <ts.BindingPattern>n;
+                const bindingPattern = <typescript.BindingPattern>n;
                 for (const element of bindingPattern.elements) {
                     if (ts.isBindingElement(element)) {
                         visitBindingElement(element, isVar);
@@ -823,7 +855,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
     }
 
-    function visitVariableDeclaration(node: ts.VariableDeclaration): void {
+    function visitVariableDeclaration(node: typescript.VariableDeclaration): void {
         // eslint-disable-next-line max-len
         const isLet =
             node.parent !== undefined &&
@@ -845,7 +877,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         walk(node.initializer);
     }
 
-    function visitVariableDeclarationIdentifier(node: ts.Identifier, isVar: boolean): void {
+    function visitVariableDeclarationIdentifier(node: typescript.Identifier, isVar: boolean): void {
         // If the declaration is an identifier, it isn't a free variable, for whatever scope it
         // pertains to (function-wide for var and scope-wide for let/const).  Track it so we can
         // remove any subseqeunt references to that variable, so we know it isn't free.
@@ -856,7 +888,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
     }
 
-    function visitBindingElement(node: ts.BindingElement, isVar: boolean): void {
+    function visitBindingElement(node: typescript.BindingElement, isVar: boolean): void {
         // array and object patterns can be quite complex.  You can have:
         //
         //  var {t} = val;          // lookup a property in 'val' called 't' and place into a variable 't'.
@@ -901,7 +933,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     }
 }
 
-function isAwaiterCall(node: ts.CallExpression) {
+function isAwaiterCall(node: typescript.CallExpression) {
     const result =
         ts.isIdentifier(node.expression) &&
         node.expression.text === "__awaiter" &&

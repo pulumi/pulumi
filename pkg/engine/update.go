@@ -164,6 +164,9 @@ type UpdateOptions struct {
 
 	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
 	Experimental bool
+
+	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
+	ContinueOnError bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -238,11 +241,14 @@ func installPlugins(ctx context.Context,
 	//
 	// In order to get a complete view of the set of plugins that we need for an update or query, we must
 	// consult both sources and merge their results into a list of plugins.
-	languagePlugins, err := gatherPluginsFromProgram(plugctx, plugin.ProgInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-	})
+	runtime := proj.Runtime.Name()
+	programInfo := plugin.NewProgramInfo(
+		/* rootDirectory */ plugctx.Root,
+		/* programDirectory */ pwd,
+		/* entryPoint */ main,
+		/* options */ proj.Runtime.Options(),
+	)
+	languagePlugins, err := gatherPluginsFromProgram(plugctx, runtime, programInfo)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -42,7 +42,7 @@ jobs:
     name: python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -51,7 +51,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
@@ -65,7 +65,7 @@ jobs:
           rm setup.py.bak
           python3 -m venv venv
           source venv/bin/activate
-          python -m pip install wheel
+          python -m pip install wheel setuptools
           python setup.py build bdist_wheel --python-tag py3
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v2
@@ -79,7 +79,7 @@ jobs:
     name: nodejs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -88,7 +88,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn

@@ -56,7 +56,7 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	}
 
 	// Ensure the "node_modules" directory exists.
-	// NB: This is only approperate for certain package managers.
+	// NB: This is only appropriate for certain package managers.
 	//     Yarn with Plug'n'Play enabled won't produce a node_modules directory,
 	//     either for Yarn Classic or Yarn Berry.
 	nodeModulesPath := filepath.Join(dir, "node_modules")
@@ -72,11 +72,11 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	return name, nil
 }
 
-// ResolvePackageManager determines which package manager to use.
-// It inspects the value of "PULUMI_PREFER_YARN" and checks for a yarn.lock file.
-// If neither of those values are enabled or truthy, then it uses NPM over YarnClassic.
-// The argument pwd is the present working directory we're checking for the presence
-// of a lockfile.
+// ResolvePackageManager determines which package manager to use.  If the
+// `PULUMI_PREFER_YARN` environment variable is set, or if a yarn.lock file
+// exists, then YarnClassic is used. If a pnpm-lock.yaml file exists, then
+// pnpm is used.  Otherwise npm is used.  The argument pwd is the directory
+// we're checking for the presence of a lockfile.
 func ResolvePackageManager(pwd string) (PackageManager, error) {
 	// Prefer yarn if PULUMI_PREFER_YARN is truthy, or if yarn.lock exists.
 	if preferYarn() || checkYarnLock(pwd) {
@@ -85,9 +85,19 @@ func ResolvePackageManager(pwd string) (PackageManager, error) {
 		if err == nil {
 			return yarn, nil
 		}
-		logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
+		logging.Warningf("could not find yarn on the $PATH, trying pnpm instead: %v", err)
 	}
 
+	// Prefer pnpm if pnpm-lock.yaml exists.
+	if checkPnpmLock(pwd) {
+		pnpm, err := newPnpm()
+		if err == nil {
+			return pnpm, nil
+		}
+		logging.Warningf("could not find pnpm on the $PATH, trying npm instead: %v", err)
+	}
+
+	// Finally, fall back to npm.
 	node, err := newNPM()
 	if err != nil {
 		return nil, fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+

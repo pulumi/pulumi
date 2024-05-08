@@ -11,7 +11,7 @@ endif
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
-BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
+BLACK_FLAGS := ./lib/test ./lib/pulumi --exclude lib/pulumi/runtime/proto
 
 PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
 
@@ -32,6 +32,7 @@ ensure:: $(PYTHON).ensure .ensure.phony
 build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak 's/^VERSION = .*/VERSION = "$(PYPI_VERSION)"/g' $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	sed -i.bak 's/^_VERSION = .*/_VERSION = "$(VERSION)"/g' $(PYENVSRC)/pulumi/_version.py && rm $(PYENVSRC)/pulumi/_version.py.bak
 	cp ../../README.md $(PYENVSRC)
 	. venv/*/activate && cd $(PYENVSRC) && \
 		python setup.py build bdist_wheel --universal
@@ -99,7 +100,7 @@ publish::
 		mv -vT "$${file}" "../../artifacts/$${basename##sdk-python-}"; \
 	done
 	twine upload \
-	-u pulumi -p "${PYPI_PASSWORD}" \
+	-u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" \
 		../../artifacts/*.whl \
 		--skip-existing \
 		--verbose

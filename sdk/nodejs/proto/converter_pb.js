@@ -17,12 +17,6 @@ var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
-var pulumi_plugin_pb = require('./plugin_pb.js');
-goog.object.extend(proto, pulumi_plugin_pb);
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
-goog.object.extend(proto, google_protobuf_empty_pb);
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
-goog.object.extend(proto, google_protobuf_struct_pb);
 goog.exportSymbol('proto.pulumirpc.ConvertProgramRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ConvertProgramResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.ConvertStateRequest', null, global);
@@ -355,7 +349,10 @@ proto.pulumirpc.ResourceImport.toObject = function(includeInstance, msg) {
     name: jspb.Message.getFieldWithDefault(msg, 2, ""),
     id: jspb.Message.getFieldWithDefault(msg, 3, ""),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+    isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -411,6 +408,18 @@ proto.pulumirpc.ResourceImport.deserializeBinaryFromReader = function(msg, reade
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLogicalName(value);
+      break;
+    case 7:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsComponent(value);
+      break;
+    case 8:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsRemote(value);
       break;
     default:
       reader.skipField();
@@ -473,6 +482,27 @@ proto.pulumirpc.ResourceImport.serializeBinaryToWriter = function(message, write
   if (f.length > 0) {
     writer.writeString(
       5,
+      f
+    );
+  }
+  f = message.getLogicalName();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
+      f
+    );
+  }
+  f = message.getIsComponent();
+  if (f) {
+    writer.writeBool(
+      7,
+      f
+    );
+  }
+  f = message.getIsRemote();
+  if (f) {
+    writer.writeBool(
+      8,
       f
     );
   }
@@ -566,6 +596,60 @@ proto.pulumirpc.ResourceImport.prototype.getPlugindownloadurl = function() {
  */
 proto.pulumirpc.ResourceImport.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional string logical_name = 6;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceImport.prototype.getLogicalName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setLogicalName = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional bool is_component = 7;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceImport.prototype.getIsComponent = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 7, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setIsComponent = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 7, value);
+};
+
+
+/**
+ * optional bool is_remote = 8;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceImport.prototype.getIsRemote = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setIsRemote = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 8, value);
 };
 
 

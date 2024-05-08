@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -78,6 +79,7 @@ type messageRenderer struct {
 	opts          Options
 	isInteractive bool
 
+	display        *ProgressDisplay
 	terminal       terminal.Terminal
 	terminalWidth  int
 	terminalHeight int
@@ -108,7 +110,7 @@ func newInteractiveMessageRenderer(term terminal.Terminal, opts Options) progres
 func newNonInteractiveRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-		nil, opts.Color, 1 /*timesPerSecond*/)
+		nil, opts.Color, 1 /*timesPerSecond*/, opts.SuppressProgress)
 	ticker.Stop()
 
 	r := newMessageRenderer(stdout, opts, false)
@@ -136,6 +138,10 @@ func (r *messageRenderer) Close() error {
 	close(r.progressOutput)
 	<-r.closed
 	return nil
+}
+
+func (r *messageRenderer) initializeDisplay(display *ProgressDisplay) {
+	r.display = display
 }
 
 // Converts the colorization tags in a progress message and then actually writes the progress
@@ -173,21 +179,20 @@ func (r *messageRenderer) writeSimpleMessage(msg string) {
 	r.colorizeAndWriteProgress(makeMessageProgress(msg))
 }
 
-func (r *messageRenderer) println(display *ProgressDisplay, line string) {
+func (r *messageRenderer) println(line string) {
 	r.writeSimpleMessage(line)
 }
 
-func (r *messageRenderer) tick(display *ProgressDisplay) {
+func (r *messageRenderer) tick() {
 	if r.isInteractive {
-		r.render(display, false)
+		r.render(false)
 	} else {
 		// Update the spinner to let the user know that that work is still happening.
 		r.nonInteractiveSpinner.Tick()
 	}
 }
 
-func (r *messageRenderer) renderRow(display *ProgressDisplay,
-	id string, colorizedColumns []string, maxColumnLengths []int,
+func (r *messageRenderer) renderRow(id string, colorizedColumns []string, maxColumnLengths []int,
 ) {
 	row := renderRow(colorizedColumns, maxColumnLengths)
 	if r.isInteractive {
@@ -211,50 +216,50 @@ func (r *messageRenderer) renderRow(display *ProgressDisplay,
 	}
 }
 
-func (r *messageRenderer) rowUpdated(display *ProgressDisplay, row Row) {
+func (r *messageRenderer) rowUpdated(row Row) {
 	if r.isInteractive {
 		// if we're in a terminal, then refresh everything so that all our columns line up
-		r.render(display, false)
+		r.render(false)
 	} else {
 		// otherwise, just print out this single row.
 		colorizedColumns := row.ColorizedColumns()
-		colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
-		r.renderRow(display, "", colorizedColumns, nil)
+		colorizedColumns[r.display.suffixColumn] += row.ColorizedSuffix()
+		r.renderRow("", colorizedColumns, nil)
 	}
 }
 
-func (r *messageRenderer) systemMessage(display *ProgressDisplay, payload engine.StdoutEventPayload) {
+func (r *messageRenderer) systemMessage(payload engine.StdoutEventPayload) {
 	if r.isInteractive {
 		// if we're in a terminal, then refresh everything.  The system events will come after
 		// all the normal rows
-		r.render(display, false)
+		r.render(false)
 	} else {
 		// otherwise, in a non-terminal, just print out the actual event.
-		r.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
+		r.writeSimpleMessage(renderStdoutColorEvent(payload, r.display.opts))
 	}
 }
 
-func (r *messageRenderer) done(display *ProgressDisplay) {
+func (r *messageRenderer) done() {
 	if r.isInteractive {
-		r.render(display, false)
+		r.render(false)
 	}
 }
 
-func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
-	if !r.isInteractive || display.headerRow == nil {
+func (r *messageRenderer) render(done bool) {
+	if !r.isInteractive || r.display.headerRow == nil {
 		return
 	}
 
 	// make sure our stored dimension info is up to date
 	r.updateTerminalDimensions()
 
-	rootNodes := display.generateTreeNodes()
-	rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
+	rootNodes := r.display.generateTreeNodes()
+	rootNodes = r.display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 	sortNodes(rootNodes)
-	display.addIndentations(rootNodes, true /*isRoot*/, "")
+	r.display.addIndentations(rootNodes, true /*isRoot*/, "")
 
 	maxSuffixLength := 0
-	for _, v := range display.suffixesArray {
+	for _, v := range r.display.suffixesArray {
 		runeCount := utf8.RuneCountInString(v)
 		if runeCount > maxSuffixLength {
 			maxSuffixLength = runeCount
@@ -263,18 +268,18 @@ func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 
 	var rows [][]string
 	var maxColumnLengths []int
-	display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
+	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
 
 	removeInfoColumnIfUnneeded(rows)
 
 	for i, row := range rows {
-		r.renderRow(display, fmt.Sprintf("%v", i), row, maxColumnLengths)
+		r.renderRow(strconv.Itoa(i), row, maxColumnLengths)
 	}
 
 	systemID := len(rows)
 
 	printedHeader := false
-	for _, payload := range display.systemEventPayloads {
+	for _, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		lines := splitIntoDisplayableLines(msg)
 
@@ -285,24 +290,24 @@ func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 		if !printedHeader {
 			printedHeader = true
 			r.colorizeAndWriteProgress(makeActionProgress(
-				fmt.Sprintf("%v", systemID), " "))
+				strconv.Itoa(systemID), " "))
 			systemID++
 
 			r.colorizeAndWriteProgress(makeActionProgress(
-				fmt.Sprintf("%v", systemID),
+				strconv.Itoa(systemID),
 				colors.Yellow+"System Messages"+colors.Reset))
 			systemID++
 		}
 
 		for _, line := range lines {
 			r.colorizeAndWriteProgress(makeActionProgress(
-				fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
+				strconv.Itoa(systemID), "  "+line))
 			systemID++
 		}
 	}
 
 	if done {
-		r.println(display, "")
+		r.println("")
 	}
 }
 

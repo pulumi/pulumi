@@ -26,16 +26,20 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sergi/go-diff/diffmatchpatch"
+	"gopkg.in/yaml.v3"
+
+	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/sergi/go-diff/diffmatchpatch"
-	"gopkg.in/yaml.v3"
 )
 
 // getIndent computes a step's parent indentation.
@@ -346,7 +350,7 @@ func getResourceOutputsPropertiesString(
 	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
-	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
+	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
 		showSames = true
 	}
 
@@ -371,7 +375,7 @@ func getResourceOutputsPropertiesString(
 			step.Op == deploy.OpReadReplacement ||
 			step.Op == deploy.OpImport ||
 			step.Op == deploy.OpImportReplacement ||
-			step.URN.Type() == resource.RootStackType
+			step.URN.QualifiedType() == resource.RootStackType
 		if !printOutputDuringPlanning {
 			return ""
 		}
@@ -403,7 +407,7 @@ func getResourceOutputsPropertiesString(
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
-		if planning && step.URN.Type() == resource.RootStackType {
+		if planning && step.URN.QualifiedType() == resource.RootStackType {
 			massageStackPreviewOutputDiff(outputDiff, false)
 		}
 
@@ -580,7 +584,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		if a.IsText() {
 			p.write("asset(text:%s) {\n", shortHash(a.Hash))
 
-			a = resource.MassageIfUserProgramCodeAsset(a, p.debug)
+			a = codeasset.MassageIfUserProgramCodeAsset(a, p.debug)
 
 			massaged := a.Text
 
@@ -592,9 +596,10 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 			p.writeWithIndentNoPrefix("}")
 		} else if path, has := a.GetPath(); has {
 			p.write("asset(file:%s) { %s }", shortHash(a.Hash), path)
+		} else if uri, has := a.GetURI(); has {
+			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), uri)
 		} else {
-			contract.Assertf(a.IsURI(), "asset is not a text, file, or URI")
-			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), a.URI)
+			p.write("asset(unknown:%s) { }", shortHash(a.Hash))
 		}
 	case v.IsArchive():
 		a := v.ArchiveValue()
@@ -643,9 +648,9 @@ func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
 
 func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
 	switch t := v.(type) {
-	case *resource.Asset:
+	case *asset.Asset:
 		return resource.NewAssetProperty(t)
-	case *resource.Archive:
+	case *archive.Archive:
 		return resource.NewArchiveProperty(t)
 	default:
 		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
@@ -870,7 +875,7 @@ func (p *propertyPrinter) printAdd(v resource.PropertyValue, title func(*propert
 }
 
 func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
-	oldArchive, newArchive *resource.Archive,
+	oldArchive, newArchive *archive.Archive,
 ) {
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 
@@ -888,10 +893,7 @@ func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
 			p.write("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
-	} else {
-		contract.Assertf(oldArchive.IsAssets(), "old archive is not a path, URI, or a group of assets")
-		oldAssets, _ := oldArchive.GetAssets()
-
+	} else if oldAssets, has := oldArchive.GetAssets(); has {
 		if newAssets, has := newArchive.GetAssets(); has {
 			titleFunc(p)
 			p.write("archive(assets:%s) {\n", hashChange)
@@ -959,16 +961,16 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 				// unchanged assets.
 
 				switch t := old.(type) {
-				case *resource.Archive:
-					newArchive, newIsArchive := new.(*resource.Archive)
+				case *archive.Archive:
+					newArchive, newIsArchive := new.(*archive.Archive)
 					switch {
 					case !newIsArchive:
 						p.printAssetArchiveDiff(titleFunc, t, new)
 					case t.Hash != newArchive.Hash:
 						p.printArchiveDiff(titleFunc, t, newArchive)
 					}
-				case *resource.Asset:
-					newAsset, newIsAsset := new.(*resource.Asset)
+				case *asset.Asset:
+					newAsset, newIsAsset := new.(*asset.Asset)
 					switch {
 					case !newIsAsset:
 						p.printAssetArchiveDiff(titleFunc, t, new)
@@ -1008,7 +1010,7 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	}
 }
 
-func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAsset, newAsset *resource.Asset) {
+func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAsset, newAsset *asset.Asset) {
 	contract.Assertf(oldAsset.Hash != newAsset.Hash, "Should not call printAssetDiff on unchanged assets")
 
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
@@ -1021,8 +1023,8 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 			titleFunc(p)
 			p.write("asset(text:%s) {", hashChange)
 
-			massagedOldText := resource.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
-			massagedNewText := resource.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
+			massagedOldText := codeasset.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
+			massagedNewText := codeasset.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
 
 			p.indented(1).printTextDiff(massagedOldText, massagedNewText)
 
@@ -1035,10 +1037,7 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 			p.write("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
-	} else {
-		contract.Assertf(oldAsset.IsURI(), "old asset is not text, path, or URI")
-
-		oldURI, _ := oldAsset.GetURI()
+	} else if oldURI, has := oldAsset.GetURI(); has {
 		if newURI, has := newAsset.GetURI(); has {
 			titleFunc(p)
 			p.write("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
@@ -1094,9 +1093,11 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 	for _, d := range diffs {
 		switch d.Type {
 		case diffmatchpatch.DiffDelete:
-			p.withOp(deploy.OpDelete).write(escape(d.Text))
+			p.withOp(deploy.OpDelete).writeVerbatim(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
-			p.withOp(deploy.OpSame).write(escape(d.Text))
+			p.withOp(deploy.OpSame).writeVerbatim(escape(d.Text))
+		case diffmatchpatch.DiffInsert:
+			// An insert has no old text
 		}
 	}
 	p.writeVerbatim(`"`)
@@ -1108,9 +1109,11 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 	for _, d := range diffs {
 		switch d.Type {
 		case diffmatchpatch.DiffInsert:
-			p.withOp(deploy.OpCreate).write(escape(d.Text))
+			p.withOp(deploy.OpCreate).writeVerbatim(escape(d.Text))
 		case diffmatchpatch.DiffEqual:
-			p.withOp(deploy.OpSame).write(escape(d.Text))
+			p.withOp(deploy.OpSame).writeVerbatim(escape(d.Text))
+		case diffmatchpatch.DiffDelete:
+			// A delete has no new text
 		}
 	}
 	p.writeVerbatim("\"\n")
@@ -1196,13 +1199,16 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 		return false
 	}
 
-	if oldKind != newKind {
-		p.write("(%s => %s) ", oldKind, newKind)
-	} else if old != new {
+	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
+	if oldValue.DeepEquals(newValue) {
 		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
 		return true
-	} else {
+	}
+
+	if oldKind == newKind {
 		p.write("(%s) ", oldKind)
+	} else {
+		p.write("(%s => %s) ", oldKind, newKind)
 	}
 
 	diff := oldValue.Diff(newValue, resource.IsInternalPropertyKey)
@@ -1215,6 +1221,8 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 	return true
 }
 
+// decodeValue attempts to decode a string as JSON or YAML. The second return value is the kind of value that was
+// decoded, either "json" or "yaml".
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
 	decode := func() (interface{}, string, bool) {
 		// Strip whitespace for the purposes of decoding.
@@ -1242,7 +1250,8 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 			// Make sure _all_ the string was consumed as YAML. Unlike JsonDecoder above, the YamlDecoder
 			// doesn't give an easy way to do this, so our workaround is we ask it to try and decode another
 			// value, and if it fails with io.EOF, then we know we've consumed the whole string.
-			eofErr := yamlDecoder.Decode(nil)
+			var ignored interface{}
+			eofErr := yamlDecoder.Decode(&ignored)
 			if errors.Is(eofErr, io.EOF) {
 				translated, ok := p.translateYAMLValue(object)
 				if !ok {

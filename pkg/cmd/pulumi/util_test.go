@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	pul_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -47,7 +47,7 @@ func TestReadingGitRepo(t *testing.T) {
 	// it will change the expected behavior.
 	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
 
-	e := pul_testing.NewEnvironment(t)
+	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("git", "init", "-b", "master")
@@ -189,7 +189,7 @@ func TestReadingGitLabMetadata(t *testing.T) {
 	// it will change the expected behavior.
 	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
 
-	e := pul_testing.NewEnvironment(t)
+	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("git", "init", "-b", "master")
@@ -370,7 +370,7 @@ func TestStackLoadOption(t *testing.T) {
 	}
 }
 
-// TestGetUpdateMetadata tests that the update metadata is correctly populated
+// TestPulumiCLIMetadata tests that the update metadata is correctly populated
 // when running a Pulumi program.
 func TestPulumiCLIMetadata(t *testing.T) {
 	t.Parallel()

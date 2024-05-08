@@ -14,6 +14,7 @@
 import pulumi
 from typing import Optional
 
+
 @pulumi.input_type
 class MyResourceArgs:
     def __init__(__self__, *, in_prop: Optional[pulumi.Input[str]] = None):
@@ -27,7 +28,8 @@ class MyResourceArgs:
 
     @in_prop.setter
     def in_prop(self, value: pulumi.Input[str]):
-        pulumi.set(self, "in_prop")
+        pulumi.set(self, "in_prop", value)
+
 
 class MyResource(pulumi.ComponentResource):
     @property
@@ -37,7 +39,10 @@ class MyResource(pulumi.ComponentResource):
 
     def __init__(self, name, args, opts=None):
         args.__dict__["out_prop"] = None
-        pulumi.ComponentResource.__init__(self, "test:index:MyResource", name, props=args, opts=opts, remote=True)
+        pulumi.ComponentResource.__init__(
+            self, "test:index:MyResource", name, props=args, opts=opts, remote=True
+        )
+
 
 resA = MyResource("resA", MyResourceArgs())
 # resB is not registered, but is used as a dependency of A's output property

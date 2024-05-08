@@ -17,7 +17,6 @@ syntax = "proto3";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
-import "pulumi/source.proto";
 
 package pulumirpc;
 
@@ -174,13 +173,15 @@ message CallRequest {
         repeated string urns = 1; // A list of URNs this argument depends on.
     }
 
+    // We used to send CallRequest for both provider calls and monitor calls, despite them being different.
+    // We've now split them but need to make sure we don't confuse any old plugins/monitors making sure those
+    // fields don't get reused.
+    reserved 4, 5, 13, 16, 15;
+    reserved "provider", "version", "pluginDownloadURL", "pluginChecksums", "sourcePosition";
+
     string tok = 1;                                        // the function token to invoke.
     google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
     map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
-    string provider = 4;                                   // an optional reference to the provider to use for this invoke.
-    string version = 5;                                    // the version of the provider to use when servicing this request.
-    string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
-    map<string, bytes> pluginChecksums = 16;               // a map of checksums of the provider to use when servicing this request.
 
     string project = 6;             // the project name.
     string stack = 7;               // the name of the stack being deployed into.
@@ -191,7 +192,7 @@ message CallRequest {
     string monitorEndpoint = 12;    // the address for communicating back to the resource monitor.
     string organization = 14;       // the organization of the stack being deployed into.
 
-    SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
+    bool accepts_output_values = 17; // the engine can be passed output values back, returnDependencies can be left blank if returning output values.
 }
 
 message CallResponse {
@@ -406,6 +407,8 @@ message ConstructRequest {
     repeated string ignoreChanges           = 22; // properties that should be ignored during a diff
     repeated string replaceOnChanges        = 23; // properties that, when changed, trigger a replacement
     bool retainOnDelete                     = 24; // whether to retain the resource in the cloud provider when it is deleted
+
+    bool accepts_output_values = 25; // the engine can be passed output values back, stateDependencies can be left blank if returning output values.
 }
 
 message ConstructResponse {

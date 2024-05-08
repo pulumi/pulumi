@@ -65,6 +65,7 @@ func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
 // snapshots.
 func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	t.Parallel()
+
 	ctx := context.Background()
 
 	expectationsFile := "testdata/snapshot_test.json"
@@ -326,7 +327,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
 		require.NoError(t, err)
-		deployment, err := stack.SerializeDeployment(snap, nil, true)
+		deployment, err := stack.SerializeDeployment(context.Background(), snap, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
 	}
@@ -550,11 +551,13 @@ func BenchmarkDiffStackRecorded(b *testing.B) {
 
 func TestDiffStackRecorded(t *testing.T) {
 	t.Parallel()
+
 	testOrBenchmarkDiffStack(t, testDiffStack, recordedCases)
 }
 
 func TestMarshalDeployment(t *testing.T) {
 	t.Parallel()
+
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, dynamicCases)
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, recordedCases)
 }

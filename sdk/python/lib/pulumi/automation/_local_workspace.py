@@ -23,9 +23,9 @@ from typing import TYPE_CHECKING, Callable, List, Mapping, Optional, Union
 import yaml
 from semver import VersionInfo
 
-from ._cmd import CommandResult, OnOutput, _run_pulumi_cmd
+from ._cmd import CommandResult, OnOutput, PulumiCommand
 from ._config import _SECRET_SENTINEL, ConfigMap, ConfigValue
-from ._minimum_version import _MINIMUM_VERSION
+from ._env import _SKIP_VERSION_CHECK_VAR
 from ._output import OutputMap, OutputValue
 from ._project_settings import ProjectSettings
 from ._stack import _DATETIME_FORMAT, Stack
@@ -46,8 +46,6 @@ if TYPE_CHECKING:
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
-_SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
-
 
 class Secret(str):
     """
@@ -63,6 +61,7 @@ class LocalWorkspaceOptions:
     secrets_provider: Optional[str] = None
     project_settings: Optional[ProjectSettings] = None
     stack_settings: Optional[Mapping[str, StackSettings]] = None
+    pulumi_command: Optional[PulumiCommand] = None
 
     def __init__(
         self,
@@ -73,6 +72,7 @@ class LocalWorkspaceOptions:
         secrets_provider: Optional[str] = None,
         project_settings: Optional[ProjectSettings] = None,
         stack_settings: Optional[Mapping[str, StackSettings]] = None,
+        pulumi_command: Optional[PulumiCommand] = None,
     ):
         self.work_dir = work_dir
         self.pulumi_home = pulumi_home
@@ -81,6 +81,7 @@ class LocalWorkspaceOptions:
         self.secrets_provider = secrets_provider
         self.project_settings = project_settings
         self.stack_settings = stack_settings
+        self.pulumi_command = pulumi_command
 
 
 class LocalWorkspace(Workspace):
@@ -100,7 +101,8 @@ class LocalWorkspace(Workspace):
     _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
     _remote_pre_run_commands: Optional[List[str]]
     _remote_skip_install_dependencies: Optional[bool]
-    _remote_git_url: str
+    _remote_inherit_settings: Optional[bool]
+    _remote_git_url: Optional[str]
     _remote_git_project_path: Optional[str]
     _remote_git_branch: Optional[str]
     _remote_git_commit_hash: Optional[str]
@@ -115,6 +117,7 @@ class LocalWorkspace(Workspace):
         secrets_provider: Optional[str] = None,
         project_settings: Optional[ProjectSettings] = None,
         stack_settings: Optional[Mapping[str, StackSettings]] = None,
+        pulumi_command: Optional[PulumiCommand] = None,
     ):
         self.pulumi_home = pulumi_home
         self.program = program
@@ -124,12 +127,9 @@ class LocalWorkspace(Workspace):
             dir=tempfile.gettempdir(), prefix="automation-"
         )
 
-        pulumi_version = self._get_pulumi_version()
-        opt_out = self._version_check_opt_out()
-        version = _parse_and_validate_pulumi_version(
-            _MINIMUM_VERSION, pulumi_version, opt_out
+        self.pulumi_command = pulumi_command or PulumiCommand(
+            skip_version_check=self._version_check_opt_out()
         )
-        self.__pulumi_version = str(version) if version else None
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -140,13 +140,10 @@ class LocalWorkspace(Workspace):
     # mypy does not support properties: https://github.com/python/mypy/issues/1362
     @property  # type: ignore
     def pulumi_version(self) -> str:  # type: ignore
-        if self.__pulumi_version:
-            return self.__pulumi_version
+        v = self.pulumi_command.version
+        if v:
+            return str(v)
         raise InvalidVersionError("Could not get Pulumi CLI version")
-
-    @pulumi_version.setter  # type: ignore
-    def pulumi_version(self, v: str):
-        self.__pulumi_version = v
 
     def __repr__(self):
         return (
@@ -215,6 +212,66 @@ class LocalWorkspace(Workspace):
     def post_command_callback(self, stack_name: str) -> None:
         # Not used by LocalWorkspace
         return
+
+    def add_environments(self, stack_name: str, *environment_names: str) -> None:
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+        ver = VersionInfo(3)
+        if self.pulumi_command.version is not None:
+            ver = self.pulumi_command.version
+
+        # 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if ver >= VersionInfo(3, 95):
+            args = ["config", "env", "add"]
+            args.extend(environment_names)
+            args.extend(["--yes", "--stack", stack_name])
+            self._run_pulumi_cmd_sync(args)
+        else:
+            raise InvalidVersionError(
+                "The installed version of the CLI does not support this operation. Please "
+                "upgrade to at least version 3.95.0."
+            )
+
+    def list_environments(self, stack_name: str) -> List[str]:
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.99.
+        ver = VersionInfo(3)
+        if self.pulumi_command.version is not None:
+            ver = self.pulumi_command.version
+
+        # 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
+        if ver >= VersionInfo(3, 99):
+            result = self._run_pulumi_cmd_sync(
+                ["config", "env", "ls", "--json", "--stack", stack_name]
+            )
+            return json.loads(result.stdout)
+
+        raise InvalidVersionError(
+            "The installed version of the CLI does not support this operation. Please "
+            "upgrade to at least version 3.99.0."
+        )
+
+    def remove_environment(self, stack_name: str, environment_name: str) -> None:
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.95.
+        ver = VersionInfo(3)
+        if self.pulumi_command.version is not None:
+            ver = self.pulumi_command.version
+
+        # 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+        if ver >= VersionInfo(3, 95):
+            args = [
+                "config",
+                "env",
+                "rm",
+                environment_name,
+                "--yes",
+                "--stack",
+                stack_name,
+            ]
+            self._run_pulumi_cmd_sync(args)
+        else:
+            raise InvalidVersionError(
+                "The installed version of the CLI does not support this operation. Please "
+                "upgrade to at least version 3.95.0."
+            )
 
     def get_config(
         self, stack_name: str, key: str, *, path: bool = False
@@ -317,8 +374,8 @@ class LocalWorkspace(Workspace):
     def who_am_i(self) -> WhoAmIResult:
         # Assume an old version. Doesn't really matter what this is as long as it's pre-3.58.
         ver = VersionInfo(3)
-        if self.__pulumi_version is not None:
-            ver = VersionInfo.parse(self.__pulumi_version)
+        if self.pulumi_command.version is not None:
+            ver = self.pulumi_command.version
 
         # 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
         if ver >= VersionInfo(3, 58):
@@ -365,17 +422,21 @@ class LocalWorkspace(Workspace):
             stack = StackSummary(
                 name=stack_json["name"],
                 current=stack_json["current"],
-                update_in_progress=stack_json["updateInProgress"]
-                if "updateInProgress" in stack_json
-                else None,
-                last_update=datetime.strptime(
-                    stack_json["lastUpdate"], _DATETIME_FORMAT
-                )
-                if "lastUpdate" in stack_json
-                else None,
-                resource_count=stack_json["resourceCount"]
-                if "resourceCount" in stack_json
-                else None,
+                update_in_progress=(
+                    stack_json["updateInProgress"]
+                    if "updateInProgress" in stack_json
+                    else None
+                ),
+                last_update=(
+                    datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT)
+                    if "lastUpdate" in stack_json
+                    else None
+                ),
+                resource_count=(
+                    stack_json["resourceCount"]
+                    if "resourceCount" in stack_json
+                    else None
+                ),
                 url=stack_json["url"] if "url" in stack_json else None,
             )
             stack_list.append(stack)
@@ -415,11 +476,11 @@ class LocalWorkspace(Workspace):
                 last_used_time=datetime.strptime(
                     plugin_json["lastUsedTime"], _DATETIME_FORMAT
                 ),
-                install_time=datetime.strptime(
-                    plugin_json["installTime"], _DATETIME_FORMAT
-                )
-                if "installTime" in plugin_json
-                else None,
+                install_time=(
+                    datetime.strptime(plugin_json["installTime"], _DATETIME_FORMAT)
+                    if "installTime" in plugin_json
+                    else None
+                ),
                 version=plugin_json["version"] if "version" in plugin_json else None,
             )
             plugin_list.append(plugin)
@@ -461,18 +522,17 @@ class LocalWorkspace(Workspace):
             or self.env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
         )
 
-    def _get_pulumi_version(self) -> str:
-        result = self._run_pulumi_cmd_sync(["version"])
-        version_string = result.stdout.strip()
-        if version_string[0] == "v":
-            version_string = version_string[1:]
-        return version_string
-
     def _remote_supported(self) -> bool:
         # See if `--remote` is present in `pulumi preview --help`'s output.
         result = self._run_pulumi_cmd_sync(["preview", "--help"])
         help_string = result.stdout.strip()
         return "--remote" in help_string
+
+    def _remote_inherit_settings_supported(self) -> bool:
+        # See if `--remote-inherit-settings` is present in `pulumi preview --help`'s output.
+        result = self._run_pulumi_cmd_sync(["preview", "--help"])
+        help_string = result.stdout.strip()
+        return "--remote-inherit-settings" in help_string
 
     def _run_pulumi_cmd_sync(
         self, args: List[str], on_output: Optional[OnOutput] = None
@@ -481,7 +541,7 @@ class LocalWorkspace(Workspace):
         if self._remote:
             envs["PULUMI_EXPERIMENTAL"] = "true"
         envs = {**envs, **self.env_vars}
-        return _run_pulumi_cmd(args, self.work_dir, envs, on_output)
+        return self.pulumi_command.run(args, self.work_dir, envs, on_output)
 
     def _remote_args(self) -> List[str]:
         args: List[str] = []
@@ -537,6 +597,9 @@ class LocalWorkspace(Workspace):
 
         if self._remote_skip_install_dependencies:
             args.append("--remote-skip-install-dependencies")
+
+        if self._remote_inherit_settings:
+            args.append("--remote-inherit-settings")
 
         return args
 
@@ -725,11 +788,18 @@ def _inline_source_stack_helper(
         work_dir = workspace_options.work_dir
         if work_dir:
             try:
+                # This attempts to load the project settings, and if it
+                # succeeds, then discards them. This is ok because the
+                # LocalWorkspace will load them when it needs to. This is simply
+                # establishing whether there is an appropritate file in
+                # `work_dir`
                 _load_project_settings(work_dir)
             except FileNotFoundError:
                 workspace_options.project_settings = default_project(project_name)
         else:
             workspace_options.project_settings = default_project(project_name)
+    elif workspace_options.project_settings.main is None:
+        workspace_options.project_settings.main = os.getcwd()
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)
@@ -761,39 +831,6 @@ def get_stack_settings_name(name: str) -> str:
     if len(parts) < 1:
         return name
     return parts[-1]
-
-
-def _parse_and_validate_pulumi_version(
-    min_version: VersionInfo, current_version: str, opt_out: bool
-) -> Optional[VersionInfo]:
-    """
-    Parse and return a version. An error is raised if the version is not
-    valid. If *current_version* is not a valid version but *opt_out* is true,
-    *None* is returned.
-    """
-    try:
-        version: Optional[VersionInfo] = VersionInfo.parse(current_version)
-    except ValueError:
-        version = None
-    if opt_out:
-        return version
-    if version is None:
-        raise InvalidVersionError(
-            f"Could not parse the Pulumi CLI version. This is probably an internal error. "
-            f"If you are sure you have the correct version, set {_SKIP_VERSION_CHECK_VAR}=true."
-        )
-    if min_version.major < version.major:
-        raise InvalidVersionError(
-            f"Major version mismatch. You are using Pulumi CLI version {version} with "
-            f"Automation SDK v{min_version.major}. Please update the SDK."
-        )
-    if min_version.compare(version) == 1:
-        raise InvalidVersionError(
-            f"Minimum version requirement failed. The minimum CLI version requirement is "
-            f"{min_version}, your current CLI version is {version}. "
-            f"Please update the Pulumi CLI."
-        )
-    return version
 
 
 def _load_project_settings(work_dir: str) -> ProjectSettings:

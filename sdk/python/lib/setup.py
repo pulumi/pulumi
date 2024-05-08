@@ -14,10 +14,10 @@
 
 """The Pulumi Python SDK."""
 
+import os
 from setuptools import find_packages, setup
 
-VERSION = "3.0.0"
-
+VERSION = "3.115.3"
 
 def readme():
     try:
@@ -40,11 +40,11 @@ setup(name='pulumi',
               'py.typed'
           ]
       },
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       # Keep this list in sync with Pipfile
       install_requires=[
           'protobuf~=4.21',
-          'grpcio==1.56.2',
+          'grpcio~=1.60.1',
           'dill~=0.3',
           'six~=1.12',
           'semver~=2.13',

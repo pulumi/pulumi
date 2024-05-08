@@ -169,7 +169,7 @@ func (*deploymentDiffState) computeEdits(ctx context.Context, before, after depl
 
 	delta, err := json.Marshal(edits)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot marshal the edits: %v", err)
+		return nil, fmt.Errorf("Cannot marshal the edits: %w", err)
 	}
 
 	return delta, nil

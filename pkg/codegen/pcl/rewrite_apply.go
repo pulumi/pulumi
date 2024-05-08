@@ -34,6 +34,7 @@ type NameInfo interface {
 type applyRewriter struct {
 	nameInfo      NameInfo
 	applyPromises bool
+	skipToJSON    bool
 
 	activeContext applyRewriteContext
 	exprStack     []model.Expression
@@ -154,6 +155,11 @@ func (r *applyRewriter) inspectsEventualValues(x model.Expression) bool {
 	case *model.ForExpression:
 		return r.hasEventualElements(x.Collection)
 	case *model.FunctionCallExpression:
+		// special case toJSON function because we map it to pulumi.jsonStringify which accepts anything
+		// such that it doesn't have to rewrite its subexpressions to apply but can be used directly
+		if r.skipToJSON && x.Name == "toJSON" {
+			return false
+		}
 		_, isEventual := r.isEventualType(x.Signature.ReturnType)
 		if isEventual {
 			return true
@@ -193,6 +199,12 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 		_, collectionIsEventual := r.isEventualType(x.Collection.Type())
 		return collectionIsEventual
 	case *model.FunctionCallExpression:
+		// special case toJSON function because we map it to pulumi.jsonStringify which accepts anything
+		// such that it doesn't have to rewrite its subexpressions to apply but can be used directly
+		if r.skipToJSON && x.Name == "toJSON" {
+			return false
+		}
+
 		for i, arg := range x.Args {
 			if !r.isPromptArg(x.Signature.Parameters[i].Type, arg) {
 				return true
@@ -648,9 +660,19 @@ func (ctx *inspectContext) PostVisit(expr model.Expression) (model.Expression, h
 // This form is amenable to code generation for targets that require that outputs are resolved before their values are
 // accessible (e.g. Pulumi's JS/TS libraries).
 func RewriteApplies(expr model.Expression, nameInfo NameInfo, applyPromises bool) (model.Expression, hcl.Diagnostics) {
+	return RewriteAppliesWithSkipToJSON(expr, nameInfo, applyPromises, false)
+}
+
+func RewriteAppliesWithSkipToJSON(
+	expr model.Expression,
+	nameInfo NameInfo,
+	applyPromises bool,
+	skipToJSON bool,
+) (model.Expression, hcl.Diagnostics) {
 	applyRewriter := &applyRewriter{
 		nameInfo:      nameInfo,
 		applyPromises: applyPromises,
+		skipToJSON:    skipToJSON,
 	}
 	applyRewriter.activeContext = &inspectContext{
 		applyRewriter: applyRewriter,

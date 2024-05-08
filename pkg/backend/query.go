@@ -11,7 +11,7 @@ import (
 
 type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)
 
-// RunQuery executes a query program against the resource outputs of a locally hosted stack.
+// RunQuery executes a query program against the resource outputs of a diy hosted stack.
 func RunQuery(ctx context.Context, b Backend, op QueryOperation,
 	callerEventsOpt chan<- engine.Event, newQuery MakeQuery,
 ) error {

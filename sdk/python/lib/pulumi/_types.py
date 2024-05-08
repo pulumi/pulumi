@@ -283,11 +283,13 @@ from typing import (
     Union,
     cast,
     get_type_hints,
+    overload,
 )
 
 from . import _utils
 
 T = TypeVar("T")
+C = TypeVar("C", bound=Callable)
 
 
 _PULUMI_NAME = "_pulumi_name"
@@ -581,6 +583,10 @@ def output_type_from_dict(cls: Type[T], output: Dict[str, Any]) -> T:
     return cls(**args)  # type: ignore
 
 
+@overload
+def getter(*, name: Optional[str] = None) -> Callable[[C], C]: ...
+@overload
+def getter(_fn: C) -> C: ...
 def getter(_fn=None, *, name: Optional[str] = None):
     """
     Decorator to indicate a function is a Pulumi property getter.
@@ -688,66 +694,17 @@ def set(self, name: str, value: Any) -> None:
     )
 
 
-# Use the built-in `get_origin` and `get_args` functions on Python 3.8+,
-# otherwise fallback to downlevel implementations.
-if sys.version_info[:2] >= (3, 8):
-    # pylint: disable=no-member
-    get_origin = typing.get_origin  # type: ignore
-    # pylint: disable=no-member
-    get_args = typing.get_args  # type: ignore
-elif sys.version_info[:2] >= (3, 7):
-
-    def get_origin(tp):
-        if isinstance(tp, typing._GenericAlias):  # type: ignore
-            return tp.__origin__
-        return None
-
-    def get_args(tp):
-        if isinstance(tp, typing._GenericAlias):  # type: ignore
-            return tp.__args__
-        return ()
-
-else:
-
-    def get_origin(tp):
-        if hasattr(tp, "__origin__"):
-            return tp.__origin__
-        return None
-
-    def get_args(tp):
-        # Emulate the behavior of get_args for Union on Python 3.6.
-        if _is_union_type(tp) and hasattr(tp, "_subs_tree"):
-            tree = tp._subs_tree()
-            if isinstance(tree, tuple) and len(tree) > 1:
-
-                def _eval(args):
-                    return tuple(
-                        arg if not isinstance(arg, tuple) else arg[0][_eval(arg[1:])]
-                        for arg in args
-                    )
-
-                return _eval(tree[1:])
-        if hasattr(tp, "__args__"):
-            return tp.__args__
-        return ()
-
-
 def _is_union_type(tp):
-    if sys.version_info[:2] >= (3, 7):
-        return (
-            tp is Union
-            or isinstance(tp, typing._GenericAlias)
-            and tp.__origin__ is Union
-        )  # type: ignore
-    # pylint: disable=unidiomatic-typecheck, no-member
-    return type(tp) is typing._Union  # type: ignore
+    return (
+        tp is Union or isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union
+    )
 
 
 def _is_optional_type(tp):
     if tp is type(None):
         return True
     if _is_union_type(tp):
-        return any(_is_optional_type(tt) for tt in get_args(tp))
+        return any(_is_optional_type(tt) for tt in typing.get_args(tp))
     return False
 
 
@@ -955,7 +912,7 @@ def unwrap_optional_type(val: type) -> type:
     # and any nested Unions are flattened, so Optional[Union[T, U], None] is Union[T, U, None].
     # We'll only "unwrap" for the common case of a single arg T for Union[T, None].
     if _is_optional_type(val):
-        args = get_args(val)
+        args = typing.get_args(val)
         if len(args) == 2:
             assert args[1] is type(None)
             val = args[0]
@@ -970,11 +927,11 @@ def unwrap_type(val: type) -> type:
     # pylint: disable=import-outside-toplevel
     from . import Output
 
-    origin = get_origin(val)
+    origin = typing.get_origin(val)
 
     # If it is an Output[T], extract the T arg.
     if origin is Output:
-        args = get_args(val)
+        args = typing.get_args(val)
         assert len(args) == 1
         val = args[0]
 
@@ -986,17 +943,19 @@ def unwrap_type(val: type) -> type:
             return (
                 is_input_type(args[0])
                 and args[1] is dict
-                or get_origin(args[1]) in [dict, Dict, Mapping, collections.abc.Mapping]
+                or typing.get_origin(args[1])
+                in [dict, Dict, Mapping, collections.abc.Mapping]
             )
 
         def isInput(args, i=1):
             assert len(args) > i + 1
             return (
-                get_origin(args[i]) in {typing.Awaitable, collections.abc.Awaitable}
-                and get_origin(args[i + 1]) is Output
+                typing.get_origin(args[i])
+                in {typing.Awaitable, collections.abc.Awaitable}
+                and typing.get_origin(args[i + 1]) is Output
             )
 
-        args = get_args(val)
+        args = typing.get_args(val)
         if len(args) == 2:
             if isInputType(args):  # InputType[T]
                 return args[0]

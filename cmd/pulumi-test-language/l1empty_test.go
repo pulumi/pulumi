@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,12 +55,8 @@ func (h *L1EmptyLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.Version != "1.0.0" {
-		return nil, fmt.Errorf("unexpected version %s", req.Version)
-	}
-
 	if h.failPack {
-		return nil, fmt.Errorf("boom")
+		return nil, errors.New("boom")
 	}
 
 	return &pulumirpc.PackResponse{
@@ -74,7 +71,7 @@ func (h *L1EmptyLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
 	}
 	if !req.Strict {
-		return nil, fmt.Errorf("expected strict to be true")
+		return nil, errors.New("expected strict to be true")
 	}
 	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
@@ -100,16 +97,54 @@ func (h *L1EmptyLanguageHost) GenerateProject(
 	return &pulumirpc.GenerateProjectResponse{}, nil
 }
 
+func (h *L1EmptyLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return nil, fmt.Errorf("unexpected directory to get program dependencies %s", req.Info.ProgramDirectory)
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: []*pulumirpc.DependencyInfo{
+			{
+				Name:    "pulumi_pulumi",
+				Version: "1.0.1",
+			},
+			// Return some other random dependency to make sure we can handle it.
+			{
+				Name:    "random_dep",
+				Version: "0.4.0",
+			},
+		},
+	}, nil
+}
+
 func (h *L1EmptyLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	if req.Directory != filepath.Join(h.tempDir, "projects", "l1-empty") {
-		return fmt.Errorf("unexpected directory to install dependencies %s", req.Directory)
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
+	}
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
+		return fmt.Errorf("unexpected program directory to install dependencies %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return fmt.Errorf("unexpected entry point to install dependencies %s", req.Info.EntryPoint)
 	}
 	return nil
 }
 
 func (h *L1EmptyLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l1-empty") {
+		return nil, fmt.Errorf("unexpected root directory to run %s", req.Info.RootDirectory)
+	}
+	if req.Info.ProgramDirectory != req.Info.RootDirectory {
+		return nil, fmt.Errorf("unexpected program directory to run %s", req.Info.ProgramDirectory)
+	}
+	if req.Info.EntryPoint != "." {
+		return nil, fmt.Errorf("unexpected entry point to run %s", req.Info.EntryPoint)
+	}
+
 	if !h.skipStack {
 		conn, err := grpc.Dial(
 			req.MonitorAddress,
@@ -156,6 +191,7 @@ func TestL1Empty(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -263,7 +299,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -279,6 +315,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots_bad",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
@@ -291,9 +328,9 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t, []string{
-		"program snapshot validation failed:\nexpected file Pulumi.yaml does not match actual file",
-	}, runResponse.Messages)
+	require.Len(t, runResponse.Messages, 1)
+	assert.Contains(t, runResponse.Messages[0],
+		"program snapshot validation failed:\nexpected file Pulumi.yaml does not match actual file")
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
@@ -321,6 +358,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 		TemporaryDirectory:   tempDir,
 		SnapshotDirectory:    "./testdata/snapshots",
 		CoreSdkDirectory:     "sdk/dir",
+		CoreSdkVersion:       "1.0.1",
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)

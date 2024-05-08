@@ -17,7 +17,6 @@
 package ints
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +36,8 @@ func boolPointer(b bool) *bool {
 }
 
 // TestEmptyPython simply tests that we can run an empty Python project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
@@ -47,30 +48,9 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
-func TestStackReferencePython(t *testing.T) {
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      "step1",
-				Additive: true,
-			},
-			{
-				Dir:      "step2",
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
-}
-
 // Tests dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPython(t *testing.T) {
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -82,7 +62,7 @@ func TestDynamicPython(t *testing.T) {
 			randomVal = stack.Outputs["random_val"].(string)
 		},
 		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
+			Dir:      filepath.Join("dynamic", "python", "step1"),
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
@@ -148,6 +128,7 @@ func TestConstructPython(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -160,7 +141,9 @@ func TestConstructPython(t *testing.T) {
 	}
 }
 
-func optsForConstructPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPython(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
@@ -187,7 +170,7 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, localProvid
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -212,7 +195,11 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, localProvid
 	}
 }
 
+//nolint:paralleltest // Sets env vars
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
+	// This uses the tls plugin so needs to be able to download it
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 	const testDir = "construct_component_configure_provider"
 	runComponentSetup(t, testDir)
 	pulumiRoot, err := filepath.Abs("../..")
@@ -223,6 +210,7 @@ func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	opts = opts.With(integration.ProgramTestOptions{
 		Dir:          filepath.Join(testDir, "python"),
 		Dependencies: []string{pulumiPySDK, componentSDK},
+		NoParallel:   true,
 	})
 	integration.ProgramTest(t, &opts)
 }
@@ -236,8 +224,6 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	// handling by the pulumi CLI itself.
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
-		t.Parallel()
-
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -260,14 +246,20 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		}
 		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
 			"virtualenv: venv",
-			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
+			"virtualenv: >-\n      "+venvPath))
 
-		if err := os.WriteFile(pulumiYaml, newYaml, 0o644); err != nil {
+		if err := os.WriteFile(pulumiYaml, newYaml, 0o600); err != nil {
 			t.Error(err)
 			return
 		}
 
 		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
+
+		// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
+		subdir := filepath.Join(e.RootPath, "subdir")
+		err = os.Mkdir(subdir, 0o755)
+		require.NoError(t, err)
+		e.CWD = subdir
 
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "teststack")
@@ -287,18 +279,22 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	}
 
 	t.Run("RelativePath", func(t *testing.T) {
+		t.Parallel()
 		check(t, "venv", filepath.Join("python", "venv"))
 	})
 
 	t.Run("AbsolutePath", func(t *testing.T) {
+		t.Parallel()
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv"))
 	})
 
 	t.Run("RelativePathWithMain", func(t *testing.T) {
+		t.Parallel()
 		check(t, "venv", filepath.Join("python", "venv-with-main"))
 	})
 
 	t.Run("AbsolutePathWithMain", func(t *testing.T) {
+		t.Parallel()
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 
@@ -326,5 +322,59 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		//     `no such file or directory`
 		assert.NotContains(t, stdout, "fork/exec")
 		assert.NotContains(t, stderr, "fork/exec")
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestMypySupport(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the mypy failure.
+		messages := []string{}
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				messages = append(messages,
+					strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1))
+			}
+		}
+		expected := "__main__.py:8: error: " +
+			"Argument 1 to \"export\" has incompatible type \"int\"; expected \"str\"" +
+			"  [arg-type]\n\n"
+		assert.Contains(t, messages, expected, "Did not find expected mypy diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "mypy"),
+		// mypy doesn't really support editable packages, so we install pulumi normally from pip for this test.
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPyrightSupport(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the pyright failure.
+		found := false
+		expected := "__main__.py:8:15 - error:" +
+			" Argument of type \"Literal[42]\" cannot be assigned to parameter \"name\"" +
+			" of type \"str\" in function \"export\"\n\n"
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				message := strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1)
+				if strings.HasSuffix(message, expected) {
+					found = true
+				}
+			}
+		}
+		assert.True(t, found, "Did not find expected pyright diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "pyright"),
+		// to match the mypy test we install pulumi normally from pip for this test.
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
 	})
 }

@@ -34,6 +34,14 @@ func MustMakeKey(namespace string, name string) Key {
 	return Key{namespace: namespace, name: name}
 }
 
+// MustParseKey creates a config.Key from a string. The string must be of the form
+// `<namespace>:<name>`.
+func MustParseKey(s string) Key {
+	key, err := ParseKey(s)
+	contract.AssertNoErrorf(err, "failed to parse key %s", s)
+	return key
+}
+
 func ParseKey(s string) (Key, error) {
 	// Keys can take on of two forms:
 	//

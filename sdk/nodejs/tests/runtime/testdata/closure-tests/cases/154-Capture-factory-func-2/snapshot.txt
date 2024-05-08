@@ -1,0 +1,47 @@
+
+var __outerVal = [];
+var __outerVal_0 = {};
+__outerVal_0.inner = __outerVal;
+__outerVal[0] = __outerVal_0;
+
+function __foo() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo, this: undefined, arguments: undefined }) {
+
+return function /*foo*/() {
+    outerVal.pop();
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __bar() {
+  return (function() {
+    with({ outerVal: __outerVal, bar: __bar, this: undefined, arguments: undefined }) {
+
+return function /*bar*/() {
+    outerVal.join();
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ outerVal: __outerVal, foo: __foo, bar: __bar, this: undefined, arguments: undefined }) {
+
+return () => {
+    outerVal.push({});
+    foo();
+    return (event, context) => {
+        bar();
+    };
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+exports.handler = __f0();

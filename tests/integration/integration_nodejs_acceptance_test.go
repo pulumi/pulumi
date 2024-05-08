@@ -32,34 +32,14 @@ import (
 )
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 	})
-}
-
-// Tests that stack references work in Node.
-func TestStackReferenceNodeJS(t *testing.T) {
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir:          filepath.Join("stack_reference", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      "step1",
-				Additive: true,
-			},
-			{
-				Dir:      "step2",
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
 }
 
 // Test remote component construction in Node.
@@ -90,6 +70,7 @@ func TestConstructNode(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -102,7 +83,9 @@ func TestConstructNode(t *testing.T) {
 	}
 }
 
-func optsForConstructNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
+func optsForConstructNode(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
@@ -127,7 +110,7 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, localProvider
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -153,6 +136,8 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, localProvider
 }
 
 func TestConstructComponentConfigureProviderNode(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")
 	}
@@ -199,7 +184,8 @@ func TestConstructComponentConfigureProviderNode(t *testing.T) {
 
 	opts := testConstructComponentConfigureProviderCommonOptions()
 	opts = opts.With(integration.ProgramTestOptions{
-		Dir: filepath.Join(testDir, "nodejs"),
+		NoParallel: true,
+		Dir:        filepath.Join(testDir, "nodejs"),
 		Dependencies: []string{
 			"@pulumi/pulumi",
 			"@pulumi/metaprovider",

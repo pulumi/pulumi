@@ -57,12 +57,30 @@ on:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
         description: "Pulumi access token, required to run tests against the service"
+      CODECOV_TOKEN:
+        required: false
+        description: "CodeCov token, required to publish CodeCov coverage data"
+      AZURE_TENANT_ID:
+        required: false
+        description: "Azure tenant ID, required to run tests against Azure"
+      AZURE_CLIENT_ID:
+        required: false
+        description: "Azure client ID, required to run tests against Azure"
+      AZURE_CLIENT_SECRET:
+        required: false
+        description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
+      AZURE_STORAGE_SAS_TOKEN:
+        required: false
+        description: "Azure storage SAS token, required to run tests against Azure"
+      GCP_SERVICE_ACCOUNT:
+        required: false
+        description: "GCP service account, required to run tests against GCP"
 
 jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
@@ -70,14 +88,14 @@ jobs:
           CACHE_KEY: "matrix-setup"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - name: Setup Go Caching
-        uses: actions/setup-go@v3 # only used by gotestsum
+        uses: actions/setup-go@v5 # only used by gotestsum
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
           cache: true
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: dnephin/gotestsum
           ref: d09768c81065b404caed0855eb3ab8f11a2a4431
@@ -85,7 +103,7 @@ jobs:
       - run: |
           cd vendor/gotestsum
           go install .
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
@@ -143,6 +161,7 @@ jobs:
             "$CODEGEN_TESTS_FLAG" \
             --platform ubuntu-latest \
             --version-set current \
+            --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
@@ -165,20 +184,41 @@ jobs:
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
 
-          ACCEPTANCE_TEST_MATRIX=$(
-            ./scripts/get-job-matrix.py \
-            -vvv \
-            generate-matrix \
-            --kind acceptance-test \
-            "$CODEGEN_TESTS_FLAG" \
-            --tags all xplatform_acceptance \
-            --platform "${ACCEPTANCE_PLATFORMS[@]}" \
-            --version-set current \
-            --partition-module pkg 1 \
-            --partition-module sdk 1 \
-            --partition-module tests 1 \
-            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
-          )
+          ACCEPTANCE_TEST_MATRIX_WIN="{}"
+          if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]windows-latest[[:space:]] ]]; then
+            ACCEPTANCE_TEST_MATRIX_WIN=$(
+              ./scripts/get-job-matrix.py \
+              -vvv \
+              generate-matrix \
+              --kind acceptance-test \
+              "$CODEGEN_TESTS_FLAG" \
+              --tags all xplatform_acceptance \
+              --platform windows-latest \
+              --version-set current \
+              --partition-module pkg 1 \
+              --partition-module sdk 1 \
+              --partition-module tests 1 \
+              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+            )
+          fi
+
+          ACCEPTANCE_TEST_MATRIX_MACOS="{}"
+          if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]macos-latest[[:space:]] ]]; then
+            ACCEPTANCE_TEST_MATRIX_MACOS=$(
+              ./scripts/get-job-matrix.py \
+              -vvv \
+              generate-matrix \
+              --kind acceptance-test \
+              "$CODEGEN_TESTS_FLAG" \
+              --tags all xplatform_acceptance \
+              --platform macos-latest \
+              --version-set current \
+              --partition-module pkg 1 \
+              --partition-module sdk 1 \
+              --partition-module tests 1 \
+              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
+            )
+          fi
           echo "::endgroup::"
 
           echo "::group::Version set variable"
@@ -194,8 +234,11 @@ jobs:
           echo "::group::Integration test matrix"
           echo "$INTEGRATION_TEST_MATRIX" | yq -P '.'
           echo "::endgroup::"
-          echo "::group::acceptance test matrix"
-          echo "$ACCEPTANCE_TEST_MATRIX" | yq -P '.'
+          echo "::group::acceptance test matrix windows"
+          echo "$ACCEPTANCE_TEST_MATRIX_WIN" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::acceptance test matrix macos"
+          echo "$ACCEPTANCE_TEST_MATRIX_MACOS" | yq -P '.'
           echo "::endgroup::"
           echo "::group::Version set"
           echo "$VERSION_SET" | yq -P '.'
@@ -204,14 +247,16 @@ jobs:
           echo "::group::Set outputs"
           ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
           ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
-          ./.github/scripts/set-output acceptance-test-matrix "${ACCEPTANCE_TEST_MATRIX}"
+          ./.github/scripts/set-output acceptance-test-matrix-win "${ACCEPTANCE_TEST_MATRIX_WIN}"
+          ./.github/scripts/set-output acceptance-test-matrix-macos "${ACCEPTANCE_TEST_MATRIX_MACOS}"
           ./.github/scripts/set-output version-set "${VERSION_SET}"
           ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
           echo "::endgroup::"
     outputs:
       unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
       integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
-      acceptance-test-matrix: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix) }}"
+      acceptance-test-matrix-win: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-win) }}"
+      acceptance-test-matrix-macos: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-macos) }}"
       version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
       build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
 
@@ -301,24 +346,23 @@ jobs:
 
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true # TODO: set to true here
+      is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
       version-set: ${{ toJson(matrix.version-set) }}
     secrets: inherit
 
-  # Tests that depend on builds, but a smaller subset against Windows & MacOS platforms.
-  acceptance-test:
+  # Tests that depend on builds, but a smaller subset against Windows platform.
+  acceptance-test-win:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name. See: unit test.
     name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
-    if: ${{ needs.matrix.outputs.acceptance-test-matrix != '{}' }}
+    if: ${{ needs.matrix.outputs.acceptance-test-matrix-win != '{}' }}
     # alow jobs to fail if the platform contains windows
     strategy:
-      fail-fast: ${{ contains(needs.matrix.outputs.acceptance-test-matrix, 'macos') }}
-      matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix) }}
+      matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-win) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
       ref: ${{ inputs.ref }}
@@ -327,7 +371,33 @@ jobs:
 
       test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
       test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: true # TODO: set to true here
+      is-integration-test: true
+      enable-coverage: ${{ inputs.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+  # Tests that depend on builds, but a smaller subset against MacOS platform.
+  acceptance-test-macos:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name. See: unit test.
+    name: Acceptance Test${{ matrix.platform && '' }}
+    needs: [matrix, build-binaries, build-sdks]
+    if: ${{ needs.matrix.outputs.acceptance-test-matrix-macos != '{}' }}
+    # alow jobs to fail if the platform contains windows
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-macos) }}
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -335,11 +405,11 @@ jobs:
     secrets: inherit
 
   test-collect-reports:
-    needs: [unit-test, integration-test, acceptance-test]
+    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
@@ -354,3 +424,58 @@ jobs:
         run: |
           ls -lhR test-results
           find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
+  test-collect-coverage:
+    needs: [unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    if: ${{ inputs.enable-coverage }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve code coverage statuses
+        uses: actions/download-artifact@v3
+        with:
+          path: status
+      # Check that there are no incomplete tests.
+      - name: Check tests completed successfully.
+        run: |
+          if test -z "$(grep -rl 'incomplete' ./status)"; then
+              echo "Tests OK!"
+          else
+              echo "Test Failure.. skipping CodeCov upload."
+              exit 1
+          fi
+      # Checkout repository to upload coverage results.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Retrieve code coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3
+        with:
+          directory: coverage/
+          files: "*,!.gitkeep"
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+  build-release-binaries:
+    # This overwrites the previously built testing binaries with versions without coverage.
+    name: Rebuild binaries
+    needs: [matrix, unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
+    if: ${{ inputs.enable-coverage }}
+    strategy:
+      # To avoid tying up macOS runners:
+      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
+      fail-fast: ${{ contains(needs.matrix.outputs.build-targets, 'macos') }}
+      matrix:
+        target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: ${{ matrix.target.os }}
+      arch: ${{ matrix.target.arch }}
+      build-platform: ${{ matrix.target.build-platform }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
+      enable-coverage: false
+    secrets: inherit

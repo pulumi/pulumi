@@ -35,10 +35,10 @@ jobs:
     name: version bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by changelog tool
       - name: Create PR
@@ -70,11 +70,10 @@ jobs:
           git add -A
           git commit -m "chore: post-release go.mod updates"
 
-          # Publish pkg module on another tag.
-          git tag "pkg/v${PULUMI_VERSION}"
-          git push origin "pkg/v${PULUMI_VERSION}"
           git push -u origin HEAD
 
+          # Note that the title of the PR is used in the on-push workflow.  If the title needs to
+          # change here, please also check on-push.yml
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
 
           if [ "${QUEUE_MERGE}" = "true" ]; then

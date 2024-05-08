@@ -141,27 +141,29 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		return nil, err
 	}
 
-	// Wait for async work to finish.
-	if err = pulumiCtx.wait(); err != nil {
-		return nil, err
-	}
-
 	rpcURN, _, _, err := urn.ToURNOutput().awaitURN(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Serialize all state properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	// Note that the state properties may or may not be attached to the context's waitgroup, so it's important to
+	// await them before closing the context.
 	resolvedProps, propertyDeps, _, err := marshalInputs(state)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
+		return nil, err
 	}
 
 	// Marshal all properties for the RPC call.
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -354,6 +356,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				inputType = inputType.Elem()
 			}
 
+			//nolint:exhaustive // We only need to process a few types here.
 			switch inputType.Kind() {
 			case reflect.Bool:
 				if !v.IsBool() {
@@ -448,6 +451,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 
 	// A resource reference looks like a struct, but must be deserialzed differently.
 	if !v.IsResourceReference() {
+		//nolint:exhaustive // We only need to process a few types here.
 		switch dest.Type().Kind() {
 		case reflect.Map:
 			return copyToMap(ctx, v, dest.Type(), dest)
@@ -528,7 +532,7 @@ func copyToMap(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest re
 
 	keyType, elemType := typ.Key(), typ.Elem()
 	if keyType.Kind() != reflect.String {
-		return fmt.Errorf("map keys must be assignable from type string")
+		return errors.New("map keys must be assignable from type string")
 	}
 
 	result := reflect.MakeMap(typ)
@@ -564,6 +568,7 @@ func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest
 		}
 
 		tag := typ.Field(i).Tag.Get("pulumi")
+		tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 		if tag == "" {
 			continue
 		}
@@ -798,22 +803,24 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		return nil, err
 	}
 
-	// Wait for async work to finish.
-	if err = pulumiCtx.wait(); err != nil {
-		return nil, err
-	}
-
 	// Serialize all result properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	// Note that the state properties may or may not be attached to the context's waitgroup, so it's important to
+	// await them before closing the context.
 	resolvedProps, propertyDeps, _, err := marshalInputs(result)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
+		return nil, err
 	}
 
 	// Marshal all properties for the RPC call.
 	keepUnknowns := req.GetDryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}

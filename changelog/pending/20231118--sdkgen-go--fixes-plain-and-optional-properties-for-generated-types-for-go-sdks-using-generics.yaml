@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fixes plain and optional properties for generated types for Go SDKs using generics

@@ -64,7 +64,7 @@ func TestActivateVirtualEnv(t *testing.T) {
 		},
 		{
 			input:    []string{"PYTHONHOME=foo", "FOO=blah"},
-			expected: []string{"FOO=blah", fmt.Sprintf("PATH=%s", venvDir)},
+			expected: []string{"FOO=blah", "PATH=" + venvDir},
 		},
 		{
 			input:    []string{"PythonHome=foo", "Path=bar"},

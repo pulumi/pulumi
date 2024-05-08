@@ -3,7 +3,6 @@ package passphrase
 import (
 	"encoding/json"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,8 +81,8 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.Error(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
-		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
+	assert.ErrorContains(t, err, "passphrase must be set with "+
+		"PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -127,6 +126,6 @@ func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.Error(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
-		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
+	assert.ErrorContains(t, err, "passphrase must be set with "+
+		"PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 }

@@ -22,7 +22,6 @@ import google.protobuf.internal.containers
 import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
-import pulumi.source_pb2
 import sys
 import typing
 
@@ -342,22 +341,6 @@ class CallRequest(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     @typing_extensions.final
-    class PluginChecksumsEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.bytes
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: builtins.bytes = ...,
-        ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
-    @typing_extensions.final
     class ConfigEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -376,10 +359,6 @@ class CallRequest(google.protobuf.message.Message):
     TOK_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     ARGDEPENDENCIES_FIELD_NUMBER: builtins.int
-    PROVIDER_FIELD_NUMBER: builtins.int
-    VERSION_FIELD_NUMBER: builtins.int
-    PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
-    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int
     CONFIG_FIELD_NUMBER: builtins.int
@@ -388,7 +367,7 @@ class CallRequest(google.protobuf.message.Message):
     PARALLEL_FIELD_NUMBER: builtins.int
     MONITORENDPOINT_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
-    SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     @property
@@ -397,15 +376,6 @@ class CallRequest(google.protobuf.message.Message):
     @property
     def argDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___CallRequest.ArgumentDependencies]:
         """a map from argument keys to the dependencies of the argument."""
-    provider: builtins.str
-    """an optional reference to the provider to use for this invoke."""
-    version: builtins.str
-    """the version of the provider to use when servicing this request."""
-    pluginDownloadURL: builtins.str
-    """the pluginDownloadURL of the provider to use when servicing this request."""
-    @property
-    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
-        """a map of checksums of the provider to use when servicing this request."""
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -424,19 +394,14 @@ class CallRequest(google.protobuf.message.Message):
     """the address for communicating back to the resource monitor."""
     organization: builtins.str
     """the organization of the stack being deployed into."""
-    @property
-    def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
-        """the optional source position of the user code that initiated the call."""
+    accepts_output_values: builtins.bool
+    """the engine can be passed output values back, returnDependencies can be left blank if returning output values."""
     def __init__(
         self,
         *,
         tok: builtins.str = ...,
         args: google.protobuf.struct_pb2.Struct | None = ...,
         argDependencies: collections.abc.Mapping[builtins.str, global___CallRequest.ArgumentDependencies] | None = ...,
-        provider: builtins.str = ...,
-        version: builtins.str = ...,
-        pluginDownloadURL: builtins.str = ...,
-        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         project: builtins.str = ...,
         stack: builtins.str = ...,
         config: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
@@ -445,10 +410,10 @@ class CallRequest(google.protobuf.message.Message):
         parallel: builtins.int = ...,
         monitorEndpoint: builtins.str = ...,
         organization: builtins.str = ...,
-        sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        accepts_output_values: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "project", b"project", "provider", b"provider", "sourcePosition", b"sourcePosition", "stack", b"stack", "tok", b"tok", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accepts_output_values", b"accepts_output_values", "argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "project", b"project", "stack", b"stack", "tok", b"tok"]) -> None: ...
 
 global___CallRequest = CallRequest
 
@@ -1142,6 +1107,7 @@ class ConstructRequest(google.protobuf.message.Message):
     IGNORECHANGES_FIELD_NUMBER: builtins.int
     REPLACEONCHANGES_FIELD_NUMBER: builtins.int
     RETAINONDELETE_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -1204,6 +1170,8 @@ class ConstructRequest(google.protobuf.message.Message):
         """properties that, when changed, trigger a replacement"""
     retainOnDelete: builtins.bool
     """whether to retain the resource in the cloud provider when it is deleted"""
+    accepts_output_values: builtins.bool
+    """the engine can be passed output values back, stateDependencies can be left blank if returning output values."""
     def __init__(
         self,
         *,
@@ -1231,9 +1199,10 @@ class ConstructRequest(google.protobuf.message.Message):
         ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
         replaceOnChanges: collections.abc.Iterable[builtins.str] | None = ...,
         retainOnDelete: builtins.bool = ...,
+        accepts_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
 
 global___ConstructRequest = ConstructRequest
 

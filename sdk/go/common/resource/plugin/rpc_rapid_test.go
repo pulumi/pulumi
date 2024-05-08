@@ -18,8 +18,8 @@ package plugin
 import (
 	"testing"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"

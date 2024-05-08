@@ -222,7 +222,7 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	}
 }
 
-// PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
+// PolicyPayloads returns the PolicyViolationEventPayload object associated with the resourceRowData.
 func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
 	return data.policyPayloads
 }
@@ -439,14 +439,18 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
-		if step.DetailedDiff != nil {
-			diff = engine.TranslateDetailedDiff(&step)
-		} else if diffOutputs {
-			if step.Old.Outputs != nil && step.New.Outputs != nil {
-				diff = step.Old.Outputs.Diff(step.New.Outputs)
+		// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+		if step.Op != deploy.OpSame {
+			if step.DetailedDiff != nil {
+				diff = engine.TranslateDetailedDiff(&step)
+			} else if diffOutputs {
+				if step.Old.Outputs != nil && step.New.Outputs != nil {
+					diff = step.Old.Outputs.Diff(step.New.Outputs)
+				}
+			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
+				diff = step.Old.Inputs.Diff(step.New.Inputs)
 			}
-		} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-			diff = step.Old.Inputs.Diff(step.New.Inputs)
 		}
 
 		// Show a diff if either `provider` or `protect` changed; they might not show a diff via inputs or outputs, but

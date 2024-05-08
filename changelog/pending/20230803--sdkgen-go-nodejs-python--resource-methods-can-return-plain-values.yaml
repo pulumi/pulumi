@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/go,nodejs,python
-  description: "Resource methods with plain: true outputs can now return plain values without an Output wrapper. In particular, this feature enables resource methods to serve as explicit provider factories by returning preconfigured explicit providers."

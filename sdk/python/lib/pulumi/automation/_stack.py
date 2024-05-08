@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
 import grpc
 
-from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
+from ._cmd import CommandResult, OnOutput
 from ._config import ConfigValue, ConfigMap
 from .errors import StackAlreadyExistsError, StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
@@ -225,6 +225,9 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        continue_on_error: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -251,6 +254,9 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -286,7 +292,6 @@ class Stack:
             server.start()
 
             def on_exit_fn():
-                language_server.on_pulumi_exit()
                 server.stop(0)
 
             on_exit = on_exit_fn
@@ -343,6 +348,9 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        import_file: Optional[str] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -368,6 +376,9 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -376,6 +387,10 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["preview"]
         args.extend(extra_args)
+
+        if import_file is not None:
+            args.append("--import-file")
+            args.append(import_file)
 
         if plan is not None:
             args.append("--save-plan")
@@ -403,7 +418,6 @@ class Stack:
             server.start()
 
             def on_exit_fn():
-                language_server.on_pulumi_exit()
                 server.stop(0)
 
             on_exit = on_exit_fn
@@ -456,6 +470,8 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -475,6 +491,8 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -526,6 +544,9 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        continue_on_error: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -544,6 +565,9 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -579,6 +603,28 @@ class Stack:
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
+
+    def add_environments(self, *environment_names: str) -> None:
+        """
+        Adds environments to the end of a stack's import list. Imported environments are merged in order
+        per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+        environment.
+
+        :param environment_names: The names of the environments to add.
+        """
+        return self.workspace.add_environments(self.name, *environment_names)
+
+    def list_environments(self) -> List[str]:
+        """
+        Returns the list of environments specified in a stack's configuration.
+        """
+        return self.workspace.list_environments(self.name)
+
+    def remove_environment(self, environment_name: str) -> None:
+        """
+        Removes an environment from a stack's import list.
+        """
+        return self.workspace.remove_environment(self.name, environment_name)
 
     def get_config(self, key: str, *, path: bool = False) -> ConfigValue:
         """
@@ -721,16 +767,20 @@ class Stack:
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
-                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
-                if "endTime" in summary_json
-                else None,
+                end_time=(
+                    datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
+                    if "endTime" in summary_json
+                    else None
+                ),
                 version=summary_json["version"] if "version" in summary_json else None,
-                deployment=summary_json["Deployment"]
-                if "Deployment" in summary_json
-                else None,
-                resource_changes=summary_json["resourceChanges"]
-                if "resourceChanges" in summary_json
-                else None,
+                deployment=(
+                    summary_json["Deployment"] if "Deployment" in summary_json else None
+                ),
+                resource_changes=(
+                    summary_json["resourceChanges"]
+                    if "resourceChanges" in summary_json
+                    else None
+                ),
             )
             summaries.append(summary)
         return summaries
@@ -751,7 +801,7 @@ class Stack:
         Cancel stops a stack's currently running update. It returns an error if no update is currently running.
         Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
-        This command is not supported for local backends.
+        This command is not supported for diy backends.
         """
         self._run_pulumi_cmd_sync(["cancel", "--yes"])
 
@@ -786,7 +836,9 @@ class Stack:
         additional_args = self.workspace.serialize_args_for_op(self.name)
         args.extend(additional_args)
         args.extend(["--stack", self.name])
-        result = _run_pulumi_cmd(args, self.workspace.work_dir, envs, on_output)
+        result = self.workspace.pulumi_command.run(
+            args, self.workspace.work_dir, envs, on_output
+        )
         self.workspace.post_command_callback(self.name)
         return result
 
@@ -830,6 +882,9 @@ def _parse_extra_args(**kwargs) -> List[str]:
     log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
     tracing: Optional[str] = kwargs.get("tracing")
     debug: Optional[bool] = kwargs.get("debug")
+    suppress_outputs: Optional[bool] = kwargs.get("suppress_outputs")
+    suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
+    continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
 
     if message:
         extra_args.extend(["--message", message])
@@ -865,6 +920,12 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--tracing", tracing])
     if debug:
         extra_args.extend(["--debug"])
+    if suppress_outputs:
+        extra_args.extend(["--suppress-outputs"])
+    if suppress_progress:
+        extra_args.extend(["--suppress-progress"])
+    if continue_on_error:
+        extra_args.extend(["--continue-on-error"])
     return extra_args
 
 
@@ -875,9 +936,10 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
     Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
 
-    Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
+    Note that legacy diy backends (local file, S3, Azure Blob) do not support stack names in this
     format, and instead only use the stack name without an org/user or project to qualify it.
     See: https://github.com/pulumi/pulumi/issues/2522
+    Non-legacy diy backends do support the org/project/stack format but org must be set to "organization".
 
     :param org: The name of the org or user.
     :param project: The name of the project.
@@ -900,6 +962,7 @@ def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
 
 
 def _watch_logs(filename: str, callback: OnEvent):
+    partial_line = ""
     with open(filename, encoding="utf-8") as f:
         while True:
             line = f.readline()
@@ -908,6 +971,15 @@ def _watch_logs(filename: str, callback: OnEvent):
             if not line:
                 time.sleep(0.1)
                 continue
+
+            # we don't have a complete line yet.  sleep and try again.
+            if line[-1] != "\n":
+                partial_line += line
+                time.sleep(0.1)
+                continue
+
+            line = partial_line + line
+            partial_line = ""
 
             event = EngineEvent.from_json(json.loads(line))
             callback(event)

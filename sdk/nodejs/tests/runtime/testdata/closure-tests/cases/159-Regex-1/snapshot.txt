@@ -1,0 +1,13 @@
+exports.handler = __f0;
+
+var __regex = new RegExp("(abc)[\\(123-456]\\\\a\\b\\z", "gi");
+
+function __f0() {
+  return (function() {
+    with({ regex: __regex, this: undefined, arguments: undefined }) {
+
+return function () { console.log(regex); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

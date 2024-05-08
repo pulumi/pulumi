@@ -14,7 +14,11 @@
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "typeRoots": [
+            "node_modules/@types",
+            "types/"
+        ],
     },
     "files": [
         "index.ts",
@@ -25,26 +29,21 @@
         "output.ts",
         "resource.ts",
         "stackReference.ts",
+        "tsutils.ts",
+        "typescript-shim.ts",
         "utils.ts",
         "version.ts",
-
         "asset/index.ts",
         "asset/asset.ts",
         "asset/archive.ts",
-
         "dynamic/index.ts",
-
         "iterable/index.ts",
-
         "log/index.ts",
-
         "provider/index.ts",
         "provider/provider.ts",
         "provider/internals.ts",
         "provider/server.ts",
-
         "runtime/index.ts",
-
         "runtime/closure/codePaths.ts",
         "runtime/closure/createClosure.ts",
         "runtime/closure/parseFunction.ts",
@@ -52,7 +51,6 @@
         "runtime/closure/serializeClosure.ts",
         "runtime/closure/utils.ts",
         "runtime/closure/v8.ts",
-
         "runtime/asyncIterableUtil.ts",
         "runtime/config.ts",
         "runtime/debuggable.ts",
@@ -62,14 +60,12 @@
         "runtime/rpc.ts",
         "runtime/settings.ts",
         "runtime/stack.ts",
-
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
         "cmd/run/run.ts",
         "cmd/run/tracing.ts",
         "cmd/run-policy-pack/index.ts",
         "cmd/run-policy-pack/run.ts",
-
         "automation/index.ts",
         "automation/cmd.ts",
         "automation/config.ts",
@@ -82,7 +78,6 @@
         "automation/server.ts",
         "automation/stack.ts",
         "automation/workspace.ts",
-
         "tests/config.spec.ts",
         "tests/constants.ts",
         "tests/init.spec.ts",
@@ -95,20 +90,22 @@
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
-        "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/registrations.spec.ts",
-        "tests/runtime/tsClosureCases.ts",
-        "tests/runtime/package.spec.ts",
+        "tests/runtime/pack.ts",
+        "tests/runtime/install-package-tests.ts",
+        "tests/runtime/closure-integration-tests.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/settings.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
         "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
-
+        "tests/runtime/testdata/nested/project/index.ts",
         "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
-
-        "tests_with_mocks/mocks.spec.ts"
+        "tests_with_mocks/mocks.spec.ts",
+        "npm/testdata/nested/project/index.ts",
+        "types/arborist.d.ts"
     ]
 }

@@ -13,6 +13,7 @@ import (
 func TestPythonTransformations(t *testing.T) {
 	t.Parallel()
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, dir := range Dirs {
 		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {
@@ -21,8 +22,11 @@ func TestPythonTransformations(t *testing.T) {
 				Dependencies: []string{
 					filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 				},
+				LocalProviders: []integration.LocalDependency{
+					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+				},
 				Quick:                  true,
-				ExtraRuntimeValidation: Validator("python"),
+				ExtraRuntimeValidation: Validator,
 			})
 		})
 	}

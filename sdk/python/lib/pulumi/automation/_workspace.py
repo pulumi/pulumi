@@ -14,15 +14,16 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Mapping, Optional, Awaitable
 
+from ._cmd import PulumiCommand
 from ._config import ConfigMap, ConfigValue
 from ._output import OutputMap
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._tag import TagMap
 
-PulumiFn = Callable[[], None]
+PulumiFn = Callable[[], Optional[Awaitable[None]]]
 
 
 class StackSummary:
@@ -151,6 +152,11 @@ class Workspace(ABC):
     The version of the underlying Pulumi CLI/Engine.
     """
 
+    pulumi_command: PulumiCommand
+    """
+    The underlying PulumiCommand instance that is used to execute CLI commands.
+    """
+
     @abstractmethod
     def project_settings(self) -> ProjectSettings:
         """
@@ -204,6 +210,36 @@ class Workspace(ABC):
         LocalWorkspace does not utilize this extensibility point.
 
         :param stack_name: The name of the stack.
+        """
+
+    @abstractmethod
+    def add_environments(self, stack_name: str, *environment_names: str) -> None:
+        """
+        Adds environments to the end of a stack's import list. Imported environments are merged in order
+        per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+        environment.
+
+
+        :param stack_name: The name of the stack.
+        :param environment_names: The names of the environment to add.
+        """
+
+    @abstractmethod
+    def list_environments(self, stack_name: str) -> List[str]:
+        """
+        Returns the list of environments specified in a stack's configuration.
+
+        :param stack_name: The name of the stack.
+        :returns: List[str]
+        """
+
+    @abstractmethod
+    def remove_environment(self, stack_name: str, environment_name: str) -> None:
+        """
+        Removes the specified environment from the stack configuration.
+
+        :param stack_name: The name of the stack.
+        :param environment_name: The name of the environment to remove.
         """
 
     @abstractmethod

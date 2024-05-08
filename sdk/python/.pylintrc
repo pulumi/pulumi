@@ -90,7 +90,9 @@ disable=raw-checker-failed,
         unsubscriptable-object,
         line-too-long,
         too-many-lines,
-        cyclic-import
+        cyclic-import,
+        duplicate-code,
+        broad-exception-raised
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -182,7 +184,7 @@ contextmanager-decorators=contextlib.contextmanager
 # List of members which are set dynamically and missed by pylint inference
 # system, and so shouldn't trigger E1101 when accessed. Python regular
 # expressions are accepted.
-generated-members=empty_pb2.Empty,struct_pb2.Struct,struct_pb2.ListValue,resource_pb2.*,provider_pb2.*,engine_pb2.*,language_pb2.*,plugin_pb2.*,alias_pb2.*,source_pb2.*,proto.*
+generated-members=empty_pb2.Empty,struct_pb2.Struct,struct_pb2.ListValue,resource_pb2.*,provider_pb2.*,engine_pb2.*,language_pb2.*,plugin_pb2.*,alias_pb2.*,source_pb2.*,callback_pb2.*,proto.*
 
 # Tells whether missing members accessed in mixin class should be ignored. A
 # mixin class is detected if its name ends with "mixin" (case insensitive).
@@ -503,4 +505,4 @@ min-public-methods=2
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception".
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception

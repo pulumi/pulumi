@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -67,12 +68,13 @@ func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) 
 	// Next, we try to read the name of the file from stdout.
 	// packfile is the name of the file containing the tarball,
 	// as produced by `npm pack`.
-	packfile := strings.TrimSpace(stdout.String())
+	packFilename := strings.TrimSpace(stdout.String())
+	packfile := filepath.Join(dir, packFilename)
 	defer os.Remove(packfile)
 
 	packTarball, err := os.ReadFile(packfile)
 	if err != nil {
-		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %v", err)
+		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %w", err)
 		return nil, newErr
 	}
 

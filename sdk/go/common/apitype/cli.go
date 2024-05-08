@@ -18,4 +18,5 @@ package apitype
 type CLIVersionResponse struct {
 	LatestVersion        string `json:"latestVersion"`
 	OldestWithoutWarning string `json:"oldestWithoutWarning"`
+	LatestDevVersion     string `json:"latestDevVersion"`
 }

@@ -9,20 +9,6 @@
 <{%reset%}>        [id=sg-07498abcdbdf88f34]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::aws-ts-webserver::aws:ec2/securityGroup:SecurityGroup::web-secgrp]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::aws-ts-webserver::pulumi:providers:aws::default_3_38_1::57baf899-740a-486a-908e-43cf27cce182]
-<{%reset%}><{%reset%}>        description        : <{%reset%}><{%reset%}>"Managed by Pulumi"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        ingress            : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                cidrBlocks: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                fromPort  : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                protocol  : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                self      : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                toPort    : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        name               : <{%reset%}><{%reset%}>"web-secgrp-5ee4db6"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        revokeRulesOnDelete: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    <{%fg 10%}>++aws:ec2/instance:Instance: (create-replacement)
 <{%reset%}>        [id=i-0207dc7a2d8c5135a]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www]

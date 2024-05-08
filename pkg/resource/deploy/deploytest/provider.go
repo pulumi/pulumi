@@ -16,6 +16,7 @@ package deploytest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -36,6 +37,8 @@ type Provider struct {
 
 	Config     resource.PropertyMap
 	configured bool
+
+	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 
 	GetSchemaF func(version int, key string) ([]byte, error)
 
@@ -63,6 +66,8 @@ type Provider struct {
 
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	StreamInvokeF func(tok tokens.ModuleMember, args resource.PropertyMap,
+		onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error)
 
 	CallF func(monitor *ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 		options plugin.CallOptions) (plugin.CallResult, error)
@@ -204,8 +209,11 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if prov.ConstructF == nil {
 		return plugin.ConstructResult{}, nil
 	}
-
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	dialMonitorImpl := dialMonitor
+	if prov.DialMonitorF != nil {
+		dialMonitorImpl = prov.DialMonitorF
+	}
+	monitor, err := dialMonitorImpl(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return plugin.ConstructResult{}, err
 	}
@@ -225,7 +233,10 @@ func (prov *Provider) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error,
 ) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("not implemented")
+	if prov.StreamInvokeF == nil {
+		return []plugin.CheckFailure{}, errors.New("StreamInvoke unimplemented")
+	}
+	return prov.StreamInvokeF(tok, args, onNext)
 }
 
 func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
@@ -234,7 +245,11 @@ func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, i
 	if prov.CallF == nil {
 		return plugin.CallResult{}, nil
 	}
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	dialMonitorImpl := dialMonitor
+	if prov.DialMonitorF != nil {
+		dialMonitorImpl = prov.DialMonitorF
+	}
+	monitor, err := dialMonitorImpl(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return plugin.CallResult{}, err
 	}

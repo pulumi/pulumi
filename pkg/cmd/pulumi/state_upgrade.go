@@ -24,7 +24,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -41,16 +41,17 @@ func newStateUpgradeCommand() *cobra.Command {
 		Short: "Migrates the current backend to the latest supported version",
 		Long: `Migrates the current backend to the latest supported version
 
-This only has an effect on self-managed backends.
+This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			if err := sucmd.Run(commandContext()); err != nil {
+			if err := sucmd.Run(cmd.Context()); err != nil {
 				return result.FromError(err)
 			}
 			return nil
 		}),
 	}
+	cmd.Flags().BoolVarP(&sucmd.yes, "yes", "y", false, "Automatically approve and perform the upgrade")
 	return cmd
 }
 
@@ -59,6 +60,8 @@ type stateUpgradeCmd struct {
 	Stdin  io.Reader // defaults to os.Stdin
 	Stdout io.Writer // defaults to os.Stdout
 	Stderr io.Writer // defaults to os.Stderr
+
+	yes bool
 
 	// Used to mock out the currentBackend function for testing.
 	// Defaults to currentBackend function.
@@ -92,9 +95,9 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	lb, ok := b.(filestate.Backend)
+	lb, ok := b.(diy.Backend)
 	if !ok {
-		// Only the file state backend supports upgrades,
+		// Only the diy backend supports upgrades,
 		// but we don't want to error out here.
 		// Report the no-op.
 		fmt.Fprintln(cmd.Stdout, "Nothing to do")
@@ -104,12 +107,12 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	prompt := "This will upgrade the current backend to the latest supported version.\n" +
 		"Older versions of Pulumi will not be able to read the new format.\n" +
 		"Are you sure you want to proceed?"
-	if !confirmPrompt(prompt, "yes", dopts) {
+	if !cmd.yes && !confirmPrompt(prompt, "yes", dopts) {
 		fmt.Fprintln(cmd.Stdout, "Upgrade cancelled")
 		return nil
 	}
 
-	var opts filestate.UpgradeOptions
+	var opts diy.UpgradeOptions
 	// If we're in interactive mode, prompt for the project name
 	// for each stack that doesn't have one.
 	if cmdutil.Interactive() {

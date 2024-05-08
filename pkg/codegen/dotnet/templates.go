@@ -153,7 +153,11 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
-
+{{ if .RestoreSources }}
+  <PropertyGroup>
+    <RestoreSources>{{.RestoreSources}};$(RestoreSources)</RestoreSources>
+  </PropertyGroup>
+{{ end }}
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
@@ -207,4 +211,5 @@ type csharpProjectFileTemplateContext struct {
 	PackageReferences map[string]string
 	ProjectReferences []string
 	Version           string
+	RestoreSources    string
 }

@@ -76,7 +76,7 @@ type StackReference interface {
 	Name() tokens.StackName
 
 	// Project is the project name that this stack belongs to.
-	// For old filestate backends this will return false.
+	// For old diy backends this will return false.
 	Project() (tokens.Name, bool)
 
 	// Fully qualified name of the stack, including any organization, project, or other information.
@@ -179,7 +179,9 @@ type Backend interface {
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	Preview(
+		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	// Import imports resources into a stack.
@@ -295,6 +297,10 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
+	PreviewOnly bool
+	// ContinueOnError, when true, causes the update to continue even if there are errors.
+	ContinueOnError bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.

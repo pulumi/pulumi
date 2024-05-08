@@ -20,8 +20,10 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -256,13 +258,27 @@ func GenerateProject(
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
 	// Set the runtime to "dotnet" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("dotnet", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
 	}
-	files["Pulumi.yaml"] = projectBytes
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
+	}
 
 	// Build a .csproj based on the packages used by program
 	var csproj bytes.Buffer
@@ -273,10 +289,36 @@ func GenerateProject(
 		<TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="Pulumi" Version="3.*" />
 `)
+
+	// Find all the local dependency folders
+	folders := mapset.NewSet[string]()
+	for _, dep := range localDependencies {
+		folders.Add(path.Dir(dep))
+	}
+	if len(folders.ToSlice()) > 0 {
+		csproj.WriteString(`	<PropertyGroup>
+		<RestoreSources>`)
+		csproj.WriteString(strings.Join(folders.ToSlice(), ";"))
+		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
+	</PropertyGroup>
+`)
+	}
+
+	csproj.WriteString("	<ItemGroup>\n")
+
+	// Add the Pulumi package reference
+	if path, has := localDependencies[pulumiPackage]; has {
+		filename := filepath.Base(path)
+		pkg, rest, _ := strings.Cut(filename, ".")
+		version, _ := strings.CutSuffix(rest, ".nupkg")
+
+		csproj.WriteString(fmt.Sprintf(
+			"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
+			pkg, version))
+	} else {
+		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
+	}
 
 	// For each package add a PackageReference line
 	packages, err := program.CollectNestedPackageSnapshots()
@@ -293,7 +335,7 @@ func GenerateProject(
 			continue
 		}
 
-		packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
+		packageName := "Pulumi." + namespaceName(map[string]string{}, p.Name)
 		if langInfo, found := p.Language["csharp"]; found {
 			csharpInfo, ok := langInfo.(CSharpPackageInfo)
 			if ok {
@@ -670,7 +712,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 						switch configType.ElementType.(type) {
 						case *model.ObjectType:
 							objectTypeName := configObjectTypeName(configVar.Name())
-							inputType = fmt.Sprintf("%s[]", objectTypeName)
+							inputType = objectTypeName + "[]"
 						}
 					case *model.MapType:
 						// for map(T) where T is an object type, generate Dictionary<string, T>
@@ -734,7 +776,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 				g.Fprintf(w, "        %s\n\n", preambleHelperMethodBody)
 			}
 
-			token := fmt.Sprintf("components:index:%s", componentName)
+			token := "components:index:" + componentName
 			if len(configVars) == 0 {
 				// There is no args class
 				g.Fgenf(w, "%spublic %s(string name, ComponentResourceOptions? opts = null)\n",
@@ -935,6 +977,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
+	if r.Schema != nil {
+		if val1, ok := r.Schema.Language["csharp"]; ok {
+			val2, ok := val1.(CSharpResourceInfo)
+			contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+			member = val2.Name
+		}
+	}
+
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 
@@ -978,7 +1028,7 @@ func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
 	if g.compatibilities[pkg] == "kubernetes20" && module != "" {
-		namespace = fmt.Sprintf("Types.Inputs.%s", namespace)
+		namespace = "Types.Inputs." + namespace
 	}
 
 	if namespace != "" {
@@ -1043,9 +1093,14 @@ func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType m
 		qualifier = ""
 	}
 
-	pkg, _, member, diags := pcl.DecomposeToken(token, tokenRange)
+	pkg, modName, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
-	module := g.tokenToModules[pkg](token)
+	var module string
+	if getModule, ok := g.tokenToModules[pkg]; ok {
+		module = getModule(token)
+	} else {
+		module = strings.SplitN(modName, "/", 2)[0]
+	}
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
@@ -1107,7 +1162,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 						g.Fgenf(&result, "\n%s\"%.v\",", g.Indent, v)
 					}
 				})
-				g.Fgenf(&result, "\n%s}", g.Indent)
+				g.Fgenf(&result, "\n%s},", g.Indent)
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
@@ -1119,6 +1174,22 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 				} else {
 					g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 				}
+			} else {
+				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+			}
+		} else if name == "DependsOn" {
+			// depends on need to be special cased
+			// because new [] { resourceA, resourceB } cannot be implicitly casted to InputList<Resource>
+			// use syntax DependsOn = { resourceA, resourceB } instead
+			if resourcesList, isTuple := value.(*model.TupleConsExpression); isTuple {
+				g.Fgenf(&result, "\n%sDependsOn =", g.Indent)
+				g.Fgenf(&result, "\n%s{", g.Indent)
+				g.Indented(func() {
+					for _, resource := range resourcesList.Expressions {
+						g.Fgenf(&result, "\n%s%v,", g.Indent, resource)
+					}
+				})
+				g.Fgenf(&result, "\n%s},", g.Indent)
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
@@ -1330,7 +1401,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	componentName := r.DeclarationName()
-	qualifiedMemberName := fmt.Sprintf("Components.%s", componentName)
+	qualifiedMemberName := "Components." + componentName
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
@@ -1429,7 +1500,7 @@ func computeConfigTypeParam(configName string, configType model.Type) string {
 			return typeName
 		case *model.ListType:
 			elementType := computeConfigTypeParam(configName, complexType.ElementType)
-			return fmt.Sprintf("%s[]", elementType)
+			return elementType + "[]"
 		case *model.MapType:
 			elementType := computeConfigTypeParam(configName, complexType.ElementType)
 			return fmt.Sprintf("Dictionary<string, %s>", elementType)
@@ -1495,6 +1566,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariable) {
+	g.genTrivia(w, localVariable.Definition.Tokens.Name)
 	variableName := makeValidIdentifier(localVariable.Name())
 	value := localVariable.Definition.Value
 	functionSchema, isInvokeCall := g.isFunctionInvoke(localVariable)
@@ -1509,7 +1581,7 @@ func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariab
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,
 		Summary:  message,

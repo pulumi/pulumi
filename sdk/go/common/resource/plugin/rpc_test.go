@@ -19,10 +19,12 @@ import (
 	"runtime"
 	"testing"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -38,11 +40,11 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
 	pk := resource.PropertyKey("a test asset uri")
-	asset, err := resource.NewTextAsset(text)
+	anAsset, err := asset.FromText(text)
 	assert.NoError(t, err)
-	assert.Equal(t, text, asset.Text)
-	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset.Hash)
-	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
+	assert.Equal(t, text, anAsset.Text)
+	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", anAsset.Hash)
+	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(anAsset), MarshalOptions{})
 	assert.NoError(t, err)
 	t.Logf("%v", assetProps)
 	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
@@ -56,25 +58,25 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that an invalid asset produces an error.
 	setProperty(pk, assetProps, resource.AssetHashProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
-	setProperty(pk, assetProps, resource.AssetHashProperty, asset.Hash)
+	assert.EqualError(t, err, "unexpected asset hash of type float64")
+	setProperty(pk, assetProps, resource.AssetHashProperty, anAsset.Hash)
 
 	setProperty(pk, assetProps, resource.AssetTextProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset text of type float64")
 	setProperty(pk, assetProps, resource.AssetTextProperty, "")
 
 	setProperty(pk, assetProps, resource.AssetPathProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset path of type float64")
 	setProperty(pk, assetProps, resource.AssetPathProperty, "")
 
 	setProperty(pk, assetProps, resource.AssetURIProperty, 0)
 	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected asset URI of type float64")
 	setProperty(pk, assetProps, resource.AssetURIProperty, "")
 
-	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
+	arch, err := archive.FromAssets(map[string]interface{}{"foo": anAsset})
 	assert.NoError(t, err)
 	switch runtime.Version() {
 	case "go1.9":
@@ -91,8 +93,8 @@ func TestAssetSerialize(t *testing.T) {
 	archDes := archValue.ArchiveValue()
 	assert.True(t, archDes.IsAssets())
 	assert.Equal(t, 1, len(archDes.Assets))
-	assert.True(t, archDes.Assets["foo"].(*resource.Asset).IsText())
-	assert.Equal(t, text, archDes.Assets["foo"].(*resource.Asset).Text)
+	assert.True(t, archDes.Assets["foo"].(*asset.Asset).IsText())
+	assert.Equal(t, text, archDes.Assets["foo"].(*asset.Asset).Text)
 	switch runtime.Version() {
 	case "go1.9":
 		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", archDes.Hash)
@@ -104,22 +106,22 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that an invalid archive produces an error.
 	setProperty(pk, archProps, resource.ArchiveHashProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive hash of type float64")
 	setProperty(pk, archProps, resource.ArchiveHashProperty, arch.Hash)
 
 	setProperty(pk, archProps, resource.ArchiveAssetsProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive contents of type float64")
 	setProperty(pk, archProps, resource.ArchiveAssetsProperty, nil)
 
 	setProperty(pk, archProps, resource.ArchivePathProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive path of type float64")
 	setProperty(pk, archProps, resource.ArchivePathProperty, "")
 
 	setProperty(pk, archProps, resource.ArchiveURIProperty, 0)
 	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unexpected archive URI of type float64")
 	setProperty(pk, archProps, resource.ArchiveURIProperty, "")
 }
 
@@ -183,7 +185,7 @@ func TestComputedReject(t *testing.T) {
 		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
 		assert.Nil(t, cprop)
 	}
 	{
@@ -192,7 +194,7 @@ func TestComputedReject(t *testing.T) {
 				resource.Computed{Element: resource.NewStringProperty("")}), MarshalOptions{KeepUnknowns: true})
 		assert.NoError(t, err)
 		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected unknown property value for \"pk\"")
 		assert.Nil(t, cpropU)
 	}
 }
@@ -206,33 +208,33 @@ func TestAssetReject(t *testing.T) {
 
 	text := "a test asset"
 	pk := resource.PropertyKey("an asset URI")
-	asset, err := resource.NewTextAsset(text)
+	asset, err := asset.FromText(text)
 	assert.NoError(t, err)
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
 		assert.Nil(t, assetProps)
 	}
 	{
 		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
 		assert.NoError(t, err)
 		assetPropU, err := UnmarshalPropertyValue(pk, assetProps, opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset property value for \"an asset URI\"")
 		assert.Nil(t, assetPropU)
 	}
 
-	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
+	arch, err := archive.FromAssets(map[string]interface{}{"foo": asset})
 	assert.NoError(t, err)
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset Archive property value for \"an asset URI\"")
 		assert.Nil(t, archProps)
 	}
 	{
 		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
 		assert.NoError(t, err)
 		archValue, err := UnmarshalPropertyValue(pk, archProps, opts)
-		assert.Error(t, err)
+		assert.EqualError(t, err, "unexpected Asset property value for \"foo\"")
 		assert.Nil(t, archValue)
 	}
 }
@@ -283,7 +285,7 @@ func TestUnknownSig(t *testing.T) {
 	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{})
 	assert.NoError(t, err)
 	_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
-	assert.Error(t, err)
+	assert.EqualError(t, err, "unrecognized signature 'foobar' in property map for \"pk\"")
 }
 
 func TestSkipInternalKeys(t *testing.T) {
@@ -1812,5 +1814,129 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
 		})
+	}
+}
+
+func TestUpgradeToOutputValues(t *testing.T) {
+	t.Parallel()
+
+	opts := MarshalOptions{
+		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, KeepResources: true,
+	}
+	upgradeOpts := MarshalOptions{
+		KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, KeepResources: true, UpgradeToOutputValues: true,
+	}
+
+	pk := resource.PropertyKey("pk")
+	// Unknown
+	{
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), upgradeOpts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, opts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.False(t, propU.OutputValue().Known)
+		assert.False(t, propU.OutputValue().Secret)
+	}
+	{
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.False(t, propU.OutputValue().Known)
+		assert.False(t, propU.OutputValue().Secret)
+	}
+
+	// Secrets
+	{
+		elem := resource.NewStringProperty("hello")
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewSecretProperty(
+				&resource.Secret{Element: elem}), upgradeOpts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, opts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.True(t, propU.OutputValue().Known)
+		assert.True(t, propU.OutputValue().Secret)
+		assert.Equal(t, elem, propU.OutputValue().Element)
+	}
+	{
+		elem := resource.NewStringProperty("hello")
+		prop, err := MarshalPropertyValue(pk,
+			resource.NewSecretProperty(
+				&resource.Secret{Element: elem}), opts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsOutput())
+		assert.True(t, propU.OutputValue().Known)
+		assert.True(t, propU.OutputValue().Secret)
+		assert.Equal(t, elem, propU.OutputValue().Element)
+	}
+
+	// Resource reference
+	{
+		elem := resource.ResourceReference{
+			URN: resource.CreateURN("name", "type", "", "project", "stack"),
+			ID:  resource.MakeComputed(resource.NewStringProperty("")),
+		}
+		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), upgradeOpts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, opts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsResourceReference())
+		assert.Equal(t, elem.URN, propU.ResourceReferenceValue().URN)
+		id := propU.ResourceReferenceValue().ID
+		// ResourceReferences are always Computed even if output upgrades are turned on.
+		assert.True(t, id.IsComputed())
+	}
+	{
+		elem := resource.ResourceReference{
+			URN: resource.CreateURN("name", "type", "", "project", "stack"),
+			ID:  resource.MakeComputed(resource.NewStringProperty("")),
+		}
+		prop, err := MarshalPropertyValue(pk, resource.NewResourceReferenceProperty(elem), opts)
+		assert.NoError(t, err)
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsResourceReference())
+		assert.Equal(t, elem.URN, propU.ResourceReferenceValue().URN)
+		id := propU.ResourceReferenceValue().ID
+		assert.True(t, id.IsComputed())
+	}
+
+	// Some SDKs send the unknown string value instead of "" for the unknown ID
+	{
+		urn := string(resource.CreateURN("name", "type", "", "project", "stack"))
+		prop := &structpb.Value{
+			Kind: &structpb.Value_StructValue{
+				StructValue: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						resource.SigKey: {
+							Kind: &structpb.Value_StringValue{StringValue: resource.ResourceReferenceSig},
+						},
+						"urn": {
+							Kind: &structpb.Value_StringValue{StringValue: urn},
+						},
+						"id": {
+							Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+						},
+					},
+				},
+			},
+		}
+
+		propU, err := UnmarshalPropertyValue(pk, prop, upgradeOpts)
+		assert.NoError(t, err)
+		assert.True(t, propU.IsResourceReference())
+		assert.Equal(t, resource.URN(urn), propU.ResourceReferenceValue().URN)
+		id := propU.ResourceReferenceValue().ID
+		assert.True(t, id.IsComputed())
 	}
 }

@@ -42,6 +42,8 @@ const (
 type Environment struct {
 	*testing.T
 
+	// HomePath is the PULUMI_HOME directory for the environment
+	HomePath string
 	// RootPath is a new temp directory where the environment starts.
 	RootPath string
 	// Current working directory, defaults to the root path.
@@ -94,9 +96,14 @@ func NewEnvironment(t *testing.T) *Environment {
 	assert.NoError(t, err, "creating temp directory")
 	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
+	// We always use a clean PULUMI_HOME for each environment to avoid any potential conflicts with plugins or config.
+	home, err := os.MkdirTemp("", "test-env-home")
+	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
+
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
 		T:        t,
+		HomePath: home,
 		RootPath: root,
 		CWD:      root,
 	}
@@ -242,11 +249,12 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
+	cmd.Env = append(cmd.Env, "PULUMI_HOME="+e.HomePath)
 	if !e.NoPassphrase {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_CONFIG_PASSPHRASE=%s", passphrase))
+		cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE="+passphrase)
 	}
 	if e.Backend != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_BACKEND_URL=%s", e.Backend))
+		cmd.Env = append(cmd.Env, "PULUMI_BACKEND_URL="+e.Backend)
 	}
 	// According to https://pkg.go.dev/os/exec#Cmd.Env:
 	//     If Env contains duplicate environment keys, only the last

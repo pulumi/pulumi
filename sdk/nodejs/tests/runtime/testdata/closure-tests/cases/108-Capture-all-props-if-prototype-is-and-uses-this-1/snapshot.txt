@@ -1,0 +1,42 @@
+exports.handler = __f0;
+
+var __o_proto = {};
+Object.defineProperty(__f1, "prototype", { value: __o_proto });
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*constructor*/() {
+        this.a = 1;
+        this.b = 2;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*m*/() { console.log(this); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o, this: undefined, arguments: undefined }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

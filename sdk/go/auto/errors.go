@@ -37,7 +37,7 @@ func newAutoError(err error, stdout, stderr string, code int) autoError {
 }
 
 func (ae autoError) Error() string {
-	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err.Error(), ae.code, ae.stdout, ae.stderr)
+	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err, ae.code, ae.stdout, ae.stderr)
 }
 
 // IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.
@@ -48,8 +48,8 @@ func IsConcurrentUpdateError(e error) bool {
 	}
 
 	conflictText := "[409] Conflict: Another update is currently in progress."
-	localBackendConflictText := "the stack is currently locked by"
-	return strings.Contains(ae.stderr, conflictText) || strings.Contains(ae.stderr, localBackendConflictText)
+	diyBackendConflictText := "the stack is currently locked by"
+	return strings.Contains(ae.stderr, conflictText) || strings.Contains(ae.stderr, diyBackendConflictText)
 }
 
 // IsSelectStack404Error returns true if the error was a result of selecting a stack that does not exist.

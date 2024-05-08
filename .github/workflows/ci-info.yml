@@ -40,7 +40,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       GH_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
@@ -61,7 +61,7 @@ jobs:
           fi
 
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '>=1.19.0' # decoupled from version sets, used by changelog tool
           cache: true

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -72,6 +73,7 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 func TestCachingCrypter(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	sm := &testSecretsManager{}
 	csm := NewCachingSecretsManager(sm)
 
@@ -83,38 +85,38 @@ func TestCachingCrypter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
-	foo1Ser, err := SerializePropertyValue(foo1, enc, false /* showSecrets */)
+	foo1Ser, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, sm.encryptCalls)
 
 	// Serialize the second copy of "foo". Because this is a different secret instance, Encrypt should be called
 	// a second time even though the plaintext is the same as the last value we encrypted.
-	foo2Ser, err := SerializePropertyValue(foo2, enc, false /* showSecrets */)
+	foo2Ser, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, sm.encryptCalls)
 	assert.NotEqual(t, foo1Ser, foo2Ser)
 
 	// Serialize "bar". Encrypt should be called once, as this value has not yet been encrypted.
-	barSer, err := SerializePropertyValue(bar, enc, false /* showSecrets */)
+	barSer, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// encrypted.
-	foo1Ser2, err := SerializePropertyValue(foo1, enc, false /* showSecrets */)
+	foo1Ser2, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
 	// encrypted.
-	foo2Ser2, err := SerializePropertyValue(foo2, enc, false /* showSecrets */)
+	foo2Ser2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been encrypted.
-	barSer2, err := SerializePropertyValue(bar, enc, false /* showSecrets */)
+	barSer2, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
@@ -170,21 +172,21 @@ func TestCachingCrypter(t *testing.T) {
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
-	foo1Ser2, err = SerializePropertyValue(foo1Dec, enc, false /* showSecrets */)
+	foo1Ser2, err = SerializePropertyValue(ctx, foo1Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
-	foo2Ser2, err = SerializePropertyValue(foo2Dec, enc, false /* showSecrets */)
+	foo2Ser2, err = SerializePropertyValue(ctx, foo2Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been cached by the
 	// earlier calls to Decrypt.
-	barSer2, err = SerializePropertyValue(barDec, enc, false /* showSecrets */)
+	barSer2, err = SerializePropertyValue(ctx, barDec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
@@ -195,7 +197,7 @@ type mapTestSecretsProvider struct {
 }
 
 func (p *mapTestSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	m, err := DefaultSecretsProvider.OfType(ty, state)
+	m, err := b64.Base64SecretsProvider.OfType(ty, state)
 	if err != nil {
 		return nil, err
 	}

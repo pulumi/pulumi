@@ -15,12 +15,15 @@ import asyncio
 from functools import partial
 from pulumi import CustomResource, Output
 
+
 def assert_eq(l, r):
     assert l == r
+
 
 async def inprop2():
     await asyncio.sleep(0)
     return 42
+
 
 class ResourceA(CustomResource):
     inprop: Output[int]
@@ -28,22 +31,30 @@ class ResourceA(CustomResource):
     outprop: Output[str]
 
     def __init__(self, name: str) -> None:
-        CustomResource.__init__(self, "test:index:ResourceA", name, {
-            "inprop": 777,
-            "inprop_2": inprop2(),
-            "outprop": None
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:ResourceA",
+            name,
+            {"inprop": 777, "inprop_2": inprop2(), "outprop": None},
+        )
+
 
 class ResourceB(CustomResource):
     other_in: Output[int]
     other_out: Output[str]
 
     def __init__(self, name: str, res: ResourceA) -> None:
-        CustomResource.__init__(self, "test:index:ResourceB", name, {
-            "other_in": res.inprop,
-            "other_out": res.outprop,
-            "other_id": res.id,
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:ResourceB",
+            name,
+            {
+                "other_in": res.inprop,
+                "other_out": res.outprop,
+                "other_id": res.id,
+            },
+        )
+
 
 a = ResourceA("resourceA")
 a.urn.apply(lambda urn: assert_eq(urn, "test:index:ResourceA::resourceA"))

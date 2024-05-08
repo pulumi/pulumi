@@ -55,10 +55,10 @@ type typeDetails struct {
 type imports codegen.StringSet
 
 // defaultMinPythonVersion is what we use as the minimum version field in generated
-// package metadata if the schema does not provide a vaule. This version corresponds
+// package metadata if the schema does not provide a value. This version corresponds
 // to the minimum supported version as listed in the reference documentation:
-// https://www.pulumi.com/docs/reference/pkg/python/pulumi/
-const defaultMinPythonVersion = ">=3.7"
+// https://www.pulumi.com/docs/languages-sdks/python/
+const defaultMinPythonVersion = ">=3.8"
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
@@ -773,11 +773,13 @@ func (mod *modContext) genInit(exports []string) string {
 	return w.String()
 }
 
-func (mod *modContext) getRelImportFromRoot() string {
-	rel, err := filepath.Rel(mod.mod, "")
+func (mod *modContext) getRelImportFromRoot(target string) string {
+	rel, err := filepath.Rel(mod.mod, target)
 	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
-	relRoot := path.Dir(rel)
-	return relPathToRelImport(relRoot)
+	if path.Base(rel) == "." {
+		rel = path.Dir(rel)
+	}
+	return relPathToRelImport(rel)
 }
 
 func (mod *modContext) genUtilitiesImport() string {
@@ -790,7 +792,7 @@ func (mod *modContext) genUtilitiesImport() string {
 
 func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string {
 	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
-		return fmt.Sprintf("import %s", pyPack(t.PackageReference.Name()))
+		return "import " + pyPack(t.PackageReference.Name())
 	}
 
 	tok := t.Token
@@ -805,7 +807,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 		return "from . import outputs"
 	}
 
-	importPath := mod.getRelImportFromRoot()
+	importPath := mod.getRelImportFromRoot("")
 
 	if modName == "" {
 		imp, as := "outputs", "_root_outputs"
@@ -821,7 +823,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 
 func (mod *modContext) importEnumType(e *schema.EnumType) string {
 	if !codegen.PkgEquals(e.PackageReference, mod.pkg) {
-		return fmt.Sprintf("import %s", pyPack(e.PackageReference.Name()))
+		return "import " + pyPack(e.PackageReference.Name())
 	}
 
 	modName := mod.tokenToModule(e.Token)
@@ -829,7 +831,7 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 		return "from ._enums import *"
 	}
 
-	importPath := mod.getRelImportFromRoot()
+	importPath := mod.getRelImportFromRoot("")
 
 	if modName == "" {
 		return fmt.Sprintf("from %s import _enums as _root_enums", importPath)
@@ -841,7 +843,7 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 
 func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	if r.Resource != nil && !codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
-		return fmt.Sprintf("import %s", pyPack(r.Resource.PackageReference.Name()))
+		return "import " + pyPack(r.Resource.PackageReference.Name())
 	}
 
 	tok := r.Token
@@ -850,25 +852,37 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 
 	// If it's a provider resource, import the top-level package.
 	if parts[0] == "pulumi" && parts[1] == "providers" {
-		return fmt.Sprintf("import pulumi_%s", parts[2])
+		return "import pulumi_" + parts[2]
 	}
 
-	modName := mod.tokenToResource(tok)
+	modName := mod.tokenToModule(tok)
+	if mod.mod == modName || modName == "" {
+		// We want a relative import if we're in the same module: from .some_member import SomeMember
+		importPath := mod.getRelImportFromRoot(modName)
 
-	importPath := mod.getRelImportFromRoot()
+		name := PyName(tokenToName(r.Token))
+		if mod.compatibility == kubernetes20 {
+			// To maintain backward compatibility for kubernetes, the file names
+			// need to be CamelCase instead of the standard snake_case.
+			name = tokenToName(r.Token)
+		}
+		if r.Resource != nil && r.Resource.IsProvider {
+			name = "provider"
+		}
 
-	name := PyName(tokenToName(r.Token))
-	if mod.compatibility == kubernetes20 {
-		// To maintain backward compatibility for kubernetes, the file names
-		// need to be CamelCase instead of the standard snake_case.
-		name = tokenToName(r.Token)
-	}
-	if r.Resource != nil && r.Resource.IsProvider {
-		name = "provider"
+		if strings.HasSuffix(importPath, ".") {
+			importPath += name
+		} else {
+			importPath = importPath + "." + name
+		}
+
+		resourceName := mod.tokenToResource(tok)
+
+		return fmt.Sprintf("from %s import %s", importPath, resourceName)
 	}
 
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
+	return fmt.Sprintf("from %s import %[2]s as _%[2]s", mod.getRelImportFromRoot(""), components[0])
 }
 
 // genConfig emits all config variables in the given module, returning the resulting file.
@@ -1180,7 +1194,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	name := resourceName(res)
 
-	resourceArgsName := fmt.Sprintf("%sArgs", name)
+	resourceArgsName := name + "Args"
 	// Some providers (e.g. Kubernetes) have types with the same name as resources (e.g. StorageClass in Kubernetes).
 	// We've already shipped the input type (e.g. StorageClassArgs) in the same module as the resource, so we can't use
 	// the same name for the resource's args class. When an input type exists that would conflict with the name of the
@@ -1421,7 +1435,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
 	if len(replaceOnChangesProps) > 0 {
-		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps, PyName)
+		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+			func(x string) string { return x })
 		fmt.Fprintf(w, `        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, strings.Join(replaceOnChangesStrings, `", "`))
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n")
 	}
@@ -1703,7 +1718,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		if retTypeNameQualified != "" {
 			// Pass along the private output_type we generated, so any nested output classes are instantiated by
 			// the call.
-			typ = fmt.Sprintf(", typ=%s", retTypeNameQualified)
+			typ = ", typ=" + retTypeNameQualified
 		}
 
 		if fun.ReturnTypePlain {
@@ -1814,7 +1829,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if returnType != nil {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
-		typ = fmt.Sprintf(", typ=%s", baseName)
+		typ = ", typ=" + baseName
 	}
 	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
 	fmt.Fprintf(w, "\n")
@@ -1932,7 +1947,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	}
 
 	originalName := PyName(tokenToName(fun.Token))
-	outputSuffixedName := fmt.Sprintf("%s_output", originalName)
+	outputSuffixedName := originalName + "_output"
 
 	var args []*schema.Property
 	if fun.Inputs != nil {
@@ -2072,6 +2087,9 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
 		plugin.Version = pkg.Version.String()
 	}
+	if pkg.SupportPack {
+		plugin.Version = pkg.Version.String()
+	}
 
 	return plugin.JSON()
 }
@@ -2091,12 +2109,18 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "\n\n")
 
 	// Create a constant for the version number to replace during build
-	version := "0.0.0"
+	version := "\"0.0.0\""
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
-		version = pypiVersion(*pkg.Version)
+		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
-	fmt.Fprintf(w, "VERSION = \"%s\"\n", version)
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		version = "\"" + PypiVersion(*pkg.Version) + "\""
+	}
+	fmt.Fprintf(w, "VERSION = %s\n", version)
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
@@ -2633,6 +2657,7 @@ func getPrimitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // Only a subset of types can have default values
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {
@@ -2698,7 +2723,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// determine whether to use the default Python package name
 	pyPkgName := info.PackageName
 	if pyPkgName == "" {
-		pyPkgName = fmt.Sprintf("pulumi_%s", strings.ReplaceAll(pkg.Name, "-", "_"))
+		pyPkgName = "pulumi_" + strings.ReplaceAll(pkg.Name, "-", "_")
 	}
 
 	// group resources, types, and functions into modules
@@ -3026,7 +3051,13 @@ func genPyprojectTOML(tool string,
 	version := "0.0.0"
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
-		version = pypiVersion(*pkg.Version)
+		version = PypiVersion(*pkg.Version)
+	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return "", errors.New("package version is required")
+		}
+		version = PypiVersion(*pkg.Version)
 	}
 	schema.Project.Version = &version
 
@@ -3153,7 +3184,7 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 
 		lowerBound, err := pep440VersionToSemver(matches[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid version for lower bound: %v", err)
+			return nil, fmt.Errorf("invalid version for lower bound: %w", err)
 		}
 		if lowerBound.LT(oldestAllowedPulumi) {
 			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)

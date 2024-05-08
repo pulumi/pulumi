@@ -30,11 +30,17 @@ import (
 func TestArgumentConstruction(t *testing.T) {
 	t.Parallel()
 
+	info := &pulumirpc.ProgramInfo{
+		RootDirectory:    "/foo/bar",
+		ProgramDirectory: "/foo/bar",
+		EntryPoint:       ".",
+	}
+
 	t.Run("DryRun-NoArguments", func(t *testing.T) {
 		t.Parallel()
 
 		host := &nodeLanguageHost{}
-		rr := &pulumirpc.RunRequest{DryRun: true}
+		rr := &pulumirpc.RunRequest{DryRun: true, Info: info}
 		args := host.constructArguments(rr, "", "", "")
 		assert.Contains(t, args, "--dry-run")
 		assert.NotContains(t, args, "true")
@@ -44,7 +50,7 @@ func TestArgumentConstruction(t *testing.T) {
 		t.Parallel()
 
 		host := &nodeLanguageHost{}
-		rr := &pulumirpc.RunRequest{Project: "foo"}
+		rr := &pulumirpc.RunRequest{Project: "foo", Info: info}
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "--project foo")
 	})
@@ -53,7 +59,7 @@ func TestArgumentConstruction(t *testing.T) {
 		t.Parallel()
 
 		host := &nodeLanguageHost{}
-		rr := &pulumirpc.RunRequest{}
+		rr := &pulumirpc.RunRequest{Info: info}
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.NotContains(t, args, "--stack")
 	})
@@ -62,7 +68,7 @@ func TestArgumentConstruction(t *testing.T) {
 		t.Parallel()
 
 		host := &nodeLanguageHost{}
-		rr := &pulumirpc.RunRequest{}
+		rr := &pulumirpc.RunRequest{Info: info}
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, ".")
 	})
@@ -71,7 +77,14 @@ func TestArgumentConstruction(t *testing.T) {
 		t.Parallel()
 
 		host := &nodeLanguageHost{}
-		rr := &pulumirpc.RunRequest{Program: "foobar"}
+		rr := &pulumirpc.RunRequest{
+			Program: "foobar",
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    "/foo/bar",
+				ProgramDirectory: "/foo/bar",
+				EntryPoint:       "foobar",
+			},
+		}
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "foobar")
 	})
@@ -156,6 +169,11 @@ func TestGetRequiredPlugins(t *testing.T) {
 	host := &nodeLanguageHost{}
 	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
 		Program: dir,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    dir,
+			ProgramDirectory: dir,
+			EntryPoint:       ".",
+		},
 	})
 	require.NoError(t, err)
 
@@ -209,6 +227,11 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 	host := &nodeLanguageHost{}
 	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
 		Program: dir,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    dir,
+			ProgramDirectory: dir,
+			EntryPoint:       ".",
+		},
 	})
 	require.NoError(t, err)
 
@@ -264,6 +287,11 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	host := &nodeLanguageHost{}
 	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
 		Program: dir,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    dir,
+			ProgramDirectory: dir,
+			EntryPoint:       ".",
+		},
 	})
 	require.NoError(t, err)
 

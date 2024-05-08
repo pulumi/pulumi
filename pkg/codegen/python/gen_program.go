@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -214,13 +215,13 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		g.Fgen(w, "\n")
 	}
 
-	componentToken := fmt.Sprintf("components:index:%s", componentName)
+	componentToken := "components:index:" + componentName
 	g.Fgenf(w, "class %s(pulumi.ComponentResource):\n", componentName)
 	g.Indented(func() {
 		if hasAnyInputVariables {
 			g.Fgenf(w, "%sdef __init__(self, name: str, args: %s, opts:Optional[pulumi.ResourceOptions] = None):\n",
 				g.Indent,
-				fmt.Sprintf("%sArgs", componentName))
+				componentName+"Args")
 
 			g.Fgenf(w, "%s%ssuper().__init__(\"%s\", name, args, opts)\n",
 				g.Indent,
@@ -309,17 +310,38 @@ func GenerateProject(
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
+	var options map[string]interface{}
+	if _, ok := localDependencies["pulumi"]; ok {
+		options = map[string]interface{}{
+			"virtualenv": "venv",
+		}
+	}
+
 	// Set the runtime to "python" then marshal to Pulumi.yaml
-	project.Runtime = workspace.NewProjectRuntimeInfo("python", nil)
+	project.Runtime = workspace.NewProjectRuntimeInfo("python", options)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
 	}
-	files["Pulumi.yaml"] = projectBytes
 
 	// Build a requirements.txt based on the packages used by program
-	var requirementsTxt bytes.Buffer
-	requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+	requirementsTxtLines := []string{}
+	if path, ok := localDependencies["pulumi"]; ok {
+		requirementsTxtLines = append(requirementsTxtLines, path)
+	} else {
+		requirementsTxtLines = append(requirementsTxtLines, "pulumi>=3.0.0,<4.0.0")
+	}
 
 	// For each package add a PackageReference line
 	// find references from the main/entry program and programs of components
@@ -327,29 +349,36 @@ func GenerateProject(
 	if err != nil {
 		return err
 	}
+
 	for _, p := range packages {
 		if p.Name == "pulumi" {
 			continue
 		}
-		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-			return err
-		}
-
-		packageName := "pulumi-" + p.Name
-		if langInfo, found := p.Language["python"]; found {
-			pyInfo, ok := langInfo.(PackageInfo)
-			if ok && pyInfo.PackageName != "" {
-				packageName = pyInfo.PackageName
-			}
-		}
-		if p.Version != nil {
-			fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
+		if path, ok := localDependencies[p.Name]; ok {
+			requirementsTxtLines = append(requirementsTxtLines, path)
 		} else {
-			fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
+			if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+				return err
+			}
+			packageName := "pulumi-" + p.Name
+			if langInfo, found := p.Language["python"]; found {
+				pyInfo, ok := langInfo.(PackageInfo)
+				if ok && pyInfo.PackageName != "" {
+					packageName = pyInfo.PackageName
+				}
+			}
+			if p.Version != nil {
+				requirementsTxtLines = append(requirementsTxtLines, fmt.Sprintf("%s==%s", packageName, p.Version.String()))
+			} else {
+				requirementsTxtLines = append(requirementsTxtLines, packageName)
+			}
 		}
 	}
 
-	files["requirements.txt"] = requirementsTxt.Bytes()
+	// We want the requirements.txt files we generate to be stable, so we sort the
+	// lines before obtaining the bytes.
+	slices.Sort(requirementsTxtLines)
+	files["requirements.txt"] = []byte(strings.Join(requirementsTxtLines, "\n") + "\n")
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`*.pyc
@@ -361,6 +390,12 @@ venv/`)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
+	}
+
+	// Write out the Pulumi.yaml
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
 	return nil
@@ -475,8 +510,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if r.Schema != nil && r.Schema.PackageReference != nil {
 				pkg, err := r.Schema.PackageReference.Definition()
 				if err == nil {
-					if info, ok := pkg.Language["python"].(PackageInfo); ok && info.PackageName != "" {
-						packageName = info.PackageName
+					if pkgInfo, ok := pkg.Language["python"].(PackageInfo); ok && pkgInfo.PackageName != "" {
+						packageName = pkgInfo.PackageName
 					}
 				}
 			}
@@ -519,7 +554,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		if control.ImportAs {
 			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(control.Pkg)))
 		} else {
-			imports = append(imports, fmt.Sprintf("import %s", pkg))
+			imports = append(imports, "import "+pkg)
 		}
 	}
 
@@ -529,11 +564,16 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		imports = append(imports, "from pulumi import Input")
 	}
 
+	seenComponentImports := map[string]bool{}
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
 			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
 			componentName := component.DeclarationName()
-			imports = append(imports, fmt.Sprintf("from %s import %s", componentPath, componentName))
+			pathAndName := componentPath + "-" + componentName
+			if _, ok := seenComponentImports[pathAndName]; !ok {
+				imports = append(imports, fmt.Sprintf("from %s import %s", componentPath, componentName))
+				seenComponentImports[pathAndName] = true
+			}
 		}
 	}
 
@@ -598,9 +638,10 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
 			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkg.Name)
 			if lang, ok := pkg.Language["python"]; ok {
-				pkgInfo := lang.(PackageInfo)
-				if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-					module = m
+				if pkgInfo, ok := lang.(PackageInfo); ok {
+					if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+						module = m
+					}
 				}
 			}
 		}
@@ -636,9 +677,10 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	pkg, err := objType.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
 	if lang, ok := pkg.Language["python"]; ok {
-		pkgInfo := lang.(PackageInfo)
-		if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-			modName = m
+		if pkgInfo, ok := lang.(PackageInfo); ok {
+			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+				modName = m
+			}
 		}
 	}
 	return tokenToQualifiedName(pkgName, modName, member) + "Args"
@@ -792,7 +834,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			} else {
 				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
 			}
-			localFuncName := fmt.Sprintf("create_%s", PyName(r.LogicalName()))
+			localFuncName := "create_" + PyName(r.LogicalName())
 
 			// Generate a local definition which actually creates the resources
 			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
@@ -1079,7 +1121,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	value, temps := g.lowerExpression(v.Definition.Value, v.Type())
 	g.genTemps(w, temps)
 
-	// TODO(pdg): trivia
+	g.genTrivia(w, v.Definition.Tokens.Name)
 	g.Fgenf(w, "%s%s = %.v\n", g.Indent, PyName(v.Name()), value)
 }
 
@@ -1092,7 +1134,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  message,

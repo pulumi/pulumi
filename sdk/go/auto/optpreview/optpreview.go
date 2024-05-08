@@ -115,6 +115,34 @@ func Plan(path string) Option {
 	})
 }
 
+// Refresh will run a refresh before the preview.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
+// ImportFile save any creates seen during the preview into an import file to use with pulumi import
+func ImportFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ImportFile = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -157,6 +185,14 @@ type Options struct {
 	PolicyPacks []string
 	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
 	PolicyPackConfigs []string
+	// Refresh will run a refresh before the preview.
+	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
+	// Save any creates seen during the preview into an import file to use with pulumi import
+	ImportFile string
 }
 
 type optionFunc func(*Options)

@@ -1,0 +1,13 @@
+{
+  "emittedFiles": [
+    "example/doc.go",
+    "example/exampleServer.go",
+    "example/init.go",
+    "example/internal/pulumiUtilities.go",
+    "example/internal/pulumiVersion.go",
+    "example/provider.go",
+    "example/pulumi-plugin.json",
+    "example/pulumiEnums.go",
+    "example/pulumiTypes.go"
+  ]
+}

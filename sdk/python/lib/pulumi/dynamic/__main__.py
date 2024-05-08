@@ -87,17 +87,17 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {}
         if result.changes is not None:
             if result.changes:
-                fields[
-                    "changes"
-                ] = proto.DiffResponse.DIFF_SOME  # pylint: disable=no-member
+                fields["changes"] = (
+                    proto.DiffResponse.DIFF_SOME
+                )  # pylint: disable=no-member
             else:
-                fields[
-                    "changes"
-                ] = proto.DiffResponse.DIFF_NONE  # pylint: disable=no-member
+                fields["changes"] = (
+                    proto.DiffResponse.DIFF_NONE
+                )  # pylint: disable=no-member
         else:
-            fields[
-                "changes"
-            ] = proto.DiffResponse.DIFF_UNKNOWN  # pylint: disable=no-member
+            fields["changes"] = (
+                proto.DiffResponse.DIFF_UNKNOWN
+            )  # pylint: disable=no-member
         if result.replaces is not None:
             fields["replaces"] = result.replaces
         if result.delete_before_replace is not None:

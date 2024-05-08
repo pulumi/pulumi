@@ -17,7 +17,9 @@ from pulumi.runtime import invoke
 
 class MyResource(CustomResource):
     def __init__(self, name, version=None):
-        CustomResource.__init__(self, "test:index:MyResource", name, opts=ResourceOptions(version=version))
+        CustomResource.__init__(
+            self, "test:index:MyResource", name, opts=ResourceOptions(version=version)
+        )
 
 
 res = MyResource("testres", version="0.19.1")

@@ -36,9 +36,12 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestPrintfNodeJS tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPrintfNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("printf", "nodejs"),
@@ -49,6 +52,8 @@ func TestPrintfNodeJS(t *testing.T) {
 }
 
 // Tests emitting many engine events doesn't result in a performance problem.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEngineEventPerf(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7883]
 
@@ -71,6 +76,8 @@ func TestEngineEventPerf(t *testing.T) {
 }
 
 // TestEngineEvents ensures that the test framework properly records and reads engine events.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEngineEvents(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "single_resource",
@@ -125,7 +132,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			e.RootPath,
 		)
 		t.Logf("writing new Pulumi.yaml: \npath: %s\ncontents:%s", yamlPath, absYamlContents)
-		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0o644); err != nil {
+		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0o600); err != nil {
 			t.Error(err)
 			return
 		}
@@ -161,6 +168,8 @@ func TestProjectMainNodejs(t *testing.T) {
 }
 
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackProjectName(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		RequireService: true,
@@ -198,6 +207,8 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 }
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackOutputsNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
@@ -216,6 +227,97 @@ func TestStackOutputsNodeJS(t *testing.T) {
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
+		},
+	})
+}
+
+// TestStackOutputsProgramErrorNodeJS tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "nodejs")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// A program error in TypeScript means we won't get any new stack outputs from the module exports,
+				// so we expect the values to remain the same.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorNodeJS ensures that prior stack outputs aren't overwritten when a
+// resource operation error occurs during an update.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "nodejs")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(d, "step1"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
 		},
 	})
 }
@@ -243,6 +345,8 @@ func TestStackOutputsJSON(t *testing.T) {
 }
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackOutputsDisplayed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -262,6 +366,8 @@ func TestStackOutputsDisplayed(t *testing.T) {
 }
 
 // TestStackOutputsSuppressed ensures that outputs whose values are intentionally suppresses don't show.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackOutputsSuppressed(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -280,6 +386,8 @@ func TestStackOutputsSuppressed(t *testing.T) {
 }
 
 // TestStackParenting tests out that stacks and components are parented correctly.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_parenting",
@@ -307,7 +415,7 @@ func TestStackParenting(t *testing.T) {
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "a", "f":
 						assert.NotEqual(t, "", res.Parent)
@@ -331,6 +439,7 @@ func TestStackParenting(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackBadParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
@@ -342,6 +451,8 @@ func TestStackBadParenting(t *testing.T) {
 
 // TestStackDependencyGraph tests that the dependency graph of a stack is saved
 // in the checkpoint file.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackDependencyGraph(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_dependencies",
@@ -374,6 +485,8 @@ func TestStackDependencyGraph(t *testing.T) {
 }
 
 // Tests basic configuration from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigBasicNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_basic", "nodejs"),
@@ -402,6 +515,8 @@ func TestConfigBasicNodeJS(t *testing.T) {
 }
 
 // Tests configuration error from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigMissingJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("config_missing", "nodejs"),
@@ -427,6 +542,7 @@ func TestConfigMissingJS(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigCaptureNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
@@ -439,6 +555,8 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 }
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigSecretsWarnNodeJS(t *testing.T) {
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
@@ -559,6 +677,7 @@ func TestConfigSecretsWarnNodeJS(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestInvalidVersionInPackageJson(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
@@ -569,6 +688,8 @@ func TestInvalidVersionInPackageJson(t *testing.T) {
 }
 
 // Tests an explicit provider instance.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestExplicitProvider(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "explicit_provider",
@@ -623,6 +744,8 @@ func TestExplicitProvider(t *testing.T) {
 }
 
 // Tests that reads of unknown IDs do not fail.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetCreated(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "get_created",
@@ -632,6 +755,8 @@ func TestGetCreated(t *testing.T) {
 }
 
 // TestProviderSecretConfig that a first class provider can be created when it has secrets as part of its config.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestProviderSecretConfig(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "provider_secret_config",
@@ -640,6 +765,7 @@ func TestProviderSecretConfig(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("secret_outputs", "nodejs"),
@@ -678,44 +804,12 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 	})
 }
 
-func TestStackReferenceSecretsNodejs(t *testing.T) {
-	owner := os.Getenv("PULUMI_TEST_OWNER")
-	if owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	d := "stack_reference_secrets"
-
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir:          filepath.Join(d, "nodejs", "step1"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:             filepath.Join(d, "nodejs", "step2"),
-				Additive:        true,
-				ExpectNoChanges: true,
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					_, isString := stackInfo.Outputs["refNormal"].(string)
-					assert.Truef(t, isString, "referenced non-secret output was not a string")
-
-					secretPropValue, ok := stackInfo.Outputs["refSecret"].(map[string]interface{})
-					assert.Truef(t, ok, "secret output was not serialized as a secret")
-					assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
-				},
-			},
-		},
-	})
-}
-
 //nolint:paralleltest // mutates environment variables
 func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("passphrase"),
+		SecretsProvider: "passphrase",
 		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
@@ -784,7 +878,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("awskms://alias/%s", awsKmsKeyAlias),
+		SecretsProvider: "awskms://alias/" + awsKmsKeyAlias,
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
@@ -809,29 +903,37 @@ func TestCloudSecretProvider(t *testing.T) {
 	})
 
 	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("azurekeyvault://%s", azureKeyVault),
+		SecretsProvider: "azurekeyvault://" + azureKeyVault,
 	})
 
 	gcpTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
+		SecretsProvider: "gcpkms://projects/" + gcpKmsKey,
 	})
 
 	// Run with default Pulumi service backend
-	t.Run("service", func(t *testing.T) {
-		integration.ProgramTest(t, &testOptions)
-	})
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
 
 	// Check Azure secrets provider
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("azure", func(t *testing.T) { integration.ProgramTest(t, &azureTestOptions) })
 
 	// Check gcloud secrets provider
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("gcp", func(t *testing.T) { integration.ProgramTest(t, &gcpTestOptions) })
 
-	// Also run with local backend
+	// Also run with local diy backend
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
 }
 
 // Tests a resource with a large (>4mb) string prop in Node.js
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestLargeResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("large_resource", "nodejs"),
@@ -840,6 +942,8 @@ func TestLargeResourceNode(t *testing.T) {
 }
 
 // Tests enum outputs
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEnumOutputNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("enums", "nodejs"),
@@ -855,6 +959,8 @@ func TestEnumOutputNode(t *testing.T) {
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowNode(t *testing.T) {
+	t.Parallel()
+
 	localProvider := testComponentSlowLocalProvider(t)
 
 	var opts *integration.ProgramTestOptions
@@ -867,6 +973,7 @@ func TestConstructSlowNode(t *testing.T) {
 		Dependencies:   []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
+		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -905,6 +1012,7 @@ func TestConstructPlainNode(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -917,7 +1025,9 @@ func TestConstructPlainNode(t *testing.T) {
 	}
 }
 
-func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
+func optsForConstructPlainNode(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
@@ -932,6 +1042,7 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, localPro
 
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownNode(t *testing.T) {
+	t.Parallel()
 	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
@@ -955,6 +1066,8 @@ func TestConstructMethodsNode(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -975,18 +1088,22 @@ func TestConstructMethodsNode(t *testing.T) {
 }
 
 func TestConstructMethodsUnknownNode(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
 func TestConstructMethodsResourcesNode(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsResources(t, "nodejs", "@pulumi/pulumi")
 }
 
 func TestConstructMethodsErrorsNode(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsErrors(t, "nodejs", "@pulumi/pulumi")
 }
 
 func TestConstructMethodsProviderNode(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsProvider(t, "nodejs", "@pulumi/pulumi")
 }
 
@@ -1009,6 +1126,8 @@ func TestConstructProviderNode(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -1028,6 +1147,7 @@ func TestConstructProviderNode(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),
@@ -1047,6 +1167,7 @@ func TestGetResourceNode(t *testing.T) {
 }
 
 func TestComponentProviderSchemaNode(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join("component_provider_schema", "testcomponent", "pulumi-resource-testcomponent")
 	if runtime.GOOS == WindowsOS {
 		path += ".cmd"
@@ -1089,11 +1210,14 @@ func TestConstructNodeErrorApply(t *testing.T) {
 
 // Test to ensure that internal stacks are hidden
 func TestNodejsStackTruncate(t *testing.T) {
+	t.Parallel()
+
 	cases := []string{
 		"syntax-error",
 		"ts-error",
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, name := range cases {
 		// Test the program.
 		t.Run(name, func(t *testing.T) {
@@ -1130,6 +1254,8 @@ func TestNodejsStackTruncate(t *testing.T) {
 }
 
 // Test targeting `es2016` in `tsconfig.json` works.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCompilerOptionsNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "compiler_options"),
@@ -1138,6 +1264,7 @@ func TestCompilerOptionsNode(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-js"),
@@ -1146,6 +1273,7 @@ func TestESMJS(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMJSMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-js-main"),
@@ -1154,6 +1282,7 @@ func TestESMJSMain(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMTS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts"),
@@ -1162,6 +1291,7 @@ func TestESMTS(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestTSWithPackageJsonInParentDir(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "ts-with-package-json-in-parent-dir"),
@@ -1171,6 +1301,7 @@ func TestTSWithPackageJsonInParentDir(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMWithPackageJsonInParentDir(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "esm-with-package-json-in-parent-dir"),
@@ -1180,6 +1311,7 @@ func TestESMWithPackageJsonInParentDir(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMWithoutPackageJsonInParentDir(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "esm-package-json-in-parent-dir-without-main"),
@@ -1189,6 +1321,7 @@ func TestESMWithoutPackageJsonInParentDir(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPackageJsonInParentDirWithoutMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "package-json-in-parent-dir-without-main"),
@@ -1198,6 +1331,7 @@ func TestPackageJsonInParentDirWithoutMain(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMTSNestedSrc(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-nested-src"),
@@ -1215,6 +1349,7 @@ func TestESMTSNestedSrc(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMTSDefaultExport(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-default-export"),
@@ -1229,6 +1364,7 @@ func TestESMTSDefaultExport(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMTSSpecifierResolutionNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-specifier-resolution-node"),
@@ -1237,12 +1373,186 @@ func TestESMTSSpecifierResolutionNode(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestESMTSCompiled(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-compiled"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		RunBuild:     true,
 		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNpmWorkspace(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with npm
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "npm-and-yarn-workspaces"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestYarnWorkspace(t *testing.T) {
+	t.Setenv("PULUMI_PREFER_YARN", "true")
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with yarn
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "npm-and-yarn-workspaces"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+		NoParallel:      true, // mutates environment variables
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestYarnWorkspaceNoHoist(t *testing.T) {
+	t.Setenv("PULUMI_PREFER_YARN", "true")
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with yarn
+		// workspaces.
+		return nil
+	}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "yarn-workspaces-nohoist"),
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+		NoParallel:      true, // mutates environment variables
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNestedPackageJSON(t *testing.T) {
+	preparePropject := func(projinfo *engine.Projinfo) error {
+		// The default nodejs prepare uses yarn to link dependencies.
+		// For this test we don't want to test the current SDK, instead we
+		// want to test `pulumi install` and ensure that it works with npm
+		// workspaces.
+		return nil
+	}
+	dir := filepath.Join("nodejs", "npm-and-yarn-not-a-workspace")
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir:             dir,
+		Quick:           true,
+		RelativeWorkDir: "infra",
+		PrepareProject:  preparePropject,
+	})
+
+	t.Cleanup(func() {
+		pt.TestFinished = true
+		pt.TestCleanUp()
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	require.NoError(t, pt.RunPulumiCommand("install"), "install")
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+
+	// There is no node_modules directory in the parent directory
+	parent := filepath.Dir(dir)
+	_, err := os.Stat(filepath.Join(parent, "node_modules"))
+	require.True(t, os.IsNotExist(err))
+
+	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePaths(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "codepaths"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsTSC(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "codepaths-tsc"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		RunBuild:     true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsNested(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "codepaths-nested"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		RelativeWorkDir: "nested",
+		Quick:           true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsWorkspace(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "codepaths-workspaces"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		RelativeWorkDir: "infra",
+		Quick:           true,
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsWorkspaceTSC(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "codepaths-workspaces-tsc"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
+		RunBuild:        true,
+		RelativeWorkDir: "infra",
 	})
 }
 
@@ -1305,6 +1615,7 @@ func TestAboutNodeJS(t *testing.T) {
 }
 
 func TestConstructOutputValuesNode(t *testing.T) {
+	t.Parallel()
 	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")
 }
 
@@ -1331,31 +1642,63 @@ func TestTSConfigOption(t *testing.T) {
 
 // This tests that despite an exception, that the snapshot is still written.
 func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Env: []string{
-			"PULUMI_EXPERIMENTAL=1",
-			"PULUMI_SKIP_CHECKPOINTS=1",
-		},
-		Quick: true,
-		// The program throws an exception and 1 resource fails to be created.
-		ExpectFailure: true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			// Ensure the checkpoint contains the 1003 other resources that were created
-			// - stack
-			// - provider
-			// - `base` resource
-			// - 1000 resources(via a for loop)
-			// - NOT a resource that failed to be created dependent on the `base` resource output
-			assert.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
-		},
+	t.Parallel()
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("Check with experimental flag", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Env: []string{
+				"PULUMI_EXPERIMENTAL=1",
+				"PULUMI_SKIP_CHECKPOINTS=1",
+			},
+			Quick: true,
+			// The program throws an exception and 1 resource fails to be created.
+			ExpectFailure: true,
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Ensure the checkpoint contains the 1003 other resources that were created
+				// - stack
+				// - provider
+				// - `base` resource
+				// - 1000 resources(via a for loop)
+				// - NOT a resource that failed to be created dependent on the `base` resource output
+				assert.NotNil(t, stackInfo.Deployment)
+				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+			},
+		})
+	})
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("Check without experimental flag", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Env: []string{
+				"PULUMI_EXPERIMENTAL=0",
+				"PULUMI_SKIP_CHECKPOINTS=1",
+			},
+			Quick: true,
+			// The program throws an exception and 1 resource fails to be created.
+			ExpectFailure: true,
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Ensure the checkpoint contains the 1003 other resources that were created
+				// - stack
+				// - provider
+				// - `base` resource
+				// - 1000 resources(via a for loop)
+				// - NOT a resource that failed to be created dependent on the `base` resource output
+				assert.NotNil(t, stackInfo.Deployment)
+				assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+			},
+		})
 	})
 }
 
 // TestResourceRefsGetResourceNode tests that invoking the built-in 'pulumi:pulumi:getResource' function
 // returns resource references for any resource reference in a resource's state.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRefsGetResourceNode(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#11677]
 
@@ -1367,6 +1710,8 @@ func TestResourceRefsGetResourceNode(t *testing.T) {
 }
 
 // TestDeletedWithNode tests the DeletedWith resource option.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDeletedWithNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("deleted_with", "nodejs"),
@@ -1379,6 +1724,8 @@ func TestDeletedWithNode(t *testing.T) {
 }
 
 // Tests custom resource type name of dynamic provider.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-resource-type-name"),
@@ -1393,6 +1740,8 @@ func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 }
 
 // Tests errors in dynamic provider methods
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestErrorCreateDynamicNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("dynamic", "nodejs-error-create"),
@@ -1412,6 +1761,8 @@ func TestErrorCreateDynamicNode(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestRegression12301Node(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "regression-12301"),
@@ -1432,6 +1783,8 @@ func TestRegression12301Node(t *testing.T) {
 }
 
 // Tests provider config is passed through to provider processes.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPulumiConfig(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("dynamic", "nodejs-pulumi-config"),
@@ -1460,6 +1813,8 @@ func TestConstructProviderExplicitNode(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/7376
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestUndefinedStackOutputNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "undefined-stack-output"),
@@ -1491,6 +1846,8 @@ func TestUndefinedStackOutputNode(t *testing.T) {
 }
 
 // Tests basic environments from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEnvironmentsBasicNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:            filepath.Join("environments_basic"),
@@ -1541,6 +1898,8 @@ func TestEnvironmentsBasicNodeJS(t *testing.T) {
 }
 
 // Tests merged environments from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEnvironmentsMergeNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:            filepath.Join("environments_merge"),
@@ -1601,6 +1960,29 @@ func TestEnvironmentsMergeNodeJS(t *testing.T) {
 		OrderedConfig: []integration.ConfigValue{
 			{Key: "outer.inner", Value: "value", Path: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+	})
+}
+
+// Tests errors that would occur when generating code that shadows reserved
+// identifiers (e.g. "const exports = ...").
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodeJSReservedIdentifierShadowing(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("dynamic", "nodejs-reserved-identifier-shadowing"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: false,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			noError := true
+			for _, event := range stack.Events {
+				if event.ResOpFailedEvent != nil {
+					noError = false
+					assert.Equal(t, apitype.OpType("create"), event.ResOpFailedEvent.Metadata.Op)
+				}
+			}
+
+			assert.True(t, noError, "An error occurred when testing shadowing of reserved identifiers")
 		},
 	})
 }

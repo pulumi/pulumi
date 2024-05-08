@@ -1,0 +1,66 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "types":{
+    "example:index:AnnotationStoreSchemaValueType": {
+      "type": "string",
+      "enum": [
+          {
+              "name": "Long",
+              "value": "LONG"
+          },
+          {
+              "name": "Int",
+              "value": "INT"
+          },
+          {
+              "name": "String",
+              "value": "STRING"
+          },
+          {
+              "name": "Float",
+              "value": "FLOAT"
+          },
+          {
+              "name": "Double",
+              "value": "DOUBLE"
+          },
+          {
+              "name": "Boolean",
+              "value": "BOOLEAN"
+          }
+      ]
+    }
+  },
+  "resources": {
+    "example:index:ExampleServer": {
+      "properties":{
+        "mapArrayEnum": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/types/example:index:AnnotationStoreSchemaValueType"
+            }
+          }
+        }
+      },
+      "inputProperties": {
+        "mapArrayEnum": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/types/example:index:AnnotationStoreSchemaValueType"
+            }
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "array-of-enum-map/example"
+    }
+  }
+}

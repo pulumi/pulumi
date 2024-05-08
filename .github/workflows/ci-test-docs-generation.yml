@@ -27,7 +27,7 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: build matrix
@@ -55,57 +55,63 @@ jobs:
     needs: [matrix]
     # Verify that the event is not triggered by a fork since forks cannot
     # access secrets other than the default GITHUB_TOKEN. Specifically,
-    # this workflow relies on the secret PULUMI_BOT_GH_PAT_DOCS to create a
+    # this workflow relies on the secret PULUMI_BOT_TOKEN to create a
     # draft PR in the docs repo.
     env:
       GOPATH: ${{ github.workspace }}
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(needs.matrix.outputs.version-set).go }}
       - name: Install Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(needs.matrix.outputs.version-set).nodejs }}
       - name: Install Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(needs.matrix.outputs.version-set).python }}
       - name: Set up DotNet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ fromJson(needs.matrix.outputs.version-set).dotnet }}
           dotnet-quality: ga
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Check out source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: pulumi
           ref: ${{ inputs.ref }}
-          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Check out pulumi-aws
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: pulumi/pulumi-aws
           path: pulumi-aws
-          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Check out pulumi-kubernetes
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: pulumi/pulumi-kubernetes
           path: pulumi-kubernetes
-          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Check out docs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           # Use the PAT and not the default GITHUB_TOKEN since we want to create a branch
           # in this workflow and push it to a remote that is NOT the current repo, i.e. pulumi/pulumi.
-          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: pulumi/docs
           path: docs
+      - name: Check out registry
+        uses: actions/checkout@v4
+        with:
+          repository: pulumi/registry
+          path: registry
+
 
       - name: Regenerate resource docs
         id: regenerate-resource-docs
@@ -113,23 +119,28 @@ jobs:
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           BRANCH_NAME="${GITHUB_ACTOR}/${PR_NUMBER}-test-generator-changes"
 
+          pushd registry/tools/resourcedocsgen
+
+          go mod edit -replace github.com/pulumi/pulumi/pkg/v3=../../../pulumi/pkg
+          go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
+
+          go mod tidy
+
+          if [ -z "${GOPATH:-}" ]; then
+            echo "GOPATH is empty. Defaulting to ${HOME}/go"
+            GOPATH="${HOME}/go"
+          fi
+          go build -o "${GOPATH}/bin/resourcedocsgen" .
+          export PATH="${GOPATH}/bin/":$PATH
+
+          popd
+
           # If generating docs for more providers here, be sure to update
           # the description of the draft PR that is opened in the next step.
           pushd docs
 
-          pushd tools/resourcedocsgen
-          go mod edit -replace github.com/pulumi/pulumi/pkg/v3=../../../pulumi/pkg
-          go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
-          popd
-
           ./scripts/gen_resource_docs.sh aws true v5.42.0
           ./scripts/gen_resource_docs.sh kubernetes true
-
-          # Undo the changes to the go.mod and go.sum files since we don't want the PR
-          # to contain local overrides or the PR build in docs repo would fail.
-          pushd tools/resourcedocsgen
-          git checkout .
-          popd
 
           popd
 
@@ -145,7 +156,7 @@ jobs:
           # docs repo. Using a fork repo to raise the PR would also cause the `on: pull_request` workflow
           # to trigger, but currently Pulumify in the docs repo does not run for forks, but we want it to
           # generate the preview link.
-          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
           path: docs
           committer: Pulumi Bot <bot@pulumi.com>
           author: Pulumi Bot <bot@pulumi.com>

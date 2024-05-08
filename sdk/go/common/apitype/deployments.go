@@ -36,14 +36,21 @@ const (
 // CreateDeploymentRequest defines the request payload that is expected when
 // creating a new deployment.
 type CreateDeploymentRequest struct {
+	// Op
+	Op PulumiOperation `json:"operation"`
+
+	// InheritSettings is a flag that indicates whether the deployment should inherit
+	// deployment settings from the stack.
+	InheritSettings bool `json:"inheritSettings"`
+
 	// Executor defines options that the executor is going to use to run the job.
-	Executor *ExecutorContext `json:"executorContext"`
+	Executor *ExecutorContext `json:"executorContext,omitempty"`
 
 	// Source defines how the source code to the Pulumi program will be gathered.
 	Source *SourceContext `json:"sourceContext,omitempty"`
 
 	// Operation defines the options that the executor will use to run the Pulumi commands.
-	Operation *OperationContext `json:"operationContext"`
+	Operation *OperationContext `json:"operationContext,omitempty"`
 }
 
 type ExecutorContext struct {
@@ -51,7 +58,49 @@ type ExecutorContext struct {
 	WorkingDirectory string `json:"workingDirectory"`
 
 	// Defines the image that the pulumi operations should run in.
-	ExecutorImage string `json:"executorImage,omitempty"`
+	ExecutorImage *DockerImage `json:"executorImage,omitempty"`
+}
+
+// A DockerImage describes a Docker image reference + optional credentials for use with a job definition.
+type DockerImage struct {
+	Reference   string                  `json:"reference"`
+	Credentials *DockerImageCredentials `json:"credentials,omitempty"`
+}
+
+type dockerImageJSON struct {
+	Reference   string                  `json:"reference"`
+	Credentials *DockerImageCredentials `json:"credentials,omitempty"`
+}
+
+func (d *DockerImage) MarshalJSON() ([]byte, error) {
+	if d.Credentials != nil {
+		return json.Marshal(dockerImageJSON{
+			Reference:   d.Reference,
+			Credentials: d.Credentials,
+		})
+	}
+	return json.Marshal(d.Reference)
+}
+
+func (d *DockerImage) UnmarshalJSON(bytes []byte) error {
+	var image dockerImageJSON
+	if err := json.Unmarshal(bytes, &image); err == nil {
+		d.Reference, d.Credentials = image.Reference, image.Credentials
+		return nil
+	}
+
+	var reference string
+	if err := json.Unmarshal(bytes, &reference); err != nil {
+		return err
+	}
+	d.Reference, d.Credentials = reference, nil
+	return nil
+}
+
+// DockerImageCredentials describes the credentials needed to access a Docker repository.
+type DockerImageCredentials struct {
+	Username string      `json:"username"`
+	Password SecretValue `json:"password"`
 }
 
 // SourceContext describes some source code, and how to obtain it.

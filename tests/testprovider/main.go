@@ -18,21 +18,47 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
 	providerName = "testprovider"
 	version      = "0.0.1"
 )
+
+var providerSchema = pschema.PackageSpec{
+	Name:        "testprovider",
+	Description: "A test provider.",
+	DisplayName: "testprovider",
+
+	Config: pschema.ConfigSpec{},
+
+	Provider: pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "The provider type for the testprovider package.",
+			Type:        "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{},
+	},
+
+	Types:     map[string]pschema.ComplexTypeSpec{},
+	Resources: map[string]pschema.ResourceSpec{},
+	Functions: map[string]pschema.FunctionSpec{},
+	Language:  map[string]pschema.RawMessage{},
+}
 
 // Minimal set of methods to implement a basic provider.
 type resourceProvider interface {
@@ -41,7 +67,7 @@ type resourceProvider interface {
 	Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error)
 	Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error)
 	Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error)
-	Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error)
+	Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error)
 }
 
 var resourceProviders = map[string]resourceProvider{
@@ -122,7 +148,9 @@ func (k *testproviderProvider) DiffConfig(ctx context.Context, req *rpc.DiffRequ
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (k *testproviderProvider) Configure(_ context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
-	return &rpc.ConfigureResponse{}, nil
+	return &rpc.ConfigureResponse{
+		AcceptSecrets: true,
+	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
@@ -191,7 +219,7 @@ func (k *testproviderProvider) Update(ctx context.Context, req *rpc.UpdateReques
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed
 // to still exist.
-func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
+func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -200,35 +228,61 @@ func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteReques
 }
 
 // Construct creates a new component resource.
-func (k *testproviderProvider) Construct(_ context.Context, _ *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
-	panic("Construct not implemented")
+func (k *testproviderProvider) Construct(ctx context.Context, req *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
+	if req.Type != "testprovider:index:Component" {
+		return nil, fmt.Errorf("unknown resource type %s", req.Type)
+	}
+
+	return pulumiprovider.Construct(
+		ctx, req, k.host.EngineConn(),
+		func(ctx *pulumi.Context, typ, name string, inputs pulumiprovider.ConstructInputs,
+			options pulumi.ResourceOption,
+		) (*pulumiprovider.ConstructResult, error) {
+			args := &ComponentArgs{}
+			if err := inputs.CopyTo(args); err != nil {
+				return nil, fmt.Errorf("setting args: %w", err)
+			}
+
+			component, err := NewComponent(ctx, name, args, options)
+			if err != nil {
+				return nil, err
+			}
+
+			return pulumiprovider.NewConstructResult(component)
+		})
 }
 
 // GetPluginInfo returns generic information about this plugin, like its version.
-func (k *testproviderProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*rpc.PluginInfo, error) {
+func (k *testproviderProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*rpc.PluginInfo, error) {
 	return &rpc.PluginInfo{
 		Version: k.version,
 	}, nil
 }
 
-func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest,
 ) (*rpc.GetSchemaResponse, error) {
-	// Really mini inaccurate schema just to get "gensdk" works for parameters.
-
-	name := "testprovider"
-	if k.parameter != nil {
-		name = *k.parameter
+	makeJSONString := func(v any) ([]byte, error) {
+		var out bytes.Buffer
+		encoder := json.NewEncoder(&out)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "    ")
+		if err := encoder.Encode(v); err != nil {
+			return nil, err
+		}
+		return out.Bytes(), nil
 	}
-	schema := fmt.Sprintf("{\"name\": \"%s\"}", name)
-
+	schemaJSON, err := makeJSONString(providerSchema)
+	if err != nil {
+		return nil, err
+	}
 	return &rpc.GetSchemaResponse{
-		Schema: schema,
+		Schema: string(schemaJSON),
 	}, nil
 }
 
@@ -237,8 +291,8 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 // to the host to decide how long to wait after Cancel is called before (e.g.)
 // hard-closing any gRPC connection.
-func (k *testproviderProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (k *testproviderProvider) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (k *testproviderProvider) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {

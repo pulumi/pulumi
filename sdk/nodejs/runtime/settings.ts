@@ -16,13 +16,14 @@ import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource } from "../resource";
+import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
 import { getLocalStore, getStore } from "./state";
 
-const engrpc = require("../proto/engine_grpc_pb.js");
-const engproto = require("../proto/engine_pb.js");
-const resrpc = require("../proto/resource_grpc_pb.js");
-const resproto = require("../proto/resource_pb.js");
+import * as engrpc from "../proto/engine_grpc_pb";
+import * as engproto from "../proto/engine_pb";
+import * as resrpc from "../proto/resource_grpc_pb";
+import * as resproto from "../proto/resource_pb";
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
@@ -56,8 +57,8 @@ export interface Options {
     readonly syncDir?: string;
 }
 
-let monitor: any | undefined;
-let engine: any | undefined;
+let monitor: resrpc.ResourceMonitorClient | undefined;
+let engine: engrpc.EngineClient | undefined;
 
 // reset options resets nodejs runtime global state (such as rpc clients),
 // and sets nodejs runtime option env vars to the specified values.
@@ -70,24 +71,36 @@ export function resetOptions(
     preview: boolean,
     organization: string,
 ) {
-    const { settings } = getStore();
+    const store = getStore();
 
     monitor = undefined;
     engine = undefined;
-    settings.monitor = undefined;
-    settings.engine = undefined;
-    settings.rpcDone = Promise.resolve();
-    settings.featureSupport = {};
+
+    store.settings.monitor = undefined;
+    store.settings.engine = undefined;
+    store.settings.rpcDone = Promise.resolve();
+    store.settings.featureSupport = {};
 
     // reset node specific environment variables in the process
-    settings.options.project = project;
-    settings.options.stack = stack;
-    settings.options.dryRun = preview;
-    settings.options.queryMode = isQueryMode();
-    settings.options.parallel = parallel;
-    settings.options.monitorAddr = monitorAddr;
-    settings.options.engineAddr = engineAddr;
-    settings.options.organization = organization;
+    store.settings.options.project = project;
+    store.settings.options.stack = stack;
+    store.settings.options.dryRun = preview;
+    store.settings.options.queryMode = isQueryMode();
+    store.settings.options.parallel = parallel;
+    store.settings.options.monitorAddr = monitorAddr;
+    store.settings.options.engineAddr = engineAddr;
+    store.settings.options.organization = organization;
+
+    store.leakCandidates = new Set<Promise<any>>();
+    store.logErrorCount = 0;
+    store.stackResource = undefined;
+    store.supportsSecrets = false;
+    store.supportsResourceReferences = false;
+    store.supportsOutputValues = false;
+    store.supportsDeletedWith = false;
+    store.supportsAliasSpecs = false;
+    store.supportsTransforms = false;
+    store.callbacks = undefined;
 }
 
 export function setMockOptions(
@@ -126,10 +139,58 @@ export function isDryRun(): boolean {
     return options().dryRun === true;
 }
 
-/** @internal Used only for testing purposes */
-export function _setFeatureSupport(key: string, val: boolean) {
-    const { featureSupport } = getStore().settings;
-    featureSupport[key] = val;
+/**
+ * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
+ * to is able to support a particular feature.
+ *
+ * @internal
+ */
+async function monitorSupportsFeature(monitorClient: resrpc.IResourceMonitorClient, feature: string): Promise<boolean> {
+    const req = new resproto.SupportsFeatureRequest();
+    req.setId(feature);
+
+    const result = await new Promise<boolean>((resolve, reject) => {
+        monitorClient.supportsFeature(
+            req,
+            (err: grpc.ServiceError | null, resp: resproto.SupportsFeatureResponse | undefined) => {
+                // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
+                // any features.
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve(false);
+                }
+
+                if (err) {
+                    return reject(err);
+                }
+
+                if (resp === undefined) {
+                    return reject(new Error("No response from resource monitor"));
+                }
+
+                return resolve(resp.getHassupport());
+            },
+        );
+    });
+
+    return result;
+}
+
+/**
+ * Queries the resource monitor for its capabilities and sets the appropriate flags in the store.
+ *
+ * @internal
+ **/
+export async function awaitFeatureSupport(): Promise<void> {
+    const monitorRef = getMonitor();
+    if (monitorRef !== undefined) {
+        const store = getStore();
+        store.supportsSecrets = await monitorSupportsFeature(monitorRef, "secrets");
+        store.supportsResourceReferences = await monitorSupportsFeature(monitorRef, "resourceReferences");
+        store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
+        store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
+        store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
+        store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
+    }
 }
 
 /** @internal Used only for testing purposes. */
@@ -225,7 +286,7 @@ export function hasMonitor(): boolean {
 /**
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
-export function getMonitor(): Object | undefined {
+export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
     const { settings } = getStore();
     const addr = options().monitorAddr;
     if (getLocalStore() === undefined) {
@@ -251,6 +312,38 @@ export function getMonitor(): Object | undefined {
         }
         return settings.monitor;
     }
+}
+
+/**
+ * Waits for any pending stack transforms to register.
+ */
+export async function awaitStackRegistrations(): Promise<void> {
+    const store = getStore();
+    const callbacks = store.callbacks;
+    if (callbacks === undefined) {
+        return;
+    }
+    return await callbacks.awaitStackRegistrations();
+}
+
+/**
+ * getCallbacks returns the current callbacks for RPC communications.
+ */
+export function getCallbacks(): ICallbackServer | undefined {
+    const store = getStore();
+    const callbacks = store.callbacks;
+    if (callbacks !== undefined) {
+        return callbacks;
+    }
+
+    const monitorRef = getMonitor();
+    if (monitorRef === undefined) {
+        return undefined;
+    }
+
+    const callbackServer = new CallbackServer(monitorRef);
+    store.callbacks = callbackServer;
+    return callbackServer;
 }
 
 /** @internal */
@@ -283,7 +376,7 @@ export function hasEngine(): boolean {
 /**
  * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
  */
-export function getEngine(): Object | undefined {
+export function getEngine(): engrpc.IEngineClient | undefined {
     const { settings } = getStore();
     if (getLocalStore() === undefined) {
         if (engine === undefined) {
@@ -374,13 +467,19 @@ export function getMaximumListeners(): number {
  */
 export function disconnectSync(): void {
     // Otherwise, actually perform the close activities (ignoring errors and crashes).
+    const store = getStore();
+    if (store.callbacks) {
+        store.callbacks.shutdown();
+        store.callbacks = undefined;
+    }
+
     if (monitor) {
         try {
             monitor.close();
         } catch (err) {
             // ignore.
         }
-        monitor = null;
+        monitor = undefined;
     }
     if (engine) {
         try {
@@ -388,7 +487,7 @@ export function disconnectSync(): void {
         } catch (err) {
             // ignore.
         }
-        engine = null;
+        engine = undefined;
     }
 }
 
@@ -414,7 +513,10 @@ export function rpcKeepAlive(): () => void {
  * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
  */
 export async function setRootResource(res: ComponentResource): Promise<void> {
-    const engineRef: any = getEngine();
+    // This is the first async point of program startup where we can query the resource monitor for its capabilities.
+    await awaitFeatureSupport();
+
+    const engineRef = getEngine();
     if (!engineRef) {
         return Promise.resolve();
     }
@@ -425,101 +527,21 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
     const urn = await res.urn.promise();
     req.setUrn(urn);
     return new Promise<void>((resolve, reject) => {
-        engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
-            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
-            // resources, just ignore there's nothing we can do.
-            if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                return resolve();
-            }
-
-            if (err) {
-                return reject(err);
-            }
-
-            return resolve();
-        });
-    });
-}
-
-/**
- * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
- * to is able to support a particular feature.
- */
-export async function monitorSupportsFeature(feature: string): Promise<boolean> {
-    const localStore = getStore();
-    const monitorRef: any = getMonitor();
-    if (!monitorRef) {
-        return localStore.settings.featureSupport[feature];
-    }
-
-    if (localStore.settings.featureSupport[feature] === undefined) {
-        const req = new resproto.SupportsFeatureRequest();
-        req.setId(feature);
-
-        const result = await new Promise<boolean>((resolve, reject) => {
-            monitorRef.supportsFeature(req, (err: grpc.ServiceError, resp: any) => {
-                // Back-compat case - if the monitor doesn't let us ask if it supports a feature, it doesn't support
-                // secrets.
+        engineRef.setRootResource(
+            req,
+            (err: grpc.ServiceError | null, resp: engproto.SetRootResourceResponse | undefined) => {
+                // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
+                // resources, just ignore there's nothing we can do.
                 if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                    return resolve(false);
+                    return resolve();
                 }
 
                 if (err) {
                     return reject(err);
                 }
 
-                return resolve(resp.getHassupport());
-            });
-        });
-
-        localStore.settings.featureSupport[feature] = result;
-    }
-
-    return localStore.settings.featureSupport[feature];
-}
-
-/**
- * monitorSupportsSecrets returns a promise that when resolved tells you if the resource monitor we are connected
- * to is able to support secrets across its RPC interface. When it does, we marshal outputs marked with the secret
- * bit in a special way.
- */
-export function monitorSupportsSecrets(): Promise<boolean> {
-    return monitorSupportsFeature("secrets");
-}
-
-/**
- * monitorSupportsResourceReferences returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support resource references across its RPC interface. When it does, we marshal resources
- * in a special way.
- */
-export async function monitorSupportsResourceReferences(): Promise<boolean> {
-    return monitorSupportsFeature("resourceReferences");
-}
-
-/**
- * monitorSupportsOutputValues returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support output values across its RPC interface. When it does, we marshal outputs
- * in a special way.
- */
-export async function monitorSupportsOutputValues(): Promise<boolean> {
-    return monitorSupportsFeature("outputValues");
-}
-
-/**
- * monitorSupportsDeletedWith returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support the deletedWith resource option across its RPC interface.
- */
-export async function monitorSupportsDeletedWith(): Promise<boolean> {
-    return monitorSupportsFeature("deletedWith");
-}
-
-/**
- * monitorSupportsAliasSpecs returns a promise that when resolved tells you if the resource monitor we are
- * connected to is able to support alias specs across its RPC interface. When it does, we marshal aliases
- * in a special way.
- *
- * @internal
- */
-export async function monitorSupportsAliasSpecs(): Promise<boolean> {
-    return monitorSupportsFeature("aliasSpecs");
+                return resolve();
+            },
+        );
+    });
 }

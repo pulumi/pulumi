@@ -43,6 +43,7 @@ func Test_decodeValue(t *testing.T) {
 		{repr: "[] bar"},
 		{repr: "{} bar"},
 		{repr: "[] \n not yaml"},
+		{repr: "---\n'hello'\n...\n---\ngoodbye\n...\n"},
 
 		// Positive cases
 		{

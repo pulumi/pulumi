@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -42,8 +41,6 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	var sm secrets.Manager
 	var err error
 	switch ty {
-	case b64.Type:
-		sm = b64.NewBase64SecretsManager()
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:
@@ -129,9 +126,7 @@ func (c *cachingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) 
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
-func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
-	ctx := context.TODO()
-
+func (c *cachingCrypter) encryptSecret(ctx context.Context, secret *resource.Secret, plaintext string) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
 	//
 	// Otherwise, re-encrypt the plaintext and update the cache.

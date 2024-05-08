@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,21 +18,220 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// buildImportFile takes an event stream from the engine and builds an import file from it for every create.
+func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
+	return promise.Run(func() (importFile, error) {
+		// We may exit the below loop early if we encounter an error, so we need to make sure we drain the events
+		// channel.
+		defer func() {
+			for range events {
+			}
+		}()
+
+		// A mapping of every URN we see to it's name, used to build later resourceSpecs
+		fullNameTable := map[resource.URN]string{}
+		// A set of all URNs we've added to the import list, used to avoid adding parents to NameTable.
+		importSet := map[resource.URN]struct{}{}
+		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
+		providerInputs := map[resource.URN]resource.PropertyMap{}
+
+		imports := importFile{
+			NameTable: map[string]resource.URN{},
+		}
+
+		// A mapping of names to the index of the resourceSpec in imports.Resources that used it. We have to
+		// fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
+		// inefficient to wait for the whole thing to finish before building the import specs.
+		takenNames := map[string]int{}
+
+		// We want to prefer using the urns name for the source name, but if it conflicts with other resources
+		// we'll auto suffix it, first with the type, then with rising numbers. This function does that
+		// auto-suffixing.
+		uniqueName := func(name string, typ tokens.Type) string {
+			caser := cases.Title(language.English, cases.NoLower)
+			typeSuffix := caser.String(string(typ.Name()))
+			baseName := fmt.Sprintf("%s%s", name, typeSuffix)
+			name = baseName
+
+			counter := 2
+			for _, has := takenNames[name]; has; _, has = takenNames[name] {
+				name = fmt.Sprintf("%s%d", baseName, counter)
+				counter++
+			}
+			return name
+		}
+
+		// This is a pretty trivial mapping of Create operations to import declarations.
+		for e := range events {
+			preEvent, ok := e.Payload().(engine.ResourcePreEventPayload)
+			if !ok {
+				continue
+			}
+
+			urn := preEvent.Metadata.URN
+			name := urn.Name()
+			if i, has := takenNames[name]; has {
+				// Another resource already has this name, lets check if that was it's original name or if it was a rename
+				importI := imports.Resources[i]
+				if importI.LogicalName != "" {
+					// i was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
+					newName := uniqueName(importI.LogicalName, importI.Type)
+					imports.Resources[i].Name = newName
+					// Go through all the resources and fix up any parent references to use the new name.
+					for j := range imports.Resources {
+						if imports.Resources[j].Parent == name {
+							imports.Resources[j].Parent = newName
+						}
+					}
+					// Fix up the nametable if needed
+					if urn, has := imports.NameTable[name]; has {
+						delete(imports.NameTable, name)
+						imports.NameTable[newName] = urn
+					}
+					// Fix up takenNames incase this is hit again
+					takenNames[newName] = i
+				} else {
+					// i just had the same name as us, lets find a new one
+					name = uniqueName(name, urn.Type())
+				}
+			}
+
+			// Name is unique at this point
+			fullNameTable[urn] = name
+
+			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
+			// any resources that use it.
+			if providers.IsProviderType(urn.Type()) {
+				providerInputs[urn] = preEvent.Metadata.Res.Inputs
+			}
+
+			// Only interested in creates
+			if preEvent.Metadata.Op != deploy.OpCreate {
+				continue
+			}
+			// No need to import the root stack even if it needs creating
+			if preEvent.Metadata.Type == resource.RootStackType {
+				continue
+			}
+
+			// We're importing this URN so track that we've seen it.
+			importSet[urn] = struct{}{}
+
+			// We can't actually import providers yet, just skip them. We'll only error if anything
+			// actually tries to use it.
+			if providers.IsProviderType(urn.Type()) {
+				continue
+			}
+
+			new := preEvent.Metadata.New
+			contract.Assertf(new != nil, "%s: expected new resource for a create to be non-nil", urn)
+
+			var parent string
+			if new.Parent != "" {
+				// If the parent is just the root stack then skip it as we don't need to import that.
+				if new.Parent.QualifiedType() != resource.RootStackType {
+					var has bool
+					parent, has = fullNameTable[new.Parent]
+					contract.Assertf(has, "expected parent %q to be in full name table", new.Parent)
+					// Don't add to the import NameTable if we're importing this in the same deployment.
+					if _, has := importSet[new.Parent]; !has {
+						imports.NameTable[parent] = new.Parent
+					}
+				}
+			}
+
+			var provider, version, pluginDownloadURL string
+			if new.Provider != "" {
+				ref, err := providers.ParseReference(new.Provider)
+				if err != nil {
+					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
+				}
+
+				// If we're trying to create this provider in the same deployment and it's not a default provider then
+				// we need to error, the import system can't yet "import" providers.
+				if !providers.IsDefaultProvider(ref.URN()) {
+					if _, has := importSet[ref.URN()]; has {
+						return importFile{}, fmt.Errorf("cannot import resource %q with a new explicit provider %q", new.URN, ref.URN())
+					}
+
+					var has bool
+					provider, has = fullNameTable[ref.URN()]
+					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
+
+					imports.NameTable[provider] = ref.URN()
+				}
+
+				inputs, has := providerInputs[ref.URN()]
+				contract.Assertf(has, "expected provider %q to be in provider inputs table", ref)
+
+				v, err := providers.GetProviderVersion(inputs)
+				if err != nil {
+					return importFile{}, fmt.Errorf("could not get provider version for %s: %w", ref, err)
+				}
+				if v != nil {
+					version = v.String()
+				}
+
+				pluginDownloadURL, err = providers.GetProviderDownloadURL(inputs)
+				if err != nil {
+					return importFile{}, fmt.Errorf("could not get provider download url for %s: %w", ref, err)
+				}
+			}
+
+			var id resource.ID
+			// id only needs filling in for custom resources, set it to a placeholder so the user can easily
+			// search for that.
+			if new.Custom {
+				id = "<PLACEHOLDER>"
+			}
+
+			// We only want to set logical name if we need to
+			var logicalName string
+			if name != urn.Name() {
+				logicalName = urn.Name()
+			}
+
+			takenNames[name] = len(imports.Resources)
+			imports.Resources = append(imports.Resources, importSpec{
+				Type:              new.Type,
+				Name:              name,
+				ID:                id,
+				Parent:            parent,
+				Provider:          provider,
+				Component:         !new.Custom,
+				Remote:            !new.Custom && new.Provider != "",
+				Version:           version,
+				PluginDownloadURL: pluginDownloadURL,
+				LogicalName:       logicalName,
+			})
+		}
+
+		return imports, nil
+	})
+}
 
 func newPreviewCmd() *cobra.Command {
 	var debug bool
@@ -45,6 +244,7 @@ func newPreviewCmd() *cobra.Command {
 	var configPath bool
 	var client string
 	var planFilePath string
+	var importFilePath string
 	var showSecrets bool
 
 	// Flags for remote operations.
@@ -64,6 +264,7 @@ func newPreviewCmd() *cobra.Command {
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
+	var suppressProgress bool
 	var suppressPermalink string
 	var targets []string
 	var replaces []string
@@ -93,7 +294,7 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -107,6 +308,7 @@ func newPreviewCmd() *cobra.Command {
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
 				SuppressOutputs:        suppressOutputs,
+				SuppressProgress:       suppressProgress,
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
@@ -123,10 +325,6 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				if len(args) == 0 {
-					return result.FromError(errors.New("must specify remote URL"))
-				}
-
 				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
@@ -135,17 +333,22 @@ func newPreviewCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, args[0], remoteArgs)
+				var url string
+				if len(args) > 0 {
+					url = args[0]
+				}
+
+				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			filestateBackend, err := isFilestateBackend(displayOpts)
+			isDIYBackend, err := isDIYBackend(displayOpts)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			// by default, we are going to suppress the permalink when using self-managed backends
+			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && filestateBackend {
+			if suppressPermalink != "false" && isDIYBackend {
 				displayOpts.SuppressPermalink = true
 			}
 
@@ -189,6 +392,7 @@ func newPreviewCmd() *cobra.Command {
 
 			stackName := s.Ref().Name().String()
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
 				stackName,
 				proj,
 				cfg.Environment,
@@ -236,6 +440,15 @@ func newPreviewCmd() *cobra.Command {
 				Display: displayOpts,
 			}
 
+			// If we're building an import file we want to hook the event stream from the engine to transform
+			// create operations into import specs.
+			var importFilePromise *promise.Promise[importFile]
+			var events chan engine.Event
+			if importFilePath != "" {
+				events = make(chan engine.Event)
+				importFilePromise = buildImportFile(events)
+			}
+
 			plan, changes, res := s.Preview(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -245,7 +458,13 @@ func newPreviewCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             backend.CancellationScopes,
-			})
+			}, events)
+			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
+			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
+			// events.
+			if events != nil {
+				close(events)
+			}
 
 			switch {
 			case res != nil:
@@ -273,6 +492,22 @@ func newPreviewCmd() *cobra.Command {
 						cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
 					}
 				}
+				if importFilePromise != nil {
+					importFile, err := importFilePromise.Result(ctx)
+					if err != nil {
+						return result.FromError(err)
+					}
+
+					f, err := os.Create(importFilePath)
+					if err != nil {
+						return result.FromError(err)
+					}
+					err = writeImportFile(importFile, f)
+					err = errors.Join(err, f.Close())
+					if err != nil {
+						return result.FromError(err)
+					}
+				}
 				return nil
 			}
 		}),
@@ -292,7 +527,7 @@ func newPreviewCmd() *cobra.Command {
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
-		"Config to use during the preview")
+		"Config to use during the preview and save to the stack config file")
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
@@ -302,6 +537,10 @@ func newPreviewCmd() *cobra.Command {
 	if !hasExperimentalCommands() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("save-plan"), `Could not mark "save-plan" as hidden`)
 	}
+	cmd.PersistentFlags().StringVar(
+		&importFilePath, "import-file", "",
+		"Save any creates seen during the preview into an import file to use with 'pulumi import'")
+
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 
@@ -343,7 +582,7 @@ func newPreviewCmd() *cobra.Command {
 		"Serialize the preview diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
@@ -367,7 +606,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
-
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")

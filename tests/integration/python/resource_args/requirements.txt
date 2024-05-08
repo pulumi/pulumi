@@ -1,1 +1,7 @@
-pulumi
+# TODO[pulumi/pulumi#12414]: Remove our implicit dependency on setuptools.
+# Python 3.12 doesn't include setuptools in virtual environments created by
+# `python -m venv`, so we need to add it to the requirements file here.
+# Otherwise, on Python 3.12, when running this test we'll get an error from
+# the generated example library's _utilities.py file:
+#     ModuleNotFoundError: No module named 'pkg_resources'
+setuptools

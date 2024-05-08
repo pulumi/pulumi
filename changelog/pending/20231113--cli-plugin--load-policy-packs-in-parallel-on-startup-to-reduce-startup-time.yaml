@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/plugin
-  description: Load policy packs in parallel on startup to reduce startup time

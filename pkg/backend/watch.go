@@ -17,6 +17,7 @@ package backend
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -173,7 +174,7 @@ func getWatchUtil() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Could not locate pulumi-watch binary")
+	return "", errors.New("Could not locate pulumi-watch binary")
 }
 
 func stdoutToChannel(scanner *bufio.Scanner, out chan string) {

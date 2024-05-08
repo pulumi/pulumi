@@ -1,0 +1,82 @@
+{
+    "name": "myPkg",
+    "description": "Test imports across different module names",
+    "types": {
+        "myPkg:myMod/childA:EnumA": {
+            "type": "string",
+            "enum": [
+                {
+                    "name": "A1",
+                    "value": "a1"
+                },
+                {
+                    "name": "A2",
+                    "value": "a2"
+                }
+            ]
+        },
+        "myPkg:myMod/childB:EnumB": {
+            "type": "string",
+            "enum": [
+                {
+                    "name": "B1",
+                    "value": "b1"
+                },
+                {
+                    "name": "B2",
+                    "value": "b2"
+                }
+            ]
+        },
+        "myPkg:myMod/childA:ObjectA": {
+            "type": "object",
+            "properties": {
+                "propA": {
+                    "type": "string"
+                }
+            }
+        },
+        "myPkg:myMod/childB:ObjectB": {
+            "type": "object",
+            "properties": {
+                "propB": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "resources": {
+        "myPkg:myMod/childA:MemberA1": {
+            "isComponent": true
+        },
+        "myPkg:myMod/childB:MemberB1": {
+            "isComponent": true
+        },
+        "myPkg:myMod/childB:MemberB2": {
+            "isComponent": true,
+            "properties": {
+                "resourceFromDifferentModule": {
+                    "$ref": "#/resources/myPkg:myMod/childA:MemberA1"
+                },
+                "resourceFromSameModule": {
+                    "$ref": "#/resources/myPkg:myMod/childB:MemberB1"
+                },
+                "enumFromDifferentModule": {
+                    "$ref": "#/types/myPkg:myMod/childA:EnumA"
+                },
+                "enumFromSameModule": {
+                    "$ref": "#/types/myPkg:myMod/childB:EnumB"
+                },
+                "objectFromDifferentModule": {
+                    "$ref": "#/types/myPkg:myMod/childA:ObjectA"
+                },
+                "objectFromSameModule": {
+                    "$ref": "#/types/myPkg:myMod/childB:ObjectB"
+                }
+            }
+        }
+    },
+    "language": {
+        "python": {}
+    }
+}

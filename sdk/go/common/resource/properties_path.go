@@ -47,7 +47,7 @@ type PropertyPath []interface{}
 // - ["root key with a ."][100]
 // - root.array[*].field
 // - root.array["*"].field
-func ParsePropertyPath(path string) (PropertyPath, error) {
+func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 	// We interpret the grammar above a little loosely in order to keep things simple. Specifically, we will accept
 	// something close to the following:
 	// pathElement := { '.' } [a-zA-Z_$][a-zA-Z0-9_$]
@@ -64,7 +64,9 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 			if len(path) == 0 {
 				return nil, errors.New("expected property path to end with a name or index")
 			}
-			if path[0] == '[' {
+			if path[0] == '[' && strict {
+				return nil, errors.New("expected property name after '.'")
+			} else if path[0] == '[' {
 				// We tolerate a '.' followed by a '[', which is not strictly legal, but is common from old providers.
 				logging.V(10).Infof("property path '%s' contains a '.' followed by a '['; this is not strictly legal", path)
 			}
@@ -121,6 +123,14 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 		}
 	}
 	return PropertyPath(elements), nil
+}
+
+func ParsePropertyPath(path string) (PropertyPath, error) {
+	return parsePropertyPath(path, false)
+}
+
+func ParsePropertyPathStrict(path string) (PropertyPath, error) {
+	return parsePropertyPath(path, true)
 }
 
 // Get attempts to get the value located by the PropertyPath inside the given PropertyValue. If any component of the

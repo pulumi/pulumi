@@ -10,6 +10,8 @@ import (
 )
 
 // Test that the engine is capable of relinquishing control of a resource without deleting it.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestReadRelinquish(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",

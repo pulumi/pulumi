@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-from pulumi import CustomResource
+from pulumi import CustomResource, Output
 
 
 class MyResource(CustomResource):
+    outprop: Output[str]
+    outintprop: Output[int]
+
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            "falseprop": False,
-            "trueprop": True,
-            "intprop": 42,
-            "listprop": [1, 2, "string", False],
-            "mapprop": {
-                "foo": ["bar", "baz"]
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                "falseprop": False,
+                "trueprop": True,
+                "intprop": 42,
+                "listprop": [1, 2, "string", False],
+                "mapprop": {"foo": ["bar", "baz"]},
+                "outprop": None,
+                "outintprop": None,
             },
-            "outprop": None,
-            "outintprop": None,
-        })
+        )
+
 
 def assert_eq(lhs, rhs):
     assert lhs == rhs

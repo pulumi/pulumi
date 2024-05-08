@@ -18,12 +18,20 @@ import (
 	"context"
 	"io"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+type ResultState int
+
+const (
+	ResultStateSuccess ResultState = iota
+	ResultStateFailed
+	ResultStateSkipped
 )
 
 // A ProviderSource allows a Source to lookup provider plugins.
@@ -62,13 +70,13 @@ type SourceResourceMonitor interface {
 	Address() string
 	Cancel() error
 	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
-	Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
 	RegisterResource(ctx context.Context,
 		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error)
+		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 }
 
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source
@@ -88,7 +96,8 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State *resource.State // the resource state.
+	State  *resource.State // the resource state.
+	Result ResultState     // the result of the registration.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -129,5 +138,6 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State *resource.State
+	State  *resource.State
+	Result ResultState
 }

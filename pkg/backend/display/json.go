@@ -15,6 +15,7 @@
 package display
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -127,6 +128,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
+		case engine.CancelEvent:
+			// Pacify the linter here, this is already handled beforehand
 		// Events occurring early:
 		case engine.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
@@ -174,9 +177,10 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					DetailedDiff:   detailedDiff,
 				}
 
+				ctx := context.TODO()
 				if m.Old != nil {
 					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.OldState = &res
 					} else {
@@ -185,7 +189,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 				}
 				if m.New != nil {
 					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.NewState = &res
 					} else {
@@ -200,10 +204,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		// resolving or operations failing.
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent:
-			// At this point in time, we don't handle policy events in JSON serialization
-			continue
-		case engine.PolicyLoadEvent:
+		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
 		case engine.SummaryEvent:

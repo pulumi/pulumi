@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { PulumiCommand } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
@@ -44,6 +45,10 @@ export interface Workspace {
      * The version of the underlying Pulumi CLI/Engine.
      */
     readonly pulumiVersion: string;
+    /**
+     * The underlying Pulumi CLI.
+     */
+    readonly pulumiCommand: PulumiCommand;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
@@ -91,6 +96,28 @@ export interface Workspace {
      * LocalWorkspace does not utilize this extensibility point.
      */
     postCommandCallback(stackName: string): Promise<void>;
+    /**
+     * Adds environments to the end of a stack's import list. Imported environments are merged in order
+     * per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param stackName The stack to operate on
+     * @param environments The names of the environments to add to the stack's configuration
+     */
+    addEnvironments(stackName: string, ...environments: string[]): Promise<void>;
+    /**
+     * Returns the list of environments associated with the specified stack name.
+     *
+     * @param stackName The stack to operate on
+     */
+    listEnvironments(stackName: string): Promise<string[]>;
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param stackName The stack to operate on
+     * @param environment The name of the environment to remove from the stack's configuration
+     */
+    removeEnvironment(stackName: string, environment: string): Promise<void>;
     /**
      * Returns the value associated with the specified stack name and key,
      * scoped to the Workspace.
@@ -211,7 +238,7 @@ export interface Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
-     * @param kind the kind of plugin e.g. "resource"
+     * @param server the server to install the plugin into
      */
     installPluginFromServer(name: string, version: string, server: string): Promise<void>;
     /**
@@ -219,7 +246,7 @@ export interface Workspace {
      *
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
-     * @param server the server to install the plugin into
+     * @param kind the kind of plugin e.g. "resource"
      */
     installPlugin(name: string, version: string, kind?: string): Promise<void>;
     /**

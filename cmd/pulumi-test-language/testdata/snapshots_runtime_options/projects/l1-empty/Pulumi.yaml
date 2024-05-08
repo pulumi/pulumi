@@ -1,0 +1,11 @@
+name: l1-empty
+runtime:
+  name: mock
+  options:
+    bool_option: true
+    list_option:
+    - a
+    - b
+    - c
+    number_option: 42
+    string_option: hello

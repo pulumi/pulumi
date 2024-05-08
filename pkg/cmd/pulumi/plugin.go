@@ -48,6 +48,7 @@ func newPluginCmd() *cobra.Command {
 	cmd.AddCommand(newPluginInstallCmd())
 	cmd.AddCommand(newPluginLsCmd())
 	cmd.AddCommand(newPluginRmCmd())
+	cmd.AddCommand(newPluginRunCmd())
 
 	return cmd
 }
@@ -66,14 +67,15 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	}
 
 	defer ctx.Close()
-
+	runtimeOptions := proj.Runtime.Options()
+	programInfo := plugin.NewProgramInfo(root, pwd, main, runtimeOptions)
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
-	plugins, err := plugin.GetRequiredPlugins(ctx.Host, ctx.Root, plugin.ProgInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-	}, plugin.AllPlugins)
+	plugins, err := plugin.GetRequiredPlugins(
+		ctx.Host,
+		proj.Runtime.Name(),
+		string(proj.Name),
+		programInfo, plugin.AllPlugins)
 	if err != nil {
 		return nil, err
 	}

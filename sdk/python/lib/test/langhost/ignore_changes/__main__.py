@@ -22,8 +22,11 @@ class MyResource(CustomResource):
     def translate_input_property(self, prop: str) -> str:
         if prop == "ignored_property":
             return "ignoredProperty"
-        
+
         return prop
 
 
-res = MyResource("testResource", opts=ResourceOptions(ignore_changes=["ignored_property", "ignored_property_other"]))
+res = MyResource(
+    "testResource",
+    opts=ResourceOptions(ignore_changes=["ignored_property", "ignored_property_other"]),
+)

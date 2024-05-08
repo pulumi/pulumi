@@ -11,7 +11,7 @@ permissions:
 on:
   pull_request:
     paths-ignore:
-      - ".version"
+      - "sdk/.version"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -52,7 +52,7 @@ jobs:
     name: Inspect changed files
     runs-on: ubuntu-latest
     steps:
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: changes
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}

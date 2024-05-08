@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -31,7 +30,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	e.RunCommand("git", "init")
 
 	contents := "name: pulumi-test\ndescription: a test\nruntime: nodejs\n"
-	filePath := fmt.Sprintf("%s.yaml", workspace.ProjectFile)
+	filePath := workspace.ProjectFile + ".yaml"
 	filePath = path.Join(e.CWD, filePath)
 	err := os.WriteFile(filePath, []byte(contents), os.ModePerm)
 	assert.NoError(e, err, "writing %s file", filePath)
@@ -42,7 +41,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 // Returns the repo owner and name used.
 func CreatePulumiRepo(e *testing.Environment, projectFileContent string) {
 	e.RunCommand("git", "init")
-	filePath := path.Join(e.CWD, fmt.Sprintf("%s.yaml", workspace.ProjectFile))
+	filePath := path.Join(e.CWD, workspace.ProjectFile+".yaml")
 	err := os.WriteFile(filePath, []byte(projectFileContent), os.ModePerm)
 	assert.NoError(e, err, "writing %s file", filePath)
 }

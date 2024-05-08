@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,7 +46,7 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 			t.Parallel()
 
 			_, err := RetrieveTemplates(templateName, false, tt.templateKind)
-			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("template '%s' not found", templateName))
 		})
 	}
 }
@@ -169,7 +170,7 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 			t.Parallel()
 
 			_, err := RetrieveTemplates(tt.templateURL, true, tt.templateKind)
-			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("cannot use %s offline", tt.templateURL))
 		})
 	}
 }

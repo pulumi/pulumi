@@ -17,6 +17,7 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,13 +31,13 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -117,12 +118,12 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 var errPluginNotFound = errors.New("plugin not found")
 
 func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) (*grpc.ClientConn, error) {
-	port := fmt.Sprintf("%d", portNum)
+	port := strconv.Itoa(portNum)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial("127.0.0.1:"+port, dialOptions...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
+		return nil, fmt.Errorf("could not dial plugin [%v] over RPC: %w", bin, err)
 	}
 
 	// Now wait for the gRPC connection to the plugin to become ready.
@@ -145,6 +146,7 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 				// We have an error; see if it's a known status and, if so, react appropriately.
 				status, ok := status.FromError(err)
 				if ok {
+					//nolint:exhaustive // we have a default case for other statuses
 					switch status.Code() {
 					case codes.Unavailable:
 						// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
@@ -157,20 +159,20 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 				}
 
 				// Unexpected error; get outta dodge.
-				return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
+				return nil, fmt.Errorf("%v plugin [%v] did not come alive: %w", prefix, bin, err)
 			}
 			break
 		}
 		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
 		if !conn.WaitForStateChange(timeout, s) {
-			return nil, errors.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
+			return nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
 		}
 	}
 
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
+func newPlugin(ctx *Context, pwd, bin, prefix string, kind apitype.PluginKind,
 	args, env []string, dialOptions []grpc.DialOption,
 ) (*plugin, error) {
 	if logging.V(9) {
@@ -199,7 +201,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 	// Try to execute the binary.
 	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
+		return nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
 	contract.Assertf(plug != nil, "plugin %v canot be nil", bin)
 
@@ -271,10 +273,10 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 
 			// Fall back to a generic, opaque error.
 			if portString == "" {
-				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
+				return nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
 			}
-			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')",
-				bin, portString)
+			return nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
+				bin, portString, readerr)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -290,8 +292,8 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 	if port, err = strconv.Atoi(portString); err != nil {
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
-		return nil, errors.Wrapf(
-			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, bin, port)
+		return nil, fmt.Errorf(
+			"%v plugin [%v] wrote a non-numeric port to stdout ('%v'): %w", prefix, bin, port, err)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
@@ -310,7 +312,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
+func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, env []string,
 ) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
@@ -331,34 +333,35 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		if kind == workspace.ResourcePlugin || kind == workspace.ConverterPlugin {
+		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else if kind == workspace.AnalyzerPlugin {
+		} else if kind == apitype.AnalyzerPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
 		} else {
-			return nil, fmt.Errorf("language plugins must be executable binaries")
+			return nil, errors.New("language plugins must be executable binaries")
 		}
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
-		runtime, err := ctx.Host.LanguageRuntime(pluginDir, pluginDir, runtimeInfo.Name(), runtimeInfo.Options())
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
 		if err != nil {
-			return nil, errors.Wrap(err, "loading runtime")
+			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
 		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
-			Pwd:     pwd,
-			Program: pluginDir,
-			Args:    pluginArgs,
-			Env:     env,
+			Info:             info,
+			WorkingDirectory: ctx.Pwd,
+			Args:             pluginArgs,
+			Env:              env,
 		})
 		if err != nil {
 			return nil, err

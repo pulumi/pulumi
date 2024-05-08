@@ -67,13 +67,18 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     TEMP_DIR=/tmp/nodejs-build                 && \
     echo -e "\tJavaScript temp dir: $TEMP_DIR" && \
     mkdir -p "$TEMP_DIR"                       && \
-    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=grpc_js,minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin $PROTO_FILES && \
+    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --ts_out=grpc_js:${TEMP_DIR} --grpc_out=grpc_js,minimum_node_version=6:$TEMP_DIR \
+        --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin --plugin=protoc-gen-ts=/usr/bin/protoc-gen-ts \
+        $PROTO_FILES && \
     find $TEMP_DIR && \
+    find "$TEMP_DIR/pulumi" -type f -name "*.ts" -exec sed -i "s|../pulumi/|./|" {} \; && \
+    find "$TEMP_DIR/pulumi" -type f -name "*.ts" -exec sed -i "s|/./|/|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|^var global = .*;|var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../pulumi/|require('\''./|" {} \; && \
     find "$TEMP_DIR/pulumi" -type f -name "*.js" -exec sed -i "s|require('\''../../pulumi/|require('\''../|" {} \; && \
     rm -rf "$JS_PULUMIRPC"/* && \
     cp "$TEMP_DIR"/google/protobuf/*.js "$JS_PULUMIRPC" && \
+    cp "$TEMP_DIR"/google/protobuf/*.ts "$JS_PULUMIRPC" && \
     cp -r "$TEMP_DIR"/pulumi/* "$JS_PULUMIRPC"'
 
 # Protoc for Python has a bug where, if your proto files are all in the same directory relative

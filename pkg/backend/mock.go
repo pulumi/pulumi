@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/esc"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -98,6 +99,7 @@ func (be *MockBackend) URL() string {
 func (be *MockBackend) SetCurrentProject(project *workspace.Project) {
 	if be.SetCurrentProjectF != nil {
 		be.SetCurrentProjectF(project)
+		return
 	}
 	panic("not implemented")
 }
@@ -240,7 +242,7 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 }
 
 func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation,
+	op UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	if be.PreviewF != nil {
 		return be.PreviewF(ctx, stack, op)
@@ -507,7 +509,7 @@ func (ms *MockStack) Backend() Backend {
 
 func (ms *MockStack) Preview(
 	ctx context.Context,
-	op UpdateOperation,
+	op UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)

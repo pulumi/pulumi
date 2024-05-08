@@ -15,7 +15,7 @@ import (
 	"github.com/hinshun/vt10x"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -94,8 +94,8 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	var called bool
 	cmd := stateUpgradeCmd{
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return &stubFileBackend{
-				UpgradeF: func(context.Context, *filestate.UpgradeOptions) error {
+			return &stubDIYBackend{
+				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
 					called = true
 					return nil
 				},
@@ -111,13 +111,37 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	assert.True(t, called, "Upgrade was never called")
 }
 
+func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
+	t.Parallel()
+
+	var called bool
+	cmd := stateUpgradeCmd{
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &stubDIYBackend{
+				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
+					called = true
+					return nil
+				},
+			}, nil
+		},
+		Stdin:  strings.NewReader(""),
+		Stdout: io.Discard,
+	}
+
+	cmd.yes = true
+	err := cmd.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.True(t, called, "Upgrade was never called")
+}
+
 func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	t.Parallel()
 
 	cmd := stateUpgradeCmd{
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return &stubFileBackend{
-				UpgradeF: func(context.Context, *filestate.UpgradeOptions) error {
+			return &stubDIYBackend{
+				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
 					t.Fatal("Upgrade should not be called")
 					return nil
 				},
@@ -142,7 +166,7 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 		},
 	}
 
-	// Non-filestate backend is already up-to-date.
+	// Non-diy backend is already up-to-date.
 	err := cmd.Run(context.Background())
 	require.NoError(t, err)
 	assert.Contains(t, stdout.String(), "Nothing to do")
@@ -336,14 +360,14 @@ func TestStateUpgradeProjectNameWidget_notATerminal(t *testing.T) {
 	assert.Equal(t, []tokens.Name{"", "", ""}, projects)
 }
 
-type stubFileBackend struct {
-	filestate.Backend
+type stubDIYBackend struct {
+	diy.Backend
 
-	UpgradeF func(context.Context, *filestate.UpgradeOptions) error
+	UpgradeF func(context.Context, *diy.UpgradeOptions) error
 }
 
-var _ filestate.Backend = (*stubFileBackend)(nil)
+var _ diy.Backend = (*stubDIYBackend)(nil)
 
-func (f *stubFileBackend) Upgrade(ctx context.Context, opts *filestate.UpgradeOptions) error {
+func (f *stubDIYBackend) Upgrade(ctx context.Context, opts *diy.UpgradeOptions) error {
 	return f.UpgradeF(ctx, opts)
 }

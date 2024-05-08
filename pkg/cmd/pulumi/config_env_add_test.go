@@ -34,8 +34,6 @@ runtime: yaml`
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -47,9 +45,10 @@ runtime: yaml`
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent}
-		err := add.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY         VALUE
@@ -70,8 +69,6 @@ Save? Yes
 	t.Run("no imports, yes", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -83,9 +80,10 @@ Save? Yes
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent, yes: true}
-		err := add.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY         VALUE
@@ -104,16 +102,15 @@ aws:region  us-west-2
 	t.Run("no effects", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{}
 
 		var newStackYAML string
 		stdin := strings.NewReader("n")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent}
-		err := add.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env"})
 		require.Error(t, err)
 
 		const expectedOut = "KEY  VALUE\n" +
@@ -129,15 +126,14 @@ aws:region  us-west-2
 	t.Run("no effects, yes", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{}
 
 		var newStackYAML string
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, nil, &stdout, projectYAML, "", env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent, yes: true}
-		err := add.run(nil, []string{"env"})
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
 		const expectedOut = "KEY  VALUE\n" +
@@ -156,8 +152,6 @@ aws:region  us-west-2
 	t.Run("one import, secrets", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -174,9 +168,10 @@ aws:region  us-west-2
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent}
-		err := add.run(nil, []string{"env2"})
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY           VALUE
@@ -199,8 +194,6 @@ Save? Yes
 	t.Run("one import, secrets", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
 		env := &esc.Environment{
 			Properties: map[string]esc.Value{
 				"pulumiConfig": esc.NewValue(map[string]esc.Value{
@@ -217,9 +210,10 @@ Save? Yes
 		var newStackYAML string
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(ctx, stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
+		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent, showSecrets: true}
-		err := add.run(nil, []string{"env2"})
+		ctx := context.Background()
+		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
 		const expectedOut = `KEY           VALUE

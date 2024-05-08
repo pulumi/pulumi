@@ -2,7 +2,6 @@ package test
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,8 +51,8 @@ func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 	// Obey SkipCompileCheck to skip compile and test targets.
 	if tt.SkipCompileCheck != nil &&
 		tt.SkipCompileCheck.Has(language) &&
-		(test == fmt.Sprintf("%s/compile", language) ||
-			test == fmt.Sprintf("%s/test", language)) {
+		(test == language+"/compile" ||
+			test == language+"/test") {
 		return true
 	}
 
@@ -243,6 +242,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/compile"),
 	},
 	{
+		Directory:   "array-of-enum-map",
+		Description: "A schema with an array of maps where the values are enums. Issue pulumi/pulumi#14734",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
 		Skip:        codegen.NewStringSet("go/any"),
@@ -263,6 +267,13 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
+		Directory:   "regress-go-15478",
+		Description: "Regress pulumi/pulumi#15478 affecting Go ensuring SDK-gen doesn't panic",
+		Skip:        allLanguages.Except("go/any"),
+		// skipping the compile step because the generated code emits nested types that are not supported by the Go SDK
+		SkipCompileCheck: codegen.NewStringSet(golang),
+	},
+	{
 		Directory:   "regress-py-12546",
 		Description: "Regress pulumi/pulumi#12546 affecting Python",
 		Skip:        allLanguages.Except("python/any"),
@@ -271,6 +282,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "docs-collision",
 		Description: "Tests that resources and functions with the same name do not clobber each other.",
 		Skip:        allLanguages.Except("docs/any"),
+	},
+	{
+		Directory:   "using-shared-types-in-config",
+		Description: "Tests that shared types can be used in config.",
 	},
 	{
 		Directory:   "other-owned",
@@ -366,12 +381,21 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
+		Directory:   "unions-inside-arrays",
+		Description: "A schema with a union type inside an array",
+	},
+	{
 		Directory:   "assets-and-archives",
 		Description: "A schema with assets and archives",
 	},
 	{
 		Directory:   "regress-py-14012",
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "regress-py-14539",
+		Description: "Regresses https://github.com/pulumi/pulumi/issues/14539",
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
@@ -407,6 +431,25 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "urn-id-properties",
 		Description: "Testing urn and id properties in valid locations",
+	},
+	{
+		Directory:   "regress-py-12980",
+		Description: "Import resources across modules",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "unions-inline",
+		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
+	},
+	{
+		Directory:   "legacy-names",
+		Description: "Testing the use of snake_case names and tokens.",
+		Skip:        codegen.NewStringSet("go/test"),
+	},
+	{
+		Directory:   "kubernetes20",
+		Description: "Testing the kubernetes20 compatibility mode.",
+		Skip:        codegen.NewStringSet("go/test"),
 	},
 	{
 		Directory:   "parameter-extension-schema",

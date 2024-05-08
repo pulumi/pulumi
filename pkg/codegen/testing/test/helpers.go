@@ -213,7 +213,7 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 // folder if present.
 func CopyExtraFiles(t *testing.T, dir, lang string) {
 	codeDir := filepath.Join(dir, lang)
-	extrasDir := filepath.Join(dir, fmt.Sprintf("%s-extras", lang))
+	extrasDir := filepath.Join(dir, lang+"-extras")
 	gotExtras, err := PathExists(extrasDir)
 
 	if !gotExtras {
@@ -367,10 +367,15 @@ type SchemaVersion = string
 // Schemas are downloaded in the makefile, and the versions specified here
 // should be in sync with the makefile.
 const (
-	AwsSchema         SchemaVersion = "4.26.0"
-	AzureNativeSchema SchemaVersion = "1.29.0"
-	AzureSchema       SchemaVersion = "4.18.0"
-	KubernetesSchema  SchemaVersion = "3.7.2"
-	RandomSchema      SchemaVersion = "4.11.2"
-	EksSchema         SchemaVersion = "0.37.1"
+	AwsSchema              SchemaVersion = "4.26.0"
+	AzureNativeSchema      SchemaVersion = "1.29.0"
+	AzureSchema            SchemaVersion = "4.18.0"
+	KubernetesSchema       SchemaVersion = "3.7.2"
+	RandomSchema           SchemaVersion = "4.11.2"
+	EksSchema              SchemaVersion = "0.37.1"
+	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
+	AwsNativeSchema        SchemaVersion = "0.99.0"
 )
+
+// PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
+const PulumiDotnetSDKVersion = "3.62.0"

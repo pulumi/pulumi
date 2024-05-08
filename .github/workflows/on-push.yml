@@ -1,0 +1,84 @@
+name: On Push
+
+permissions:
+  # To push the tag
+  contents: write
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  info:
+    name: info
+    uses: ./.github/workflows/ci-info.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      is-snapshot: false
+    secrets: inherit
+
+  dev-release:
+    name: dev-release
+    needs: [info]
+    uses: ./.github/workflows/ci-dev-release.yml
+    permissions:
+      contents: write
+      # To sign artifacts.
+      id-token: write
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+    secrets: inherit
+
+  update-dev-version:
+    name: update-dev-version
+    needs: [dev-release, info]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Install Pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.46
+          cache: enable
+      - name: Git describe
+        id: ghd
+        uses: proudust/gh-describe@v1
+      - name: Dispatch event to docs repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        # Always prefix the short_sha with a letter to ensure it's a valid semver prerelease,
+        # see https://github.com/pulumi/pulumi/issues/15471 for context.
+        run: |
+          if [ "$(git ls-remote https://github.com/pulumi/pulumi HEAD | cut -f 1)" = "${{ github.sha }}" ]; then
+            short_sha="x${{ steps.ghd.outputs.short-sha }}"
+            version="${{ needs.info.outputs.version }}"
+            version="${version#v}-alpha.${short_sha}"
+            pulumictl dispatch -c pulumi-cli-dev-version -r pulumi/docs dev_version="$version"
+          else
+            echo "Not updating latest version as there has been a new push to the main branch"
+          fi
+
+  tag-pkg:
+    name: tag-pkg
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Tag and push pkg version if necessary
+        run: |
+          title=$(git show --pretty=format:%s -s HEAD)
+          if [[ $title == "Changelog and go.mod updates for"* ]]; then
+            pkg_version="${title#*updates for }"
+            pkg_version="${pkg_version% \(*}"
+            git tag "pkg/${pkg_version}"
+            git push origin "pkg/${pkg_version}"
+          fi

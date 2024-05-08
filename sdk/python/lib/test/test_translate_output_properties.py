@@ -50,17 +50,31 @@ class Bar(dict):
     fifth_optional_arg: List[Optional[Foo]] = pulumi.property("fifthOptionalArg")
 
     sixth_arg: Dict[str, List[Foo]] = pulumi.property("sixthArg")
-    sixth_optional_arg: Dict[str, Optional[List[Foo]]] = pulumi.property("sixthOptionalArg")
-    sixth_optional_optional_arg: Dict[str, Optional[List[Optional[Foo]]]] = pulumi.property("sixthOptionalOptionalArg")
+    sixth_optional_arg: Dict[str, Optional[List[Foo]]] = pulumi.property(
+        "sixthOptionalArg"
+    )
+    sixth_optional_optional_arg: Dict[str, Optional[List[Optional[Foo]]]] = (
+        pulumi.property("sixthOptionalOptionalArg")
+    )
 
     seventh_arg: List[Dict[str, Foo]] = pulumi.property("seventhArg")
-    seventh_optional_arg: List[Optional[Dict[str, Foo]]] = pulumi.property("seventhOptionalArg")
-    seventh_optional_optional_arg: List[Optional[Dict[str, Optional[Foo]]]] = pulumi.property("seventhOptionalOptionalArg")
+    seventh_optional_arg: List[Optional[Dict[str, Foo]]] = pulumi.property(
+        "seventhOptionalArg"
+    )
+    seventh_optional_optional_arg: List[Optional[Dict[str, Optional[Foo]]]] = (
+        pulumi.property("seventhOptionalOptionalArg")
+    )
 
     eighth_arg: List[Dict[str, List[Foo]]] = pulumi.property("eighthArg")
-    eighth_optional_arg: List[Optional[Dict[str, List[Foo]]]] = pulumi.property("eighthOptionalArg")
-    eighth_optional_optional_arg: List[Optional[Dict[str, Optional[List[Foo]]]]] = pulumi.property("eighthOptionalOptionalArg")
-    eighth_optional_optional_optional_arg: List[Optional[Dict[str, Optional[List[Optional[Foo]]]]]] = pulumi.property("eighthOptionalOptionalOptionalArg")
+    eighth_optional_arg: List[Optional[Dict[str, List[Foo]]]] = pulumi.property(
+        "eighthOptionalArg"
+    )
+    eighth_optional_optional_arg: List[Optional[Dict[str, Optional[List[Foo]]]]] = (
+        pulumi.property("eighthOptionalOptionalArg")
+    )
+    eighth_optional_optional_optional_arg: List[
+        Optional[Dict[str, Optional[List[Optional[Foo]]]]]
+    ] = pulumi.property("eighthOptionalOptionalOptionalArg")
 
     def _translate_property(self, prop: str) -> str:
         return camel_case_to_snake_case.get(prop) or prop
@@ -72,23 +86,39 @@ class BarMappingSequence(dict):
     third_optional_arg: Optional[Foo] = pulumi.property("thirdOptionalArg")
 
     fourth_arg: Mapping[str, Foo] = pulumi.property("fourthArg")
-    fourth_optional_arg: Mapping[str, Optional[Foo]] = pulumi.property("fourthOptionalArg")
+    fourth_optional_arg: Mapping[str, Optional[Foo]] = pulumi.property(
+        "fourthOptionalArg"
+    )
 
     fifth_arg: Sequence[Foo] = pulumi.property("fifthArg")
     fifth_optional_arg: Sequence[Optional[Foo]] = pulumi.property("fifthOptionalArg")
 
     sixth_arg: Mapping[str, Sequence[Foo]] = pulumi.property("sixthArg")
-    sixth_optional_arg: Mapping[str, Optional[Sequence[Foo]]] = pulumi.property("sixthOptionalArg")
-    sixth_optional_optional_arg: Mapping[str, Optional[Sequence[Optional[Foo]]]] = pulumi.property("sixthOptionalOptionalArg")
+    sixth_optional_arg: Mapping[str, Optional[Sequence[Foo]]] = pulumi.property(
+        "sixthOptionalArg"
+    )
+    sixth_optional_optional_arg: Mapping[str, Optional[Sequence[Optional[Foo]]]] = (
+        pulumi.property("sixthOptionalOptionalArg")
+    )
 
     seventh_arg: Sequence[Mapping[str, Foo]] = pulumi.property("seventhArg")
-    seventh_optional_arg: Sequence[Optional[Mapping[str, Foo]]] = pulumi.property("seventhOptionalArg")
-    seventh_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Foo]]]] = pulumi.property("seventhOptionalOptionalArg")
+    seventh_optional_arg: Sequence[Optional[Mapping[str, Foo]]] = pulumi.property(
+        "seventhOptionalArg"
+    )
+    seventh_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Foo]]]] = (
+        pulumi.property("seventhOptionalOptionalArg")
+    )
 
     eighth_arg: Sequence[Mapping[str, Sequence[Foo]]] = pulumi.property("eighthArg")
-    eighth_optional_arg: Sequence[Optional[Mapping[str, Sequence[Foo]]]] = pulumi.property("eighthOptionalArg")
-    eighth_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Sequence[Foo]]]]] = pulumi.property("eighthOptionalOptionalArg")
-    eighth_optional_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]] = pulumi.property("eighthOptionalOptionalOptionalArg")
+    eighth_optional_arg: Sequence[Optional[Mapping[str, Sequence[Foo]]]] = (
+        pulumi.property("eighthOptionalArg")
+    )
+    eighth_optional_optional_arg: Sequence[
+        Optional[Mapping[str, Optional[Sequence[Foo]]]]
+    ] = pulumi.property("eighthOptionalOptionalArg")
+    eighth_optional_optional_optional_arg: Sequence[
+        Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]
+    ] = pulumi.property("eighthOptionalOptionalOptionalArg")
 
     def _translate_property(self, prop: str) -> str:
         return camel_case_to_snake_case.get(prop) or prop
@@ -96,23 +126,27 @@ class BarMappingSequence(dict):
 
 @pulumi.output_type
 class BarDeclared(dict):
-    def __init__(self,
-                 third_arg: Foo,
-                 third_optional_arg: Optional[Foo],
-                 fourth_arg: Dict[str, Foo],
-                 fourth_optional_arg: Dict[str, Optional[Foo]],
-                 fifth_arg: List[Foo],
-                 fifth_optional_arg: List[Optional[Foo]],
-                 sixth_arg: Dict[str, List[Foo]],
-                 sixth_optional_arg: Dict[str, Optional[List[Foo]]],
-                 sixth_optional_optional_arg: Dict[str, Optional[List[Optional[Foo]]]],
-                 seventh_arg: List[Dict[str, Foo]],
-                 seventh_optional_arg: List[Optional[Dict[str, Foo]]],
-                 seventh_optional_optional_arg: List[Optional[Dict[str, Optional[Foo]]]],
-                 eighth_arg: List[Dict[str, List[Foo]]],
-                 eighth_optional_arg: List[Optional[Dict[str, List[Foo]]]],
-                 eighth_optional_optional_arg: List[Optional[Dict[str, Optional[List[Foo]]]]],
-                 eighth_optional_optional_optional_arg: List[Optional[Dict[str, Optional[List[Optional[Foo]]]]]]):
+    def __init__(
+        self,
+        third_arg: Foo,
+        third_optional_arg: Optional[Foo],
+        fourth_arg: Dict[str, Foo],
+        fourth_optional_arg: Dict[str, Optional[Foo]],
+        fifth_arg: List[Foo],
+        fifth_optional_arg: List[Optional[Foo]],
+        sixth_arg: Dict[str, List[Foo]],
+        sixth_optional_arg: Dict[str, Optional[List[Foo]]],
+        sixth_optional_optional_arg: Dict[str, Optional[List[Optional[Foo]]]],
+        seventh_arg: List[Dict[str, Foo]],
+        seventh_optional_arg: List[Optional[Dict[str, Foo]]],
+        seventh_optional_optional_arg: List[Optional[Dict[str, Optional[Foo]]]],
+        eighth_arg: List[Dict[str, List[Foo]]],
+        eighth_optional_arg: List[Optional[Dict[str, List[Foo]]]],
+        eighth_optional_optional_arg: List[Optional[Dict[str, Optional[List[Foo]]]]],
+        eighth_optional_optional_optional_arg: List[
+            Optional[Dict[str, Optional[List[Optional[Foo]]]]]
+        ],
+    ):
         pulumi.set(self, "third_arg", third_arg)
         pulumi.set(self, "third_optional_arg", third_optional_arg)
         pulumi.set(self, "fourth_arg", fourth_arg)
@@ -128,87 +162,83 @@ class BarDeclared(dict):
         pulumi.set(self, "eighth_arg", eighth_arg)
         pulumi.set(self, "eighth_optional_arg", eighth_optional_arg)
         pulumi.set(self, "eighth_optional_optional_arg", eighth_optional_optional_arg)
-        pulumi.set(self, "eighth_optional_optional_optional_arg", eighth_optional_optional_optional_arg)
+        pulumi.set(
+            self,
+            "eighth_optional_optional_optional_arg",
+            eighth_optional_optional_optional_arg,
+        )
 
     @property
     @pulumi.getter(name="thirdArg")
-    def third_arg(self) -> Foo:
-        ...
+    def third_arg(self) -> Foo: ...  # type: ignore
 
     @property
     @pulumi.getter(name="thirdOptionalArg")
-    def third_optional_arg(self) -> Optional[Foo]:
-        ...
+    def third_optional_arg(self) -> Optional[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthArg")
-    def fourth_arg(self) -> Dict[str, Foo]:
-        ...
+    def fourth_arg(self) -> Dict[str, Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthOptionalArg")
-    def fourth_optional_arg(self) -> Dict[str, Optional[Foo]]:
-        ...
+    def fourth_optional_arg(self) -> Dict[str, Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthArg")
-    def fifth_arg(self) -> List[Foo]:
-        ...
+    def fifth_arg(self) -> List[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthOptionalArg")
-    def fifth_optional_arg(self) -> List[Optional[Foo]]:
-        ...
+    def fifth_optional_arg(self) -> List[Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthArg")
-    def sixth_arg(self) -> Dict[str, List[Foo]]:
-        ...
+    def sixth_arg(self) -> Dict[str, List[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalArg")
-    def sixth_optional_arg(self) -> Dict[str, Optional[List[Foo]]]:
-        ...
+    def sixth_optional_arg(self) -> Dict[str, Optional[List[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalOptionalArg")
-    def sixth_optional_optional_arg(self) -> Dict[str, Optional[List[Optional[Foo]]]]:
-        ...
+    def sixth_optional_optional_arg(  # type: ignore
+        self,
+    ) -> Dict[str, Optional[List[Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="seventhArg")
-    def seventh_arg(self) -> List[Dict[str, Foo]]:
-        ...
+    def seventh_arg(self) -> List[Dict[str, Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalArg")
-    def seventh_optional_arg(self) -> List[Optional[Dict[str, Foo]]]:
-        ...
+    def seventh_optional_arg(self) -> List[Optional[Dict[str, Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalOptionalArg")
-    def seventh_optional_optional_arg(self) -> List[Optional[Dict[str, Optional[Foo]]]]:
-        ...
+    def seventh_optional_optional_arg(  # type: ignore
+        self,
+    ) -> List[Optional[Dict[str, Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="eighthArg")
-    def eighth_arg(self) -> List[Dict[str, List[Foo]]]:
-        ...
+    def eighth_arg(self) -> List[Dict[str, List[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="eighthOptionalArg")
-    def eighth_optional_arg(self) -> List[Optional[Dict[str, List[Foo]]]]:
-        ...
+    def eighth_optional_arg(self) -> List[Optional[Dict[str, List[Foo]]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalArg")
-    def eighth_optional_optional_arg(self) -> List[Optional[Dict[str, Optional[List[Foo]]]]]:
-        ...
+    def eighth_optional_optional_arg(  # type: ignore
+        self,
+    ) -> List[Optional[Dict[str, Optional[List[Foo]]]]]: ...
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalOptionalArg")
-    def eighth_optional_optional_optional_arg(self) -> List[Optional[Dict[str, Optional[List[Optional[Foo]]]]]]:
-        ...
+    def eighth_optional_optional_optional_arg(  # type: ignore
+        self,
+    ) -> List[Optional[Dict[str, Optional[List[Optional[Foo]]]]]]: ...
 
     def _translate_property(self, prop: str) -> str:
         return camel_case_to_snake_case.get(prop) or prop
@@ -216,23 +246,29 @@ class BarDeclared(dict):
 
 @pulumi.output_type
 class BarMappingSequenceDeclared(dict):
-    def __init__(self,
-                 third_arg: Foo,
-                 third_optional_arg: Optional[Foo],
-                 fourth_arg: Mapping[str, Foo],
-                 fourth_optional_arg: Dict[str, Optional[Foo]],
-                 fifth_arg: Sequence[Foo],
-                 fifth_optional_arg: Sequence[Optional[Foo]],
-                 sixth_arg: Mapping[str, Sequence[Foo]],
-                 sixth_optional_arg: Mapping[str, Optional[Sequence[Foo]]],
-                 sixth_optional_optional_arg: Mapping[str, Optional[Sequence[Optional[Foo]]]],
-                 seventh_arg: Sequence[Mapping[str, Foo]],
-                 seventh_optional_arg: Sequence[Optional[Mapping[str, Foo]]],
-                 seventh_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Foo]]]],
-                 eighth_arg: Sequence[Mapping[str, Sequence[Foo]]],
-                 eighth_optional_arg: Sequence[Optional[Mapping[str, Sequence[Foo]]]],
-                 eighth_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Sequence[Foo]]]]],
-                 eighth_optional_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]]):
+    def __init__(
+        self,
+        third_arg: Foo,
+        third_optional_arg: Optional[Foo],
+        fourth_arg: Mapping[str, Foo],
+        fourth_optional_arg: Dict[str, Optional[Foo]],
+        fifth_arg: Sequence[Foo],
+        fifth_optional_arg: Sequence[Optional[Foo]],
+        sixth_arg: Mapping[str, Sequence[Foo]],
+        sixth_optional_arg: Mapping[str, Optional[Sequence[Foo]]],
+        sixth_optional_optional_arg: Mapping[str, Optional[Sequence[Optional[Foo]]]],
+        seventh_arg: Sequence[Mapping[str, Foo]],
+        seventh_optional_arg: Sequence[Optional[Mapping[str, Foo]]],
+        seventh_optional_optional_arg: Sequence[Optional[Mapping[str, Optional[Foo]]]],
+        eighth_arg: Sequence[Mapping[str, Sequence[Foo]]],
+        eighth_optional_arg: Sequence[Optional[Mapping[str, Sequence[Foo]]]],
+        eighth_optional_optional_arg: Sequence[
+            Optional[Mapping[str, Optional[Sequence[Foo]]]]
+        ],
+        eighth_optional_optional_optional_arg: Sequence[
+            Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]
+        ],
+    ):
         pulumi.set(self, "third_arg", third_arg)
         pulumi.set(self, "third_optional_arg", third_optional_arg)
         pulumi.set(self, "fourth_arg", fourth_arg)
@@ -248,87 +284,85 @@ class BarMappingSequenceDeclared(dict):
         pulumi.set(self, "eighth_arg", eighth_arg)
         pulumi.set(self, "eighth_optional_arg", eighth_optional_arg)
         pulumi.set(self, "eighth_optional_optional_arg", eighth_optional_optional_arg)
-        pulumi.set(self, "eighth_optional_optional_optional_arg", eighth_optional_optional_optional_arg)
+        pulumi.set(
+            self,
+            "eighth_optional_optional_optional_arg",
+            eighth_optional_optional_optional_arg,
+        )
 
     @property
     @pulumi.getter(name="thirdArg")
-    def third_arg(self) -> Foo:
-        ...
+    def third_arg(self) -> Foo: ...  # type: ignore
 
     @property
     @pulumi.getter(name="thirdOptionalArg")
-    def third_optional_arg(self) -> Optional[Foo]:
-        ...
+    def third_optional_arg(self) -> Optional[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthArg")
-    def fourth_arg(self) -> Mapping[str, Foo]:
-        ...
+    def fourth_arg(self) -> Mapping[str, Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fourthOptionalArg")
-    def fourth_optional_arg(self) -> Mapping[str, Optional[Foo]]:
-        ...
+    def fourth_optional_arg(self) -> Mapping[str, Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthArg")
-    def fifth_arg(self) -> Sequence[Foo]:
-        ...
+    def fifth_arg(self) -> Sequence[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="fifthOptionalArg")
-    def fifth_optional_arg(self) -> Sequence[Optional[Foo]]:
-        ...
+    def fifth_optional_arg(self) -> Sequence[Optional[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthArg")
-    def sixth_arg(self) -> Mapping[str, Sequence[Foo]]:
-        ...
+    def sixth_arg(self) -> Mapping[str, Sequence[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalArg")
-    def sixth_optional_arg(self) -> Mapping[str, Optional[Sequence[Foo]]]:
-        ...
+    def sixth_optional_arg(self) -> Mapping[str, Optional[Sequence[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="sixthOptionalOptionalArg")
-    def sixth_optional_optional_arg(self) -> Mapping[str, Optional[Sequence[Optional[Foo]]]]:
-        ...
+    def sixth_optional_optional_arg(  # type: ignore
+        self,
+    ) -> Mapping[str, Optional[Sequence[Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="seventhArg")
-    def seventh_arg(self) -> Sequence[Mapping[str, Foo]]:
-        ...
+    def seventh_arg(self) -> Sequence[Mapping[str, Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalArg")
-    def seventh_optional_arg(self) -> Sequence[Optional[Mapping[str, Foo]]]:
-        ...
+    def seventh_optional_arg(self) -> Sequence[Optional[Mapping[str, Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="seventhOptionalOptionalArg")
-    def seventh_optional_optional_arg(self) -> Sequence[Optional[Mapping[str, Optional[Foo]]]]:
-        ...
+    def seventh_optional_optional_arg(  # type: ignore
+        self,
+    ) -> Sequence[Optional[Mapping[str, Optional[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="eighthArg")
-    def eighth_arg(self) -> Sequence[Mapping[str, Sequence[Foo]]]:
-        ...
+    def eighth_arg(self) -> Sequence[Mapping[str, Sequence[Foo]]]: ...  # type: ignore
 
     @property
     @pulumi.getter(name="eighthOptionalArg")
-    def eighth_optional_arg(self) -> Sequence[Optional[Mapping[str, Sequence[Foo]]]]:
-        ...
+    def eighth_optional_arg(  # type: ignore
+        self,
+    ) -> Sequence[Optional[Mapping[str, Sequence[Foo]]]]: ...
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalArg")
-    def eighth_optional_optional_arg(self) -> Sequence[Optional[Mapping[str, Optional[Sequence[Foo]]]]]:
-        ...
+    def eighth_optional_optional_arg(  # type: ignore
+        self,
+    ) -> Sequence[Optional[Mapping[str, Optional[Sequence[Foo]]]]]: ...
 
     @property
     @pulumi.getter(name="eighthOptionalOptionalOptionalArg")
-    def eighth_optional_optional_optional_arg(self) -> Sequence[Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]]:
-        ...
+    def eighth_optional_optional_optional_arg(  # type: ignore
+        self,
+    ) -> Sequence[Optional[Mapping[str, Optional[Sequence[Optional[Foo]]]]]]: ...
 
     def _translate_property(self, prop: str) -> str:
         return camel_case_to_snake_case.get(prop) or prop
@@ -338,6 +372,7 @@ class BarMappingSequenceDeclared(dict):
 class InvalidTypeStr(dict):
     value: str = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeDeclaredStr(dict):
     def __init__(self, value: str):
@@ -345,12 +380,13 @@ class InvalidTypeDeclaredStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> str:
-        ...
+    def value(self) -> str: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeOptionalStr(dict):
     value: Optional[str] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalStr(dict):
@@ -359,16 +395,18 @@ class InvalidTypeDeclaredOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[str]:
-        ...
+    def value(self) -> Optional[str]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDictStr(dict):
     value: Dict[str, str] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeMappingStr(dict):
     value: Mapping[str, str] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredDictStr(dict):
@@ -377,8 +415,8 @@ class InvalidTypeDeclaredDictStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Dict[str, str]:
-        ...
+    def value(self) -> Dict[str, str]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredMappingStr(dict):
@@ -387,16 +425,18 @@ class InvalidTypeDeclaredMappingStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Mapping[str, str]:
-        ...
+    def value(self) -> Mapping[str, str]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeOptionalDictStr(dict):
     value: Optional[Dict[str, str]] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeOptionalMappingStr(dict):
     value: Optional[Mapping[str, str]] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalDictStr(dict):
@@ -405,8 +445,8 @@ class InvalidTypeDeclaredOptionalDictStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Dict[str, str]]:
-        ...
+    def value(self) -> Optional[Dict[str, str]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalMappingStr(dict):
@@ -415,16 +455,18 @@ class InvalidTypeDeclaredOptionalMappingStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Mapping[str, str]]:
-        ...
+    def value(self) -> Optional[Mapping[str, str]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDictOptionalStr(dict):
     value: Dict[str, Optional[str]] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeMappingOptionalStr(dict):
     value: Mapping[str, Optional[str]] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredDictOptionalStr(dict):
@@ -433,8 +475,8 @@ class InvalidTypeDeclaredDictOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Dict[str, Optional[str]]:
-        ...
+    def value(self) -> Dict[str, Optional[str]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredMappingOptionalStr(dict):
@@ -443,16 +485,18 @@ class InvalidTypeDeclaredMappingOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Mapping[str, Optional[str]]:
-        ...
+    def value(self) -> Mapping[str, Optional[str]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeOptionalDictOptionalStr(dict):
     value: Optional[Dict[str, Optional[str]]] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeOptionalMappingOptionalStr(dict):
     value: Optional[Mapping[str, Optional[str]]] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalDictOptionalStr(dict):
@@ -461,8 +505,8 @@ class InvalidTypeDeclaredOptionalDictOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Dict[str, Optional[str]]]:
-        ...
+    def value(self) -> Optional[Dict[str, Optional[str]]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalMappingOptionalStr(dict):
@@ -471,17 +515,18 @@ class InvalidTypeDeclaredOptionalMappingOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Mapping[str, Optional[str]]]:
-        ...
+    def value(self) -> Optional[Mapping[str, Optional[str]]]: ...  # type: ignore
 
 
 @pulumi.output_type
 class InvalidTypeListStr(dict):
     value: List[str] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeSequenceStr(dict):
     value: Sequence[str] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredListStr(dict):
@@ -490,8 +535,8 @@ class InvalidTypeDeclaredListStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> List[str]:
-        ...
+    def value(self) -> List[str]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredSequenceStr(dict):
@@ -500,16 +545,18 @@ class InvalidTypeDeclaredSequenceStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Sequence[str]:
-        ...
+    def value(self) -> Sequence[str]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeOptionalListStr(dict):
     value: Optional[List[str]] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeOptionalSequenceStr(dict):
     value: Optional[Sequence[str]] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalListStr(dict):
@@ -518,8 +565,8 @@ class InvalidTypeDeclaredOptionalListStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[List[str]]:
-        ...
+    def value(self) -> Optional[List[str]]: ...
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalSequenceStr(dict):
@@ -528,16 +575,18 @@ class InvalidTypeDeclaredOptionalSequenceStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Sequence[str]]:
-        ...
+    def value(self) -> Optional[Sequence[str]]: ...
+
 
 @pulumi.output_type
 class InvalidTypeListOptionalStr(dict):
     value: List[Optional[str]] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeSequenceOptionalStr(dict):
     value: Sequence[Optional[str]] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredListOptionalStr(dict):
@@ -546,8 +595,8 @@ class InvalidTypeDeclaredListOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> List[Optional[str]]:
-        ...
+    def value(self) -> List[Optional[str]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredSequenceOptionalStr(dict):
@@ -556,16 +605,18 @@ class InvalidTypeDeclaredSequenceOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Sequence[Optional[str]]:
-        ...
+    def value(self) -> Sequence[Optional[str]]: ...  # type: ignore
+
 
 @pulumi.output_type
 class InvalidTypeOptionalListOptionalStr(dict):
     value: Optional[List[Optional[str]]] = pulumi.property("value")
 
+
 @pulumi.output_type
 class InvalidTypeOptionalSequenceOptionalStr(dict):
     value: Optional[Sequence[Optional[str]]] = pulumi.property("value")
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalListOptionalStr(dict):
@@ -574,8 +625,8 @@ class InvalidTypeDeclaredOptionalListOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[List[Optional[str]]]:
-        ...
+    def value(self) -> Optional[List[Optional[str]]]: ...
+
 
 @pulumi.output_type
 class InvalidTypeDeclaredOptionalSequenceOptionalStr(dict):
@@ -584,8 +635,7 @@ class InvalidTypeDeclaredOptionalSequenceOptionalStr(dict):
 
     @property
     @pulumi.getter
-    def value(self) -> Optional[Sequence[Optional[str]]]:
-        ...
+    def value(self) -> Optional[Sequence[Optional[str]]]: ...
 
 
 @pulumi.output_type
@@ -616,21 +666,27 @@ class ContainerBrightness(float, Enum):
 
 class TranslateOutputPropertiesTests(unittest.TestCase):
     def test_str_enum(self):
-        result = rpc.translate_output_properties("red", translate_output_property, ContainerColor)
+        result = rpc.translate_output_properties(
+            "red", translate_output_property, ContainerColor
+        )
         self.assertIsInstance(result, ContainerColor)
         self.assertIsInstance(result, Enum)
         self.assertEqual(result, "red")
         self.assertEqual(result, ContainerColor.RED)
 
     def test_int_enum(self):
-        result = rpc.translate_output_properties(4, translate_output_property, ContainerSize)
+        result = rpc.translate_output_properties(
+            4, translate_output_property, ContainerSize
+        )
         self.assertIsInstance(result, ContainerSize)
         self.assertIsInstance(result, Enum)
         self.assertEqual(result, 4)
         self.assertEqual(result, ContainerSize.FOUR_INCH)
 
     def test_float_enum(self):
-        result = rpc.translate_output_properties(0.1, translate_output_property, ContainerBrightness)
+        result = rpc.translate_output_properties(
+            0.1, translate_output_property, ContainerBrightness
+        )
         self.assertIsInstance(result, ContainerBrightness)
         self.assertIsInstance(result, Enum)
         self.assertEqual(result, 0.1)
@@ -677,78 +733,112 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
                     "secondArg": 141,
                 },
             },
-            "fifthArg": [{
-                "firstArg": "bye",
-                "secondArg": 40,
-            }],
-            "fifthOptionalArg": [{
-                "firstArg": "bye-opt",
-                "secondArg": 140,
-            }],
+            "fifthArg": [
+                {
+                    "firstArg": "bye",
+                    "secondArg": 40,
+                }
+            ],
+            "fifthOptionalArg": [
+                {
+                    "firstArg": "bye-opt",
+                    "secondArg": 140,
+                }
+            ],
             "sixthArg": {
-                "bar": [{
-                    "firstArg": "goodbye",
-                    "secondArg": 39,
-                }],
+                "bar": [
+                    {
+                        "firstArg": "goodbye",
+                        "secondArg": 39,
+                    }
+                ],
             },
             "sixthOptionalArg": {
-                "bar": [{
-                    "firstArg": "goodbye-opt",
-                    "secondArg": 139,
-                }],
+                "bar": [
+                    {
+                        "firstArg": "goodbye-opt",
+                        "secondArg": 139,
+                    }
+                ],
             },
             "sixthOptionalOptionalArg": {
-                "bar": [{
-                    "firstArg": "goodbye-opt-opt",
-                    "secondArg": 1139,
-                }],
+                "bar": [
+                    {
+                        "firstArg": "goodbye-opt-opt",
+                        "secondArg": 1139,
+                    }
+                ],
             },
-            "seventhArg": [{
-                "baz": {
-                    "firstArg": "adios",
-                    "secondArg": 38,
-                },
-            }],
-            "seventhOptionalArg": [{
-                "baz": {
-                    "firstArg": "adios-opt",
-                    "secondArg": 138,
-                },
-            }],
-            "seventhOptionalOptionalArg": [{
-                "baz": {
-                    "firstArg": "adios-opt-opt",
-                    "secondArg": 1138,
-                },
-            }],
-            "eighthArg": [{
-                "blah": [{
-                    "firstArg": "farewell",
-                    "secondArg": 37,
-                }],
-            }],
-            "eighthOptionalArg": [{
-                "blah": [{
-                    "firstArg": "farewell-opt",
-                    "secondArg": 137,
-                }],
-            }],
-            "eighthOptionalOptionalArg": [{
-                "blah": [{
-                    "firstArg": "farewell-opt-opt",
-                    "secondArg": 1137,
-                }],
-            }],
-            "eighthOptionalOptionalOptionalArg": [{
-                "blah": [{
-                    "firstArg": "farewell-opt-opt-opt",
-                    "secondArg": 11137,
-                }],
-            }],
+            "seventhArg": [
+                {
+                    "baz": {
+                        "firstArg": "adios",
+                        "secondArg": 38,
+                    },
+                }
+            ],
+            "seventhOptionalArg": [
+                {
+                    "baz": {
+                        "firstArg": "adios-opt",
+                        "secondArg": 138,
+                    },
+                }
+            ],
+            "seventhOptionalOptionalArg": [
+                {
+                    "baz": {
+                        "firstArg": "adios-opt-opt",
+                        "secondArg": 1138,
+                    },
+                }
+            ],
+            "eighthArg": [
+                {
+                    "blah": [
+                        {
+                            "firstArg": "farewell",
+                            "secondArg": 37,
+                        }
+                    ],
+                }
+            ],
+            "eighthOptionalArg": [
+                {
+                    "blah": [
+                        {
+                            "firstArg": "farewell-opt",
+                            "secondArg": 137,
+                        }
+                    ],
+                }
+            ],
+            "eighthOptionalOptionalArg": [
+                {
+                    "blah": [
+                        {
+                            "firstArg": "farewell-opt-opt",
+                            "secondArg": 1137,
+                        }
+                    ],
+                }
+            ],
+            "eighthOptionalOptionalOptionalArg": [
+                {
+                    "blah": [
+                        {
+                            "firstArg": "farewell-opt-opt-opt",
+                            "secondArg": 11137,
+                        }
+                    ],
+                }
+            ],
         }
 
         for typ in [Bar, BarMappingSequence, BarDeclared, BarMappingSequenceDeclared]:
-            result = rpc.translate_output_properties(output, translate_output_property, typ)
+            result = rpc.translate_output_properties(
+                output, translate_output_property, typ
+            )
             self.assertIsInstance(result, typ)
 
             self.assertIs(result.third_arg, result["thirdArg"])
@@ -770,24 +860,46 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             assertFoo(result.sixth_arg["bar"][0], "goodbye", 39)
             self.assertIs(result.sixth_optional_arg, result["sixthOptionalArg"])
             assertFoo(result.sixth_optional_arg["bar"][0], "goodbye-opt", 139)
-            self.assertIs(result.sixth_optional_optional_arg, result["sixthOptionalOptionalArg"])
-            assertFoo(result.sixth_optional_optional_arg["bar"][0], "goodbye-opt-opt", 1139)
+            self.assertIs(
+                result.sixth_optional_optional_arg, result["sixthOptionalOptionalArg"]
+            )
+            assertFoo(
+                result.sixth_optional_optional_arg["bar"][0], "goodbye-opt-opt", 1139
+            )
 
             self.assertIs(result.seventh_arg, result["seventhArg"])
             assertFoo(result.seventh_arg[0]["baz"], "adios", 38)
             self.assertIs(result.seventh_optional_arg, result["seventhOptionalArg"])
             assertFoo(result.seventh_optional_arg[0]["baz"], "adios-opt", 138)
-            self.assertIs(result.seventh_optional_optional_arg, result["seventhOptionalOptionalArg"])
-            assertFoo(result.seventh_optional_optional_arg[0]["baz"], "adios-opt-opt", 1138)
+            self.assertIs(
+                result.seventh_optional_optional_arg,
+                result["seventhOptionalOptionalArg"],
+            )
+            assertFoo(
+                result.seventh_optional_optional_arg[0]["baz"], "adios-opt-opt", 1138
+            )
 
             self.assertIs(result.eighth_arg, result["eighthArg"])
             assertFoo(result.eighth_arg[0]["blah"][0], "farewell", 37)
             self.assertIs(result.eighth_optional_arg, result["eighthOptionalArg"])
             assertFoo(result.eighth_optional_arg[0]["blah"][0], "farewell-opt", 137)
-            self.assertIs(result.eighth_optional_optional_arg, result["eighthOptionalOptionalArg"])
-            assertFoo(result.eighth_optional_optional_arg[0]["blah"][0], "farewell-opt-opt", 1137)
-            self.assertIs(result.eighth_optional_optional_optional_arg, result["eighthOptionalOptionalOptionalArg"])
-            assertFoo(result.eighth_optional_optional_optional_arg[0]["blah"][0], "farewell-opt-opt-opt", 11137)
+            self.assertIs(
+                result.eighth_optional_optional_arg, result["eighthOptionalOptionalArg"]
+            )
+            assertFoo(
+                result.eighth_optional_optional_arg[0]["blah"][0],
+                "farewell-opt-opt",
+                1137,
+            )
+            self.assertIs(
+                result.eighth_optional_optional_optional_arg,
+                result["eighthOptionalOptionalOptionalArg"],
+            )
+            assertFoo(
+                result.eighth_optional_optional_optional_arg[0]["blah"][0],
+                "farewell-opt-opt-opt",
+                11137,
+            )
 
     def test_nested_types_raises(self):
         dict_value = {
@@ -801,12 +913,10 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             (InvalidTypeDeclaredStr, dict_value),
             (InvalidTypeOptionalStr, dict_value),
             (InvalidTypeDeclaredOptionalStr, dict_value),
-
             (InvalidTypeStr, list_value),
             (InvalidTypeDeclaredStr, list_value),
             (InvalidTypeOptionalStr, list_value),
             (InvalidTypeDeclaredOptionalStr, list_value),
-
             (InvalidTypeDictStr, {"foo": dict_value}),
             (InvalidTypeDeclaredDictStr, {"foo": dict_value}),
             (InvalidTypeOptionalDictStr, {"foo": dict_value}),
@@ -823,7 +933,6 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             (InvalidTypeDeclaredMappingOptionalStr, {"foo": dict_value}),
             (InvalidTypeOptionalMappingOptionalStr, {"foo": dict_value}),
             (InvalidTypeDeclaredOptionalMappingOptionalStr, {"foo": dict_value}),
-
             (InvalidTypeDictStr, {"foo": list_value}),
             (InvalidTypeDeclaredDictStr, {"foo": list_value}),
             (InvalidTypeOptionalDictStr, {"foo": list_value}),
@@ -840,7 +949,6 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             (InvalidTypeDeclaredMappingOptionalStr, {"foo": list_value}),
             (InvalidTypeOptionalMappingOptionalStr, {"foo": list_value}),
             (InvalidTypeDeclaredOptionalMappingOptionalStr, {"foo": list_value}),
-
             (InvalidTypeListStr, [dict_value]),
             (InvalidTypeDeclaredListStr, [dict_value]),
             (InvalidTypeOptionalListStr, [dict_value]),
@@ -857,7 +965,6 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             (InvalidTypeDeclaredSequenceOptionalStr, [dict_value]),
             (InvalidTypeOptionalSequenceOptionalStr, [dict_value]),
             (InvalidTypeDeclaredOptionalSequenceOptionalStr, [dict_value]),
-
             (InvalidTypeListStr, [list_value]),
             (InvalidTypeDeclaredListStr, [list_value]),
             (InvalidTypeOptionalListStr, [list_value]),
@@ -879,11 +986,18 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         for typ, value in tests:
             outputs = [
                 {"value": value},
-                {"value": {rpc._special_sig_key: rpc._special_secret_sig, "value": value}},
+                {
+                    "value": {
+                        rpc._special_sig_key: rpc._special_secret_sig,
+                        "value": value,
+                    }
+                },
             ]
             for output in outputs:
                 with self.assertRaises(AssertionError):
-                    rpc.translate_output_properties(output, translate_output_property, typ)
+                    rpc.translate_output_properties(
+                        output, translate_output_property, typ
+                    )
 
     def test_any(self):
         output = {
@@ -895,7 +1009,9 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             "value_list_sequence": [["hello"]],
             "value_str": "hello",
         }
-        result = rpc.translate_output_properties(output, translate_output_property, OutputTypeWithAny)
+        result = rpc.translate_output_properties(
+            output, translate_output_property, OutputTypeWithAny
+        )
         self.assertIsInstance(result, OutputTypeWithAny)
         self.assertEqual({"hello": "world"}, result.value_dict)
         self.assertEqual(["hello"], result.value_list)
@@ -922,7 +1038,9 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             "value_int": 50.0,
         }
 
-        result = rpc.translate_output_properties(output, translate_output_property, OutputTypeWithInt)
+        result = rpc.translate_output_properties(
+            output, translate_output_property, OutputTypeWithInt
+        )
 
         self.assertIsInstance(result, OutputTypeWithInt)
         self.assertEqual({"hello": 42}, result.value_dict)
@@ -976,57 +1094,81 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
                 },
             ),
             TestCase(
-                [{
-                    "firstArg": "bye",
-                    "secondArg": 40,
-                }],
+                [
+                    {
+                        "firstArg": "bye",
+                        "secondArg": 40,
+                    }
+                ],
                 Sequence[MyOutput],
                 [MyOutput("bye", 40)],
             ),
             TestCase(
                 {
-                    "bar": [{
-                        "firstArg": "goodbye",
-                        "secondArg": 39,
-                    }],
+                    "bar": [
+                        {
+                            "firstArg": "goodbye",
+                            "secondArg": 39,
+                        }
+                    ],
                 },
                 Mapping[str, Sequence[MyOutput]],
                 {
                     "bar": [MyOutput("goodbye", 39)],
-                }
+                },
             ),
             TestCase(
-                [{
-                    "baz": {
-                        "firstArg": "adios",
-                        "secondArg": 38,
-                    },
-                }],
+                [
+                    {
+                        "baz": {
+                            "firstArg": "adios",
+                            "secondArg": 38,
+                        },
+                    }
+                ],
                 Sequence[Mapping[str, MyOutput]],
-                [{
-                    "baz": MyOutput("adios", 38),
-                }]
+                [
+                    {
+                        "baz": MyOutput("adios", 38),
+                    }
+                ],
             ),
             TestCase(
-                [{
-                    "blah": [{
-                        "firstArg": "farewell",
-                        "secondArg": 37,
-                    }],
-                }],
+                [
+                    {
+                        "blah": [
+                            {
+                                "firstArg": "farewell",
+                                "secondArg": 37,
+                            }
+                        ],
+                    }
+                ],
                 Sequence[Mapping[str, Sequence[MyOutput]]],
-                [{
-                    "blah": [MyOutput("farewell", 37)],
-                }],
+                [
+                    {
+                        "blah": [MyOutput("farewell", 37)],
+                    }
+                ],
             ),
         ]
 
         for case in testcases:
-            actual = rpc.translate_output_properties(case.output, translate_output_property, case.typ)
+            actual = rpc.translate_output_properties(
+                case.output, translate_output_property, case.typ
+            )
             self.assertEqual(case.expected, actual)
 
         for case in testcases:
-            wrapped_output = {rpc._special_sig_key: rpc._special_secret_sig, "value": case.output}
-            actual = rpc.translate_output_properties(wrapped_output, translate_output_property, case.typ)
-            wrapped_expected = {rpc._special_sig_key: rpc. _special_secret_sig, "value": case.expected}
+            wrapped_output = {
+                rpc._special_sig_key: rpc._special_secret_sig,
+                "value": case.output,
+            }
+            actual = rpc.translate_output_properties(
+                wrapped_output, translate_output_property, case.typ
+            )
+            wrapped_expected = {
+                rpc._special_sig_key: rpc._special_secret_sig,
+                "value": case.expected,
+            }
             self.assertEqual(wrapped_expected, actual)

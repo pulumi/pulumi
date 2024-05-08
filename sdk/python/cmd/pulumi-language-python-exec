@@ -120,21 +120,15 @@ if __name__ == "__main__":
 
     successful = False
 
-    # asyncio.get_running_loop was only added in python 3.7 but we still support python 3.6
-    # In python 3.10, asyncio.get_event_loop prints a deprecation warning if no loop is present
-    # This code will be cleaned up as part of https://github.com/pulumi/pulumi/issues/8131
-    if sys.version_info[0] == 3 and sys.version_info[1] < 7:
-        loop = asyncio.get_event_loop()
-    else:
-        try:
-            # The docs for get_running_loop are somewhat misleading because they state:
-            # This function can only be called from a coroutine or a callback. However, if the function is
-            # called from outside a coroutine or callback (the standard case when running `pulumi up`), the function
-            # raises a RuntimeError as expected and falls through to the exception clause below.
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+    try:
+        # The docs for get_running_loop are somewhat misleading because they state:
+        # This function can only be called from a coroutine or a callback. However, if the function is
+        # called from outside a coroutine or callback (the standard case when running `pulumi up`), the function
+        # raises a RuntimeError as expected and falls through to the exception clause below.
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
     
     # Configure the event loop to respect the parallelism value provided as input.
     _set_default_executor(loop, settings.parallel)
@@ -162,7 +156,7 @@ if __name__ == "__main__":
         user_program_abspath = os.path.abspath(args.PROGRAM)
         def run():
             try:
-                return runpy.run_path(args.PROGRAM, run_name='__main__')
+                runpy.run_path(args.PROGRAM, run_name='__main__')
             except ImportError as e:
                 def fix_module_file(m: str) -> str:
                     # Work around python 11 reporting "<frozen runpy>" rather

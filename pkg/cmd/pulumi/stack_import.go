@@ -49,7 +49,7 @@ func newStackImportCmd() *cobra.Command {
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -122,12 +122,14 @@ func saveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 		}
 	}
 	// Validate the stack. If --force was passed, issue an error if validation fails. Otherwise, issue a warning.
-	if err := snapshot.VerifyIntegrity(); err != nil {
-		msg := fmt.Sprintf("state file contains errors: %v", err)
-		if force {
-			cmdutil.Diag().Warningf(diag.Message("", msg))
-		} else {
-			result = multierror.Append(result, errors.New(msg))
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			msg := fmt.Sprintf("state file contains errors: %v", err)
+			if force {
+				cmdutil.Diag().Warningf(diag.Message("", msg))
+			} else {
+				result = multierror.Append(result, errors.New(msg))
+			}
 		}
 	}
 	if result != nil {
@@ -145,7 +147,7 @@ func saveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 
 		snapshot.PendingOperations = nil
 	}
-	sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false /* showSecrets */)
+	sdp, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("constructing deployment for upload: %w", err)
 	}

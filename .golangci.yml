@@ -1,18 +1,13 @@
 run:
   timeout: 10m
   # Enable checking the by default skipped "examples" dirs
-  skip-dirs:
-    - Godeps$
-    - builtin$
-    - node_modules
-    - testdata$
-    - third_party$
-    - vendor$
-  skip-dirs-use-default: false
+  build-tags:
+  - all
 linters:
   enable-all: false
   enable:
     - errcheck
+    - exhaustive
     - prealloc
     - gofumpt
     - revive
@@ -26,6 +21,9 @@ linters:
     - unconvert
     - unused
     - paralleltest
+    - perfsprint
+    - depguard
+    - importas
 
 linters-settings:
   nakedret:
@@ -46,6 +44,22 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
+  depguard:
+    rules:
+      protobuf:
+        deny:
+          - pkg: "github.com/golang/protobuf"
+            desc: Use google.golang.org/protobuf instead
+  importas:
+    alias:
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+      alias: pulumirpc
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go/testing
+      alias: testingrpc
+    - pkg: github.com/deckarep/golang-set/v2
+      alias: mapset
+    - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/testing
+      alias: ptesting
 
 issues:
   exclude-rules:
@@ -80,3 +94,12 @@ issues:
 
     # https://github.com/pulumi/pulumi/issues/12328
     - 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'
+
+  exclude-dirs:
+    - Godeps$
+    - builtin$
+    - node_modules
+    - testdata$
+    - third_party$
+    - vendor$
+  exclude-dirs-use-default: false

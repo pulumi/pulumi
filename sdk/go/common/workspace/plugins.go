@@ -41,6 +41,7 @@ import (
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -127,7 +128,7 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 // MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
 type MissingError struct {
 	// Kind of the plugin that couldn't be found.
-	kind PluginKind
+	kind apitype.PluginKind
 	// Name of the plugin that couldn't be found.
 	name string
 	// Optional version of the plugin that couldn't be found.
@@ -137,7 +138,7 @@ type MissingError struct {
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(kind PluginKind, name string, version *semver.Version, includeAmbient bool) error {
+func NewMissingError(kind apitype.PluginKind, name string, version *semver.Version, includeAmbient bool) error {
 	return &MissingError{
 		kind:           kind,
 		name:           name,
@@ -173,17 +174,17 @@ type PluginSource interface {
 }
 
 // standardAssetName returns the standard name for the asset that contains the given plugin.
-func standardAssetName(name string, kind PluginKind, version semver.Version, opSy, arch string) string {
+func standardAssetName(name string, kind apitype.PluginKind, version semver.Version, opSy, arch string) string {
 	return fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", kind, name, version, opSy, arch)
 }
 
 // getPulumiSource can download a plugin from get.pulumi.com
 type getPulumiSource struct {
 	name string
-	kind PluginKind
+	kind apitype.PluginKind
 }
 
-func newGetPulumiSource(name string, kind PluginKind) *getPulumiSource {
+func newGetPulumiSource(name string, kind apitype.PluginKind) *getPulumiSource {
 	return &getPulumiSource{name: name, kind: kind}
 }
 
@@ -215,14 +216,14 @@ type gitlabSource struct {
 	host    string
 	project string
 	name    string
-	kind    PluginKind
+	kind    apitype.PluginKind
 
 	token string
 }
 
 // Creates a new GitLab source from a gitlab://<host>/<project_id> url.
 // Uses the GITLAB_TOKEN environment variable for authentication if it's set.
-func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource, error) {
+func newGitlabSource(url *url.URL, name string, kind apitype.PluginKind) (*gitlabSource, error) {
 	contract.Requiref(url.Scheme == "gitlab", "url", `scheme must be "gitlab", was %q`, url.Scheme)
 
 	host := url.Host
@@ -250,7 +251,7 @@ func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource,
 func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
-		authorization = fmt.Sprintf("Bearer %s", source.token)
+		authorization = "Bearer " + source.token
 	}
 
 	req, err := buildHTTPRequest(url, authorization)
@@ -316,13 +317,13 @@ type githubSource struct {
 	organization string
 	repository   string
 	name         string
-	kind         PluginKind
+	kind         apitype.PluginKind
 
 	token string
 }
 
 // Creates a new github source adding authentication data in the environment, if it exists
-func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource, error) {
+func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githubSource, error) {
 	contract.Requiref(url.Scheme == "github", "url", `scheme must be "github", was %q`, url.Scheme)
 
 	// 14-03-2022 we stopped looking at GITHUB_PERSONAL_ACCESS_TOKEN and sending basic auth for github and
@@ -354,7 +355,7 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 	}
 
 	repository := "pulumi-" + name
-	if kind == ConverterPlugin {
+	if kind == apitype.ConverterPlugin {
 		// Converter plugins are expected at a different repo path, e.g.
 		// github.com/pulumi/pulumi-converter-aws rather than github.com/pulumi/pulumi-aws which would clash
 		// with the providers of the same name.
@@ -384,7 +385,7 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
 	var authorization string
 	if source.token != "" {
-		authorization = fmt.Sprintf("token %s", source.token)
+		authorization = "token " + source.token
 	}
 
 	req, err := buildHTTPRequest(url, authorization)
@@ -516,11 +517,11 @@ func (source *githubSource) Download(
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
 type httpSource struct {
 	name string
-	kind PluginKind
+	kind apitype.PluginKind
 	url  string
 }
 
-func newHTTPSource(name string, kind PluginKind, url *url.URL) *httpSource {
+func newHTTPSource(name string, kind apitype.PluginKind, url *url.URL) *httpSource {
 	contract.Requiref(
 		url.Scheme == "http" || url.Scheme == "https",
 		"url", `scheme must be "http" or "https", was %q`, url.Scheme)
@@ -570,10 +571,10 @@ func (source *httpSource) Download(
 // fallbackSource handles our current default logic of trying the pulumi public github then get.pulumi.com.
 type fallbackSource struct {
 	name string
-	kind PluginKind
+	kind apitype.PluginKind
 }
 
-func newFallbackSource(name string, kind PluginKind) *fallbackSource {
+func newFallbackSource(name string, kind apitype.PluginKind) *fallbackSource {
 	return &fallbackSource{
 		name: name,
 		kind: kind,
@@ -703,10 +704,10 @@ func (source *checksumSource) Download(
 
 // ProjectPlugin Information about a locally installed plugin specified by the project.
 type ProjectPlugin struct {
-	Name    string          // the simple name of the plugin.
-	Kind    PluginKind      // the kind of the plugin (language, resource, etc).
-	Version *semver.Version // the plugin's semantic version, if present.
-	Path    string          // the path that a plugin is to be loaded from (this will always be a directory)
+	Name    string             // the simple name of the plugin.
+	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
+	Version *semver.Version    // the plugin's semantic version, if present.
+	Path    string             // the path that a plugin is to be loaded from (this will always be a directory)
 }
 
 // Spec Return a PluginSpec object for this project plugin.
@@ -720,11 +721,11 @@ func (pp ProjectPlugin) Spec() PluginSpec {
 
 // PluginSpec provides basic specification for a plugin.
 type PluginSpec struct {
-	Name              string          // the simple name of the plugin.
-	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
-	Version           *semver.Version // the plugin's semantic version, if present.
-	PluginDownloadURL string          // an optional server to use when downloading this plugin.
-	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+	Name              string             // the simple name of the plugin.
+	Kind              apitype.PluginKind // the kind of the plugin (language, resource, etc).
+	Version           *semver.Version    // the plugin's semantic version, if present.
+	PluginDownloadURL string             // an optional server to use when downloading this plugin.
+	PluginDir         string             // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
@@ -766,7 +767,7 @@ func (spec PluginSpec) LockFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.lock", dir), nil
+	return dir + ".lock", nil
 }
 
 // PartialFilePath returns the full path to the plugin's partial file used during installation
@@ -776,7 +777,7 @@ func (spec PluginSpec) PartialFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.partial", dir), nil
+	return dir + ".partial", nil
 }
 
 func (spec PluginSpec) String() string {
@@ -791,15 +792,15 @@ func (spec PluginSpec) String() string {
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name         string          // the simple name of the plugin.
-	Path         string          // the path that a plugin was loaded from (this will always be a directory)
-	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
-	Version      *semver.Version // the plugin's semantic version, if present.
-	Size         int64           // the size of the plugin, in bytes.
-	InstallTime  time.Time       // the time the plugin was installed.
-	LastUsedTime time.Time       // the last time the plugin was used.
-	SchemaPath   string          // if set, used as the path for loading and caching the schema
-	SchemaTime   time.Time       // if set and newer than the file at SchemaPath, used to invalidate a cached schema
+	Name         string             // the simple name of the plugin.
+	Path         string             // the path that a plugin was loaded from (this will always be a directory)
+	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
+	Version      *semver.Version    // the plugin's semantic version, if present.
+	Size         int64              // the size of the plugin, in bytes.
+	InstallTime  time.Time          // the time the plugin was installed.
+	LastUsedTime time.Time          // the last time the plugin was used.
+	SchemaPath   string             // if set, used as the path for loading and caching the schema
+	SchemaTime   time.Time          // if set and newer than the file at SchemaPath, used to invalidate a cached schema
 }
 
 // Spec returns the PluginSpec for this PluginInfo
@@ -824,8 +825,8 @@ func (info *PluginInfo) Delete() error {
 	}
 	// Attempt to delete any leftover .partial or .lock files.
 	// Don't fail the operation if we can't delete these.
-	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.partial", dir)))
-	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.lock", dir)))
+	contract.IgnoreError(os.Remove(dir + ".partial"))
+	contract.IgnoreError(os.Remove(dir + ".lock"))
 	return nil
 }
 
@@ -856,7 +857,7 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 
 	info.LastUsedTime = tinfo.AccessTime()
 
-	if info.Kind == ResourcePlugin {
+	if info.Kind == apitype.ResourcePlugin {
 		var v string
 		if info.Version != nil {
 			v = "-" + info.Version.String() + "-"
@@ -1051,7 +1052,7 @@ func (spec PluginSpec) installLock() (unlock func(), err error) {
 	if err != nil {
 		return nil, err
 	}
-	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
+	lockFilePath := finalDir + ".lock"
 
 	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
 		return nil, fmt.Errorf("creating plugin root: %w", err)
@@ -1274,7 +1275,7 @@ func SingleFilePlugin(f *os.File, spec PluginSpec) PluginContent {
 
 type singleFilePlugin struct {
 	F    *os.File
-	Kind PluginKind
+	Kind apitype.PluginKind
 	Name string
 }
 
@@ -1285,6 +1286,9 @@ func (p singleFilePlugin) writeToDir(finalDir string) error {
 	}
 
 	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", p.Kind, p.Name))
+	if runtime.GOOS == "windows" {
+		finalPath += ".exe"
+	}
 	// We are writing an executable.
 	return os.WriteFile(finalPath, bytes, 0o700) //nolint:gosec
 }
@@ -1387,7 +1391,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	if err := cleanupTempDirs(finalDir); err != nil {
 		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
 		// Instead, log the error and continue on.
-		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err.Error())
+		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err)
 	}
 
 	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
@@ -1492,28 +1496,28 @@ func cleanupTempDirs(finalDir string) error {
 	return nil
 }
 
-// PluginKind represents a kind of a plugin that may be dynamically loaded and used by Pulumi.
-type PluginKind string
+// Re exporting PluginKind to keep backward compatibility, this should be kept in sync with
+// the definitions in sdk/go/common/apitype/plugins.go
+//
+// Deprecated: PluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+type PluginKind = apitype.PluginKind
 
+// ProductKind types definition
+//
+// Deprecated: PluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 const (
-	// AnalyzerPlugin is a plugin that can be used as a resource analyzer.
-	AnalyzerPlugin PluginKind = "analyzer"
-	// LanguagePlugin is a plugin that can be used as a language host.
-	LanguagePlugin PluginKind = "language"
-	// ResourcePlugin is a plugin that can be used as a resource provider for custom CRUD operations.
-	ResourcePlugin PluginKind = "resource"
-	// ConverterPlugin is a plugin that can be used to convert from other ecosystems to Pulumi.
-	ConverterPlugin PluginKind = "converter"
+	AnalyzerPlugin  = apitype.AnalyzerPlugin
+	LanguagePlugin  = apitype.LanguagePlugin
+	ResourcePlugin  = apitype.ResourcePlugin
+	ConverterPlugin = apitype.ConverterPlugin
+	ToolPlugin      = apitype.ToolPlugin
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
+//
+// Deprecated: IsPluginKind type was moved to "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 func IsPluginKind(k string) bool {
-	switch PluginKind(k) {
-	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin, ConverterPlugin:
-		return true
-	default:
-		return false
-	}
+	return apitype.IsPluginKind(k)
 }
 
 // HasPlugin returns true if the given plugin exists.
@@ -1549,22 +1553,14 @@ func HasPluginGTE(spec PluginSpec) (bool, error) {
 	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
 	// search that we'd do at runtime. This ensures that `pulumi plugin install` works the same way that the runtime
 	// loader does, to minimize confusion when a user has to install new plugins.
+	var match *PluginInfo
 	if !enableLegacyPluginBehavior && spec.Version != nil {
 		requestedVersion := semver.MustParseRange(spec.Version.String())
-		_, err := SelectCompatiblePlugin(plugs, spec.Kind, spec.Name, requestedVersion)
-		return err == nil, err
+		match = SelectCompatiblePlugin(plugs, spec.Kind, spec.Name, requestedVersion)
+	} else {
+		match = LegacySelectCompatiblePlugin(plugs, spec.Kind, spec.Name, spec.Version)
 	}
-
-	for _, p := range plugs {
-		if p.Name == spec.Name && p.Kind == spec.Kind {
-			if spec.Version == nil {
-				return true, nil
-			} else if p.Version != nil && p.Version.GTE(*spec.Version) {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return match != nil, nil
 }
 
 // GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.
@@ -1647,7 +1643,7 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 				Version: &version,
 				Path:    path,
 			}
-			if _, err := os.Stat(fmt.Sprintf("%s.partial", path)); err == nil {
+			if _, err := os.Stat(path + ".partial"); err == nil {
 				// Skip it if the partial file exists, meaning the plugin is not fully installed.
 				continue
 			} else if !os.IsNotExist(err) {
@@ -1667,24 +1663,24 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 
 // We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary.
 // Eventually we want to fix this so new plugins are true plugins in the plugin cache.
-func IsPluginBundled(kind PluginKind, name string) bool {
-	return (kind == LanguagePlugin && name == "nodejs") ||
-		(kind == LanguagePlugin && name == "go") ||
-		(kind == LanguagePlugin && name == "python") ||
-		(kind == LanguagePlugin && name == "dotnet") ||
-		(kind == LanguagePlugin && name == "yaml") ||
-		(kind == LanguagePlugin && name == "java") ||
-		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == ResourcePlugin && name == "pulumi-python") ||
-		(kind == AnalyzerPlugin && name == "policy") ||
-		(kind == AnalyzerPlugin && name == "policy-python")
+func IsPluginBundled(kind apitype.PluginKind, name string) bool {
+	return (kind == apitype.LanguagePlugin && name == "nodejs") ||
+		(kind == apitype.LanguagePlugin && name == "go") ||
+		(kind == apitype.LanguagePlugin && name == "python") ||
+		(kind == apitype.LanguagePlugin && name == "dotnet") ||
+		(kind == apitype.LanguagePlugin && name == "yaml") ||
+		(kind == apitype.LanguagePlugin && name == "java") ||
+		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
+		(kind == apitype.ResourcePlugin && name == "pulumi-python") ||
+		(kind == apitype.AnalyzerPlugin && name == "policy") ||
+		(kind == apitype.AnalyzerPlugin && name == "policy-python")
 }
 
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(d diag.Sink, kind PluginKind, name string, version *semver.Version,
+func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (string, error) {
 	info, path, err := getPluginInfoAndPath(d, kind, name, version, true /* skipMetadata */, projectPlugins)
@@ -1697,7 +1693,7 @@ func GetPluginPath(d diag.Sink, kind PluginKind, name string, version *semver.Ve
 	return path, err
 }
 
-func GetPluginInfo(d diag.Sink, kind PluginKind, name string, version *semver.Version,
+func GetPluginInfo(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(d, kind, name, version, false, projectPlugins)
@@ -1733,7 +1729,7 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	d diag.Sink,
-	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
+	kind apitype.PluginKind, name string, version *semver.Version, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := (&PluginSpec{Kind: kind, Name: name}).File()
@@ -1867,36 +1863,10 @@ func getPluginInfoAndPath(
 	var match *PluginInfo
 	if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
-		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
-		if err != nil {
-			return nil, "", NewMissingError(kind, name, version, includeAmbient)
-		}
-		match = &candidate
+		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 	} else {
-		for _, cur := range plugins {
-			// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
-			// we can take a pointer to if this plugin is the best match yet.
-			plugin := cur
-			if plugin.Kind == kind && plugin.Name == name {
-				// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
-				// keep on searching just in case there's a newer version available.
-				var m *PluginInfo
-				if match == nil && version == nil {
-					m = &plugin // no existing match, no version spec, take it.
-				} else if match != nil &&
-					(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
-					m = &plugin // existing match, but this plugin is newer, prefer it.
-				} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
-					m = &plugin // this plugin is >= the version being requested, use it.
-				}
-
-				if m != nil {
-					match = m
-					logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
-						kind, name, version, match.Version)
-				}
-			}
-		}
+		logging.V(6).Infof("GetPluginPath(%s, %s, %s): using legacy plugin behavior", kind, name, version)
+		match = LegacySelectCompatiblePlugin(plugins, kind, name, version)
 	}
 
 	if match != nil {
@@ -1952,6 +1922,71 @@ func (sp SortedPluginSpec) Less(i, j int) bool {
 }
 func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
+// LegacySelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that
+// satisfies the requested version. It returns the highest version plugin greater than the requested version,
+// or an error if no such plugin could be found.
+//
+// If there exist plugins in the plugin list that don't have a version, LegacySelectCompatiblePlugin will select
+// them if there are no other compatible plugins available.
+func LegacySelectCompatiblePlugin(
+	plugins []PluginInfo, kind apitype.PluginKind, name string, version *semver.Version,
+) *PluginInfo {
+	var match *PluginInfo
+	for _, cur := range plugins {
+		// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local
+		// that we can take a pointer to if this plugin is the best match yet.
+		plugin := cur
+		if plugin.Kind == kind && plugin.Name == name {
+			// Always pick the most recent version of the plugin available. Even if this is an exact match,
+			// we keep on searching just in case there's a newer version available.
+			var m *PluginInfo
+			if match == nil {
+				// no existing match
+				if version == nil {
+					m = &plugin // no version spec, accept anything
+				} else if plugin.Version == nil || plugin.Version.GTE(*version) {
+					// Either the plugin doesn't have a version, in which case we'll take it but prefer
+					// anything else, or it has a version >= requested.
+					m = &plugin
+				}
+			} else {
+				// existing match
+				if plugin.Version != nil && match.Version == nil {
+					// existing match is unversioned, but this plugin has a version, so prefer it.
+					m = &plugin
+				} else if plugin.Version == nil {
+					// this plugin is unversioned ignore it, our current match might also be unversioned but
+					// we just pick the first we see in this case.
+				} else {
+					// both have versions, pick the greater stable one.
+					matchIsPre := len(match.Version.Pre) != 0
+					pluginIsPre := len(plugin.Version.Pre) != 0
+
+					// The plugin has to at least be greater than the requested version.
+					if version == nil || plugin.Version.GTE(*version) {
+						if matchIsPre && !pluginIsPre {
+							// If one is pre-release and the other is not, prefer the non-pre-release one.
+							m = &plugin
+						} else if !matchIsPre && pluginIsPre {
+							// current match is not pre-release, but this plugin is, so prefer the current match.
+						} else if plugin.Version.GT(*match.Version) {
+							// Else if the plugin is greater than the current match, prefer it.
+							m = &plugin
+						}
+					}
+				}
+			}
+
+			if m != nil {
+				match = m
+				logging.V(6).Infof("LegacySelectCompatiblePlugin(%s, %s, %s): found candidate (#%s)",
+					kind, name, version, match.Version)
+			}
+		}
+	}
+	return match
+}
+
 // SelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that sastisfies the
 // requested semver range. It returns the highest version plugin that satisfies the requested constraints, or an error
 // if no such plugin could be found.
@@ -1959,8 +1994,8 @@ func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // If there exist plugins in the plugin list that don't have a version, SelectCompatiblePlugin will select them if there
 // are no other compatible plugins available.
 func SelectCompatiblePlugin(
-	plugins []PluginInfo, kind PluginKind, name string, requested semver.Range,
-) (PluginInfo, error) {
+	plugins []PluginInfo, kind apitype.PluginKind, name string, requested semver.Range,
+) *PluginInfo {
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
 	var bestMatch PluginInfo
 	var hasMatch bool
@@ -2000,11 +2035,9 @@ func SelectCompatiblePlugin(
 	}
 
 	if !hasMatch {
-		logging.V(7).Infof("SelectCompatiblePlugin(..., %s): failed to find match", name)
-		return PluginInfo{}, fmt.Errorf("failed to locate compatible plugin: %#v", name)
+		return nil
 	}
-	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): selecting plugin '%s': best match ", name, bestMatch.String())
-	return bestMatch, nil
+	return &bestMatch
 }
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
@@ -2056,7 +2089,7 @@ var pluginRegexp = regexp.MustCompile(
 var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
-func tryPlugin(file os.DirEntry) (PluginKind, string, semver.Version, bool) {
+func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
 		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
@@ -2076,7 +2109,7 @@ func tryPlugin(file os.DirEntry) (PluginKind, string, semver.Version, bool) {
 			file.Name(), len(pluginRegexp.SubexpNames()), len(match))
 		return "", "", semver.Version{}, false
 	}
-	var kind PluginKind
+	var kind apitype.PluginKind
 	var name string
 	var version *semver.Version
 	for i, group := range pluginRegexp.SubexpNames() {
@@ -2085,7 +2118,7 @@ func tryPlugin(file os.DirEntry) (PluginKind, string, semver.Version, bool) {
 		case "Kind":
 			// Skip invalid kinds.
 			if IsPluginKind(v) {
-				kind = PluginKind(v)
+				kind = apitype.PluginKind(v)
 			} else {
 				logging.V(11).Infof("skipping invalid plugin kind: %s", v)
 			}
@@ -2148,6 +2181,6 @@ func (bc *barCloser) Read(dest []byte) (int, error) {
 }
 
 func (bc *barCloser) Close() error {
-	bc.bar.Finish()
+	bc.bar.FinishPrint("\r")
 	return bc.readCloser.Close()
 }

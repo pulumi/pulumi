@@ -1,0 +1,15 @@
+[project]
+  name = "pulumi_asset_archive"
+  dependencies = ["parver>=0.2.1", "pulumi", "semver>=2.8.1"]
+  readme = "README.md"
+  requires-python = ">=3.8"
+  version = "5.0.0"
+
+[build-system]
+  requires = ["setuptools>=61.0"]
+  build-backend = "setuptools.build_meta"
+
+[tool]
+  [tool.setuptools]
+    [tool.setuptools.package-data]
+      pulumi_asset_archive = ["py.typed", "pulumi-plugin.json"]

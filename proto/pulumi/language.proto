@@ -58,6 +58,23 @@ service LanguageRuntime {
     rpc Pack(PackRequest) returns (PackResponse) {}
 }
 
+// ProgramInfo are the common set of options that a language runtime needs to execute or query a program. This
+// is filled in by the engine based on where the `Pulumi.yaml` file was, the `runtime.options` property, and
+// the `main` property.
+message ProgramInfo {
+    // the root of the project, where the `Pulumi.yaml` file is located.
+    string root_directory = 1;
+    // the absolute path to the directory of the program to execute. Generally, but not required to be,
+    // underneath the root directory.
+    string program_directory = 2;
+    // the entry point of the program, normally '.' meaning to just use the program directory, but can also be
+    // a filename inside the program directory. How that filename is interpreted, if at all, is language
+    // specific.
+    string entry_point = 3;
+    // JSON style options from the `Pulumi.yaml` runtime options section.
+    google.protobuf.Struct options = 4;
+}
+
 // AboutResponse returns runtime information about the language.
 message AboutResponse {
     string executable = 1; // the primary executable for the runtime of this language.
@@ -66,10 +83,11 @@ message AboutResponse {
 }
 
 message GetProgramDependenciesRequest {
-    string project = 1; // the project name.
-    string pwd = 2;     // the program's working directory.
-    string program = 3; // the path to the program.
+    string project = 1 [deprecated = true]; // the project name, the engine always sets this to "deprecated" now.
+    string pwd = 2 [deprecated = true];     // the program's working directory.
+    string program = 3 [deprecated = true]; // the path to the program.
     bool transitiveDependencies = 4; // if transitive dependencies should be included in the result.
+    ProgramInfo info = 5; // the program info to use to calculate dependencies.
 }
 
 message DependencyInfo {
@@ -82,9 +100,10 @@ message GetProgramDependenciesResponse {
 }
 
 message GetRequiredPluginsRequest {
-    string project = 1; // the project name.
-    string pwd = 2;     // the program's working directory.
-    string program = 3; // the path to the program.
+    string project = 1 [deprecated = true]; // the project name, the engine always sets this to "deprecated" now.
+    string pwd = 2 [deprecated = true];     // the program's working directory.
+    string program = 3 [deprecated = true]; // the path to the program.
+    ProgramInfo info = 4; // the program info to use to calculate plugins.
 }
 
 message GetRequiredPluginsResponse {
@@ -96,7 +115,7 @@ message RunRequest {
     string project = 1;             // the project name.
     string stack = 2;               // the name of the stack being deployed into.
     string pwd = 3;                 // the program's working directory.
-    string program = 4;             // the path to the program to execute.
+    string program = 4 [deprecated = true];             // the path to the program to execute.
     repeated string args = 5;       // any arguments to pass to the program.
     map<string, string> config = 6; // the configuration variables to apply before running.
     bool dryRun = 7;                // true if we're only doing a dryrun (preview).
@@ -106,6 +125,7 @@ message RunRequest {
     repeated string configSecretKeys = 11; // the configuration keys that have secret values.
     string organization = 12;       // the organization of the stack being deployed into.
     google.protobuf.Struct configPropertyMap = 13; // the configuration variables to apply before running.
+    ProgramInfo info = 14; // the program info to use to execute the program.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
@@ -120,8 +140,9 @@ message RunResponse {
 }
 
 message InstallDependenciesRequest {
-    string directory = 1; // the program's working directory.
+    string directory = 1 [deprecated = true]; // the program's working directory.
     bool is_terminal = 2; // if we are running in a terminal and should use ANSI codes
+    ProgramInfo info = 3; // the program info to use to execute the plugin.
 }
 
 message InstallDependenciesResponse {
@@ -131,9 +152,10 @@ message InstallDependenciesResponse {
 
 message RunPluginRequest{
     string pwd = 1; // the program's working directory.
-    string program = 2; // the path to the program to execute.
+    string program = 2 [deprecated = true]; // the path to the program to execute.
     repeated string args = 3; // any arguments to pass to the program.
     repeated string env = 4; // any environment variables to set as part of the program.
+    ProgramInfo info = 5; // the program info to use to execute the plugin.
 }
 
 message RunPluginResponse {
@@ -188,18 +210,21 @@ message GeneratePackageRequest {
     map<string, bytes> extra_files = 3;
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 4;
+    // local dependencies to use instead of using the package system. This is a map of package name to a local
+    // path of a language specific artifact to use for the SDK for that package.
+    map<string, string> local_dependencies = 5;
 }
 
 message GeneratePackageResponse {
+    // any diagnostics from code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 }
 
 message PackRequest {
     // the directory of a package to pack.
     string package_directory = 1;
-    // the version to tag the artifact with.
-    string version = 2;
     // the directory to write the packed artifact to.
-    string destination_directory = 3;
+    string destination_directory = 2;
 }
 
 message PackResponse {

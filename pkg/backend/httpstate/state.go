@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -223,6 +224,13 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 		return nil, err
 	}
 
+	// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
+		}
+	}
+
 	return snapshot, nil
 }
 
@@ -295,11 +303,16 @@ func persistEngineEvents(
 		close(done)
 	}()
 
+	// Need to filter the engine events here to exclude any internal events.
+	events = channel.FilterRead(events, func(e engine.Event) bool {
+		return !e.Internal()
+	})
+
 	var eventBatch []engine.Event
 	maxDelayTicker := time.NewTicker(maxTransmissionDelay)
 
 	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
-	// ensure events can be reconstructured in the same order they were emitted. (And not
+	// ensure events can be reconstructed in the same order they were emitted. (And not
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
 
@@ -312,7 +325,6 @@ func persistEngineEvents(
 	batchesToTransmit := make(chan engineEventBatch)
 
 	transmitBatchLoop := func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		for eventBatch := range batchesToTransmit {
@@ -325,6 +337,7 @@ func persistEngineEvents(
 	// Start N different go-routines which will all pull from the batchesToTransmit channel
 	// and persist those engine events until the channel is closed.
 	for i := 0; i < maxConcurrentRequests; i++ {
+		wg.Add(1)
 		go transmitBatchLoop()
 	}
 

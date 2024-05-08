@@ -1,0 +1,122 @@
+name: Sign
+
+permissions:
+  # To sign artifacts.
+  id-token: write
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+
+jobs:
+  sign:
+    name: sign
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install b3sum
+        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
+        with:
+          crate: b3sum
+          version: 1.3.0
+
+      - uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19 # v3.1.2
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts.tmp
+      - name: Rename SDKs
+        # This step must match the rename SDKs step in the "publish" job below.
+        run: |
+          (
+            cd artifacts.tmp/artifacts-python-sdk
+            for file in *.whl ; do
+              mv -vT "$file" "sdk-python-$file"
+            done
+          )
+          (
+            cd artifacts.tmp/artifacts-nodejs-sdk
+            for file in *.tgz ; do
+              mv -vT "$file" "sdk-nodejs-$file"
+            done
+          )
+      - name: Flatten artifact directories
+        run: |
+          mkdir -p ./artifacts
+          mv ./artifacts.tmp/artifacts-*/* ./artifacts
+
+      - name: Ensure coverage not enabled on release
+        run: |
+          # Extract pulumi binary to bintest rather than pollute artifacts directory.
+          mkdir './bintest' && tar -xvf ./artifacts/pulumi-*-linux-x64.tar.gz -C './bintest/.'
+
+          # Ensure pulumi binary exists.
+          stat './bintest/pulumi/pulumi' || exit 1
+
+          # Check binary not built with coverage.
+          if ./bintest/pulumi/pulumi version 2>&1 | grep coverage; then
+            echo 'Aborting! Pulumi binary built with coverage data.'
+            exit 2
+          else
+            echo 'Pulumi binary OK!'
+          fi
+
+      - name: Create sums.tmp
+        run: mkdir -p ./sums.tmp ./sigs.tmp
+
+        # Each of these commands strips the ./ prefix to match existing (<=3.39) formatting.
+      - name: Checksums with SHA256
+        working-directory: artifacts
+        env:
+          version: ${{ inputs.version }}
+        run: sha256sum ./pulumi-*.{tar.gz,zip} | sed 's/.\///' | tee "../sums.tmp/pulumi-${version}-checksums.txt"
+
+      - name: Checksums with BLAKE3
+        working-directory: artifacts
+        run: b3sum ./* | sed 's/.\///' | tee ../sums.tmp/B3SUMS
+
+      - name: Checksums with SHA512
+        working-directory: artifacts
+        run: sha512sum ./* | sed 's/.\///' | tee ../sums.tmp/SHA512SUMS
+
+      - name: Sign binaries and checksums
+        shell: bash
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ls -la
+          # Sign all artifacts and checksums:
+          for dir in "artifacts" "sums.tmp"; do
+            pushd "$dir"
+            for file in ./*; do
+                echo "$file"
+                COSIGN_EXPERIMENTAL=1 cosign sign-blob --yes \
+                  --bundle="../sigs.tmp/${file}".sig  \
+                  "${file}"
+            done
+            popd
+          done
+
+          # flatten to a single directory to upload:
+          mv sums.tmp/* sigs.tmp
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifacts-signatures
+          retention-days: 1
+          path: |
+            sigs.tmp/*
+          if-no-files-found: error

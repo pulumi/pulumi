@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,11 +53,11 @@ const (
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too old to understand.
-	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old")
+	ErrDeploymentSchemaVersionTooOld = errors.New("this stack's deployment is too old")
 
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
-	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
+	ErrDeploymentSchemaVersionTooNew = errors.New("this stack's deployment version is too new")
 )
 
 var (
@@ -99,17 +101,13 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
+func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets bool) (*apitype.DeploymentV3, error) {
 	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	// Capture the version information into a manifest.
 	manifest := snap.Manifest.Serialize()
 
-	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
-	if sm == nil {
-		sm = snap.SecretsManager
-	}
-
+	sm := snap.SecretsManager
 	var enc config.Encrypter
 	if sm != nil {
 		e, err := sm.Encrypter()
@@ -124,7 +122,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	// Serialize all vertices and only include a vertex section if non-empty.
 	resources := slice.Prealloc[apitype.ResourceV3](len(snap.Resources))
 	for _, res := range snap.Resources {
-		sres, err := SerializeResource(res, enc, showSecrets)
+		sres, err := SerializeResource(ctx, res, enc, showSecrets)
 		if err != nil {
 			return nil, fmt.Errorf("serializing resources: %w", err)
 		}
@@ -133,7 +131,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 
 	operations := slice.Prealloc[apitype.OperationV2](len(snap.PendingOperations))
 	for _, op := range snap.PendingOperations {
-		sop, err := SerializeOperation(op, enc, showSecrets)
+		sop, err := SerializeOperation(ctx, op, enc, showSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -238,6 +236,17 @@ func DeserializeDeploymentV3(
 	var dec config.Decrypter
 	var enc config.Encrypter
 	if secretsManager == nil {
+		var ciphertexts []string
+		for _, res := range deployment.Resources {
+			collectCiphertexts(&ciphertexts, res.Inputs)
+			collectCiphertexts(&ciphertexts, res.Outputs)
+		}
+		if len(ciphertexts) > 0 {
+			// If there are ciphertexts, but we couldn't set up a secrets manager, error out early
+			// to avoid panic'ing later on.  This snapshot is broken and needs to be repaired
+			// manually.
+			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found")
+		}
 		dec = config.NewPanicCrypter()
 		enc = config.NewPanicCrypter()
 	} else {
@@ -293,14 +302,16 @@ func DeserializeDeploymentV3(
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bool) (apitype.ResourceV3, error) {
+func SerializeResource(
+	ctx context.Context, res *resource.State, enc config.Encrypter, showSecrets bool,
+) (apitype.ResourceV3, error) {
 	contract.Requiref(res != nil, "res", "must not be nil")
 	contract.Requiref(res.URN != "", "res", "must have a URN")
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
 	if inp := res.Inputs; inp != nil {
-		sinp, err := SerializeProperties(inp, enc, showSecrets)
+		sinp, err := SerializeProperties(ctx, inp, enc, showSecrets)
 		if err != nil {
 			return apitype.ResourceV3{}, err
 		}
@@ -308,7 +319,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 	}
 	var outputs map[string]interface{}
 	if outp := res.Outputs; outp != nil {
-		soutp, err := SerializeProperties(outp, enc, showSecrets)
+		soutp, err := SerializeProperties(ctx, outp, enc, showSecrets)
 		if err != nil {
 			return apitype.ResourceV3{}, err
 		}
@@ -350,8 +361,10 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 }
 
 // SerializeOperation serializes a resource in a pending state.
-func SerializeOperation(op resource.Operation, enc config.Encrypter, showSecrets bool) (apitype.OperationV2, error) {
-	res, err := SerializeResource(op.Resource, enc, showSecrets)
+func SerializeOperation(
+	ctx context.Context, op resource.Operation, enc config.Encrypter, showSecrets bool,
+) (apitype.OperationV2, error) {
+	res, err := SerializeResource(ctx, op.Resource, enc, showSecrets)
 	if err != nil {
 		return apitype.OperationV2{}, fmt.Errorf("serializing resource: %w", err)
 	}
@@ -362,12 +375,12 @@ func SerializeOperation(op resource.Operation, enc config.Encrypter, showSecrets
 }
 
 // SerializeProperties serializes a resource property bag so that it's suitable for serialization.
-func SerializeProperties(props resource.PropertyMap, enc config.Encrypter,
+func SerializeProperties(ctx context.Context, props resource.PropertyMap, enc config.Encrypter,
 	showSecrets bool,
 ) (map[string]interface{}, error) {
 	dst := make(map[string]interface{})
 	for _, k := range props.StableKeys() {
-		v, err := SerializePropertyValue(props[k], enc, showSecrets)
+		v, err := SerializePropertyValue(ctx, props[k], enc, showSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -377,11 +390,9 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter,
 }
 
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
-func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
+func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, enc config.Encrypter,
 	showSecrets bool,
 ) (interface{}, error) {
-	ctx := context.TODO()
-
 	// Serialize nulls as nil.
 	if prop.IsNull() {
 		return nil, nil
@@ -399,7 +410,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		srcarr := prop.ArrayValue()
 		dstarr := make([]interface{}, len(srcarr))
 		for i, elem := range prop.ArrayValue() {
-			selem, err := SerializePropertyValue(elem, enc, showSecrets)
+			selem, err := SerializePropertyValue(ctx, elem, enc, showSecrets)
 			if err != nil {
 				return nil, err
 			}
@@ -410,7 +421,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 
 	// Also for objects, recurse and use naked properties.
 	if prop.IsObject() {
-		return SerializeProperties(prop.ObjectValue(), enc, showSecrets)
+		return SerializeProperties(ctx, prop.ObjectValue(), enc, showSecrets)
 	}
 
 	// For assets, we need to serialize them a little carefully, so we can recover them afterwards.
@@ -438,7 +449,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
 		// "secret" so we retain that information when deserializing the overall structure, but there is no
 		// need to double encrypt everything.
-		value, err := SerializePropertyValue(prop.SecretValue().Element, config.NopEncrypter, showSecrets)
+		value, err := SerializePropertyValue(ctx, prop.SecretValue().Element, config.NopEncrypter, showSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -448,19 +459,6 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		}
 		plaintext := string(bytes)
 
-		// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
-		// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
-		var ciphertext string
-		if cachingCrypter, ok := enc.(*cachingCrypter); ok {
-			ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
-		} else {
-			ciphertext, err = enc.EncryptValue(ctx, plaintext)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
-		}
-		contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
-
 		secret := apitype.SecretV1{
 			Sig: resource.SecretSig,
 		}
@@ -468,6 +466,19 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		if showSecrets {
 			secret.Plaintext = plaintext
 		} else {
+			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
+			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
+			var ciphertext string
+			if cachingCrypter, ok := enc.(*cachingCrypter); ok {
+				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
+			} else {
+				ciphertext, err = enc.EncryptValue(ctx, plaintext)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
+			}
+			contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
+
 			secret.Ciphertext = ciphertext
 		}
 
@@ -511,7 +522,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 	}
 
 	if res.URN == "" {
-		return nil, fmt.Errorf("resource missing required 'urn' field")
+		return nil, errors.New("resource missing required 'urn' field")
 	}
 
 	if res.Type == "" {
@@ -572,13 +583,13 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			}
 			return resource.NewStringProperty(w), nil
 		case []interface{}:
-			var arr []resource.PropertyValue
-			for _, elem := range w {
+			arr := make([]resource.PropertyValue, len(w))
+			for i, elem := range w {
 				ev, err := DeserializePropertyValue(elem, dec, enc)
 				if err != nil {
 					return resource.PropertyValue{}, err
 				}
-				arr = append(arr, ev)
+				arr[i] = ev
 			}
 			return resource.NewArrayProperty(arr), nil
 		case map[string]interface{}:
@@ -591,15 +602,15 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			objmap := obj.Mappable()
 			if sig, hasSig := objmap[resource.SigKey]; hasSig {
 				switch sig {
-				case resource.AssetSig:
-					asset, isasset, err := resource.DeserializeAsset(objmap)
+				case asset.AssetSig:
+					asset, isasset, err := asset.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
 					contract.Assertf(isasset, "resource with asset signature is not an asset")
 					return resource.NewAssetProperty(asset), nil
-				case resource.ArchiveSig:
-					archive, isarchive, err := resource.DeserializeArchive(objmap)
+				case archive.ArchiveSig:
+					archive, isarchive, err := archive.Deserialize(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
@@ -623,7 +634,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					} else {
 						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
+							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
 						}
 						plaintext = unencryptedText
 					}

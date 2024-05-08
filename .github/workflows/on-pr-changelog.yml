@@ -40,11 +40,11 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by changelog tool
       - name: Changelog
@@ -57,14 +57,14 @@ jobs:
           CHANGELOG="$(./.github/scripts/get-changelog-comment "${PREVIOUS_VERSION}" "${CHANGELOG_REQUIRED}" "${GITHUB_PR}")"
           ./.github/scripts/set-output CHANGELOG "${CHANGELOG}"
       - name: Find Comment
-        uses: peter-evans/find-comment@1769778a0c5bd330272d749d12c036d65e70d39d # v2.0.0
+        uses: peter-evans/find-comment@v3
         id: fc
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           issue-number: ${{ inputs.pr-number }}
           body-includes: "# Changelog"
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@c9fcb64660bc90ec1cc535646af190c992007c32 # v2.0.0
+        uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           comment-id: ${{ steps.fc.outputs.comment-id }}

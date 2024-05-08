@@ -55,7 +55,7 @@ func newLogsCmd() *cobra.Command {
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -87,6 +87,7 @@ func newLogsCmd() *cobra.Command {
 
 			stackName := s.Ref().Name().String()
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
 				stackName,
 				proj,
 				cfg.Environment,

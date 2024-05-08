@@ -103,7 +103,7 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 	// Read the tarball in as a byte slice.
 	tarball, err := os.ReadFile(packfile)
 	if err != nil {
-		return nil, fmt.Errorf("'yarn pack' completed successfully but the packed .tgz file was not generated: %v", err)
+		return nil, fmt.Errorf("'yarn pack' completed successfully but the packed .tgz file was not generated: %w", err)
 	}
 
 	return tarball, nil

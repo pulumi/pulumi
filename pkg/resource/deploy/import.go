@@ -17,12 +17,14 @@ package deploy
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -83,9 +85,9 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	}
 
 	// Create a goal map for the deployment.
-	newGoals := &goalMap{}
+	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
 
-	builtins := newBuiltinProvider(nil, nil)
+	builtins := newBuiltinProvider(nil, nil, ctx.Diag)
 
 	// Create a new provider registry.
 	reg := providers.NewRegistry(ctx.Host, preview, builtins)
@@ -104,7 +106,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		preview:      preview,
 		providers:    reg,
 		newPlans:     newResourcePlan(target.Config),
-		news:         &resourceMap{},
+		news:         &gsync.Map[resource.URN, *resource.State]{},
 	}, nil
 }
 
@@ -153,7 +155,7 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 			new := *r
 			new.ID = ""
 			// Set a dummy goal so the resource is tracked as managed.
-			i.deployment.goals.set(r.URN, &resource.Goal{})
+			i.deployment.goals.Store(r.URN, &resource.Goal{})
 			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
 				return false
 			}
@@ -166,7 +168,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	// Get or create the root resource.
 	if i.deployment.prev != nil {
 		for _, res := range i.deployment.prev.Resources {
-			if res.Type == resource.RootStackType {
+			if res.Type == resource.RootStackType && res.Parent == "" {
 				return res.URN, false, true
 			}
 		}
@@ -215,7 +217,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Type.Package() == "" {
-			return nil, false, fmt.Errorf("incorrect package type specified")
+			return nil, false, errors.New("incorrect package type specified")
 		}
 		// TODO: Support parametrized providers in imports.
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, "", nil, nil)
@@ -245,7 +247,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	})
 	for idx, req := range defaultProviderRequests {
 		if req.Package() == "" {
-			return nil, false, fmt.Errorf("incorrect package type specified")
+			return nil, false, errors.New("incorrect package type specified")
 		}
 
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
@@ -280,7 +282,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.set(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &resource.Goal{})
 		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
 	}
 
@@ -350,7 +352,7 @@ func (i *importer) importResources(ctx context.Context) error {
 				new := *old
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
-				i.deployment.goals.set(old.URN, &resource.Goal{})
+				i.deployment.goals.Store(old.URN, &resource.Goal{})
 				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
 				continue
 			}
@@ -368,7 +370,7 @@ func (i *importer) importResources(ctx context.Context) error {
 				new := *old
 				new.ID = ""
 				// Set a dummy goal so the resource is tracked as managed.
-				i.deployment.goals.set(old.URN, &resource.Goal{})
+				i.deployment.goals.Store(old.URN, &resource.Goal{})
 				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, &new))
 				continue
 			}
@@ -394,7 +396,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			urn.Type(), urn, !imp.Component, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.set(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &resource.Goal{})
 
 		if imp.Component {
 			if imp.Remote {

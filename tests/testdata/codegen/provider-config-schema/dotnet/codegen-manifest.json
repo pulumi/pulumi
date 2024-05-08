@@ -1,0 +1,14 @@
+{
+  "emittedFiles": [
+    "Config/Config.cs",
+    "Config/README.md",
+    "Configstation.Pulumi.Configstation.csproj",
+    "Configstation/Enums.cs",
+    "Configstation/FuncWithAllOptionalInputs.cs",
+    "Configstation/Provider.cs",
+    "Configstation/README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

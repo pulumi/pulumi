@@ -177,11 +177,11 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
-	if !stackIsAlreadyHosed {
+	if !stackIsAlreadyHosed && !backend.DisableIntegrityChecking {
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
+	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
@@ -226,6 +226,9 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
+		if *snap == nil {
+			return "", errors.New("no snapshot found")
+		}
 	}
 	urnList := make([]string, len((*snap).Resources))
 	for i, r := range (*snap).Resources {
@@ -255,7 +258,7 @@ func getNewResourceName() (tokens.QName, error) {
 			if tokens.IsQName(ans.(string)) {
 				return nil
 			}
-			return fmt.Errorf("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
+			return errors.New("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
 		}))
 	if err != nil {
 		return "", err

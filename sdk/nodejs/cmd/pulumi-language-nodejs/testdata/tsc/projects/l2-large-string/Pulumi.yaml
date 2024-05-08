@@ -1,0 +1,5 @@
+name: l2-large-string
+runtime:
+  name: nodejs
+  options:
+    typescript: false

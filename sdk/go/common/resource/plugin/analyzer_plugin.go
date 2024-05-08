@@ -21,15 +21,16 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -59,7 +60,7 @@ var _ Analyzer = (*analyzer)(nil)
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(ctx.Diag,
-		workspace.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
+		apitype.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 		nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
@@ -69,7 +70,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		workspace.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +98,12 @@ func NewPolicyAnalyzer(
 	// All other languages have the runtime appended, e.g. "policy-<runtime>".
 	policyAnalyzerName := "policy"
 	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
+		policyAnalyzerName = "policy-" + proj.Runtime.Name()
 	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	pluginPath, err := workspace.GetPluginPath(ctx.Diag,
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
+		apitype.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
 
 	var e *workspace.MissingError
 	if errors.As(err, &e) {
@@ -135,7 +136,7 @@ func NewPolicyAnalyzer(
 	}
 
 	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		workspace.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
+		apitype.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
@@ -343,9 +344,9 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
-	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
+	label := a.label() + ".GetAnalyzerInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -421,9 +422,9 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 
 // GetPluginInfo returns this plugin's information.
 func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
-	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
+	label := a.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -442,13 +443,13 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    string(a.name),
 		Path:    a.plug.Bin,
-		Kind:    workspace.AnalyzerPlugin,
+		Kind:    apitype.AnalyzerPlugin,
 		Version: version,
 	}, nil
 }
 
 func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
-	label := fmt.Sprintf("%s.Configure(...)", a.label())
+	label := a.label() + ".Configure(...)"
 	logging.V(7).Infof("%s executing", label)
 
 	if len(policyConfig) == 0 {
@@ -778,13 +779,13 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", opts.Organization)
 			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
 			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", strconv.FormatBool(opts.DryRun))
 		}
 
 		maybeAppendEnv("PULUMI_ORGANIZATION", opts.Organization)
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 	}
 
 	return env, nil

@@ -125,24 +125,29 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) {
 	switch functionName {
 	case "filebase64":
-		return `private static string ReadFileBase64(string path) {
-		return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path)));
-	}`, true
+		return fmt.Sprintf(`
+%sstring ReadFileBase64(string path) 
+%s{
+%s    return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)));
+%s}`, indent, indent, indent, indent), true
 	case "filebase64sha256":
-		return `private static string ComputeFileBase64Sha256(string path) {
-		var fileData = System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path));
-		var hashData = SHA256.Create().ComputeHash(fileData);
-		return Convert.ToBase64String(hashData);
-	}`, true
+		return fmt.Sprintf(`
+%sstring ComputeFileBase64Sha256(string path) 
+%s{
+%s    var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
+%s    var hashData = SHA256.Create().ComputeHash(fileData);
+%s    return Convert.ToBase64String(hashData);
+%s}`, indent, indent, indent, indent, indent, indent), true
 	case "sha1":
-		return `private static string ComputeSHA1(string input) {
-		return BitConverter.ToString(
-			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
-		).Replace("-","").ToLowerInvariant());
-	}`, true
+		return fmt.Sprintf(`
+%sstring ComputeSHA1(string input) 
+%s{
+%s    var hash = SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input));
+%s    return BitConverter.ToString(hash).Replace("-","").ToLowerInvariant();
+%s}`, indent, indent, indent, indent, indent), true
 	case "notImplemented":
 		return fmt.Sprintf(`
-%sstatic object NotImplemented(string errorMessage) 
+%sobject NotImplemented(string errorMessage) 
 %s{
 %s    throw new System.NotImplementedException(errorMessage);
 %s}`, indent, indent, indent, indent), true

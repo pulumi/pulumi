@@ -19,7 +19,6 @@ package ints
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,9 +26,9 @@ import (
 	"testing"
 
 	"github.com/grapl-security/pulumi-hcp/sdk/go/hcp"
+	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sourcegraph.com/sourcegraph/appdash"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
@@ -46,7 +45,7 @@ func TestBuildTarget(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(filepath.Join("go", "go-build-target"))
@@ -60,6 +59,8 @@ func TestBuildTarget(t *testing.T) {
 }
 
 // This checks that the Exit Status artifact from Go Run is not being produced
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNoEmitExitStatus(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -78,6 +79,7 @@ func TestNoEmitExitStatus(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPanickingProgram(t *testing.T) {
 	var stderr bytes.Buffer
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -96,6 +98,8 @@ func TestPanickingProgram(t *testing.T) {
 }
 
 func TestPanickingComponentConfigure(t *testing.T) {
+	t.Parallel()
+
 	var (
 		testDir      = filepath.Join("go", "component-configure-panic")
 		componentDir = "testcomponent-go"
@@ -118,6 +122,7 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		ExpectFailure: true,
 		Quick:         true,
 		SkipRefresh:   true,
+		NoParallel:    true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Contains(t, stderr.String(), "panic: great sadness\n")
 		},
@@ -125,6 +130,8 @@ func TestPanickingComponentConfigure(t *testing.T) {
 }
 
 // This checks that error logs are not being emitted twice
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNoLogError(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -149,6 +156,8 @@ func TestNoLogError(t *testing.T) {
 // This checks that the PULUMI_GO_USE_RUN=true flag is triggering go run by checking the `exit status`
 // string is being emitted. This is a temporary fallback measure in case it breaks users and should
 // not be assumed to be stable.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGoRunEnvFlag(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -169,6 +178,8 @@ func TestGoRunEnvFlag(t *testing.T) {
 }
 
 // TestEmptyGoRun exercises the 'go run' invocation path that doesn't require an explicit build step.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun"),
@@ -180,6 +191,8 @@ func TestEmptyGoRun(t *testing.T) {
 }
 
 // TestEmptyGoRunMain exercises the 'go run' invocation path with a 'main' entrypoint specified in Pulumi.yml
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun_main"),
@@ -191,6 +204,8 @@ func TestEmptyGoRunMain(t *testing.T) {
 }
 
 // TestPrintfGo tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPrintfGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("printf", "go"),
@@ -203,6 +218,8 @@ func TestPrintfGo(t *testing.T) {
 }
 
 // Tests basic configuration from the perspective of a Pulumi Go program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_basic", "go"),
@@ -231,6 +248,8 @@ func TestConfigBasicGo(t *testing.T) {
 }
 
 // Tests configuration error from the perspective of a Pulumi Go program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigMissingGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_missing", "go"),
@@ -259,6 +278,8 @@ func TestConfigMissingGo(t *testing.T) {
 }
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigSecretsWarnGo(t *testing.T) {
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
@@ -540,6 +561,8 @@ func TestConfigSecretsWarnGo(t *testing.T) {
 }
 
 // Tests a resource with a large (>4mb) string prop in Go
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestLargeResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{
@@ -551,6 +574,8 @@ func TestLargeResourceGo(t *testing.T) {
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowGo(t *testing.T) {
+	t.Parallel()
+
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
@@ -572,6 +597,7 @@ func TestConstructSlowGo(t *testing.T) {
 		},
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
+		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -618,6 +644,7 @@ func TestConstructPlainGo(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -630,7 +657,9 @@ func TestConstructPlainGo(t *testing.T) {
 	}
 }
 
-func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainGo(
+	t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "go"),
@@ -648,6 +677,7 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, localProvi
 
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownGo(t *testing.T) {
+	t.Parallel()
 	testConstructUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
@@ -671,6 +701,8 @@ func TestConstructMethodsGo(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -707,18 +739,22 @@ func TestConstructMethodsGo(t *testing.T) {
 }
 
 func TestConstructMethodsUnknownGo(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
 func TestConstructMethodsResourcesGo(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsResources(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
 func TestConstructMethodsErrorsGo(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsErrors(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
 func TestConstructMethodsProviderGo(t *testing.T) {
+	t.Parallel()
 	testConstructMethodsProvider(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
@@ -741,6 +777,8 @@ func TestConstructProviderGo(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -762,6 +800,7 @@ func TestConstructProviderGo(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Sets env vars
 func TestGetResourceGo(t *testing.T) {
 	// This uses the random plugin so needs to be able to download it
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -790,6 +829,7 @@ func TestGetResourceGo(t *testing.T) {
 }
 
 func TestComponentProviderSchemaGo(t *testing.T) {
+	t.Parallel()
 	// TODO[https://github.com/pulumi/pulumi/issues/12365] We no longer build the go-component in
 	// component_setup.sh so there's no native binary for the testComponentProviderSchema to just exec. It
 	// _ought_ to be rewritten to use the plugin host framework so that it starts the component up the same as
@@ -805,6 +845,8 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 
 // TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
 func TestTracePropagationGo(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 
 	opts := &integration.ProgramTestOptions{
@@ -816,8 +858,9 @@ func TestTracePropagationGo(t *testing.T) {
 		SkipExportImport:       true,
 		SkipEmptyPreviewUpdate: true,
 		Quick:                  false,
-		Tracing:                fmt.Sprintf("file:%s", filepath.Join(dir, "{command}.trace")),
+		Tracing:                "file:" + filepath.Join(dir, "{command}.trace"),
 		RequireService:         true,
+		NoParallel:             true,
 	}
 
 	integration.ProgramTest(t, opts)
@@ -827,6 +870,8 @@ func TestTracePropagationGo(t *testing.T) {
 	assert.NotNil(t, store)
 
 	t.Run("traced `go list -m -json`", func(t *testing.T) {
+		t.Parallel()
+
 		isGoListTrace := func(t *appdash.Trace) bool {
 			m := t.Span.Annotations.StringMap()
 
@@ -843,6 +888,8 @@ func TestTracePropagationGo(t *testing.T) {
 	})
 
 	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
+		t.Parallel()
+
 		exportStackCounter := 0
 		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
 			name := tr.Span.Name()
@@ -867,7 +914,7 @@ func TestAboutGo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(dir)
@@ -882,10 +929,13 @@ func TestAboutGo(t *testing.T) {
 }
 
 func TestConstructOutputValuesGo(t *testing.T) {
+	t.Parallel()
 	testConstructOutputValues(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
 // TestProjectMainGo tests out the ability to override the main entrypoint.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestProjectMainGo(t *testing.T) {
 	test := integration.ProgramTestOptions{
 		Dir:          "project_main/go",
@@ -899,6 +949,8 @@ func TestProjectMainGo(t *testing.T) {
 }
 
 // TestRefreshGo simply tests that we can build and run an empty Go project with the `refresh` option set.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestRefreshGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("refresh", "go"),
@@ -911,6 +963,8 @@ func TestRefreshGo(t *testing.T) {
 
 // TestResourceRefsGetResourceGo tests that invoking the built-in 'pulumi:pulumi:getResource' function
 // returns resource references for any resource reference in a resource's state.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRefsGetResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("resource_refs_get_resource", "go"),
@@ -922,6 +976,8 @@ func TestResourceRefsGetResourceGo(t *testing.T) {
 }
 
 // TestDeletedWithGo tests the DeletedWith resource option.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDeletedWithGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("deleted_with", "go"),
@@ -958,6 +1014,8 @@ func TestConstructResourceOptionsGo(t *testing.T) {
 // The issue in #13301 was that this plugin would not be downloaded by `pulumi plugin install`,
 // causing a failure when the Automation program tried to use it.
 func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
+	t.Parallel()
+
 	// Context scoped to the lifetime of the test.
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -965,7 +1023,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
+			e.DeleteEnvironment()
 		}
 	}()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
@@ -1043,4 +1101,97 @@ func TestConstructProviderExplicitGo(t *testing.T) {
 	t.Parallel()
 
 	testConstructProviderExplicit(t, "go", []string{"github.com/pulumi/pulumi/sdk/v3"})
+}
+
+// TestStackOutputsProgramErrorGo tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorGo(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "go")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",       // Expected to be updated
+					"foo": float64(42), // Expected to remain the same
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorGo tests that when a resource error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorGo(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "go")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
+		},
+	})
 }

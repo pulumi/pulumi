@@ -55,6 +55,8 @@ type Step interface {
 	Res() *resource.State    // the latest state for the resource that is known (worst case, old).
 	Logical() bool           // true if this step represents a logical operation in the program.
 	Deployment() *Deployment // the owning deployment.
+	Fail()                   // mark a step as failed.
+	Skip()                   // mark a step as skipped
 }
 
 // SameStep is a mutating step that does nothing.
@@ -81,7 +83,7 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new == old || new.ID == "", "new", "must not have an ID")
 	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
 		"new", "must have or be a provider if it is a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
@@ -139,17 +141,26 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			err := s.Deployment().SameProvider(s.new)
 			if err != nil {
 				return resource.StatusOK, nil,
-					fmt.Errorf("bad provider state for resource %v: %v", s.URN(), err)
+					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
 			}
 		}
 	}
 
+	// TODO: should this step be marked as skipped if it comes from a targeted up?
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
 
 func (s *SameStep) IsSkippedCreate() bool {
 	return s.skippedCreate
+}
+
+func (s *SameStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *SameStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -163,6 +174,7 @@ type CreateStep struct {
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff (only for replacements).
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
+	provider      plugin.Provider                // the optional provider to use.
 }
 
 var _ Step = (*CreateStep)(nil)
@@ -237,14 +249,19 @@ func (s *CreateStep) Logical() bool                                { return !s.r
 func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
+
+	id := s.new.ID
+	outs := s.new.Outputs
+
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
+		var rst resource.Status
+		id, outs, rst, err = prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -259,13 +276,13 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		if !preview && id == "" {
-			return resourceStatus, nil, fmt.Errorf("provider did not return an ID from Create")
+			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 		}
-
-		// Copy any of the default and output properties on the live object state.
-		s.new.ID = id
-		s.new.Outputs = outs
 	}
+
+	// Copy any of the default and output properties on the live object state.
+	s.new.ID = id
+	s.new.Outputs = outs
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -274,6 +291,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
+		contract.Assertf(s.old != s.new, "old and new states should not be the same")
 		s.old.Delete = true
 	}
 
@@ -284,6 +302,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return resourceStatus, complete, resourceError
 }
 
+func (s *CreateStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *CreateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+}
+
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
@@ -291,6 +317,7 @@ type DeleteStep struct {
 	old            *resource.State       // the state of the existing resource.
 	replacing      bool                  // true if part of a replacement.
 	otherDeletions map[resource.URN]bool // other resources that are planned to delete
+	provider       plugin.Provider       // the optional provider to use.
 }
 
 var _ Step = (*DeleteStep)(nil)
@@ -410,7 +437,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Not preview and not external and not Drop and is custom, do the actual delete
 
 		// Invoke the Delete RPC function for this provider:
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -421,6 +448,14 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	return resource.StatusOK, func() {}, nil
+}
+
+func (s *DeleteStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *DeleteStep) Skip() {
+	// Nothing to do here.
 }
 
 type RemovePendingReplaceStep struct {
@@ -453,6 +488,14 @@ func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCom
 	return resource.StatusOK, nil, nil
 }
 
+func (s *RemovePendingReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RemovePendingReplaceStep) Skip() {
+	// Nothing to do here.
+}
+
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
 	deployment    *Deployment                    // the current deployment.
@@ -463,6 +506,7 @@ type UpdateStep struct {
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	provider      plugin.Provider                // the optional provider to use.
 }
 
 var _ Step = (*UpdateStep)(nil)
@@ -521,7 +565,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	resourceStatus := resource.StatusOK
 	if s.new.Custom {
 		// Invoke the Update RPC function for this provider:
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -557,6 +601,14 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return resourceStatus, complete, nil
 	}
 	return resourceStatus, complete, resourceError
+}
+
+func (s *UpdateStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *UpdateStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -617,6 +669,14 @@ func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	return resource.StatusOK, func() {}, nil
 }
 
+func (s *ReplaceStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *ReplaceStep) Skip() {
+	// Nothing to do here.
+}
+
 // ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
 // model. Resources that are read are marked with the "External" bit which indicates to the engine that it does
 // not own this resource's lifeycle.
@@ -633,6 +693,7 @@ type ReadStep struct {
 	old        *resource.State   // the old resource state, if one exists for this urn
 	new        *resource.State   // the new resource state, to be used to query the provider
 	replacing  bool              // whether or not the new resource is replacing the old resource
+	provider   plugin.Provider   // the optional provider to use.
 }
 
 // NewReadStep creates a new Read step.
@@ -708,12 +769,15 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	if id == plugin.UnknownStringValue {
 		s.new.Outputs = resource.PropertyMap{}
 	} else {
-		prov, err := getProvider(s)
+		prov, err := getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
 
-		result, rst, err := prov.Read(urn, id, nil, s.new.Inputs)
+		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
+		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
+		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
+		result, rst, err := prov.Read(urn, id, s.new.Inputs, s.new.Inputs)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -767,6 +831,14 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	return resourceStatus, complete, resourceError
 }
 
+func (s *ReadStep) Fail() {
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *ReadStep) Skip() {
+	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+}
+
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
@@ -775,6 +847,7 @@ type RefreshStep struct {
 	old        *resource.State // the old resource state, if one exists for this urn
 	new        *resource.State // the new resource state, to be used to query the provider
 	done       chan<- bool     // the channel to use to signal completion, if any
+	provider   plugin.Provider // the optional provider to use.
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -826,7 +899,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	// For a custom resource, fetch the resource's provider and read the resource's current state.
-	prov, err := getProvider(s)
+	prov, err := getProvider(s, s.provider)
 	if err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -846,7 +919,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			// 2. Make sure the initialization errors are persisted in the state, so that the next
 			//    `pulumi up` will surface them to the user.
 			err = nil
-			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
+			msg := "Refreshed resource is in an unhealthy state:\n* " + strings.Join(initErrors, "\n* ")
 			s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
@@ -894,6 +967,14 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	return rst, nil, err
 }
 
+func (s *RefreshStep) Fail() {
+	// Nothing to do here.
+}
+
+func (s *RefreshStep) Skip() {
+	// Nothing to do here.
+}
+
 type ImportStep struct {
 	deployment    *Deployment                    // the current deployment.
 	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
@@ -906,6 +987,7 @@ type ImportStep struct {
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
 	randomSeed    []byte                         // the random seed to use for Check.
+	provider      plugin.Provider                // the optional provider to use.
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
@@ -998,8 +1080,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
 		}
-		if s.new.Parent.Type() != resource.RootStackType {
-			_, ok := s.deployment.news.get(s.new.Parent)
+		if s.new.Parent.QualifiedType() != resource.RootStackType {
+			_, ok := s.deployment.news.Load(s.new.Parent)
 			if !ok {
 				return resource.StatusOK, nil, fmt.Errorf("unknown parent '%v' for resource '%v'",
 					s.new.Parent, s.new.URN)
@@ -1016,7 +1098,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
 		// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
 		var err error
-		prov, err = getProvider(s)
+		prov, err = getProvider(s, s.provider)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1172,6 +1254,14 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return rst, complete, err
 }
 
+func (s *ImportStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *ImportStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+}
+
 const (
 	OpSame                 display.StepOp = "same"                   // nothing to do.
 	OpCreate               display.StepOp = "create"                 // creating a new resource.
@@ -1208,6 +1298,15 @@ var StepOps = []display.StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+}
+
+func IsReplacementStep(op display.StepOp) bool {
+	if op == OpReplace || op == OpCreateReplacement || op == OpDeleteReplaced ||
+		op == OpReadReplacement || op == OpDiscardReplaced || op == OpRemovePendingReplace ||
+		op == OpImportReplacement {
+		return true
+	}
+	return false
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -1347,13 +1446,16 @@ func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
 }
 
 // getProvider fetches the provider for the given step.
-func getProvider(s Step) (plugin.Provider, error) {
+func getProvider(s Step, override plugin.Provider) (plugin.Provider, error) {
+	if override != nil {
+		return override, nil
+	}
 	if providers.IsProviderType(s.Type()) {
 		return s.Deployment().providers, nil
 	}
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
-		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %w", s.Provider(), s.URN(), err)
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
 		pkg := providers.GetDeniedDefaultProviderPkg(ref)

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -43,7 +44,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
@@ -61,7 +62,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				var err error
 				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
 				urn = resource.URN(args[0])
@@ -83,7 +84,7 @@ func unprotectAllResources(ctx context.Context, stackName string, showPrompt boo
 	err := runTotalStateEdit(ctx, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 		// Protects against Panic when a user tries to unprotect non-existing resources
 		if snap == nil {
-			return fmt.Errorf("no resources found to unprotect")
+			return errors.New("no resources found to unprotect")
 		}
 
 		for _, res := range snap.Resources {

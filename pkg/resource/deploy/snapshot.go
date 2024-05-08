@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -29,7 +30,7 @@ import (
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
 	Manifest          Manifest             // a deployment manifest of versions, checksums, and so on.
-	SecretsManager    secrets.Manager      // the manager to use use when seralizing this snapshot.
+	SecretsManager    secrets.Manager      // the manager to use use when serializing this snapshot.
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
 }
@@ -75,7 +76,7 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 		}
 		// If our parent has changed URN, then we need to update our URN as well.
 		if parent, has := aliased[state.Parent]; has {
-			if parent != "" && parent.Type() != resource.RootStackType {
+			if parent != "" && parent.QualifiedType() != resource.RootStackType {
 				aliased[state.URN] = resource.NewURN(
 					state.URN.Stack(), state.URN.Project(),
 					parent.QualifiedType(), state.URN.Type(),
@@ -125,11 +126,17 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 //  4. Dependents must precede their dependencies in the resource list
 //  5. For every URN in the snapshot, there must be at most one resource with that URN that is not pending deletion
 //  6. The magic manifest number should change every time the snapshot is mutated
+//
+// N.B. Constraints 2 does NOT apply for resources that are pending deletion. This is because they may have
+// had their provider replaced but not yet be replaced themselves yet (due to a partial update). Pending
+// replacement resources also can't just be wholly removed from the snapshot because they may have dependents
+// that are not being replaced and thus would fail validation if the pending replacement resource was removed
+// and not re-created (again due to partial updates).
 func (snap *Snapshot) VerifyIntegrity() error {
 	if snap != nil {
 		// Ensure the magic cookie checks out.
 		if snap.Manifest.Magic != snap.Manifest.NewMagic() {
-			return fmt.Errorf("magic cookie mismatch; possible tampering/corruption detected")
+			return errors.New("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
 		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
@@ -142,24 +149,34 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
 				if err != nil {
-					return fmt.Errorf("provider %s is not referenceable: %v", urn, err)
+					return fmt.Errorf("provider %s is not referenceable: %w", urn, err)
 				}
 				provs[ref] = struct{}{}
 			}
 			if provider := state.Provider; provider != "" {
 				ref, err := providers.ParseReference(provider)
 				if err != nil {
-					return fmt.Errorf("failed to parse provider reference for resource %s: %v", urn, err)
+					return fmt.Errorf("failed to parse provider reference for resource %s: %w", urn, err)
 				}
-				if _, has := provs[ref]; !has {
+				if _, has := provs[ref]; !has && !state.PendingReplacement {
 					return fmt.Errorf("resource %s refers to unknown provider %s", urn, ref)
 				}
 			}
 
+			// For each resource, we'll ensure that all its dependencies are declared
+			// before it in the snapshot. In this case, "dependencies" includes the
+			// Dependencies field, as well as the resource's Parent (if it has one),
+			// any PropertyDependencies, and the DeletedWith field.
+			//
+			// If a dependency is missing, we'll return an error. In such cases, we'll
+			// walk through the remaining resources in the snapshot to see if the
+			// missing dependency is declared later in the snapshot or whether it is
+			// missing entirely, producing a specific error message depending on the
+			// outcome.
+
+			// Parent dependencies
 			if par := state.Parent; par != "" {
 				if _, has := urns[par]; !has {
-					// The parent isn't there; to give a good error message, see whether it's missing entirely, or
-					// whether it comes later in the snapshot (neither of which should ever happen).
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == par {
 							return fmt.Errorf("child resource %s's parent %s comes after it", urn, par)
@@ -181,16 +198,50 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
+			// Dependencies
 			for _, dep := range state.Dependencies {
 				if _, has := urns[dep]; !has {
-					// same as above - doing this for better error messages
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == dep {
 							return fmt.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
 						}
 					}
 
-					return fmt.Errorf("resource %s dependency %s refers to missing resource", urn, dep)
+					return fmt.Errorf("resource %s's dependency %s refers to missing resource", urn, dep)
+				}
+			}
+
+			// Property dependencies
+			for prop, deps := range state.PropertyDependencies {
+				for _, dep := range deps {
+					if _, has := urns[dep]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep {
+								return fmt.Errorf(
+									"resource %s's property dependency %s (from property %s) comes after it",
+									urn, other.URN, prop,
+								)
+							}
+						}
+
+						return fmt.Errorf(
+							"resource %s's property dependency %s (from property %s) refers to missing resource",
+							urn, dep, prop,
+						)
+					}
+				}
+			}
+
+			// DeletedWith
+			if dw := state.DeletedWith; dw != "" {
+				if _, has := urns[dw]; !has {
+					for _, other := range snap.Resources[i+1:] {
+						if other.URN == dw {
+							return fmt.Errorf("resource %s is specified as being deleted with %s, which comes after it", urn, other.URN)
+						}
+					}
+
+					return fmt.Errorf("resource %s is specified as being deleted with %s, which is missing", urn, dw)
 				}
 			}
 

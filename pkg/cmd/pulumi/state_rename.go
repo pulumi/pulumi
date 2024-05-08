@@ -166,7 +166,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
 		Args:    cmdutil.MaximumNArgs(2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 
 			if len(args) < 2 && !cmdutil.Interactive() {
@@ -181,6 +181,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				err := surveyStack(
 					func() (err error) {
 						urn, err = getURNFromState(ctx, stack, &snap, "Select a resource to rename:")
+						if err != nil {
+							err = fmt.Errorf("failed to select resource: %w", err)
+						}
 						return
 					},
 					func() (err error) {

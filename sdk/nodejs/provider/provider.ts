@@ -95,6 +95,10 @@ export interface ReadResult {
      * The current property state read from the live environment.
      */
     readonly props?: any;
+    /**
+     * The inputs that would lead to the current resource state when importing it.
+     */
+    readonly inputs?: any;
 }
 
 /**

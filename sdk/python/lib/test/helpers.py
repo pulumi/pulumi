@@ -28,7 +28,7 @@ def supress_unobserved_task_logging():
     terminates.
 
     """
-    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 
 # If calling code imports this module to use `raises`, it probably needs this.

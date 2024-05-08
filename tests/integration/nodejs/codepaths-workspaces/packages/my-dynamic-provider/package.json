@@ -1,0 +1,9 @@
+{
+  "name": "my-dynamic-provider",
+  "main": "index.ts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@pulumi/pulumi": "latest",
+    "is-finite": "^2.0.0"
+  }
+}

@@ -15,9 +15,6 @@
 syntax = "proto3";
 
 import "pulumi/codegen/hcl.proto";
-import "pulumi/plugin.proto";
-import "google/protobuf/empty.proto";
-import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
@@ -54,6 +51,14 @@ message ResourceImport {
     string version = 4;
     // the provider PluginDownloadURL to use for the resource, if any.
     string pluginDownloadURL = 5;
+
+    // the logical name of the resource.
+    string logical_name = 6;
+
+    // true if this is a component resource.
+    bool is_component = 7;
+    // true if this is a remote resource. Ignored if is_component is false.
+    bool is_remote = 8;
 }
 
 message ConvertStateResponse {

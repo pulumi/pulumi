@@ -14,27 +14,47 @@
 import functools
 from pulumi import CustomResource, Output, ResourceOptions
 
+
 class MyResource(CustomResource):
+    outprop: Output[str]
+
     def __init__(self, name, args, opts=None):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            **args,
-            "outprop": None,
-        }, opts=opts)
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                **args,
+                "outprop": None,
+            },
+            opts=opts,
+        )
+
 
 resA = MyResource("resA", {})
-resB = MyResource("resB", {}, ResourceOptions(depends_on=[ resA ]))
-resC = MyResource("resC", {
-    "propA": resA.outprop,
-    "propB": resB.outprop,
-    "propC": "foo",
-});
-resD = MyResource("resD", {
-    "propA": Output.all([resA.outprop, resB.outprop]).apply(lambda l: f"{l}"),
-    "propB": resC.outprop,
-    "propC": "bar",
-})
-resE = MyResource("resE", {
-    "propA": resC.outprop,
-    "propB": Output.all([resA.outprop, resB.outprop]).apply(lambda l: f"{l}"),
-    "propC": "baz",
-}, ResourceOptions(depends_on=[ resD ]))
+resB = MyResource("resB", {}, ResourceOptions(depends_on=[resA]))
+resC = MyResource(
+    "resC",
+    {
+        "propA": resA.outprop,
+        "propB": resB.outprop,
+        "propC": "foo",
+    },
+)
+resD = MyResource(
+    "resD",
+    {
+        "propA": Output.all([resA.outprop, resB.outprop]).apply(lambda l: f"{l}"),
+        "propB": resC.outprop,
+        "propC": "bar",
+    },
+)
+resE = MyResource(
+    "resE",
+    {
+        "propA": resC.outprop,
+        "propB": Output.all([resA.outprop, resB.outprop]).apply(lambda l: f"{l}"),
+        "propC": "baz",
+    },
+    ResourceOptions(depends_on=[resD]),
+)

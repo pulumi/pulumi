@@ -20,6 +20,7 @@ package dotnet
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,6 +31,7 @@ import (
 	"strings"
 	"unicode"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -190,6 +192,13 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
+
+	if val1, ok := r.Language["csharp"]; ok {
+		val2, ok := val1.(CSharpResourceInfo)
+		contract.Assertf(ok, "dotnet specific settings for resources should be of type CSharpResourceInfo")
+		return Title(val2.Name)
+	}
+
 	return tokenToName(r.Token)
 }
 
@@ -400,7 +409,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = qualifier
 		}
 		if typ == "Inputs" && mod.fullyQualifiedInputs {
-			typ = fmt.Sprintf("%s.Inputs", mod.namespaceName)
+			typ = mod.namespaceName + ".Inputs"
 		}
 		if typ != "" {
 			typ += "."
@@ -436,7 +445,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		if typ != "" {
 			typ += "."
 		}
-		return typ + tokenToName(t.Token)
+		return typ + resourceName(t.Resource)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -661,7 +670,7 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInput
 
 	var suffix string
 	if pt.baseClass != "" {
-		suffix = fmt.Sprintf(" : global::Pulumi.%s", pt.baseClass)
+		suffix = " : global::Pulumi." + pt.baseClass
 	}
 
 	fmt.Fprintf(w, "%spublic %sclass %s%s\n", indent, sealed, pt.name, suffix)
@@ -779,6 +788,7 @@ func primitiveValue(value interface{}) (string, error) {
 		v = v.Elem()
 	}
 
+	//nolint:exhaustive // We only support default values for a subset of types.
 	switch v.Kind() {
 	case reflect.Bool:
 		if v.Bool() {
@@ -879,7 +889,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	switch {
 	case r.IsProvider:
 		baseType = "global::Pulumi.ProviderResource"
-	case mod.isK8sCompatMode():
+	case mod.isK8sCompatMode() && !r.IsComponent:
 		baseType = "KubernetesResource"
 	case r.IsComponent:
 		baseType = "global::Pulumi.ComponentResource"
@@ -955,7 +965,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		tok = mod.pkg.Name()
 	}
 
-	argsOverride := fmt.Sprintf("args ?? new %sArgs()", className)
+	argsOverride := fmt.Sprintf("args ?? new %s()", argsClassName)
 	if hasConstInputs {
 		argsOverride = "MakeArgs(args)"
 	}
@@ -995,7 +1005,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if !r.IsProvider && !r.IsComponent {
 		stateParam, stateRef := "", "null"
 		if r.StateInputs != nil {
-			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state"
+			stateParam, stateRef = className+"State? state = null, ", "state"
 		}
 
 		fmt.Fprintf(w, "\n")
@@ -1095,7 +1105,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		stateParam, stateRef := "", ""
 		if r.StateInputs != nil {
-			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state, "
+			stateParam, stateRef = className+"State? state = null, ", "state, "
 			fmt.Fprintf(w, "        /// <param name=\"state\">Any extra arguments used during the lookup.</param>\n")
 		}
 
@@ -1133,7 +1143,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				fieldName := mod.propertyName(objectReturnType.Properties[0])
 				lift = fmt.Sprintf(".Apply(v => v.%s)", fieldName)
 			} else {
-				returnType = fmt.Sprintf("global::Pulumi.Output%s", typeParameter)
+				returnType = "global::Pulumi.Output" + typeParameter
 			}
 		}
 
@@ -1348,7 +1358,7 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 		if _, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
 			// for object return types, assume a Result type is generated in the same class as it's function
 			// and reference it from here directly
-			return fmt.Sprintf("%sResult", className)
+			return className + "Result"
 		}
 
 		// otherwise, the object type is a reference to an output type
@@ -1521,7 +1531,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 func functionOutputVersionArgsTypeName(fun *schema.Function) string {
 	className := tokenToFunctionName(fun.Token)
-	return fmt.Sprintf("%sInvokeArgs", className)
+	return className + "InvokeArgs"
 }
 
 // Generates `${fn}Output(..)` version lifted to work on
@@ -1830,7 +1840,8 @@ func (mod *modContext) genHeader(w io.Writer, using []string) {
 func (mod *modContext) getConfigProperty(schemaType schema.Type) (string, string) {
 	schemaType = codegen.UnwrapType(schemaType)
 
-	propertyType := mod.typeString(schemaType, "Types", false, false, false /*requireInitializers*/)
+	qualifier := "Types"
+	propertyType := mod.typeString(schemaType, qualifier, false, false, false /*requireInitializers*/)
 
 	var getFunc string
 	nullableSigil := "?"
@@ -1924,17 +1935,19 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "\n")
 	}
 
+	// generate config-friendly object types used in config
+	// regardless of whether they are defined inline or from a shared type
+	var usedObjectTypes []*schema.ObjectType
+	visitObjectTypes(variables, func(objectType *schema.ObjectType) {
+		usedObjectTypes = append(usedObjectTypes, objectType)
+	})
+
 	// Emit any nested types.
-	if len(mod.types) > 0 {
+	if len(usedObjectTypes) > 0 {
 		fmt.Fprintf(w, "        public static class Types\n")
 		fmt.Fprintf(w, "        {\n")
 
-		for _, typ := range mod.types {
-			// Ignore input-shaped types.
-			if typ.IsInputShape() {
-				continue
-			}
-
+		for _, typ := range usedObjectTypes {
 			fmt.Fprintf(w, "\n")
 
 			// Open the class.
@@ -2160,6 +2173,7 @@ func genPackageMetadata(pkg *schema.Package,
 	packageReferences map[string]string,
 	projectReferences []string,
 	files codegen.Fs,
+	localDependencies map[string]string,
 ) error {
 	version := ""
 	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
@@ -2167,8 +2181,15 @@ func genPackageMetadata(pkg *schema.Package,
 		version = pkg.Version.String()
 		files.Add("version.txt", []byte(version))
 	}
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return errors.New("package version is required")
+		}
+		version = pkg.Version.String()
+		files.Add("version.txt", []byte(version))
+	}
 
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version)
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version, localDependencies)
 	if err != nil {
 		return err
 	}
@@ -2201,9 +2222,28 @@ func genProjectFile(pkg *schema.Package,
 	packageReferences map[string]string,
 	projectReferences []string,
 	version string,
+	localDependencies map[string]string,
 ) ([]byte, error) {
 	if packageReferences == nil {
 		packageReferences = map[string]string{}
+	}
+
+	// Find all the local dependency folders
+	folders := mapset.NewSet[string]()
+	for _, dep := range localDependencies {
+		folders.Add(path.Dir(dep))
+	}
+	restoreSources := ""
+	if len(folders.ToSlice()) > 0 {
+		restoreSources = strings.Join(folders.ToSlice(), ";")
+	}
+
+	// Add the Pulumi package reference
+	for _, path := range localDependencies {
+		filename := filepath.Base(path)
+		pkg, rest, _ := strings.Cut(filename, ".")
+		version, _ := strings.CutSuffix(rest, ".nupkg")
+		packageReferences[pkg] = version
 	}
 
 	// if we don't have a package reference to Pulumi SDK from nuget
@@ -2231,6 +2271,7 @@ func genProjectFile(pkg *schema.Package,
 		PackageReferences: packageReferences,
 		ProjectReferences: projectReferences,
 		Version:           version,
+		RestoreSources:    restoreSources,
 	})
 	if err != nil {
 		return nil, err
@@ -2383,10 +2424,6 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.RootNamespace(), namespaceName(infos[pkg].Namespaces, pkg.Name))
 	}
 
-	visitObjectTypes(pkg.Config, func(t *schema.ObjectType) {
-		getModFromToken(t.Token, pkg.Reference()).details(t).outputType = true
-	})
-
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token, pkg.Reference())
@@ -2497,7 +2534,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			lr := LanguageResource{
 				Resource: r,
 				Package:  namespaceName(info.Namespaces, modName),
-				Name:     tokenToName(r.Token),
+				Name:     resourceName(r),
 			}
 			resources[r.Token] = lr
 		}
@@ -2506,7 +2543,9 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func GeneratePackage(
+	tool string, pkg *schema.Package, extraFiles map[string][]byte, localDependencies map[string]string,
+) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg)
 	if err != nil {
 		return nil, err
@@ -2530,7 +2569,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		assemblyName,
 		info.PackageReferences,
 		info.ProjectReferences,
-		files); err != nil {
+		files,
+		localDependencies); err != nil {
 		return nil, err
 	}
 	return files, nil

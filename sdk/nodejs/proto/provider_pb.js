@@ -21,8 +21,6 @@ var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
-var pulumi_source_pb = require('./source_pb.js');
-goog.object.extend(proto, pulumi_source_pb);
 goog.exportSymbol('proto.pulumirpc.CallRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.CallRequest.ArgumentDependencies', null, global);
 goog.exportSymbol('proto.pulumirpc.CallResponse', null, global);
@@ -3148,10 +3146,6 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
     args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallRequest.ArgumentDependencies.toObject) : [],
-    provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
-    pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
     project: jspb.Message.getFieldWithDefault(msg, 6, ""),
     stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
@@ -3160,7 +3154,7 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
     monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
     organization: jspb.Message.getFieldWithDefault(msg, 14, ""),
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
+    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 17, false)
   };
 
   if (includeInstance) {
@@ -3212,24 +3206,6 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.CallRequest.ArgumentDependencies.deserializeBinaryFromReader, "", new proto.pulumirpc.CallRequest.ArgumentDependencies());
          });
       break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setProvider(value);
-      break;
-    case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 13:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPlugindownloadurl(value);
-      break;
-    case 16:
-      var value = msg.getPluginchecksumsMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
-         });
-      break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setProject(value);
@@ -3264,10 +3240,9 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
       var value = /** @type {string} */ (reader.readString());
       msg.setOrganization(value);
       break;
-    case 15:
-      var value = new pulumi_source_pb.SourcePosition;
-      reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
-      msg.setSourceposition(value);
+    case 17:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -3316,31 +3291,6 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
   f = message.getArgdependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.CallRequest.ArgumentDependencies.serializeBinaryToWriter);
-  }
-  f = message.getProvider();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
-      f
-    );
-  }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      5,
-      f
-    );
-  }
-  f = message.getPlugindownloadurl();
-  if (f.length > 0) {
-    writer.writeString(
-      13,
-      f
-    );
-  }
-  f = message.getPluginchecksumsMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(16, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
   f = message.getProject();
   if (f.length > 0) {
@@ -3395,12 +3345,11 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getSourceposition();
-  if (f != null) {
-    writer.writeMessage(
-      15,
-      f,
-      pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+  f = message.getAcceptsOutputValues();
+  if (f) {
+    writer.writeBool(
+      17,
+      f
     );
   }
 };
@@ -3640,82 +3589,6 @@ proto.pulumirpc.CallRequest.prototype.clearArgdependenciesMap = function() {
 
 
 /**
- * optional string provider = 4;
- * @return {string}
- */
-proto.pulumirpc.CallRequest.prototype.getProvider = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.setProvider = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-/**
- * optional string version = 5;
- * @return {string}
- */
-proto.pulumirpc.CallRequest.prototype.getVersion = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 5, value);
-};
-
-
-/**
- * optional string pluginDownloadURL = 13;
- * @return {string}
- */
-proto.pulumirpc.CallRequest.prototype.getPlugindownloadurl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.setPlugindownloadurl = function(value) {
-  return jspb.Message.setProto3StringField(this, 13, value);
-};
-
-
-/**
- * map<string, bytes> pluginChecksums = 16;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,!(string|Uint8Array)>}
- */
-proto.pulumirpc.CallRequest.prototype.getPluginchecksumsMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
-      jspb.Message.getMapField(this, 16, opt_noLazyCreate,
-      null));
-};
-
-
-/**
- * Clears values from the map. The map will be non-null.
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.clearPluginchecksumsMap = function() {
-  this.getPluginchecksumsMap().clear();
-  return this;};
-
-
-/**
  * optional string project = 6;
  * @return {string}
  */
@@ -3883,39 +3756,20 @@ proto.pulumirpc.CallRequest.prototype.setOrganization = function(value) {
 
 
 /**
- * optional SourcePosition sourcePosition = 15;
- * @return {?proto.pulumirpc.SourcePosition}
- */
-proto.pulumirpc.CallRequest.prototype.getSourceposition = function() {
-  return /** @type{?proto.pulumirpc.SourcePosition} */ (
-    jspb.Message.getWrapperField(this, pulumi_source_pb.SourcePosition, 15));
-};
-
-
-/**
- * @param {?proto.pulumirpc.SourcePosition|undefined} value
- * @return {!proto.pulumirpc.CallRequest} returns this
-*/
-proto.pulumirpc.CallRequest.prototype.setSourceposition = function(value) {
-  return jspb.Message.setWrapperField(this, 15, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.clearSourceposition = function() {
-  return this.setSourceposition(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
+ * optional bool accepts_output_values = 17;
  * @return {boolean}
  */
-proto.pulumirpc.CallRequest.prototype.hasSourceposition = function() {
-  return jspb.Message.getField(this, 15) != null;
+proto.pulumirpc.CallRequest.prototype.getAcceptsOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 17, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.setAcceptsOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 17, value);
 };
 
 
@@ -7753,7 +7607,8 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
-    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false)
+    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false),
+    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
   };
 
   if (includeInstance) {
@@ -7893,6 +7748,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 24:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRetainondelete(value);
+      break;
+    case 25:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -8081,6 +7940,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       24,
+      f
+    );
+  }
+  f = message.getAcceptsOutputValues();
+  if (f) {
+    writer.writeBool(
+      25,
       f
     );
   }
@@ -9026,6 +8892,24 @@ proto.pulumirpc.ConstructRequest.prototype.getRetainondelete = function() {
  */
 proto.pulumirpc.ConstructRequest.prototype.setRetainondelete = function(value) {
   return jspb.Message.setProto3BooleanField(this, 24, value);
+};
+
+
+/**
+ * optional bool accepts_output_values = 25;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getAcceptsOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 25, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setAcceptsOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 25, value);
 };
 
 

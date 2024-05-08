@@ -19,12 +19,25 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"strconv"
+
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func init() {
+	providerSchema.Resources["testprovider:index:FailsOnDelete"] = pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "A test resource fails on delete.",
+			Properties:  map[string]pschema.PropertySpec{},
+			Type:        "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{},
+	}
+}
 
 type failsOnDeleteResourceProvider struct {
 	id int
@@ -45,7 +58,7 @@ func (p *failsOnDeleteResourceProvider) Create(
 ) (*rpc.CreateResponse, error) {
 	p.id++
 	return &rpc.CreateResponse{
-		Id: fmt.Sprintf("%v", p.id),
+		Id: strconv.Itoa(p.id),
 	}, nil
 }
 
@@ -62,6 +75,6 @@ func (p *failsOnDeleteResourceProvider) Update(
 	panic("Update not implemented")
 }
 
-func (p *failsOnDeleteResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *failsOnDeleteResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	return nil, errors.New("Delete always fails for the FailsOnDelete resource")
 }

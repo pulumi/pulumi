@@ -24,8 +24,7 @@ import pulumi
 class Foo:
     @property
     @pulumi.getter()
-    def bar(self) -> pulumi.Input[str]:
-        ...
+    def bar(self) -> pulumi.Input[str]: ...  # type: ignore
 
 
 @pulumi.input_type
@@ -48,63 +47,51 @@ class MySimpleInputType:
 class MyPropertiesInputType:
     @property
     @pulumi.getter()
-    def a(self) -> str:
-        ...
+    def a(self) -> str: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def b(self) -> Optional[str]:
-        ...
+    def b(self) -> Optional[str]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def c(self) -> pulumi.Input[str]:
-        ...
+    def c(self) -> pulumi.Input[str]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def d(self) -> Optional[pulumi.Input[str]]:
-        ...
+    def d(self) -> Optional[pulumi.Input[str]]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def e(self) -> Foo:
-        ...
+    def e(self) -> Foo: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def f(self) -> Optional[Foo]:
-        ...
+    def f(self) -> Optional[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def g(self) -> pulumi.Input[Foo]:
-        ...
+    def g(self) -> pulumi.Input[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def h(self) -> Optional[pulumi.Input[Foo]]:
-        ...
+    def h(self) -> Optional[pulumi.Input[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def i(self) -> pulumi.InputType[Foo]:
-        ...
+    def i(self) -> pulumi.InputType[Foo]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def j(self) -> Optional[pulumi.InputType[Foo]]:
-        ...
+    def j(self) -> Optional[pulumi.InputType[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def k(self) -> pulumi.Input[pulumi.InputType[Foo]]:
-        ...
+    def k(self) -> pulumi.Input[pulumi.InputType[Foo]]: ...  # type: ignore
 
     @property
     @pulumi.getter()
-    def l(self) -> Optional[pulumi.Input[pulumi.InputType[Foo]]]:
-        ...
+    def l(self) -> Optional[pulumi.Input[pulumi.InputType[Foo]]]: ...  # type: ignore
 
 
 class InputTypeTypesTests(unittest.TestCase):

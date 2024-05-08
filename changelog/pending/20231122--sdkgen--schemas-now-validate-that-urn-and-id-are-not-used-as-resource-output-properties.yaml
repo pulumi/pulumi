@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen
-  description: Schemas now validate that 'urn' and 'id' are not used as resource output properties.

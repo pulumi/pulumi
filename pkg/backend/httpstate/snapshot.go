@@ -38,7 +38,7 @@ type cloudSnapshotPersister struct {
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	ctx := persister.context
 
-	deploymentV3, err := stack.SerializeDeployment(snapshot, nil, false /* showSecrets */)
+	deploymentV3, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
@@ -100,17 +100,17 @@ func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
 
-func (cb *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
+func (b *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
 	tokenSource tokenSourceCapability,
 ) *cloudSnapshotPersister {
 	p := &cloudSnapshotPersister{
 		context:     ctx,
 		update:      update,
 		tokenSource: tokenSource,
-		backend:     cb,
+		backend:     b,
 	}
 
-	caps := cb.capabilities(ctx)
+	caps := b.capabilities(ctx)
 	deltaCaps := caps.deltaCheckpointUpdates
 	if deltaCaps != nil {
 		p.deploymentDiffState = newDeploymentDiffState(deltaCaps.CheckpointCutoffSizeBytes)

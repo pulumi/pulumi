@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -70,14 +71,14 @@ type Host interface {
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(root, pwd, runtime string, options map[string]interface{}) (LanguageRuntime, error)
+	LanguageRuntime(runtime string, info ProgramInfo) (LanguageRuntime, error)
 
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
 
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
-	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+	ResolvePlugin(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
 	GetProjectPlugins() []workspace.ProjectPlugin
 
@@ -100,21 +101,21 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
 		for _, providerOpts := range plugins.Providers {
-			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
+			info, err := parsePluginOpts(ctx.Root, providerOpts, apitype.ResourcePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, languageOpts := range plugins.Languages {
-			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
+			info, err := parsePluginOpts(ctx.Root, languageOpts, apitype.LanguagePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, analyzerOpts := range plugins.Analyzers {
-			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
+			info, err := parsePluginOpts(ctx.Root, analyzerOpts, apitype.AnalyzerPlugin)
 			if err != nil {
 				return nil, err
 			}
@@ -163,7 +164,9 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	return host, nil
 }
 
-func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (workspace.ProjectPlugin, error) {
+func parsePluginOpts(
+	root string, providerOpts workspace.PluginOptions, k apitype.PluginKind,
+) (workspace.ProjectPlugin, error) {
 	handleErr := func(msg string, a ...interface{}) (workspace.ProjectPlugin, error) {
 		return workspace.ProjectPlugin{},
 			fmt.Errorf("parsing plugin options for '%s': %w", providerOpts.Name, fmt.Errorf(msg, a...))
@@ -189,9 +192,18 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 		return handleErr("provider folder '%s' is not a directory", providerOpts.Path)
 	}
 
+	// The path is relative to the project root. Make it absolute here so we don't need to track that everywhere its used.
+	path := providerOpts.Path
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(filepath.Join(root, path))
+		if err != nil {
+			return handleErr("getting absolute path for plugin path %s: %w", providerOpts.Path, err)
+		}
+	}
+
 	pluginInfo := workspace.ProjectPlugin{
 		Name:    providerOpts.Name,
-		Path:    filepath.Clean(providerOpts.Path),
+		Path:    path,
 		Kind:    k,
 		Version: v,
 	}
@@ -414,18 +426,17 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 	return plugin.(Provider), nil
 }
 
-func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
-	options map[string]interface{},
+func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,
 ) (LanguageRuntime, error) {
 	// Language runtimes use their own loading channel not the main one
 	plugin, err := host.loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
 		// Key our cached runtime plugins by the runtime name and the options
-		jsonOptions, err := json.Marshal(options)
+		jsonOptions, err := json.Marshal(info.Options())
 		if err != nil {
 			return nil, fmt.Errorf("could not marshal runtime options to JSON: %w", err)
 		}
 
-		key := runtime + ":" + root + ":" + pwd + ":" + string(jsonOptions)
+		key := runtime + ":" + info.RootDirectory() + ":" + info.ProgramDirectory() + ":" + string(jsonOptions)
 
 		// First see if we already loaded this plugin.
 		if plug, has := host.languagePlugins[key]; has {
@@ -434,7 +445,7 @@ func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, root, pwd, runtime, options)
+		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.ctx.Pwd, info)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -460,33 +471,34 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	var result error
 	for _, plugin := range plugins {
 		switch plugin.Kind {
-		case workspace.AnalyzerPlugin:
+		case apitype.AnalyzerPlugin:
 			if kinds&AnalyzerPlugins != 0 {
 				if _, err := host.Analyzer(tokens.QName(plugin.Name)); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load analyzer plugin %s", plugin.Name))
 				}
 			}
-		case workspace.LanguagePlugin:
+		case apitype.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
 				// Pass nil options here, we just need to check the language plugin is loadable. We can't use
 				// host.runtimePlugins because there might be other language plugins reported here (e.g
 				// shimless multi-language providers). Pass the host root for the plugin directory, it
 				// shouldn't matter because we're starting with no options but it's a directory we've already
 				// got hold of.
-				if _, err := host.LanguageRuntime(host.ctx.Root, host.ctx.Pwd, plugin.Name, nil); err != nil {
+				info := NewProgramInfo(host.ctx.Root, host.ctx.Pwd, ".", nil)
+				if _, err := host.LanguageRuntime(plugin.Name, info); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load language plugin %s", plugin.Name))
 				}
 			}
-		case workspace.ResourcePlugin:
+		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
 				if _, err := host.Provider(tokens.Package(plugin.Name), plugin.Version); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load resource plugin %s", plugin.Name))
 				}
 			}
-		default:
+		case apitype.ConverterPlugin, apitype.ToolPlugin:
 			contract.Failf("unexpected plugin kind: %s", plugin.Kind)
 		}
 	}
@@ -495,7 +507,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 }
 
 func (host *defaultHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version,
+	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
 	return workspace.GetPluginInfo(host.ctx.Diag, kind, name, version, host.GetProjectPlugins())
 }
@@ -587,19 +599,26 @@ const (
 var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-func GetRequiredPlugins(host Host, root string, info ProgInfo, kinds Flags) ([]workspace.PluginSpec, error) {
+func GetRequiredPlugins(
+	host Host,
+	runtime string,
+	project string,
+	info ProgramInfo,
+	kinds Flags) (
+	[]workspace.PluginSpec, error,
+) {
 	var plugins []workspace.PluginSpec
 
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(root, info.Pwd, info.Proj.Runtime.Name(), info.Proj.Runtime.Options())
+		lang, err := host.LanguageRuntime(runtime, info)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
+			return nil, errors.Wrapf(err, "failed to load language plugin %s", runtime)
 		}
 		plugins = append(plugins, workspace.PluginSpec{
-			Name: info.Proj.Runtime.Name(),
-			Kind: workspace.LanguagePlugin,
+			Name: runtime,
+			Kind: apitype.LanguagePlugin,
 		})
 
 		if kinds&ResourcePlugins != 0 {

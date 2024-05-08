@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The typescript import is used for type-checking only. Do not reference it in the emitted code.
 import * as typescript from "typescript";
 
 const legalNameRegex = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
@@ -26,7 +27,7 @@ export function isLegalFunctionName(n: string) {
     if (!isLegalMemberName(n)) {
         return false;
     }
-    const ts: typeof typescript = require("typescript");
+    const ts: typeof typescript = require("../../typescript-shim");
     const scanner = ts.createScanner(ts.ScriptTarget.Latest, /*skipTrivia:*/ false, ts.LanguageVariant.Standard, n);
     const tokenKind = scanner.scan();
     if (tokenKind !== ts.SyntaxKind.Identifier && tokenKind !== ts.SyntaxKind.ConstructorKeyword) {

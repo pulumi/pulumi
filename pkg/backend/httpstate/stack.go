@@ -23,12 +23,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -50,6 +52,12 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
+	// If the user has asked us to fully qualify names, we won't elide any
+	// information.
+	if cmdutil.FullyQualifyStackNames {
+		return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
+	}
+
 	// When stringifying backend references, we take the current project (if present) into account.
 	currentProject := c.b.currentProject
 
@@ -161,8 +169,9 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 func (s *cloudStack) Preview(
 	ctx context.Context,
 	op backend.UpdateOperation,
+	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-	return backend.PreviewStack(ctx, s, op)
+	return backend.PreviewStack(ctx, s, op, events)
 }
 
 func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,

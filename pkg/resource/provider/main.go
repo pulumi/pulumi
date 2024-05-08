@@ -53,7 +53,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 		var err error
 		host, err = NewHostClient(args[0])
 		if err != nil {
-			return fmt.Errorf("fatal: could not connect to host RPC: %v", err)
+			return fmt.Errorf("fatal: could not connect to host RPC: %w", err)
 		}
 
 		// If we have a host cancel our cancellation context if it fails the healthcheck
@@ -86,7 +86,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		return fmt.Errorf("fatal: %v", err)
+		return fmt.Errorf("fatal: %w", err)
 	}
 
 	// The resource provider protocol requires that we now write out the port we have chosen to listen on.
@@ -94,7 +94,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 
 	// Finally, wait for the server to stop serving.
 	if err := <-handle.Done; err != nil {
-		return fmt.Errorf("fatal: %v", err)
+		return fmt.Errorf("fatal: %w", err)
 	}
 
 	return nil

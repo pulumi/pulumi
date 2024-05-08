@@ -38,7 +38,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Update with Result
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
@@ -69,3 +69,8 @@ jobs:
       # Scope secrets to the minimum required:
       PULUMI_BOT_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       PULUMI_PROD_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}

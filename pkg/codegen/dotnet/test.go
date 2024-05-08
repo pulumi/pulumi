@@ -1,7 +1,6 @@
 package dotnet
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		require.NoError(t, err)
 	}
 	err = integration.RunCommand(t, "create dotnet project",
-		[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
+		[]string{ex, "new", "console", "-f", "net6.0"}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to create C# project")
 
 	// Remove Program.cs again generated from "dotnet new console"
@@ -47,6 +46,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		for _, pkg := range pkgs {
 			pkg.install(t, ex, dir)
 		}
+		dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
 	} else {
 		// We would like this regardless of other dependencies, but dotnet
 		// packages do not play well with package references.
@@ -56,7 +56,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 				dir, &integration.ProgramTestOptions{})
 			require.NoError(t, err, "Failed to dotnet sdk package reference")
 		} else {
-			dep{"Pulumi", ""}.install(t, ex, dir)
+			dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
 		}
 	}
 
@@ -119,8 +119,12 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
 		case "random":
 			result[i] = dep{"Pulumi.Random", test.RandomSchema}
+		case "aws-static-website":
+			result[i] = dep{"Pulumi.AwsStaticWebsite", test.AwsStaticWebsiteSchema}
+		case "aws-native":
+			result[i] = dep{"Pulumi.AwsNative", test.AwsNativeSchema}
 		default:
-			result[i] = dep{fmt.Sprintf("Pulumi.%s", Title(d)), ""}
+			result[i] = dep{"Pulumi." + Title(d), ""}
 		}
 	}
 	return result

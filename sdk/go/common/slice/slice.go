@@ -24,24 +24,26 @@ func Prealloc[T any](capacity int) []T {
 	return make([]T, 0, capacity)
 }
 
-// Map returns a new slice containing the results of applying the given function to each element of the given slice.
+// Map applies the given function to each element of the given slice and returns a new slice with the results.
 func Map[T, U any](s []T, f func(T) U) []U {
-	result := make([]U, len(s))
+	r := make([]U, len(s))
 	for i, v := range s {
-		result[i] = f(v)
+		r[i] = f(v)
 	}
-	return result
+	return r
 }
 
-// MapError returns a new slice containing the results of applying the given function to each element of the given slice.
+// MapError applies the given function to each element of the given slice and returns a new slice with the
+// results. If any element returns an error that error is returned, as well as the slice of results so far.
 func MapError[T, U any](s []T, f func(T) (U, error)) ([]U, error) {
-	result := make([]U, len(s))
-	for i, v := range s {
+	r := make([]U, 0, len(s))
+	for _, v := range s {
 		var err error
-		result[i], err = f(v)
+		u, err := f(v)
 		if err != nil {
-			return nil, err
+			return r, err
 		}
+		r = append(r, u)
 	}
-	return result, nil
+	return r, nil
 }

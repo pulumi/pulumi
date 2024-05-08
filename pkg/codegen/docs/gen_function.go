@@ -97,7 +97,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function, outputVersion
 		case "go":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 			if outputVersion {
-				resultTypeName = fmt.Sprintf("%sOutput", resultTypeName)
+				resultTypeName = resultTypeName + "Output"
 			}
 		case "csharp":
 			namespace := title(mod.pkg.Name(), lang)

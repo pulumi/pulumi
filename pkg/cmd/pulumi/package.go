@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -57,7 +58,7 @@ Subcommands of this command are useful to package authors during development.`,
 	return cmd
 }
 
-// schemaFromPackageSource takes a schema source and returns its associated schema. A
+// schemaFromSchemaSource takes a schema source and returns its associated schema. A
 // schema source is either a file (ending with .[json|y[a]ml]) or a plugin with an
 // optional version:
 //
@@ -181,7 +182,7 @@ func providerFromSource(packageSource string, args []string) (plugin.Provider, e
 			var missingError *workspace.MissingError
 			if errors.As(err, &missingError) {
 				spec := workspace.PluginSpec{
-					Kind:    workspace.ResourcePlugin,
+					Kind:    apitype.ResourcePlugin,
 					Name:    pkg,
 					Version: version,
 				}

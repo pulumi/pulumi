@@ -20,6 +20,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -302,11 +304,11 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 
 func TestAssetPropertyValueDiffs(t *testing.T) {
 	t.Parallel()
-	a1, err := NewTextAsset("test")
+	a1, err := asset.FromText("test")
 	assert.NoError(t, err)
 	d1 := NewProperty(a1).Diff(NewProperty(a1))
 	assert.Nil(t, d1)
-	a2, err := NewTextAsset("test2")
+	a2, err := asset.FromText("test2")
 	assert.NoError(t, err)
 	d2 := NewProperty(a1).Diff(NewProperty(a2))
 	assert.NotNil(t, d2)
@@ -330,14 +332,14 @@ func TestArchivePropertyValueDiffs(t *testing.T) {
 	path, err := tempArchive("test", false)
 	assert.NoError(t, err)
 	defer func() { contract.IgnoreError(os.Remove(path)) }()
-	a1, err := NewPathArchive(path)
+	a1, err := archive.FromPath(path)
 	assert.NoError(t, err)
 	d1 := NewProperty(a1).Diff(NewProperty(a1))
 	assert.Nil(t, d1)
 	path2, err := tempArchive("test2", true)
 	assert.NoError(t, err)
 	defer func() { contract.IgnoreError(os.Remove(path)) }()
-	a2, err := NewPathArchive(path2)
+	a2, err := archive.FromPath(path2)
 	assert.NoError(t, err)
 	d2 := NewProperty(a1).Diff(NewProperty(a2))
 	assert.NotNil(t, d2)

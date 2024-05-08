@@ -39,16 +39,17 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/shlex"
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -92,18 +93,14 @@ const (
 // endpoint.
 func main() {
 	var tracing string
-	var typescript bool
-	var root string
-	var tsconfigpath string
-	var nodeargs string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.BoolVar(&typescript, "typescript", true,
-		"Use ts-node at runtime to support typescript source natively")
-	flag.StringVar(&root, "root", "", "Project root path to use")
-	flag.StringVar(&tsconfigpath, "tsconfig", "",
-		"Path to tsconfig.json to use")
-	flag.StringVar(&nodeargs, "nodeargs", "", "Arguments for the Node process")
+	flag.Bool("typescript", true,
+		"[obsolete] Use ts-node at runtime to support typescript source natively")
+	flag.String("root", "", "[obsolete] Project root path to use")
+	flag.String("tsconfig", "",
+		"[obsolete] Path to tsconfig.json to use")
+	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
 	flag.Parse()
 
 	args := flag.Args()
@@ -133,7 +130,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, typescript, tsconfigpath, nodeargs)
+			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -181,22 +178,60 @@ type nodeLanguageHost struct {
 
 	engineAddress string
 	tracing       string
-	typescript    bool
-	tsconfigpath  string
-	nodeargs      string
+
+	// used by language conformance tests to force TSC usage
+	forceTsc bool
+}
+
+type nodeOptions struct {
+	// Use ts-node at runtime to support typescript source natively
+	typescript bool
+	// Path to tsconfig.json to use
+	tsconfigpath string
+	// Arguments for the Node process
+	nodeargs string
+}
+
+func parseOptions(root string, options map[string]interface{}) (nodeOptions, error) {
+	// typescript defaults to true
+	nodeOptions := nodeOptions{
+		typescript: true,
+	}
+
+	if typescript, ok := options["typescript"]; ok {
+		if ts, ok := typescript.(bool); ok {
+			nodeOptions.typescript = ts
+		} else {
+			return nodeOptions, errors.New("typescript option must be a boolean")
+		}
+	}
+
+	if tsconfigpath, ok := options["tsconfig"]; ok {
+		if tsconfig, ok := tsconfigpath.(string); ok {
+			nodeOptions.tsconfigpath = tsconfig
+		} else {
+			return nodeOptions, errors.New("tsconfigpath option must be a string")
+		}
+	}
+
+	if nodeargs, ok := options["nodeargs"]; ok {
+		if args, ok := nodeargs.(string); ok {
+			nodeOptions.nodeargs = args
+		} else {
+			return nodeOptions, errors.New("nodeargs option must be a string")
+		}
+	}
+
+	return nodeOptions, nil
 }
 
 func newLanguageHost(
-	engineAddress, tracing string,
-	typescript bool, tsconfigpath,
-	nodeargs string,
+	engineAddress, tracing string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
-		typescript:    typescript,
-		tsconfigpath:  tsconfigpath,
-		nodeargs:      nodeargs,
+		forceTsc:      forceTsc,
 	}
 }
 
@@ -242,7 +277,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
 	plugins, err := getPluginsFromDir(
-		filepath.Join(req.Pwd, req.Program),
+		req.Info.ProgramDirectory,
 		pulumiPackagePathToVersionMap,
 		false, /*inNodeModules*/
 		make(map[string]struct{}))
@@ -452,7 +487,7 @@ func getPluginVersion(info packageJSON) (string, error) {
 		}
 	}
 	if strings.IndexRune(version, 'v') != 0 {
-		return fmt.Sprintf("v%s", version), nil
+		return "v" + version, nil
 	}
 	return version, nil
 }
@@ -538,7 +573,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Pwd, nodeBin)
+	// If we're forcing tsc the program directory for running is actually ./bin
+	programDirectory := req.Info.ProgramDirectory
+	if host.forceTsc {
+		req.Info.ProgramDirectory = filepath.Join(programDirectory, "bin")
+	}
+
+	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
@@ -596,14 +637,19 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	env = append(env, pulumiConfigVar+"="+config)
 	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-	if host.typescript {
-		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
-	}
-	if host.tsconfigpath != "" {
-		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
 
-	nodeargs, err := shlex.Split(host.nodeargs)
+	if opts.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
+	if opts.tsconfigpath != "" {
+		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
+	}
+
+	nodeargs, err := shlex.Split(opts.nodeargs)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
@@ -689,21 +735,17 @@ func (host *nodeLanguageHost) constructArguments(
 	maybeAppendArg("organization", req.GetOrganization())
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
-	maybeAppendArg("pwd", req.GetPwd())
+	maybeAppendArg("pwd", req.Info.ProgramDirectory)
 	if req.GetDryRun() {
 		args = append(args, "--dry-run")
 	}
 
-	maybeAppendArg("query-mode", fmt.Sprint(req.GetQueryMode()))
-	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
+	maybeAppendArg("query-mode", strconv.FormatBool(req.GetQueryMode()))
+	maybeAppendArg("parallel", strconv.Itoa(int(req.GetParallel())))
 	maybeAppendArg("tracing", host.tracing)
-	if req.GetProgram() == "" {
-		// If the program path is empty, just use "."; this will cause Node to try to load the default module
-		// file, by default ./index.js, but possibly overridden in the "main" element inside of package.json.
-		args = append(args, ".")
-	} else {
-		args = append(args, req.GetProgram())
-	}
+
+	// The engine should always pass a name for entry point, even if its just "." for the program directory.
+	args = append(args, req.Info.EntryPoint)
 
 	args = append(args, req.GetArgs()...)
 	return args
@@ -754,7 +796,7 @@ func (host *nodeLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunReques
 	return string(configSecretKeysJSON), nil
 }
 
-func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
@@ -775,17 +817,42 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	_, err = npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
+	workspaceRoot := req.Info.ProgramDirectory
+	newWorkspaceRoot, err := npm.FindWorkspaceRoot(req.Info.ProgramDirectory)
 	if err != nil {
-		return fmt.Errorf("npm install failed: %w", err)
+		// If we are not in a npm/yarn workspace, we will keep the current directory as the root.
+		if !errors.Is(err, npm.ErrNotInWorkspace) {
+			return fmt.Errorf("failure while trying to find workspace root: %w", err)
+		}
+	} else {
+		stdout.Write([]byte(fmt.Sprintf("Detected workspace root at %s\n", newWorkspaceRoot)))
+		workspaceRoot = newWorkspaceRoot
+	}
+
+	_, err = npm.Install(ctx, workspaceRoot, false /*production*/, stdout, stderr)
+	if err != nil {
+		return fmt.Errorf("dependency installation failed: %w", err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
+	if host.forceTsc {
+		// If we're forcing tsc for conformance testing this is our chance to run it before actually running the program.
+		// We probably want to see about making something like this an explicit "pulumi build" step, but for now shim'ing this
+		// in here works well enough for conformance testing.
+		tscCmd := exec.Command("npx", "tsc")
+		tscCmd.Dir = req.Info.ProgramDirectory
+		tscCmd.Stdout = stdout
+		tscCmd.Stderr = stderr
+		if err := tscCmd.Run(); err != nil {
+			return fmt.Errorf("failed to run tsc: %w", err)
+		}
+	}
+
 	return closer.Close()
 }
 
-func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+func (host *nodeLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)
 		if err != nil {
@@ -830,13 +897,14 @@ type yarnLockTree struct {
 	Children []yarnLockTree `json:"children"`
 }
 
-func parseYarnLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
+func parseYarnLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
 	ex, err := executable.FindExecutable("yarn")
 	if err != nil {
 		return nil, fmt.Errorf("found %s but no yarn executable: %w", path, err)
 	}
 	cmdArgs := []string{"list", "--json"}
 	cmd := exec.Command(ex, cmdArgs...)
+	cmd.Dir = programDirectory
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
@@ -890,13 +958,14 @@ type npmPackage struct {
 	Resolved string `json:"resolved"`
 }
 
-func parseNpmLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
+func parseNpmLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
 	ex, err := executable.FindExecutable("npm")
 	if err != nil {
 		return nil, fmt.Errorf("found %s but not npm: %w", path, err)
 	}
 	cmdArgs := []string{"ls", "--json", "--depth=0"}
 	cmd := exec.Command(ex, cmdArgs...)
+	cmd.Dir = programDirectory
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf(`failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
@@ -968,18 +1037,18 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
 	var err error
-	yarnFile := filepath.Join(req.Pwd, "yarn.lock")
-	npmFile := filepath.Join(req.Pwd, "package-lock.json")
-	packageFile := filepath.Join(req.Pwd, "package.json")
+	yarnFile := filepath.Join(req.Info.ProgramDirectory, "yarn.lock")
+	npmFile := filepath.Join(req.Info.ProgramDirectory, "package-lock.json")
+	packageFile := filepath.Join(req.Info.ProgramDirectory, "package.json")
 	var result []*pulumirpc.DependencyInfo
 
 	if _, err = os.Stat(yarnFile); err == nil {
-		result, err = parseYarnLockFile(yarnFile)
+		result, err = parseYarnLockFile(req.Info.ProgramDirectory, yarnFile)
 		if err != nil {
 			return nil, err
 		}
 	} else if _, err = os.Stat(npmFile); err == nil {
-		result, err = parseNpmLockFile(npmFile)
+		result, err = parseNpmLockFile(req.Info.ProgramDirectory, npmFile)
 		if err != nil {
 			return nil, err
 		}
@@ -1047,7 +1116,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.forceTsc)
 	if err != nil {
 		return nil, err
 	}
@@ -1094,7 +1163,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error program was nil")
+		return nil, errors.New("internal error program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
@@ -1127,10 +1196,14 @@ func (host *nodeLanguageHost) GeneratePackage(
 	if err != nil {
 		return nil, err
 	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
-		return nil, diags
+		return &pulumirpc.GeneratePackageResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
-	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles)
+
+	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -1149,7 +1222,9 @@ func (host *nodeLanguageHost) GeneratePackage(
 		}
 	}
 
-	return &pulumirpc.GeneratePackageResponse{}, nil
+	return &pulumirpc.GeneratePackageResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {
@@ -1227,13 +1302,20 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
 
-		// "tsc" doesn't copy in the "proto" directory of .js files.
+		// "tsc" doesn't copy in the "proto" and "vendor" directories.
 		err = fsutil.CopyFile(
 			filepath.Join(req.PackageDirectory, "bin", "proto"),
 			filepath.Join(req.PackageDirectory, "proto"),
 			nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy proto: %w", err)
+		}
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "vendor"),
+			filepath.Join(req.PackageDirectory, "vendor"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy vendor: %w", err)
 		}
 
 	} else {
@@ -1274,22 +1356,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("copy package.json: %w", err)
 		}
-	}
-
-	// Mutate the package.json to replace version with the version we've been given.
-	packageJSONPath := filepath.Join(req.PackageDirectory, "bin", "package.json")
-	packageJSON, err = readPackageJSON(packageJSONPath)
-	if err != nil {
-		return nil, err
-	}
-	packageJSON["version"] = req.Version
-	packageJSONData, err := json.Marshal(packageJSON)
-	if err != nil {
-		return nil, fmt.Errorf("marshal package.json: %w", err)
-	}
-	err = os.WriteFile(packageJSONPath, packageJSONData, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("write package.json: %w", err)
 	}
 
 	err = writeString("$ npm pack\n")

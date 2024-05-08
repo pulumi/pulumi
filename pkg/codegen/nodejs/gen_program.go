@@ -169,6 +169,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -178,31 +179,31 @@ func GenerateProject(
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
 	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	project.Runtime = workspace.NewProjectRuntimeInfo("nodejs", nil)
+	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
+	if forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
 	}
-	files["Pulumi.yaml"] = projectBytes
-
-	// The local dependencies map is a map of package name to the path to the package, the path could be
-	// absolute or a relative path but we want to ensure we emit relative paths in the package.json.
-	for k, v := range localDependencies {
-		absPath := v
-		if !filepath.IsAbs(v) {
-			absPath, err = filepath.Abs(v)
-			if err != nil {
-				return fmt.Errorf("absolute path of %s: %w", v, err)
-			}
-		}
-
-		relPath, err := filepath.Rel(directory, absPath)
-		if err != nil {
-			return fmt.Errorf("relative path of %s from %s: %w", absPath, directory, err)
-		}
-
-		localDependencies[k] = relPath
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
 	// Build the package.json
@@ -365,6 +366,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	var componentImports []string
 
 	npmToPuPkgName := make(map[string]string)
+	seenComponentImports := map[string]bool{}
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
@@ -385,8 +387,12 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
-			importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
-			componentImports = append(componentImports, importStatement)
+			dirAndName := componentDir + "-" + componentName
+			if _, ok := seenComponentImports[dirAndName]; !ok {
+				importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
+				componentImports = append(componentImports, importStatement)
+				seenComponentImports[dirAndName] = true
+			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -459,7 +465,7 @@ func componentElementType(pclType model.Type) string {
 		switch pclType := pclType.(type) {
 		case *model.ListType:
 			elementType := componentElementType(pclType.ElementType)
-			return fmt.Sprintf("%s[]", elementType)
+			return elementType + "[]"
 		case *model.MapType:
 			elementType := componentElementType(pclType.ElementType)
 			return fmt.Sprintf("Record<string, pulumi.Input<%s>>", elementType)
@@ -616,7 +622,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
 		}
 
-		token := fmt.Sprintf("components:index:%s", componentName)
+		token := "components:index:" + componentName
 
 		if len(configVars) == 0 {
 			g.Fgenf(w, "%s", g.Indent)
@@ -1235,7 +1241,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
-	// TODO(pdg): trivia
+	g.genTrivia(w, v.Definition.Tokens.Name)
 	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
 }
 
@@ -1252,7 +1258,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  message,

@@ -19,7 +19,7 @@ jobs:
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         # Uses release ref (tag)
       - name: Info
         id: version
