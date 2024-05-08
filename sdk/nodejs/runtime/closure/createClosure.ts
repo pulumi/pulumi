@@ -1418,6 +1418,7 @@ function getBuiltInModules(): Promise<Map<any, string>> {
         // available at the unqualified names listed below.
 
         const excludes = [
+            "punycode", // deprecated in documentation since 7.0, logs a warning in 21.0
             "sys", // deprecated since 1.0
             "wasi", // experimental
         ];
