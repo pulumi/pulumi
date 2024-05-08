@@ -457,7 +457,11 @@ func TestConcurrentRegisterResource(t *testing.T) {
 
 	//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 	t.Run("Serialized Step Generator", func(t *testing.T) {
+		priorUpsgValue := deploy.UseParallelStepGen
 		deploy.UseParallelStepGen = false
+		defer func() {
+			deploy.UseParallelStepGen = priorUpsgValue
+		}()
 
 		maxLoad := testCore()
 		assert.Equalf(t, int64(1), maxLoad,
@@ -466,9 +470,10 @@ func TestConcurrentRegisterResource(t *testing.T) {
 
 	//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 	t.Run("Parallel Step Generator", func(t *testing.T) {
+		priorUpsgValue := deploy.UseParallelStepGen
 		deploy.UseParallelStepGen = true
 		defer func() {
-			deploy.UseParallelStepGen = false
+			deploy.UseParallelStepGen = priorUpsgValue
 		}()
 
 		maxLoad := testCore()
@@ -594,7 +599,11 @@ func TestParallelStepGenerator(t *testing.T) {
 
 		//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 		t.Run("Serialized Step Generator", func(t *testing.T) {
+			priorUpsgValue := deploy.UseParallelStepGen
 			deploy.UseParallelStepGen = false
+			defer func() {
+				deploy.UseParallelStepGen = priorUpsgValue
+			}()
 
 			maxLoad, duration, count := parallelStepGenTestHelper(t, maxDepth, maxSpan)
 			assert.Equalf(t, int64(1), maxLoad,
@@ -608,9 +617,10 @@ func TestParallelStepGenerator(t *testing.T) {
 
 		//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 		t.Run("Parallel Step Generator", func(t *testing.T) {
+			priorUpsgValue := deploy.UseParallelStepGen
 			deploy.UseParallelStepGen = true
 			defer func() {
-				deploy.UseParallelStepGen = false
+				deploy.UseParallelStepGen = priorUpsgValue
 			}()
 
 			maxLoad, duration, count := parallelStepGenTestHelper(t, maxDepth, maxSpan)
@@ -633,7 +643,11 @@ func TestParallelStepGenerator(t *testing.T) {
 
 		//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 		t.Run("Serialized Step Generator", func(t *testing.T) {
+			priorUpsgValue := deploy.UseParallelStepGen
 			deploy.UseParallelStepGen = false
+			defer func() {
+				deploy.UseParallelStepGen = priorUpsgValue
+			}()
 
 			maxLoad, duration, count := parallelStepGenTestHelper(t, maxDepth, maxSpan)
 			assert.Equalf(t, int64(1), maxLoad,
@@ -647,9 +661,10 @@ func TestParallelStepGenerator(t *testing.T) {
 
 		//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 		t.Run("Parallel Step Generator", func(t *testing.T) {
+			priorUpsgValue := deploy.UseParallelStepGen
 			deploy.UseParallelStepGen = true
 			defer func() {
-				deploy.UseParallelStepGen = false
+				deploy.UseParallelStepGen = priorUpsgValue
 			}()
 
 			maxLoad, duration, count := parallelStepGenTestHelper(t, maxDepth, maxSpan)
@@ -669,7 +684,11 @@ func TestParallelStepGenerator(t *testing.T) {
 
 		//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 		t.Run("Serialized Step Generator", func(t *testing.T) {
+			priorUpsgValue := deploy.UseParallelStepGen
 			deploy.UseParallelStepGen = false
+			defer func() {
+				deploy.UseParallelStepGen = priorUpsgValue
+			}()
 
 			maxLoad, duration, count := parallelStepGenTestHelper(t, maxDepth, maxSpan)
 			assert.Equalf(t, int64(1), maxLoad,
@@ -683,9 +702,10 @@ func TestParallelStepGenerator(t *testing.T) {
 
 		//nolint:paralleltest // This cannot be run in parallel because it depends on a global variable
 		t.Run("Parallel Step Generator", func(t *testing.T) {
+			priorUpsgValue := deploy.UseParallelStepGen
 			deploy.UseParallelStepGen = true
 			defer func() {
-				deploy.UseParallelStepGen = false
+				deploy.UseParallelStepGen = priorUpsgValue
 			}()
 
 			maxLoad, duration, count := parallelStepGenTestHelper(t, maxDepth, maxSpan)

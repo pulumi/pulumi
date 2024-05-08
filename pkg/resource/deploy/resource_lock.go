@@ -113,9 +113,9 @@ Retry:
 
 // Unlocks a list of previously locked resources.
 //
-// For each resource that is unlocked, the condition variable is signalled. So
-// if many threads are waiting on individual resources they have the potential
-// to continue
+// The condition variable is signalled to all (Broadcast) when these are unlocked
+// because we have a singular condition variable for many URNs so we cannot know
+// which waiting goroutine will need to be awakened.
 //
 // The mutex MUST be locked when this is called
 func (rl *resourceLock) UnlockResources(resources []*resource.State) {

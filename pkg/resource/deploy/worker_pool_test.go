@@ -43,7 +43,7 @@ func TestWorkerPool_NoError(t *testing.T) {
 		})
 	}
 
-	err := workerPool.Wait(true)
+	err := workerPool.Wait()
 
 	assert.Nil(t, err)
 	assert.Nil(t, ctx.Err())
@@ -70,7 +70,7 @@ func TestWorkerPool_error(t *testing.T) {
 		})
 	}
 
-	err := workerPool.Wait(true)
+	err := workerPool.Wait()
 	require.Error(t, err)
 
 	// Validate that the returned error matches
@@ -98,7 +98,7 @@ func TestWorkerPool_oneError(t *testing.T) {
 		})
 	}
 
-	err := workerPool.Wait(true)
+	err := workerPool.Wait()
 	require.Error(t, err)
 	assert.ErrorIs(t, err, giveErr)
 
@@ -127,7 +127,7 @@ func TestWorkerPool_canSaturate(t *testing.T) {
 		})
 	}
 
-	err := workerPool.Wait(true)
+	err := workerPool.Wait()
 	require.NoError(t, err)
 	assert.Nil(t, ctx.Err())
 
@@ -227,7 +227,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 				})
 			},
 			"wait": func(t *rapid.T) {
-				err := workerPool.Wait(false)
+				err := workerPool.Wait()
 
 				errorMutex.Lock()
 				defer errorMutex.Unlock()
@@ -241,7 +241,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 			},
 		})
 
-		err := workerPool.Wait(true)
+		err := workerPool.Wait()
 		if len(errors) == 0 {
 			assert.NoError(t, err)
 			assert.Nil(t, ctx.Err())

@@ -34,8 +34,7 @@ type workerPool struct {
 }
 
 // Creates a new workerPool. This will allow upto size concurrent workers.
-//
-// IF size is <= 1, OR > NumCPU THEN use the number of available Logical CPUs
+// IF size is <= 1 THEN use the number of available Logical CPUs * 4
 func newWorkerPool(size int, cancel context.CancelFunc) *workerPool {
 	if size <= 1 {
 		// This number is chosen to match the value of defaultParallel in /pkg/cmd/pulumi/up.go
@@ -53,24 +52,24 @@ func newWorkerPool(size int, cancel context.CancelFunc) *workerPool {
 //
 // If possible this will start a goroutine for the worker, otherwise this will
 // wait until the worker can be scheduled.
-func (s *workerPool) AddWorker(thunk func() error) {
-	s.wg.Add(1)
-	s.sem <- struct{}{}
+func (w *workerPool) AddWorker(thunk func() error) {
+	w.wg.Add(1)
+	w.sem <- struct{}{}
 
 	go func() {
 		defer func() {
-			<-s.sem
-			s.wg.Done()
+			<-w.sem
+			w.wg.Done()
 		}()
 
 		if err := thunk(); err != nil {
-			s.errorMutex.Lock()
-			defer s.errorMutex.Unlock()
+			w.errorMutex.Lock()
+			defer w.errorMutex.Unlock()
 
-			s.errors = append(s.errors, err)
+			w.errors = append(w.errors, err)
 			// cancel the context on the first error
-			if len(s.errors) == 1 {
-				s.cancel()
+			if len(w.errors) == 1 {
+				w.cancel()
 			}
 		}
 	}()
@@ -81,27 +80,11 @@ func (s *workerPool) AddWorker(thunk func() error) {
 //
 // This returns an error that contains all errors (if any) returned by worker
 // functions
-//
-// If clearErrors is true then this resets the error list in the pool
-func (s *workerPool) Wait(clearErrors bool) error {
-	s.wg.Wait()
+func (w *workerPool) Wait() error {
+	w.wg.Wait()
 
-	s.errorMutex.Lock()
-	defer s.errorMutex.Unlock()
+	w.errorMutex.Lock()
+	defer w.errorMutex.Unlock()
 
-	var err error
-
-	switch len(s.errors) {
-	case 0:
-		return nil
-	case 1:
-		err = s.errors[0]
-	default:
-		err = errors.Join(s.errors...)
-	}
-
-	if clearErrors {
-		s.errors = nil
-	}
-	return err
+	return errors.Join(w.errors...)
 }
