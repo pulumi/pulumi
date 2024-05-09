@@ -3275,6 +3275,9 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 	return nil
 }
 
+// Require the SDK to fall within the same major version.
+var MinimumValidSDKVersion string = ">=3.0.0,<4.0.0"
+
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
 // as provided in the package schema, and validates whether
@@ -3287,18 +3290,17 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 // validate.
 func ensureValidPulumiVersion(requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
-	// Special case: if the map is empty, we return just pulumi with no version constraint.
-	// This is just legacy functionality; there's no obvious reason this should be the case.
+	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": ">=3.0.0,<4.0.0",
+			"pulumi": MinimumValidSDKVersion,
 		}
 		return result, nil
 	}
 	// If the pulumi dep is missing, we require it to fall within
 	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = ">=3.0.0,<4.0.0"
+		deps["pulumi"] = MinimumValidSDKVersion
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.
