@@ -659,9 +659,19 @@ async def serialize_property(
 
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):
-        raise ValueError(
-            f"unexpected input of type {type(value).__name__} for {property_key} in {type(resource_obj).__name__}"
-        )
+        if property_key is not None and resource_obj is not None:
+            raise ValueError(
+                f"unexpected input of type {type(value).__name__} for {property_key} in {type(resource_obj).__name__}"
+            )
+        if property_key is not None:
+            raise ValueError(
+                f"unexpected input of type {type(value).__name__} for {property_key}"
+            )
+        if resource_obj is not None:
+            raise ValueError(
+                f"unexpected input of type {type(value).__name__} in {type(resource_obj).__name__}"
+            )
+        raise ValueError(f"unexpected input of type {type(value).__name__}")
 
     return value
 
