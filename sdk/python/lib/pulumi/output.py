@@ -110,7 +110,11 @@ class Output(Generic[T_co]):
                 return
             # else remove it from the deque
             with SETTINGS.lock:
-                SETTINGS.outputs.remove(fut)
+                try:
+                    SETTINGS.outputs.remove(fut)
+                except ValueError:
+                    # if it's not in the deque then it's already been removed in wait_for_rpcs
+                    pass
 
         future.add_done_callback(cleanup)
 

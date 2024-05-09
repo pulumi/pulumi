@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Fix a race condition in output handling
