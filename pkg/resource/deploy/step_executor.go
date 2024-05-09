@@ -257,7 +257,9 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		}
 	}
 
+	reg.New().Lock.Lock()
 	reg.New().Outputs = outs
+	reg.New().Lock.Unlock()
 
 	// If we're generating plans save these new outputs to the plan
 	if se.opts.GeneratePlan {
@@ -421,6 +423,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	// https://github.com/pulumi/pulumi/issues/14994).
 	if step.New() != nil && step.Op() != OpReplace {
 		newState := step.New()
+		newState.Lock.Lock()
+
 		for _, k := range newState.AdditionalSecretOutputs {
 			if k == "id" {
 				se.deployment.Diag().Warningf(&diag.Diag{
@@ -464,6 +468,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 				}
 			}
 		}
+
+		newState.Lock.Unlock()
 
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
 		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {

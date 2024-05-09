@@ -109,11 +109,11 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
 	// Make the old state here a direct copy of the new state
-	old := *new
+	old := new.Copy()
 	return &SameStep{
 		deployment:    deployment,
 		reg:           reg,
-		old:           &old,
+		old:           old,
 		new:           new,
 		skippedCreate: true,
 	}
@@ -130,6 +130,9 @@ func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+	s.new.Lock.Lock()
+	defer s.new.Lock.Unlock()
+
 	// Retain the ID and outputs
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
@@ -280,6 +283,9 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 	}
 
+	s.new.Lock.Lock()
+	defer s.new.Lock.Unlock()
+
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
@@ -292,7 +298,9 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// Mark the old resource as pending deletion if necessary.
 	if s.replacing && s.pendingDelete {
 		contract.Assertf(s.old != s.new, "old and new states should not be the same")
+		s.old.Lock.Lock()
 		s.old.Delete = true
+		s.old.Lock.Unlock()
 	}
 
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
@@ -364,7 +372,9 @@ func NewDeleteReplacementStep(
 	// that it can issue a deletion of this resource on the next update to this stack.
 	contract.Assertf(pendingReplace != old.Delete,
 		"resource %v cannot be pending replacement and deletion at the same time", old.URN)
+	old.Lock.Lock()
 	old.PendingReplacement = pendingReplace
+	old.Lock.Unlock()
 	return &DeleteStep{
 		deployment:     deployment,
 		otherDeletions: otherDeletions,
@@ -557,9 +567,11 @@ func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID and timestamps even in previews and refreshes.
+	s.new.Lock.Lock()
 	s.new.ID = s.old.ID
 	s.new.Created = s.old.Created
 	s.new.Modified = s.old.Modified
+	s.new.Lock.Unlock()
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
@@ -573,6 +585,10 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
 		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
 			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
+
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
+
 		if upderr != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, upderr
@@ -767,6 +783,9 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	// Unlike most steps, Read steps run during previews. The only time
 	// we can't run is if the ID we are given is unknown.
 	if id == plugin.UnknownStringValue {
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
+
 		s.new.Outputs = resource.PropertyMap{}
 	} else {
 		prov, err := getProvider(s, s.provider)
@@ -778,6 +797,10 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
 		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
 		result, rst, err := prov.Read(urn, id, s.new.Inputs, s.new.Inputs)
+
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
+
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -1104,6 +1127,10 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 		var read plugin.ReadResult
 		read, rst, err = prov.Read(s.new.URN, s.new.ID, nil, nil)
+
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
+
 		if err != nil {
 			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 				s.new.InitErrors = initErr.Reasons
@@ -1124,6 +1151,9 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 		inputs = read.Inputs
 		outputs = read.Outputs
+	} else {
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
 	}
 
 	s.new.Outputs = outputs

@@ -287,6 +287,8 @@ jobs:
       build-platform: ${{ matrix.target.build-platform }}
       version-set: ${{ needs.matrix.outputs.version-set }}
       enable-coverage: ${{ inputs.enable-coverage }}
+      # Windows and Linux need CGO and cross compile support to support -race. So for now only enable it for darwin and amd64 linux.
+      enable-race-detection: ${{ matrix.target.os == 'darwin' || (matrix.target.os == 'linux' && matrix.target.arch == 'amd64') }}
     secrets: inherit
 
   build-sdks:
