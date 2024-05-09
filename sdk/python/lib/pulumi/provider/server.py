@@ -200,14 +200,18 @@ class ProviderServicer(ResourceProviderServicer):
         failures = None
         if result.failures and len(result.failures) > 0:
             if not request.accepts_failures:
-                raise Exception("resource has a problem; please upgrade the Pulumi CLI " +
-                        "to see a more detailed error message")
+                raise Exception(
+                    "resource has a problem; please upgrade the Pulumi CLI "
+                    + "to see a more detailed error message"
+                )
             failures = [
                 proto.CheckFailure(property=f.property, reason=f.reason)
                 for f in result.failures
             ]
 
-        return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps, failures=failures)
+        return proto.ConstructResponse(
+            urn=urn, state=state, stateDependencies=deps, failures=failures
+        )
 
     async def Call(
         self, request: proto.CallRequest, context
