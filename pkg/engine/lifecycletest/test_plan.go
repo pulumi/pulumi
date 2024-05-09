@@ -243,7 +243,13 @@ func (op TestOp) runWithContext(
 			name = base64.StdEncoding.EncodeToString([]byte(name))
 
 		}
-		assertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", opts.T.Name(), name))
+		testName := opts.T.Name()
+		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
+			assert.NoError(opts.T, err)
+			testName = base64.StdEncoding.EncodeToString([]byte(testName))
+
+		}
+		assertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
 	}
 
 	entries := journal.Entries()
