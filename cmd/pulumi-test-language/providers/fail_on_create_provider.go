@@ -46,7 +46,7 @@ func (p *FailOnCreateProvider) Pkg() tokens.Package {
 	return "fail_on_create"
 }
 
-func (p *FailOnCreateProvider) GetSchema(version int) ([]byte, error) {
+func (p *FailOnCreateProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{

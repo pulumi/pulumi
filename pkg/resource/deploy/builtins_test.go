@@ -43,7 +43,7 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("GetSchema", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		b, err := p.GetSchema(0)
+		b, err := p.GetSchema(plugin.GetSchemaRequest{})
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("{}"), b)
 	})

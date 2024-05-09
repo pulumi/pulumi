@@ -45,7 +45,7 @@ func (p *AssetArchiveProvider) Pkg() tokens.Package {
 	return "asset-archive"
 }
 
-func (p *AssetArchiveProvider) GetSchema(version int) ([]byte, error) {
+func (p *AssetArchiveProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
 	assetProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{

@@ -45,7 +45,7 @@ func (p *SimpleProvider) Pkg() tokens.Package {
 	return "simple"
 }
 
-func (p *SimpleProvider) GetSchema(version int) ([]byte, error) {
+func (p *SimpleProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{

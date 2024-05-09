@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 const (
@@ -253,8 +255,15 @@ func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
 
+func (r *Registry) Parameterize(context.Context, *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	contract.Failf("Parameterize must not be called on the provider registry")
+
+	return nil, errors.New("the provider registry has no parameters")
+}
+
 // GetSchema returns the JSON-serialized schema for the provider.
-func (r *Registry) GetSchema(version int) ([]byte, error) {
+func (r *Registry) GetSchema(plugin.GetSchemaRequest) ([]byte, error) {
 	contract.Failf("GetSchema must not be called on the provider registry")
 
 	return nil, errors.New("the provider registry has no schema")

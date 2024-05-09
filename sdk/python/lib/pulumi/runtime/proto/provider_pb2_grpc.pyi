@@ -30,6 +30,24 @@ class ResourceProviderStub:
     """
 
     def __init__(self, channel: grpc.Channel) -> None: ...
+    Parameterize: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ParameterizeRequest,
+        pulumi.provider_pb2.ParameterizeResponse,
+    ]
+    """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+
+    Providers can be parameterized with either multiple extension packages (which don't define their own provider
+    resources), or with a replacement package (which does define its own provider resource).
+
+    Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+    called once. Extension packages may even be called multiple times for the same package name, but with different
+    versions.
+
+    Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+    should return the sub-package name and version (which for `ParametersValue` should match the given input).
+
+    For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+    """
     GetSchema: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.GetSchemaRequest,
         pulumi.provider_pb2.GetSchemaResponse,
@@ -152,6 +170,26 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     within a single package.  It is driven by the overall planning engine in response to resource diffs.
     """
 
+    
+    def Parameterize(
+        self,
+        request: pulumi.provider_pb2.ParameterizeRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.ParameterizeResponse:
+        """Parameterize takes either a string array of command line inputs or a value embedded from sdk generation.
+
+        Providers can be parameterized with either multiple extension packages (which don't define their own provider
+        resources), or with a replacement package (which does define its own provider resource).
+
+        Parameterize may be called multiple times for extension packages, but for a replacement package it will only be
+        called once. Extension packages may even be called multiple times for the same package name, but with different
+        versions.
+
+        Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
+        should return the sub-package name and version (which for `ParametersValue` should match the given input).
+
+        For extension resources their CRUD operations will include the version of which sub-package they correspond to.
+        """
     
     def GetSchema(
         self,

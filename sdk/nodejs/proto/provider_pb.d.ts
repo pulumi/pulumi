@@ -9,9 +9,127 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
+export class ParameterizeRequest extends jspb.Message { 
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): ParameterizeRequest.ParametersArgs | undefined;
+    setArgs(value?: ParameterizeRequest.ParametersArgs): ParameterizeRequest;
+
+    hasValue(): boolean;
+    clearValue(): void;
+    getValue(): ParameterizeRequest.ParametersValue | undefined;
+    setValue(value?: ParameterizeRequest.ParametersValue): ParameterizeRequest;
+
+    getParametersCase(): ParameterizeRequest.ParametersCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ParameterizeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ParameterizeRequest): ParameterizeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ParameterizeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ParameterizeRequest;
+    static deserializeBinaryFromReader(message: ParameterizeRequest, reader: jspb.BinaryReader): ParameterizeRequest;
+}
+
+export namespace ParameterizeRequest {
+    export type AsObject = {
+        args?: ParameterizeRequest.ParametersArgs.AsObject,
+        value?: ParameterizeRequest.ParametersValue.AsObject,
+    }
+
+
+    export class ParametersArgs extends jspb.Message { 
+        clearArgsList(): void;
+        getArgsList(): Array<string>;
+        setArgsList(value: Array<string>): ParametersArgs;
+        addArgs(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ParametersArgs.AsObject;
+        static toObject(includeInstance: boolean, msg: ParametersArgs): ParametersArgs.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ParametersArgs, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ParametersArgs;
+        static deserializeBinaryFromReader(message: ParametersArgs, reader: jspb.BinaryReader): ParametersArgs;
+    }
+
+    export namespace ParametersArgs {
+        export type AsObject = {
+            argsList: Array<string>,
+        }
+    }
+
+    export class ParametersValue extends jspb.Message { 
+        getName(): string;
+        setName(value: string): ParametersValue;
+        getVersion(): string;
+        setVersion(value: string): ParametersValue;
+
+        hasValue(): boolean;
+        clearValue(): void;
+        getValue(): google_protobuf_struct_pb.Value | undefined;
+        setValue(value?: google_protobuf_struct_pb.Value): ParametersValue;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ParametersValue.AsObject;
+        static toObject(includeInstance: boolean, msg: ParametersValue): ParametersValue.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ParametersValue, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ParametersValue;
+        static deserializeBinaryFromReader(message: ParametersValue, reader: jspb.BinaryReader): ParametersValue;
+    }
+
+    export namespace ParametersValue {
+        export type AsObject = {
+            name: string,
+            version: string,
+            value?: google_protobuf_struct_pb.Value.AsObject,
+        }
+    }
+
+
+    export enum ParametersCase {
+        PARAMETERS_NOT_SET = 0,
+        ARGS = 1,
+        VALUE = 2,
+    }
+
+}
+
+export class ParameterizeResponse extends jspb.Message { 
+    getName(): string;
+    setName(value: string): ParameterizeResponse;
+    getVersion(): string;
+    setVersion(value: string): ParameterizeResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ParameterizeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ParameterizeResponse): ParameterizeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ParameterizeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ParameterizeResponse;
+    static deserializeBinaryFromReader(message: ParameterizeResponse, reader: jspb.BinaryReader): ParameterizeResponse;
+}
+
+export namespace ParameterizeResponse {
+    export type AsObject = {
+        name: string,
+        version: string,
+    }
+}
+
 export class GetSchemaRequest extends jspb.Message { 
     getVersion(): number;
     setVersion(value: number): GetSchemaRequest;
+    getSubpackageName(): string;
+    setSubpackageName(value: string): GetSchemaRequest;
+    getSubpackageVersion(): string;
+    setSubpackageVersion(value: string): GetSchemaRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetSchemaRequest.AsObject;
@@ -26,6 +144,8 @@ export class GetSchemaRequest extends jspb.Message {
 export namespace GetSchemaRequest {
     export type AsObject = {
         version: number,
+        subpackageName: string,
+        subpackageVersion: string,
     }
 }
 

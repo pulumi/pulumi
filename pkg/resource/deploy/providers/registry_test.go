@@ -123,7 +123,7 @@ func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
 
-func (prov *testProvider) GetSchema(version int) ([]byte, error) {
+func (prov *testProvider) GetSchema(plugin.GetSchemaRequest) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
@@ -815,7 +815,7 @@ func TestRegistry(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.GetSchema((0))
+			_, _ = r.GetSchema(plugin.GetSchemaRequest{})
 		})
 	})
 	t.Run("GetMapping", func(t *testing.T) {

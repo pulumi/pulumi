@@ -41,7 +41,7 @@ func (p *BadProvider) Pkg() tokens.Package {
 	return "bad"
 }
 
-func (p *BadProvider) GetSchema(version int) ([]byte, error) {
+func (p *BadProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
 	// The whole point of this provider is to return an invalid schema, so just make up a type for the
 	// property value.
 	resourceProperties := map[string]schema.PropertySpec{

@@ -303,10 +303,27 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	return false
 }
 
+func (p *provider) Parameterize(
+	ctx context.Context, req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	resp, err := p.clientRaw.Parameterize(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // GetSchema fetches the schema for this resource provider, if any.
-func (p *provider) GetSchema(version int) ([]byte, error) {
+func (p *provider) GetSchema(request GetSchemaRequest) ([]byte, error) {
+	var subpackageVersion string
+	if request.SubpackageVersion != nil {
+		subpackageVersion = request.SubpackageVersion.String()
+	}
+
 	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
-		Version: int32(version),
+		Version:           int32(request.Version),
+		SubpackageName:    request.SubpackageName,
+		SubpackageVersion: subpackageVersion,
 	})
 	if err != nil {
 		return nil, err

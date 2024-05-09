@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type builtinProvider struct {
@@ -47,8 +48,13 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
+func (p *builtinProvider) Parameterize(context.Context, *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	return nil, errors.New("the builtin provider has no parameters")
+}
+
 // GetSchema returns the JSON-serialized schema for the provider.
-func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
+func (p *builtinProvider) GetSchema(plugin.GetSchemaRequest) ([]byte, error) {
 	return []byte("{}"), nil
 }
 

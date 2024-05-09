@@ -16,9 +16,12 @@
 package plugin
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -38,7 +41,13 @@ func (p *UnimplementedProvider) Pkg() tokens.Package {
 	return tokens.Package("")
 }
 
-func (p *UnimplementedProvider) GetSchema(version int) ([]byte, error) {
+func (p *UnimplementedProvider) Parameterize(
+	context.Context, *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Parameterize is not yet implemented")
+}
+
+func (p *UnimplementedProvider) GetSchema(GetSchemaRequest) ([]byte, error) {
 	return nil, status.Error(codes.Unimplemented, "GetSchema is not yet implemented")
 }
 
