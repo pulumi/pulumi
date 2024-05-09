@@ -33,10 +33,10 @@ class ConstructResult:
     """Any validation failures that occurred."""
 
     def __init__(
-            self,
-            urn: Input[str],
-            state: Inputs,
-            failures: Optional[Sequence[CheckFailure]] = None,
+        self,
+        urn: Input[str],
+        state: Inputs,
+        failures: Optional[Sequence[CheckFailure]] = None,
     ) -> None:
         self.urn = urn
         self.state = state
