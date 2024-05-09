@@ -303,7 +303,9 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 
 	var journalEntries engine.JournalEntries
 	p := &lifecycletest.TestPlan{
-		Options: lifecycletest.TestUpdateOptions{T: t, HostF: hostF},
+		// This test generates big amounts of data so the event streams that would need to be
+		// checked in get too big.  Skip them instead.
+		Options: lifecycletest.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps: []lifecycletest.TestStep{
 			{
 				Op:          engine.Update,

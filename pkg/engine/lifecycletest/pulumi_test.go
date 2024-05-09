@@ -4548,7 +4548,6 @@ func TestResourceNames(t *testing.T) {
 			})
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &TestPlan{
-				// Displaytests for this are racy
 				Options: TestUpdateOptions{T: t, HostF: hostF},
 			}
 

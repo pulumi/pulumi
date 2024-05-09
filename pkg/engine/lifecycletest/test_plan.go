@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -334,10 +333,10 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	if !accept {
 		var err error
-		expectedStdout, err = os.ReadFile(path + "/diff.stdout.txt")
+		expectedStdout, err = os.ReadFile(filepath.Join(path, "diff.stdout.txt"))
 		require.NoError(t, err)
 
-		expectedStderr, err = os.ReadFile(path + "/diff.stderr.txt")
+		expectedStderr, err = os.ReadFile(filepath.Join(path, "diff.stderr.txt"))
 		require.NoError(t, err)
 	}
 
@@ -367,7 +366,7 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 		expectedEvents = events
 	} else {
 		var err error
-		expectedEvents, err = loadEvents(filepath.Join(path, "eventstream.json"))
+		expectedEvents, err = integration.LoadEngineEvents(filepath.Join(path, "eventstream.json"))
 		require.NoError(t, err)
 
 		err = compareEvents(expectedEvents, events)
@@ -398,10 +397,10 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 		err := os.MkdirAll(path, 0o700)
 		require.NoError(t, err)
 
-		err = os.WriteFile(path+"/diff.stdout.txt", stdout.Bytes(), 0o600)
+		err = os.WriteFile(filepath.Join(path, "diff.stdout.txt"), stdout.Bytes(), 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(path+"/diff.stderr.txt", stderr.Bytes(), 0o600)
+		err = os.WriteFile(filepath.Join(path, "diff.stderr.txt"), stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
 
@@ -409,10 +408,10 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 	expectedStderr = []byte{}
 	if !accept {
 		var err error
-		expectedStdout, err = os.ReadFile(path + "/progress.stdout.txt")
+		expectedStdout, err = os.ReadFile(filepath.Join(path, "progress.stdout.txt"))
 		require.NoError(t, err)
 
-		expectedStderr, err = os.ReadFile(path + "/progress.stderr.txt")
+		expectedStderr, err = os.ReadFile(filepath.Join(path, "progress.stderr.txt"))
 		require.NoError(t, err)
 	}
 
@@ -443,10 +442,10 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 		assert.Equal(t, string(expectedStdout), stdout.String())
 		assert.Equal(t, string(expectedStderr), stderr.String())
 	} else {
-		err := os.WriteFile(path+"/progress.stdout.txt", stdout.Bytes(), 0o600)
+		err := os.WriteFile(filepath.Join(path, "progress.stdout.txt"), stdout.Bytes(), 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(path+"/progress.stderr.txt", stderr.Bytes(), 0o600)
+		err = os.WriteFile(filepath.Join(path, "progress.stderr.txt"), stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
 }
