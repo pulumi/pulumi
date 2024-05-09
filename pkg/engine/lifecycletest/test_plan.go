@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -292,7 +293,6 @@ func compareEvents(expected, actual []engine.Event) error {
 	return nil
 }
 
-// TODO: dedup with diff_test.go
 func loadEvents(path string) (events []engine.Event, err error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -366,7 +366,7 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 		expectedEvents = events
 	} else {
 		var err error
-		expectedEvents, err = integration.LoadEngineEvents(filepath.Join(path, "eventstream.json"))
+		expectedEvents, err = loadEvents(filepath.Join(path, "eventstream.json"))
 		require.NoError(t, err)
 
 		err = compareEvents(expectedEvents, events)

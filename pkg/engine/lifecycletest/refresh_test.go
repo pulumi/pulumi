@@ -353,7 +353,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -412,7 +412,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
