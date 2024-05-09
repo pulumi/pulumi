@@ -18,11 +18,9 @@ package main
 
 import (
 	"context"
-
 	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -75,13 +73,15 @@ func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (
 
 	d := olds.Diff(news)
 	changes := rpc.DiffResponse_DIFF_NONE
-	if d.Changed("echo") {
+	var replaces []string
+	if d != nil && d.Changed("echo") {
 		changes = rpc.DiffResponse_DIFF_SOME
+		replaces = append(replaces, "echo")
 	}
 
 	return &rpc.DiffResponse{
 		Changes:  changes,
-		Replaces: []string{"echo"},
+		Replaces: replaces,
 	}, nil
 }
 
@@ -94,12 +94,8 @@ func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateReques
 		return nil, err
 	}
 
-	outputs := map[string]interface{}{
-		"echo": inputs["echo"],
-	}
-
 	outputProperties, err := plugin.MarshalProperties(
-		resource.NewPropertyMapFromMap(outputs),
+		inputs,
 		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
 	)
 	if err != nil {
