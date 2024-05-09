@@ -3276,7 +3276,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 }
 
 // Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion string = ">=3.0.0,<4.0.0"
+var MinimumValidSDKVersion = ">=3.0.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
