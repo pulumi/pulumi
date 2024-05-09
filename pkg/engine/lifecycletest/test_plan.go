@@ -4,6 +4,7 @@ package lifecycletest
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/blang/semver"
@@ -235,6 +237,12 @@ func (op TestOp) runWithContext(
 	}
 
 	if !opts.SkipDisplayTests {
+		// base64 encode the name if it contains special characters
+		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, name); !ok && name != "" {
+			assert.NoError(opts.T, err)
+			name = base64.StdEncoding.EncodeToString([]byte(name))
+
+		}
 		assertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", opts.T.Name(), name))
 	}
 

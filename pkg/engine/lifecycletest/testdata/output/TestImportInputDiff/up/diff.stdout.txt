@@ -1,10 +1,9 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=ID]
+<{%reset%}>    [id=744a70d1-6126-4c78-959c-9e90271a2268]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=actual-id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>bar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>bar<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    foo : <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    frob: <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
