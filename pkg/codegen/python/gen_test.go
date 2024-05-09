@@ -319,7 +319,7 @@ func TestCalculateDeps(t *testing.T) {
 			// with semver and parver formatted differently from Pulumi.
 			// Pulumi should not have a version.
 			{"parver>=0.2.1", ""},
-			{"pulumi", ""},
+			{"pulumi", ">=3.0.0,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
