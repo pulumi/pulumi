@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Return the underlying error if we can't locate the pulumi SDK
