@@ -171,6 +171,7 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 async def serialize_properties(
     inputs: "Inputs",
     property_deps: Dict[str, List["Resource"]],
+    resource_obj: Optional["Resource"] = None,
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: Optional[bool] = None,
@@ -213,7 +214,13 @@ async def serialize_properties(
         v = inputs[k]
         deps: List["Resource"] = []
         result = await serialize_property(
-            v, deps, input_transformer, get_type(k), keep_output_values
+            v,
+            deps,
+            k,
+            resource_obj,
+            input_transformer,
+            get_type(k),
+            keep_output_values,
         )
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
@@ -325,6 +332,8 @@ async def _expand_dependencies(
 async def serialize_property(
     value: "Input[Any]",
     deps: List["Resource"],
+    property_key: Optional[str],
+    resource_obj: Optional["Resource"] = None,
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: Optional[bool] = None,
@@ -357,7 +366,13 @@ async def serialize_property(
         for elem in value:
             props.append(
                 await serialize_property(
-                    elem, deps, input_transformer, element_type, keep_output_values
+                    elem,
+                    deps,
+                    property_key,
+                    resource_obj,
+                    input_transformer,
+                    element_type,
+                    keep_output_values,
                 )
             )
 
@@ -377,12 +392,22 @@ async def serialize_property(
             res = {
                 _special_sig_key: _special_resource_sig,
                 "urn": await serialize_property(
-                    resource.urn, deps, input_transformer, keep_output_values=False
+                    resource.urn,
+                    deps,
+                    property_key,
+                    resource_obj,
+                    input_transformer,
+                    keep_output_values=False,
                 ),
             }
             if is_custom:
                 res["id"] = await serialize_property(
-                    resource_id, deps, input_transformer, keep_output_values=False
+                    resource_id,
+                    deps,
+                    property_key,
+                    resource_obj,
+                    input_transformer,
+                    keep_output_values=False,
                 )
             return res
 
@@ -390,6 +415,8 @@ async def serialize_property(
         return await serialize_property(
             resource_id if is_custom else resource.urn,
             deps,
+            property_key,
+            resource_obj,
             input_transformer,
             keep_output_values=False,
         )
@@ -403,17 +430,32 @@ async def serialize_property(
         if hasattr(value, "path"):
             file_asset = cast("FileAsset", value)
             obj["path"] = await serialize_property(
-                file_asset.path, deps, input_transformer, keep_output_values=False
+                file_asset.path,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                keep_output_values=False,
             )
         elif hasattr(value, "text"):
             str_asset = cast("StringAsset", value)
             obj["text"] = await serialize_property(
-                str_asset.text, deps, input_transformer, keep_output_values=False
+                str_asset.text,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                keep_output_values=False,
             )
         elif hasattr(value, "uri"):
             remote_asset = cast("RemoteAsset", value)
             obj["uri"] = await serialize_property(
-                remote_asset.uri, deps, input_transformer, keep_output_values=False
+                remote_asset.uri,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                keep_output_values=False,
             )
         else:
             raise AssertionError(f"unknown asset type: {value!r}")
@@ -429,17 +471,32 @@ async def serialize_property(
         if hasattr(value, "assets"):
             asset_archive = cast("AssetArchive", value)
             obj["assets"] = await serialize_property(
-                asset_archive.assets, deps, input_transformer, keep_output_values=False
+                asset_archive.assets,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                keep_output_values=False,
             )
         elif hasattr(value, "path"):
             file_archive = cast("FileArchive", value)
             obj["path"] = await serialize_property(
-                file_archive.path, deps, input_transformer, keep_output_values=False
+                file_archive.path,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                keep_output_values=False,
             )
         elif hasattr(value, "uri"):
             remote_archive = cast("RemoteArchive", value)
             obj["uri"] = await serialize_property(
-                remote_archive.uri, deps, input_transformer, keep_output_values=False
+                remote_archive.uri,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                keep_output_values=False,
             )
         else:
             raise AssertionError(f"unknown archive type: {value!r}")
@@ -456,7 +513,13 @@ async def serialize_property(
         awaitable = cast("Any", value)
         future_return = await asyncio.ensure_future(awaitable)
         return await serialize_property(
-            future_return, deps, input_transformer, typ, keep_output_values
+            future_return,
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
         )
 
     if known_types.is_output(value):
@@ -474,6 +537,8 @@ async def serialize_property(
         value = await serialize_property(
             output.future(),
             promise_deps,
+            property_key,
+            resource_obj,
             input_transformer,
             typ,
             keep_output_values=False,
@@ -485,7 +550,12 @@ async def serialize_property(
             urn_deps: List["Resource"] = []
             for resource in value_resources:
                 await serialize_property(
-                    resource.urn, urn_deps, input_transformer, keep_output_values=False
+                    resource.urn,
+                    urn_deps,
+                    property_key,
+                    resource_obj,
+                    input_transformer,
+                    keep_output_values=False,
                 )
             promise_deps.extend(set(urn_deps))
             value_resources.update(urn_deps)
@@ -519,7 +589,13 @@ async def serialize_property(
 
         return {
             k: await serialize_property(
-                v, deps, input_transformer, types.get(k), keep_output_values
+                v,
+                deps,
+                property_key,
+                resource_obj,
+                input_transformer,
+                types.get(k),
+                keep_output_values,
             )
             for k, v in value.items()
         }
@@ -572,6 +648,8 @@ async def serialize_property(
             obj[transformed_key] = await serialize_property(
                 value[k],
                 deps,
+                k,
+                resource_obj,
                 input_transformer,
                 get_type(transformed_key),
                 keep_output_values,
@@ -581,6 +659,18 @@ async def serialize_property(
 
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):
+        if property_key is not None and resource_obj is not None:
+            raise ValueError(
+                f"unexpected input of type {type(value).__name__} for {property_key} in {type(resource_obj).__name__}"
+            )
+        if property_key is not None:
+            raise ValueError(
+                f"unexpected input of type {type(value).__name__} for {property_key}"
+            )
+        if resource_obj is not None:
+            raise ValueError(
+                f"unexpected input of type {type(value).__name__} in {type(resource_obj).__name__}"
+            )
         raise ValueError(f"unexpected input of type {type(value).__name__}")
 
     return value

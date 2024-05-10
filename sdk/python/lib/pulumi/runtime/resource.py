@@ -196,6 +196,7 @@ async def prepare_resource(
     serialized_props = await rpc.serialize_properties(
         props,
         property_dependencies_resources,
+        res,
         translate,
         typ,
         keep_output_values=remote,
@@ -745,7 +746,7 @@ def read_resource(
             # because a "read" resource does not actually have any dependencies at all in the cloud
             # provider sense, because a read resource already exists. We do not need to track this
             # dependency.
-            resolved_id = await rpc.serialize_property(opts.id, [])
+            resolved_id = await rpc.serialize_property(opts.id, [], None)
             log.debug(f"read prepared: ty={ty}, name={name}, id={opts.id}")
 
             # These inputs will end up in the snapshot, so if there are any additional secret
