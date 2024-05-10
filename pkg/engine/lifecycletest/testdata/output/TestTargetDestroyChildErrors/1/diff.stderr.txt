@@ -1,0 +1,3 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB' will be destroyed but was not specified in --target list.
+Either include resource in --target list or pass --target-dependents to proceed.<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

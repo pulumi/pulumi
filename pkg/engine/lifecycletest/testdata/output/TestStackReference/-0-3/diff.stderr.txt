@@ -1,0 +1,2 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>unknown property "foo"<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

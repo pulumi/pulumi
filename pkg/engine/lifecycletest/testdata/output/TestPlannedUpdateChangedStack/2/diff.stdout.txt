@@ -1,0 +1,6 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=cb3fc9dc-73b3-4952-afb8-a637d7c19af1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

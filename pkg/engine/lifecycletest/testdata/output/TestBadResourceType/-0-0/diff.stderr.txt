@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>an unhandled error occurred: rpc error: code = InvalidArgument desc = Type 'very:bad' is not a valid type token (must have format '*:*:*')<{%reset%}>

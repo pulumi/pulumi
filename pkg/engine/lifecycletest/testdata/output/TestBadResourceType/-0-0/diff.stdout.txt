@@ -1,0 +1,8 @@
+<{%fg 2%}>+ a:component: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::a:component::resB]
+<{%reset%}><{%reset%}><{%fg 2%}>+ singlename: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::singlename::resC]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
