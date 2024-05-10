@@ -151,7 +151,16 @@ func main() {
 
 // locateModule resolves a node module name to a file path that can be loaded
 func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
-	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
+	args := []string{"-e", fmt.Sprintf(`try {
+		console.log(require.resolve('%s'));
+	} catch (error) {
+		if (error.code === 'MODULE_NOT_FOUND') {
+			console.error("It looks like the Pulumi SDK has not been installed. Have you run pulumi install?")
+		} else {
+			console.error(error.message);
+		}
+		process.exit(1);
+	}`, mod)}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		"locateModule",
@@ -166,6 +175,9 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string,
 	cmd.Dir = programDir
 	out, err := cmd.Output()
 	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return "", errors.New(string(ee.Stderr))
+		}
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
@@ -581,8 +593,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
-		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run pulumi install?")
+		cmdutil.ExitError(err.Error())
 	}
 
 	// Channel producing the final response we want to issue to our caller. Will get the result of
