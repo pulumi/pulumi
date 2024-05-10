@@ -577,7 +577,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	nodeBin, err := exec.LookPath("node")
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
+		return &pulumirpc.RunResponse{Error: "could not find node on the $PATH: " + err.Error()}, nil
 	}
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
@@ -593,7 +593,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	runPath, err = locateModule(ctx, runPath, programDirectory, nodeBin)
 	if err != nil {
-		cmdutil.ExitError(err.Error())
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
 
 	// Channel producing the final response we want to issue to our caller. Will get the result of
