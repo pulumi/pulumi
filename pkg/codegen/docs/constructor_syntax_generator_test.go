@@ -170,7 +170,7 @@ properties: {}
 
 	assert.Equal(t, expectedResources, len(constructorSyntax.java.resources))
 	equalPrograms(constructorSyntax.java, "test:index:First", `
-var firstResource = new First("firstResource", FirstArgs.builder()        
+var firstResource = new First("firstResource", FirstArgs.builder()
     .fooBool(false)
     .fooInt(0)
     .fooString("string")
@@ -178,7 +178,7 @@ var firstResource = new First("firstResource", FirstArgs.builder()
 `)
 
 	equalPrograms(constructorSyntax.java, "test:index:Second", `
-var secondResource = new Second("secondResource", SecondArgs.builder()        
+var secondResource = new Second("secondResource", SecondArgs.builder()
     .barString("string")
     .build());
 `)
