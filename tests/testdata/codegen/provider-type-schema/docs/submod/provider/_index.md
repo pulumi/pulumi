@@ -255,7 +255,7 @@ example, err := submod.Newprovider(ctx, "providerResource", &submod.providerArgs
 <pulumi-choosable type="language" values="java">
 
 ```java
-var providerResource = new Provider("providerResource", ProviderArgs.builder()        
+var providerResource = new Provider("providerResource", ProviderArgs.builder()
     .a(false)
     .build());
 ```

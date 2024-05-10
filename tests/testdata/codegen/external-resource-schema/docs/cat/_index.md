@@ -295,7 +295,7 @@ example, err := example.NewCat(ctx, "catResource", &example.CatArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var catResource = new Cat("catResource", CatArgs.builder()        
+var catResource = new Cat("catResource", CatArgs.builder()
     .age(0)
     .pet(PetArgs.builder()
         .requiredName(randomPet)

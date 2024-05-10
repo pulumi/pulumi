@@ -305,7 +305,7 @@ example, err := mypkg.NewResource(ctx, "resourceResource", &mypkg.ResourceArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var resourceResource = new Resource("resourceResource", ResourceArgs.builder()        
+var resourceResource = new Resource("resourceResource", ResourceArgs.builder()
     .config(ConfigArgs.builder()
         .foo("string")
         .build())

@@ -842,7 +842,7 @@ example, err := example.NewComponent(ctx, "componentResource", &example.Componen
 <pulumi-choosable type="language" values="java">
 
 ```java
-var componentResource = new Component("componentResource", ComponentArgs.builder()        
+var componentResource = new Component("componentResource", ComponentArgs.builder()
     .requiredMetadata(ObjectMetaArgs.builder()
         .annotations(Map.of("string", "string"))
         .clusterName("string")

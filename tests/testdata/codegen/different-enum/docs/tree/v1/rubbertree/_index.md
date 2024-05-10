@@ -254,7 +254,7 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.builder()        
+var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.builder()
     .diameter("sixinch")
     .type("Burgundy")
     .container(ContainerArgs.builder()

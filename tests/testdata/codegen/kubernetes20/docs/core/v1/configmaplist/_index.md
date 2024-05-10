@@ -397,7 +397,7 @@ SelfLink: pulumi.String("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-var configMapListResource = new ConfigMapList("configMapListResource", ConfigMapListArgs.builder()        
+var configMapListResource = new ConfigMapList("configMapListResource", ConfigMapListArgs.builder()
     .items(ConfigMapArgs.builder()
         .apiVersion("v1")
         .binaryData(Map.of("string", "string"))

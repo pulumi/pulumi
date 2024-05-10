@@ -263,7 +263,7 @@ example, err := example.NewOverlayResource(ctx, "overlayResourceResource", &exam
 <pulumi-choosable type="language" values="java">
 
 ```java
-var overlayResourceResource = new OverlayResource("overlayResourceResource", OverlayResourceArgs.builder()        
+var overlayResourceResource = new OverlayResource("overlayResourceResource", OverlayResourceArgs.builder()
     .bar("SOME_ENUM_VALUE")
     .foo(ConfigMapOverlayArgs.builder()
         .config("string")

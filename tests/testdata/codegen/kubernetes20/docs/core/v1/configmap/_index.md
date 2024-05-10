@@ -372,7 +372,7 @@ Uid: pulumi.String("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-var configMapResource = new ConfigMap("configMapResource", ConfigMapArgs.builder()        
+var configMapResource = new ConfigMap("configMapResource", ConfigMapArgs.builder()
     .apiVersion("string")
     .binaryData(Map.of("string", "string"))
     .data(Map.of("string", "string"))

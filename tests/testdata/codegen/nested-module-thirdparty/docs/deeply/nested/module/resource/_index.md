@@ -255,7 +255,7 @@ example, err := deeply.NewResource(ctx, "resourceResource", &deeply.ResourceArgs
 <pulumi-choosable type="language" values="java">
 
 ```java
-var resourceResource = new Resource("resourceResource", ResourceArgs.builder()        
+var resourceResource = new Resource("resourceResource", ResourceArgs.builder()
     .baz("string")
     .build());
 ```

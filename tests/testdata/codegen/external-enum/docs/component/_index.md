@@ -251,7 +251,7 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-var componentResource = new Component("componentResource", ComponentArgs.builder()        
+var componentResource = new Component("componentResource", ComponentArgs.builder()
     .localEnum("pi")
     .remoteEnum("MANAGEMENT_UNSPECIFIED")
     .build());

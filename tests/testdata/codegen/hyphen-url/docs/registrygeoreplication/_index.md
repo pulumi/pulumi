@@ -255,7 +255,7 @@ example, err := registrygeoreplication.NewRegistryGeoReplication(ctx, "registryG
 <pulumi-choosable type="language" values="java">
 
 ```java
-var registryGeoReplicationResource = new RegistryGeoReplication("registryGeoReplicationResource", RegistryGeoReplicationArgs.builder()        
+var registryGeoReplicationResource = new RegistryGeoReplication("registryGeoReplicationResource", RegistryGeoReplicationArgs.builder()
     .resourceGroup(resourceGroup)
     .build());
 ```

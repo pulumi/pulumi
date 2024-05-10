@@ -262,7 +262,7 @@ example, err := example.NewExampleServer(ctx, "exampleServerResource", &example.
 <pulumi-choosable type="language" values="java">
 
 ```java
-var exampleServerResource = new ExampleServer("exampleServerResource", ExampleServerArgs.builder()        
+var exampleServerResource = new ExampleServer("exampleServerResource", ExampleServerArgs.builder()
     .properties(ServerPropertiesForReplicaArgs.builder()
         .createMode("Replica")
         .version("string")
