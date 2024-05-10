@@ -260,7 +260,7 @@ example, err := submodule1.NewModuleResource(ctx, "moduleResourceResource", &sub
 <pulumi-choosable type="language" values="java">
 
 ```java
-var moduleResourceResource = new ModuleResource("moduleResourceResource", ModuleResourceArgs.builder()        
+var moduleResourceResource = new ModuleResource("moduleResourceResource", ModuleResourceArgs.builder()
     .thing(TopLevelArgs.builder()
         .buzz("string")
         .build())

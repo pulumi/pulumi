@@ -255,7 +255,7 @@ example, err := example.NewPet(ctx, "petResource", &example.PetArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var petResource = new Pet("petResource", PetArgs.builder()        
+var petResource = new Pet("petResource", PetArgs.builder()
     .name("string")
     .build());
 ```

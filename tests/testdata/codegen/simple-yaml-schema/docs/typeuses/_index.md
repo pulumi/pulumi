@@ -329,7 +329,7 @@ example, err := example.NewTypeUses(ctx, "typeUsesResource", &example.TypeUsesAr
 <pulumi-choosable type="language" values="java">
 
 ```java
-var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()        
+var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()
     .bar(SomeOtherObjectArgs.builder()
         .baz("string")
         .build())

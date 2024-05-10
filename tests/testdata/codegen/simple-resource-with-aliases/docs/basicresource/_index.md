@@ -255,7 +255,7 @@ example, err := example.NewBasicResource(ctx, "basicResourceResource", &example.
 <pulumi-choosable type="language" values="java">
 
 ```java
-var basicResourceResource = new BasicResource("basicResourceResource", BasicResourceArgs.builder()        
+var basicResourceResource = new BasicResource("basicResourceResource", BasicResourceArgs.builder()
     .bar("string")
     .build());
 ```

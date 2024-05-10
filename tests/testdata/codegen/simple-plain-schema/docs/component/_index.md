@@ -352,7 +352,7 @@ F: "string",
 <pulumi-choosable type="language" values="java">
 
 ```java
-var componentResource = new Component("componentResource", ComponentArgs.builder()        
+var componentResource = new Component("componentResource", ComponentArgs.builder()
     .a(false)
     .c(0)
     .e("string")

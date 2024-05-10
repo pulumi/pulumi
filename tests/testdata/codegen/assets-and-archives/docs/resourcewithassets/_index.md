@@ -272,7 +272,7 @@ example, err := example.NewResourceWithAssets(ctx, "resourceWithAssetsResource",
 <pulumi-choosable type="language" values="java">
 
 ```java
-var resourceWithAssetsResource = new ResourceWithAssets("resourceWithAssetsResource", ResourceWithAssetsArgs.builder()        
+var resourceWithAssetsResource = new ResourceWithAssets("resourceWithAssetsResource", ResourceWithAssetsArgs.builder()
     .source(new StringAsset("content"))
     .archive(new FileArchive("./path/to/archive"))
     .nested(TypeWithAssetsArgs.builder()

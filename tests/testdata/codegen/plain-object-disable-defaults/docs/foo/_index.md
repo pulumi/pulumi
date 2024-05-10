@@ -308,7 +308,7 @@ Recursive: pulumi.Any(layeredType),
 <pulumi-choosable type="language" values="java">
 
 ```java
-var fooResource = new Foo("fooResource", FooArgs.builder()        
+var fooResource = new Foo("fooResource", FooArgs.builder()
     .backupKubeClientSettings(KubeClientSettingsArgs.builder()
         .burst(0)
         .qps(0)

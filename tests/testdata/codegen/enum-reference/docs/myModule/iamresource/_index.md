@@ -262,7 +262,7 @@ example, err := myModule.NewIamResource(ctx, "iamResourceResource", &myModule.Ia
 <pulumi-choosable type="language" values="java">
 
 ```java
-var iamResourceResource = new IamResource("iamResourceResource", IamResourceArgs.builder()        
+var iamResourceResource = new IamResource("iamResourceResource", IamResourceArgs.builder()
     .config(AuditConfigArgs.builder()
         .auditLogConfigs(AuditLogConfigArgs.builder()
             .exemptedMembers("string")

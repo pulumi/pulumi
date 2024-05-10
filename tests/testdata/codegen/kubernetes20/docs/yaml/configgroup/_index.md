@@ -278,7 +278,7 @@ Yaml: pulumi.Any("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-var kubernetesConfigGroupResource = new ConfigGroup("kubernetesConfigGroupResource", ConfigGroupArgs.builder()        
+var kubernetesConfigGroupResource = new ConfigGroup("kubernetesConfigGroupResource", ConfigGroupArgs.builder()
     .files("string")
     .objs(null)
     .resourcePrefix("string")

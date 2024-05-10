@@ -4106,7 +4106,7 @@ example, err := foo.NewComponent(ctx, "componentResource", &foo.ComponentArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var componentResource = new Component("componentResource", ComponentArgs.builder()        
+var componentResource = new Component("componentResource", ComponentArgs.builder()
     .eniConfig(Map.of("string", Map.ofEntries(
         Map.entry("securityGroups", "string"),
         Map.entry("subnet", "string")

@@ -263,7 +263,7 @@ Coming soon!
 <pulumi-choosable type="language" values="java">
 
 ```java
-var moduleResourceResource = new ModuleResource("moduleResourceResource", ModuleResourceArgs.builder()        
+var moduleResourceResource = new ModuleResource("moduleResourceResource", ModuleResourceArgs.builder()
     .plainRequiredBool(false)
     .requiredString("string")
     .requiredNumber(0)

@@ -255,7 +255,7 @@ example, err := bar.NewBarResource(ctx, "barResourceResource", &bar.BarResourceA
 <pulumi-choosable type="language" values="java">
 
 ```java
-var barResourceResource = new BarResource("barResourceResource", BarResourceArgs.builder()        
+var barResourceResource = new BarResource("barResourceResource", BarResourceArgs.builder()
     .foo(resource)
     .build());
 ```

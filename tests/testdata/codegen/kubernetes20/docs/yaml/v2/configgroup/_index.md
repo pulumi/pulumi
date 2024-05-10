@@ -266,7 +266,7 @@ Yaml: pulumi.Any("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-var configGroupResource = new ConfigGroup("configGroupResource", ConfigGroupArgs.builder()        
+var configGroupResource = new ConfigGroup("configGroupResource", ConfigGroupArgs.builder()
     .files("string")
     .objs(null)
     .resourcePrefix("string")

@@ -258,7 +258,7 @@ example, err := mod.NewComponent(ctx, "componentResource", &mod.ComponentArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var componentResource = new Component("componentResource", ComponentArgs.builder()        
+var componentResource = new Component("componentResource", ComponentArgs.builder()
     .local(component2)
     .main(mainComponent)
     .build());

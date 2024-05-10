@@ -289,7 +289,7 @@ Val: pulumi.String("string"),
 <pulumi-choosable type="language" values="java">
 
 ```java
-var moduleTestResource = new ModuleTest("moduleTestResource", ModuleTestArgs.builder()        
+var moduleTestResource = new ModuleTest("moduleTestResource", ModuleTestArgs.builder()
     .mod1(TypArgs.builder()
         .val("string")
         .build())

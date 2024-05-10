@@ -255,7 +255,7 @@ example, err := metaprovider.NewConfigurer(ctx, "configurerResource", &metaprovi
 <pulumi-choosable type="language" values="java">
 
 ```java
-var configurerResource = new Configurer("configurerResource", ConfigurerArgs.builder()        
+var configurerResource = new Configurer("configurerResource", ConfigurerArgs.builder()
     .tlsProxy("string")
     .build());
 ```

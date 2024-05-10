@@ -260,7 +260,7 @@ example, err := credentials.NewUser(ctx, "userResource", &credentials.UserArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var userResource = new User("userResource", UserArgs.builder()        
+var userResource = new User("userResource", UserArgs.builder()
     .shared(SharedArgs.builder()
         .foo("string")
         .build())

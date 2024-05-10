@@ -255,7 +255,7 @@ example, err := example.NewOverlay(ctx, "overlayResource", &example.OverlayArgs{
 <pulumi-choosable type="language" values="java">
 
 ```java
-var overlayResource = new Overlay("overlayResource", OverlayArgs.builder()        
+var overlayResource = new Overlay("overlayResource", OverlayArgs.builder()
     .bar("string")
     .build());
 ```
