@@ -1026,8 +1026,13 @@ func TestStepGenerator_randomActions(t *testing.T) {
 		sg.urns["urn:pulumi::stack::project::qualified$type$name::parent"] = true
 
 		rt.Run(map[string]func(*rapid.T){
-			"GetURNs": func(t *rapid.T) {
-				sg.GetURNs()
+			"HaveTargetURNs": func(t *rapid.T) {
+				assert.Contains(t,
+					sg.HaveTargetURNs([]resource.URN{
+						"urn:pulumi::stack::project::qualified$type$name::parent",
+					}),
+					"urn:pulumi::stack::project::qualified$type$name::parent",
+				)
 			},
 			"GenerateReadSteps": func(t *rapid.T) {
 				tok, err := tokens.ParseTypeToken("test:resource:parent")

@@ -122,11 +122,17 @@ func (sg *stepGenerator) Errored() bool {
 	return sg.sawError
 }
 
-func (sg *stepGenerator) GetURNs() map[resource.URN]bool {
+func (sg *stepGenerator) HaveTargetURNs(targets []resource.URN) map[resource.URN]bool {
 	sg.urnLock.lock()
 	defer sg.urnLock.unlock()
 
-	return sg.urns
+	result := make(map[resource.URN]bool)
+
+	for _, urn := range targets {
+		result[urn] = sg.urns[urn]
+	}
+
+	return result
 }
 
 // checkParent checks that the parent given is valid for the given resource type, and returns a default parent

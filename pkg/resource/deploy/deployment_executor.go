@@ -62,7 +62,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 	// Step generator may not have been initialized yet, in which case the news
 	// set will be empty anyway
 	if ex.stepGen != nil {
-		news = ex.stepGen.GetURNs()
+		news = ex.stepGen.HaveTargetURNs(targets.Literals())
 	}
 
 	hasUnknownTarget := false
