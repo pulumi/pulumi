@@ -1,0 +1,78 @@
+# Bazel PoC checklist
+
+# Actions
+
+- [x] Stub out a Nix setup to provide pinned Bazel version and other tools
+- [x] Basic Bazel `WORKSPACE`
+- [x] `rules_nixpkgs` to pin toolchains in `WORKSPACE` for core languages/etc.
+  - [x] Go
+  - [x] Python
+  - [x] NodeJS/TypeScript
+  - [ ] .Net (not currently in the repo)
+  - [ ] Java (not currently in the repo)
+- [x] `rules_python` for Python
+- [x] `rules_js` and `rules_ts` for NodeJS
+- [ ] Go libraries and applications
+  - [x] Gazelle set up for `BUILD.bazel` management (maybe)
+  - [x] All building
+  - [ ] All tests passing
+- [ ] NodeJS/TypeScript SDK
+  - [x] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] Python SDK
+  - [x] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] Go SDK
+  - [x] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] .Net SDK
+  - [ ] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] Java SDK
+  - [ ] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] YAML
+  - [ ] What does this even look like
+- [ ] TF Bridge
+  - [ ] Pull into repo
+  - [ ] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] Providers (in-repo)
+  - [ ] Pull a few into the repo
+  - [ ] Get them building against `HEAD`
+  - [ ] Can we sort a package and release process?
+  - [ ] Do tests run correctly; are we caching efficiently?
+- [ ] Providers (out of repo)
+  - [ ] How do they build/depend on us? Custom rules?
+  - [ ] Can we trigger downstream efficiently or the like?
+- [ ] Docs
+  - [ ] Pull into repo
+  - [ ] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] Service
+  - [ ] Pull into repo
+  - [ ] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] AI
+  - [ ] Pull into repo
+  - [ ] Building
+  - [ ] Tests passing
+  - [ ] Packaging and release
+- [ ] GitHub actions/Bazel infrastructure
+  - [ ] Efficiently running the right things and only what's needed
+  - [ ] Caching?
+- [ ] Workflows
+  - [ ] Can I still work across all the bits neatly?
+  - [ ] Does my IDE still work? LSP?
+  - [ ] What does debugging look like? Tests?
+  - [ ] Is performance acceptable? (Assuming it's worse?)
+  - [ ] Does Nix play nice on our platforms?
+  - [ ] Can we do "ecosystem wide" smoke testing now? How?
