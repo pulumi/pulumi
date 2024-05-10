@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -241,13 +242,19 @@ func (op TestOp) runWithContext(
 		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, name); !ok && name != "" {
 			assert.NoError(opts.T, err)
 			name = base64.StdEncoding.EncodeToString([]byte(name))
-
+			if len(name) > 64 {
+				name = name[0:64]
+			}
 		}
 		testName := opts.T.Name()
-		if ok, err := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
-			assert.NoError(opts.T, err)
-			testName = base64.StdEncoding.EncodeToString([]byte(testName))
-
+		if ok, _ := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
+			testName = strings.ReplaceAll(testName, "[", "_")
+			testName = strings.ReplaceAll(testName, "]", "_")
+			testName = strings.ReplaceAll(testName, `"`, "_")
+			if ok, _ := regexp.MatchString(`^[0-9A-Za-z-_]*$`, testName); !ok {
+				assert.NoError(opts.T, err)
+				testName = base64.StdEncoding.EncodeToString([]byte(testName))
+			}
 		}
 		assertDisplay(opts.T, firedEvents, filepath.Join("testdata", "output", testName, name))
 	}
