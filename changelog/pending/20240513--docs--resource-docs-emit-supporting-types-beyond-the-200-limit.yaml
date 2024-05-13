@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: docs
+  description: "Resource docs: emit supporting types beyond the 200 limit"

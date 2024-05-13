@@ -334,13 +334,13 @@ The following state arguments are supported:
 
 ## Supporting Types
 
-{{- if ge (len .NestedTypes) 200 }}
-> **Note:** There are over 200 nested types for this resource.
-Only the first 200 types are included in this documentation.
+{{- if ge (len .NestedTypes) .MaxNestedTypes }}
+> **Note:** There are over {{ .MaxNestedTypes }} nested types for this resource.
+Only the first {{ .MaxNestedTypes }} types are included in this documentation.
 {{ end }}
 
 {{ range $index, $elem := .NestedTypes }}
-{{ if lt $index 200 }}
+{{ if lt $index $.MaxNestedTypes }}
 <h4 id="{{ $elem.AnchorID }}">
 {{ htmlSafe $elem.Name }}<pulumi-choosable type="language" values="python,go" class="inline">, {{ htmlSafe $elem.Name }}<wbr>Args</pulumi-choosable>
 </h4>

@@ -407,6 +407,8 @@ type resourceDocArgs struct {
 	// NestedTypes is a slice of the nested types used in the input and
 	// output properties.
 	NestedTypes []docNestedType
+	// Maximum number of nested types to show.
+	MaxNestedTypes int
 
 	// A list of methods associated with the resource.
 	Methods []methodDocArgs
@@ -1789,6 +1791,22 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		}
 	}
 
+	// Set a cap on how many auxiliary types the docs will include. We do that to limit the maximum size of
+	// a doc page. The default limit is rather high - we tried setting it to 200 for everyone but got
+	// pushback from third-party consumers who have legitimate use cases with more that 200 types.
+	// Therefore, we currently apply a smaller limit of 200 to packages that we know have some bloat in
+	// their types (AWS and AWS Native).
+	// See https://github.com/pulumi/pulumi/issues/15507#issuecomment-2064361317
+	//
+	// Schema Tools will print a warning every time a new resources gets an increase in number of types
+	// that is beyond 200. This should help us catch new instances and make decisions whether to include all
+	// types or add a limit. The default is including all types up to 1000.
+	maxNestedTypes := 1000
+	switch mod.pkg.Name() {
+	case "aws", "aws-native":
+		maxNestedTypes = 200
+	}
+
 	docInfo := dctx.decomposeDocstring(r.Comment)
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
@@ -1812,6 +1830,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		StateInputs:      stateInputs,
 		StateParam:       stateParam,
 		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
+		MaxNestedTypes:   maxNestedTypes,
 
 		Methods: mod.genMethods(r),
 
