@@ -560,6 +560,10 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 
 	// Fire up a worker pool and issue each refresh in turn.
 	ctx, cancel := context.WithCancel(callerCtx)
+	// Refreshes have their own version of ignoring errors that clashes with ContinueOnError.
+	// Set ContinueOnError to false to avoid that clash.  We'll still get the correct error
+	// ignoring behaviour.
+	opts.ContinueOnError = false
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, opts, preview, true)
 	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()

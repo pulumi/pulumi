@@ -289,6 +289,112 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[5].Inputs["foo"])
 }
 
+func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(urn resource.URN, id resource.ID,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap,
+					timeout float64, ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
+					return nil, resource.StatusOK, errors.New("intentionally failed update")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	// update as opposed to create for the failing resource
+	update := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  ins,
+		})
+		assert.NoError(t, err)
+		if update {
+			assert.Equal(t, pulumirpc.Result_FAIL, resp.Result)
+		} else {
+			// On creation we expect to succeed
+			assert.Equal(t, pulumirpc.Result_SUCCESS, resp.Result)
+		}
+
+		if update {
+			respIndependent1, err := monitor.RegisterResource(
+				"pkgA:m:typA", "independent1", true, deploytest.ResourceOptions{
+					SupportsResultReporting: true,
+				})
+			assert.NoError(t, err)
+			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent1.Result)
+
+			respIndependent2, err := monitor.RegisterResource(
+				"pkgA:m:typA", "independent2", true, deploytest.ResourceOptions{
+					SupportsResultReporting: true,
+					Dependencies:            []resource.URN{respIndependent1.URN},
+				})
+			assert.NoError(t, err)
+			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent2.Result)
+
+			respIndependent3, err := monitor.RegisterResource("pkgA:m:typA", "independent3", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				Dependencies:            []resource.URN{respIndependent2.URN},
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, pulumirpc.Result_SUCCESS, respIndependent3.Result)
+		}
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+				Refresh:         true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
+
+	update = true
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	// Run an update to create the resource
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed update")
+	assert.NotNil(t, snap)
+	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent1"), snap.Resources[2].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
+	// Refresh didn't return the input so we expect it to be empty
+	assert.Equal(t, resource.PropertyValue{}, snap.Resources[5].Inputs["foo"])
+}
+
 func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 	t.Parallel()
 
