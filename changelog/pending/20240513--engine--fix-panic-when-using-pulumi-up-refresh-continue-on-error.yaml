@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix panic when using `pulumi up --refresh --continue-on-error`
