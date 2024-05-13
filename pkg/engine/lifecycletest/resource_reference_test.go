@@ -81,7 +81,8 @@ func TestResourceReferences(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -155,7 +156,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -231,8 +233,14 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{DisableResourceReferences: true}},
-		Steps:   MakeBasicLifecycleSteps(t, 4),
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			UpdateOptions:    UpdateOptions{DisableResourceReferences: true},
+			SkipDisplayTests: true,
+		},
+		Steps: MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }
@@ -295,7 +303,8 @@ func TestResourceReferences_GetResource(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)

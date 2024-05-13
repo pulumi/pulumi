@@ -55,7 +55,13 @@ func TestParallelRefresh(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{Parallel: 4}},
+		Options: TestUpdateOptions{
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{Parallel: 4},
+			// Skip display tests because different ordering makes the colouring different.
+			SkipDisplayTests: true,
+		},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -99,23 +105,23 @@ func TestExternalRefresh(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
-	snap := p.Run(t, nil)
+	snap := p.RunWithName(t, nil, "0")
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
 
 	p = &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []TestStep{{Op: Refresh}},
 	}
 
-	snap = p.Run(t, snap)
+	snap = p.RunWithName(t, snap, "1")
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
@@ -171,7 +177,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p.Options.HostF = hostF
-
+	p.Options.T = t
 	//
 	// Create an old snapshot with a single initialization failure.
 	//
@@ -269,13 +275,21 @@ func TestRefreshWithDelete(t *testing.T) {
 			})
 
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-			p := &TestPlan{Options: TestUpdateOptions{HostF: hostF, UpdateOptions: UpdateOptions{Parallel: parallelFactor}}}
+			p := &TestPlan{
+				Options: TestUpdateOptions{
+					T: t,
+					// Skip display tests because different ordering makes the colouring different.
+					SkipDisplayTests: true,
+					HostF:            hostF,
+					UpdateOptions:    UpdateOptions{Parallel: parallelFactor},
+				},
+			}
 
 			p.Steps = []TestStep{{Op: Update}}
-			snap := p.Run(t, nil)
+			snap := p.RunWithName(t, nil, "0")
 
 			p.Steps = []TestStep{{Op: Refresh}}
-			snap = p.Run(t, snap)
+			snap = p.RunWithName(t, snap, "1")
 
 			// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
 			provURN := p.NewProviderURN("pkgA", "default", "")
@@ -297,10 +311,10 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 
 	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
 	// targets specified)
-	validateRefreshDeleteCombination(t, names, []string{})
+	validateRefreshDeleteCombination(t, names, []string{}, "pre")
 
-	for _, subset := range subsets {
-		validateRefreshDeleteCombination(t, names, subset)
+	for i, subset := range subsets {
+		validateRefreshDeleteCombination(t, names, subset, strconv.Itoa(i))
 	}
 }
 
@@ -339,7 +353,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -398,7 +412,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -438,7 +452,7 @@ func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, 
 	}
 }
 
-func validateRefreshDeleteCombination(t *testing.T, names []string, targets []string) {
+func validateRefreshDeleteCombination(t *testing.T, names []string, targets []string, name string) {
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -502,6 +516,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.T = t
 
 	p.Steps = []TestStep{
 		{
@@ -525,7 +540,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		},
 	}
 
-	snap := p.Run(t, old)
+	snap := p.RunWithName(t, old, name)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
@@ -597,12 +612,12 @@ func TestRefreshBasics(t *testing.T) {
 	// targets specified)
 	// validateRefreshBasicsCombination(t, names, []string{})
 
-	for _, subset := range subsets {
-		validateRefreshBasicsCombination(t, names, subset)
+	for i, subset := range subsets {
+		validateRefreshBasicsCombination(t, names, subset, strconv.Itoa(i))
 	}
 }
 
-func validateRefreshBasicsCombination(t *testing.T, names []string, targets []string) {
+func validateRefreshBasicsCombination(t *testing.T, names []string, targets []string, name string) {
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -678,6 +693,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.T = t
 
 	p.Steps = []TestStep{{
 		Op: Refresh,
@@ -733,7 +749,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 			return err
 		},
 	}}
-	snap := p.Run(t, old)
+	snap := p.RunWithName(t, old, name)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
@@ -853,6 +869,7 @@ func TestCanceledRefresh(t *testing.T) {
 	refreshed := make(map[resource.ID]bool)
 	op := TestOp(Refresh)
 	options := TestUpdateOptions{
+		T:     t,
 		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
 		UpdateOptions: UpdateOptions{
 			Parallel: 1,
@@ -976,6 +993,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p.Options.HostF = hostF
+	p.Options.T = t
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
@@ -1036,6 +1054,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 
 	p.Options.HostF = hostF
 	p.Options.Refresh = true
+	p.Options.T = t
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{

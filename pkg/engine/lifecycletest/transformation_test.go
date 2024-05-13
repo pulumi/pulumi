@@ -183,7 +183,8 @@ func TestRemoteTransforms(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
@@ -250,7 +251,7 @@ func TestRemoteTransformBadResponse(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -294,7 +295,7 @@ func TestRemoteTransformErrorResponse(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -366,7 +367,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -483,7 +484,7 @@ func TestRemoteTransformsOptions(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -581,7 +582,7 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -669,7 +670,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()

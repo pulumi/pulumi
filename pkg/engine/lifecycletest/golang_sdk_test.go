@@ -96,7 +96,8 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -155,7 +156,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			Options: TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []TestStep{
 				{
 					Op: Update,
@@ -253,6 +254,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	})
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
+	p.Options.SkipDisplayTests = true
 	p.Steps = []TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -344,7 +347,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			Options: TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []TestStep{
 				{
 					Op: Update,
@@ -543,7 +546,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)
@@ -593,7 +596,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []TestStep{
 			{
 				Op: Update,
@@ -720,7 +723,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []TestStep{{Op: Update}},
 	}
 	p.Run(t, nil)

@@ -144,7 +144,7 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 0),
 	}
 	p.Run(t, nil)
@@ -176,7 +176,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -231,7 +231,7 @@ func TestCheckFailureRecord(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -284,7 +284,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -331,7 +331,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -392,7 +392,7 @@ func TestBrokenDecrypter(t *testing.T) {
 	configMap := make(config.Map)
 	configMap[key] = config.NewSecureValue("hunter2")
 	p := &TestPlan{
-		Options:   TestUpdateOptions{HostF: hostF},
+		Options:   TestUpdateOptions{T: t, HostF: hostF},
 		Decrypter: brokenDecrypter{ErrorMessage: msg},
 		Config:    configMap,
 		Steps: []TestStep{{
@@ -460,7 +460,7 @@ func TestConfigPropertyMapMatches(t *testing.T) {
 	assert.NoError(t, err)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 0),
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
@@ -514,7 +514,7 @@ func TestBadResourceType(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []TestStep{{
 			Op:            Update,
 			ExpectFailure: true,
@@ -586,6 +586,8 @@ func TestProviderCancellation(t *testing.T) {
 	p := &TestPlan{}
 	op := TestOp(Update)
 	options := TestUpdateOptions{
+		T: t,
+
 		HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
 		UpdateOptions: UpdateOptions{
 			Parallel: resourceCount,
@@ -646,7 +648,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	op := TestOp(Update)
 
-	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// A preview should succeed despite the pending operations.
@@ -699,22 +701,22 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	})
 
 	op := TestOp(Update)
-	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// With a refresh, the update should succeed.
 	withRefresh := options
 	withRefresh.Refresh = true
-	new, err := op.Run(project, target, withRefresh, false, nil, nil)
+	new, err := op.RunStep(project, target, withRefresh, false, nil, nil, "0")
 	assert.NoError(t, err)
 	assert.Len(t, new.PendingOperations, 0)
 
 	// Similarly, the update should succeed if performed after a separate refresh.
-	new, err = TestOp(Refresh).Run(project, target, options, false, nil, nil)
+	new, err = TestOp(Refresh).RunStep(project, target, options, false, nil, nil, "1")
 	assert.NoError(t, err)
 	assert.Len(t, new.PendingOperations, 0)
 
-	_, err = op.Run(project, p.GetTarget(t, new), options, false, nil, nil)
+	_, err = op.RunStep(project, p.GetTarget(t, new), options, false, nil, nil, "2")
 	assert.NoError(t, err)
 }
 
@@ -777,7 +779,7 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	})
 
 	op := TestOp(Update)
-	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// With a refresh, the update should succeed.
@@ -853,7 +855,7 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	})
 
 	op := TestOp(Update)
-	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// The update should succeed but give a warning
@@ -928,7 +930,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	p.Steps = []TestStep{{
@@ -1017,7 +1019,7 @@ func TestStackReference(t *testing.T) {
 				}
 			},
 		},
-		Options: TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
+		Options: TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
@@ -1064,7 +1066,9 @@ func TestStackReference(t *testing.T) {
 			return err
 		},
 	}}
+	p.Options.SkipDisplayTests = true
 	p.Run(t, old)
+	p.Options.SkipDisplayTests = false
 
 	// Test that unknown stacks are handled appropriately.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
@@ -1075,7 +1079,7 @@ func TestStackReference(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -1093,7 +1097,7 @@ func TestStackReference(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	p.Run(t, nil)
 }
 
@@ -1173,7 +1177,7 @@ func TestStackReferenceRegister(t *testing.T) {
 				}
 			},
 		},
-		Options: TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
+		Options: TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
 		Steps:   steps,
 	}
 	p.Run(t, nil)
@@ -1231,7 +1235,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -1250,7 +1254,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = TestUpdateOptions{HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
 	p.Run(t, nil)
 }
 
@@ -1333,7 +1337,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
-	options := TestUpdateOptions{HostF: deploytest.NewPluginHostF(sink, sink, programF, loaders...)}
+	options := TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(sink, sink, programF, loaders...)}
 	p := &TestPlan{}
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
@@ -1372,7 +1376,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}
 
 	updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, ignoreChanges []string,
-		allowedOps []display.StepOp,
+		allowedOps []display.StepOp, name string,
 	) *deploy.Snapshot {
 		expectedIgnoreChanges = ignoreChanges
 		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1385,7 +1389,8 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		})
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+			Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 			Steps: []TestStep{
 				{
 					Op: Update,
@@ -1407,7 +1412,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				},
 			},
 		}
-		return p.Run(t, snap)
+		return p.RunWithName(t, snap, name)
 	}
 
 	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1422,7 +1427,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				"h": "bar",
 			},
 		},
-	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpCreate})
+	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpCreate}, "initial")
 
 	// Ensure that a change to an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1437,7 +1442,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				"h": "baz",
 			},
 		},
-	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpSame})
+	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpSame}, "ignored-property")
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1452,17 +1457,17 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				"h": "qux",
 			},
 		},
-	}), nil, []display.StepOp{deploy.OpUpdate})
+	}), nil, []display.StepOp{deploy.OpUpdate}, "unignored-property")
 
 	// Ensure that a removing an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"e": []interface{}{},
-	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpSame})
+	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpSame}, "ignored-property-removed")
 
 	// Ensure that a removing an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"e": []interface{}{},
-	}), nil, []display.StepOp{deploy.OpUpdate})
+	}), nil, []display.StepOp{deploy.OpUpdate}, "unignored-property-removed")
 
 	// Ensure that adding an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1472,31 +1477,31 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		},
 		"d": []interface{}{4},
 		"e": []interface{}{},
-	}), []string{"a", "b", "d", "e[0]", "f"}, []display.StepOp{deploy.OpSame})
+	}), []string{"a", "b", "d", "e[0]", "f"}, []display.StepOp{deploy.OpSame}, "ignored-property-added")
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"e": []interface{}{},
 		"i": 4,
-	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpUpdate})
+	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpUpdate}, "unignored-property-added")
 
 	// Ensure that sub-elements of arrays can be ignored, first reset to a simple state
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"a": 3,
 		"b": []string{"foo", "bar"},
-	}), nil, []display.StepOp{deploy.OpUpdate})
+	}), nil, []display.StepOp{deploy.OpUpdate}, "sub-elements-ignored")
 
 	// Check that ignoring a specific sub-element of an array works
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"a": 3,
 		"b": []string{"foo", "baz"},
-	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame})
+	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame}, "ignore-specific-subelement")
 
 	// Check that ignoring all sub-elements of an array works
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"a": 3,
 		"b": []string{"foo", "baz"},
-	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame})
+	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame}, "ignore-all-subelements")
 
 	// Check that ignoring a secret value works, first update to make foo, bar secret
 	snap = updateProgramWithProps(snap, resource.PropertyMap{
@@ -1505,7 +1510,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			resource.NewStringProperty("foo"),
 			resource.NewStringProperty("bar"),
 		})),
-	}, nil, []display.StepOp{deploy.OpUpdate})
+	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
@@ -1514,7 +1519,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			resource.NewStringProperty("foo"),
 			resource.NewStringProperty("baz"),
 		})),
-	}, []string{"b[1]"}, []display.StepOp{deploy.OpSame})
+	}, []string{"b[1]"}, []display.StepOp{deploy.OpSame}, "change-value-not-secretness")
 }
 
 func TestIgnoreChangesInvalidPaths(t *testing.T) {
@@ -1547,11 +1552,11 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -1563,7 +1568,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -1577,7 +1582,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -1589,7 +1594,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	assert.Error(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
@@ -1606,7 +1611,7 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		return nil
 	}
 
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
 	assert.Error(t, err)
 }
 
@@ -1643,7 +1648,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 			})
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &TestPlan{
-				Options: TestUpdateOptions{HostF: hostF},
+				Options: TestUpdateOptions{T: t, HostF: hostF},
 				Steps: []TestStep{
 					{
 						Op: Update,
@@ -1664,7 +1669,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					},
 				},
 			}
-			return p.Run(t, snap)
+			return p.RunWithName(t, snap, strings.ReplaceAll(fmt.Sprintf("%v", props), " ", "_"))
 		}
 
 		snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1784,7 +1789,7 @@ func TestPersistentDiff(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -1867,7 +1872,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -1918,7 +1923,7 @@ func TestCustomTimeouts(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -1964,7 +1969,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "foo"): config.NewValue("bar"),
 		},
@@ -2049,7 +2054,7 @@ func TestMissingRead(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []TestStep{{Op: Update, ExpectFailure: true}},
 	}
 	p.Run(t, nil)
@@ -2119,7 +2124,7 @@ func TestProviderPreview(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2207,7 +2212,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2432,7 +2437,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -2508,7 +2513,8 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 3),
 	}
 	p.Run(t, nil)
@@ -2545,7 +2551,7 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 	}
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Runtime: "client",
 		RuntimeOptions: map[string]interface{}{
 			"address": fmt.Sprintf("127.0.0.1:%d", port),
@@ -2716,7 +2722,8 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -2743,7 +2750,8 @@ func TestConfigSecrets(t *testing.T) {
 	assert.NoError(t, err)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 2),
 		Config: config.Map{
 			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
@@ -2783,7 +2791,7 @@ func TestComponentOutputs(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   MakeBasicLifecycleSteps(t, 1),
 	}
 	p.Run(t, nil)
@@ -2877,7 +2885,8 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -2952,7 +2961,8 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because different ordering makes the colouring different.
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
@@ -3055,7 +3065,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &TestPlan{Options: TestUpdateOptions{HostF: hostF}}
+	p := &TestPlan{Options: TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []TestStep{
 		{
@@ -3163,13 +3173,13 @@ func TestProtect(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3203,12 +3213,12 @@ func TestProtect(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate)
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
 	assert.ErrorContains(t, err, "step generator errored")
 
 	// Run an update which will cause a replace, we should get an error.
 	// Contrary to the preview, the error is a bail, so no resources are created.
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3221,7 +3231,7 @@ func TestProtect(t *testing.T) {
 		"from the resource in your Pulumi program and run `pulumi up`, or use the command:\n" +
 		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "3")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3233,7 +3243,7 @@ func TestProtect(t *testing.T) {
 	// and create the new one
 	createResource = true
 	shouldProtect = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3243,7 +3253,7 @@ func TestProtect(t *testing.T) {
 
 	// Run a new update to add the protect flag, nothing else should change
 	shouldProtect = true
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "5")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3256,7 +3266,7 @@ func TestProtect(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "daz",
 	})
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "6")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3324,13 +3334,15 @@ func TestRetainOnDelete(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// TODO: we're only serializing step.Old, not step.Old.State for the display test,
+		// but that is required for the retain on delete flag
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3340,7 +3352,7 @@ func TestRetainOnDelete(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -3348,7 +3360,7 @@ func TestRetainOnDelete(t *testing.T) {
 
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
 	createResource = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
@@ -3431,13 +3443,13 @@ func TestDeletedWith(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
@@ -3450,7 +3462,7 @@ func TestDeletedWith(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
@@ -3460,7 +3472,7 @@ func TestDeletedWith(t *testing.T) {
 
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete for anything but aURN
 	createResource = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
@@ -3483,7 +3495,7 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3540,7 +3552,8 @@ func TestEventSecrets(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 		Steps: []TestStep{{
 			Op:          Update,
 			SkipPreview: true,
@@ -3623,7 +3636,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3704,7 +3717,7 @@ func TestDefaultParents(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -3852,13 +3865,13 @@ func TestPendingDeleteOrder(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resources
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
@@ -3868,7 +3881,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two copies of A now, one new one and one old one pending delete
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
@@ -3880,7 +3893,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 	// Now allow B to create and try again
 	failCreationOfTypB = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
@@ -4018,20 +4031,20 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resources
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 
 	// Trigger a replacement of B but fail to delete it
 	inB = "inactive"
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two B's one marked to delete
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
@@ -4108,7 +4121,7 @@ func TestTimestampTracking(t *testing.T) {
 	})
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
+	p.Options.T = t
 	// Run an update to create the resource -- created and updated should be set and equal.
 	p.Steps = []TestStep{{Op: Update, SkipPreview: true}}
 	snap := p.Run(t, nil)
@@ -4320,13 +4333,13 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update to create the resources
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -4347,7 +4360,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 		"foo": "baz",
 	})
 	firstUpdate = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -4364,7 +4377,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	}), resA.Outputs)
 
 	// Now run a destroy to delete the resource and check the stored inputs and outputs are sent
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
@@ -4434,7 +4447,7 @@ func TestResourceNames(t *testing.T) {
 			})
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 			p := &TestPlan{
-				Options: TestUpdateOptions{HostF: hostF},
+				Options: TestUpdateOptions{T: t, HostF: hostF},
 			}
 
 			snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
@@ -4486,7 +4499,7 @@ func TestSourcePositions(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	regURN := p.NewURN("pkgA:m:typA", "resA", "")
 	readURN := p.NewURN("pkgA:m:typA", "resB", "")
@@ -4588,7 +4601,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 			p := &TestPlan{
-				Options: TestUpdateOptions{HostF: hostF},
+				Options: TestUpdateOptions{T: t, HostF: hostF},
 			}
 
 			project := p.GetProject()
@@ -4629,13 +4642,13 @@ func TestProviderChecksums(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
 
 	// Run an update
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -4645,7 +4658,7 @@ func TestProviderChecksums(t *testing.T) {
 
 	// Delete the resource and ensure the checksums are passed to EnsurePlugins
 	createResource = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
@@ -4675,7 +4688,7 @@ func TestAutomaticDiff(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -4795,7 +4808,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -4921,7 +4934,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			Options: TestUpdateOptions{T: t, HostF: hostF},
 		}
 
 		project := p.GetProject()
@@ -5065,7 +5078,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			Options: TestUpdateOptions{T: t, HostF: hostF},
 		}
 
 		project := p.GetProject()
@@ -5219,7 +5232,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			Options: TestUpdateOptions{T: t, HostF: hostF},
 		}
 
 		project := p.GetProject()
@@ -5379,7 +5392,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 		p := &TestPlan{
-			Options: TestUpdateOptions{HostF: hostF},
+			Options: TestUpdateOptions{T: t, HostF: hostF},
 		}
 
 		project := p.GetProject()
@@ -5449,7 +5462,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
@@ -5459,7 +5472,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	}
 
 	// Run the initial update which sets some stack outputs.
-	snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 0"),
@@ -5470,7 +5483,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	// of returning an error after only the first output is set.
 	// Ensure the original stack outputs are preserved.
 	step = 1
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "program error")
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 1"),
@@ -5480,7 +5493,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	// Run another update that fails to update both stack updates.
 	// Ensure the prior stack outputs are preserved.
 	step = 2
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.ErrorContains(t, err, "program error")
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 1"), // Prior output is preserved
@@ -5489,7 +5502,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 
 	// Run again, this time without erroring, to ensure the stack outputs are updated.
 	step = 3
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	assert.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 3"),
@@ -5552,7 +5565,8 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
@@ -5562,7 +5576,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	}
 
 	// Run the initial update which sets some stack outputs.
-	snap, err := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 0"),
@@ -5572,7 +5586,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	// Run another that simulates creating a resource that will error during creation and exporting an output of that
 	// resource as a stack output, in which case no RegisterResourceOutputs call is made.
 	step = 1
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "oh no")
 	validateSnapshot(snap, 2, resource.PropertyMap{
 		"first":  resource.NewProperty("step 0"), // Original output is preserved
@@ -5582,7 +5596,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	// Run another update that still registers a resource that will fail during creation, but do that after the
 	// stack outputs are registered, which is in-line with the behavior of real-world programs.
 	step = 2
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	assert.ErrorContains(t, err, "oh no")
 	validateSnapshot(snap, 2, resource.PropertyMap{
 		"first":  resource.NewProperty("step 2"),
@@ -5591,7 +5605,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 	// Run again, this time without erroring, to ensure the stack outputs are updated.
 	step = 3
-	snap, err = TestOp(Update).Run(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	assert.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 3"),

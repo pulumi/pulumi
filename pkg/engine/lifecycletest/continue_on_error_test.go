@@ -75,6 +75,9 @@ func TestDestroyContinueOnError(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T: t,
+			// Skip display tests because different ordering makes the colouring different.
+			SkipDisplayTests: true,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
@@ -85,13 +88,13 @@ func TestDestroyContinueOnError(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 7) // We expect 5 resources + 2 providers
 
 	createResource = false
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "intentionally failed delete")
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4) // We expect 2 resources + 2 providers
@@ -160,6 +163,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
@@ -251,6 +255,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
@@ -261,7 +266,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
@@ -271,7 +276,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		"foo": "baz",
 	})
 	// Run an update to create the resource
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
@@ -335,6 +340,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
@@ -422,6 +428,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T: t,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
 			},
@@ -432,7 +439,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
@@ -442,7 +449,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		"foo": "baz",
 	})
 	// Run an update to create the resource
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers

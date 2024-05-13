@@ -1,0 +1,19 @@
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=8e56ac30-6af5-4279-9a48-5618755d0d93]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=5bb97bc1-3f12-4bbb-98a6-d0243addf08c]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::newResource]
+<{%reset%}><{%reset%}><{%reset%}>  component: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::component::parent]
+<{%reset%}><{%reset%}>    <{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>        [id=13898c05-77e6-47bd-bc5e-e2835a6c8d15]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::component$pkgA:m:typA::child]
+<{%reset%}><{%fg 2%}>      + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

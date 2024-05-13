@@ -247,7 +247,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
-	if opts.deterministicOutput {
+	if opts.DeterministicOutput {
 		ticker.Stop()
 	}
 	display.processEvents(ticker, events)
@@ -472,6 +472,25 @@ func (display *ProgressDisplay) processEndSteps() {
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
 	if !display.isTerminal {
+		if display.opts.DeterministicOutput {
+			sort.Slice(inProgressRows, func(i, j int) bool {
+				if inProgressRows[i].Step().Op == "same" && inProgressRows[i].Step().URN == "" {
+					// This is the root stack event.  Always sort it last
+					return false
+				}
+				if inProgressRows[j].Step().Op == "same" && inProgressRows[j].Step().URN == "" {
+					// This is the root stack event.  Always sort it last
+					return true
+				}
+				if inProgressRows[i].Step().Res == nil {
+					return false
+				}
+				if inProgressRows[j].Step().Res == nil {
+					return true
+				}
+				return inProgressRows[i].Step().Res.URN < inProgressRows[j].Step().Res.URN
+			})
+		}
 		for _, v := range inProgressRows {
 			display.renderer.rowUpdated(v)
 		}
@@ -510,7 +529,32 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
+
+	eventRows := make([]ResourceRow, 0, len(display.eventUrnToResourceRow))
 	for _, row := range display.eventUrnToResourceRow {
+		eventRows = append(eventRows, row)
+	}
+	if display.opts.DeterministicOutput {
+		sort.Slice(eventRows, func(i, j int) bool {
+			if eventRows[i].Step().Op == "same" && eventRows[i].Step().URN == "" {
+				// This is the root stack event.  Always sort it last
+				return false
+			}
+			if eventRows[j].Step().Op == "same" && eventRows[j].Step().URN == "" {
+				// This is the root stack event.  Always sort it last
+				return true
+			}
+			if eventRows[i].Step().Res == nil {
+				return false
+			}
+			if eventRows[j].Step().Res == nil {
+				return true
+			}
+			return eventRows[i].Step().Res.URN < eventRows[j].Step().Res.URN
+		})
+	}
+
+	for _, row := range eventRows {
 		// The header for the diagnogistics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
 		wroteResourceHeader := false
 
@@ -1186,7 +1230,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return ""
 			}
 		}
-		if op == deploy.OpSame || display.opts.deterministicOutput || display.opts.SuppressTimings {
+		if op == deploy.OpSame || display.opts.DeterministicOutput || display.opts.SuppressTimings {
 			return opText
 		}
 
@@ -1365,7 +1409,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return ""
 		}
 
-		if op == deploy.OpSame || display.opts.deterministicOutput || display.opts.SuppressTimings {
+		if op == deploy.OpSame || display.opts.DeterministicOutput || display.opts.SuppressTimings {
 			return opText
 		}
 

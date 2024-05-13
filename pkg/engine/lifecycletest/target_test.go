@@ -3,6 +3,7 @@ package lifecycletest
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -123,6 +124,9 @@ func destroySpecificTargets(
 	}
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
+	p.Options.T = t
+	// Skip the display tests, as destroys can happen in different orders, and thus create a flaky test here.
+	p.Options.SkipDisplayTests = true
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -194,7 +198,6 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 	//          E  F  G  H  I  J
 	//             |__|
 	//             K  L
-
 	p := &TestPlan{}
 
 	urns, old, programF := generateComplexTestDependencyGraph(t, p)
@@ -226,7 +229,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.TargetDependents = targetDependents
-
+	p.Options.T = t
 	updateTargets := globTargets
 	for _, target := range targets {
 		updateTargets = append(updateTargets,
@@ -292,7 +295,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 			return err
 		},
 	}}
-	p.Run(t, old)
+	p.RunWithName(t, old, strings.Join(updateTargets, ","))
 }
 
 func contains(list []string, entry string) bool {
@@ -364,7 +367,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -426,7 +429,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -485,7 +488,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -551,7 +554,7 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 	host1F := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
@@ -580,7 +583,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	host1F := deploytest.NewPluginHostF(nil, nil, program1F, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: host1F},
+		Options: TestUpdateOptions{T: t, HostF: host1F},
 	}
 
 	p.Steps = []TestStep{{Op: Update}}
@@ -664,7 +667,8 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	}
 
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
+	p.Options.T = t
+	p.Options.SkipDisplayTests = true
 	getURN := func(name string) resource.URN {
 		return pickURN(t, urns, complexTestDependencyGraphNames, name)
 	}
@@ -910,6 +914,8 @@ func destroySpecificTargetsWithChildren(
 	}
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
+	p.Options.T = t
+	p.Options.SkipDisplayTests = true
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -938,7 +944,7 @@ func destroySpecificTargetsWithChildren(
 		},
 	}}
 
-	p.Run(t, old)
+	p.RunWithName(t, old, strings.Join(targets, ","))
 }
 
 func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
@@ -990,6 +996,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 
 	// Check that update succeeds despite the default provider not being targeted.
 	options := TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1068,12 +1075,13 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	project := p.GetProject()
 
 	// Set up stack with initial two resources.
-	options := TestUpdateOptions{HostF: hostF}
-	origSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	options := TestUpdateOptions{T: t, HostF: hostF}
+	origSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Target only `resA` and run a targeted update.
 	options = TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1081,7 +1089,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 			}),
 		},
 	}
-	finalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil)
+	finalSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
 	// Check that `resB` (untargeted) is the same between the two snapshots.
@@ -1150,6 +1158,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	project := p.GetProject()
 
 	old, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: p.Options.HostF,
 	}, false, p.BackendClient, nil)
 	assert.NoError(t, err)
@@ -1168,6 +1177,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
 		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+			T:     t,
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1208,6 +1218,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
 		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+			T:     t,
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1254,6 +1265,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		t.Parallel()
 		// Create the update plan with only targeted resources.
 		plan, err := TestOp(Update).Plan(project, p.GetTarget(t, old), TestUpdateOptions{
+			T:     t,
 			HostF: p.Options.HostF,
 			UpdateOptions: UpdateOptions{
 				Experimental: true,
@@ -1324,26 +1336,28 @@ func TestTargetDependents(t *testing.T) {
 	project := p.GetProject()
 
 	// Target only resA and check only A is created
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
 			TargetDependents: false,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	// Check we only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only resA and check
 	// only A is created but also turn on --target-dependents.
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	// Check we still only have three resources, stack, provider, and resA
 	require.Equal(t, 3, len(snap.Resources))
@@ -1395,26 +1409,28 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 	project := p.GetProject()
 
 	// Target only the explicit provider and check that only the provider is created
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
 			TargetDependents: false,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we only have two resources, stack, and provider
 	require.Equal(t, 2, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again), and target only the provider
 	// but turn on  --target-dependents and check the provider, A, and B are created
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	// Check we still only have four resources, stack, provider, resA, and resB.
 	require.Equal(t, 4, len(snap.Resources))
@@ -1490,7 +1506,8 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 	project := p.GetProject()
 
 	// Target implicitX and explicitX and ensure that those, their children and the providers are created.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1499,14 +1516,15 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 			}),
 			TargetDependents: false,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we only have the 5 resources expected, the stack, the two providers and the two X resources.
 	require.Equal(t, 5, len(snap.Resources))
 
 	// Run another fresh update (note we're starting from a nil snapshot again) but turn on
 	// --target-dependents and check we get 7 resources, the same set as above plus the two Z resources.
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1515,7 +1533,7 @@ func TestTargetDependentsSiblingResources(t *testing.T) {
 			}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.Equal(t, 7, len(snap.Resources))
 }
@@ -1557,9 +1575,10 @@ func TestTargetUntargetedParent(t *testing.T) {
 	//nolint:paralleltest // Requires serial access to TestPlan
 	t.Run("target update", func(t *testing.T) {
 		// Create all resources.
-		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "0")
 		require.NoError(t, err)
 		// Check we have 4 resources in the stack (stack, parent, provider, child)
 		require.Equal(t, 4, len(snap.Resources))
@@ -1569,14 +1588,15 @@ func TestTargetUntargetedParent(t *testing.T) {
 		inputs = resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
 		}
-		snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
 					"**child**",
 				}),
 			},
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
 		assert.Equal(t, 4, len(snap.Resources))
 		parentURN := snap.Resources[1].URN
@@ -1589,6 +1609,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 		// Create all resources from scratch (nil snapshot) but only target the child. This should error that the parent
 		// needs to be created.
 		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
@@ -1634,7 +1655,7 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1648,18 +1669,19 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(snap)
 
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resA",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err) // Expect error because we didn't specify the dependency as a target or TargetDependents
 	validateSnap(snap)
 }
@@ -1694,7 +1716,7 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1708,18 +1730,19 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(snap)
 
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resA",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err) // Expect error because we didn't specify the child as a target or TargetDependents
 	validateSnap(snap)
 }
@@ -1754,7 +1777,7 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1767,20 +1790,21 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(snap)
 
 	// Now run the targeted destroy. We expect an error because the resA errored on delete.
 	// The state should still contain resA.
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"urn:pulumi:test::test::pkgA:m:typA::resA",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	validateSnap(snap)
 }
@@ -1822,7 +1846,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1836,14 +1860,15 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	originalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	originalSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(originalSnap)
 
 	// Now run the targeted destroy specifying TargetDependents.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err := TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err := TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1851,14 +1876,15 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 			}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	validateSnap(snap)
 
 	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1866,7 +1892,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA::resB",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 	validateSnap(snap)
 }
@@ -1908,7 +1934,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &TestPlan{
-		Options: TestUpdateOptions{HostF: hostF},
+		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	project := p.GetProject()
@@ -1922,14 +1948,15 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	}
 
 	// Run an update for initial state.
-	originalSnap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	originalSnap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 	validateSnap(originalSnap)
 
 	// Now run the targeted destroy specifying TargetDependents.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err := TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err := TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1937,14 +1964,15 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 			}),
 			TargetDependents: true,
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	assert.Error(t, err)
 	validateSnap(snap)
 
 	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
 	// We expect an error because resB errored on delete.
 	// The state should still contain resA and resB.
-	snap, err = TestOp(Destroy).Run(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+	snap, err = TestOp(Destroy).RunStep(project, p.GetTarget(t, originalSnap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
@@ -1952,7 +1980,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 				"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "2")
 	assert.Error(t, err)
 	validateSnap(snap)
 }
@@ -2013,9 +2041,10 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	project := p.GetProject()
 
 	// Create all resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+		T:     t,
 		HostF: hostF,
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we have 4 resources in the stack (stack, parent, provider, child)
 	require.Equal(t, 4, len(snap.Resources))
@@ -2024,14 +2053,15 @@ func TestDependencyUnreleatedToTargetUpdatedSucceeds(t *testing.T) {
 	inputs = resource.PropertyMap{
 		"foo": resource.NewStringProperty("bar"),
 	}
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+		T:     t,
 		HostF: hostF2,
 		UpdateOptions: UpdateOptions{
 			Targets: deploy.NewUrnTargets([]string{
 				"**target**",
 			}),
 		},
-	}, false, p.BackendClient, nil)
+	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	assert.Equal(t, 4, len(snap.Resources))
 	unrelatedURN := snap.Resources[3].URN
@@ -2101,9 +2131,10 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 	//nolint:paralleltest // Requires serial access to TestPlan
 	t.Run("target update", func(t *testing.T) {
 		// Create all resources.
-		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "0")
 		require.NoError(t, err)
 		// Check we have 5 resources in the stack (stack, newResource, parent, provider, child)
 		require.Equal(t, 5, len(snap.Resources))
@@ -2113,14 +2144,15 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		inputs = resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
 		}
-		snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), TestUpdateOptions{
+		snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+			T:     t,
 			HostF: hostF2,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
 					"**child**",
 				}),
 			},
-		}, false, p.BackendClient, nil)
+		}, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
 		assert.Equal(t, 5, len(snap.Resources))
 		parentURN := snap.Resources[3].URN
@@ -2135,6 +2167,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		// Create all resources from scratch (nil snapshot) but only target the child. This should error that the parent
 		// needs to be created.
 		snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+			T:     t,
 			HostF: hostF,
 			UpdateOptions: UpdateOptions{
 				Targets: deploy.NewUrnTargets([]string{
@@ -2188,13 +2221,13 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := TestUpdateOptions{HostF: hostF}
+	options := TestUpdateOptions{T: t, HostF: hostF}
 	p := &TestPlan{}
 
 	project := p.GetProject()
 
 	// Create all resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we have 5 resources in the stack (stack, provider A, target, provider B, unrelated)
 	require.Equal(t, 5, len(snap.Resources))
@@ -2209,7 +2242,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 			"**target**",
 		}),
 	}
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err,
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated has not been registered yet")
 	// 6 because we have the stack, provider A, target, provider B, unrelated, and the new provider B
@@ -2261,13 +2294,13 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	options := TestUpdateOptions{HostF: hostF}
+	options := TestUpdateOptions{T: t, HostF: hostF}
 	p := &TestPlan{}
 
 	project := p.GetProject()
 
 	// Create all resources.
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	// Check we have 6 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2)
 	require.Equal(t, 6, len(snap.Resources))
@@ -2282,7 +2315,7 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 			"**target**",
 		}),
 	}
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err,
 		"for resource urn:pulumi:test::test::pkgB:index:typA::unrelated1 has not been registered yet")
 	// Check we have 7 resources in the stack (stack, provider A, target, provider B, unrelated1, unrelated2, new

@@ -60,7 +60,7 @@ type Options struct {
 
 	// testing-only options
 	term                terminal.Terminal
-	deterministicOutput bool
+	DeterministicOutput bool
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {
