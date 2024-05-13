@@ -688,6 +688,66 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
+
+	t.Run("Source Override", func(t *testing.T) {
+		version := semver.MustParse("1.23.4")
+		spec := PluginSpec{
+			PluginDownloadURL: "",
+			Name:              "mock-override",
+			Version:           &version,
+			Kind:              apitype.PluginKind("resource"),
+		}
+		pluginDownloadURLOverridesParsed = []pluginDownloadURLOverride{
+			{
+				reg: regexp.MustCompile("mock-override"),
+				url: "http://mock-override.com",
+			},
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t,
+				"http://mock-override.com/pulumi-resource-mock-override-v1.23.4-windows-arm64.tar.gz",
+				req.URL.String())
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(*spec.Version, "windows", "arm64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
+
+	t.Run("Source Override with Plugin Download Url", func(t *testing.T) {
+		version := semver.MustParse("1.23.4")
+		spec := PluginSpec{
+			PluginDownloadURL: "http://should-not-use-me.com",
+			Name:              "mock-override",
+			Version:           &version,
+			Kind:              apitype.PluginKind("resource"),
+		}
+		pluginDownloadURLOverridesParsed = []pluginDownloadURLOverride{
+			{
+				reg: regexp.MustCompile("mock-override"),
+				url: "http://mock-override.com",
+			},
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t,
+				"http://mock-override.com/pulumi-resource-mock-override-v1.23.4-windows-arm64.tar.gz",
+				req.URL.String())
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(*spec.Version, "windows", "arm64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
 }
 
 //nolint:paralleltest // mutates environment variables
