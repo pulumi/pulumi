@@ -871,6 +871,11 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 
 func (spec PluginSpec) GetSource() (PluginSource, error) {
 	baseSource, err := func() (PluginSource, error) {
+		// If the plugin name matches an override, download the plugin from the override URL.
+		if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
+			return newHTTPSource(spec.Name, spec.Kind, urlMustParse(url)), nil
+		}
+
 		// The plugin has a set URL use that.
 		if spec.PluginDownloadURL != "" {
 			// Support schematised URLS if the URL has a "schema" part we recognize
@@ -889,11 +894,6 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 			default:
 				return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 			}
-		}
-
-		// If the plugin name matches an override, download the plugin from the override URL.
-		if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
-			return newHTTPSource(spec.Name, spec.Kind, urlMustParse(url)), nil
 		}
 
 		// Use our default fallback behaviour of github then get.pulumi.com
