@@ -7,8 +7,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 
+	"github.com/alecthomas/chroma/v2/quick"
+	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/charmbracelet/glamour"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -77,17 +84,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", value)
 			}
 
-			def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, revisionOrTag, showSecrets)
-			if err != nil {
-				return fmt.Errorf("getting environment definition: %w", err)
-			}
-
-			var data *envGetTemplateData
-			if len(args) == 0 {
-				data, err = get.getEntireEnvironment(ctx, orgName, def, showSecrets)
-			} else {
-				data, err = get.getEnvironmentMember(ctx, orgName, envName, def, path, showSecrets)
-			}
+			data, err := get.getEnvironment(ctx, orgName, envName, revisionOrTag, path, showSecrets)
 			if err != nil {
 				return err
 			}
@@ -138,8 +135,9 @@ func marshalYAML(v any) (string, error) {
 	return b.String(), nil
 }
 
-func (get *envGetCommand) showValue(
+func (get *envGetCommand) writeValue(
 	ctx context.Context,
+	out io.Writer,
 	orgName string,
 	envName string,
 	revisionOrTag string,
@@ -155,7 +153,86 @@ func (get *envGetCommand) showValue(
 	if err != nil {
 		return fmt.Errorf("getting environment: %w", err)
 	}
-	return get.env.renderValue(get.env.esc.stdout, env, path, format, true, showSecrets)
+	return get.env.renderValue(out, env, path, format, true, showSecrets)
+}
+
+func (get *envGetCommand) showValue(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	revisionOrTag string,
+	path resource.PropertyPath,
+	format string,
+	showSecrets bool,
+) error {
+	return get.writeValue(ctx, get.env.esc.stdout, orgName, envName, revisionOrTag, path, format, showSecrets)
+}
+
+func diff(oldName, old, newName, new string) string {
+	edits := myers.ComputeEdits(span.URIFromPath(oldName), old, new)
+	return fmt.Sprint(gotextdiff.ToUnified(oldName, newName, old, edits))
+}
+
+func (get *envGetCommand) diff(
+	baseRevisionOrTag string,
+	baseEnv *envGetTemplateData,
+	diffRevisionOrTag string,
+	diffEnv *envGetTemplateData,
+) envDiffTemplateData {
+	valueDiff := diff(baseRevisionOrTag, baseEnv.Value, diffRevisionOrTag, diffEnv.Value)
+	defDiff := diff(baseRevisionOrTag, baseEnv.Definition, diffRevisionOrTag, diffEnv.Definition)
+	return envDiffTemplateData{Value: valueDiff, Definition: defDiff}
+}
+
+func (get *envGetCommand) diffValue(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	baseRevisionOrTag string,
+	tipRevisionOrTag string,
+	path resource.PropertyPath,
+	format string,
+	showSecrets bool,
+) error {
+	var base strings.Builder
+	if err := get.writeValue(ctx, &base, orgName, envName, baseRevisionOrTag, path, format, showSecrets); err != nil {
+		return err
+	}
+	var tip strings.Builder
+	if err := get.writeValue(ctx, &tip, orgName, envName, tipRevisionOrTag, path, format, showSecrets); err != nil {
+		return err
+	}
+
+	baseRef := fmt.Sprintf("%s:%s", envName, baseRevisionOrTag)
+	tipRef := fmt.Sprintf("%s:%s", envName, tipRevisionOrTag)
+	data := diff(baseRef, base.String(), tipRef, tip.String())
+
+	if !cmdutil.InteractiveTerminal() {
+		_, err := fmt.Fprint(get.env.esc.stdout, data)
+		return err
+	}
+
+	theme := style.Chroma("esc", style.Default().CodeBlock)
+	styles.Register(theme)
+	return quick.Highlight(get.env.esc.stdout, data, "diff", "terminal256", theme.Name)
+}
+
+func (get *envGetCommand) getEnvironment(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	revisionOrTag string,
+	path resource.PropertyPath,
+	showSecrets bool,
+) (*envGetTemplateData, error) {
+	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, revisionOrTag, showSecrets)
+	if err != nil {
+		return nil, fmt.Errorf("getting environment definition: %w", err)
+	}
+	if len(path) == 0 {
+		return get.getEntireEnvironment(ctx, orgName, def, showSecrets)
+	}
+	return get.getEnvironmentMember(ctx, orgName, envName, def, path, showSecrets)
 }
 
 func (get *envGetCommand) getEntireEnvironment(
@@ -323,6 +400,11 @@ type envGetTemplateData struct {
 	Value      string
 	Definition string
 	Stack      []string
+}
+
+type envDiffTemplateData struct {
+	Value      string
+	Definition string
 }
 
 func getEnvExpr(root esc.Expr, path resource.PropertyPath) (*esc.Expr, bool) {

@@ -1,0 +1,300 @@
+run: |
+  esc env diff test
+  esc env diff test:latest
+  esc env diff test:stable
+  esc env diff test:1
+  esc env diff test:2
+  esc env diff test:3
+  esc env diff test:1 2
+  esc env diff test:stable --format json
+  esc env diff test:stable --format string
+  esc env diff test:stable --format dotenv
+  esc env diff test:stable --format shell
+environments:
+  test-user/a: {}
+  test-user/b: {}
+  test-user/test:
+    revisions:
+      - yaml:
+          values:
+            string: hello, world!
+            environmentVariables:
+              FOO: bar
+        tag: stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+            environmentVariables:
+              FOO: baz
+              BAR: qux
+stdout: |
+  > esc env diff test
+  > esc env diff test:latest
+  > esc env diff test:stable
+  # Value
+  ```diff
+  --- test:stable
+  +++ test:latest
+  @@ -1,6 +1,19 @@
+   {
+  +  "array": [
+  +    "hello",
+  +    "world"
+  +  ],
+  +  "boolean": true,
+     "environmentVariables": {
+  -    "FOO": "bar"
+  +    "BAR": "qux",
+  +    "FOO": "baz"
+     },
+  -  "string": "hello, world!"
+  +  "null": null,
+  +  "number": 42,
+  +  "object": {
+  +    "hello": "world"
+  +  },
+  +  "open": "[unknown]",
+  +  "secret": "[secret]",
+  +  "string": "esc"
+   }
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test:stable
+  +++ test:latest
+  @@ -1,4 +1,19 @@
+  +imports:
+  +  - a
+  +  - b
+   values:
+  -  string: hello, world!
+  +  # comment
+  +  "null": null
+  +  boolean: true
+  +  number: 42
+  +  string: esc
+  +  array: [hello, world]
+  +  object: {hello: world}
+  +  open:
+  +    fn::open::test: echo
+  +  secret:
+  +    fn::secret:
+  +      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+     environmentVariables:
+  -    FOO: bar
+  +    FOO: baz
+  +    BAR: qux
+
+  ```
+  > esc env diff test:1
+  # Value
+  ```diff
+  --- test:1
+  +++ test:latest
+  @@ -1 +1,19 @@
+  +{
+  +  "array": [
+  +    "hello",
+  +    "world"
+  +  ],
+  +  "boolean": true,
+  +  "environmentVariables": {
+  +    "BAR": "qux",
+  +    "FOO": "baz"
+  +  },
+  +  "null": null,
+  +  "number": 42,
+  +  "object": {
+  +    "hello": "world"
+  +  },
+  +  "open": "[unknown]",
+  +  "secret": "[secret]",
+  +  "string": "esc"
+  +}
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test:1
+  +++ test:latest
+  @@ -1 +1,19 @@
+  +imports:
+  +  - a
+  +  - b
+  +values:
+  +  # comment
+  +  "null": null
+  +  boolean: true
+  +  number: 42
+  +  string: esc
+  +  array: [hello, world]
+  +  object: {hello: world}
+  +  open:
+  +    fn::open::test: echo
+  +  secret:
+  +    fn::secret:
+  +      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+  +  environmentVariables:
+  +    FOO: baz
+  +    BAR: qux
+
+  ```
+  > esc env diff test:2
+  # Value
+  ```diff
+  --- test:2
+  +++ test:latest
+  @@ -1,6 +1,19 @@
+   {
+  +  "array": [
+  +    "hello",
+  +    "world"
+  +  ],
+  +  "boolean": true,
+     "environmentVariables": {
+  -    "FOO": "bar"
+  +    "BAR": "qux",
+  +    "FOO": "baz"
+     },
+  -  "string": "hello, world!"
+  +  "null": null,
+  +  "number": 42,
+  +  "object": {
+  +    "hello": "world"
+  +  },
+  +  "open": "[unknown]",
+  +  "secret": "[secret]",
+  +  "string": "esc"
+   }
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test:2
+  +++ test:latest
+  @@ -1,4 +1,19 @@
+  +imports:
+  +  - a
+  +  - b
+   values:
+  -  string: hello, world!
+  +  # comment
+  +  "null": null
+  +  boolean: true
+  +  number: 42
+  +  string: esc
+  +  array: [hello, world]
+  +  object: {hello: world}
+  +  open:
+  +    fn::open::test: echo
+  +  secret:
+  +    fn::secret:
+  +      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+     environmentVariables:
+  -    FOO: bar
+  +    FOO: baz
+  +    BAR: qux
+
+  ```
+  > esc env diff test:3
+  > esc env diff test:1 2
+  # Value
+  ```diff
+  --- test:1
+  +++ test:2
+  @@ -1 +1,6 @@
+  +{
+  +  "environmentVariables": {
+  +    "FOO": "bar"
+  +  },
+  +  "string": "hello, world!"
+  +}
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test:1
+  +++ test:2
+  @@ -1 +1,4 @@
+  +values:
+  +  string: hello, world!
+  +  environmentVariables:
+  +    FOO: bar
+
+  ```
+  > esc env diff test:stable --format json
+  --- test:stable
+  +++ test:latest
+  @@ -1,6 +1,19 @@
+   {
+  +  "array": [
+  +    "hello",
+  +    "world"
+  +  ],
+  +  "boolean": true,
+     "environmentVariables": {
+  -    "FOO": "bar"
+  +    "BAR": "qux",
+  +    "FOO": "baz"
+     },
+  -  "string": "hello, world!"
+  +  "null": null,
+  +  "number": 42,
+  +  "object": {
+  +    "hello": "world"
+  +  },
+  +  "open": "[unknown]",
+  +  "secret": "[secret]",
+  +  "string": "esc"
+   }
+  > esc env diff test:stable --format string
+  --- test:stable
+  +++ test:latest
+  @@ -1 +1 @@
+  -"environmentVariables"="\"FOO\"=\"bar\"","string"="hello, world!"
+  +"array"="\"hello\",\"world\"","boolean"="true","environmentVariables"="\"BAR\"=\"qux\",\"FOO\"=\"baz\"","null"="","number"="42","object"="\"hello\"=\"world\"","open"="[unknown]","secret"="[secret]","string"="esc"
+  > esc env diff test:stable --format dotenv
+  --- test:stable
+  +++ test:latest
+  @@ -1 +1,2 @@
+  -FOO="bar"
+  +BAR="qux"
+  +FOO="baz"
+  > esc env diff test:stable --format shell
+  --- test:stable
+  +++ test:latest
+  @@ -1 +1,2 @@
+  -export FOO="bar"
+  +export BAR="qux"
+  +export FOO="baz"
+stderr: |
+  > esc env diff test
+  > esc env diff test:latest
+  > esc env diff test:stable
+  > esc env diff test:1
+  > esc env diff test:2
+  > esc env diff test:3
+  > esc env diff test:1 2
+  > esc env diff test:stable --format json
+  > esc env diff test:stable --format string
+  > esc env diff test:stable --format dotenv
+  > esc env diff test:stable --format shell

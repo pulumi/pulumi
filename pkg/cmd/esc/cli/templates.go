@@ -12,7 +12,8 @@ import (
 var templatesFS embed.FS
 
 var (
-	envGetTemplate *template.Template
+	envGetTemplate  *template.Template
+	envDiffTemplate *template.Template
 )
 
 func init() {
@@ -28,4 +29,5 @@ func init() {
 
 	templates := template.Must(root.ParseFS(templatesFS, "templates/*.tmpl"))
 	envGetTemplate = mustLookup(templates, "env-get.tmpl")
+	envDiffTemplate = mustLookup(templates, "env-diff.tmpl")
 }
