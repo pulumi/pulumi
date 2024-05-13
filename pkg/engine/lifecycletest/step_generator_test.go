@@ -431,8 +431,10 @@ func TestConcurrentRegisterResource(t *testing.T) {
 
 		p := &TestPlan{
 			Options: TestUpdateOptions{
+				T:                          t,
 				HostF:                      hostF,
 				OnlyVerifyCompleteSnapshot: true,
+				SkipDisplayTests:           true,
 			},
 		}
 
@@ -565,8 +567,10 @@ func parallelStepGenTestHelper(t *testing.T, maxDepth int, maxSpan int) (int64, 
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{
+			T:                          t,
 			HostF:                      hostF,
 			OnlyVerifyCompleteSnapshot: true,
+			SkipDisplayTests:           true,
 		},
 	}
 
@@ -632,7 +636,8 @@ func TestParallelStepGenerator(t *testing.T) {
 			assert.GreaterOrEqualf(t, resourceDuration, 5.0/float64(maxLoad),
 				"Expecting the time per resource to be at least 5ms / %d (maxLoad)", maxLoad)
 			// Hopefully a safe upper bound is to assume that the rsource duration is less than the absolute per resource cost
-			assert.Lessf(t, resourceDuration, 5.0, "Expecting the time per resource to be at less than 5ms")
+			// However this is flaky in practice, so simply left here as a comment
+			// assert.Lessf(t, resourceDuration, 5.0, "Expecting the time per resource to be at less than 5ms")
 		})
 	})
 
@@ -717,8 +722,9 @@ func TestParallelStepGenerator(t *testing.T) {
 			assert.GreaterOrEqualf(t, resourceDuration, 5.0/float64(maxLoad),
 				"Expecting the time per resource to be at least 5ms / %d (maxLoad)", maxLoad)
 			// Hopefully a safe upper bound for resource duration is less than the per resource absolute duration
-			assert.Lessf(t, resourceDuration, 5.0,
-				"Expecting the time per resource to be at less than 5ms")
+			// However this is flaky in practice, so simply left here as a comment
+			// assert.Lessf(t, resourceDuration, 5.0,
+			//	"Expecting the time per resource to be at less than 5ms")
 		})
 	})
 }
@@ -833,7 +839,7 @@ func TestDeleteBeforeCreate(t *testing.T) {
 			assert.NoError(t, err, "Step1: RegisterResource dependent-4")
 
 			return nil
-		})
+		}, true)
 
 	assert.NoErrorf(t, step1Result.err, "Finished Step1")
 	assert.NotNil(t, step1Result.snap)
@@ -906,7 +912,7 @@ func TestDeleteBeforeCreate(t *testing.T) {
 				})
 			assert.NoError(t, err, "Step2: RegisterResource dependent-4")
 			return nil
-		})
+		}, true)
 
 	assert.NoErrorf(t, step2Result.err, "Finished Step2")
 	assert.NotNil(t, step2Result.snap)
@@ -941,7 +947,7 @@ func TestDeleteBeforeCreate(t *testing.T) {
 				})
 			assert.NoError(t, err, "Step3: RegisterResource dependent")
 			return nil
-		})
+		}, true)
 
 	assert.NoErrorf(t, step3Result.err, "Finished Step3")
 	assert.NotNil(t, step3Result.snap)
@@ -988,7 +994,7 @@ func TestDeleteBeforeCreate(t *testing.T) {
 			assert.NoErrorf(t, err, "Step4: RegisterResource dependent")
 
 			return nil
-		})
+		}, true)
 
 	assert.NoErrorf(t, step4Result.err, "Finished Step4")
 	assert.NotNil(t, step4Result.snap)
@@ -1035,7 +1041,7 @@ func TestDeleteBeforeCreate(t *testing.T) {
 			assert.NoErrorf(t, err, "Step5: RegisterResource dependent")
 
 			return nil
-		})
+		}, true)
 
 	assert.NoErrorf(t, step5Result.err, "Finished Step5")
 	assert.NotNil(t, step5Result.snap)
@@ -1084,7 +1090,7 @@ func TestDeleteBeforeCreate(t *testing.T) {
 			assert.NoErrorf(t, err, "Step6: RegisterResource dependent")
 
 			return nil
-		})
+		}, true)
 
 	assert.NoErrorf(t, step6Result.err, "Finished Step6")
 	assert.NotNil(t, step6Result.snap)

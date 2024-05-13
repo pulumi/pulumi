@@ -168,6 +168,7 @@ func (op TestOp) runWithContext(
 	target deploy.Target, opts TestUpdateOptions, dryRun bool,
 	backendClient deploy.BackendClient, validate ValidateFunc, name string,
 ) (*deploy.Plan, *deploy.Snapshot, error) {
+	contract.Assertf(opts.T != nil, "TestUpdateOptions must have initialized T")
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
 

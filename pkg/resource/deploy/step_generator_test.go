@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -1028,10 +1029,10 @@ func TestStepGenerator_randomActions(t *testing.T) {
 		rt.Run(map[string]func(*rapid.T){
 			"HaveTargetURNs": func(t *rapid.T) {
 				assert.Contains(t,
-					sg.HaveTargetURNs([]resource.URN{
+					sg.HaveTargetURNs([]urn.URN{
 						"urn:pulumi::stack::project::qualified$type$name::parent",
 					}),
-					"urn:pulumi::stack::project::qualified$type$name::parent",
+					urn.URN("urn:pulumi::stack::project::qualified$type$name::parent"),
 				)
 			},
 			"GenerateReadSteps": func(t *rapid.T) {
