@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Return error in RPC response instead of exiting in the language runtime

@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.116.0 (2024-05-10)
+
+
+### Bug Fixes
+
+- [engine] Fix dataraces between snapshot and deployment systems.
+  [#16148](https://github.com/pulumi/pulumi/pull/16148)
+
+- [cli/display] Fix mangled diffs of strings containing url-encoded chars
+  [#16147](https://github.com/pulumi/pulumi/pull/16147)
+
+- [sdk/nodejs] Don't load punycode module in function serialization code
+  [#16149](https://github.com/pulumi/pulumi/pull/16149)
+
+- [sdk/nodejs] Return error in RPC response instead of exiting in the language runtime
+  [#16162](https://github.com/pulumi/pulumi/pull/16162)
+
+- [sdk/nodejs] Return the underlying error if we can't locate the pulumi SDK
+  [#16160](https://github.com/pulumi/pulumi/pull/16160)
+
+- [sdk/python] Provide more descriptive exception
+  [#16098](https://github.com/pulumi/pulumi/pull/16098)
+
+- [sdk/python] Fix typings for `from_input` and `all` to not return `Never` types.
+  [#16139](https://github.com/pulumi/pulumi/pull/16139)
+
+- [sdk/python] Fix a race condition in output handling
+  [#16155](https://github.com/pulumi/pulumi/pull/16155)
+
+
+### Miscellaneous
+
+- [pkg] Upgrade pulumi-java to v0.11.0
+  [#16159](https://github.com/pulumi/pulumi/pull/16159)
+
 ## 3.115.2 (2024-05-06)
 
 
