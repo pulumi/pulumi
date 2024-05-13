@@ -39,6 +39,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -76,16 +77,23 @@ type EvalRunInfo struct {
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
-// a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
-// given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec, dryRun bool,
+// a configuration map. This evaluation is performed using the given plugin context and may optionally use the
+// given plugin host (or the default, if this is nil). Note that closing the eval source also closes the host.
+func NewEvalSource(
+	plugctx *plugin.Context,
+	runinfo *EvalRunInfo,
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec,
+	dryRun bool,
+	schemaLoader schema.ReferenceLoader,
 ) Source {
+	contract.Requiref(schemaLoader != nil, "schemaLoader", "schemaLoader must not be nil")
+
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
 		dryRun:              dryRun,
+		schemaLoader:        schemaLoader,
 	}
 }
 
@@ -94,6 +102,7 @@ type evalSource struct {
 	runinfo             *EvalRunInfo                            // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PluginSpec // the default provider versions for this source.
 	dryRun              bool                                    // true if this is a dry-run operation only.
+	schemaLoader        schema.ReferenceLoader                  // the loader to use for fetching schema information.
 }
 
 func (src *evalSource) Close() error {
@@ -580,6 +589,7 @@ type resmon struct {
 	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
+	schemaLoader              schema.ReferenceLoader             // the loader to use for fetching schema information.
 
 	// the working directory for the resources sent to this monitor.
 	workingDirectory string
@@ -633,6 +643,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		cancel:                    cancel,
 		disableResourceReferences: opts.DisableResourceReferences,
 		disableOutputValues:       opts.DisableOutputValues,
+		schemaLoader:              src.schemaLoader,
 		callbacks:                 map[string]*CallbacksClient{},
 		resourceTransforms:        map[resource.URN][]TransformFunction{},
 		packageRefMap:             map[string]providers.ProviderRequest{},
@@ -1815,7 +1826,43 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	customTimeouts := opts.CustomTimeouts
 
-	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
+	// Schema-aware changes
+	//
+	// At this point we will consult the resource's schema to determine if any of the properties we'll send onward should
+	// be modified or extended. Presently this includes:
+	//
+	// * Including `Secret` properties in additional secret outputs.
+
+	additionalSecretOutputsSet := mapset.NewSet[string]()
+	additionalSecretOutputsSet.Append(opts.GetAdditionalSecretOutputs()...)
+
+	var version *semver.Version
+	if parsedVersion, err := semver.Parse(req.GetVersion()); err == nil {
+		version = &parsedVersion
+	}
+
+	if typeToken, err := tokens.ParseTypeToken(req.Type); err == nil {
+		packageName := typeToken.Package().String()
+		if pkgReference, err := rm.schemaLoader.LoadPackageReference(packageName, version); err == nil {
+			if resourceSchema, found, err := pkgReference.Resources().Get(req.Type); err == nil && found {
+				for _, outputProperty := range resourceSchema.Properties {
+					if outputProperty.Secret {
+						additionalSecretOutputsSet.Add(outputProperty.Name)
+					}
+				}
+			}
+		}
+	}
+
+	// We're not simply using `additionalSecretOutputsSet.ToSlice()` here because
+	// for backwards compatibility we want to ensure that a nil value stays nil
+	// and doesn't become an empty slice.
+	var additionalSecretOutputs []string
+	if additionalSecretOutputsSet.Cardinality() > 0 {
+		additionalSecretOutputs = additionalSecretOutputsSet.ToSlice()
+	} else {
+		additionalSecretOutputs = nil
+	}
 
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`

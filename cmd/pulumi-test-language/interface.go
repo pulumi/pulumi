@@ -300,11 +300,11 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 func (h *testHost) ResolvePlugin(
 	kind apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
-	panic("not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	// We're not using project plugins, in fact this method shouldn't even really exists on Host given it's
+	// We're not using project plugins, in fact this method shouldn't even really exist on Host given it's
 	// just reading off Pulumi.yaml.
 	return nil
 }

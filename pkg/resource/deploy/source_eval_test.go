@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -221,7 +222,9 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	noopSchemaLoader := emptySchemaLoader(t)
+	evalSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evalSource.Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed := 0
@@ -307,7 +310,9 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	noopSchemaLoader := emptySchemaLoader(t)
+	evalSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evalSource.Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -423,7 +428,9 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	noopSchemaLoader := emptySchemaLoader(t)
+	evalSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evalSource.Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	reads := 0
@@ -501,7 +508,9 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	noopSchemaLoader := emptySchemaLoader(t)
+	evalSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+	iter, err := evalSource.Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -681,7 +690,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			ctx, err := newTestPluginContext(t, program)
 			assert.NoError(t, err)
 
-			iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+			noopSchemaLoader := emptySchemaLoader(t)
+			evalSource := NewEvalSource(ctx, runInfo, nil, false, noopSchemaLoader)
+			iter, err := evalSource.Iterate(context.Background(), Options{}, providerSource)
 			assert.NoError(t, err)
 
 			for {
@@ -722,7 +733,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 // Validates that a resource monitor appropriately propagates
 // resource options from a RegisterResourceRequest to a Construct call
 // for the remote component resource (MLC).
-func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
+func TestResourceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	t.Parallel()
 
 	// Helper to keep a some test cases simple.
@@ -881,7 +892,8 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			pluginCtx, err := newTestPluginContext(t, program)
 			require.NoError(t, err, "build plugin context")
 
-			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false)
+			noopSchemaLoader := emptySchemaLoader(t)
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false, noopSchemaLoader)
 			defer func() {
 				assert.NoError(t, evalSource.Close(), "close eval source")
 			}()
@@ -1888,8 +1900,9 @@ func TestResmonCancel(t *testing.T) {
 	t.Parallel()
 	done := make(chan error)
 	rm := &resmon{
-		cancel: make(chan bool, 10),
-		done:   done,
+		cancel:       make(chan bool, 10),
+		done:         done,
+		schemaLoader: emptySchemaLoader(t),
 	}
 	err := errors.New("my error")
 
@@ -2301,7 +2314,7 @@ func TestInvoke(t *testing.T) {
 	t.Parallel()
 	t.Run("bad version", func(t *testing.T) {
 		t.Parallel()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		_, err := rm.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
 			Tok:     "pkgA:index:func",
 			Version: "bad-version",
@@ -2438,7 +2451,7 @@ func TestCall(t *testing.T) {
 	t.Parallel()
 	t.Run("bad version", func(t *testing.T) {
 		t.Parallel()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		_, err := rm.Call(context.Background(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "bad-version",
@@ -2761,7 +2774,7 @@ func TestReadResource(t *testing.T) {
 	t.Parallel()
 	t.Run("bad parent", func(t *testing.T) {
 		t.Parallel()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
 			Type:   "foo:bar:some-type",
 			Parent: "invalid-parent",
@@ -2781,6 +2794,7 @@ func TestReadResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
 			Type:    "foo:bar:some-type",
@@ -2798,6 +2812,7 @@ func TestReadResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
@@ -2820,6 +2835,7 @@ func TestReadResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
@@ -2844,6 +2860,7 @@ func TestReadResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
@@ -2875,6 +2892,7 @@ func TestReadResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
@@ -2904,6 +2922,7 @@ func TestReadResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
@@ -2930,7 +2949,8 @@ func TestRegisterResource(t *testing.T) {
 			cancel := make(chan bool, 1)
 			cancel <- true
 			rm := &resmon{
-				cancel: cancel,
+				cancel:       cancel,
+				schemaLoader: emptySchemaLoader(t),
 			}
 			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
 			assert.ErrorContains(t, err, "resource monitor shut down while sending resource registration")
@@ -2945,8 +2965,9 @@ func TestRegisterResource(t *testing.T) {
 			}()
 
 			rm := &resmon{
-				regChan: regChan,
-				cancel:  cancel,
+				regChan:      regChan,
+				cancel:       cancel,
+				schemaLoader: emptySchemaLoader(t),
 			}
 			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
@@ -2961,8 +2982,9 @@ func TestRegisterResource(t *testing.T) {
 			}()
 
 			rm := &resmon{
-				regChan: regChan,
-				cancel:  cancel,
+				regChan:      regChan,
+				cancel:       cancel,
+				schemaLoader: emptySchemaLoader(t),
 			}
 			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
@@ -2977,7 +2999,7 @@ func TestRegisterResource(t *testing.T) {
 				State: &resource.State{},
 			}
 		}()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type:    "foo:bar:some-type",
 			Version: "improper-version",
@@ -2995,7 +3017,7 @@ func TestRegisterResource(t *testing.T) {
 				State: &resource.State{},
 			}
 		}()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type:    "foo:bar:some-type",
 			Version: "improper-version",
@@ -3014,7 +3036,7 @@ func TestRegisterResource(t *testing.T) {
 				State: &resource.State{},
 			}
 		}()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type:    "pulumi:providers:some-type",
 			Version: "improper-version",
@@ -3026,7 +3048,7 @@ func TestRegisterResource(t *testing.T) {
 	})
 	t.Run("invalid alias URN", func(t *testing.T) {
 		t.Parallel()
-		rm := &resmon{}
+		rm := &resmon{schemaLoader: emptySchemaLoader(t)}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type: "pulumi:providers:some-type",
 			AliasURNs: []string{
@@ -3042,6 +3064,7 @@ func TestRegisterResource(t *testing.T) {
 			defaultProviders: &defaultProviders{
 				defaultProviderInfo: map[tokens.Package]workspace.PluginSpec{},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		req := &pulumirpc.RegisterResourceRequest{
 			Type:    "pulumi:providers:some-type",
@@ -3079,6 +3102,7 @@ func TestRegisterResource(t *testing.T) {
 						},
 					},
 				},
+				schemaLoader: emptySchemaLoader(t),
 			}
 			req := &pulumirpc.RegisterResourceRequest{
 				Version: "1.0.0",
@@ -3116,6 +3140,7 @@ func TestRegisterResource(t *testing.T) {
 				providers: &providerSourceMock{
 					Provider: &deploytest.Provider{},
 				},
+				schemaLoader: emptySchemaLoader(t),
 			}
 			req := &pulumirpc.RegisterResourceRequest{
 				Version: "1.0.0",
@@ -3151,7 +3176,8 @@ func TestRegisterResource(t *testing.T) {
 						},
 					},
 				},
-				providers: &providerSourceMock{},
+				providers:    &providerSourceMock{},
+				schemaLoader: emptySchemaLoader(t),
 			}
 			req := &pulumirpc.RegisterResourceRequest{
 				Version: "1.0.0",
@@ -3178,6 +3204,7 @@ func TestRegisterResource(t *testing.T) {
 				ref: ref,
 			}
 		}()
+
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
 				requests: requests,
@@ -3212,6 +3239,7 @@ func TestRegisterResource(t *testing.T) {
 					},
 				},
 			},
+			schemaLoader: emptySchemaLoader(t),
 		}
 		req := &pulumirpc.RegisterResourceRequest{
 			Version: "1.0.0",
@@ -3239,6 +3267,7 @@ func TestRegisterResource(t *testing.T) {
 					State: &resource.State{},
 				}
 			}()
+
 			rm := &resmon{
 				regChan: regChan,
 				componentProviders: map[resource.URN]map[string]string{
@@ -3247,6 +3276,7 @@ func TestRegisterResource(t *testing.T) {
 						"urn:pulumi:stack::project::type::prov2": "expected-value",
 					},
 				},
+				schemaLoader: emptySchemaLoader(t),
 			}
 			req := &pulumirpc.RegisterResourceRequest{
 				Provider: "urn:pulumi:stack::project::type::bar",
@@ -3277,6 +3307,7 @@ func TestRegisterResource(t *testing.T) {
 				rm := &resmon{
 					regChan:            regChan,
 					componentProviders: map[resource.URN]map[string]string{},
+					schemaLoader:       emptySchemaLoader(t),
 				}
 				req := &pulumirpc.RegisterResourceRequest{
 					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
@@ -3298,6 +3329,7 @@ func TestRegisterResource(t *testing.T) {
 				rm := &resmon{
 					regChan:            regChan,
 					componentProviders: map[resource.URN]map[string]string{},
+					schemaLoader:       emptySchemaLoader(t),
 				}
 				req := &pulumirpc.RegisterResourceRequest{
 					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
@@ -3319,6 +3351,7 @@ func TestRegisterResource(t *testing.T) {
 				rm := &resmon{
 					regChan:            regChan,
 					componentProviders: map[resource.URN]map[string]string{},
+					schemaLoader:       emptySchemaLoader(t),
 				}
 				req := &pulumirpc.RegisterResourceRequest{
 					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
@@ -3418,5 +3451,137 @@ func TestDowngradeOutputValues(t *testing.T) {
 			actual := downgradeOutputValues(tt.input)
 			assert.Equal(t, tt.expected, actual)
 		})
+	}
+}
+
+func TestRegisterResourceLoadsAdditionalSecretOutputsFromSchema(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
+	}
+
+	schemaLoader := createTestSchemaLoader(t, schema.PackageSpec{
+		Name:    "pkgA",
+		Version: "0.1.0",
+		Resources: map[string]schema.ResourceSpec{
+			"pkgA:moduleA:resourceA": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"schemaSecret": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+							Secret:   true,
+						},
+					},
+				},
+			},
+		},
+	})
+
+	plugctx, err := plugin.NewContext(
+		&deploytest.NoopSink{}, &deploytest.NoopSink{},
+		deploytest.NewPluginHostF(nil, nil, nil)(),
+		nil, "", nil, false, nil)
+	assert.NoError(t, err)
+
+	providerRegChan := make(chan *registerResourceEvent, 1)
+
+	mon, err := newResourceMonitor(&evalSource{
+		runinfo:      runInfo,
+		plugctx:      plugctx,
+		schemaLoader: schemaLoader,
+	}, &providerSourceMock{
+		Provider: &deploytest.Provider{
+			CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64, preview bool) (
+				resource.ID, resource.PropertyMap, resource.Status, error,
+			) {
+				return resource.ID("id"), resource.PropertyMap{}, resource.StatusOK, nil
+			},
+		},
+	}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+	assert.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		evt := <-providerRegChan
+		assert.Equal(t, "pkgA:moduleA:resourceA", evt.goal.Type.String())
+		// assert.Len(t, evt.goal.AdditionalSecretOutputs, 1)
+		// assert.Equal(t, resource.PropertyKey("schemaSecret"), evt.goal.AdditionalSecretOutputs[0])
+
+		evt.done <- &RegisterResult{State: &resource.State{}}
+		wg.Done()
+	}()
+
+	// Act.
+	_, err = mon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
+		Type:    "pkgA:moduleA:resourceA",
+		Name:    "resA",
+		Version: "0.1.0",
+	})
+
+	// Assert.
+	wg.Wait()
+	assert.NoError(t, err)
+}
+
+type testSchemaLoader struct {
+	loadSchemaF func(pkg string, version *semver.Version) (*schema.Package, error)
+}
+
+func (l *testSchemaLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
+	packageSchema, err := l.loadSchemaF(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return packageSchema, nil
+}
+
+func (l *testSchemaLoader) LoadPackageReference(
+	pkg string,
+	version *semver.Version,
+) (schema.PackageReference, error) {
+	packageSchema, err := l.loadSchemaF(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	reference := packageSchema.Reference()
+	return reference, nil
+}
+
+func createTestSchemaLoader(t *testing.T, spec schema.PackageSpec) schema.ReferenceLoader {
+	return &testSchemaLoader{
+		loadSchemaF: func(pkg string, version *semver.Version) (*schema.Package, error) {
+			if pkg != spec.Name {
+				return nil, errors.New("package not found")
+			}
+			boundSchema, diags, err := schema.BindSpec(spec, nil)
+			require.NoError(t, err)
+			require.Empty(t, diags)
+			return boundSchema, nil
+		},
+	}
+}
+
+// emptySchemaLoader returns a schema loader that loads a package with no resources or types.
+func emptySchemaLoader(t *testing.T) schema.ReferenceLoader {
+	return &testSchemaLoader{
+		loadSchemaF: func(pkg string, version *semver.Version) (*schema.Package, error) {
+			emptyPackageSpec := schema.PackageSpec{
+				Name:    "empty",
+				Version: "0.1.0",
+			}
+
+			boundSchema, diags, err := schema.BindSpec(emptyPackageSpec, nil)
+			require.NoError(t, err)
+			require.Empty(t, diags)
+			return boundSchema, nil
+		},
 	}
 }

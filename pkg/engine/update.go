@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -474,14 +475,22 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
-		Proj:        proj,
-		Pwd:         pwd,
-		Program:     main,
-		ProjectRoot: projectRoot,
-		Args:        args,
-		Target:      target,
-	}, defaultProviderVersions, dryRun), nil
+	schemaLoader := schema.NewPluginLoader(plugctx.Host)
+
+	return deploy.NewEvalSource(
+		plugctx,
+		&deploy.EvalRunInfo{
+			Proj:        proj,
+			Pwd:         pwd,
+			Program:     main,
+			ProjectRoot: projectRoot,
+			Args:        args,
+			Target:      target,
+		},
+		defaultProviderVersions,
+		dryRun,
+		schemaLoader,
+	), nil
 }
 
 func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,

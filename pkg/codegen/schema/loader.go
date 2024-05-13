@@ -48,10 +48,16 @@ type ReferenceLoader interface {
 type pluginLoader struct {
 	m sync.RWMutex
 
-	host    plugin.Host
-	entries map[string]PackageReference
+	host      plugin.Host
+	entries   map[string]PackageReference
+	providers map[providerKey]plugin.Provider
 
 	cacheOptions pluginLoaderCacheOptions
+}
+
+type providerKey struct {
+	pkg           string
+	versionString string
 }
 
 // Caching options intended for benchmarking or debugging:
@@ -66,15 +72,17 @@ type pluginLoaderCacheOptions struct {
 
 func NewPluginLoader(host plugin.Host) ReferenceLoader {
 	return &pluginLoader{
-		host:    host,
-		entries: map[string]PackageReference{},
+		host:      host,
+		entries:   map[string]PackageReference{},
+		providers: map[providerKey]plugin.Provider{},
 	}
 }
 
 func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
 	return &pluginLoader{
-		host:    host,
-		entries: map[string]PackageReference{},
+		host:      host,
+		entries:   map[string]PackageReference{},
+		providers: map[providerKey]plugin.Provider{},
 
 		cacheOptions: cacheOptions,
 	}
@@ -297,7 +305,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 }
 
 func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version) ([]byte, plugin.Provider, error) {
-	provider, err := l.host.Provider(tokens.Package(pkg), version)
+	provider, err := l.getProvider(pkg, version)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -312,4 +320,53 @@ func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version
 	}
 
 	return schemaBytes, provider, nil
+}
+
+// getProvider returns a provider for the given package and version (which may
+// be nil).
+//
+// Note that for this function to be usable in a program context, where it could
+// be called per resource (and not say, just the once as in a codegen context),
+// we need to cache provider loads when providers are loaded for the purpose of
+// schema lookup. For the purposes of program execution, provider loads are not
+// cached -- if a program instantiates the same name/version of a provider twice
+// with different parameters, for instance, we want those instantiations to
+// yield two separate, independent instances. However, when loading schema, not
+// only does this not matter (two providers will have the same schema if and
+// only if they share the same name/version), it's of critical importance that
+// we cache provider loads by name/version, lest we instantiate a provider for
+// _every resource_ in the program that depends on it. This function thus caches
+// providers by name/version pairs (version may also be nil).
+//
+// Note that in a program context, this may mean we have a number of potentially
+// avoidable provider loads: if there are `P` distinct providers in a program,
+// we will perform `2P` loads where we previously performed `P`. We are betting
+// that this will not have a severe impact on performance, but could be wrong.
+// Ideally we could avoid the double loading by sharing a "schema load"
+// (`GetSchema` being akin to a "static" method call) with an "instantiation
+// load" (`Check`, `Diff` etc. being akin to "instance" methods). Unfortunately,
+// as it stands today, provider loads are coupled/the same as provider
+// instances, so this would likely require a substantial rethink/rework to make
+// it possible (there is no way to load the "class definition" without
+// instantiating it, to continue the static/instance analogy).
+func (l *pluginLoader) getProvider(pkg string, version *semver.Version) (plugin.Provider, error) {
+	var versionString string
+	if version != nil {
+		versionString = version.String()
+	} else {
+		versionString = ""
+	}
+
+	key := providerKey{pkg: pkg, versionString: versionString}
+	if p, ok := l.providers[key]; ok {
+		return p, nil
+	}
+
+	provider, err := l.host.Provider(tokens.Package(pkg), version)
+	if err != nil {
+		return nil, err
+	}
+
+	l.providers[key] = provider
+	return provider, nil
 }
