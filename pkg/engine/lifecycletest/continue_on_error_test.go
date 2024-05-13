@@ -371,7 +371,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	project := p.GetProject()
 
 	// Run an update to create the resource
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Equal(t, 2, len(snap.Resources)) // 1 resource + 1 provider
@@ -381,7 +381,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		"foo": "baz",
 	})
 	// Run an update to create the resource
-	snap, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.NotNil(t, snap)
 	assert.Equal(t, 6, len(snap.Resources)) // 4 resources + 2 providers
