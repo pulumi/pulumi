@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -19,12 +18,12 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "log [<org-name>/]<environment-name>[:<revision-or-tag>]",
+		Use:   "log [<org-name>/]<environment-name>[@<version>]",
 		Short: "Show revision logs.",
 		Long: "Show revision logs\n" +
 			"\n" +
-			"This command shows the revision logs for an environment. If a revision\n" +
-			"or tag is present, the logs will start at the given revision.\n",
+			"This command shows the revision logs for an environment. If a version\n" +
+			"is present, the logs will start at that version.\n",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -34,15 +33,15 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
+			orgName, envName, version, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
 			}
 			_ = args
 
 			before := 0
-			if revisionOrTag != "" {
-				rev, err := env.esc.client.GetRevisionNumber(ctx, orgName, envName, revisionOrTag)
+			if version != "" {
+				rev, err := env.esc.client.GetRevisionNumber(ctx, orgName, envName, version)
 				if err != nil {
 					return err
 				}
@@ -50,7 +49,6 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 			}
 
 			// NOTE: we use the color profile from the user-visible stdout rather than the color profile from the pager's stdout.
-			rules := style.Default()
 			st := style.NewStylist(style.Profile(env.esc.stdout))
 			return env.esc.pager.Run(pagerFlag, env.esc.stdout, env.esc.stderr, func(ctx context.Context, stdout io.Writer) error {
 				count := 500
@@ -69,31 +67,7 @@ func newEnvLogCmd(env *envCommand) *cobra.Command {
 					before = revisions[len(revisions)-1].Number
 
 					for _, r := range revisions {
-						st.Fprintf(stdout, rules.H1.StylePrimitive, "revision %v", r.Number)
-						switch len(r.Tags) {
-						case 0:
-							// OK
-						case 1:
-							st.Fprintf(stdout, rules.LinkText, " (tag: %v)", r.Tags[0])
-						default:
-							st.Fprintf(stdout, rules.LinkText, " (tags: %v)", strings.Join(r.Tags, ", "))
-						}
-						fmt.Fprintln(stdout, "")
-
-						if r.CreatorLogin == "" {
-							fmt.Fprintf(stdout, "Author: <unknown>\n")
-						} else {
-							fmt.Fprintf(stdout, "Author: %v <%v>\n", r.CreatorName, r.CreatorLogin)
-						}
-
-						stamp := r.Created
-						if utc {
-							stamp = stamp.UTC()
-						} else {
-							stamp = stamp.Local()
-						}
-
-						fmt.Fprintf(stdout, "Date:   %v\n", stamp)
+						printRevision(stdout, st, r, utc)
 						fmt.Fprintf(stdout, "\n")
 					}
 				}

@@ -12,13 +12,12 @@ import (
 
 func newEnvVersionRmCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rm [<org-name>/]<environment-name>:<tag>",
+		Use:   "rm [<org-name>/]<environment-name>@<tag>",
 		Args:  cobra.ExactArgs(1),
-		Short: "Remove a version tag.",
-		Long: "Remove a version tag\n" +
+		Short: "Remove a tagged version.",
+		Long: "Remove a tagged version\n" +
 			"\n" +
-			"This command removes the version tag with the given name to refer to the\n" +
-			"indicated revision.\n",
+			"This command removes the tagged version with the given name",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -27,23 +26,23 @@ func newEnvVersionRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
+			orgName, envName, version, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
 			}
-			if revisionOrTag == "" || isRevisionNumber(revisionOrTag) {
-				return errors.New("please specify a tag name to remove")
+			if version == "" || isRevisionNumber(version) {
+				return errors.New("please specify a tagged version to remove")
 			}
 			_ = args
 
-			return env.esc.client.DeleteEnvironmentRevisionTag(ctx, orgName, envName, revisionOrTag)
+			return env.esc.client.DeleteEnvironmentRevisionTag(ctx, orgName, envName, version)
 		},
 	}
 
 	return cmd
 }
 
-func isRevisionNumber(revisionOrTag string) bool {
-	_, err := strconv.ParseInt(revisionOrTag, 10, 0)
+func isRevisionNumber(version string) bool {
+	_, err := strconv.ParseInt(version, 10, 0)
 	return err == nil
 }

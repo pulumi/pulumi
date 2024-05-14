@@ -20,6 +20,7 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 		SilenceUsage: true,
 	}
 
+	cmd.AddCommand(newEnvVersionShowCmd(env))
 	cmd.AddCommand(newEnvVersionTagCmd(env))
 	cmd.AddCommand(newEnvVersionRmCmd(env))
 	cmd.AddCommand(newEnvVersionLsCmd(env))

@@ -38,11 +38,11 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
+			orgName, envName, version, args, err := env.getEnvName(args)
 			if err != nil {
 				return err
 			}
-			if revisionOrTag != "" {
+			if version != "" {
 				return fmt.Errorf("the rm command does not accept revisions or tags")
 			}
 

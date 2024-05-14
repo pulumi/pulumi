@@ -1,6 +1,6 @@
 run: |
-  (esc env edit test:1 --editor my-editor || exit 0)
-  esc env edit test:foo --editor my-editor
+  (esc env edit test@1 --editor my-editor || exit 0)
+  esc env edit test@foo --editor my-editor
 error: exit status 1
 process:
   commands:
@@ -11,10 +11,10 @@ environments:
     values:
       foo: bar
 stdout: |
-  > esc env edit test:1 --editor my-editor
-  > esc env edit test:foo --editor my-editor
+  > esc env edit test@1 --editor my-editor
+  > esc env edit test@foo --editor my-editor
 stderr: |
-  > esc env edit test:1 --editor my-editor
+  > esc env edit test@1 --editor my-editor
   Error: the edit command does not accept revisions or tags
-  > esc env edit test:foo --editor my-editor
+  > esc env edit test@foo --editor my-editor
   Error: the edit command does not accept revisions or tags

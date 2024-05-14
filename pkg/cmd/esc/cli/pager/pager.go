@@ -15,7 +15,7 @@ func Run(pager string, stdout, stderr io.Writer, f func(context.Context, io.Writ
 	if pager == "" {
 		pager = os.Getenv("PAGER")
 		if pager == "" {
-			pager = "less -R"
+			pager = "less -R -F"
 		}
 	}
 
