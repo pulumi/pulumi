@@ -1087,8 +1087,8 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 }
 
 func (display *ProgressDisplay) handleDownloadProgressEvent(payload engine.DownloadProgressEventPayload) {
-	display.m.Lock()
-	defer display.m.Unlock()
+	display.eventMutex.Lock()
+	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()

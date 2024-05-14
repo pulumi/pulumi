@@ -182,7 +182,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		// should be empty at this point
 		assert.Emptyf(t, treeRenderer.systemMessages,
 			"Not expecting system messages to be populated until rendering happens.")
-		assert.Equalf(t, buf.String(), "<%{hide-cursor}%>", "No content should have been written to the terminal yet")
+		assert.Equalf(t, "<{%hide-cursor%}>", buf.String(), "No content should have been written to the terminal yet")
 	}()
 
 	// This should trigger a render, and reset the dirty flag to false.
