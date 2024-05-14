@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -105,7 +106,7 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 }
 
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
-	return camel(m.Name)
+	return cgstrings.Camel(m.Name)
 }
 
 func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
