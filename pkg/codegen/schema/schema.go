@@ -71,10 +71,10 @@ func (t primitiveType) String() string {
 		return "pulumi:pulumi:Asset"
 	case jsonType:
 		fallthrough
-	case anyResourceType:
-		return "pulumi:pulumi:Resource"
 	case anyType:
 		return "pulumi:pulumi:Any"
+	case anyResourceType:
+		return "pulumi:pulumi:Resource"
 	default:
 		panic("unknown primitive type")
 	}
