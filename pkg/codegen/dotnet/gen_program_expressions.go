@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1027,7 +1028,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		lambdaArg := "invoke"
 		if invokedFunctionSchema.ReturnType != nil {
 			if objectType, ok := invokedFunctionSchema.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				lambdaArg = LowerCamelCase(g.schemaTypeName(objectType))
+				lambdaArg = cgstrings.Camel(g.schemaTypeName(objectType))
 			}
 		}
 

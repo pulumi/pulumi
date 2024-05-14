@@ -126,13 +126,13 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 	switch functionName {
 	case "filebase64":
 		return fmt.Sprintf(`
-%sstring ReadFileBase64(string path) 
+%sstring ReadFileBase64(string path)
 %s{
 %s    return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)));
 %s}`, indent, indent, indent, indent), true
 	case "filebase64sha256":
 		return fmt.Sprintf(`
-%sstring ComputeFileBase64Sha256(string path) 
+%sstring ComputeFileBase64Sha256(string path)
 %s{
 %s    var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
 %s    var hashData = SHA256.Create().ComputeHash(fileData);
@@ -140,28 +140,18 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s}`, indent, indent, indent, indent, indent, indent), true
 	case "sha1":
 		return fmt.Sprintf(`
-%sstring ComputeSHA1(string input) 
+%sstring ComputeSHA1(string input)
 %s{
 %s    var hash = SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input));
 %s    return BitConverter.ToString(hash).Replace("-","").ToLowerInvariant();
 %s}`, indent, indent, indent, indent, indent), true
 	case "notImplemented":
 		return fmt.Sprintf(`
-%sobject NotImplemented(string errorMessage) 
+%sobject NotImplemented(string errorMessage)
 %s{
 %s    throw new System.NotImplementedException(errorMessage);
 %s}`, indent, indent, indent, indent), true
 	default:
 		return "", false
 	}
-}
-
-// LowerCamelCase sets the first character to lowercase
-// LowerCamelCase("LowerCamelCase") -> "lowerCamelCase"
-func LowerCamelCase(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
 }
