@@ -437,22 +437,24 @@ class Output(Generic[T_co]):
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
     @overload
     @staticmethod
-    def all(*args: "Output[U]") -> "Output[List[U]]": ...  # type: ignore
+    def all(*args: "Output[Any]") -> "Output[List[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: "Output[U]") -> "Output[Dict[str, U]]": ...  # type: ignore
+    def all(**kwargs: "Output[Any]") -> "Output[Dict[str, Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(*args: Input[U]) -> "Output[List[U]]": ...  # type: ignore
+    def all(*args: Input[Any]) -> "Output[List[Any]]": ...  # type: ignore
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[U]) -> "Output[Dict[str, U]]": ...  # type: ignore
+    def all(**kwargs: Input[Any]) -> "Output[Dict[str, Any]]": ...  # type: ignore
 
     @staticmethod
-    def all(*args: Input[U], **kwargs: Input[U]) -> "Output[list[U] | dict[str, U]]":
+    def all(
+        *args: Input[Any], **kwargs: Input[Any]
+    ) -> "Output[list[Any] | dict[str, Any]]":
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
