@@ -62,6 +62,7 @@ type newArgs struct {
 	configPath        bool
 	description       string
 	dir               string
+	escConfig         bool
 	force             bool
 	generateOnly      bool
 	interactive       bool
@@ -137,6 +138,12 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
 			return err
 		}
+	}
+
+	// In case we are going to use ESC, validate it early.
+	envBackend, envOk := b.(backend.EnvironmentsBackend)
+	if args.escConfig && !envOk {
+		return errors.New("this backend doesn't support ESC, but --esc-config was true")
 	}
 
 	// Ensure the project doesn't already exist.
@@ -352,6 +359,26 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 		// The backend will print "Created stack '<stack>'" on success.
 		fmt.Println()
+	}
+
+	// Create the environment, if needed.
+	if !args.generateOnly && args.escConfig {
+		org := s.(interface{ OrgName() string }).OrgName()
+		env := defaultEnvironmentName(s)
+		_, err = envBackend.CreateEnvironment(ctx, org, env, []byte{})
+		if err != nil {
+			return err
+		}
+
+		ps, err := loadProjectStack(proj, s)
+		if err != nil {
+			return err
+		}
+		ps.Environment = ps.Environment.Append(env)
+		err = saveProjectStack(s, ps)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Prompt for config values (if needed) and save.
@@ -571,6 +598,9 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&args.dir, "dir", "",
 		"The location to place the generated project; if not specified, the current directory is used")
+	cmd.PersistentFlags().BoolVar(
+		&args.escConfig, "esc-config", true,
+		"Use ESC for configuration settinges by default, rather than storing them in local project files")
 	cmd.PersistentFlags().BoolVarP(
 		&args.force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
@@ -781,7 +811,8 @@ func stackInit(
 	return createStack(ctx, b, stackRef, root, nil, setCurrent, secretsProvider)
 }
 
-// saveConfig saves the config for the stack.
+// saveConfig saves the config for the stack. For stacks using ESC-config, this will store the config
+// on the server; for stacks not using ESC-config, this will store the config in the project file.
 func saveConfig(stack backend.Stack, c config.Map) error {
 	project, _, err := readProject()
 	if err != nil {

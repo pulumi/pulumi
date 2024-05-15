@@ -379,11 +379,25 @@ var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 type MockEnvironmentsBackend struct {
 	MockBackend
 
+	GetEnvironmentF func(
+		ctx context.Context,
+		org string,
+		name string,
+	) ([]byte, string, error)
+
 	CreateEnvironmentF func(
 		ctx context.Context,
 		org string,
 		name string,
 		yaml []byte,
+	) (apitype.EnvironmentDiagnostics, error)
+
+	UpdateEnvironmentF func(
+		ctx context.Context,
+		org string,
+		name string,
+		yaml []byte,
+		tag string,
 	) (apitype.EnvironmentDiagnostics, error)
 
 	CheckYAMLEnvironmentF func(
@@ -400,6 +414,17 @@ type MockEnvironmentsBackend struct {
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
+func (be *MockEnvironmentsBackend) GetEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+) ([]byte, string, error) {
+	if be.GetEnvironmentF != nil {
+		return be.GetEnvironmentF(ctx, org, name)
+	}
+	panic("not implemented")
+}
+
 func (be *MockEnvironmentsBackend) CreateEnvironment(
 	ctx context.Context,
 	org string,
@@ -408,6 +433,19 @@ func (be *MockEnvironmentsBackend) CreateEnvironment(
 ) (apitype.EnvironmentDiagnostics, error) {
 	if be.CreateEnvironmentF != nil {
 		return be.CreateEnvironmentF(ctx, org, name, yaml)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) UpdateEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+	yaml []byte,
+	tag string,
+) (apitype.EnvironmentDiagnostics, error) {
+	if be.UpdateEnvironmentF != nil {
+		return be.UpdateEnvironmentF(ctx, org, name, yaml, tag)
 	}
 	panic("not implemented")
 }

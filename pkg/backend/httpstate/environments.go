@@ -41,6 +41,14 @@ func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDi
 	return apiDiags
 }
 
+func (b *cloudBackend) GetEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+) ([]byte, string, error) {
+	return b.escClient.GetEnvironment(ctx, org, name, false)
+}
+
 func (b *cloudBackend) CreateEnvironment(
 	ctx context.Context,
 	org string,
@@ -50,7 +58,17 @@ func (b *cloudBackend) CreateEnvironment(
 	if err := b.escClient.CreateEnvironment(ctx, org, name); err != nil {
 		return nil, err
 	}
-	diags, err := b.escClient.UpdateEnvironment(ctx, org, name, yaml, "")
+	return b.UpdateEnvironment(ctx, org, name, yaml, "")
+}
+
+func (b *cloudBackend) UpdateEnvironment(
+	ctx context.Context,
+	org string,
+	name string,
+	yaml []byte,
+	tag string,
+) (apitype.EnvironmentDiagnostics, error) {
+	diags, err := b.escClient.UpdateEnvironment(ctx, org, name, yaml, tag)
 	return convertESCDiags(diags), err
 }
 

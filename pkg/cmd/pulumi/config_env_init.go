@@ -89,6 +89,12 @@ type configEnvInitCmd struct {
 	yes         bool
 }
 
+func defaultEnvironmentName(stack backend.Stack) string {
+	ref := stack.Ref()
+	proj, _ := ref.Project()
+	return fmt.Sprintf("%v-%v", proj, ref.Name())
+}
+
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.yes && !cmd.parent.interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
@@ -114,7 +120,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	orgName := stack.(interface{ OrgName() string }).OrgName()
 
 	if cmd.envName == "" {
-		cmd.envName = fmt.Sprintf("%v-%v", project.Name, stack.Ref().Name())
+		cmd.envName = defaultEnvironmentName(stack)
 	}
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v for stack %v...\n", cmd.envName, stack.Ref().Name())
@@ -129,7 +135,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	yaml, err := cmd.renderEnvironmentDefinition(ctx, cmd.envName, crypter, config, cmd.showSecrets)
+	yaml, err := renderEnvironmentDefinition(ctx, cmd.envName, crypter, config, cmd.showSecrets)
 	if err != nil {
 		return err
 	}
@@ -203,7 +209,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	return ps, m, nil
 }
 
-func (cmd *configEnvInitCmd) render(v resource.PropertyValue) any {
+func renderEnvYaml(v resource.PropertyValue) any {
 	switch {
 	case v.IsBool():
 		return v.BoolValue()
@@ -215,26 +221,26 @@ func (cmd *configEnvInitCmd) render(v resource.PropertyValue) any {
 		arrV := v.ArrayValue()
 		rendered := make([]any, len(arrV))
 		for i, v := range arrV {
-			rendered[i] = cmd.render(v)
+			rendered[i] = renderEnvYaml(v)
 		}
 		return rendered
 	case v.IsObject():
 		objV := v.ObjectValue()
 		rendered := make(map[string]any, len(objV))
 		for k, v := range objV {
-			rendered[string(k)] = cmd.render(v)
+			rendered[string(k)] = renderEnvYaml(v)
 		}
 		return rendered
 	case v.IsSecret():
 		return map[string]any{
-			"fn::secret": cmd.render(v.SecretValue().Element),
+			"fn::secret": renderEnvYaml(v.SecretValue().Element),
 		}
 	default:
 		return nil
 	}
 }
 
-func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
+func renderEnvironmentDefinition(
 	ctx context.Context,
 	envName string,
 	encrypter eval.Encrypter,
@@ -246,7 +252,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]any{
 		"values": map[string]any{
-			"pulumiConfig": cmd.render(resource.NewObjectProperty(config)),
+			"pulumiConfig": renderEnvYaml(resource.NewObjectProperty(config)),
 		},
 	})
 	if err != nil {

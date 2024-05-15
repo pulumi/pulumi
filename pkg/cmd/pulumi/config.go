@@ -29,9 +29,11 @@ import (
 	"github.com/nbutton23/zxcvbn-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
+	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -815,7 +817,89 @@ func loadProjectStack(project *workspace.Project, stack backend.Stack) (*workspa
 	return workspace.LoadProjectStack(project, stackConfigFile)
 }
 
+func escConfigEnvName(stack backend.Stack, ps *workspace.ProjectStack) (string, bool) {
+	configEnvironment := defaultEnvironmentName(stack)
+	for _, env := range ps.Environment.Imports() {
+		if env == configEnvironment {
+			return env, true
+		}
+	}
+	return "", false
+}
+
 func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
+	// TODO: sort of a suspicious place to be doing this, but everything bottoms out here.
+
+	// See if this is an ESC-config-enabled stack; if yes, we will persist the config using ESC.
+	// Otherwise, we will store it in the project file itself.
+	if env, useESC := escConfigEnvName(stack, ps); useESC {
+		ctx := context.Background()
+		envBackend := stack.Backend().(backend.EnvironmentsBackend)
+		org := stack.(interface{ OrgName() string }).OrgName()
+
+		// Decrypt and create a property map.
+		decrypter, _, err := getStackDecrypter(stack, ps)
+		if err != nil {
+			return err
+		}
+		cfg, err := ps.Config.AsDecryptedPropertyMap(ctx, decrypter)
+		if err != nil {
+			return err
+		}
+
+		// Read the environment and patch it with the config changes.
+		envYaml, tag, err := envBackend.GetEnvironment(ctx, org, env)
+		if err != nil {
+			return err
+		}
+
+		var envMap map[string]any
+		if err = yaml.Unmarshal(envYaml, &envMap); err != nil {
+			return err
+		}
+		envMapValues, has := envMap["values"]
+		if !has {
+			envMapValues = make(map[string]any)
+			envMap["values"] = envMapValues
+		}
+		envMapValuesM := envMapValues.(map[string]any)
+		envMapPulumiConfig, has := envMapValuesM["pulumiConfig"]
+		if !has {
+			envMapPulumiConfig = make(map[string]any)
+			envMapValuesM["pulumiConfig"] = envMapPulumiConfig
+		}
+		envMapPulumiConfigM := envMapPulumiConfig.(map[string]any)
+		for key, val := range cfg {
+			envMapPulumiConfigM[string(key)] = renderEnvYaml(val)
+		}
+
+		envYaml, err = yaml.Marshal(envMap)
+		if err != nil {
+			return err
+		}
+
+		// Ensure all secrets within the environment are marked as such.
+		crypter, err := newConfigEnvInitCrypter()
+		if err != nil {
+			return err
+		}
+		envYaml, err = eval.EncryptSecrets(ctx, env, envYaml, crypter)
+		if err != nil {
+			return err
+		}
+
+		// Finally save the resulting environment.
+		diags, err := envBackend.UpdateEnvironment(ctx, org, env, envYaml, tag)
+		if err != nil {
+			return err
+		} else if len(diags) != 0 {
+			return fmt.Errorf("internal error creating environment: %w", diags)
+		}
+
+		// Delete the config so that it's not actually stored in the project file (it's unnecessary).
+		ps.Config = make(config.Map)
+	}
+
 	if stackConfigFile == "" {
 		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 	}
