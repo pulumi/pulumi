@@ -50,6 +50,11 @@ func linkedNewConstructResult(resource ComponentResource) (URNInput, Input, erro
 	return newConstructResult(resource)
 }
 
+//go:linkname linkedNewConstructFailure github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewConstructFailure
+func linkedNewConstructFailure(property, reason string) interface{} {
+	return newConstructFailure(property, reason)
+}
+
 //go:linkname linkedCall github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCall
 func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
 	callF callFunc,

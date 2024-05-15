@@ -131,11 +131,12 @@ func (src *evalSource) Iterate(
 	}
 
 	// First, fire up a resource monitor that will watch for and record resource creation.
+	abortChan := make(chan bool)
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
 	mon, err := newResourceMonitor(
-		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
+		src, providers, abortChan, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
@@ -144,6 +145,7 @@ func (src *evalSource) Iterate(
 	iter := &evalSourceIterator{
 		mon:         mon,
 		src:         src,
+		abortChan:   abortChan,
 		regChan:     regChan,
 		regOutChan:  regOutChan,
 		regReadChan: regReadChan,
@@ -161,6 +163,7 @@ func (src *evalSource) Iterate(
 type evalSourceIterator struct {
 	mon         SourceResourceMonitor              // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
+	abortChan   chan bool                          // the channel to abort the iteration.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
@@ -185,6 +188,9 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
+	case <-iter.abortChan:
+		logging.V(5).Infof("EvalSourceIterator ended with abort.")
+		return nil, result.BailErrorf("EvalSourceIterator aborted")
 	case reg := <-iter.regChan:
 		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
 		goal := reg.Goal()
@@ -571,6 +577,7 @@ type resmon struct {
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	sourcePositions           *sourcePositions                   // source position manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
+	abortChan                 chan bool                          // a channel to send aborts to.
 	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
 	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
 	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
@@ -593,7 +600,7 @@ type resmon struct {
 var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
+func newResourceMonitor(src *evalSource, provs ProviderSource, abortChan chan bool, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent, opts Options,
 	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span,
 ) (*resmon, error) {
@@ -621,6 +628,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		parents:                   map[resource.URN]resource.URN{},
 		resGoals:                  map[resource.URN]resource.Goal{},
 		componentProviders:        map[resource.URN]map[string]string{},
+		abortChan:                 abortChan,
 		regChan:                   regChan,
 		regOutChan:                regOutChan,
 		regReadChan:               regReadChan,
@@ -1849,6 +1857,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 
+		if rm.issueConstructErrors(props, result.State.URN, constructResult.Failures) {
+			logging.V(5).Infof(
+				"ResourceMonitor.RegisterResource got construct failures: t=%v, urn=%v, #failures=%v",
+				t, result.State.URN, len(constructResult.Failures))
+
+			// Since the resource isn't valid, fail the deployment by closing the abort channel
+			// and then waiting for the resource monitor to shut down. This is similar to how Check failures
+			// are handled during processing of registerResourceEvent.
+			close(rm.abortChan)
+			<-rm.cancel
+			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down")
+		}
 	} else {
 		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
 		for _, name := range additionalSecretOutputs {
@@ -1907,7 +1927,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
 		}
 
-		// Now block waiting for the operation to finish.
+		// Now block waiting for the operation to finish. Note that the operation never finishes if the resource
+		// has check failures; in that case, the deployment fails and the resource monitor shuts down.
 		select {
 		case result = <-step.done:
 		case <-rm.cancel:
@@ -2055,6 +2076,37 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 		logging.V(10).Infof("The option '%s' has no automatic effect on component resource '%s', "+
 			"ensure it is handled correctly in the component code.", optName, urn)
 	}
+}
+
+// issueCheckErrors prints any check errors to the diagnostics error sink.
+func (rm *resmon) issueConstructErrors(inputs resource.PropertyMap, urn resource.URN,
+	failures []plugin.CheckFailure,
+) bool {
+	if len(failures) == 0 {
+		return false
+	}
+	contract.Assertf(rm.diagostics != nil, "received a nil rm.diagostics")
+	return rm.issueConstructFailures(rm.diagostics.Errorf, inputs, urn, failures)
+}
+
+// issueCheckErrors prints any check errors to the given printer function.
+func (rm *resmon) issueConstructFailures(printf func(*diag.Diag, ...interface{}), inputs resource.PropertyMap,
+	urn resource.URN, failures []plugin.CheckFailure,
+) bool {
+	if len(failures) == 0 {
+		return false
+	}
+	contract.Assertf(urn.IsValid(), "received an invalid urn")
+	for _, failure := range failures {
+		if failure.Property != "" {
+			printf(diag.GetResourcePropertyInvalidValueError(urn),
+				urn.Type(), urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+		} else {
+			printf(
+				diag.GetResourceInvalidError(urn), urn.Type(), urn.Name(), failure.Reason)
+		}
+	}
+	return true
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial

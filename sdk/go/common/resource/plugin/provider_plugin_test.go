@@ -481,6 +481,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			tt.want.Config = make(map[string]string)
 			tt.want.Inputs = &structpb.Struct{Fields: make(map[string]*structpb.Value)}
 			tt.want.AcceptsOutputValues = true
+			tt.want.AcceptsFailures = true
 
 			var got *pulumirpc.ConstructRequest
 			client := &stubClient{
@@ -525,6 +526,43 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestProvider_ConstructFailures(t *testing.T) {
+	t.Parallel()
+
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{
+				AcceptSecrets: true,
+			}, nil
+		},
+		ConstructF: func(req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+			return &pulumirpc.ConstructResponse{
+				Urn: "urn:pulumi:stack::project::type::name",
+				Failures: []*pulumirpc.CheckFailure{
+					{Property: "foo", Reason: "bar"},
+				},
+			}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+
+	// Must configure before we can use Construct.
+	require.NoError(t, p.Configure(nil), "configure failed")
+
+	got, err := p.Construct(
+		ConstructInfo{Project: "project", Stack: "stack"},
+		"type",
+		"name",
+		"",
+		resource.PropertyMap{},
+		ConstructOptions{},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, got, "expected construct result")
+	assert.Equal(t, []CheckFailure{{Property: "foo", Reason: "bar"}}, got.Failures)
 }
 
 // This test detects a data race between Configure and Delete

@@ -1032,6 +1032,7 @@ class ConstructRequest(google.protobuf.message.Message):
     REPLACEONCHANGES_FIELD_NUMBER: builtins.int
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
+    ACCEPTS_FAILURES_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -1096,6 +1097,8 @@ class ConstructRequest(google.protobuf.message.Message):
     """whether to retain the resource in the cloud provider when it is deleted"""
     accepts_output_values: builtins.bool
     """the engine can be passed output values back, stateDependencies can be left blank if returning output values."""
+    accepts_failures: builtins.bool
+    """the engine can be passed failures back."""
     def __init__(
         self,
         *,
@@ -1124,9 +1127,10 @@ class ConstructRequest(google.protobuf.message.Message):
         replaceOnChanges: collections.abc.Iterable[builtins.str] | None = ...,
         retainOnDelete: builtins.bool = ...,
         accepts_output_values: builtins.bool = ...,
+        accepts_failures: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accepts_failures", b"accepts_failures", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
 
 global___ConstructRequest = ConstructRequest
 
@@ -1172,6 +1176,7 @@ class ConstructResponse(google.protobuf.message.Message):
     URN_FIELD_NUMBER: builtins.int
     STATE_FIELD_NUMBER: builtins.int
     STATEDEPENDENCIES_FIELD_NUMBER: builtins.int
+    FAILURES_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN of the component resource."""
     @property
@@ -1180,15 +1185,19 @@ class ConstructResponse(google.protobuf.message.Message):
     @property
     def stateDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructResponse.PropertyDependencies]:
         """a map from property keys to the dependencies of the property."""
+    @property
+    def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
+        """the failures if any arguments didn't pass verification."""
     def __init__(
         self,
         *,
         urn: builtins.str = ...,
         state: google.protobuf.struct_pb2.Struct | None = ...,
         stateDependencies: collections.abc.Mapping[builtins.str, global___ConstructResponse.PropertyDependencies] | None = ...,
+        failures: collections.abc.Iterable[global___CheckFailure] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["state", b"state"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["state", b"state", "stateDependencies", b"stateDependencies", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["failures", b"failures", "state", b"state", "stateDependencies", b"stateDependencies", "urn", b"urn"]) -> None: ...
 
 global___ConstructResponse = ConstructResponse
 

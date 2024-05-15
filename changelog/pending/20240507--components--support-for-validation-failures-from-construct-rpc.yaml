@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: components
+  description: Support for validation failures from Construct RPC

@@ -124,6 +124,11 @@ export interface ConstructResult {
      * Any state that was computed during construction.
      */
     readonly state: Inputs;
+
+    /**
+     * Any validation failures that occurred.
+     */
+    readonly failures?: CheckFailure[];
 }
 
 /**

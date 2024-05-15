@@ -800,6 +800,11 @@ func TestConstructProviderGo(t *testing.T) {
 	}
 }
 
+func TestConstructFailures(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 //nolint:paralleltest // Sets env vars
 func TestGetResourceGo(t *testing.T) {
 	// This uses the random plugin so needs to be able to download it

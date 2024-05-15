@@ -657,7 +657,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ConstructResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ConstructResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ConstructResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -6793,7 +6793,8 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
     retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false),
-    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
+    acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
+    acceptsFailures: jspb.Message.getBooleanFieldWithDefault(msg, 26, false)
   };
 
   if (includeInstance) {
@@ -6937,6 +6938,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 25:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsOutputValues(value);
+      break;
+    case 26:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsFailures(value);
       break;
     default:
       reader.skipField();
@@ -7132,6 +7137,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       25,
+      f
+    );
+  }
+  f = message.getAcceptsFailures();
+  if (f) {
+    writer.writeBool(
+      26,
       f
     );
   }
@@ -8098,6 +8110,31 @@ proto.pulumirpc.ConstructRequest.prototype.setAcceptsOutputValues = function(val
 };
 
 
+/**
+ * optional bool accepts_failures = 26;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getAcceptsFailures = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 26, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setAcceptsFailures = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 26, value);
+};
+
+
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ConstructResponse.repeatedFields_ = [4];
 
 
 
@@ -8132,7 +8169,9 @@ proto.pulumirpc.ConstructResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     state: (f = msg.getState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    statedependenciesMap: (f = msg.getStatedependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructResponse.PropertyDependencies.toObject) : []
+    statedependenciesMap: (f = msg.getStatedependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructResponse.PropertyDependencies.toObject) : [],
+    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
+    proto.pulumirpc.CheckFailure.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -8184,6 +8223,11 @@ proto.pulumirpc.ConstructResponse.deserializeBinaryFromReader = function(msg, re
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.ConstructResponse.PropertyDependencies.deserializeBinaryFromReader, "", new proto.pulumirpc.ConstructResponse.PropertyDependencies());
          });
       break;
+    case 4:
+      var value = new proto.pulumirpc.CheckFailure;
+      reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
+      msg.addFailures(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8231,6 +8275,14 @@ proto.pulumirpc.ConstructResponse.serializeBinaryToWriter = function(message, wr
   f = message.getStatedependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.ConstructResponse.PropertyDependencies.serializeBinaryToWriter);
+  }
+  f = message.getFailuresList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      4,
+      f,
+      proto.pulumirpc.CheckFailure.serializeBinaryToWriter
+    );
   }
 };
 
@@ -8466,6 +8518,44 @@ proto.pulumirpc.ConstructResponse.prototype.getStatedependenciesMap = function(o
 proto.pulumirpc.ConstructResponse.prototype.clearStatedependenciesMap = function() {
   this.getStatedependenciesMap().clear();
   return this;};
+
+
+/**
+ * repeated CheckFailure failures = 4;
+ * @return {!Array<!proto.pulumirpc.CheckFailure>}
+ */
+proto.pulumirpc.ConstructResponse.prototype.getFailuresList = function() {
+  return /** @type{!Array<!proto.pulumirpc.CheckFailure>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 4));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.CheckFailure>} value
+ * @return {!proto.pulumirpc.ConstructResponse} returns this
+*/
+proto.pulumirpc.ConstructResponse.prototype.setFailuresList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 4, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.CheckFailure=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.CheckFailure}
+ */
+proto.pulumirpc.ConstructResponse.prototype.addFailures = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.pulumirpc.CheckFailure, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConstructResponse} returns this
+ */
+proto.pulumirpc.ConstructResponse.prototype.clearFailuresList = function() {
+  return this.setFailuresList([]);
+};
 
 
 

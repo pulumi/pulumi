@@ -17,25 +17,8 @@ from typing import Optional, Sequence, Mapping, Any
 from pulumi import ResourceOptions, Input, Inputs
 
 
-class ConstructResult:
-    """ConstructResult represents the results of a call to
-    `Provider.construct`.
-
-    """
-
-    urn: Input[str]
-    """The URN of the constructed resource."""
-
-    state: Inputs
-    """Any state that was computed during construction."""
-
-    def __init__(self, urn: Input[str], state: Inputs) -> None:
-        self.urn = urn
-        self.state = state
-
-
 class CheckFailure:
-    """CheckFailure represents a single failure in the results of a call to `Provider.call`."""
+    """CheckFailure represents a single failure in the results of a call to `Provider.call` or `Provider.construct`."""
 
     property: str
     """The property that failed validation."""
@@ -48,6 +31,32 @@ class CheckFailure:
     ) -> None:
         self.property = property
         self.reason = reason
+
+
+class ConstructResult:
+    """ConstructResult represents the results of a call to
+    `Provider.construct`.
+
+    """
+
+    urn: Input[str]
+    """The URN of the constructed resource."""
+
+    state: Inputs
+    """Any state that was computed during construction."""
+
+    failures: Optional[Sequence[CheckFailure]]
+    """Any validation failures that occurred."""
+
+    def __init__(
+        self,
+        urn: Input[str],
+        state: Inputs,
+        failures: Optional[Sequence[CheckFailure]] = None,
+    ) -> None:
+        self.urn = urn
+        self.state = state
+        self.failures = failures
 
 
 class CallResult:

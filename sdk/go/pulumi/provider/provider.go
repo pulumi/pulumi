@@ -35,13 +35,21 @@ func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 ) (*pulumirpc.ConstructResponse, error) {
 	return linkedConstruct(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, typ, name string,
 		inputs map[string]interface{}, options pulumi.ResourceOption,
-	) (pulumi.URNInput, pulumi.Input, error) {
+	) (pulumi.URNInput, pulumi.Input, []interface{}, error) {
 		ci := ConstructInputs{ctx: pulumiCtx, inputs: inputs}
 		result, err := construct(pulumiCtx, typ, name, ci, options)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
-		return result.URN, result.State, nil
+
+		var failures []interface{}
+		if len(result.Failures) > 0 {
+			failures = make([]interface{}, len(result.Failures))
+			for i, v := range result.Failures {
+				failures[i] = linkedNewConstructFailure(v.Property, v.Reason)
+			}
+		}
+		return result.URN, result.State, failures, nil
 	})
 }
 
@@ -61,22 +69,42 @@ func (inputs ConstructInputs) CopyTo(args interface{}) error {
 	return linkedConstructInputsCopyTo(inputs.ctx, inputs.inputs, args)
 }
 
+// ConstructFailure indicates that a call to Construct failed; it contains the property and reason for the failure.
+type ConstructFailure struct {
+	Property string // the property that failed checking.
+	Reason   string // the reason the property failed to check.
+}
+
 // ConstructResult is the result of a call to Construct.
 type ConstructResult struct {
 	URN   pulumi.URNInput
 	State pulumi.Input
+	// The failures if any arguments didn't pass verification.
+	Failures []ConstructFailure
+}
+
+type ConstructResultOption func(*ConstructResult)
+
+func Failures(failures []ConstructFailure) ConstructResultOption {
+	return func(r *ConstructResult) {
+		r.Failures = append(r.Failures, failures...)
+	}
 }
 
 // NewConstructResult creates a ConstructResult from the resource.
-func NewConstructResult(resource pulumi.ComponentResource) (*ConstructResult, error) {
+func NewConstructResult(resource pulumi.ComponentResource, opts ...ConstructResultOption) (*ConstructResult, error) {
 	urn, state, err := linkedNewConstructResult(resource)
 	if err != nil {
 		return nil, err
 	}
-	return &ConstructResult{
+	r := &ConstructResult{
 		URN:   urn,
 		State: state,
-	}, nil
+	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r, nil
 }
 
 type CallFunc func(ctx *pulumi.Context, tok string, args CallArgs) (*CallResult, error)
@@ -164,7 +192,7 @@ func NewSingletonCallResult[T any](result T) (*CallResult, error) {
 }
 
 type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string]interface{},
-	options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error)
+	options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, []interface{}, error)
 
 // linkedConstruct is made available here from ../provider_linked.go via go:linkname.
 func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
@@ -178,6 +206,9 @@ func linkedConstructInputsCopyTo(ctx *pulumi.Context, inputs map[string]interfac
 
 // linkedNewConstructResult is made available here from ../provider_linked.go via go:linkname.
 func linkedNewConstructResult(resource pulumi.ComponentResource) (pulumi.URNInput, pulumi.Input, error)
+
+// linkedNewConstructFailure is made available here from ../provider_linked.go via go:linkname.
+func linkedNewConstructFailure(property, reason string) interface{}
 
 type callFunc func(ctx *pulumi.Context, tok string, args map[string]interface{}) (pulumi.Input, []interface{}, error)
 

@@ -525,10 +525,16 @@ func (p *providerServer) Construct(ctx context.Context,
 		outputDependencies[string(name)] = &pulumirpc.ConstructResponse_PropertyDependencies{Urns: urns}
 	}
 
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(result.Failures))
+	for i, f := range result.Failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
 	return &pulumirpc.ConstructResponse{
 		Urn:               string(result.URN),
 		State:             outputs,
 		StateDependencies: outputDependencies,
+		Failures:          rpcFailures,
 	}, nil
 }
 

@@ -381,6 +381,7 @@ message ConstructRequest {
     bool retainOnDelete                     = 24; // whether to retain the resource in the cloud provider when it is deleted
 
     bool accepts_output_values = 25; // the engine can be passed output values back, stateDependencies can be left blank if returning output values.
+    bool accepts_failures = 26;      // the engine can be passed failures back.
 }
 
 message ConstructResponse {
@@ -392,6 +393,7 @@ message ConstructResponse {
     string urn = 1;                                          // the URN of the component resource.
     google.protobuf.Struct state = 2;                        // any properties that were computed during construction.
     map<string, PropertyDependencies> stateDependencies = 3; // a map from property keys to the dependencies of the property.
+    repeated CheckFailure failures = 4;                     // the failures if any arguments didn't pass verification.
 }
 
 // ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
