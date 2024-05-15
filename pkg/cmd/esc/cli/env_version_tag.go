@@ -18,13 +18,15 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tag [<org-name>/]<environment-name>@<tag> [<revision-number>]",
 		Args:  cobra.RangeArgs(1, 2),
-		Short: "Create or update a tagged version",
-		Long: "Create or update a tagged version\n" +
+		Short: "Manage tagged versions",
+		Long: "Manage tagged versions\n" +
 			"\n" +
 			"This command creates or updates the tagged version with the given name.\n" +
 			"If a revision is passed as the second argument, then the tagged version is\n" +
 			"updated to refer to the indicated revision. Otherwise, the tagged version\n" +
-			"is updated to point to the latest revision.",
+			"is updated to point to the latest revision.\n" +
+			"\n" +
+			"Subcommands exist for listing and removing tagged versions.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -66,6 +68,9 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 			return env.esc.client.CreateEnvironmentRevisionTag(ctx, orgName, envName, tagName, &revision)
 		},
 	}
+
+	cmd.AddCommand(newEnvVersionTagLsCmd(env))
+	cmd.AddCommand(newEnvVersionTagRmCmd(env))
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
 

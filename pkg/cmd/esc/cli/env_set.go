@@ -41,7 +41,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 			if version != "" {
-				return fmt.Errorf("the set command does not accept revisions or tags")
+				return fmt.Errorf("the set command does not accept versions")
 			}
 			if len(args) < 2 {
 				return fmt.Errorf("expected a path and a value")

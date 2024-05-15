@@ -7,6 +7,6 @@ stdout: |
   > esc env rm dup@foo -y
 stderr: |
   > esc env rm dup@1 -y
-  Error: the rm command does not accept revisions or tags
+  Error: the rm command does not accept versions
   > esc env rm dup@foo -y
-  Error: the rm command does not accept revisions or tags
+  Error: the rm command does not accept versions

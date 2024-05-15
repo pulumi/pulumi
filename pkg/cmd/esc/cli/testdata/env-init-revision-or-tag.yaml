@@ -7,6 +7,6 @@ stdout: |
   > esc env init test-env@foo
 stderr: |
   > esc env init test-env@1
-  Error: the init command does not accept revisions or tags
+  Error: the init command does not accept versions
   > esc env init test-env@foo
-  Error: the init command does not accept revisions or tags
+  Error: the init command does not accept versions

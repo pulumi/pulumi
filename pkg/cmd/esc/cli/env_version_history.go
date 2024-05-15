@@ -13,17 +13,17 @@ import (
 	"github.com/pulumi/esc/cmd/esc/cli/style"
 )
 
-func newEnvLogCmd(env *envCommand) *cobra.Command {
+func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 	var pagerFlag string
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "log [<org-name>/]<environment-name>[@<version>]",
-		Short: "Show revision logs.",
-		Long: "Show revision logs\n" +
+		Use:   "history [<org-name>/]<environment-name>[@<version>]",
+		Short: "Show revision history.",
+		Long: "Show revision history\n" +
 			"\n" +
-			"This command shows the revision logs for an environment. If a version\n" +
-			"is present, the logs will start at that version.\n",
+			"This command shows the revision history for an environment. If a version\n" +
+			"is present, the logs will start at the corresponding revision.\n",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

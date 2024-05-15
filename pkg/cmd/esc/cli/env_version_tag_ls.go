@@ -13,16 +13,16 @@ import (
 	"github.com/pulumi/esc/cmd/esc/cli/style"
 )
 
-func newEnvVersionLsCmd(env *envCommand) *cobra.Command {
+func newEnvVersionTagLsCmd(env *envCommand) *cobra.Command {
 	var pagerFlag string
 	var utc bool
 
 	cmd := &cobra.Command{
 		Use:   "ls [<org-name>/]<environment-name>",
-		Short: "List version tags.",
-		Long: "List version tags\n" +
+		Short: "List tagged versions.",
+		Long: "List tagged versions\n" +
 			"\n" +
-			"This command lists the version tags for an environment.\n",
+			"This command lists an environment's tagged versions.\n",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,7 +37,7 @@ func newEnvVersionLsCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 			if version != "" {
-				return fmt.Errorf("the ls command does not accept revisions or tags")
+				return fmt.Errorf("the ls command does not accept versions")
 			}
 			_ = args
 

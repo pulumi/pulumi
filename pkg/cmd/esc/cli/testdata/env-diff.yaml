@@ -1,15 +1,15 @@
 run: |
   esc env diff test
-  esc env diff test:latest
-  esc env diff test:stable
-  esc env diff test:1
-  esc env diff test:2
-  esc env diff test:3
-  esc env diff test:1 2
-  esc env diff test:stable --format json
-  esc env diff test:stable --format string
-  esc env diff test:stable --format dotenv
-  esc env diff test:stable --format shell
+  esc env diff test@latest
+  esc env diff test@stable
+  esc env diff test@1
+  esc env diff test@2
+  esc env diff test@3
+  esc env diff test@1 2
+  esc env diff test@stable --format json
+  esc env diff test@stable --format string
+  esc env diff test@stable --format dotenv
+  esc env diff test@stable --format shell
 environments:
   test-user/a: {}
   test-user/b: {}
@@ -43,8 +43,8 @@ environments:
               BAR: qux
 stdout: |
   > esc env diff test
-  > esc env diff test:latest
-  > esc env diff test:stable
+  > esc env diff test@latest
+  > esc env diff test@stable
   # Value
   ```diff
   --- test:stable
@@ -102,7 +102,7 @@ stdout: |
   +    BAR: qux
 
   ```
-  > esc env diff test:1
+  > esc env diff test@1
   # Value
   ```diff
   --- test:1
@@ -156,7 +156,7 @@ stdout: |
   +    BAR: qux
 
   ```
-  > esc env diff test:2
+  > esc env diff test@2
   # Value
   ```diff
   --- test:2
@@ -214,8 +214,8 @@ stdout: |
   +    BAR: qux
 
   ```
-  > esc env diff test:3
-  > esc env diff test:1 2
+  > esc env diff test@3
+  > esc env diff test@1 2
   # Value
   ```diff
   --- test:1
@@ -241,7 +241,7 @@ stdout: |
   +    FOO: bar
 
   ```
-  > esc env diff test:stable --format json
+  > esc env diff test@stable --format json
   --- test:stable
   +++ test:latest
   @@ -1,6 +1,19 @@
@@ -266,20 +266,20 @@ stdout: |
   +  "secret": "[secret]",
   +  "string": "esc"
    }
-  > esc env diff test:stable --format string
+  > esc env diff test@stable --format string
   --- test:stable
   +++ test:latest
   @@ -1 +1 @@
   -"environmentVariables"="\"FOO\"=\"bar\"","string"="hello, world!"
   +"array"="\"hello\",\"world\"","boolean"="true","environmentVariables"="\"BAR\"=\"qux\",\"FOO\"=\"baz\"","null"="","number"="42","object"="\"hello\"=\"world\"","open"="[unknown]","secret"="[secret]","string"="esc"
-  > esc env diff test:stable --format dotenv
+  > esc env diff test@stable --format dotenv
   --- test:stable
   +++ test:latest
   @@ -1 +1,2 @@
   -FOO="bar"
   +BAR="qux"
   +FOO="baz"
-  > esc env diff test:stable --format shell
+  > esc env diff test@stable --format shell
   --- test:stable
   +++ test:latest
   @@ -1 +1,2 @@
@@ -288,13 +288,13 @@ stdout: |
   +export FOO="baz"
 stderr: |
   > esc env diff test
-  > esc env diff test:latest
-  > esc env diff test:stable
-  > esc env diff test:1
-  > esc env diff test:2
-  > esc env diff test:3
-  > esc env diff test:1 2
-  > esc env diff test:stable --format json
-  > esc env diff test:stable --format string
-  > esc env diff test:stable --format dotenv
-  > esc env diff test:stable --format shell
+  > esc env diff test@latest
+  > esc env diff test@stable
+  > esc env diff test@1
+  > esc env diff test@2
+  > esc env diff test@3
+  > esc env diff test@1 2
+  > esc env diff test@stable --format json
+  > esc env diff test@stable --format string
+  > esc env diff test@stable --format dotenv
+  > esc env diff test@stable --format shell

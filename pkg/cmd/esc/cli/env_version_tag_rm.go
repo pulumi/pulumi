@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newEnvVersionRmCmd(env *envCommand) *cobra.Command {
+func newEnvVersionTagRmCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm [<org-name>/]<environment-name>@<tag>",
 		Args:  cobra.ExactArgs(1),

@@ -7,6 +7,6 @@ stdout: |
   > esc env set test@foo string foo
 stderr: |
   > esc env set test@1 string foo
-  Error: the set command does not accept revisions or tags
+  Error: the set command does not accept versions
   > esc env set test@foo string foo
-  Error: the set command does not accept revisions or tags
+  Error: the set command does not accept versions

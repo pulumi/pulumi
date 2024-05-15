@@ -1,11 +1,11 @@
 run: |
-  esc env log test --utc
-  esc env log test:latest --utc
-  esc env log test:stable --utc
-  esc env log test:1 --utc
-  esc env log test:2 --utc
-  esc env log test:3 --utc
-  esc env log test:4 --utc
+  esc env version history test --utc
+  esc env version history test@latest --utc
+  esc env version history test@stable --utc
+  esc env version history test@1 --utc
+  esc env version history test@2 --utc
+  esc env version history test@3 --utc
+  esc env version history test@4 --utc
 environments:
   test-user/a: {}
   test-user/b: {}
@@ -35,7 +35,7 @@ environments:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 stdout: |+
-  > esc env log test --utc
+  > esc env version history test --utc
   revision 4
   Author: test-tester <Test Tester>
   Date:   1970-01-01 04:00:00 +0000 UTC
@@ -52,7 +52,7 @@ stdout: |+
   Author: test-tester <Test Tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env log test:latest --utc
+  > esc env version history test@latest --utc
   revision 4
   Author: test-tester <Test Tester>
   Date:   1970-01-01 04:00:00 +0000 UTC
@@ -69,7 +69,7 @@ stdout: |+
   Author: test-tester <Test Tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env log test:stable --utc
+  > esc env version history test@stable --utc
   revision 3 (tag: stable)
   Author: test-tester <Test Tester>
   Date:   1970-01-01 03:00:00 +0000 UTC
@@ -82,12 +82,12 @@ stdout: |+
   Author: test-tester <Test Tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env log test:1 --utc
+  > esc env version history test@1 --utc
   revision 1
   Author: test-tester <Test Tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env log test:2 --utc
+  > esc env version history test@2 --utc
   revision 2
   Author: test-tester <Test Tester>
   Date:   1970-01-01 02:00:00 +0000 UTC
@@ -96,7 +96,7 @@ stdout: |+
   Author: test-tester <Test Tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env log test:3 --utc
+  > esc env version history test@3 --utc
   revision 3 (tag: stable)
   Author: test-tester <Test Tester>
   Date:   1970-01-01 03:00:00 +0000 UTC
@@ -109,7 +109,7 @@ stdout: |+
   Author: test-tester <Test Tester>
   Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env log test:4 --utc
+  > esc env version history test@4 --utc
   revision 4
   Author: test-tester <Test Tester>
   Date:   1970-01-01 04:00:00 +0000 UTC
@@ -127,10 +127,10 @@ stdout: |+
   Date:   1970-01-01 01:00:00 +0000 UTC
 
 stderr: |
-  > esc env log test --utc
-  > esc env log test:latest --utc
-  > esc env log test:stable --utc
-  > esc env log test:1 --utc
-  > esc env log test:2 --utc
-  > esc env log test:3 --utc
-  > esc env log test:4 --utc
+  > esc env version history test --utc
+  > esc env version history test@latest --utc
+  > esc env version history test@stable --utc
+  > esc env version history test@1 --utc
+  > esc env version history test@2 --utc
+  > esc env version history test@3 --utc
+  > esc env version history test@4 --utc

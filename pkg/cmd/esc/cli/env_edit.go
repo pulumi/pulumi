@@ -62,7 +62,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 			if version != "" {
-				return fmt.Errorf("the edit command does not accept revisions or tags")
+				return fmt.Errorf("the edit command does not accept versions")
 			}
 			_ = args
 

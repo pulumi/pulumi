@@ -15,6 +15,6 @@ stdout: |
   > esc env edit test@foo --editor my-editor
 stderr: |
   > esc env edit test@1 --editor my-editor
-  Error: the edit command does not accept revisions or tags
+  Error: the edit command does not accept versions
   > esc env edit test@foo --editor my-editor
-  Error: the edit command does not accept revisions or tags
+  Error: the edit command does not accept versions

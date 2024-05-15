@@ -43,7 +43,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 			if version != "" {
-				return fmt.Errorf("the rm command does not accept revisions or tags")
+				return fmt.Errorf("the rm command does not accept versions")
 			}
 
 			// Are we removing the entire environment?
