@@ -58,6 +58,28 @@ function deserialize_pulumirpc_Callback(buffer_arg) {
   return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_CreateNewContextRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.CreateNewContextRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CreateNewContextRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CreateNewContextRequest(buffer_arg) {
+  return pulumi_resource_pb.CreateNewContextRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_CreateNewContextResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.CreateNewContextResponse)) {
+    throw new Error('Expected argument of type pulumirpc.CreateNewContextResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CreateNewContextResponse(buffer_arg) {
+  return pulumi_resource_pb.CreateNewContextResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_InvokeResponse(arg) {
   if (!(arg instanceof pulumi_provider_pb.InvokeResponse)) {
     throw new Error('Expected argument of type pulumirpc.InvokeResponse');
@@ -291,6 +313,19 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestDeserialize: deserialize_pulumirpc_RegisterProviderRequest,
     responseSerialize: serialize_pulumirpc_RegisterProviderResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterProviderResponse,
+  },
+  // CreateNewContext creates a new context for the resource monitor to use for
+// subsequent operations, with the values passed in through the RPC overridden.
+createNewContext: {
+    path: '/pulumirpc.ResourceMonitor/CreateNewContext',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.CreateNewContextRequest,
+    responseType: pulumi_resource_pb.CreateNewContextResponse,
+    requestSerialize: serialize_pulumirpc_CreateNewContextRequest,
+    requestDeserialize: deserialize_pulumirpc_CreateNewContextRequest,
+    responseSerialize: serialize_pulumirpc_CreateNewContextResponse,
+    responseDeserialize: deserialize_pulumirpc_CreateNewContextResponse,
   },
 };
 

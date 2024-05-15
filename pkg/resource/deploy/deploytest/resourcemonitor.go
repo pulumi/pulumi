@@ -498,6 +498,17 @@ func (rm *ResourceMonitor) RegisterProvider(pkg, version, pluginDownloadURL stri
 	return resp.Ref, nil
 }
 
+func (rm *ResourceMonitor) CreateNewContext(
+	ctx context.Context,
+	req *pulumirpc.CreateNewContextRequest,
+) (*ResourceMonitor, error) {
+	resp, err := rm.resmon.CreateNewContext(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	return dialMonitor(ctx, resp.MonitorTarget)
+}
+
 func prepareTestTimeout(timeout float64) string {
 	if timeout == 0 {
 		return ""

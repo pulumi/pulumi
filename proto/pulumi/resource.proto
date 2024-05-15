@@ -38,6 +38,10 @@ service ResourceMonitor {
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
 
     rpc RegisterProvider(RegisterProviderRequest) returns (RegisterProviderResponse) {}
+
+    // CreateNewContext creates a new context for the resource monitor to use for
+    // subsequent operations, with the values passed in through the RPC overridden.
+    rpc CreateNewContext(CreateNewContextRequest) returns (CreateNewContextResponse) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -250,5 +254,13 @@ message RegisterProviderRequest {
 
 message RegisterProviderResponse {
     // The UUID package reference for this registered provider package.
-    string ref = 1; 
+    string ref = 1;
+}
+
+message CreateNewContextRequest {
+    repeated string providers = 1; // the provider refs to register as the default providers.
+}
+
+message CreateNewContextResponse {
+    string monitor_target = 1;
 }

@@ -23,6 +23,7 @@ interface IResourceMonitorService extends grpc.ServiceDefinition<grpc.UntypedSer
     registerResourceOutputs: IResourceMonitorService_IRegisterResourceOutputs;
     registerStackTransform: IResourceMonitorService_IRegisterStackTransform;
     registerProvider: IResourceMonitorService_IRegisterProvider;
+    createNewContext: IResourceMonitorService_ICreateNewContext;
 }
 
 interface IResourceMonitorService_ISupportsFeature extends grpc.MethodDefinition<pulumi_resource_pb.SupportsFeatureRequest, pulumi_resource_pb.SupportsFeatureResponse> {
@@ -106,6 +107,15 @@ interface IResourceMonitorService_IRegisterProvider extends grpc.MethodDefinitio
     responseSerialize: grpc.serialize<pulumi_resource_pb.RegisterProviderResponse>;
     responseDeserialize: grpc.deserialize<pulumi_resource_pb.RegisterProviderResponse>;
 }
+interface IResourceMonitorService_ICreateNewContext extends grpc.MethodDefinition<pulumi_resource_pb.CreateNewContextRequest, pulumi_resource_pb.CreateNewContextResponse> {
+    path: "/pulumirpc.ResourceMonitor/CreateNewContext";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_resource_pb.CreateNewContextRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_resource_pb.CreateNewContextRequest>;
+    responseSerialize: grpc.serialize<pulumi_resource_pb.CreateNewContextResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_resource_pb.CreateNewContextResponse>;
+}
 
 export const ResourceMonitorService: IResourceMonitorService;
 
@@ -119,6 +129,7 @@ export interface IResourceMonitorServer extends grpc.UntypedServiceImplementatio
     registerResourceOutputs: grpc.handleUnaryCall<pulumi_resource_pb.RegisterResourceOutputsRequest, google_protobuf_empty_pb.Empty>;
     registerStackTransform: grpc.handleUnaryCall<pulumi_callback_pb.Callback, google_protobuf_empty_pb.Empty>;
     registerProvider: grpc.handleUnaryCall<pulumi_resource_pb.RegisterProviderRequest, pulumi_resource_pb.RegisterProviderResponse>;
+    createNewContext: grpc.handleUnaryCall<pulumi_resource_pb.CreateNewContextRequest, pulumi_resource_pb.CreateNewContextResponse>;
 }
 
 export interface IResourceMonitorClient {
@@ -148,6 +159,9 @@ export interface IResourceMonitorClient {
     registerProvider(request: pulumi_resource_pb.RegisterProviderRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.RegisterProviderResponse) => void): grpc.ClientUnaryCall;
     registerProvider(request: pulumi_resource_pb.RegisterProviderRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.RegisterProviderResponse) => void): grpc.ClientUnaryCall;
     registerProvider(request: pulumi_resource_pb.RegisterProviderRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.RegisterProviderResponse) => void): grpc.ClientUnaryCall;
+    createNewContext(request: pulumi_resource_pb.CreateNewContextRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.CreateNewContextResponse) => void): grpc.ClientUnaryCall;
+    createNewContext(request: pulumi_resource_pb.CreateNewContextRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.CreateNewContextResponse) => void): grpc.ClientUnaryCall;
+    createNewContext(request: pulumi_resource_pb.CreateNewContextRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.CreateNewContextResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class ResourceMonitorClient extends grpc.Client implements IResourceMonitorClient {
@@ -178,4 +192,7 @@ export class ResourceMonitorClient extends grpc.Client implements IResourceMonit
     public registerProvider(request: pulumi_resource_pb.RegisterProviderRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.RegisterProviderResponse) => void): grpc.ClientUnaryCall;
     public registerProvider(request: pulumi_resource_pb.RegisterProviderRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.RegisterProviderResponse) => void): grpc.ClientUnaryCall;
     public registerProvider(request: pulumi_resource_pb.RegisterProviderRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.RegisterProviderResponse) => void): grpc.ClientUnaryCall;
+    public createNewContext(request: pulumi_resource_pb.CreateNewContextRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.CreateNewContextResponse) => void): grpc.ClientUnaryCall;
+    public createNewContext(request: pulumi_resource_pb.CreateNewContextRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.CreateNewContextResponse) => void): grpc.ClientUnaryCall;
+    public createNewContext(request: pulumi_resource_pb.CreateNewContextRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.CreateNewContextResponse) => void): grpc.ClientUnaryCall;
 }

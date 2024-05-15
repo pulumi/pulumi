@@ -955,3 +955,35 @@ class RegisterProviderResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["ref", b"ref"]) -> None: ...
 
 global___RegisterProviderResponse = RegisterProviderResponse
+
+@typing_extensions.final
+class CreateNewContextRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROVIDERS_FIELD_NUMBER: builtins.int
+    @property
+    def providers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the provider refs to register as the default providers."""
+    def __init__(
+        self,
+        *,
+        providers: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["providers", b"providers"]) -> None: ...
+
+global___CreateNewContextRequest = CreateNewContextRequest
+
+@typing_extensions.final
+class CreateNewContextResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    MONITOR_TARGET_FIELD_NUMBER: builtins.int
+    monitor_target: builtins.str
+    def __init__(
+        self,
+        *,
+        monitor_target: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["monitor_target", b"monitor_target"]) -> None: ...
+
+global___CreateNewContextResponse = CreateNewContextResponse

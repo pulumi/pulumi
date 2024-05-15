@@ -256,7 +256,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	assert.Equal(t, len(steps), processed)
 }
 
-func TestRegisterDefaultProviders(t *testing.T) {
+func TestCreateNewContext(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{

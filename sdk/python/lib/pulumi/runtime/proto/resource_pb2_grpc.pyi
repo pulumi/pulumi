@@ -65,6 +65,13 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.RegisterProviderRequest,
         pulumi.resource_pb2.RegisterProviderResponse,
     ]
+    CreateNewContext: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.CreateNewContextRequest,
+        pulumi.resource_pb2.CreateNewContextResponse,
+    ]
+    """CreateNewContext creates a new context for the resource monitor to use for
+    subsequent operations, with the values passed in through the RPC overridden.
+    """
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
@@ -123,5 +130,14 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.RegisterProviderRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.resource_pb2.RegisterProviderResponse: ...
+    
+    def CreateNewContext(
+        self,
+        request: pulumi.resource_pb2.CreateNewContextRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.resource_pb2.CreateNewContextResponse:
+        """CreateNewContext creates a new context for the resource monitor to use for
+        subsequent operations, with the values passed in through the RPC overridden.
+        """
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

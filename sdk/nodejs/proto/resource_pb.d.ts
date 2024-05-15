@@ -763,6 +763,48 @@ export namespace RegisterProviderResponse {
     }
 }
 
+export class CreateNewContextRequest extends jspb.Message { 
+    clearProvidersList(): void;
+    getProvidersList(): Array<string>;
+    setProvidersList(value: Array<string>): CreateNewContextRequest;
+    addProviders(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CreateNewContextRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: CreateNewContextRequest): CreateNewContextRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CreateNewContextRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CreateNewContextRequest;
+    static deserializeBinaryFromReader(message: CreateNewContextRequest, reader: jspb.BinaryReader): CreateNewContextRequest;
+}
+
+export namespace CreateNewContextRequest {
+    export type AsObject = {
+        providersList: Array<string>,
+    }
+}
+
+export class CreateNewContextResponse extends jspb.Message { 
+    getMonitorTarget(): string;
+    setMonitorTarget(value: string): CreateNewContextResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CreateNewContextResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: CreateNewContextResponse): CreateNewContextResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CreateNewContextResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CreateNewContextResponse;
+    static deserializeBinaryFromReader(message: CreateNewContextResponse, reader: jspb.BinaryReader): CreateNewContextResponse;
+}
+
+export namespace CreateNewContextResponse {
+    export type AsObject = {
+        monitorTarget: string,
+    }
+}
+
 export enum Result {
     SUCCESS = 0,
     FAIL = 1,

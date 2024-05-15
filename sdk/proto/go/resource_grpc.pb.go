@@ -32,6 +32,9 @@ type ResourceMonitorClient interface {
 	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RegisterStackTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RegisterProvider(ctx context.Context, in *RegisterProviderRequest, opts ...grpc.CallOption) (*RegisterProviderResponse, error)
+	// CreateNewContext creates a new context for the resource monitor to use for
+	// subsequent operations, with the values passed in through the RPC overridden.
+	CreateNewContext(ctx context.Context, in *CreateNewContextRequest, opts ...grpc.CallOption) (*CreateNewContextResponse, error)
 }
 
 type resourceMonitorClient struct {
@@ -146,6 +149,15 @@ func (c *resourceMonitorClient) RegisterProvider(ctx context.Context, in *Regist
 	return out, nil
 }
 
+func (c *resourceMonitorClient) CreateNewContext(ctx context.Context, in *CreateNewContextRequest, opts ...grpc.CallOption) (*CreateNewContextResponse, error) {
+	out := new(CreateNewContextResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/CreateNewContext", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceMonitorServer is the server API for ResourceMonitor service.
 // All implementations must embed UnimplementedResourceMonitorServer
 // for forward compatibility
@@ -159,6 +171,9 @@ type ResourceMonitorServer interface {
 	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 	RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error)
 	RegisterProvider(context.Context, *RegisterProviderRequest) (*RegisterProviderResponse, error)
+	// CreateNewContext creates a new context for the resource monitor to use for
+	// subsequent operations, with the values passed in through the RPC overridden.
+	CreateNewContext(context.Context, *CreateNewContextRequest) (*CreateNewContextResponse, error)
 	mustEmbedUnimplementedResourceMonitorServer()
 }
 
@@ -192,6 +207,9 @@ func (UnimplementedResourceMonitorServer) RegisterStackTransform(context.Context
 }
 func (UnimplementedResourceMonitorServer) RegisterProvider(context.Context, *RegisterProviderRequest) (*RegisterProviderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterProvider not implemented")
+}
+func (UnimplementedResourceMonitorServer) CreateNewContext(context.Context, *CreateNewContextRequest) (*CreateNewContextResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNewContext not implemented")
 }
 func (UnimplementedResourceMonitorServer) mustEmbedUnimplementedResourceMonitorServer() {}
 
@@ -371,6 +389,24 @@ func _ResourceMonitor_RegisterProvider_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceMonitor_CreateNewContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNewContextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).CreateNewContext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceMonitor/CreateNewContext",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).CreateNewContext(ctx, req.(*CreateNewContextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceMonitor_ServiceDesc is the grpc.ServiceDesc for ResourceMonitor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -409,6 +445,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterProvider",
 			Handler:    _ResourceMonitor_RegisterProvider_Handler,
+		},
+		{
+			MethodName: "CreateNewContext",
+			Handler:    _ResourceMonitor_CreateNewContext_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -528,6 +529,23 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 	return res.ref, res.err
 }
 
+func (d *defaultProviders) setProviderAsDefault(
+	ref providers.Reference, pkg, pluginDownloadURL string, version *semver.Version,
+) error {
+	var versionStr string
+	if version != nil {
+		versionStr = "-" + version.String()
+	}
+	if pluginDownloadURL != "" {
+		pluginDownloadURL = "-" + pluginDownloadURL
+	}
+
+	key := pkg + versionStr + pluginDownloadURL
+	d.providers[key] = ref
+
+	return nil
+}
+
 // A transformation function that can be applied to a resource.
 type TransformFunction func(
 	ctx context.Context,
@@ -594,6 +612,16 @@ type resmon struct {
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
+
+	plugctx     *plugin.Context
+	tracingSpan opentracing.Span
+}
+
+type subcontextResmon struct {
+	*resmon
+
+	defaultProvidersOverride *defaultProviders
+	monitorAddress           string
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -636,6 +664,8 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		callbacks:                 map[string]*CallbacksClient{},
 		resourceTransforms:        map[resource.URN][]TransformFunction{},
 		packageRefMap:             map[string]providers.ProviderRequest{},
+		plugctx:                   src.plugctx,
+		tracingSpan:               tracingSpan,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -689,6 +719,10 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
+}
+
+func (rm *subcontextResmon) Address() string {
+	return rm.monitorAddress
 }
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
@@ -872,6 +906,18 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	return rm.InvokeWithContexts(ctx, req, rm.defaultProviders)
+}
+
+func (rm *subcontextResmon) Invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
+	return rm.InvokeWithContexts(ctx, req, rm.defaultProvidersOverride)
+}
+
+func (rm *resmon) InvokeWithContexts(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest, defaultProviders *defaultProviders,
+) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
 	providerReq, err := parseProviderRequest(
@@ -880,7 +926,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, err
 	}
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -936,6 +982,18 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 
 // Call dynamically executes a method in the provider associated with a component resource.
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
+	return rm.CallWithContexts(ctx, req, rm.defaultProviders, rm.constructInfo.MonitorAddress)
+}
+
+func (rm *subcontextResmon) Call(
+	ctx context.Context, req *pulumirpc.ResourceCallRequest,
+) (*pulumirpc.CallResponse, error) {
+	return rm.CallWithContexts(ctx, req, rm.defaultProvidersOverride, rm.monitorAddress)
+}
+
+func (rm *resmon) CallWithContexts(
+	ctx context.Context, req *pulumirpc.ResourceCallRequest, defaultProviders *defaultProviders, monitorAddress string,
+) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
 	providerReq, err := parseProviderRequest(
@@ -944,7 +1002,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, err
 	}
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -989,7 +1047,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		Config:         rm.constructInfo.Config,
 		DryRun:         rm.constructInfo.DryRun,
 		Parallel:       rm.constructInfo.Parallel,
-		MonitorAddress: rm.constructInfo.MonitorAddress,
+		MonitorAddress: monitorAddress,
 	}
 	options := plugin.CallOptions{
 		ArgDependencies: argDependencies,
@@ -1043,6 +1101,19 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 func (rm *resmon) StreamInvoke(
 	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer,
 ) error {
+	return rm.StreamInvokeWithContexts(req, stream, rm.defaultProviders)
+}
+
+func (rm *subcontextResmon) StreamInvoke(
+	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer,
+) error {
+	return rm.StreamInvokeWithContexts(req, stream, rm.defaultProvidersOverride)
+}
+
+func (rm *resmon) StreamInvokeWithContexts(
+	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer,
+	defaultProviders *defaultProviders,
+) error {
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
@@ -1052,7 +1123,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -1107,6 +1178,18 @@ func (rm *resmon) StreamInvoke(
 func (rm *resmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest,
 ) (*pulumirpc.ReadResourceResponse, error) {
+	return rm.ReadResourceWithContexts(ctx, req, rm.defaultProviders)
+}
+
+func (rm *subcontextResmon) ReadResource(
+	ctx context.Context, req *pulumirpc.ReadResourceRequest,
+) (*pulumirpc.ReadResourceResponse, error) {
+	return rm.ReadResourceWithContexts(ctx, req, rm.defaultProvidersOverride)
+}
+
+func (rm *resmon) ReadResourceWithContexts(ctx context.Context,
+	req *pulumirpc.ReadResourceRequest, defaultProviders *defaultProviders,
+) (*pulumirpc.ReadResourceResponse, error) {
 	// Read the basic inputs necessary to identify the plugin.
 	t, err := tokens.ParseTypeToken(req.GetType())
 	if err != nil {
@@ -1127,7 +1210,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
+		ref, provErr := defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
 		} else if providers.IsDenyDefaultsProvider(ref) {
@@ -1452,6 +1535,20 @@ func transformAliasForNodeJSCompat(alias *pulumirpc.Alias) *pulumirpc.Alias {
 func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
+	//	fmt.Println("regular register", req.GetName())
+	return rm.RegisterResourceWithContexts(ctx, req, rm.defaultProviders, rm.constructInfo.MonitorAddress)
+}
+
+func (rm *subcontextResmon) RegisterResource(ctx context.Context,
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	//	fmt.Println("default provider register", req.GetName())
+	return rm.RegisterResourceWithContexts(ctx, req, rm.defaultProvidersOverride, rm.monitorAddress)
+}
+
+func (rm *resmon) RegisterResourceWithContexts(ctx context.Context,
+	req *pulumirpc.RegisterResourceRequest, defaultProviders *defaultProviders, monitorAddress string,
+) (*pulumirpc.RegisterResourceResponse, error) {
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	name := req.GetName()
 	custom := req.GetCustom()
@@ -1692,14 +1789,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		providerRef, err = rm.getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
+		providerRef, err = rm.getProviderReference(defaultProviders, providerReq, opts.GetProvider())
 		if err != nil {
 			return nil, err
 		}
 
 		providerRefs = make(map[string]string, len(opts.GetProviders()))
 		for name, provider := range opts.GetProviders() {
-			ref, err := rm.getProviderReference(rm.defaultProviders, providerReq, provider)
+			ref, err := rm.getProviderReference(defaultProviders, providerReq, provider)
 			if err != nil {
 				return nil, err
 			}
@@ -1794,7 +1891,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
-		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		defaultProvider, ok := defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
 		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
 				providers.SetProviderVersion(props, defaultProvider.Version)
@@ -1874,7 +1971,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			options.DeleteBeforeReplace = *opts.DeleteBeforeReplace
 		}
 
-		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
+		constructInfo := plugin.ConstructInfo{
+			Project:          rm.constructInfo.Project,
+			Stack:            rm.constructInfo.Stack,
+			Config:           rm.constructInfo.Config,
+			ConfigSecretKeys: rm.constructInfo.ConfigSecretKeys,
+			DryRun:           rm.constructInfo.DryRun,
+			Parallel:         rm.constructInfo.Parallel,
+			MonitorAddress:   monitorAddress,
+		}
+		constructResult, err := provider.Construct(constructInfo, t, name, parent, props, options)
 		if err != nil {
 			return nil, err
 		}
@@ -2163,6 +2269,73 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 type registerResourceEvent struct {
 	goal *resource.Goal       // the resource goal state produced by the iterator.
 	done chan *RegisterResult // the channel to communicate with after the resource state is available.
+}
+
+func (rm *resmon) CreateNewContext(
+	ctx context.Context,
+	req *pulumirpc.CreateNewContextRequest,
+) (*pulumirpc.CreateNewContextResponse, error) {
+	d := &defaultProviders{
+		defaultProviderInfo: rm.defaultProviders.defaultProviderInfo,
+		providers:           deepcopy.Copy(rm.defaultProviders.providers).(map[string]providers.Reference),
+		config:              rm.defaultProviders.config,
+		requests:            make(chan defaultProviderRequest),
+		providerRegChan:     rm.defaultProviders.providerRegChan,
+		cancel:              rm.defaultProviders.cancel,
+	}
+
+	newRm := &subcontextResmon{
+		resmon:                   rm,
+		defaultProvidersOverride: d,
+	}
+
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: newRm.cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceMonitorServer(srv, newRm)
+			return nil
+		},
+		Options: sourceEvalServeOptions(rm.plugctx, rm.tracingSpan, env.DebugGRPC.Value()),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	newRm.monitorAddress = fmt.Sprintf("127.0.0.1:%d", handle.Port)
+
+	go d.serve()
+
+	for _, providerRef := range req.GetProviders() {
+		ref, err := providers.ParseReference(providerRef)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid provider reference: %v", err))
+		}
+		// Need version, plugindownloadurl and pluginchecksum(???) here
+		provider, ok := rm.providers.GetProvider(ref)
+		if !ok {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("unknown provider '%v'", ref))
+		}
+		goal, ok := rm.resGoals[ref.URN()]
+		if !ok {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("unknown provider '%v'", ref))
+		}
+		version, err := providers.GetProviderVersion(goal.Properties)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to get provider version: %v", err))
+		}
+		pluginDownloadURL, err := providers.GetProviderDownloadURL(goal.Properties)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to get plugin download URL: %v", err))
+		}
+		if err := newRm.defaultProvidersOverride.setProviderAsDefault(
+			ref, provider.Pkg().String(), pluginDownloadURL, version,
+		); err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("failed to set default provider: %v", err))
+		}
+	}
+	return &pulumirpc.CreateNewContextResponse{
+		MonitorTarget: "127.0.0.1:" + strconv.Itoa(handle.Port),
+	}, nil
 }
 
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)

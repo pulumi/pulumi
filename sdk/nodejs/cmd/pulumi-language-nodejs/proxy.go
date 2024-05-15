@@ -263,3 +263,9 @@ func (p *monitorProxy) RegisterProvider(
 ) (*pulumirpc.RegisterProviderResponse, error) {
 	return p.target.RegisterProvider(ctx, req)
 }
+
+func (p *monitorProxy) CreateNewContext(
+	ctx context.Context, req *pulumirpc.CreateNewContextRequest,
+) (*pulumirpc.CreateNewContextResponse, error) {
+	return p.target.CreateNewContext(ctx, req)
+}

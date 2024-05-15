@@ -63,6 +63,11 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.RegisterProviderRequest.SerializeToString,
                 response_deserializer=pulumi_dot_resource__pb2.RegisterProviderResponse.FromString,
                 )
+        self.CreateNewContext = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/CreateNewContext',
+                request_serializer=pulumi_dot_resource__pb2.CreateNewContextRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.CreateNewContextResponse.FromString,
+                )
 
 
 class ResourceMonitorServicer(object):
@@ -123,6 +128,14 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def CreateNewContext(self, request, context):
+        """CreateNewContext creates a new context for the resource monitor to use for
+        subsequent operations, with the values passed in through the RPC overridden.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -170,6 +183,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     servicer.RegisterProvider,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterProviderRequest.FromString,
                     response_serializer=pulumi_dot_resource__pb2.RegisterProviderResponse.SerializeToString,
+            ),
+            'CreateNewContext': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateNewContext,
+                    request_deserializer=pulumi_dot_resource__pb2.CreateNewContextRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.CreateNewContextResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -332,5 +350,22 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterProvider',
             pulumi_dot_resource__pb2.RegisterProviderRequest.SerializeToString,
             pulumi_dot_resource__pb2.RegisterProviderResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CreateNewContext(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/CreateNewContext',
+            pulumi_dot_resource__pb2.CreateNewContextRequest.SerializeToString,
+            pulumi_dot_resource__pb2.CreateNewContextResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

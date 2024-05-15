@@ -1053,6 +1053,43 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	}, nil
 }
 
+type defaultProviderFunc func(ctx *Context) error
+
+func (ctx *Context) WithDefaultProviders(f defaultProviderFunc, providers ...ProviderResource) error {
+	if len(providers) == 0 {
+		return errors.New("need at least one provider")
+	}
+
+	providerRefs := make([]string, 0, len(providers))
+	for _, provider := range providers {
+		providerRef, err := ctx.resolveProviderReference(provider)
+		if err != nil {
+			return err
+		}
+		providerRefs = append(providerRefs, providerRef)
+	}
+	resp, err := ctx.state.monitor.CreateNewContext(ctx.ctx, &pulumirpc.CreateNewContextRequest{
+		Providers: providerRefs,
+	})
+	if err != nil {
+		return err
+	}
+	ri := ctx.state.info
+	ri.MonitorAddr = resp.MonitorTarget
+	newCtx, err := NewContext(ctx.ctx, ri)
+	if err != nil {
+		return err
+	}
+
+	result := f(newCtx)
+
+	if err = newCtx.wait(); err != nil {
+		return err
+	}
+
+	return result
+}
+
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption,
 ) error {
