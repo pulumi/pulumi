@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Prefer pluginDownloadURLOverrides over PluginDownloadURL specified in the package

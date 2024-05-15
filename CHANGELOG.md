@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.116.1 (2024-05-15)
+
+
+### Features
+
+- [docs] Resource docs: bump the number of displayed supporting types from 200 to 1000 by default
+  [#16185](https://github.com/pulumi/pulumi/pull/16185)
+
+- [sdk/go] Prefer pluginDownloadURLOverrides over PluginDownloadURL specified in the package
+  [#16186](https://github.com/pulumi/pulumi/pull/16186)
+
+
+### Bug Fixes
+
+- [engine] Fix panic when using `pulumi up --refresh --continue-on-error`
+  [#16184](https://github.com/pulumi/pulumi/pull/16184)
+
 ## 3.116.0 (2024-05-10)
 
 
