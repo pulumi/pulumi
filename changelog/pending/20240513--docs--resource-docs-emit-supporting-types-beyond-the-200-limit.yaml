@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: docs
-  description: "Resource docs: bump the number of displayed supporting types from 200 to 1000 by default"
