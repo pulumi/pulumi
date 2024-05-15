@@ -256,6 +256,12 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	}, nil
 }
 
+func (m *mockMonitor) CreateNewContext(ctx context.Context, in *pulumirpc.CreateNewContextRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.CreateNewContextResponse, error) {
+	panic("not implemented")
+}
+
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {

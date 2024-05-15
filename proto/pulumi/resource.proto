@@ -36,6 +36,10 @@ service ResourceMonitor {
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
+
+    // CreateNewContext creates a new context for the resource monitor to use for
+    // subsequent operations, with the values passed in through the RPC overridden.
+    rpc CreateNewContext(CreateNewContextRequest) returns (CreateNewContextResponse) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -237,4 +241,12 @@ message TransformRequest {
 message TransformResponse {
     google.protobuf.Struct properties = 1; // the transformed input properties.
     TransformResourceOptions options = 2; // the options for the resource.
+}
+
+message CreateNewContextRequest {
+    repeated string providers = 1; // the provider refs to register as the default providers.
+}
+
+message CreateNewContextResponse {
+    string monitorAddr = 1;
 }
