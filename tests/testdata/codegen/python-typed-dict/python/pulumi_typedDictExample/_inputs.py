@@ -9,9 +9,9 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 if sys.version_info >= (3, 11):
-    from typing import NotRequired, TypedDict
+    from typing import NotRequired, TypedDict, TypeAlias
 else:
-    from typing_extensions import NotRequired, TypedDict
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 import pulumi_kubernetes
 
@@ -22,10 +22,15 @@ __all__ = [
     'MyTypeArgsDict',
 ]
 
-class MyTypeDict(TypedDict):
-    my_prop: str
-    external_prop: NotRequired['pulumi_kubernetes.core.v1.PodArgs']
-    my_other_prop: NotRequired[float]
+MYPY = False
+
+if not MYPY:
+    class MyTypeDict(TypedDict):
+        my_prop: str
+        external_prop: NotRequired['pulumi_kubernetes.core.v1.PodArgs']
+        my_other_prop: NotRequired[float]
+elif False:
+    MyTypeDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class MyType:
@@ -67,10 +72,13 @@ class MyType:
         pulumi.set(self, "my_other_prop", value)
 
 
-class MyTypeArgsDict(TypedDict):
-    my_prop: pulumi.Input[str]
-    external_prop: NotRequired[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]
-    my_other_prop: NotRequired[pulumi.Input[float]]
+if not MYPY:
+    class MyTypeArgsDict(TypedDict):
+        my_prop: pulumi.Input[str]
+        external_prop: NotRequired[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]
+        my_other_prop: NotRequired[pulumi.Input[float]]
+elif False:
+    MyTypeArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class MyTypeArgs:

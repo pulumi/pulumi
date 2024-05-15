@@ -421,9 +421,9 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
 	if mod.typedDictArgs {
 		fmt.Fprintf(w, "if sys.version_info >= (3, 11):\n")
-		fmt.Fprintf(w, "    from typing import NotRequired, TypedDict\n")
+		fmt.Fprintf(w, "    from typing import NotRequired, TypedDict, TypeAlias\n")
 		fmt.Fprintf(w, "else:\n")
-		fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict\n")
+		fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict, TypeAlias\n")
 	}
 	fmt.Fprintf(w, "from %s import _utilities\n", relImport)
 	for _, imp := range imports.strings() {
@@ -1073,6 +1073,10 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			}
 		}
 		fmt.Fprintf(w, "]\n\n")
+
+		if input && mod.typedDictArgs {
+			fmt.Fprintf(w, "MYPY = False\n\n")
+		}
 
 		var hasTypes bool
 		for _, t := range mod.types {
@@ -2707,7 +2711,17 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 
 	indent := "    "
 	name = pythonCase(name)
-	fmt.Fprintf(w, "class %sDict(TypedDict):\n", name)
+
+	// Running mypy gets very slow when there are a lot of TypedDicts.
+	// https://github.com/python/mypy/issues/17231
+	// For now we only use the TypedDict types when using a typechecker
+	// other than mypy. For mypy we define the XXXArgsDict class as an alias
+	// to the type `Mapping[str, Any]`.
+	fmt.Fprintf(w, "if not MYPY:\n")
+	fmt.Fprintf(w, "%sclass %sDict(TypedDict):\n", indent, name)
+
+	indent += "    "
+
 	if comment != "" {
 		printComment(w, comment, indent)
 	}
@@ -2720,6 +2734,10 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 			printComment(w, prop.Comment, indent)
 		}
 	}
+
+	indent = "    "
+	fmt.Fprintf(w, "elif False:\n")
+	fmt.Fprintf(w, "%s%sDict: TypeAlias = Mapping[str, Any]\n", indent, name)
 
 	fmt.Fprintf(w, "\n")
 	return nil
