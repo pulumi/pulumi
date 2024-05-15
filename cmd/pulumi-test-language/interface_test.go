@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,7 +102,7 @@ func TestProviderVersions(t *testing.T) {
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
 
-			schema, err := provider.GetSchema(0)
+			schema, err := provider.GetSchema(plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var schemaJSON struct {

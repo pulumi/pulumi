@@ -15,15 +15,27 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
+
+type GetSchemaRequest struct {
+	// Version is the version of the schema to return. If omitted, the latest version of the schema should be returned.
+	Version int
+	// Subpackage name to get the schema for.
+	SubpackageName string
+	// Subpackage version to get the schema for.
+	SubpackageVersion *semver.Version
+}
 
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
@@ -41,8 +53,13 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
+	// Parameterize adds a sub-package to this provider instance.
+	Parameterize(
+		ctx context.Context, req *pulumirpc.ParameterizeRequest,
+	) (*pulumirpc.ParameterizeResponse, error)
+
 	// GetSchema returns the schema for the provider.
-	GetSchema(version int) ([]byte, error)
+	GetSchema(request GetSchemaRequest) ([]byte, error)
 
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,

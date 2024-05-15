@@ -149,7 +149,7 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 		return nil, fmt.Errorf("could not load schema for %s, provider not known", pkg)
 	}
 
-	jsonSchema, err := provider.GetSchema(0)
+	jsonSchema, err := provider.GetSchema(plugin.GetSchemaRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("get schema for %s: %w", pkg, err)
 	}
@@ -548,7 +548,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
 
-		schemaBytes, err := provider.GetSchema(0)
+		schemaBytes, err := provider.GetSchema(plugin.GetSchemaRequest{})
 		if err != nil {
 			return nil, fmt.Errorf("get schema for provider %s: %w", pkg, err)
 		}

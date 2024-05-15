@@ -49,7 +49,7 @@ func (p *LargeProvider) Pkg() tokens.Package {
 	return "large"
 }
 
-func (p *LargeProvider) GetSchema(version int) ([]byte, error) {
+func (p *LargeProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{

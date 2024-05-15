@@ -102,7 +102,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return nil, err
 	}
 	defer p.Close()
-	bytes, err := p.GetSchema(0)
+	bytes, err := p.GetSchema(plugin.GetSchemaRequest{})
 	if err != nil {
 		return nil, err
 	}

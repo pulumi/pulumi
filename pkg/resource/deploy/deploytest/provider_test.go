@@ -72,22 +72,29 @@ func TestProvider(t *testing.T) {
 		t.Run("has GetSchemaF", func(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
+			expectedVersion := semver.MustParse("1.0.0")
 			var called bool
 			prov := &Provider{
-				GetSchemaF: func(version int) ([]byte, error) {
-					assert.Equal(t, 1, version)
+				GetSchemaF: func(request plugin.GetSchemaRequest) ([]byte, error) {
+					assert.Equal(t, 1, request.Version)
+					assert.Equal(t, "expected-subpackage", request.SubpackageName)
+					assert.Equal(t, &expectedVersion, request.SubpackageVersion)
 					called = true
 					return nil, expectedErr
 				},
 			}
-			_, err := prov.GetSchema(1)
+			_, err := prov.GetSchema(plugin.GetSchemaRequest{
+				Version:           1,
+				SubpackageName:    "expected-subpackage",
+				SubpackageVersion: &expectedVersion,
+			})
 			assert.ErrorIs(t, err, expectedErr)
 			assert.True(t, called)
 		})
 		t.Run("no GetSchemaF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			b, err := prov.GetSchema(0)
+			b, err := prov.GetSchema(plugin.GetSchemaRequest{})
 			assert.NoError(t, err)
 			assert.Equal(t, []byte("{}"), b)
 		})

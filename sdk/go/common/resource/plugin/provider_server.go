@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -129,10 +130,33 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 	}, nil
 }
 
+func (p *providerServer) Parameterize(
+	ctx context.Context, req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	resp, err := p.provider.Parameterize(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	schema, err := p.provider.GetSchema(int(req.GetVersion()))
+	var subpackageVersion *semver.Version
+	if req.SubpackageVersion != "" {
+		v, err := semver.ParseTolerant(req.SubpackageVersion)
+		if err != nil {
+			return nil, err
+		}
+		subpackageVersion = &v
+	}
+
+	schema, err := p.provider.GetSchema(GetSchemaRequest{
+		Version:           int(req.Version),
+		SubpackageName:    req.SubpackageName,
+		SubpackageVersion: subpackageVersion,
+	})
 	if err != nil {
 		return nil, err
 	}
