@@ -564,7 +564,7 @@ type resmon struct {
 
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.
-	diagostics                diag.Sink                          // logger for user-facing messages
+	diagnostics               diag.Sink                          // logger for user-facing messages
 	providers                 ProviderSource                     // the provider source itself.
 	componentProviders        map[resource.URN]map[string]string // which providers component resources used
 	componentProvidersLock    sync.Mutex                         // which locks the componentProviders map
@@ -612,7 +612,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		diagostics:                src.plugctx.Diag,
+		diagnostics:               src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
 		workingDirectory:          src.runinfo.Pwd,
