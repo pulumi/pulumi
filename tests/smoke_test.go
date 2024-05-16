@@ -219,15 +219,16 @@ func TestPackageGetSchema(t *testing.T) {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
 
-	bindSchema := func(schemaJson string) {
+	bindSchema := func(pkg, schemaJson string) *schema.Package {
 		var schemaSpec *schema.PackageSpec
 		err := json.Unmarshal([]byte(schemaJson), &schemaSpec)
-		require.NoError(t, err, "Unmarshalling schema specs from random should work")
+		require.NoError(t, err, "Unmarshalling schema specs from %s should work", pkg)
 		require.NotNil(t, schemaSpec, "Specification should be non-nil")
 		schema, diags, err := schema.BindSpec(*schemaSpec, nil)
 		require.NoError(t, err, "Binding the schema spec should work")
 		require.False(t, diags.HasErrors(), "Binding schema spec should have no errors")
 		require.NotNil(t, schema)
+		return schema
 	}
 
 	// Make sure the random provider is not installed locally
@@ -240,16 +241,16 @@ func TestPackageGetSchema(t *testing.T) {
 
 	// get the schema and bind it
 	schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", "random")
-	bindSchema(schemaJSON)
+	bindSchema("random", schemaJSON)
 
 	// try again using a specific version
 	removeRandomFromLocalPlugins()
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
-	bindSchema(schemaJSON)
+	bindSchema("random", schemaJSON)
 
 	// Now that the random provider is installed, run the command again without removing random from plugins
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random")
-	bindSchema(schemaJSON)
+	bindSchema("random", schemaJSON)
 
 	// Now try to get the schema from the path to the binary
 	binaryPath := filepath.Join(
@@ -262,7 +263,15 @@ func TestPackageGetSchema(t *testing.T) {
 	}
 
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
-	bindSchema(schemaJSON)
+	bindSchema("random", schemaJSON)
+
+	// Now try and get the parameterized schema from the test-provider
+	providerDir, err := filepath.Abs("testprovider")
+	require.NoError(t, err)
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", providerDir, "parameter")
+	schema := bindSchema("testprovider", schemaJSON)
+	// Sub-schema is a very simple empty schema with the name set from the argument given
+	assert.Equal(t, "parameter", schema.Name)
 }
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache

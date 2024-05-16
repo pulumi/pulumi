@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -63,7 +65,7 @@ Subcommands of this command are useful to package authors during development.`,
 // optional version:
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
-func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
+func schemaFromSchemaSource(ctx context.Context, packageSource string, args []string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
 		pkg, diags, err := schema.BindSpec(spec, nil)
@@ -76,6 +78,9 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return pkg, nil
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
+		if len(args) > 0 {
+			return nil, errors.New("parametrization arguments are not supported for yaml files")
+		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
 			return nil, err
@@ -86,6 +91,10 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		}
 		return bind(spec)
 	} else if ext == ".json" {
+		if len(args) > 0 {
+			return nil, errors.New("parametrization arguments are not supported for json files")
+		}
+
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
 			return nil, err
@@ -102,7 +111,32 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return nil, err
 	}
 	defer p.Close()
-	bytes, err := p.GetSchema(plugin.GetSchemaRequest{})
+
+	var request plugin.GetSchemaRequest
+	if len(args) > 0 {
+		response, err := p.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: args,
+				},
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize: %w", err)
+		}
+
+		ver, err := semver.Parse(response.Version)
+		if err != nil {
+			return nil, fmt.Errorf("parameterize returned invalid version: %w", err)
+		}
+
+		request = plugin.GetSchemaRequest{
+			SubpackageName:    response.Name,
+			SubpackageVersion: &ver,
+		}
+	}
+
+	bytes, err := p.GetSchema(request)
 	if err != nil {
 		return nil, err
 	}
@@ -195,17 +229,23 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 		return provider, nil
 	}
 
-	// We were given a path to a binary, so invoke that.
+	// We were given a path to a binary or folder, so invoke that.
 	info, err := os.Stat(pkg)
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf("could not find file %s", pkg)
 	} else if err != nil {
 		return nil, err
-	} else if !isExecutable(info) {
-		if p, err := filepath.Abs(pkg); err == nil {
-			pkg = p
+	} else if info.IsDir() {
+		// If it's a directory we need to add a fake provider binary to the path because that's what NewProviderFromPath
+		// expects.
+		pkg = filepath.Join(pkg, "pulumi-resource-"+info.Name())
+	} else {
+		if !isExecutable(info) {
+			if p, err := filepath.Abs(pkg); err == nil {
+				pkg = p
+			}
+			return nil, fmt.Errorf("plugin at path %q not executable", pkg)
 		}
-		return nil, fmt.Errorf("plugin at path %q not executable", pkg)
 	}
 
 	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil)
