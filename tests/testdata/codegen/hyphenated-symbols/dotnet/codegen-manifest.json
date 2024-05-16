@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "Foo.cs",
+    "Outputs/Bar.cs",
+    "Provider.cs",
+    "Pulumi.Repro.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

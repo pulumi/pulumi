@@ -369,7 +369,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "hyphenated-symbols",
 		Description: "Test that types can have names with hyphens in them",
-		Skip:        allLanguages.Except("go/any").Except("python/any"),
 	},
 	{
 		Directory:   "provider-type-schema",
