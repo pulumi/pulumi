@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/diy
+  description: Rewrite DeletedWith references when renaming stacks
