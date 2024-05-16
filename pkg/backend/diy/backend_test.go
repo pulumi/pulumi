@@ -506,6 +506,109 @@ func TestRenameWorks(t *testing.T) {
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
+func TestRenamePreservesIntegrity(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	stackRef, err := b.ParseStackReference("organization/project/a")
+	assert.NoError(t, err)
+	stk, err := b.CreateStack(ctx, stackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, stk)
+
+	rBase := &resource.State{
+		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
+		Type: "a:b:c",
+		Inputs: resource.PropertyMap{
+			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+		},
+	}
+
+	rDependency := &resource.State{
+		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
+		Type: "a:b:c",
+		Inputs: resource.PropertyMap{
+			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+		},
+		Dependencies: []resource.URN{rBase.URN},
+	}
+
+	rPropertyDependency := &resource.State{
+		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
+		Type: "a:b:c",
+		Inputs: resource.PropertyMap{
+			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+		},
+		PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			resource.PropertyKey("p"): {rBase.URN},
+		},
+	}
+
+	rDeletedWith := &resource.State{
+		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
+		Type: "a:b:c",
+		Inputs: resource.PropertyMap{
+			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+		},
+		DeletedWith: rBase.URN,
+	}
+
+	rParent := &resource.State{
+		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
+		Type: "a:b:c",
+		Inputs: resource.PropertyMap{
+			resource.PropertyKey("p"): resource.NewStringProperty("v"),
+		},
+		Parent: rBase.URN,
+	}
+
+	resources := []*resource.State{
+		rBase,
+		rDependency,
+		rPropertyDependency,
+		rDeletedWith,
+		rParent,
+	}
+
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil)
+	ctx = context.Background()
+
+	sdep, err := stack.SerializeDeployment(ctx, snap, false)
+	assert.NoError(t, err)
+
+	data, err := encoding.JSON.Marshal(sdep)
+	assert.NoError(t, err)
+
+	err = b.ImportDeployment(ctx, stk, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(data),
+	})
+	assert.NoError(t, err)
+
+	err = snap.VerifyIntegrity()
+	assert.NoError(t, err)
+
+	// Act.
+	renamedStackRef, err := b.RenameStack(ctx, stk, "organization/project/a-renamed")
+	assert.NoError(t, err)
+
+	// Assert.
+	renamedStk, err := b.GetStack(ctx, renamedStackRef)
+	assert.NoError(t, err)
+	assert.NotNil(t, renamedStk)
+
+	renamedSnap, err := renamedStk.Snapshot(ctx, nil)
+	assert.NoError(t, err)
+
+	err = renamedSnap.VerifyIntegrity()
+	assert.NoError(t, err)
+}
+
 func TestRenameProjectWorks(t *testing.T) {
 	t.Parallel()
 
