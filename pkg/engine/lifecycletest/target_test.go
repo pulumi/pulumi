@@ -337,6 +337,7 @@ func updateInvalidTarget(t *testing.T) {
 		}),
 	}
 
+	p.Options.T = t
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{"foo"})

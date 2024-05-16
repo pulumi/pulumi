@@ -19,11 +19,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -31,6 +33,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
+
+var UseParallelStepGen = false
 
 // deploymentExecutor is responsible for taking a deployment and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
@@ -41,6 +45,7 @@ type deploymentExecutor struct {
 	stepGen  *stepGenerator // step generator owned by this deployment
 	stepExec *stepExecutor  // step executor owned by this deployment
 
+	muSkip  sync.Mutex          // mutex used to synchronize access to the skipped set
 	skipped mapset.Set[urn.URN] // The set of resources that have failed
 }
 
@@ -54,8 +59,10 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 
 	olds := ex.deployment.olds
 	var news map[resource.URN]bool
+	// Step generator may not have been initialized yet, in which case the news
+	// set will be empty anyway
 	if ex.stepGen != nil {
-		news = ex.stepGen.urns
+		news = ex.stepGen.HaveTargetURNs(targets.Literals())
 	}
 
 	hasUnknownTarget := false
@@ -175,7 +182,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment, opts, opts.Targets, opts.ReplaceTargets)
+	ex.stepGen = newStepGenerator(ex.deployment, opts)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -216,6 +223,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+		var workerPool *workerPool
+		// Use a pool of workers to run step generation in parallel if the env
+		// variable PULUMI_PARALLEL_STEP_GEN is truthy.
+		if UseParallelStepGen || env.ParallelStepGeneration.Value() {
+			if opts.InfiniteParallelism() {
+				workerPool = newWorkerPool(0, cancel)
+			} else {
+				workerPool = newWorkerPool(opts.DegreeOfParallelism(), cancel)
+			}
+			logging.V(4).Infof("deploymentExecutor.Execute(...): using %d workers", workerPool.numWorkers)
+		}
+
 		for {
 			select {
 			case event := <-incomingEvents:
@@ -233,9 +252,21 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				}
 
 				if event.Event == nil {
+					if workerPool != nil {
+						// Wait for all currently pending and executing workers to
+						// complete. Then check if any worker had an error.
+						poolErr := workerPool.Wait()
+						if poolErr != nil {
+							cancel()
+							return false, result.BailError(poolErr)
+						}
+					}
+
 					// Check targets before performDeletes mutates the initial Snapshot.
 					targetErr := ex.checkTargets(opts.Targets)
 
+					// This doesn't use the workerPool because it doesn't call provider check or diff, which are the operations that
+					// the concurrent stepGenerator allows to run concurrently.
 					err := ex.performDeletes(ctx, opts.Targets)
 					if err != nil {
 						if !result.IsBail(err) {
@@ -252,15 +283,34 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					return false, nil
 				}
 
-				if err := ex.handleSingleEvent(event.Event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+				singleEventWorker := func() error {
+					if err := ex.handleSingleEvent(event.Event); err != nil {
+						if !result.IsBail(err) {
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+						}
+						return err
 					}
-					cancel()
-					return false, result.BailError(err)
+					return nil
+				}
+
+				if workerPool != nil {
+					// Handle the event within the worker pool
+					workerPool.AddWorker(singleEventWorker)
+				} else {
+					if err := singleEventWorker(); err != nil {
+						cancel()
+						return false, result.BailError(err)
+					}
 				}
 			case <-ctx.Done():
+				if workerPool != nil {
+					if err := workerPool.Wait(); err != nil {
+						cancel()
+						return false, result.BailError(err)
+					}
+				}
+
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
@@ -449,37 +499,48 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	if err != nil {
 		return err
 	}
-	// Exclude the steps that depend on errored steps if ContinueOnError is set.
-	var newSteps []Step
-	skipped := false
-	if ex.stepExec.opts.ContinueOnError {
-		for _, errored := range ex.stepExec.GetErroredSteps() {
-			ex.skipped.Add(errored.Res().URN)
+
+	// IF There are steps (a nil steps slice is used as a signal in the StepExecutor)
+	// AND ContinueOnError is set,
+	// THEN exclude any steps that depend on errored steps
+	if len(steps) > 0 && ex.stepExec.opts.ContinueOnError {
+		steps = ex.excludeErroredSteps(steps)
+		if len(steps) == 0 {
+			// There are no steps remaining to pass through to the executor
+			return nil
 		}
-	outer:
-		for _, step := range steps {
-			for _, dep := range step.Res().Dependencies {
-				if ex.skipped.Contains(dep) {
-					step.Skip()
-					ex.skipped.Add(step.Res().URN)
-					skipped = true
-					continue outer
-				}
-			}
+	}
+
+	ex.stepExec.ExecuteSerial(steps)
+	return nil
+}
+
+func (ex *deploymentExecutor) excludeErroredSteps(steps []Step) []Step {
+	// Ensure that access to the skipped set is synchronized
+	ex.muSkip.Lock()
+	defer ex.muSkip.Unlock()
+
+	for _, errored := range ex.stepExec.GetErroredSteps() {
+		ex.skipped.Add(errored.Res().URN)
+	}
+
+	// If the skipped set is empty then simply return the input list.
+	if ex.skipped.IsEmpty() {
+		return steps
+	}
+
+	var newSteps []Step
+
+	for _, step := range steps {
+		if ex.skipped.ContainsAny(step.Res().Dependencies...) {
+			step.Skip()
+			ex.skipped.Add(step.Res().URN)
+		} else {
 			newSteps = append(newSteps, step)
 		}
-	} else {
-		newSteps = steps
 	}
 
-	// If we pass an empty chain to the step executors the workers will shut down.  However we don't want that
-	// if we just skipped a step because its dependencies errored out.  Return early in that case.
-	if skipped && len(newSteps) == 0 {
-		return nil
-	}
-
-	ex.stepExec.ExecuteSerial(newSteps)
-	return nil
+	return newSteps
 }
 
 // import imports a list of resources into a stack.

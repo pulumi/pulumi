@@ -1,0 +1,55 @@
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "GenerateSteps"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "Errored"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "GenerateDeletes"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "Errored"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "GenerateSteps"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "Errored"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "AnalyzeResources"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "ScheduleDeletes"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "Errored"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions [rapid] draw action: "HaveTargetURNs"
+# 2024/05/14 14:00:30 TestStepGenerator_randomActions 
+# 	Error Trace:	/Users/proberts/src/pulumi/pkg/resource/deploy/step_generator_test.go:1030
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/statemachine.go:141
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/statemachine.go:116
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/statemachine.go:62
+# 	            				/Users/proberts/src/pulumi/pkg/resource/deploy/step_generator_test.go:1028
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:352
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:361
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:204
+# 	            				/Users/proberts/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:116
+# 	            				/Users/proberts/src/pulumi/pkg/resource/deploy/step_generator_test.go:1003
+# 	Error:      	map[urn.URN]bool{"urn:pulumi::stack::project::qualified$type$name::parent":true} does not contain "urn:pulumi::stack::project::qualified$type$name::parent"
+# 	Test:       	TestStepGenerator_randomActions
+# 
+v0.4.8#16121601835038819231
+0xdfc584f53fbfd
+0x1067f74d8f09cf
+0x4
+0x18075a1bc3446c
+0x557cc8493478
+0x1
+0x891547f773634
+0x11a48a55d31944
+0x2
+0x1677db398e29d7
+0xdee6159d8366
+0x1
+0xa60c7004a181a
+0x1929980177882d
+0x4
+0x149247b79b65dc
+0xd3f6063f24e66
+0x1
+0x7ae296f937905
+0x19875e622fe25b
+0x0
+0xeb6ddbee2453
+0xad2686219d547
+0x6
+0x1a84d6ffde6ed1
+0x120f0ae783721a
+0x1
+0x1de7c91244540c
+0x12f4e7109e4573
+0x5
