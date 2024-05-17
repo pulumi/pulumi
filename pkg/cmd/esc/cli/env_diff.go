@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
@@ -23,7 +24,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 	diff := &envGetCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "diff [<org-name>/]<environment-name>[@<version>] [<version>]",
+		Use:   "diff [<org-name>/]<environment-name>[@<version>] [@<version>]",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Show changes between versions.",
 		Long: "Show changes between versions\n" +
@@ -51,7 +52,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 
 			compareVersion := "latest"
 			if len(args) != 0 {
-				compareVersion = args[0]
+				compareVersion, _ = strings.CutPrefix(args[0], "@")
 			}
 
 			var path resource.PropertyPath

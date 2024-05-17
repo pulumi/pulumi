@@ -5,8 +5,7 @@ package cli
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/spf13/cobra"
@@ -16,7 +15,7 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "tag [<org-name>/]<environment-name>@<tag> [<revision-number>]",
+		Use:   "tag [<org-name>/]<environment-name>@<tag> [@<version>]",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Manage tagged versions",
 		Long: "Manage tagged versions\n" +
@@ -51,11 +50,11 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 				}
 				revision = latest.Revision
 			} else {
-				revision64, err := strconv.ParseInt(args[0], 10, 0)
+				version, _ := strings.CutPrefix(args[0], "@")
+				revision, err = env.esc.client.GetRevisionNumber(ctx, orgName, envName, version)
 				if err != nil {
-					return fmt.Errorf("invalid revision number %q: %w", args[0], err)
+					return err
 				}
-				revision = int(revision64)
 			}
 
 			err = env.esc.client.UpdateEnvironmentRevisionTag(ctx, orgName, envName, tagName, &revision)
