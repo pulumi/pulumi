@@ -34,11 +34,11 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version != "" {
+			if ref.version != "" {
 				return fmt.Errorf("the init command does not accept versions")
 			}
 			_ = args
@@ -56,17 +56,17 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("reading environment definition: %w", err)
 			}
 
-			if err := env.esc.client.CreateEnvironment(ctx, orgName, envName); err != nil {
+			if err := env.esc.client.CreateEnvironment(ctx, ref.orgName, ref.envName); err != nil {
 				return fmt.Errorf("creating environment: %w", err)
 			}
 			fmt.Fprintln(env.esc.stdout, "Environment created.")
 			if len(yaml) != 0 {
-				diags, err := env.esc.client.UpdateEnvironment(ctx, orgName, envName, yaml, "")
+				diags, err := env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, yaml, "")
 				if err != nil {
 					return fmt.Errorf("updating environment definition: %w", err)
 				}
 				if len(diags) != 0 {
-					err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, envName, yaml, diags)
+					err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.envName, yaml, diags)
 					contract.IgnoreError(err)
 
 					return fmt.Errorf("updating environment definition: too many errors")

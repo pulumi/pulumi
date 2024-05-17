@@ -36,7 +36,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := envcmd.getEnvName(args)
+			ref, args, err := envcmd.getEnvRef(args)
 			if err != nil {
 				return err
 			}
@@ -62,7 +62,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			env, diags, err := envcmd.openEnvironment(ctx, orgName, envName, version, duration)
+			env, diags, err := envcmd.openEnvironment(ctx, ref, duration)
 			if err != nil {
 				return err
 			}
@@ -161,18 +161,16 @@ func (env *envCommand) removeTemporaryFiles(paths []string) {
 
 func (env *envCommand) openEnvironment(
 	ctx context.Context,
-	orgName string,
-	envName string,
-	version string,
+	ref environmentRef,
 	duration time.Duration,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
-	envID, diags, err := env.esc.client.OpenEnvironment(ctx, orgName, envName, version, duration)
+	envID, diags, err := env.esc.client.OpenEnvironment(ctx, ref.orgName, ref.envName, ref.version, duration)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(diags) != 0 {
 		return nil, diags, err
 	}
-	open, err := env.esc.client.GetOpenEnvironment(ctx, orgName, envName, envID)
+	open, err := env.esc.client.GetOpenEnvironment(ctx, ref.orgName, ref.envName, envID)
 	return open, nil, err
 }

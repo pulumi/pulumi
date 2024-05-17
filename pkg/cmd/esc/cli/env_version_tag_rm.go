@@ -5,7 +5,6 @@ package cli
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -26,16 +25,16 @@ func newEnvVersionTagRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version == "" || isRevisionNumber(version) {
+			if ref.version == "" || isRevisionNumber(ref.version) {
 				return errors.New("please specify a tagged version to remove")
 			}
 			_ = args
 
-			return env.esc.client.DeleteEnvironmentRevisionTag(ctx, orgName, envName, version)
+			return env.esc.client.DeleteEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, ref.version)
 		},
 	}
 
@@ -43,6 +42,5 @@ func newEnvVersionTagRmCmd(env *envCommand) *cobra.Command {
 }
 
 func isRevisionNumber(version string) bool {
-	_, err := strconv.ParseInt(version, 10, 0)
-	return err == nil
+	return len(version) > 0 && version[0] >= '0' && version[0] <= '9'
 }

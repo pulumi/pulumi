@@ -33,15 +33,15 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
 			_ = args
 
 			before := 0
-			if version != "" {
-				rev, err := env.esc.client.GetRevisionNumber(ctx, orgName, envName, version)
+			if ref.version != "" {
+				rev, err := env.esc.client.GetRevisionNumber(ctx, ref.orgName, ref.envName, ref.version)
 				if err != nil {
 					return err
 				}
@@ -57,7 +57,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 						Before: &before,
 						Count:  &count,
 					}
-					revisions, err := env.esc.client.ListEnvironmentRevisions(ctx, orgName, envName, options)
+					revisions, err := env.esc.client.ListEnvironmentRevisions(ctx, ref.orgName, ref.envName, options)
 					if err != nil {
 						return err
 					}

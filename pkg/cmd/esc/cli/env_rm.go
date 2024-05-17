@@ -38,17 +38,17 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version != "" {
+			if ref.version != "" {
 				return fmt.Errorf("the rm command does not accept versions")
 			}
 
 			// Are we removing the entire environment?
 			if len(args) == 0 {
-				envSlug := fmt.Sprintf("%v/%v", orgName, envName)
+				envSlug := fmt.Sprintf("%v/%v", ref.orgName, ref.envName)
 
 				// Ensure the user really wants to do this.
 				prompt := fmt.Sprintf("This will permanently remove the %q environment!", envSlug)
@@ -56,7 +56,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 					return errors.New("confirmation declined")
 				}
 
-				err = env.esc.client.DeleteEnvironment(ctx, orgName, envName)
+				err = env.esc.client.DeleteEnvironment(ctx, ref.orgName, ref.envName)
 				if err != nil {
 					return err
 				}
@@ -72,7 +72,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("invalid path: %w", err)
 			}
 
-			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, "", false)
+			def, tag, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -98,7 +98,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.client.UpdateEnvironment(ctx, orgName, envName, newYAML, tag)
+			diags, err := env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, newYAML, tag)
 			if err != nil {
 				return fmt.Errorf("updating environment definition: %w", err)
 			}

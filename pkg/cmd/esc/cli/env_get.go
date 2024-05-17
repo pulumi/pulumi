@@ -52,7 +52,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
@@ -69,22 +69,22 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 			case "":
 				// OK
 			case "detailed", "json", "string":
-				return get.showValue(ctx, orgName, envName, version, path, value, showSecrets)
+				return get.showValue(ctx, ref, path, value, showSecrets)
 			case "dotenv":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, orgName, envName, version, path, value, showSecrets)
+				return get.showValue(ctx, ref, path, value, showSecrets)
 			case "shell":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, orgName, envName, version, path, value, showSecrets)
+				return get.showValue(ctx, ref, path, value, showSecrets)
 			default:
 				return fmt.Errorf("unknown output format %q", value)
 			}
 
-			data, err := get.getEnvironment(ctx, orgName, envName, version, path, showSecrets)
+			data, err := get.getEnvironment(ctx, ref, path, showSecrets)
 			if err != nil {
 				return err
 			}
@@ -138,18 +138,16 @@ func marshalYAML(v any) (string, error) {
 func (get *envGetCommand) writeValue(
 	ctx context.Context,
 	out io.Writer,
-	orgName string,
-	envName string,
-	version string,
+	ref environmentRef,
 	path resource.PropertyPath,
 	format string,
 	showSecrets bool,
 ) error {
-	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, version, showSecrets)
+	def, _, err := get.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, ref.version, showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting environment definition: %w", err)
 	}
-	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, ref.orgName, def)
 	if err != nil {
 		return fmt.Errorf("getting environment: %w", err)
 	}
@@ -158,14 +156,12 @@ func (get *envGetCommand) writeValue(
 
 func (get *envGetCommand) showValue(
 	ctx context.Context,
-	orgName string,
-	envName string,
-	revisionOrTag string,
+	ref environmentRef,
 	path resource.PropertyPath,
 	format string,
 	showSecrets bool,
 ) error {
-	return get.writeValue(ctx, get.env.esc.stdout, orgName, envName, revisionOrTag, path, format, showSecrets)
+	return get.writeValue(ctx, get.env.esc.stdout, ref, path, format, showSecrets)
 }
 
 func diff(oldName, old, newName, new string) string {
@@ -174,38 +170,34 @@ func diff(oldName, old, newName, new string) string {
 }
 
 func (get *envGetCommand) diff(
-	baseRevisionOrTag string,
+	baseVersion string,
 	baseEnv *envGetTemplateData,
-	diffRevisionOrTag string,
-	diffEnv *envGetTemplateData,
+	compareVersion string,
+	compareEnv *envGetTemplateData,
 ) envDiffTemplateData {
-	valueDiff := diff(baseRevisionOrTag, baseEnv.Value, diffRevisionOrTag, diffEnv.Value)
-	defDiff := diff(baseRevisionOrTag, baseEnv.Definition, diffRevisionOrTag, diffEnv.Definition)
+	valueDiff := diff(baseVersion, baseEnv.Value, compareVersion, compareEnv.Value)
+	defDiff := diff(baseVersion, baseEnv.Definition, compareVersion, compareEnv.Definition)
 	return envDiffTemplateData{Value: valueDiff, Definition: defDiff}
 }
 
 func (get *envGetCommand) diffValue(
 	ctx context.Context,
-	orgName string,
-	envName string,
-	baseRevisionOrTag string,
-	tipRevisionOrTag string,
+	baseRef environmentRef,
+	compareRef environmentRef,
 	path resource.PropertyPath,
 	format string,
 	showSecrets bool,
 ) error {
 	var base strings.Builder
-	if err := get.writeValue(ctx, &base, orgName, envName, baseRevisionOrTag, path, format, showSecrets); err != nil {
+	if err := get.writeValue(ctx, &base, baseRef, path, format, showSecrets); err != nil {
 		return err
 	}
-	var tip strings.Builder
-	if err := get.writeValue(ctx, &tip, orgName, envName, tipRevisionOrTag, path, format, showSecrets); err != nil {
+	var compare strings.Builder
+	if err := get.writeValue(ctx, &compare, compareRef, path, format, showSecrets); err != nil {
 		return err
 	}
 
-	baseRef := fmt.Sprintf("%s:%s", envName, baseRevisionOrTag)
-	tipRef := fmt.Sprintf("%s:%s", envName, tipRevisionOrTag)
-	data := diff(baseRef, base.String(), tipRef, tip.String())
+	data := diff(baseRef.String(), base.String(), compareRef.String(), compare.String())
 
 	if !cmdutil.InteractiveTerminal() {
 		_, err := fmt.Fprint(get.env.esc.stdout, data)
@@ -219,20 +211,18 @@ func (get *envGetCommand) diffValue(
 
 func (get *envGetCommand) getEnvironment(
 	ctx context.Context,
-	orgName string,
-	envName string,
-	revisionOrTag string,
+	ref environmentRef,
 	path resource.PropertyPath,
 	showSecrets bool,
 ) (*envGetTemplateData, error) {
-	def, _, err := get.env.esc.client.GetEnvironment(ctx, orgName, envName, revisionOrTag, showSecrets)
+	def, _, err := get.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, ref.version, showSecrets)
 	if err != nil {
 		return nil, fmt.Errorf("getting environment definition: %w", err)
 	}
 	if len(path) == 0 {
-		return get.getEntireEnvironment(ctx, orgName, def, showSecrets)
+		return get.getEntireEnvironment(ctx, ref.orgName, def, showSecrets)
 	}
-	return get.getEnvironmentMember(ctx, orgName, envName, def, path, showSecrets)
+	return get.getEnvironmentMember(ctx, ref.orgName, ref.envName, def, path, showSecrets)
 }
 
 func (get *envGetCommand) getEntireEnvironment(

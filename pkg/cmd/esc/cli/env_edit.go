@@ -57,16 +57,16 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := edit.env.getEnvName(args)
+			ref, args, err := edit.env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version != "" {
+			if ref.version != "" {
 				return fmt.Errorf("the edit command does not accept versions")
 			}
 			_ = args
 
-			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, orgName, envName, "", showSecrets)
+			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -74,11 +74,11 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 			var env *esc.Environment
 			var diags []client.EnvironmentDiagnostic
 			if len(yaml) != 0 {
-				env, diags, _ = edit.env.esc.client.CheckYAMLEnvironment(ctx, orgName, yaml)
+				env, diags, _ = edit.env.esc.client.CheckYAMLEnvironment(ctx, ref.orgName, yaml)
 			}
 
 			for {
-				newYAML, err := edit.editWithYAMLEditor(editor, envName, yaml, env, diags)
+				newYAML, err := edit.editWithYAMLEditor(editor, ref.envName, yaml, env, diags)
 				if err != nil {
 					return err
 				}
@@ -87,7 +87,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return nil
 				}
 
-				diags, err = edit.env.esc.client.UpdateEnvironment(ctx, orgName, envName, newYAML, tag)
+				diags, err = edit.env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, newYAML, tag)
 				if err != nil {
 					return fmt.Errorf("updating environment definition: %w", err)
 				}
@@ -96,7 +96,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return nil
 				}
 
-				err = edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, envName, newYAML, diags)
+				err = edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.envName, newYAML, diags)
 				contract.IgnoreError(err)
 
 				fmt.Fprintln(edit.env.esc.stderr, "Press ENTER to continue editing or ^D to exit")

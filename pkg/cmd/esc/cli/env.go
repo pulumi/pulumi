@@ -63,15 +63,25 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	return cmd
 }
 
-func (cmd *envCommand) getEnvName(args []string) (org, env, version string, rest []string, err error) {
-	if cmd.envNameFlag == "" {
-		if len(args) == 0 {
-			return "", "", "", nil, fmt.Errorf("no environment name specified")
-		}
-		cmd.envNameFlag, args = args[0], args[1:]
-	}
+type environmentRef struct {
+	orgName string
+	envName string
+	version string
+}
 
-	orgName, envNameAndVersion, hasOrgName := strings.Cut(cmd.envNameFlag, "/")
+func (r *environmentRef) String() string {
+	s := r.envName
+	if r.orgName != "" {
+		s = fmt.Sprintf("%s/%s", r.orgName, r.envName)
+	}
+	if r.version != "" {
+		s = fmt.Sprintf("%s@%s", s, r.version)
+	}
+	return s
+}
+
+func (cmd *envCommand) getRelativeEnvRef(refStr string, rel *environmentRef) environmentRef {
+	orgName, envNameAndVersion, hasOrgName := strings.Cut(refStr, "/")
 	if !hasOrgName {
 		orgName, envNameAndVersion = cmd.esc.account.DefaultOrg, orgName
 	}
@@ -81,7 +91,22 @@ func (cmd *envCommand) getEnvName(args []string) (org, env, version string, rest
 		envName, version, _ = strings.Cut(envNameAndVersion, ":")
 	}
 
-	return orgName, envName, version, args, nil
+	if rel != nil && envName == "" && version != "" {
+		orgName, envName = rel.orgName, rel.envName
+	}
+
+	return environmentRef{orgName, envName, version}
+}
+
+func (cmd *envCommand) getEnvRef(args []string) (ref environmentRef, rest []string, err error) {
+	if cmd.envNameFlag == "" {
+		if len(args) == 0 {
+			return environmentRef{}, nil, fmt.Errorf("no environment name specified")
+		}
+		cmd.envNameFlag, args = args[0], args[1:]
+	}
+
+	return cmd.getRelativeEnvRef(cmd.envNameFlag, nil), args, nil
 }
 
 func sortEnvironmentDiagnostics(diags []client.EnvironmentDiagnostic) {

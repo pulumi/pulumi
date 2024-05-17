@@ -36,11 +36,11 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version != "" {
+			if ref.version != "" {
 				return fmt.Errorf("the set command does not accept versions")
 			}
 			if len(args) < 2 {
@@ -81,7 +81,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				yamlValue = *yamlValue.Content[0]
 			}
 
-			def, tag, err := env.esc.client.GetEnvironment(ctx, orgName, envName, "", false)
+			def, tag, err := env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", false)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}
@@ -120,7 +120,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.client.UpdateEnvironment(ctx, orgName, envName, newYAML, tag)
+			diags, err := env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, newYAML, tag)
 			if err != nil {
 				return fmt.Errorf("updating environment definition: %w", err)
 			}

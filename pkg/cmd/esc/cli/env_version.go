@@ -36,28 +36,28 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version == "" {
+			if ref.version == "" {
 				return errors.New("please specify a version")
 			}
 			_ = args
 
 			st := style.NewStylist(style.Profile(env.esc.stdout))
-			if isRevisionNumber(version) {
-				revisionNumber, err := strconv.ParseInt(version, 10, 0)
+			if isRevisionNumber(ref.version) {
+				revisionNumber, err := strconv.ParseInt(ref.version, 10, 0)
 				if err != nil {
 					return err
 				}
-				rev, err := env.esc.client.GetEnvironmentRevision(ctx, orgName, envName, int(revisionNumber))
+				rev, err := env.esc.client.GetEnvironmentRevision(ctx, ref.orgName, ref.envName, int(revisionNumber))
 				if err != nil {
 					return err
 				}
 				printRevision(env.esc.stdout, st, *rev, utc)
 			} else {
-				tag, err := env.esc.client.GetEnvironmentRevisionTag(ctx, orgName, envName, version)
+				tag, err := env.esc.client.GetEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, ref.version)
 				if err != nil {
 					return err
 				}

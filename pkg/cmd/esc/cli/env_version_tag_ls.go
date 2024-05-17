@@ -32,11 +32,11 @@ func newEnvVersionTagLsCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := env.getEnvName(args)
+			ref, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			if version != "" {
+			if ref.version != "" {
 				return fmt.Errorf("the ls command does not accept versions")
 			}
 			_ = args
@@ -51,7 +51,7 @@ func newEnvVersionTagLsCmd(env *envCommand) *cobra.Command {
 						After: after,
 						Count: &count,
 					}
-					tags, err := env.esc.client.ListEnvironmentRevisionTags(ctx, orgName, envName, options)
+					tags, err := env.esc.client.ListEnvironmentRevisionTags(ctx, ref.orgName, ref.envName, options)
 					if err != nil {
 						return err
 					}

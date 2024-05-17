@@ -130,7 +130,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, version, args, err := envcmd.getEnvName(args)
+			ref, args, err := envcmd.getEnvRef(args)
 			if err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			}
 			args = args[1:]
 
-			env, diags, err := envcmd.openEnvironment(ctx, orgName, envName, version, duration)
+			env, diags, err := envcmd.openEnvironment(ctx, ref, duration)
 			if err != nil {
 				return err
 			}

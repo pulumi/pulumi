@@ -5,7 +5,10 @@ run: |
   esc env diff test@1
   esc env diff test@2
   esc env diff test@3
-  esc env diff test@1 2
+  esc env diff test@1 @2
+  esc env diff test@1 @stable
+  esc env diff test@stable test-v2@stable
+  esc env diff test test-v2
   esc env diff test@stable --format json
   esc env diff test@stable --format string
   esc env diff test@stable --format dotenv
@@ -41,14 +44,32 @@ environments:
             environmentVariables:
               FOO: baz
               BAR: qux
+  test-user/test-v2:
+    revisions:
+      - yaml:
+          values:
+            string: bonjour, monde!
+            environmentVariables:
+              FOO: bar
+        tag: stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            string: cse
+            environmentVariables:
+              FOO: bar
+              BAR: qux
 stdout: |
   > esc env diff test
   > esc env diff test@latest
   > esc env diff test@stable
   # Value
   ```diff
-  --- test:stable
-  +++ test:latest
+  --- test-user/test@stable
+  +++ test-user/test@latest
   @@ -1,6 +1,19 @@
    {
   +  "array": [
@@ -76,8 +97,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test:stable
-  +++ test:latest
+  --- test-user/test@stable
+  +++ test-user/test@latest
   @@ -1,4 +1,19 @@
   +imports:
   +  - a
@@ -105,8 +126,8 @@ stdout: |
   > esc env diff test@1
   # Value
   ```diff
-  --- test:1
-  +++ test:latest
+  --- test-user/test@1
+  +++ test-user/test@latest
   @@ -1 +1,19 @@
   +{
   +  "array": [
@@ -132,8 +153,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test:1
-  +++ test:latest
+  --- test-user/test@1
+  +++ test-user/test@latest
   @@ -1 +1,19 @@
   +imports:
   +  - a
@@ -159,8 +180,8 @@ stdout: |
   > esc env diff test@2
   # Value
   ```diff
-  --- test:2
-  +++ test:latest
+  --- test-user/test@2
+  +++ test-user/test@latest
   @@ -1,6 +1,19 @@
    {
   +  "array": [
@@ -188,8 +209,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test:2
-  +++ test:latest
+  --- test-user/test@2
+  +++ test-user/test@latest
   @@ -1,4 +1,19 @@
   +imports:
   +  - a
@@ -215,11 +236,11 @@ stdout: |
 
   ```
   > esc env diff test@3
-  > esc env diff test@1 2
+  > esc env diff test@1 @2
   # Value
   ```diff
-  --- test:1
-  +++ test:2
+  --- test-user/test@1
+  +++ test-user/test@2
   @@ -1 +1,6 @@
   +{
   +  "environmentVariables": {
@@ -232,8 +253,8 @@ stdout: |
   ```
   # Definition
   ```diff
-  --- test:1
-  +++ test:2
+  --- test-user/test@1
+  +++ test-user/test@2
   @@ -1 +1,4 @@
   +values:
   +  string: hello, world!
@@ -241,9 +262,118 @@ stdout: |
   +    FOO: bar
 
   ```
+  > esc env diff test@1 @stable
+  # Value
+  ```diff
+  --- test-user/test@1
+  +++ test-user/test@stable
+  @@ -1 +1,6 @@
+  +{
+  +  "environmentVariables": {
+  +    "FOO": "bar"
+  +  },
+  +  "string": "hello, world!"
+  +}
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test-user/test@1
+  +++ test-user/test@stable
+  @@ -1 +1,4 @@
+  +values:
+  +  string: hello, world!
+  +  environmentVariables:
+  +    FOO: bar
+
+  ```
+  > esc env diff test@stable test-v2@stable
+  # Value
+  ```diff
+  --- test-user/test@stable
+  +++ test-user/test-v2@stable
+  @@ -2,5 +2,5 @@
+     "environmentVariables": {
+       "FOO": "bar"
+     },
+  -  "string": "hello, world!"
+  +  "string": "bonjour, monde!"
+   }
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test-user/test@stable
+  +++ test-user/test-v2@stable
+  @@ -1,4 +1,4 @@
+   values:
+  -  string: hello, world!
+  +  string: bonjour, monde!
+     environmentVariables:
+       FOO: bar
+
+  ```
+  > esc env diff test test-v2
+  # Value
+  ```diff
+  --- test-user/test@latest
+  +++ test-user/test-v2
+  @@ -1,19 +1,7 @@
+   {
+  -  "array": [
+  -    "hello",
+  -    "world"
+  -  ],
+  -  "boolean": true,
+     "environmentVariables": {
+       "BAR": "qux",
+  -    "FOO": "baz"
+  +    "FOO": "bar"
+     },
+  -  "null": null,
+  -  "number": 42,
+  -  "object": {
+  -    "hello": "world"
+  -  },
+  -  "open": "[unknown]",
+  -  "secret": "[secret]",
+  -  "string": "esc"
+  +  "string": "cse"
+   }
+  \ No newline at end of file
+
+  ```
+  # Definition
+  ```diff
+  --- test-user/test@latest
+  +++ test-user/test-v2
+  @@ -3,17 +3,7 @@
+     - b
+   values:
+     # comment
+  -  "null": null
+  -  boolean: true
+  -  number: 42
+  -  string: esc
+  -  array: [hello, world]
+  -  object: {hello: world}
+  -  open:
+  -    fn::open::test: echo
+  -  secret:
+  -    fn::secret:
+  -      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+  +  string: cse
+     environmentVariables:
+  -    FOO: baz
+  +    FOO: bar
+       BAR: qux
+
+  ```
   > esc env diff test@stable --format json
-  --- test:stable
-  +++ test:latest
+  --- test-user/test@stable
+  +++ test-user/test@latest
   @@ -1,6 +1,19 @@
    {
   +  "array": [
@@ -267,21 +397,21 @@ stdout: |
   +  "string": "esc"
    }
   > esc env diff test@stable --format string
-  --- test:stable
-  +++ test:latest
+  --- test-user/test@stable
+  +++ test-user/test@latest
   @@ -1 +1 @@
   -"environmentVariables"="\"FOO\"=\"bar\"","string"="hello, world!"
   +"array"="\"hello\",\"world\"","boolean"="true","environmentVariables"="\"BAR\"=\"qux\",\"FOO\"=\"baz\"","null"="","number"="42","object"="\"hello\"=\"world\"","open"="[unknown]","secret"="[secret]","string"="esc"
   > esc env diff test@stable --format dotenv
-  --- test:stable
-  +++ test:latest
+  --- test-user/test@stable
+  +++ test-user/test@latest
   @@ -1 +1,2 @@
   -FOO="bar"
   +BAR="qux"
   +FOO="baz"
   > esc env diff test@stable --format shell
-  --- test:stable
-  +++ test:latest
+  --- test-user/test@stable
+  +++ test-user/test@latest
   @@ -1 +1,2 @@
   -export FOO="bar"
   +export BAR="qux"
@@ -293,7 +423,10 @@ stderr: |
   > esc env diff test@1
   > esc env diff test@2
   > esc env diff test@3
-  > esc env diff test@1 2
+  > esc env diff test@1 @2
+  > esc env diff test@1 @stable
+  > esc env diff test@stable test-v2@stable
+  > esc env diff test test-v2
   > esc env diff test@stable --format json
   > esc env diff test@stable --format string
   > esc env diff test@stable --format dotenv

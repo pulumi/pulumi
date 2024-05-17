@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
@@ -24,15 +23,18 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 	diff := &envGetCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "diff [<org-name>/]<environment-name>[@<version>] [@<version>]",
+		Use:   "diff [<org-name>/]<environment-name>[@<version>] [[[org-name/]<environment-name>]@<version>]",
 		Args:  cobra.RangeArgs(1, 2),
 		Short: "Show changes between versions.",
 		Long: "Show changes between versions\n" +
 			"\n" +
-			"This command displays the changes between two versions of an environment.\n" +
-			"The first argument is the environment and base version for the diff and\n" +
-			"the second argument is the comparison version. If the second argument is\n" +
-			"omitted, the 'latest' tag is used.",
+			"This command displays the changes between two environments or two versions\n" +
+			"of a single environment.\n" +
+			"\n" +
+			"The first argument is the base environment for the diff and the second argument\n" +
+			"is the comparison environment. If the environment name portion of the second\n" +
+			"argument is omitted, the name of the base environment is used. If the version portion of\n" +
+			"the second argument is omitted, the 'latest' tag is used.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -41,18 +43,17 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			orgName, envName, revisionOrTag, args, err := env.getEnvName(args)
+			baseRef, args, err := env.getEnvRef(args)
 			if err != nil {
 				return err
 			}
-			baseVersion := revisionOrTag
-			if baseVersion == "" {
-				baseVersion = "latest"
+			if baseRef.version == "" {
+				baseRef.version = "latest"
 			}
 
-			compareVersion := "latest"
+			compareRef := environmentRef{baseRef.orgName, baseRef.envName, "latest"}
 			if len(args) != 0 {
-				compareVersion, _ = strings.CutPrefix(args[0], "@")
+				compareRef = env.getRelativeEnvRef(args[0], &baseRef)
 			}
 
 			var path resource.PropertyPath
@@ -67,22 +68,22 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 			case "":
 				// OK
 			case "detailed", "json", "string":
-				return diff.diffValue(ctx, orgName, envName, baseVersion, compareVersion, path, format, showSecrets)
+				return diff.diffValue(ctx, baseRef, compareRef, path, format, showSecrets)
 			case "dotenv":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", format)
 				}
-				return diff.diffValue(ctx, orgName, envName, baseVersion, compareVersion, path, format, showSecrets)
+				return diff.diffValue(ctx, baseRef, compareRef, path, format, showSecrets)
 			case "shell":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", format)
 				}
-				return diff.diffValue(ctx, orgName, envName, baseVersion, compareVersion, path, format, showSecrets)
+				return diff.diffValue(ctx, baseRef, compareRef, path, format, showSecrets)
 			default:
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			baseData, err := diff.getEnvironment(ctx, orgName, envName, baseVersion, path, showSecrets)
+			baseData, err := diff.getEnvironment(ctx, baseRef, path, showSecrets)
 			if err != nil {
 				return err
 			}
@@ -90,7 +91,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				baseData = &envGetTemplateData{}
 			}
 
-			compareData, err := diff.getEnvironment(ctx, orgName, envName, compareVersion, path, showSecrets)
+			compareData, err := diff.getEnvironment(ctx, compareRef, path, showSecrets)
 			if err != nil {
 				return err
 			}
@@ -98,9 +99,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				compareData = &envGetTemplateData{}
 			}
 
-			baseRef := fmt.Sprintf("%s:%s", envName, baseVersion)
-			compareRef := fmt.Sprintf("%s:%s", envName, compareVersion)
-			data := diff.diff(baseRef, baseData, compareRef, compareData)
+			data := diff.diff(baseRef.String(), baseData, compareRef.String(), compareData)
 
 			var markdown bytes.Buffer
 			if err := envDiffTemplate.Execute(&markdown, data); err != nil {
