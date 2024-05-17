@@ -106,6 +106,19 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 			return true
 		}
 	}
+
+	for _, deps := range res.PropertyDependencies {
+		for _, dep := range deps {
+			if dep != "" && sg.targetsActual.Contains(dep) {
+				return true
+			}
+		}
+	}
+
+	if res.DeletedWith != "" && sg.targetsActual.Contains(res.DeletedWith) {
+		return true
+	}
+
 	return false
 }
 

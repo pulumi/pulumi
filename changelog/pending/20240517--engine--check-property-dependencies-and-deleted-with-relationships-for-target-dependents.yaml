@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Check property dependencies and deleted-with relationships for target dependents
