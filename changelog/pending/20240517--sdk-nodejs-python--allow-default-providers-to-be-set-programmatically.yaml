@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs,python
+  description: Allow default providers to be set programmatically
