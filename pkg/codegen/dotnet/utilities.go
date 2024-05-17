@@ -60,9 +60,7 @@ func isLegalIdentifierPart(c rune) bool {
 			unicode.Nd, unicode.Pc, unicode.Cf)
 }
 
-// makeValidIdentifier replaces characters that are not allowed in C# identifiers with underscores. A reserved word is
-// prefixed with @. No attempt is made to ensure that the result is unique.
-func makeValidIdentifier(name string) string {
+func underscoreInvalidRunes(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
 		if i == 0 && c == '@' {
@@ -78,7 +76,13 @@ func makeValidIdentifier(name string) string {
 			builder.WriteRune(c)
 		}
 	}
-	name = builder.String()
+	return builder.String()
+}
+
+// makeValidIdentifier replaces characters that are not allowed in C# identifiers with underscores. A reserved word is
+// prefixed with @. No attempt is made to ensure that the result is unique.
+func makeValidIdentifier(name string) string {
+	name = underscoreInvalidRunes(name)
 	if isReservedWord(name) {
 		return "@" + name
 	}

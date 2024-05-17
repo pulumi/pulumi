@@ -31,13 +31,16 @@
       "type": "object",
       "properties": {
         "has-a-hyphen": {
-          "type": "string"
+          "type": "string",
+          "default": "foo"
         },
         "has_an_underscore": {
-          "type": "string"
+          "type": "string",
+          "default": "bar"
         },
         "has.a.dot": {
-          "type": "string"
+          "type": "string",
+          "default": "baz"
         }
       }
     }

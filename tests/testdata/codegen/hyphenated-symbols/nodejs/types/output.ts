@@ -5,7 +5,22 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
+import * as utilities from "../utilities";
+
 export interface Bar {
-    has-a-hyphen?: string;
+    has_a_hyphen?: string;
+    has_a_dot?: string;
+    has_an_underscore?: string;
+}
+/**
+ * barProvideDefaults sets the appropriate defaults for Bar
+ */
+export function barProvideDefaults(val: Bar): Bar {
+    return {
+        ...val,
+        has_a_hyphen: (val.has_a_hyphen) ?? "foo",
+        has_a_dot: (val.has_a_dot) ?? "baz",
+        has_an_underscore: (val.has_an_underscore) ?? "bar",
+    };
 }
 

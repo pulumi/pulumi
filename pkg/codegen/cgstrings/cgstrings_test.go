@@ -44,3 +44,25 @@ func TestUnhyphenate(t *testing.T) {
 		})
 	}
 }
+
+func TestUnpunctuate(t *testing.T) {
+	t.Parallel()
+	testcases := []struct {
+		input, expected string
+	}{
+		{"", ""},
+		{"waldo", "waldo"},
+		{"waldo-thud-fred", "waldoThudFred"},
+		{"waldo_Thud.Fred!", "waldoThudFred"},
+		{" waldo thud fred ", "waldoThudFred"},
+		{"WaldoThudFred", "WaldoThudFred"},
+	}
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(fmt.Sprintf("Subtest:%q", tc.input), func(t *testing.T) {
+			t.Parallel()
+			assert := assert.New(t)
+			assert.Equal(tc.expected, Unpunctuate(tc.input))
+		})
+	}
+}

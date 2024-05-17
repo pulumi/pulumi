@@ -29,7 +29,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -57,14 +56,13 @@ func Title(s string) string {
 	if s == "" {
 		return ""
 	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
+	return cgstrings.UppercaseFirst(s)
 }
 
 func csharpIdentifier(s string) string {
 	// Some schema field names may look like $ref or $schema. Remove the leading $ to make a valid identifier.
 	// This could lead to a clash if both `$foo` and `foo` are defined, but we don't try to de-duplicate now.
-	s = strings.TrimPrefix(s, "$")
+	s = underscoreInvalidRunes(strings.TrimPrefix(s, "$"))
 
 	switch s {
 	case "abstract", "as", "base", "bool",
@@ -168,7 +166,7 @@ func (mod *modContext) propertyName(p *schema.Property) string {
 	if n, ok := mod.propertyNames[p]; ok {
 		return n
 	}
-	return Title(p.Name)
+	return underscoreInvalidRunes(Title(p.Name))
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {

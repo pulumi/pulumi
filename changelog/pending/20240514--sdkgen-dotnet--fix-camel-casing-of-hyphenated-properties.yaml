@@ -1,4 +1,4 @@
 changes:
   - type: fix
     scope: sdkgen/{dotnet,nodejs}
-    description: Fix camel casing of hyphenated properties
+    description: Fix camel casing of punctuated properties

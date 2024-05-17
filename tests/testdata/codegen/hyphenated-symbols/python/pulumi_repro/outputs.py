@@ -20,6 +20,8 @@ class Bar(dict):
         suggest = None
         if key == "has-a-hyphen":
             suggest = "has_a_hyphen"
+        elif key == "has.a.dot":
+            suggest = "has_a_dot"
 
         if suggest:
             pulumi.log.warn(f"Key '{key}' not found in Bar. Access the value via the '{suggest}' property getter instead.")
@@ -33,13 +35,35 @@ class Bar(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 has_a_hyphen: Optional[str] = None):
+                 has_a_hyphen: Optional[str] = None,
+                 has_a_dot: Optional[str] = None,
+                 has_an_underscore: Optional[str] = None):
+        if has_a_hyphen is None:
+            has_a_hyphen = 'foo'
         if has_a_hyphen is not None:
             pulumi.set(__self__, "has_a_hyphen", has_a_hyphen)
+        if has_a_dot is None:
+            has_a_dot = 'baz'
+        if has_a_dot is not None:
+            pulumi.set(__self__, "has_a_dot", has_a_dot)
+        if has_an_underscore is None:
+            has_an_underscore = 'bar'
+        if has_an_underscore is not None:
+            pulumi.set(__self__, "has_an_underscore", has_an_underscore)
 
     @property
     @pulumi.getter(name="has-a-hyphen")
     def has_a_hyphen(self) -> Optional[str]:
         return pulumi.get(self, "has_a_hyphen")
+
+    @property
+    @pulumi.getter(name="has.a.dot")
+    def has_a_dot(self) -> Optional[str]:
+        return pulumi.get(self, "has_a_dot")
+
+    @property
+    @pulumi.getter
+    def has_an_underscore(self) -> Optional[str]:
+        return pulumi.get(self, "has_an_underscore")
 
 

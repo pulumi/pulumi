@@ -14,6 +14,35 @@ func Unhyphenate(str string) string {
 	return ModifyStringAroundDelimeter(str, "-", UppercaseFirst)
 }
 
+// Unpunctuate removes all punctuation and whitespace from the given string.
+// The result is camelCase.
+func Unpunctuate(str string) string {
+	var builder strings.Builder
+	var parts []string
+
+	needsCapitalization := false
+	for _, r := range str {
+		if !(unicode.IsPunct(r) || unicode.IsSpace(r)) {
+			if needsCapitalization {
+				r = unicode.ToUpper(r)
+				needsCapitalization = false
+			}
+			builder.WriteRune(r)
+			continue
+		}
+		if builder.Len() > 0 {
+			parts = append(parts, builder.String())
+			builder.Reset()
+			needsCapitalization = true
+		}
+	}
+	if builder.Len() > 0 {
+		parts = append(parts, builder.String())
+	}
+
+	return strings.Join(parts, "")
+}
+
 // Camel converts s to camelCase.
 func Camel(s string) string {
 	if s == "" {

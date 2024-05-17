@@ -107,7 +107,7 @@ func Title(s string) string {
 		return Title(s[1:])
 	}
 	s = cgstrings.UppercaseFirst(s)
-	s = cgstrings.Unhyphenate(s)
+	s = cgstrings.Unpunctuate(s)
 	return s
 }
 
@@ -1671,7 +1671,7 @@ func (pkg *pkgContext) assignProperty(
 		}
 		fmt.Fprintf(w, "\t%s.%s = %s\n", object, pkg.fieldName(nil, p), value)
 	} else if indirectAssign {
-		tmpName := cgstrings.Camel(p.Name) + "_"
+		tmpName := cgstrings.Unpunctuate(p.Name) + "_"
 		fmt.Fprintf(w, "%s := %s\n", tmpName, value)
 		fmt.Fprintf(w, "%s.%s = &%s\n", object, pkg.fieldName(nil, p), tmpName)
 	} else {

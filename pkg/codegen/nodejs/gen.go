@@ -71,8 +71,7 @@ func title(s string) string {
 	if s == "" {
 		return ""
 	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
+	return cgstrings.UppercaseFirst(s)
 }
 
 // dashedCamel converts s to camelCase while preserving punctuation. Not
@@ -441,7 +440,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, underscoreInvalidRunes(p.Name), sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil
@@ -454,26 +453,27 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
 	for _, p := range properties {
+		name := underscoreInvalidRunes(p.Name)
 		if p.DefaultValue != nil {
 			dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", name, name, dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
 			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
 			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
 			// because val.%arg existed in the input (type system enforced).
 			var compositeObject string
 			if codegen.IsNOptionalInput(p.Type) {
-				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", name, funcName)
 			} else {
-				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
+				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, name)
 			}
 			if !p.IsRequired() {
-				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", name, compositeObject)
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
+			defaults = append(defaults, fmt.Sprintf("%s: %s", name, compositeObject))
 		}
 	}
 
