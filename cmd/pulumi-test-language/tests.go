@@ -561,4 +561,30 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-set-default-provider": {
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
+
+					// We expect "non_default_resource" with "simple_provider", and "default_resource" with the default provider.
+					sort.Slice(snap.Resources, func(i, j int) bool {
+						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
+					})
+					defaultResource := snap.Resources[1]
+					require.Equal(l, "default_resource", defaultResource.URN.Name(), "expected simple resource")
+					require.Contains(l, defaultResource.Provider, "pulumi:providers:simple::default_2_0_0",
+						"expected default provider")
+					nonDefaultResource := snap.Resources[3]
+					require.Equal(l, "non_default_resource", nonDefaultResource.URN.Name())
+					require.Contains(l, nonDefaultResource.Provider, "pulumi:providers:simple::simple_provider",
+						"expected programmatically set default provider")
+				},
+			},
+		},
+	},
 }

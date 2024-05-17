@@ -602,6 +602,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.DefaultProvider:
+		g.genDefaultProvider(w, n)
 	}
 }
 
@@ -1061,6 +1063,24 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
+}
+
+func (g *generator) genDefaultProvider(w io.Writer, p *pcl.DefaultProvider) {
+	// Generate the provider instantiation.
+	g.Fprintf(w, "%swith pulumi.default_providers([", g.Indent)
+	for i, provider := range p.Definition.Labels {
+		providerName := PyName(provider)
+		if i > 0 {
+			g.Fprint(w, ", ")
+		}
+		g.Fprint(w, providerName)
+	}
+	g.Fprint(w, "]):\n")
+	for _, r := range p.Resources {
+		g.Indented(func() {
+			g.genResource(w, r)
+		})
+	}
 }
 
 func (g *generator) genTemps(w io.Writer, temps []*quoteTemp) {

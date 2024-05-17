@@ -260,6 +260,10 @@ class MockMonitor:
         has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
+    def CreateNewContext(self, request):
+        # pylint: disable=unused-argument
+        return resource_pb2.CreateNewContextResponse(monitor_addr=None)
+
 
 class MockEngine:
     logger: logging.Logger

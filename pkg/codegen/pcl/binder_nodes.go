@@ -67,6 +67,9 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)
+	case *DefaultProvider:
+		diags := b.bindDefaultProvider(node)
+		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
 	}
@@ -182,6 +185,35 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 		node.Value = value.Value
 		if model.InputType(node.typ).ConversionFrom(node.Value.Type()) == model.NoConversion {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
+		}
+	}
+	node.Definition = block
+	return diagnostics
+}
+
+func (b *binder) bindDefaultProvider(node *DefaultProvider) hcl.Diagnostics {
+	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+	for _, item := range node.syntax.Body.Blocks {
+		switch item.Type {
+		case "resource":
+			resource := &Resource{
+				syntax: item,
+			}
+			// declareDiags := b.declareNode(item.Labels[0], resource)
+			// diagnostics = append(diagnostics, declareDiags...)
+
+			if err := b.loadReferencedPackageSchemas(resource); err != nil {
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Subject:  &hcl.Range{},
+					Summary:  "could not bind default provider",
+					Detail:   err.Error(),
+				})
+			}
+			diagnostics = append(diagnostics, b.bindResource(resource)...)
+			node.Resources = append(node.Resources, resource)
+		default:
+			contract.Failf("unexpected item type %q", item.Type)
 		}
 	}
 	node.Definition = block

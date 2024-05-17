@@ -39,6 +39,7 @@ from .runtime.resource import (
     get_resource,
     register_resource,
     register_resource_outputs,
+    default_providers,
     read_resource,
     collapse_alias_to_urn,
     create_urn as create_urn_internal,

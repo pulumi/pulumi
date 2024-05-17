@@ -325,6 +325,19 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if err := b.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
+			case "default_provider":
+				if len(item.Labels) < 1 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "default_provider variables must have at least one label"))
+				}
+				provider := &DefaultProvider{
+					syntax: item,
+				}
+				declareDiags := b.declareNode("default_provider_"+item.Labels[0], provider)
+				diagnostics = append(diagnostics, declareDiags...)
+
+				if err := b.loadReferencedPackageSchemas(provider); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}

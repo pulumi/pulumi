@@ -21,6 +21,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     Mapping,
     NamedTuple,
@@ -30,6 +31,7 @@ from typing import (
     Tuple,
     Union,
 )
+from contextlib import contextmanager
 
 import grpc
 from google.protobuf import struct_pb2
@@ -37,7 +39,13 @@ from google.protobuf import struct_pb2
 from .. import _types, log
 from .. import urn as urn_util
 from ..output import Input, Output
-from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
+from ..runtime.proto import (
+    alias_pb2,
+    resource_pb2,
+    resource_pb2_grpc,
+    source_pb2,
+    callback_pb2,
+)
 from . import known_types, rpc, settings
 from .rpc import _expand_dependencies
 from .settings import (
@@ -45,7 +53,10 @@ from .settings import (
     _get_rpc_manager,
     _sync_monitor_supports_transforms,
     handle_grpc_error,
+    _GRPC_CHANNEL_OPTIONS,
+    SETTINGS,
 )
+from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .. import (
@@ -841,6 +852,38 @@ def _create_custom_timeouts(
     else:
         raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
     return result
+
+
+@contextmanager
+def default_providers(
+    providers: List["ProviderResource"],
+) -> Iterator[Any]:
+    """
+    Registers a default provider instance that will be used for all resources that do not have an explicit provider
+    set. The default provider is reset after the code reenters from the context.
+    """
+    log.debug("registering default providers")
+    monitor = settings.get_monitor()
+
+    old_monitor = SETTINGS.monitor
+    try:
+        provider_refs = map(lambda p: _sync_await(_create_provider_ref(p)), providers)
+
+        req = resource_pb2.CreateNewContextRequest(
+            providers=provider_refs,
+        )
+        if monitor is not None:
+            resp = monitor.CreateNewContext(req)
+            monitor_addr = resp.monitorAddr
+            monitor = resource_pb2_grpc.ResourceMonitorStub(
+                grpc.insecure_channel(monitor_addr, options=_GRPC_CHANNEL_OPTIONS),
+            )
+            setattr(SETTINGS, "monitor", monitor)
+        yield
+    except grpc.RpcError as exn:
+        handle_grpc_error(exn)
+    finally:
+        setattr(SETTINGS, "monitor", old_monitor)
 
 
 def register_resource(
