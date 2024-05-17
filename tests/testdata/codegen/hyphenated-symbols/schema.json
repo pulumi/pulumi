@@ -1,39 +1,52 @@
 {
-    "name": "repro",
-    "version": "0.1.0",
-    "resources": {
-        "repro:index:Foo": {
-            "properties": {
-                "conditionSets": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/types/repro:index:Bar"
-                            }
-                        }
-                    }
-                }
+  "name": "repro",
+  "version": "0.1.0",
+  "resources": {
+    "repro:index:Foo": {
+      "properties": {
+        "conditionSets": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/types/repro:index:Bar"
+              }
             }
+          }
         }
-    },
-    "types": {
-        "repro:index:Bar": {
-            "type": "object",
-            "properties": {
-                "has-a-hyphen": {
-                    "type": "string"
-                }
-            }
-        }
-    },
-    "language": {
-        "go": {
-            "generateResourceContainerTypes": true,
-            "importBasePath": "hyphenated-symbols/repro",
-            "liftSingleValueMethodReturns": true
-        }
+      }
     }
+  },
+  "provider": {
+    "properties": {
+      "punctuated": {
+        "$ref": "#/types/repro:index:Bar"
+      }
+    }
+  },
+  "types": {
+    "repro:index:Bar": {
+      "type": "object",
+      "properties": {
+        "has-a-hyphen": {
+          "type": "string"
+        },
+        "has_an_underscore": {
+          "type": "string"
+        },
+        "has.a.dot": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "generateResourceContainerTypes": true,
+      "importBasePath": "hyphenated-symbols/repro",
+      "liftSingleValueMethodReturns": true
+    }
+  }
 }

@@ -13,12 +13,21 @@ namespace Pulumi.Repro.Outputs
     [OutputType]
     public sealed class Bar
     {
-        public readonly string? Has-a-hyphen;
+        public readonly string? Has_a_hyphen;
+        public readonly string? Has_a_dot;
+        public readonly string? Has_an_underscore;
 
         [OutputConstructor]
-        private Bar(string? has-a-hyphen)
+        private Bar(
+            string? has_a_hyphen,
+
+            string? has_a_dot,
+
+            string? has_an_underscore)
         {
-            Has-a-hyphen = has-a-hyphen;
+            Has_a_hyphen = has_a_hyphen;
+            Has_a_dot = has_a_dot;
+            Has_an_underscore = has_an_underscore;
         }
     }
 }
