@@ -743,6 +743,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.DefaultProvider:
+		g.genDefaultProvider(w, n)
 	}
 }
 
@@ -1255,6 +1257,23 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
+}
+
+func (g *generator) genDefaultProvider(w io.Writer, v *pcl.DefaultProvider) {
+	g.Fgenf(w, "%spulumi.withDefaultProviders([", g.Indent)
+	for i, provider := range v.Definition.Labels {
+		if i > 0 {
+			g.Fgenf(w, ", ")
+		}
+		g.Fgenf(w, "%s", provider)
+	}
+	g.Fgenf(w, "], () => {\n")
+	g.Indented(func() {
+		for _, resource := range v.Resources {
+			g.genResource(w, resource)
+		}
+	})
+	g.Fgenf(w, "%s});\n", g.Indent)
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

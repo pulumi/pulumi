@@ -16,6 +16,8 @@ import * as grpc from "@grpc/grpc-js";
 import * as query from "@pulumi/query";
 import * as log from "../log";
 import * as utils from "../utils";
+import * as localState from "../runtime/state";
+import * as settings from "../runtime/settings";
 
 import { getAllResources, Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
@@ -1209,4 +1211,63 @@ export function pkgFromType(type: string): string | undefined {
         return parts[0];
     }
     return undefined;
+}
+
+/**
+ * Register a default provider
+ * @internal
+ */
+export async function withDefaultProvidersInternal(providers: Array<ProviderResource>, fn: any) {
+    log.debug(`Registering default providers`);
+
+    const providerRefs = await Promise.all(
+        providers.map<Promise<string>>(async (val, index) => {
+            return (await ProviderResource.register(val)) || "";
+        }),
+    );
+    const monitor = getMonitor();
+    debuggablePromise(
+        new Promise((resolve, reject) => {
+            if (monitor) {
+                const req = new resproto.CreateNewContextRequest();
+
+                req.setProvidersList(providerRefs);
+                monitor.createNewContext(
+                    req,
+                    (err: grpc.ServiceError | null, resp: resproto.CreateNewContextResponse | unknown) => {
+                        if (err) {
+                            reject(err);
+                        } else if (resp instanceof resproto.CreateNewContextResponse) {
+                            const oldStore = getStore();
+                            const store = new localState.LocalStore();
+                            localState.asyncLocalStorage.run(store, async () => {
+                                const addr = resp.getMonitoraddr();
+                                // We know these options are defined in the settings at this point, but we
+                                // have to convince the typescript compiler.
+                                settings.resetOptions(
+                                    oldStore.settings.options.project || "",
+                                    oldStore.settings.options.stack || "",
+                                    oldStore.settings.options.parallel || 1,
+                                    oldStore.settings.options.engineAddr || "",
+                                    addr,
+                                    oldStore.settings.options.dryRun || false,
+                                    oldStore.settings.options.organization || "",
+                                );
+
+                                fn();
+                            });
+                            resolve();
+                        } else {
+                            reject(new Error("unexpected response"));
+                        }
+                    },
+                );
+            } else {
+                // If we aren't attached to the engine, in test mode, just run the function
+                // without any further setup
+                fn();
+            }
+        }),
+        "registerDefaultProvider",
+    );
 }

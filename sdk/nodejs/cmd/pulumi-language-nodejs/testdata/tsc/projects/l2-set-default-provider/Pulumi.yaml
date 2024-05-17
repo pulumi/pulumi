@@ -1,0 +1,5 @@
+name: l2-set-default-provider
+runtime:
+  name: nodejs
+  options:
+    typescript: false

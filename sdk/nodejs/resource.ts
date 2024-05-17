@@ -22,6 +22,7 @@ import {
     readResource,
     registerResource,
     registerResourceOutputs,
+    withDefaultProvidersInternal,
     SourcePosition,
 } from "./runtime/resource";
 import { unknownValue } from "./runtime/rpc";
@@ -1317,4 +1318,11 @@ export function parseResourceReference(ref: string): [string, string] {
     const urn = ref.slice(0, lastSep);
     const id = ref.slice(lastSep + 2);
     return [urn, id];
+}
+
+/**
+ * registerDefaultProvider registers a default provider to be used for all resources that do not have an explicit provider set.
+ */
+export function withDefaultProviders(providers: Array<ProviderResource>, fn: any) {
+    withDefaultProvidersInternal(providers, fn);
 }
