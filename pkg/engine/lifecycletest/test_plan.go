@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kr/pretty"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
@@ -76,7 +78,11 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("journal and manager resources differ, %v not found in manager", jr)
+			return fmt.Errorf("journal and manager resources differ, %# v not found in manager\n\n"+
+				"journal: %# v\nmanager: %# v",
+				pretty.Formatter(jr),
+				pretty.Formatter(journal.Resources),
+				pretty.Formatter(manager.Resources))
 		}
 	}
 
