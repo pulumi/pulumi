@@ -321,6 +321,10 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 		return nil, fmt.Errorf("unknown resource %v", urn.StringValue())
 	}
 
+	// Take the state lock so we can safely read the Outputs.
+	state.Lock.Lock()
+	defer state.Lock.Unlock()
+
 	return resource.PropertyMap{
 		"urn":   urn,
 		"id":    resource.NewStringProperty(string(state.ID)),
