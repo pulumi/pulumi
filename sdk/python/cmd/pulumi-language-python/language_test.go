@@ -44,11 +44,15 @@ type hostEngine struct {
 	pulumirpc.UnimplementedEngineServer
 	t *testing.T
 
+	logLock         sync.Mutex
 	logRepeat       int
 	previousMessage string
 }
 
 func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+	e.logLock.Lock()
+	defer e.logLock.Unlock()
+
 	var sev diag.Severity
 	switch req.Severity {
 	case pulumirpc.LogSeverity_DEBUG:
