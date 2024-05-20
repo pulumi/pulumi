@@ -638,7 +638,7 @@ func (mod *modContext) hasTypes(input bool) bool {
 
 func (mod *modContext) isEmpty() bool {
 	if len(mod.extraSourceFiles) > 0 || len(mod.functions) > 0 || len(mod.resources) > 0 || len(mod.types) > 0 ||
-		mod.isConfig {
+		len(mod.enums) > 0 || mod.isConfig {
 		return false
 	}
 	for _, child := range mod.children {
