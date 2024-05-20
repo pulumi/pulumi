@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -299,15 +300,18 @@ func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectTyp
 	return objectType
 }
 
-// declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
-// locals.
-// Temporarily, we load all resources first, as convert sets the highest package version seen
-// under all resources' options. Once this is supported for invokes, the order of declaration will not
-// impact which package is actually loaded.
-func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
+type nodeBinder interface {
+	declareNode(name string, n Node) hcl.Diagnostics
+}
+
+type referenceSchemaLoader interface {
+	loadReferencedPackageSchemas(node Node) error
+}
+
+func declareNodes(body *hclsyntax.Body, b nodeBinder, p referenceSchemaLoader) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
 
-	for _, item := range model.SourceOrderBody(file.Body) {
+	for _, item := range model.SourceOrderBody(body) {
 		switch item := item.(type) {
 		case *hclsyntax.Block:
 			switch item.Type {
@@ -322,34 +326,21 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
 
-				if err := b.loadReferencedPackageSchemas(resource); err != nil {
-					return nil, err
-				}
-			case "default_provider":
-				if len(item.Labels) < 1 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "default_provider variables must have at least one label"))
-				}
-				provider := &DefaultProvider{
-					syntax: item,
-				}
-				declareDiags := b.declareNode("default_provider_"+item.Labels[0], provider)
-				diagnostics = append(diagnostics, declareDiags...)
-
-				if err := b.loadReferencedPackageSchemas(provider); err != nil {
+				if err := p.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
 			}
 		}
 	}
 
-	for _, item := range model.SourceOrderBody(file.Body) {
+	for _, item := range model.SourceOrderBody(body) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
 			v := &LocalVariable{syntax: item}
 			attrDiags := b.declareNode(item.Name, v)
 			diagnostics = append(diagnostics, attrDiags...)
 
-			if err := b.loadReferencedPackageSchemas(v); err != nil {
+			if err := p.loadReferencedPackageSchemas(v); err != nil {
 				return nil, err
 			}
 		case *hclsyntax.Block:
@@ -397,7 +388,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
 
-				if err := b.loadReferencedPackageSchemas(v); err != nil {
+				if err := p.loadReferencedPackageSchemas(v); err != nil {
 					return nil, err
 				}
 			case "output":
@@ -422,7 +413,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
 
-				if err := b.loadReferencedPackageSchemas(v); err != nil {
+				if err := p.loadReferencedPackageSchemas(v); err != nil {
 					return nil, err
 				}
 			case "component":
@@ -441,11 +432,38 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
+			case "context":
+				if len(item.Labels) != 0 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "context must not have any labels"))
+				}
+				uuid, err := uuid.NewV4()
+				if err != nil {
+					return nil, err
+				}
+				provider := &Context{
+					syntax: item,
+					ID:     uuid.String(),
+				}
+				declareDiags := b.declareNode(provider.ID, provider)
+				diagnostics = append(diagnostics, declareDiags...)
+
+				if err := p.loadReferencedPackageSchemas(provider); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
 
 	return diagnostics, nil
+}
+
+// declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
+// locals.
+// Temporarily, we load all resources first, as convert sets the highest package version seen
+// under all resources' options. Once this is supported for invokes, the order of declaration will not
+// impact which package is actually loaded.
+func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
+	return declareNodes(file.Body, b, b)
 }
 
 // Evaluate a constant string attribute that's internal to Pulumi, e.g.: the Logical Name on a resource or output.

@@ -971,6 +971,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
+	case *pcl.Context:
+		g.genContext(w, n)
 	}
 }
 
@@ -1491,6 +1493,29 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)
 
 	}
+}
+
+func (g *generator) genContext(w io.Writer, v *pcl.Context) {
+	if len(v.Providers) > 0 {
+		g.Fprintf(w, "ctx.WithDefaultProviders(func(ctx *pulumi.Context) error {\n")
+	}
+	g.Indented(func() {
+		for _, node := range v.Nodes {
+			g.genNode(w, node)
+		}
+		g.Fprintf(w, "%sreturn nil\n", g.Indent)
+	})
+	if len(v.Providers) > 0 {
+		g.Fprintf(w, "%s }, ", g.Indent)
+		for i, provider := range v.Providers {
+			if i > 0 {
+				g.Fprint(w, ", ")
+			}
+			g.Fgenf(w, "%s", makeValidIdentifier(provider))
+		}
+		g.Fprint(w, ")\n")
+	}
+	g.Fgenf(w, "%s}\n", g.Indent)
 }
 
 func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {

@@ -1065,20 +1065,24 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
 }
 
-func (g *generator) genDefaultProvider(w io.Writer, p *pcl.DefaultProvider) {
+func (g *generator) genContext(w io.Writer, p *pcl.Context) {
 	// Generate the provider instantiation.
-	g.Fprintf(w, "%swith pulumi.default_providers([", g.Indent)
-	for i, provider := range p.Definition.Labels {
-		providerName := PyName(provider)
-		if i > 0 {
-			g.Fprint(w, ", ")
+	if len(p.Providers) > 0 {
+		g.Fprintf(w, "%swith pulumi.default_providers([", g.Indent)
+		for i, provider := range p.Providers {
+			providerName := PyName(provider)
+			if i > 0 {
+				g.Fprint(w, ", ")
+			}
+			g.Fprint(w, providerName)
 		}
-		g.Fprint(w, providerName)
+	} else {
+		contract.Failf("invalid program")
 	}
 	g.Fprint(w, "]):\n")
-	for _, r := range p.Resources {
+	for _, r := range p.Nodes {
 		g.Indented(func() {
-			g.genResource(w, r)
+			g.genNode(w, r)
 		})
 	}
 }

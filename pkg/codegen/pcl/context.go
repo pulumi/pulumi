@@ -20,33 +20,43 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-type DefaultProvider struct {
+type Context struct {
 	node
 
 	syntax *hclsyntax.Block
 
+	ID string
+
 	// The definition of the default provider.
 	Definition *model.Block
 
-	Resources []*Resource
+	Nodes []Node
+
+	Providers []string
 }
 
-func (p *DefaultProvider) SyntaxNode() hclsyntax.Node {
-	return p.syntax
+func (c *Context) SyntaxNode() hclsyntax.Node {
+	return c.syntax
 }
 
-func (p *DefaultProvider) Name() string {
-	return p.Definition.Labels[0]
+func (c *Context) Name() string {
+	return c.ID
 }
 
-func (p *DefaultProvider) Type() model.Type {
+func (c *Context) Type() model.Type {
 	return model.NoneType
 }
 
-func (p *DefaultProvider) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
-	return model.VisitExpressions(p.Definition, pre, post)
+func (c *Context) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(c.Definition, pre, post)
 }
 
-func (p *DefaultProvider) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+func (c *Context) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return model.DynamicType.Traverse(traverser)
+}
+
+func (c *Context) declareNode(name string, n Node) hcl.Diagnostics {
+	// TODO: check for nodes that are already declared
+	c.Nodes = append(c.Nodes, n)
+	return nil
 }

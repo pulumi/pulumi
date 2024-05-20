@@ -743,8 +743,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
-	case *pcl.DefaultProvider:
-		g.genDefaultProvider(w, n)
+	case *pcl.Context:
+		g.genContext(w, n)
 	}
 }
 
@@ -1259,18 +1259,22 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genDefaultProvider(w io.Writer, v *pcl.DefaultProvider) {
-	g.Fgenf(w, "%spulumi.withDefaultProviders([", g.Indent)
-	for i, provider := range v.Definition.Labels {
-		if i > 0 {
-			g.Fgenf(w, ", ")
+func (g *generator) genContext(w io.Writer, v *pcl.Context) {
+	if len(v.Providers) > 0 {
+		g.Fgenf(w, "%spulumi.withDefaultProviders([", g.Indent)
+		for i, provider := range v.Providers {
+			if i > 0 {
+				g.Fgenf(w, ", ")
+			}
+			g.Fgenf(w, "%s", provider)
 		}
-		g.Fgenf(w, "%s", provider)
+		g.Fgenf(w, "], () => {\n")
+	} else {
+		contract.Failf("invalid program")
 	}
-	g.Fgenf(w, "], () => {\n")
 	g.Indented(func() {
-		for _, resource := range v.Resources {
-			g.genResource(w, resource)
+		for _, node := range v.Nodes {
+			g.genNode(w, node)
 		}
 	})
 	g.Fgenf(w, "%s});\n", g.Indent)

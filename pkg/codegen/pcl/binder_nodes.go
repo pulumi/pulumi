@@ -67,8 +67,8 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)
-	case *DefaultProvider:
-		diags := b.bindDefaultProvider(node)
+	case *Context:
+		diags := b.bindContext(node)
 		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
@@ -191,31 +191,68 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 	return diagnostics
 }
 
-func (b *binder) bindDefaultProvider(node *DefaultProvider) hcl.Diagnostics {
+func (b *binder) bindContext(node *Context) hcl.Diagnostics {
 	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
-	for _, item := range node.syntax.Body.Blocks {
-		switch item.Type {
-		case "resource":
-			resource := &Resource{
-				syntax: item,
-			}
-			// declareDiags := b.declareNode(item.Labels[0], resource)
-			// diagnostics = append(diagnostics, declareDiags...)
 
-			if err := b.loadReferencedPackageSchemas(resource); err != nil {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Subject:  &hcl.Range{},
-					Summary:  "could not bind default provider",
-					Detail:   err.Error(),
-				})
+	if len(block.Body.Syntax.Attributes) != 0 {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Subject:  &hcl.Range{},
+			Summary:  "context block must contain exactly one attribute",
+		})
+		return diagnostics
+	}
+
+	for _, item := range block.Body.Syntax.Attributes {
+		switch item.Name {
+		case "default_providers":
+			attr, diags := model.BindAttribute(item, b.root, b.tokens, b.options.modelOptions()...)
+			diagnostics = append(diagnostics, diags...)
+			switch attr.Type().(type) {
+			case *model.TupleType:
+				for _, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+					for _, provider := range expr.(*model.TemplateExpression).Parts {
+						node.Providers = append(node.Providers, provider.(*model.LiteralValueExpression).Value.AsString())
+					}
+				}
+			default:
+				diagnostics = append(diagnostics, model.ExprNotConvertible(model.DynamicType, attr.Value))
 			}
-			diagnostics = append(diagnostics, b.bindResource(resource)...)
-			node.Resources = append(node.Resources, resource)
-		default:
-			contract.Failf("unexpected item type %q", item.Type)
 		}
 	}
+	if len(block.Body.Syntax.Blocks) != 1 {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Subject:  &hcl.Range{},
+			Summary:  "context block must contain exactly one block",
+		})
+		return diagnostics
+	}
+	if block.Body.Syntax.Blocks[0].Type != "block" {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Subject:  &hcl.Range{},
+			Summary:  "context block must contain a block",
+		})
+		return diagnostics
+	}
+
+	diags, err := declareNodes(block.Body.Syntax.Blocks[0].Body, node, b)
+	if err != nil {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Subject:  &hcl.Range{},
+			Summary:  "could not bind context nodes",
+			Detail:   err.Error(),
+		})
+	}
+	diagnostics = append(diagnostics, diags...)
+	// We still need to bind the nodes in the context block
+	for _, n := range node.Nodes {
+		diags := b.bindNode(n)
+		diagnostics = append(diagnostics, diags...)
+	}
+
 	node.Definition = block
 	return diagnostics
 }
