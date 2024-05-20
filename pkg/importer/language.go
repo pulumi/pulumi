@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -60,13 +62,62 @@ func (e *DiagnosticsError) String() string {
 	return e.Error()
 }
 
+func removeDuplicatePathedValues(pathedValues []PathedLiteralValue) []PathedLiteralValue {
+	uniqueValues := make([]PathedLiteralValue, 0)
+	occurrences := make(map[string]int)
+	for _, pathedValue := range pathedValues {
+		occurrences[pathedValue.Value]++
+	}
+
+	for _, pathedValue := range pathedValues {
+		if occurrences[pathedValue.Value] > 1 {
+			continue
+		}
+		uniqueValues = append(uniqueValues, pathedValue)
+	}
+	return uniqueValues
+}
+
+func createImportState(states []*resource.State, names NameTable) ImportState {
+	pathedLiteralValues := make([]PathedLiteralValue, 0)
+	for _, state := range states {
+		resourceID := state.ID.String()
+		if resourceID == "" {
+			continue
+		}
+
+		name := state.URN.Name()
+		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
+			Root:  name,
+			Value: resourceID,
+			ExpressionReference: &model.ScopeTraversalExpression{
+				RootName: name,
+				Traversal: hcl.Traversal{
+					hcl.TraverseRoot{Name: name},
+					hcl.TraverseAttr{Name: "id"},
+				},
+			},
+		})
+	}
+
+	// remove duplicates so that if multiple resources have the same ID, we don't refer to one or the other
+	// instead, we just maintain the literal value as is.
+	valuesWithoutDuplicates := removeDuplicatePathedValues(pathedLiteralValues)
+	return ImportState{
+		Names:               names,
+		PathedLiteralValues: valuesWithoutDuplicates,
+	}
+}
+
 // GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
 	names NameTable,
 ) error {
 	var hcl2Text bytes.Buffer
+
+	importState := createImportState(states, names)
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, names)
+		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
 		if err != nil {
 			return err
 		}
