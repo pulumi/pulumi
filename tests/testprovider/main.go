@@ -95,6 +95,8 @@ func main() {
 type testproviderProvider struct {
 	rpc.UnimplementedResourceProviderServer
 
+	parameter string
+
 	host    *provider.HostClient
 	name    string
 	version string
@@ -124,6 +126,33 @@ func (k *testproviderProvider) Configure(_ context.Context, req *rpc.ConfigureRe
 	return &rpc.ConfigureResponse{
 		AcceptSecrets: true,
 	}, nil
+}
+
+func (k *testproviderProvider) Parameterize(_ context.Context, req *rpc.ParameterizeRequest) (*rpc.ParameterizeResponse, error) {
+	switch params := req.GetParameters().(type) {
+	case *rpc.ParameterizeRequest_Args:
+		args := params.Args.Args
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected exactly one argument")
+		}
+		k.parameter = args[0]
+		return &rpc.ParameterizeResponse{
+			Name:    k.parameter,
+			Version: version,
+		}, nil
+	case *rpc.ParameterizeRequest_Value:
+		val := params.Value.Value.GetStringValue()
+		if val == "" {
+			return nil, fmt.Errorf("expected a non-empty string value")
+		}
+		k.parameter = val
+		return &rpc.ParameterizeResponse{
+			Name:    k.parameter,
+			Version: version,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unexpected parameter type")
 }
 
 // Invoke dynamically executes a built-in function in the provider.
@@ -250,7 +279,20 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 		}
 		return out.Bytes(), nil
 	}
-	schemaJSON, err := makeJSONString(providerSchema)
+
+	sch := providerSchema
+	// if we have a parameter, set the name to it, this is just enough to test that the engine is calling Parameterize and GetSchema correctly.
+	if req.SubpackageName != "" {
+		if req.SubpackageName == k.parameter {
+			sch = pschema.PackageSpec{
+				Name: k.parameter,
+			}
+		} else {
+			return nil, fmt.Errorf("expected subpackage %s", req.SubpackageName)
+		}
+	}
+
+	schemaJSON, err := makeJSONString(sch)
 	if err != nil {
 		return nil, err
 	}

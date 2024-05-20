@@ -40,17 +40,19 @@ func newGenSdkCommand() *cobra.Command {
 	var out string
 	var version string
 	cmd := &cobra.Command{
-		Use:   "gen-sdk <schema_source>",
-		Args:  cobra.ExactArgs(1),
+		Use:   "gen-sdk <schema_source> [provider parameters]",
+		Args:  cobra.MinimumNArgs(1),
 		Short: "Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
-<schema_source> can be a package name, the path to a plugin binary, or the path to a schema file.`,
+<schema_source> can be a package name or the path to a plugin binary or folder.
+If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
+			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
 			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-			pkg, err := schemaFromSchemaSource(source)
+			pkg, err := schemaFromSchemaSource(cmd.Context(), source, args[1:])
 			if err != nil {
 				return err
 			}
