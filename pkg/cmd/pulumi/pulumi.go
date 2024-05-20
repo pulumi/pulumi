@@ -344,7 +344,7 @@ func NewPulumiCmd() *cobra.Command {
 				newLogoutCmd(),
 				newWhoAmICmd(),
 				newOrgCmd(),
-				newDeploymentsCmd(),
+				newDeploymentCmd(),
 			},
 		},
 		{

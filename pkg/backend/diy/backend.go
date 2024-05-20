@@ -1359,7 +1359,7 @@ func (b *diyBackend) UpdateStackDeployment(ctx context.Context, stack backend.St
 	deployment apitype.DeploymentSettings,
 ) error {
 	// The local backend does not currently persist tags.
-	return errors.New("stack deployments not supported in --local mode")
+	return errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) DestroyStackDeployment(ctx context.Context, stack backend.Stack) error {

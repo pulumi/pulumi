@@ -29,9 +29,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newDeploymentsCmd() *cobra.Command {
+func newDeploymentCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deployments",
+		Use:   "deployment",
 		Short: "Manage stack deployments",
 		Long: "Manage stack deployments.\n" +
 			"\n" +
