@@ -28,6 +28,7 @@ type envEditCommand struct {
 }
 
 func newEnvEditCmd(env *envCommand) *cobra.Command {
+	var file string
 	var showSecrets bool
 
 	edit := &envEditCommand{env: env}
@@ -48,11 +49,6 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
-			editor, err := edit.getEditor()
-			if err != nil {
-				return err
-			}
-
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
 			}
@@ -65,6 +61,35 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("the edit command does not accept versions")
 			}
 			_ = args
+
+			if file != "" {
+				var yaml []byte
+				switch file {
+				case "-":
+					yaml, err = io.ReadAll(env.esc.stdin)
+				default:
+					yaml, err = fs.ReadFile(env.esc.fs, file)
+				}
+				if err != nil {
+					return fmt.Errorf("reading environment definition: %w", err)
+				}
+
+				diags, err := edit.env.esc.client.UpdateEnvironment(ctx, ref.orgName, ref.envName, yaml, "")
+				if err != nil {
+					return fmt.Errorf("updating environment definition: %w", err)
+				}
+				if len(diags) == 0 {
+					fmt.Fprintln(edit.env.esc.stdout, "Environment updated.")
+					return nil
+				}
+
+				return edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.envName, yaml, diags)
+			}
+
+			editor, err := edit.getEditor()
+			if err != nil {
+				return err
+			}
 
 			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", showSecrets)
 			if err != nil {
@@ -116,6 +141,10 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&edit.editorFlag, "editor", "", "the command to use to edit the environment definition")
+
+	cmd.Flags().StringVarP(&file,
+		"file", "f", "",
+		"the file that contains the updated environment, if any. Pass `-` to read from standard input.")
 
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,

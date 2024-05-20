@@ -1,0 +1,46 @@
+run: |
+  echo '{"values":{"foo":"baz"}}' | esc env edit test -f=-
+  esc env get test
+  echo '{"values":{"foo":"qux"}}' >def.yaml
+  esc env edit test -f=def.yaml
+  esc env get test
+environments:
+  test-user/test:
+    values:
+      foo: bar
+stdout: |+
+  > esc env edit test -f=-
+  Environment updated.
+  > esc env get test
+  # Value
+  ```json
+  {
+    "foo": "baz"
+  }
+  ```
+  # Definition
+  ```yaml
+  {"values": {"foo": "baz"}}
+
+  ```
+
+  > esc env edit test -f=def.yaml
+  Environment updated.
+  > esc env get test
+  # Value
+  ```json
+  {
+    "foo": "qux"
+  }
+  ```
+  # Definition
+  ```yaml
+  {"values": {"foo": "qux"}}
+
+  ```
+
+stderr: |
+  > esc env edit test -f=-
+  > esc env get test
+  > esc env edit test -f=def.yaml
+  > esc env get test
