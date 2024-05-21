@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -44,6 +45,131 @@ func newDeploymentCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
+	cmd.AddCommand(newDeploymentRunCmd())
+
+	return cmd
+}
+
+func newDeploymentRunCmd() *cobra.Command {
+	// Flags for remote operations.
+	remoteArgs := RemoteArgs{}
+
+	var debug bool
+	var diffDisplay bool
+	var suppressPermalink string
+	var stackName string
+
+	var showConfig bool
+	var showPolicyRemediations bool
+	var showReplacementSteps bool
+	var showSames bool
+	var showReads bool
+	var showFullOutput bool
+	var suppressOutputs bool
+	var suppressProgress bool
+	var jsonDisplay bool
+
+	cmd := &cobra.Command{
+		Use:   "run",
+		Args:  cmdutil.ExactArgs(1),
+		Short: "Launches deployment jobs on Pulumi Cloud",
+		Long:  "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := cmd.Context()
+
+			displayType := display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
+			interactive := cmdutil.Interactive()
+
+			display := display.Options{
+				Color:                  cmdutil.GetGlobalColorization(),
+				ShowConfig:             showConfig,
+				ShowPolicyRemediations: showPolicyRemediations,
+				ShowReplacementSteps:   showReplacementSteps,
+				ShowSameResources:      showSames,
+				ShowReads:              showReads,
+				SuppressOutputs:        suppressOutputs,
+				SuppressProgress:       suppressProgress,
+				TruncateOutput:         !showFullOutput,
+				IsInteractive:          interactive,
+				Type:                   displayType,
+				// EventLogPath:           eventLogPath,
+				Debug:       debug,
+				JSONDisplay: jsonDisplay,
+			}
+
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			if suppressPermalink == "true" {
+				display.SuppressPermalink = true
+			} else {
+				display.SuppressPermalink = false
+			}
+
+			var url string
+			if len(args) > 0 {
+				url = args[0]
+			}
+			return runDeployment(ctx, display, apitype.Update, stackName, url, remoteArgs)
+		}),
+	}
+
+	// Remote flags
+	remoteArgs.applyFlags(cmd)
+
+	cmd.PersistentFlags().BoolVarP(
+		&debug, "debug", "d", false,
+		"Print detailed debugging output during resource operations")
+
+	cmd.PersistentFlags().BoolVar(
+		&diffDisplay, "diff", false,
+		"Display operation as a rich diff showing the overall change")
+
+	cmd.PersistentFlags().StringVar(
+		&suppressPermalink, "suppress-permalink", "",
+		"Suppress display of the state permalink")
+
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
+	cmd.PersistentFlags().BoolVar(
+		&showConfig, "show-config", false,
+		"Show configuration keys and variables")
+	cmd.PersistentFlags().BoolVar(
+		&showPolicyRemediations, "show-policy-remediations", false,
+		"Show per-resource policy remediation details instead of a summary")
+	cmd.PersistentFlags().BoolVar(
+		&showReplacementSteps, "show-replacement-steps", false,
+		"Show detailed resource replacement creates and deletes instead of a single step")
+
+	cmd.PersistentFlags().BoolVar(
+		&showSames, "show-sames", false,
+		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showReads, "show-reads", false,
+		"Show resources that are being read in, alongside those being managed directly in the stack")
+
+	cmd.PersistentFlags().BoolVar(
+		&suppressOutputs, "suppress-outputs", false,
+		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&suppressProgress, "suppress-progress", false,
+		"Suppress display of periodic progress dots")
+	cmd.PersistentFlags().BoolVar(
+		&showFullOutput, "show-full-output", true,
+		"Display full length of stack outputs")
+	cmd.PersistentFlags().StringVar(
+		&suppressPermalink, "suppress-permalink", "",
+		"Suppress display of the state permalink")
+	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the update diffs, operations, and overall output as JSON")
 
 	return cmd
 }
