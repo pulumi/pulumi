@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows && !js
-// +build !windows,!js
+//go:build js
+// +build js
 
-package rpcutil
+package cmdutil
 
-import (
-	"errors"
-	"os"
+import "errors"
 
-	"github.com/pkg/term/termios"
-)
+func shutdownProcessGroup(pid int) error {
+	panic(errors.New("unimplemented"))
+}
 
-var errUnsupported = errors.New("unsupported")
-
-func openPty() (*os.File, *os.File, error) {
-	return termios.Pty()
+func isWaitAlreadyExited(err error) bool {
+	panic(errors.New("unimplemented"))
 }

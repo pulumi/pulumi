@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2018, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows && !js
-// +build !windows,!js
+//go:build js
+// +build js
 
-package rpcutil
+package cmdutil
 
 import (
 	"errors"
 	"os"
-
-	"github.com/pkg/term/termios"
+	"os/exec"
 )
 
-var errUnsupported = errors.New("unsupported")
+func killProcessGroup(proc *os.Process) error {
+	panic(errors.New("unsupported"))
+}
 
-func openPty() (*os.File, *os.File, error) {
-	return termios.Pty()
+func KillChildren(pid int) error {
+	panic(errors.New("unsupported"))
+}
+
+func processExistsWithParent(pid int, ppid int) (bool, error) {
+	panic(errors.New("unsupported"))
+}
+
+func RegisterProcessGroup(cmd *exec.Cmd) {
+	panic(errors.New("unsupported"))
 }

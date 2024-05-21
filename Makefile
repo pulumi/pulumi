@@ -62,8 +62,11 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-build:: build-proto go.ensure
+build:: build-proto build_wasm_display go.ensure
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+
+build_display_wasm:: go.ensure
+	cd pkg && GOOS=js GOARCH=wasm go build -o ./backend/display/wasm/mod.wasm -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ./backend/display/wasm
 
 install:: .ensure.phony go.ensure
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
