@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package python
+package toolchain
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +34,113 @@ const (
 	windows             = "windows"
 	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
 )
+
+type pip struct {
+	virtualenvPath string
+}
+
+var _ PackageManager = &pip{}
+
+func newPip(root, virtualenvPath string) (*pip, error) {
+	absPath := resolveVirtualEnvironmentPath(root, virtualenvPath)
+	return &pip{absPath}, nil
+}
+
+// InstallDependenciesWithWriters implements PackageManager.
+func (p *pip) InstallDependenciesWithWriters(ctx context.Context,
+	root string, showOutput bool, infoWriter io.Writer, errorWriter io.Writer,
+) error {
+	return InstallDependenciesWithWriters(
+		ctx,
+		root,
+		p.virtualenvPath,
+		showOutput,
+		infoWriter,
+		errorWriter)
+}
+
+func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
+	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
+	if !transitive {
+		args = append(args, "--not-required")
+	}
+
+	cmd, err := p.Command(ctx, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(args, " "), err)
+	}
+
+	// Parse the JSON output; on some systems pip -v verbose mode
+	// follows JSON with non-JSON trailer, so we need to be
+	// careful when parsing and ignore the trailer.
+	var packages []PythonPackage
+	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
+	if err := jsonDecoder.Decode(&packages); err != nil {
+		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(args, " "), err)
+	}
+
+	return packages, nil
+}
+
+func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+	if p.virtualenvPath == "" {
+		return Command(ctx, arg...)
+	}
+	// TODO:
+	// if !python.IsVirtualEnv(virtualenv) {
+	// 	return nil, python.NewVirtualEnvError(opts.virtualenv, virtualenv)
+	// }
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	cmdPath := filepath.Join(p.virtualenvPath, virtualEnvBinDirName(), name)
+	cmd = exec.Command(cmdPath, arg...)
+
+	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
+
+	// TODO: do we need to set cmd.Dir ?
+	// Review old cold and see where we did this
+	// only for replacements of runPythonCommand ?
+	return cmd, nil
+}
+
+func (p *pip) Setup(ctx context.Context) error {
+	if p.virtualenvPath == "" {
+		return nil
+	}
+
+	return nil
+}
+
+func (p *pip) About(ctx context.Context) (Info, error) {
+	var cmd *exec.Cmd
+	// if CommandPath has an error, then so will Command. The error can
+	// therefore be ignored as redundant.
+	pyexe, _, _ := CommandPath()
+	cmd, err := Command(ctx, "--version")
+	if err != nil {
+		return Info{}, err
+	}
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return Info{}, fmt.Errorf("failed to get version: %w", err)
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+
+	return Info{
+		Executable: pyexe,
+		Version:    version,
+	}, nil
+}
+
+// TODO: Everything below here should become private or inlined above
 
 // CommandPath finds the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
 // variable is set it will be looked for on `PATH`, otherwise, `python3` and
@@ -221,7 +330,13 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
 func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool) error {
-	return InstallDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr)
+	return InstallDependenciesWithWriters(
+		ctx,
+		root,
+		venvDir,
+		showOutput,
+		os.Stdout,
+		os.Stderr)
 }
 
 func InstallDependenciesWithWriters(ctx context.Context,
@@ -321,11 +436,4 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	printmsg("Finished installing dependencies")
 
 	return nil
-}
-
-func virtualEnvBinDirName() string {
-	if runtime.GOOS == windows {
-		return "Scripts"
-	}
-	return "bin"
 }

@@ -17,6 +17,7 @@ package auto
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,7 @@ import (
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -403,7 +404,16 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = python.InstallDependencies(context.Background(), pDir, "venv", true /*showOutput*/)
+	tc, err := toolchain.ResolveToolchain(pDir,
+		toolchain.PythonOptions{
+			PackageManager: toolchain.PackageManagerPip,
+			Virtualenv:     "venv",
+		})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	err = tc.InstallDependenciesWithWriters(context.Background(), pDir, true /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		t.Errorf("failed to create a venv and install project dependencies: %v", err)
 		t.FailNow()
@@ -416,7 +426,11 @@ func TestRuntimeErrorPython(t *testing.T) {
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
-	pyCmd := python.VirtualEnvCommand(filepath.Join(pDir, "venv"), "python", "-m", "pip", "install", "-e", pySDK)
+	pyCmd, err := tc.Command(context.Background(), "-m", "pip", "install", "-e", pySDK)
+	if err != nil {
+		t.Errorf("failed to install the local SDK: %v", err)
+		t.FailNow()
+	}
 	pyCmd.Dir = pDir
 	err = pyCmd.Run()
 	if err != nil {

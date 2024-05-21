@@ -54,7 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 const (
@@ -1463,7 +1463,17 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
-			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
+			// TODO: @julienp poetry support
+			tc, err := toolchain.ResolveToolchain(finalDir,
+				toolchain.PythonOptions{
+					PackageManager: toolchain.PackageManagerPip,
+					Virtualenv:     "venv",
+				})
+			if err != nil {
+				return fmt.Errorf("getting python toolchain: %w", err)
+			}
+			if err := tc.InstallDependenciesWithWriters(ctx,
+				finalDir, false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}

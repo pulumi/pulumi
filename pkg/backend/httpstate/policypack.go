@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 type cloudRequiredPolicy struct {
@@ -317,7 +317,14 @@ func completeNodeJSInstall(ctx context.Context, finalDir string) error {
 
 func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
 	const venvDir = "venv"
-	if err := python.InstallDependencies(ctx, finalDir, venvDir, false /*showOutput*/); err != nil {
+	// TODO: julienp: support poetry?
+	tc, err := toolchain.ResolveToolchain(finalDir,
+		toolchain.PythonOptions{PackageManager: toolchain.PackageManagerPip, Virtualenv: venvDir})
+	if err != nil {
+		return fmt.Errorf("failed to get toolchain: %w", err)
+	}
+
+	if err := tc.InstallDependenciesWithWriters(ctx, finalDir, false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 		return err
 	}
 

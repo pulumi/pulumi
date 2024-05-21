@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -121,13 +122,18 @@ func TestDeterminePluginVersion(t *testing.T) {
 func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
+	// TODO: loop over toolchains
+
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
-		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)
+		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+			Virtualenv:     "venv",
+			PackageManager: toolchain.PackageManagerPip,
+		})
 		assert.NoError(t, err)
 		assert.Empty(t, packages)
 	})
@@ -135,20 +141,23 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
 
 		// Install the local Pulumi SDK into the virtual environment.
 		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
 		assert.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
 		assert.NoError(t, err)
 
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pulumi-random")
+		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
+		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pip-install-test")
 		assert.NoError(t, err)
-		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)
+		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+			Virtualenv:     "venv",
+			PackageManager: toolchain.PackageManagerPip,
+		})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
 		assert.Equal(t, 1, len(packages))
@@ -160,13 +169,13 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
 		require.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
+		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pip-install-test")
 		require.NoError(t, err)
 		// Find sitePackages folder in Python that contains pip_install_test subfolder.
 		var sitePackages string
-		possibleSitePackages, err := runPythonCommand(context.Background(), "venv", cwd, "-c",
+		possibleSitePackages, err := runPythonCommand(t, "venv", cwd, "-c",
 			"import site; import json; print(json.dumps(site.getsitepackages()))")
 		require.NoError(t, err)
 		var possibleSitePackagePaths []string
@@ -189,43 +198,52 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		err = os.WriteFile(path, bytes, 0o600)
 		require.NoError(t, err)
 		t.Logf("Wrote pulumipluing.json file: %s", path)
-		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)
+		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+			Virtualenv:     "venv",
+			PackageManager: toolchain.PackageManagerPip,
+		})
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(packages))
 		pipInstallTest := packages[0]
-		assert.NotNil(t, pipInstallTest.plugin)
 		assert.Equal(t, "pip-install-test", pipInstallTest.Name)
 		assert.NotEmpty(t, pipInstallTest.Location)
-		assert.Equal(t, "thing1", pipInstallTest.plugin.Name)
-		assert.Equal(t, "thing2", pipInstallTest.plugin.Version)
-		assert.Equal(t, "thing3", pipInstallTest.plugin.Server)
-		assert.True(t, pipInstallTest.plugin.Resource)
+
+		plugin, err := determinePluginDependency(cwd, pipInstallTest)
+		assert.NoError(t, err)
+		assert.NotNil(t, plugin)
+		assert.Equal(t, "thing1", plugin.Name)
+		assert.Equal(t, "vthing2", plugin.Version)
+		assert.Equal(t, "thing3", plugin.Server)
+		assert.Equal(t, "resource", plugin.Kind)
 	})
 	t.Run("no-pulumiplugin.json-file", func(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(context.Background(), "", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
 
-		_, err = runPythonCommand(context.Background(),
+		_, err = runPythonCommand(t,
 			"venv", cwd, "-m", "pip", "install", "--upgrade", "pip", "setuptools")
 		assert.NoError(t, err)
 
 		// Install the local Pulumi SDK into the virtual environment.
 		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
 		assert.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
 		assert.NoError(t, err)
 
 		// Install a local old provider SDK that does not have a pulumi-plugin.json file.
 		oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
 		assert.NoError(t, err)
-		_, err = runPythonCommand(context.Background(), "venv", cwd, "-m", "pip", "install", "-e", oldSdkDir)
+		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "-e", oldSdkDir)
 		assert.NoError(t, err)
 
 		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
-		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)
+		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+			Virtualenv:     "venv",
+			PackageManager: toolchain.PackageManagerPip,
+		})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
 		assert.Equal(t, 1, len(packages))
@@ -233,4 +251,24 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.Equal(t, "pulumi_old", old.Name)
 		assert.NotEmpty(t, old.Location)
 	})
+}
+
+func runPythonCommand(t *testing.T, virtualenv, cwd string, arg ...string) ([]byte, error) {
+	t.Helper()
+
+	tc, err := toolchain.ResolveToolchain(cwd, toolchain.PythonOptions{
+		Virtualenv:     virtualenv,
+		PackageManager: toolchain.PackageManagerPip,
+	})
+	require.NoError(t, err)
+	cmd, err := tc.Command(context.Background(), arg...)
+	require.NoError(t, err)
+	cmd.Dir = cwd
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	return output, err
 }

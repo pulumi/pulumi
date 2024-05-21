@@ -33,7 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 var pathTests = []struct {
@@ -149,7 +149,17 @@ func buildVirtualEnv(ctx context.Context) error {
 		}
 	}
 
-	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/)
+	tc, err := toolchain.ResolveToolchain(
+		hereDir,
+		toolchain.PythonOptions{
+			PackageManager: toolchain.PackageManagerPip,
+			Virtualenv:     venvDir,
+		})
+	if err != nil {
+		return err
+	}
+
+	err = tc.InstallDependenciesWithWriters(ctx, hereDir, false /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -169,7 +179,10 @@ func buildVirtualEnv(ctx context.Context) error {
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
-	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+	pyCmd, err := tc.Command(ctx, "-m", "pip", "install", "-e", sdkDir)
+	if err != nil {
+		contract.Failf("failed to create pip install command: %v", err)
+	}
 	pyCmd.Dir = hereDir
 	output, err := pyCmd.CombinedOutput()
 	if err != nil {
@@ -192,9 +205,22 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		return
 	}
 
-	cmd := func(name string, args ...string) error {
-		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
-		cmd := python.VirtualEnvCommand(venvDir, name, args...)
+	cmd := func(args ...string) error {
+		t.Logf("cd %s && %s", codeDir, strings.Join(args, " "))
+		tc, err := toolchain.ResolveToolchain(
+			codeDir,
+			toolchain.PythonOptions{
+				PackageManager: toolchain.PackageManagerPip,
+				Virtualenv:     venvDir,
+			})
+		if err != nil {
+			return err
+		}
+
+		cmd, err := tc.Command(context.Background(), args...)
+		if err != nil {
+			return err
+		}
 		cmd.Dir = codeDir
 
 		outw := iotest.LogWriter(t)
@@ -206,7 +232,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 	installPackage := func() error {
 		venvMutex.Lock()
 		defer venvMutex.Unlock()
-		return cmd("python", "-m", "pip", "install", "-e", ".")
+		return cmd("-m", "pip", "install", "-e", ".")
 	}
 
 	if err = installPackage(); err != nil {
@@ -214,7 +240,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		return
 	}
 
-	if err = cmd("pytest", "."); err != nil {
+	if err = cmd("-m", "pytest", "."); err != nil {
 		exitError, isExitError := err.(*exec.ExitError)
 		if isExitError && exitError.ExitCode() == 5 {
 			t.Logf("Could not find any pytest tests in %s", codeDir)
