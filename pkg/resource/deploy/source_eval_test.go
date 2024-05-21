@@ -3085,7 +3085,7 @@ func TestRegisterResource(t *testing.T) {
 				Type:    "pulumi:providers:some-type",
 				Remote:  true,
 				Providers: map[string]string{
-					"name": "invalid-provider-reference",
+					"name": "not-an-urn::id",
 				},
 			}
 			_, err := rm.RegisterResource(context.Background(), req)

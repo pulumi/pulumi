@@ -257,3 +257,9 @@ func (p *monitorProxy) RegisterStackTransform(
 ) (*emptypb.Empty, error) {
 	return p.target.RegisterStackTransform(ctx, req)
 }
+
+func (p *monitorProxy) RegisterProvider(
+	ctx context.Context, req *pulumirpc.RegisterProviderRequest,
+) (*pulumirpc.RegisterProviderResponse, error) {
+	return p.target.RegisterProvider(ctx, req)
+}

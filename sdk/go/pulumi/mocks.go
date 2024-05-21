@@ -7,6 +7,8 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -266,6 +268,12 @@ func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
 	panic("not implemented")
+}
+
+func (m *mockMonitor) RegisterProvider(ctx context.Context, in *pulumirpc.RegisterProviderRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.RegisterProviderResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "RegisterProvider is not implemented")
 }
 
 type mockEngine struct {

@@ -486,6 +486,18 @@ func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) 
 	return err
 }
 
+func (rm *ResourceMonitor) RegisterProvider(pkg, version, pluginDownloadURL string) (string, error) {
+	resp, err := rm.resmon.RegisterProvider(context.Background(), &pulumirpc.RegisterProviderRequest{
+		Name:              pkg,
+		Version:           version,
+		PluginDownloadUrl: pluginDownloadURL,
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Ref, nil
+}
+
 func prepareTestTimeout(timeout float64) string {
 	if timeout == 0 {
 		return ""

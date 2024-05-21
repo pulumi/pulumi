@@ -898,3 +898,60 @@ class TransformResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["options", b"options", "properties", b"properties"]) -> None: ...
 
 global___TransformResponse = TransformResponse
+
+@typing_extensions.final
+class RegisterProviderRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    version: builtins.str
+    plugin_download_url: builtins.str
+    @property
+    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        plugin_download_url: builtins.str = ...,
+        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "version", b"version"]) -> None: ...
+
+global___RegisterProviderRequest = RegisterProviderRequest
+
+@typing_extensions.final
+class RegisterProviderResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REF_FIELD_NUMBER: builtins.int
+    ref: builtins.str
+    """The UUID package reference for this registered provider package."""
+    def __init__(
+        self,
+        *,
+        ref: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["ref", b"ref"]) -> None: ...
+
+global___RegisterProviderResponse = RegisterProviderResponse

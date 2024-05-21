@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -588,6 +590,10 @@ type resmon struct {
 	resourceTransforms     map[resource.URN][]TransformFunction // option transformation functions per resource
 	callbacksLock          sync.Mutex
 	callbacks              map[string]*CallbacksClient // callbacks clients per target address
+
+	packageRefLock sync.Mutex
+	// A map of UUIDs to the description of a provider package they correspond to
+	packageRefMap map[string]providers.ProviderRequest
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -629,6 +635,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		disableOutputValues:       opts.DisableOutputValues,
 		callbacks:                 map[string]*CallbacksClient{},
 		resourceTransforms:        map[resource.URN][]TransformFunction{},
+		packageRefMap:             map[string]providers.ProviderRequest{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -721,15 +728,23 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, l
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
 // given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
 // to the default provider for the indicated package.
-func getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
+func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
 	rawProviderRef string,
 ) (providers.Reference, error) {
 	if rawProviderRef != "" {
-		ref, err := providers.ParseReference(rawProviderRef)
-		if err != nil {
-			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
+		// Check if this is a real provider ref (URN::ID) or a package reference (a dashed uuid)
+		if strings.Contains(rawProviderRef, "::") {
+			ref, err := providers.ParseReference(rawProviderRef)
+			if err != nil {
+				return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
+			}
+			return ref, nil
 		}
-		return ref, nil
+		var has bool
+		req, has = rm.packageRefMap[rawProviderRef]
+		if !has {
+			return providers.Reference{}, fmt.Errorf("unknown provider package '%v'", rawProviderRef)
+		}
 	}
 
 	ref, err := defaultProviders.getDefaultProviderRef(req)
@@ -742,12 +757,12 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 // getProviderFromSource fetches the provider plugin for a resource, read, or invoke from the given
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
-func getProviderFromSource(
+func (rm *resmon) getProviderFromSource(
 	providerSource ProviderSource, defaultProviders *defaultProviders,
 	req providers.ProviderRequest, rawProviderRef string,
 	token tokens.ModuleMember,
 ) (plugin.Provider, error) {
-	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
+	providerRef, err := rm.getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
 	} else if providers.IsDenyDefaultsProvider(providerRef) {
@@ -780,6 +795,41 @@ func parseProviderRequest(
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
 	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums), nil
+}
+
+func (rm *resmon) RegisterProvider(ctx context.Context,
+	req *pulumirpc.RegisterProviderRequest,
+) (*pulumirpc.RegisterProviderResponse, error) {
+	logging.V(5).Infof("ResourceMonitor.RegisterProvider(%v)", req)
+
+	// First parse the request into a ProviderRequest
+	var version *semver.Version
+	if req.Version != "" {
+		v, err := semver.Parse(req.Version)
+		if err != nil {
+			return nil, fmt.Errorf("parse package version %s: %w", req.Version, err)
+		}
+		version = &v
+	}
+	pi := providers.NewProviderRequest(
+		version, tokens.Package(req.Name), req.PluginDownloadUrl, req.PluginChecksums)
+
+	rm.packageRefLock.Lock()
+	defer rm.packageRefLock.Unlock()
+
+	// See if this package is already registered, else add it to the map.
+	for uuid, candidate := range rm.packageRefMap {
+		if reflect.DeepEqual(candidate, pi) {
+			logging.V(5).Infof("ResourceMonitor.RegisterProvider(%v) matched %s", req, uuid)
+			return &pulumirpc.RegisterProviderResponse{Ref: uuid}, nil
+		}
+	}
+
+	// Wasn't found add it to the map
+	uuid := uuid.New().String()
+	rm.packageRefMap[uuid] = pi
+	logging.V(5).Infof("ResourceMonitor.RegisterProvider(%v) created %s", req, uuid)
+	return &pulumirpc.RegisterProviderResponse{Ref: uuid}, nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -830,7 +880,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -894,7 +944,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -1002,7 +1052,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -1642,14 +1692,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
+		providerRef, err = rm.getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
 		if err != nil {
 			return nil, err
 		}
 
 		providerRefs = make(map[string]string, len(opts.GetProviders()))
 		for name, provider := range opts.GetProviders() {
-			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
+			ref, err := rm.getProviderReference(rm.defaultProviders, providerReq, provider)
 			if err != nil {
 				return nil, err
 			}

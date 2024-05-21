@@ -91,6 +91,28 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterProviderRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterProviderRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterProviderRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterProviderRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterProviderRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterProviderResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterProviderResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterProviderResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterProviderResponse(buffer_arg) {
+  return pulumi_resource_pb.RegisterProviderResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
@@ -258,6 +280,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestDeserialize: deserialize_pulumirpc_Callback,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  registerProvider: {
+    path: '/pulumirpc.ResourceMonitor/RegisterProvider',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterProviderRequest,
+    responseType: pulumi_resource_pb.RegisterProviderResponse,
+    requestSerialize: serialize_pulumirpc_RegisterProviderRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterProviderRequest,
+    responseSerialize: serialize_pulumirpc_RegisterProviderResponse,
+    responseDeserialize: deserialize_pulumirpc_RegisterProviderResponse,
   },
 };
 
