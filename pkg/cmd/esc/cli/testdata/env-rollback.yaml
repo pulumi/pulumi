@@ -1,0 +1,63 @@
+run: |
+  esc env rollback test@stable
+  esc env get test
+  esc env rollback test@2
+error: exit status 1
+environments:
+  test-user/a: {}
+  test-user/b: {}
+  test-user/test:
+    revisions:
+      - yaml:
+          imports:
+            - c
+          values: {}
+      - yaml:
+          values:
+            string: hello, world!
+        tag: stable
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+stdout: |
+  > esc env rollback test@stable
+  Environment updated.
+  > esc env get test
+  # Value
+  ```json
+  {
+    "string": "hello, world!"
+  }
+  ```
+  # Definition
+  ```yaml
+  values:
+    string: hello, world!
+
+  ```
+
+  > esc env rollback test@2
+stderr: |
+  > esc env rollback test@stable
+  > esc env get test
+  > esc env rollback test@2
+  Error: not found
+
+    on test line 2:
+     2:     - c
+
+  Error: could not roll back: too many errors
