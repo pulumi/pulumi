@@ -16,6 +16,7 @@ package apitype
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -27,11 +28,32 @@ type PulumiOperation string
 
 // The possible operations we can deploy.
 const (
-	Update  PulumiOperation = "update"
-	Preview PulumiOperation = "preview"
-	Destroy PulumiOperation = "destroy"
-	Refresh PulumiOperation = "refresh"
+	Update         PulumiOperation = "update"
+	Preview        PulumiOperation = "preview"
+	Destroy        PulumiOperation = "destroy"
+	Refresh        PulumiOperation = "refresh"
+	DetectDrift    PulumiOperation = "detect-drift"
+	RemediateDrift PulumiOperation = "remediate-drift"
 )
+
+func StrToPulumiOperation(o string) (PulumiOperation, error) {
+	switch o {
+	case "update":
+		return Update, nil
+	case "preview":
+		return Preview, nil
+	case "destroy":
+		return Destroy, nil
+	case "refresh":
+		return Refresh, nil
+	case "detect-drift":
+		return DetectDrift, nil
+	case "remediate-drift":
+		return RemediateDrift, nil
+	default:
+		return "", fmt.Errorf("Invalid pulumi operation; %q", o)
+	}
+}
 
 // CreateDeploymentRequest defines the request payload that is expected when
 // creating a new deployment.
