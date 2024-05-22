@@ -432,3 +432,23 @@ func TestRelativePluginPath(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "preview")
 }
+
+// Quick sanity tests for https://github.com/pulumi/pulumi/issues/16248. Ensure we can run plugins and auto-fetch them.
+//
+//nolint:paralleltest // changes env vars
+func TestPluginRun(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	removeRandomFromLocalPlugins := func() {
+		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
+	}
+	removeRandomFromLocalPlugins()
+
+	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
+	assert.Contains(t, stderr, "flag: help requested")
+	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
+	assert.Contains(t, stderr, "flag: help requested")
+}
