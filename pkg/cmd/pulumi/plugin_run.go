@@ -68,12 +68,13 @@ func (cmd *pluginRunCmd) run(args []string) error {
 	d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
 	path, err := workspace.GetPluginPath(d, kind, name, version, nil)
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
-		// Not a MissingError, return the original error.
-		return fmt.Errorf("could not get plugin path: %w", err)
-	}
 	if err != nil {
+		var me *workspace.MissingError
+		if !errors.As(err, &me) {
+			// Not a MissingError, return the original error.
+			return fmt.Errorf("could not get plugin path: %w", err)
+		}
+
 		// Try to install the plugin, unless auto plugin installs are turned off.
 		if env.DisableAutomaticPluginAcquisition.Value() {
 			return err
@@ -93,6 +94,11 @@ func (cmd *pluginRunCmd) run(args []string) error {
 		_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 		if err != nil {
 			return err
+		}
+
+		path, err = workspace.GetPluginPath(d, kind, name, version, nil)
+		if err != nil {
+			return fmt.Errorf("could not get plugin path: %w", err)
 		}
 	}
 
