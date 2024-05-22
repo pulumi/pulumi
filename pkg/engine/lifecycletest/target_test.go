@@ -2322,3 +2322,505 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 	// provider B)
 	assert.Equal(t, 7, len(snap.Resources))
 }
+
+func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	targetName := "target"
+
+	t.Run("dependencies", func(t *testing.T) {
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{a.URN},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{b.URN},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					Dependencies: []resource.URN{b.URN},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+
+	t.Run("property dependencies", func(t *testing.T) {
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				PropertyDeps: map[resource.PropertyKey][]resource.URN{
+					"prop": {a.URN},
+				},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				PropertyDeps: map[resource.PropertyKey][]resource.URN{
+					"prop": {b.URN},
+				},
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					PropertyDeps: map[resource.PropertyKey][]resource.URN{
+						"prop": {b.URN},
+					},
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+
+	t.Run("deleted with", func(t *testing.T) {
+		beforeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+			assert.NoError(t, err)
+
+			a, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			assert.NoError(t, err)
+
+			b, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
+				DeletedWith: a.URN,
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+				DeletedWith: b.URN,
+			})
+			assert.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		beforeHostF := deploytest.NewPluginHostF(nil, nil, beforeF, loaders...)
+
+		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				b, err := monitor.RegisterResource("pkgA:m:typA", "b", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true, deploytest.ResourceOptions{
+					DeletedWith: b.URN,
+				})
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+
+		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			p := &TestPlan{}
+			project := p.GetProject()
+
+			snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), TestUpdateOptions{
+				T:     t,
+				HostF: beforeHostF,
+			}, false, p.BackendClient, nil, "0")
+			assert.NoError(t, err)
+
+			afterF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "c", true)
+				assert.NoError(t, err)
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", targetName, true)
+				assert.NoError(t, err)
+
+				return nil
+			})
+
+			afterHostF := deploytest.NewPluginHostF(nil, nil, afterF, loaders...)
+
+			// Act.
+			snap, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), TestUpdateOptions{
+				T:     t,
+				HostF: afterHostF,
+				UpdateOptions: UpdateOptions{
+					Targets: deploy.NewUrnTargets([]string{fmt.Sprintf("**%s**", targetName)}),
+				},
+			}, false, p.BackendClient, nil, "1")
+
+			// Assert.
+			assert.NoError(t, err)
+			assert.NoError(t, snap.VerifyIntegrity())
+		})
+	})
+}

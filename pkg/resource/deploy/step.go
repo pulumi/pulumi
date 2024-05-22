@@ -150,7 +150,19 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	}
 
 	// TODO: should this step be marked as skipped if it comes from a targeted up?
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// It's possible that s.reg will be nil in the case that multiple same steps
+		// are emitted for a single RegisterResourceEvent. This occurs when a
+		// resource which is not targeted by a targeted operation needs to ensure
+		// that old dependencies are brought forward into the new state before it
+		// is. In these cases the root resource will be instantiated with its event
+		// while its dependencies will have a nil event. This is fine since in these
+		// cases the only Done callback we care about is the one for the root
+		// resource.
+		if s.reg != nil {
+			s.reg.Done(&RegisterResult{State: s.new})
+		}
+	}
 	return resource.StatusOK, complete, nil
 }
 
