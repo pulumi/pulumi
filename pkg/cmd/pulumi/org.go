@@ -75,10 +75,10 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default [NAME]",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Set the default organization for the current backend",
-		Long: "Set the default organization for the current backend.\n" +
+		Short: "Set the local default organization for the current backend",
+		Long: "Set the local default organization for the current backend.\n" +
 			"\n" +
-			"This command is used to set the default organization in which to create \n" +
+			"This command is used to set your local default organization in which to create \n" +
 			"projects and stacks for the current backend.\n" +
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations. " +
