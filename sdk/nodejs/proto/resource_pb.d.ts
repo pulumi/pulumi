@@ -712,6 +712,57 @@ export namespace TransformResponse {
     }
 }
 
+export class RegisterProviderRequest extends jspb.Message { 
+    getName(): string;
+    setName(value: string): RegisterProviderRequest;
+    getVersion(): string;
+    setVersion(value: string): RegisterProviderRequest;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): RegisterProviderRequest;
+
+    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginChecksumsMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterProviderRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterProviderRequest): RegisterProviderRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterProviderRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterProviderRequest;
+    static deserializeBinaryFromReader(message: RegisterProviderRequest, reader: jspb.BinaryReader): RegisterProviderRequest;
+}
+
+export namespace RegisterProviderRequest {
+    export type AsObject = {
+        name: string,
+        version: string,
+        pluginDownloadUrl: string,
+
+        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+    }
+}
+
+export class RegisterProviderResponse extends jspb.Message { 
+    getRef(): string;
+    setRef(value: string): RegisterProviderResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterProviderResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterProviderResponse): RegisterProviderResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterProviderResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterProviderResponse;
+    static deserializeBinaryFromReader(message: RegisterProviderResponse, reader: jspb.BinaryReader): RegisterProviderResponse;
+}
+
+export namespace RegisterProviderResponse {
+    export type AsObject = {
+        ref: string,
+    }
+}
+
 export enum Result {
     SUCCESS = 0,
     FAIL = 1,

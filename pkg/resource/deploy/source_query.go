@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -330,6 +331,50 @@ func (rm *queryResmon) Address() string {
 func (rm *queryResmon) Cancel() error {
 	close(rm.cancel)
 	return <-rm.done
+}
+
+// getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
+// given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
+// to the default provider for the indicated package.
+func getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
+	rawProviderRef string,
+) (providers.Reference, error) {
+	if rawProviderRef != "" {
+		ref, err := providers.ParseReference(rawProviderRef)
+		if err != nil {
+			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
+		}
+		return ref, nil
+	}
+
+	ref, err := defaultProviders.getDefaultProviderRef(req)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+	return ref, nil
+}
+
+// getProviderFromSource fetches the provider plugin for a resource, read, or invoke from the given
+// package with the given unparsed provider reference. If the unparsed provider reference is empty,
+// this function returns the plugin for the indicated package's default provider.
+func getProviderFromSource(
+	providerSource ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string,
+	token tokens.ModuleMember,
+) (plugin.Provider, error) {
+	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
+	if err != nil {
+		return nil, fmt.Errorf("getProviderFromSource: %w", err)
+	} else if providers.IsDenyDefaultsProvider(providerRef) {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, req.Package(), token)
+	}
+
+	provider, ok := providerSource.GetProvider(providerRef)
+	if !ok {
+		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
+	}
+	return provider, nil
 }
 
 // Invoke performs an invocation of a member located in a resource provider.

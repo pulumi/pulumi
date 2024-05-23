@@ -36,6 +36,8 @@ service ResourceMonitor {
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
+
+    rpc RegisterProvider(RegisterProviderRequest) returns (RegisterProviderResponse) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -237,4 +239,16 @@ message TransformRequest {
 message TransformResponse {
     google.protobuf.Struct properties = 1; // the transformed input properties.
     TransformResourceOptions options = 2; // the options for the resource.
+}
+
+message RegisterProviderRequest {
+    string name = 1;
+    string version = 2;
+    string plugin_download_url = 3;
+    map<string, bytes> plugin_checksums = 4;
+}
+
+message RegisterProviderResponse {
+    // The UUID package reference for this registered provider package.
+    string ref = 1; 
 }
