@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Propagate dependencies of untargeted resources correctly during targeted updates

@@ -912,7 +912,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		contract.Assertf(old != nil, "must have old resource if hasOld is true")
 
 		// If the user requested only specific resources to update, and this resource was not in
-		// that set, then do nothing but create a SameStep for it.
+		// that set, then we should emit a SameStep for it.
 		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
@@ -944,9 +944,131 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				}
 			}
 
-			sg.sames[urn] = true
-			return []Step{NewSameStep(sg.deployment, event, old, old)}, nil
+			// When emitting a SameStep for an untargeted resource, we must also check
+			// for dependencies of the resource that may have been both deleted and
+			// not targeted. Consider:
+			//
+			// * When a resource is deleted from a program, no resource registration
+			//   will be sent for it. Moreover, no other resource in the program can
+			//   refer to it (since it forms no part of the program source).
+			//
+			// * In the event of an untargeted update, resources that previously
+			//   referred to the now-deleted resource will be updated and the
+			//   dependencies removed. The deleted resource will be removed from the
+			//   state later in the operation.
+			//
+			// HOWEVER, in the event of a targeted update that targets _neither the
+			// deleted resource nor its dependencies_:
+			//
+			// * The dependencies will have SameSteps emitted and their old states
+			//   will be copied into the new state.
+			//
+			// * The deleted resource will not have a resource registration sent for
+			//   it. However, by virtue of not being targeted, it will (correctly) not
+			//   be deleted from the state. Thus, its old state will be copied over
+			//   before the new snapshot is written. Alas, it will therefore appear
+			//   after the resources that depend upon it in the new snapshot, which is
+			//   invalid!
+			//
+			// We therefore have a special case where we can't rely on previous steps
+			// to have copied our dependencies over for us. We address this by
+			// manually traversing the dependencies of untargeted resources with old
+			// state and ensuring that they have SameSteps emitted before we emit our
+			// own.
+			//
+			// Note:
+			//
+			// * This traversal has to be depth-first -- we need to push steps for our
+			//   dependencies before we push a step for ourselves.
+			//
+			// * "Dependencies" here includes dependencies, property dependencies, and
+			//   deleted-with relationships.
+
+			var getDependencySteps func(old *resource.State, event RegisterResourceEvent) ([]Step, error)
+			getDependencySteps = func(old *resource.State, event RegisterResourceEvent) ([]Step, error) {
+				sg.sames[urn] = true
+
+				var steps []Step
+
+				for _, dep := range old.Dependencies {
+					generatedDep := sg.hasGeneratedStep(dep)
+					if !generatedDep {
+						depOld, has := sg.deployment.Olds()[dep]
+						if !has {
+							return nil, result.BailErrorf(
+								"dependency %s of untargeted resource %s has no old state",
+								dep,
+								urn,
+							)
+						}
+
+						depSteps, err := getDependencySteps(depOld, nil)
+						if err != nil {
+							return nil, err
+						}
+
+						steps = append(steps, depSteps...)
+					}
+				}
+
+				for p, deps := range old.PropertyDependencies {
+					for _, dep := range deps {
+						generatedDep := sg.hasGeneratedStep(dep)
+						if !generatedDep {
+							depOld, has := sg.deployment.Olds()[dep]
+							if !has {
+								return nil, result.BailErrorf(
+									"property dependency %s of untargeted resource %s's property %s has no old state",
+									dep,
+									urn,
+									p,
+								)
+							}
+
+							depSteps, err := getDependencySteps(depOld, nil)
+							if err != nil {
+								return nil, err
+							}
+
+							steps = append(steps, depSteps...)
+						}
+					}
+				}
+
+				if old.DeletedWith != "" {
+					generatedDep := sg.hasGeneratedStep(old.DeletedWith)
+					if !generatedDep {
+						depOld, has := sg.deployment.Olds()[old.DeletedWith]
+						if !has {
+							return nil, result.BailErrorf(
+								"deleted with dependency %s of untargeted resource %s has no old state",
+								old.DeletedWith,
+								urn,
+							)
+						}
+
+						depSteps, err := getDependencySteps(depOld, nil)
+						if err != nil {
+							return nil, err
+						}
+
+						steps = append(steps, depSteps...)
+					}
+				}
+
+				rootStep := NewSameStep(sg.deployment, event, old, old)
+				steps = append(steps, rootStep)
+				return steps, nil
+			}
+
+			steps, err := getDependencySteps(old, event)
+			if err != nil {
+				return nil, err
+			}
+
+			return steps, nil
 		}
+
 		updateSteps, err := sg.generateStepsFromDiff(
 			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
 		if err != nil {
@@ -2086,6 +2208,16 @@ func (sg *stepGenerator) AnalyzeResources() error {
 	}
 
 	return nil
+}
+
+// hasGeneratedStep returns true if and only if the step generator has generated a step for the given URN.
+func (sg *stepGenerator) hasGeneratedStep(urn resource.URN) bool {
+	return sg.creates[urn] ||
+		sg.sames[urn] ||
+		sg.updates[urn] ||
+		sg.deletes[urn] ||
+		sg.replaces[urn] ||
+		sg.reads[urn]
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
