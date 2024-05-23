@@ -17,6 +17,8 @@ package pcl
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -46,6 +48,10 @@ func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
 func annotateAttributeValue(expr model.Expression, attributeType schema.Type) model.Expression {
 	if optionalType, ok := attributeType.(*schema.OptionalType); ok {
 		return annotateAttributeValue(expr, optionalType.ElementType)
+	}
+
+	if inputType, ok := attributeType.(*schema.InputType); ok {
+		return annotateAttributeValue(expr, inputType.ElementType)
 	}
 
 	switch attrValue := expr.(type) {
@@ -82,6 +88,47 @@ func annotateAttributeValue(expr model.Expression, attributeType schema.Type) mo
 			})
 		}
 
+		if schemaUnionType, ok := attributeType.(*schema.UnionType); ok {
+			var discriminatorValue string
+			for _, item := range attrValue.Items {
+				if key, ok := item.Key.(*model.LiteralValueExpression); ok {
+					if key.Value.AsString() == schemaUnionType.Discriminator {
+						if value, ok := item.Value.(*model.LiteralValueExpression); ok {
+							discriminatorValue = value.Value.AsString()
+							break
+						}
+
+						if value, ok := item.Value.(*model.TemplateExpression); ok && len(value.Parts) == 1 {
+							if literalValue, ok := value.Parts[0].(*model.LiteralValueExpression); ok {
+								discriminatorValue = literalValue.Value.AsString()
+								break
+							}
+						}
+					}
+				}
+			}
+
+			if correspondingTypeToken, ok := schemaUnionType.Mapping[discriminatorValue]; ok {
+				for _, schemaType := range schemaUnionType.ElementTypes {
+					if schemaObjectType, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
+						parsedTypeToken, err := tokens.ParseTypeToken(correspondingTypeToken)
+						if err != nil {
+							continue
+						}
+
+						parsedObjectToken, err := tokens.ParseTypeToken(schemaObjectType.Token)
+						if err != nil {
+							continue
+						}
+
+						if string(parsedTypeToken.Name()) == string(parsedObjectToken.Name()) {
+							return annotateAttributeValue(attrValue, schemaObjectType)
+						}
+					}
+				}
+			}
+		}
+
 		return attrValue
 
 	case *model.TupleConsExpression:
@@ -115,7 +162,7 @@ func AnnotateResourceInputs(node *Resource) {
 		return
 	}
 	resourceProperties := make(map[string]*schema.Property)
-	for _, property := range node.Schema.Properties {
+	for _, property := range node.Schema.InputProperties {
 		resourceProperties[property.Name] = property
 	}
 

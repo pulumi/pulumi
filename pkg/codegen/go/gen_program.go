@@ -884,6 +884,20 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 		return GoPackageInfo{}, false
 	}
 	info, ok := p.Language["go"].(GoPackageInfo)
+	old := "pulumi-azure-native-sdk/v2"
+	new := "pulumi-azure-native-sdk"
+	if strings.Contains(info.ImportBasePath, old) {
+		info.ImportBasePath = strings.ReplaceAll(info.ImportBasePath, old, new)
+	}
+
+	for key, value := range info.PackageImportAliases {
+		if strings.Contains(key, old) {
+			newKey := strings.ReplaceAll(key, old, new)
+			info.PackageImportAliases[newKey] = value
+			delete(info.PackageImportAliases, key)
+		}
+	}
+
 	return info, ok
 }
 
@@ -894,7 +908,12 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		}
 
 		if mod != "" && mod != IndexToken {
-			return fmt.Sprintf("%s/%s", importBasePath, mod)
+			fullPath := fmt.Sprintf("%s/%s", importBasePath, mod)
+			if !strings.HasSuffix(fullPath, "v2") {
+				return fullPath + "/v2"
+			}
+
+			return fullPath
 		}
 		return importBasePath
 	}
@@ -1035,6 +1054,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 }
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
+	pcl.AnnotateResourceInputs(r)
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	originalMod := mod
@@ -1055,9 +1075,20 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	if r.Schema != nil {
 		// Add conversions to input properties
 		for _, input := range r.Inputs {
-			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-			g.diagnostics = append(g.diagnostics, diagnostics...)
-			expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
+			var destType model.Type
+			if inputObject, ok := input.Value.Type().(*model.ObjectType); ok {
+				if schemaType, ok := pcl.GetSchemaForType(inputObject); ok {
+					destType = g.program.SchemaTypeToModelType(schemaType)
+				}
+			}
+
+			if destType == nil {
+				traversable, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				destType = traversable.(model.Type)
+			}
+
+			expr, temps := g.lowerExpression(input.Value, destType)
 			expr, invokeTemps := g.rewriteInlineInvokes(expr)
 			for _, t := range invokeTemps {
 				temps = append(temps, t)
@@ -1611,8 +1642,14 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	importPath := func(mod string) string {
 		importBasePath := info.ImportBasePath
 		if mod != "" && mod != IndexToken {
-			return fmt.Sprintf("%s/%s", importBasePath, mod)
+			fullPath := fmt.Sprintf("%s/%s", importBasePath, mod)
+			if !strings.HasSuffix(fullPath, "v2") {
+				return fullPath + "/v2"
+			}
+
+			return fullPath
 		}
+
 		return importBasePath
 	}
 

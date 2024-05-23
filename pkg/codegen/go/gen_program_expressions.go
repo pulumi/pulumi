@@ -227,6 +227,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genTupleConsExpression(w, arg, expr.Type())
 		case *model.ObjectConsExpression:
 			isInput := false
+			if objectType, ok := expr.Type().(*model.ObjectType); ok {
+				if len(objectType.Annotations) > 0 {
+					if schemaObject, ok := objectType.Annotations[0].(*schema.ObjectType); ok {
+						token := schemaObject.Token
+						if parts := strings.Split(token, ":"); len(parts) == 3 {
+							pkg, modName, _ := parts[0], parts[1], parts[2]
+							if context, has := g.contexts[pkg]; has {
+								if pkgContext, has := context[modName]; has {
+									if details, found := pkgContext.typeDetails[schemaObject]; found {
+										g.genObjectConsExpression(w, arg, objectType, details.input)
+										return
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
 			g.genObjectConsExpression(w, arg, expr.Type(), isInput)
 		case *model.LiteralValueExpression:
 			g.genLiteralValueExpression(w, arg, expr.Type())
@@ -453,6 +472,16 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
 				g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
 				return
+			}
+
+			// find whether the type is inputty based on the computed package context
+			if schemaObject, ok := argType.Annotations[0].(*schema.ObjectType); ok {
+				if context, ok := g.findObjectTypePackageContext(argType); ok {
+					if details, found := context.typeDetails[schemaObject]; found {
+						g.genObjectConsExpression(w, expr, expr.Type(), details.input)
+						return
+					}
+				}
 			}
 		}
 	}
@@ -798,6 +827,23 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
 }
 
+func (g *generator) findObjectTypePackageContext(objectType *model.ObjectType) (*pkgContext, bool) {
+	if schemaType, ok := pcl.GetSchemaForType(objectType); ok {
+		if objectType, ok := schemaType.(*schema.ObjectType); ok {
+			if parts := strings.Split(objectType.Token, ":"); len(parts) == 3 {
+				pkg, modName, _ := parts[0], parts[1], parts[2]
+				if context, has := g.contexts[pkg]; has {
+					if pkgContext, has := context[modName]; has {
+						return pkgContext, true
+					}
+				}
+			}
+		}
+	}
+
+	return nil, false
+}
+
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) (result string) {
 	if cns, ok := destType.(*model.ConstType); ok {
@@ -810,6 +856,31 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	}
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
+		if objectType, ok := schemaType.(*schema.ObjectType); ok {
+			if parts := strings.Split(objectType.Token, ":"); len(parts) == 3 {
+				pkg, module := parts[0], parts[1]
+				if context, has := g.contexts[pkg]; has {
+					if pkgContext, has := context[module]; has {
+						if details, found := pkgContext.typeDetails[objectType]; found {
+							name := pkgContext.typeString(objectType)
+							if details.input {
+								name = name + "Args"
+							}
+
+							originalMod := module
+							if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
+								originalMod = module
+								module = pkg
+							}
+
+							modOrAlias := g.getModOrAlias(pkg, module, originalMod)
+							return modOrAlias + "." + name
+						}
+					}
+				}
+			}
+		}
+
 		return (&pkgContext{
 			pkg:              (&schema.Package{Name: "main"}).Reference(),
 			externalPackages: g.externalCache,

@@ -276,6 +276,10 @@ func (p *Program) ConfigVariables() []*ConfigVariable {
 	return configVars
 }
 
+func (p *Program) SchemaTypeToModelType(schemaType schema.Type) model.Type {
+	return p.binder.schemaTypeToType(schemaType)
+}
+
 // OutputVariables returns the output variable nodes of the program
 func (p *Program) OutputVariables() []*OutputVariable {
 	var outputs []*OutputVariable
