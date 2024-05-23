@@ -293,6 +293,7 @@ jobs:
 
   build-display-wasm-module:
     name: build display WASM module
+    needs: [matrix]
     uses: ./.github/workflows/ci-build-binaries.yml
     with:
       ref: ${{ inputs.ref }}
@@ -300,6 +301,7 @@ jobs:
       os: js
       arch: wasm
       build-platform: "ubuntu-latest"
+      version-set: ${{ needs.matrix.outputs.version-set }}
     secrets: inherit
 
   build-sdks:

@@ -45,8 +45,7 @@ builds:
   hooks:
     post:
       # Check the size of the WASM module.
-      - |
-        sh -c "[ `du -k {{ .Path }} | cut -f1` -le 79182 ] || (echo 'error: WASM module > 77M'; exit 1)"
+      - sh -c "[ `du -k {{ .Path }} | cut -f1` -le 79182 ] || (echo 'error: WASM module > 77M'; exit 1)"
 
 archives:
 - id: pulumi

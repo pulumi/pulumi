@@ -32,7 +32,7 @@ on:
         description: "Version to produce"
         type: string
       version-set:
-        required: false
+        required: true
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
       enable-coverage:
