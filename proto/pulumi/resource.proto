@@ -246,9 +246,16 @@ message RegisterProviderRequest {
     string version = 2;
     string plugin_download_url = 3;
     map<string, bytes> plugin_checksums = 4;
+    ProviderParameter parameter = 5;
 }
 
 message RegisterProviderResponse {
     // The UUID package reference for this registered provider package.
     string ref = 1; 
+}
+
+message ProviderParameter { 
+    string name = 1;
+    string version = 2;
+    google.protobuf.Value value = 3;
 }

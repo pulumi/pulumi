@@ -1,0 +1,27 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=baca83c2-6bd8-414a-b995-da89d3147d5d]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::baca83c2-6bd8-414a-b995-da89d3147d5d]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
+<{%reset%}>    [id=d91ec405-4bdb-43f0-a3ab-6f810e69bf1f]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    parameter: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        pkg    : <{%reset%}><{%reset%}>"pkgA"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        value  : <{%reset%}><{%reset%}>"replacement"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version  : <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::d91ec405-4bdb-43f0-a3ab-6f810e69bf1f]
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -923,11 +923,14 @@ class RegisterProviderRequest(google.protobuf.message.Message):
     VERSION_FIELD_NUMBER: builtins.int
     PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
     PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    PARAMETER_FIELD_NUMBER: builtins.int
     name: builtins.str
     version: builtins.str
     plugin_download_url: builtins.str
     @property
     def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    @property
+    def parameter(self) -> global___ProviderParameter: ...
     def __init__(
         self,
         *,
@@ -935,8 +938,10 @@ class RegisterProviderRequest(google.protobuf.message.Message):
         version: builtins.str = ...,
         plugin_download_url: builtins.str = ...,
         plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        parameter: global___ProviderParameter | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["parameter", b"parameter"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "parameter", b"parameter", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "version", b"version"]) -> None: ...
 
 global___RegisterProviderRequest = RegisterProviderRequest
 
@@ -955,3 +960,26 @@ class RegisterProviderResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["ref", b"ref"]) -> None: ...
 
 global___RegisterProviderResponse = RegisterProviderResponse
+
+@typing_extensions.final
+class ProviderParameter(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    version: builtins.str
+    @property
+    def value(self) -> google.protobuf.struct_pb2.Value: ...
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        value: google.protobuf.struct_pb2.Value | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+
+global___ProviderParameter = ProviderParameter

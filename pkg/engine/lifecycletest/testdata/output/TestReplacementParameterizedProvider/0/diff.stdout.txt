@@ -1,0 +1,21 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%fg 2%}>    version: <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::baca83c2-6bd8-414a-b995-da89d3147d5d]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgExt: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
+<{%reset%}><{%fg 2%}>    parameter: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        pkg    : <{%reset%}><{%fg 2%}>"pkgA"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        value  : <{%reset%}><{%fg 2%}>"replacement"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        version: <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    version  : <{%reset%}><{%fg 2%}>"0.5.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgExt:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::d91ec405-4bdb-43f0-a3ab-6f810e69bf1f]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
