@@ -103,6 +103,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		"",
 		false,
 		"",
+		"",
 		nil,
 		nil,
 		"",

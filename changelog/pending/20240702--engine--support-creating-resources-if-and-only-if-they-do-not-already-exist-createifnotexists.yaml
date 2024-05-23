@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Support creating resources if and only if they do not already exist (`CreateIfNotExists`)

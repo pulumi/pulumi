@@ -403,6 +403,10 @@ type ResourceOptions struct {
 	// DeletedWith holds a container resource that, if deleted,
 	// also deletes this resource.
 	DeletedWith Resource
+
+	// CreateIfNotExists specifies an ID that should be looked up in the provider,
+	// with the resource being created if and only if that ID does not exist.
+	CreateIfNotExists IDInput
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -438,6 +442,7 @@ type resourceOptions struct {
 	PluginDownloadURL       string
 	RetainOnDelete          bool
 	DeletedWith             Resource
+	CreateIfNotExists       IDInput
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -494,6 +499,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		PluginDownloadURL:       ro.PluginDownloadURL,
 		RetainOnDelete:          ro.RetainOnDelete,
 		DeletedWith:             ro.DeletedWith,
+		CreateIfNotExists:       ro.CreateIfNotExists,
 	}
 }
 
@@ -909,5 +915,16 @@ func RetainOnDelete(b bool) ResourceOption {
 func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeletedWith = r
+	})
+}
+
+// CreateIfNotExists specifies an ID that should be looked up in the provider.
+// If the ID exists, the resource should be imported from that ID. For an import
+// to succeed, the inputs to the resource's constructor must align with the
+// resource's current state. If the ID does not exist, the resource should be
+// created with the supplied inputs.
+func CreateIfNotExists(i IDInput) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.CreateIfNotExists = i
 	})
 }

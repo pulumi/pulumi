@@ -663,6 +663,10 @@ type ConstructOptions struct {
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
 	RetainOnDelete bool
+
+	// CreateIfNotExists specifies an ID that should be looked up in the provider,
+	// with the resource being created if and only if that ID does not exist.
+	CreateIfNotExists resource.ID
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.

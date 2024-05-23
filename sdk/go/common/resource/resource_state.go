@@ -33,31 +33,65 @@ type State struct {
 	// just locking in these two places is sufficient to stop the race detector from firing on integration tests.
 	Lock sync.Mutex
 
-	Type                    tokens.Type           // the resource's type.
-	URN                     URN                   // the resource's object urn, a human-friendly, unique name for the resource.
-	Custom                  bool                  // true if the resource is custom, managed by a plugin.
-	Delete                  bool                  // true if this resource is pending deletion due to a replacement.
-	ID                      ID                    // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
-	Inputs                  PropertyMap           // the resource's input properties (as specified by the program).
-	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
-	Parent                  URN                   // an optional parent URN that this resource belongs to.
-	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
-	External                bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle.
-	Dependencies            []URN                 // the resource's dependencies.
-	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
-	Provider                string                // the provider to use for this resource.
-	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
-	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
-	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
-	Aliases                 []URN                 // an optional set of URNs for which this resource is an alias.
-	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
-	ImportID                ID                    // the resource's import id, if this was an imported resource.
-	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
-	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
-	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
-	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
-	SourcePosition          string                // If set, the source location of the resource registration
-	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
+	// the resource's type.
+	Type tokens.Type
+	// the resource's object urn, a human-friendly, unique name for the resource.
+	URN URN
+	// true if the resource is custom, managed by a plugin.
+	Custom bool
+	// true if this resource is pending deletion due to a replacement.
+	Delete bool
+	// the resource's unique ID, assigned by the resource provider (or blank if
+	// none/uncreated).
+	ID ID
+	// the resource's input properties (as specified by the program).
+	Inputs PropertyMap
+	// the resource's complete output state (as returned by the resource
+	// provider).
+	Outputs PropertyMap
+	// an optional parent URN that this resource belongs to.
+	Parent URN
+	// true to "protect" this resource (protected resources cannot be deleted).
+	Protect bool
+	// true if this resource is "external" to Pulumi and we don't control the
+	// lifecycle.
+	External bool
+	// the resource's dependencies.
+	Dependencies []URN
+	// the set of errors encountered in the process of initializing resource.
+	InitErrors []string
+	// the provider to use for this resource.
+	Provider string
+	// the set of dependencies that affect each property.
+	PropertyDependencies map[PropertyKey][]URN
+	// true if this resource was deleted and is awaiting replacement.
+	PendingReplacement bool
+	// an additional set of outputs that should be treated as secrets.
+	AdditionalSecretOutputs []PropertyKey
+	// an optional set of URNs for which this resource is an alias.
+	Aliases []URN
+	// A config block that will be used to configure timeouts for CRUD operations.
+	CustomTimeouts CustomTimeouts
+	// the resource's import id, if this was an imported resource.
+	ImportID ID
+	// if set to True, the providers Delete method will not be called for this
+	// resource.
+	RetainOnDelete bool
+	// If set, the providers Delete method will not be called for this resource if
+	// specified resource is being deleted as well.
+	DeletedWith URN
+	// If set, this resource should be created if and only if the specified ID
+	// does not exist in the provider.
+	CreateIfNotExists ID
+	// If set, the time when the state was initially added to the state file.
+	// (i.e. Create, Import)
+	Created *time.Time
+	// If set, the time when the state was last modified in the state file.
+	Modified *time.Time
+	// If set, the source location of the resource registration
+	SourcePosition string
+	// If set, the list of properties to ignore changes for.
+	IgnoreChanges []string
 }
 
 // Copy creates a deep copy of the resource state, except without copying the lock.
@@ -84,6 +118,7 @@ func (s *State) Copy() *State {
 		ImportID:                s.ImportID,
 		RetainOnDelete:          s.RetainOnDelete,
 		DeletedWith:             s.DeletedWith,
+		CreateIfNotExists:       s.CreateIfNotExists,
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
@@ -109,8 +144,8 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
-	sourcePosition string, ignoreChanges []string,
+	importID ID, retainOnDelete bool, deletedWith URN, createIfNotExists ID,
+	created *time.Time, modified *time.Time, sourcePosition string, ignoreChanges []string,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -136,6 +171,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		ImportID:                importID,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             deletedWith,
+		CreateIfNotExists:       createIfNotExists,
 		Created:                 created,
 		Modified:                modified,
 		SourcePosition:          sourcePosition,

@@ -423,7 +423,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, "", ""),
+			nil, nil, nil, "", nil, nil, false, "", "", ""),
 		done: done,
 	}
 	return event, done, nil
@@ -1571,6 +1571,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 
+	if req.CreateIfNotExists != "" {
+		if req.ImportId != "" {
+			return nil, rpcerror.Newf(
+				codes.InvalidArgument,
+				"%s: ImportId and CreateIfNotExists cannot be specified together",
+				label,
+			)
+		}
+	}
+
 	// We need to build the full alias spec list here, so we can pass it to transforms.
 	aliases := []*pulumirpc.Alias{}
 	for _, aliasURN := range req.GetAliasURNs() {
@@ -1674,6 +1684,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
 		PluginChecksums:         req.GetPluginChecksums(),
+		CreateIfNotExists:       req.GetCreateIfNotExists(),
 	}
 
 	// This might be a resource registation for a resource that another process requested to be constructed. If so we'll
@@ -1916,6 +1927,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	ignoreChanges := opts.IgnoreChanges
 	replaceOnChanges := opts.ReplaceOnChanges
 	retainOnDelete := opts.RetainOnDelete
+	createIfNotExists := opts.CreateIfNotExists
 	deletedWith, err := resource.ParseOptionalURN(opts.GetDeletedWith())
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
@@ -1937,9 +1949,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v createdIfNotExists=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
-		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith, createIfNotExists)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1969,6 +1981,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
 			RetainOnDelete:          retainOnDelete,
+			CreateIfNotExists:       resource.ID(createIfNotExists),
 		}
 		if customTimeouts != nil {
 			options.CustomTimeouts = &plugin.CustomTimeouts{
@@ -2047,7 +2060,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
 			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			resource.ID(createIfNotExists), sourcePosition,
 		)
 
 		if goal.Parent != "" {
@@ -2144,6 +2157,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// • replaceOnChanges
 	// • retainOnDelete
 	// • deletedWith
+	// • createIfNotExists
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
 	if !custom {
@@ -2170,6 +2184,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		})
 		rm.checkComponentOption(result.State.URN, "deletedWith", func() bool {
 			return deletedWith != ""
+		})
+		rm.checkComponentOption(result.State.URN, "createIfNotExists", func() bool {
+			return createIfNotExists != ""
 		})
 	}
 

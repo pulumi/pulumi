@@ -215,13 +215,13 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
-	// We need to persist the changes if CustomTimes have changed
+	// We need to persist the changes if CustomTimeouts have changed
 	if old.CustomTimeouts != new.CustomTimeouts {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CustomTimeouts")
 		return true
 	}
 
-	// We need to persist the changes if CustomTimes have changed
+	// We need to persist the changes if RetainOnDelete options have changed
 	if old.RetainOnDelete != new.RetainOnDelete {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
 		return true
@@ -246,6 +246,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// If the DeletedWith attribute of this resource has changed, we must write the checkpoint.
 	if old.DeletedWith != new.DeletedWith {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
+		return true
+	}
+
+	// If the CreateIfNotExists attribute of this resource has changed, we must write the checkpoint.
+	if old.CreateIfNotExists != new.CreateIfNotExists {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CreateIfNotExists")
 		return true
 	}
 

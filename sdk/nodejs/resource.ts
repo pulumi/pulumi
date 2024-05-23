@@ -745,6 +745,14 @@ export interface ResourceOptions {
      * if specified is being deleted as well.
      */
     deletedWith?: Resource;
+    /**
+     * createIfNotExists specifies an ID that should be looked up in the provider.
+     * If the ID exists, the resource should be imported from that ID. For an import
+     * to succeed, the inputs to the resource's constructor must align with the
+     * resource's current state. If the ID does not exist, the resource should be
+     * created with the supplied inputs.
+     */
+    createIfNotExists?: string;
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.

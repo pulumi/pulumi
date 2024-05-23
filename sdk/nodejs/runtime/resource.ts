@@ -513,6 +513,7 @@ export function registerResource(
             req.setPlugindownloadurl(opts.pluginDownloadURL || "");
             req.setRetainondelete(opts.retainOnDelete || false);
             req.setDeletedwith(resop.deletedWithURN || "");
+            req.setCreateifnotexists(opts.createIfNotExists || "");
             req.setAliasspecs(true);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
             req.setTransformsList(callbacks);

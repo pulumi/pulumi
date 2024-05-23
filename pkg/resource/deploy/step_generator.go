@@ -80,8 +80,8 @@ type stepGenerator struct {
 	targetsActual UrnTargets
 }
 
-// isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
-// `--target-dependents`.
+// isTargetedForUpdate returns true if and only if `res` is targeted for update.
+// The function accommodates `--target-dependents`.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 	if sg.deployment.opts.Targets.Contains(res.URN) {
 		return true
@@ -228,6 +228,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		"",    /* importID */
 		false, /* retainOnDelete */
 		"",    /* deletedWith */
+		"",    /* createIfNotExists */
 		nil,   /* created */
 		nil,   /* modified */
 		event.SourcePosition(),
@@ -582,7 +583,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)
+		goal.CreateIfNotExists, createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -1106,25 +1107,30 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
 
-	// We're in the create stage now.  In a normal run just issue a 'create step'. If, however, the
-	// user is doing a run with `--target`s, then we need to operate specially here.
+	// Aside from the "vanilla" case, there are two other eventualities we have to
+	// consider if we reach this point:
 	//
-	// 1. If the user did include this resource urn in the --target list, then we can proceed
-	// normally and issue a create step for this.
+	// * If we are running with `--target`s and this resource is not in the target list,
+	//   we need to flat-out ignore the create (just like we ignore updates to
+	//   resources not in the target list).  This has interesting implications
+	//   though. Specifically, what if a property from this resource is then actually
+	//   needed by a property we *are* doing a targeted create/update for?
 	//
-	// 2. However, if they did not include the resource in the --target list, then we want to flat
-	// out ignore it (just like we ignore updates to resource not in the --target list).  This has
-	// interesting implications though. Specifically, what to do if a prop from this resource is
-	// then actually needed by a property we *are* doing a targeted create/update for.
+	//   In that case, we want to error to force the user to be explicit about wanting
+	//   this resource to be created. However, we can't issue the error until later on
+	//   when the resource is referenced. So, to support this we create a special "same"
+	//   step here for this resource. That "same" step has a flag set on it letting us
+	//   know that it is for this case. If we then later see a resource that depends on
+	//   this resource, we will issue an error letting the user know.
 	//
-	// In that case, we want to error to force the user to be explicit about wanting this resource
-	// to be created. However, we can't issue the error until later on when the resource is
-	// referenced. So, to support this we create a special "same" step here for this resource. That
-	// "same" step has a bit on it letting us know that it is for this case. If we then later see a
-	// resource that depends on this resource, we will issue an error letting the user know.
+	//   We will also not record this non-created resource into the checkpoint as it
+	//   doesn't actually exist.
 	//
-	// We will also not record this non-created resource into the checkpoint as it doesn't actually
-	// exist.
+	// * If the resource is marked as `createIfNotExists`, we need to check if a
+	//   resource with the supplied ID already exists using a provider read. If it does,
+	//   we need to perform an import rather than a create and so we generate an
+	//   import step. If it doesn't, we can proceed with a create step as we would
+	//   normally.
 
 	if !isTargeted {
 		sg.sames[urn] = true
@@ -1132,8 +1138,51 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
 	}
 
+	// This flag allows us to have a single path for creating resources while
+	// producing log messages that are specific about why a resource was created
+	// (a "vanilla" create vs. a create-if-not-exists where the resource didn't
+	// exist).
+	creatingBecauseNotExists := false
+
+	if goal.CreateIfNotExists != "" {
+		// When reading, an error indicates there was a problem executing the read,
+		// while a successful response with `nil` outputs indicates that the resource
+		// does not exist.
+		res, err := prov.Read(context.TODO(), plugin.ReadRequest{
+			URN: urn,
+			ID:  goal.CreateIfNotExists,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if res.Outputs != nil {
+			logging.V(7).Infof(
+				"Planner decided to import '%v' since it is marked as create-if-not-exists "+
+					"and already exists in the provider (inputs=%v)",
+				urn, new.Inputs,
+			)
+
+			new.ID = goal.CreateIfNotExists
+			new.ImportID = goal.CreateIfNotExists
+
+			return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
+		}
+
+		creatingBecauseNotExists = true
+	}
+
 	sg.creates[urn] = true
-	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
+	if creatingBecauseNotExists {
+		logging.V(7).Infof(
+			"Planner decided to create '%v' since it is marked as create-if-not-exists "+
+				"and does not exist in the provider (inputs=%v)",
+			urn, new.Inputs,
+		)
+	} else {
+		logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
+	}
+
 	return []Step{NewCreateStep(sg.deployment, event, new)}, nil
 }
 

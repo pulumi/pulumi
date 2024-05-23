@@ -7697,6 +7697,7 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 22)) == null ? undefined : f,
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
     retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 24, false),
+    createifnotexists: jspb.Message.getFieldWithDefault(msg, 26, ""),
     acceptsOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
   };
 
@@ -7837,6 +7838,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 24:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRetainondelete(value);
+      break;
+    case 26:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCreateifnotexists(value);
       break;
     case 25:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -8029,6 +8034,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       24,
+      f
+    );
+  }
+  f = message.getCreateifnotexists();
+  if (f.length > 0) {
+    writer.writeString(
+      26,
       f
     );
   }
@@ -8981,6 +8993,24 @@ proto.pulumirpc.ConstructRequest.prototype.getRetainondelete = function() {
  */
 proto.pulumirpc.ConstructRequest.prototype.setRetainondelete = function(value) {
   return jspb.Message.setProto3BooleanField(this, 24, value);
+};
+
+
+/**
+ * optional string createIfNotExists = 26;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getCreateifnotexists = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 26, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setCreateifnotexists = function(value) {
+  return jspb.Message.setProto3StringField(this, 26, value);
 };
 
 

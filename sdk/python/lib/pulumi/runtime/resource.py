@@ -989,6 +989,7 @@ def register_resource(
                 replaceOnChanges=replace_on_changes or [],
                 retainOnDelete=opts.retain_on_delete or False,
                 deletedWith=resolver.deleted_with_urn or "",
+                createIfNotExists=opts.create_if_not_exists or "",
                 sourcePosition=source_position,
                 transforms=callbacks,
                 supportsResultReporting=True,

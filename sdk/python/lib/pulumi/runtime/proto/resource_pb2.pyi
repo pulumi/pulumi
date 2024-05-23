@@ -336,6 +336,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ALIASES_FIELD_NUMBER: builtins.int
     DELETEDWITH_FIELD_NUMBER: builtins.int
+    CREATEIFNOTEXISTS_FIELD_NUMBER: builtins.int
     ALIASSPECS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
     TRANSFORMS_FIELD_NUMBER: builtins.int
@@ -408,6 +409,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """a list of additional aliases that should be considered the same."""
     deletedWith: builtins.str
     """if set the engine will not call the resource providers delete method for this resource when specified resource is deleted."""
+    createIfNotExists: builtins.str
+    """if set, this resource should be created if and only if the specified ID does not exist in the provider."""
     aliasSpecs: builtins.bool
     """Indicates that alias specs are specified correctly according to the spec.
     Older versions of the Node.js SDK did not send alias specs correctly.
@@ -458,6 +461,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         retainOnDelete: builtins.bool = ...,
         aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
         deletedWith: builtins.str = ...,
+        createIfNotExists: builtins.str = ...,
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
@@ -465,7 +469,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         package: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "package", b"package", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "createIfNotExists", b"createIfNotExists", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "package", b"package", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -793,6 +797,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
     ADDITIONAL_SECRET_OUTPUTS_FIELD_NUMBER: builtins.int
     PROVIDERS_FIELD_NUMBER: builtins.int
     PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    CREATE_IF_NOT_EXISTS_FIELD_NUMBER: builtins.int
     @property
     def depends_on(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     protect: builtins.bool
@@ -816,6 +821,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
     def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
     @property
     def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    create_if_not_exists: builtins.str
     def __init__(
         self,
         *,
@@ -834,9 +840,10 @@ class TransformResourceOptions(google.protobuf.message.Message):
         additional_secret_outputs: collections.abc.Iterable[builtins.str] | None = ...,
         providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        create_if_not_exists: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "create_if_not_exists", b"create_if_not_exists", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace"]) -> typing_extensions.Literal["delete_before_replace"] | None: ...
 
 global___TransformResourceOptions = TransformResourceOptions
