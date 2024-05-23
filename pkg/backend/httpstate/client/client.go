@@ -1133,6 +1133,19 @@ func (pc *Client) UpdateStackDeployment(ctx context.Context, stack StackIdentifi
 	return pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
 }
 
+func (pc *Client) EncryptStackDeploymentSecret(ctx context.Context,
+	stack StackIdentifier, secret string,
+) (string, error) {
+	request := apitype.SecretValue{}
+	response := apitype.SecretValue{}
+	err := pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings", "encrypt"), nil, &request, &response)
+	if err != nil {
+		return "", err
+	}
+
+	return response.Value, nil
+}
+
 func (pc *Client) DestroyStackDeployment(ctx context.Context, stack StackIdentifier) error {
 	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
 }

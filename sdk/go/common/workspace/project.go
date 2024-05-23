@@ -852,7 +852,7 @@ func (ps *ProjectStack) Save(path string) error {
 }
 
 type ProjectStackDeployment struct {
-	DeploymentSettings *apitype.DeploymentSettings `json:"deploymentSettings,omitempty" yaml:"deploymentSettings,omitempty"`
+	DeploymentSettings apitype.DeploymentSettings `json:"deploymentSettings" yaml:"deploymentSettings"`
 }
 
 func (psd *ProjectStackDeployment) Save(path string) error {

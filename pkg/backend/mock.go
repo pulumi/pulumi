@@ -54,19 +54,20 @@ type MockBackend struct {
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
 	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
-	RenameStackF            func(context.Context, Stack, tokens.QName) (StackReference, error)
-	GetStackCrypterF        func(StackReference) (config.Crypter, error)
-	QueryF                  func(context.Context, QueryOperation) error
-	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
-	GetHistoryF             func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
-	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
-	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
-	UpdateStackDeploymentF  func(context.Context, Stack, apitype.DeploymentSettings) error
-	DestroyStackDeploymentF func(ctx context.Context, stack Stack) error
-	GetStackDeploymentF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
-	CurrentUserF            func() (string, []string, *workspace.TokenInformation, error)
-	PreviewF                func(context.Context, Stack,
+	RenameStackF                  func(context.Context, Stack, tokens.QName) (StackReference, error)
+	GetStackCrypterF              func(StackReference) (config.Crypter, error)
+	QueryF                        func(context.Context, QueryOperation) error
+	GetLatestConfigurationF       func(context.Context, Stack) (config.Map, error)
+	GetHistoryF                   func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
+	UpdateStackTagsF              func(context.Context, Stack, map[apitype.StackTagName]string) error
+	ExportDeploymentF             func(context.Context, Stack) (*apitype.UntypedDeployment, error)
+	ImportDeploymentF             func(context.Context, Stack, *apitype.UntypedDeployment) error
+	EncryptStackDeploymentSecretF func(ctx context.Context, stack Stack, secret string) (string, error)
+	UpdateStackDeploymentF        func(context.Context, Stack, apitype.DeploymentSettings) error
+	DestroyStackDeploymentF       func(ctx context.Context, stack Stack) error
+	GetStackDeploymentF           func(context.Context, Stack) (*apitype.DeploymentSettings, error)
+	CurrentUserF                  func() (string, []string, *workspace.TokenInformation, error)
+	PreviewF                      func(context.Context, Stack,
 		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	UpdateF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
@@ -381,6 +382,13 @@ func (be *MockBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error {
 	if be.CancelCurrentUpdateF != nil {
 		return be.CancelCurrentUpdateF(ctx, stackRef)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) EncryptStackDeploymentSecret(ctx context.Context, stack Stack, secret string) (string, error) {
+	if be.UpdateStackTagsF != nil {
+		return be.EncryptStackDeploymentSecretF(ctx, stack, secret)
 	}
 	panic("not implemented")
 }

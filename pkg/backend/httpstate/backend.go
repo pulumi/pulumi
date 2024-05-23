@@ -1852,6 +1852,17 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 }
 
 // UpdateStackDeployment updates the stacks's deployment settings.
+func (b *cloudBackend) EncryptStackDeploymentSecret(ctx context.Context,
+	stack backend.Stack, secret string,
+) (string, error) {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return "", err
+	}
+
+	return b.client.EncryptStackDeploymentSecret(ctx, stackID, secret)
+}
+
 func (b *cloudBackend) UpdateStackDeployment(ctx context.Context, stack backend.Stack,
 	deployment apitype.DeploymentSettings,
 ) error {

@@ -67,7 +67,6 @@ func newDeploymentRunCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			operation, err := apitype.StrToPulumiOperation(args[0])
-
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -121,6 +120,7 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	cmd.AddCommand(newDeploymentSettingsInitCmd())
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
 	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
+	cmd.AddCommand(newDeploymentSettingsSetCmd())
 	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
 
 	return cmd
@@ -169,7 +169,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 			}
 
 			newStackDeployment := &workspace.ProjectStackDeployment{
-				DeploymentSettings: deploymentSettings,
+				DeploymentSettings: *deploymentSettings,
 			}
 
 			err = saveProjectStackDeployment(newStackDeployment, s)
@@ -180,6 +180,99 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	return cmd
+}
+
+func newDeploymentSettingsSetCmd() *cobra.Command {
+	var stack string
+
+	var executorPassword string
+	var gitPassword string
+
+	cmd := &cobra.Command{
+		Use:   "set-secret",
+		Args:  cmdutil.ExactArgs(0),
+		Short: "Updates stack's deployment settings secrets",
+		Long:  "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			if executorPassword == "" && gitPassword == "" {
+				return errors.New("No scecrets provided")
+			}
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			sd, err := loadProjectStackDeployment(s)
+			if err != nil {
+				return err
+			}
+
+			if gitPassword != "" {
+				if sd.DeploymentSettings.SourceContext.Git.GitAuth != nil {
+					encrypted, err := currentBe.EncryptStackDeploymentSecret(ctx, s, executorPassword)
+					if err != nil {
+						return err
+					}
+
+					sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Secret = true
+					sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Value = encrypted
+				} else {
+					return errors.New("custom executor is not configured")
+				}
+			}
+
+			if executorPassword != "" {
+				if sd.DeploymentSettings.Executor != nil && sd.DeploymentSettings.Executor.ExecutorImage != nil {
+					// encrypt
+					sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Secret = true
+					sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Value = executorPassword
+				} else {
+					return errors.New("custom executor is not configured")
+				}
+			}
+
+			err = saveProjectStackDeployment(sd, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().StringVar(
+		&executorPassword, "executor-password", "",
+		"Key to update")
+
+	cmd.PersistentFlags().StringVar(
+		&gitPassword, "git-password", "",
+		"Value for the updated key")
 
 	return cmd
 }
@@ -227,7 +320,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			err = currentBe.UpdateStackDeployment(ctx, s, *sd.DeploymentSettings)
+			err = currentBe.UpdateStackDeployment(ctx, s, sd.DeploymentSettings)
 			if err != nil {
 				return err
 			}
@@ -337,7 +430,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			}
 
 			newStackDeployment := &workspace.ProjectStackDeployment{
-				DeploymentSettings: &apitype.DeploymentSettings{
+				DeploymentSettings: apitype.DeploymentSettings{
 					SourceContext: &apitype.SourceContext{
 						Git: &apitype.SourceContextGit{
 							RepoDir: ".",

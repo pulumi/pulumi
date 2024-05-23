@@ -213,6 +213,7 @@ type Backend interface {
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
 	// UpdateStackDeployment updates the stacks's deployment settings.
+	EncryptStackDeploymentSecret(ctx context.Context, stack Stack, secret string) (string, error)
 	UpdateStackDeployment(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
 	GetStackDeployment(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 	DestroyStackDeployment(ctx context.Context, stack Stack) error

@@ -1355,6 +1355,13 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 }
 
 // UpdateStackDeployment updates the stacks's deployment settings.
+func (b *diyBackend) EncryptStackDeploymentSecret(ctx context.Context,
+	stack backend.Stack, secret string,
+) (string, error) {
+	// The local backend does not currently persist tags.
+	return "", errors.New("stack deployments not supported with diy backends")
+}
+
 func (b *diyBackend) UpdateStackDeployment(ctx context.Context, stack backend.Stack,
 	deployment apitype.DeploymentSettings,
 ) error {
