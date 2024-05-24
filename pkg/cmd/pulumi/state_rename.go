@@ -82,6 +82,11 @@ func stateReurnOperation(
 				existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldURN, newURN)
 			}
 
+			// Update deleted with relationships, if any.
+			if existingResource.DeletedWith == oldURN {
+				existingResource.DeletedWith = newURN
+			}
+
 			// Update parent, if any.
 			if existingResource.Parent == oldURN {
 				existingResource.Parent = newURN
