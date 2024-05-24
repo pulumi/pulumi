@@ -722,6 +722,14 @@ export class LocalWorkspace implements Workspace {
         return JSON.parse(result.stdout);
     }
     /**
+     * Returns all Stacks the current logged-in Pulumi identity has access to.
+     * This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
+     */
+    async listAllStacks(): Promise<StackSummary[]> {
+        const result = await this.runPulumiCmd(["stack", "ls", "--json", "--all"]);
+        return JSON.parse(result.stdout);
+    }
+    /**
      * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
      *
      * @param name the name of the plugin.

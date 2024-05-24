@@ -414,6 +414,16 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def list_all_stacks(self) -> List[StackSummary]:
+        """
+        Returns all Stacks the current logged-in Pulumi identity has access to.
+        This queries underlying backend and may return stacks not present in the Workspace
+        (as Pulumi.<stack>.yaml files).
+
+        :returns: List[StackSummary]
+        """
+
+    @abstractmethod
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         """
         Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.

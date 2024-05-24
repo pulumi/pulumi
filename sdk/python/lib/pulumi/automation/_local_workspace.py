@@ -441,6 +441,34 @@ class LocalWorkspace(Workspace):
             )
             stack_list.append(stack)
         return stack_list
+    
+    def list_all_stacks(self) -> List[StackSummary]:
+        result = self._run_pulumi_cmd_sync(["stack", "ls", "--json", "--all"])
+        json_list = json.loads(result.stdout)
+        stack_list: List[StackSummary] = []
+        for stack_json in json_list:
+            stack = StackSummary(
+                name=stack_json["name"],
+                current=stack_json["current"],
+                update_in_progress=(
+                    stack_json["updateInProgress"]
+                    if "updateInProgress" in stack_json
+                    else None
+                ),
+                last_update=(
+                    datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT)
+                    if "lastUpdate" in stack_json
+                    else None
+                ),
+                resource_count=(
+                    stack_json["resourceCount"]
+                    if "resourceCount" in stack_json
+                    else None
+                ),
+                url=stack_json["url"] if "url" in stack_json else None,
+            )
+            stack_list.append(stack)
+        return stack_list
 
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])

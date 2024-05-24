@@ -608,6 +608,21 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 	return stacks, nil
 }
 
+// ListAllStacks returns all Stacks the current logged-in Pulumi identity has access to.
+// This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
+func (l *LocalWorkspace) ListAllStacks(ctx context.Context) ([]StackSummary, error) {
+	var stacks []StackSummary
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json", "--all")
+	if err != nil {
+		return stacks, newAutoError(fmt.Errorf("could not list all stacks: %w", err), stdout, stderr, errCode)
+	}
+	err = json.Unmarshal([]byte(stdout), &stacks)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal all stacks value: %w", err)
+	}
+	return stacks, nil
+}
+
 // InstallPlugin acquires the plugin matching the specified name and version.
 func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "install", "resource", name, version)
