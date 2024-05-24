@@ -83,4 +83,4 @@ jobs:
         run: |
           set -euo pipefail
 
-          git push origin HEAD:master
+          git push origin HEAD:main
