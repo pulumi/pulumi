@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.117.0 (2024-05-24)
+
+
+### Features
+
+- [engine] Guess ID references of dependant resources when generating code for import operations
+  [#16208](https://github.com/pulumi/pulumi/pull/16208)
+
+
+### Bug Fixes
+
+- [engine] Check property dependencies and deleted-with relationships for target dependents
+  [#16220](https://github.com/pulumi/pulumi/pull/16220)
+
+- [engine] Propagate dependencies of untargeted resources correctly during targeted updates
+  [#16247](https://github.com/pulumi/pulumi/pull/16247)
+
+- [backend/diy] Rewrite DeletedWith references when renaming stacks
+  [#16216](https://github.com/pulumi/pulumi/pull/16216)
+
+- [cli/state] Fix state renames involving DeletedWith
+  [#16260](https://github.com/pulumi/pulumi/pull/16260)
+
+- [sdk/python] Use a separate type variable for static methods on Output
+  [#16172](https://github.com/pulumi/pulumi/pull/16172)
+
+- [sdk/python] Relax Output.all types to better match the implementation
+  [#16172](https://github.com/pulumi/pulumi/pull/16172)
+
+- [sdkgen/python] Generate __init__.py files for modules that only contain enumerations
+  [#16229](https://github.com/pulumi/pulumi/pull/16229)
+
 ## 3.116.1 (2024-05-15)
 
 
