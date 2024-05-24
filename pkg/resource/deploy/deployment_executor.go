@@ -399,6 +399,7 @@ func (ex *deploymentExecutor) performDeletes(
 	// is conservative, but correct.
 	erroredDeps := mapset.NewSet[*resource.State]()
 	seenErrors := mapset.NewSet[Step]()
+	ex.stepExec.ClearErroredSteps()
 	for _, antichain := range deleteChains {
 		if ex.stepExec.opts.ContinueOnError {
 			erroredSteps := ex.stepExec.GetErroredSteps()
