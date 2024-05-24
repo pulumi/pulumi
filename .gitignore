@@ -88,4 +88,3 @@ __pycache__
 *.tmp
 test-results/
 yarn-error.log
-pkg/backend/display/wasm/mod.wasm
