@@ -35,6 +35,18 @@ builds:
   dir: sdk/python/cmd/pulumi-language-python
   main: ./
   gobinary: ../../../../scripts/go-wrapper.sh
+- <<: *pulumibin
+  id: pulumi-display-wasm
+  binary: pulumi-display
+  dir: pkg
+  main: ./backend/display/wasm
+  goos: ['js']
+  goarch: ['wasm']
+  hooks:
+    post:
+      # Check the size of the WASM module.
+      - |
+        sh -c "[ `du -k {{ .Path }} | cut -f1` -le 79182 ] || (echo 'error: WASM module > 77M'; exit 1)"
 
 archives:
 - id: pulumi

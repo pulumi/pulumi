@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows && !js
-// +build !windows,!js
+//go:build js
+// +build js
 
 package rpcutil
 
 import (
 	"errors"
 	"os"
-
-	"github.com/pkg/term/termios"
 )
 
 var errUnsupported = errors.New("unsupported")
 
 func openPty() (*os.File, *os.File, error) {
-	return termios.Pty()
+	// termios.Pty() is not supported on WASM
+	return nil, nil, errUnsupported
 }

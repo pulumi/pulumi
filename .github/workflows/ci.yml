@@ -291,6 +291,19 @@ jobs:
       enable-race-detection: ${{ matrix.target.os == 'darwin' || (matrix.target.os == 'linux' && matrix.target.arch == 'amd64') }}
     secrets: inherit
 
+  build-display-wasm-module:
+    name: build display WASM module
+    needs: [matrix]
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: js
+      arch: wasm
+      build-platform: "ubuntu-latest"
+      version-set: ${{ needs.matrix.outputs.version-set }}
+    secrets: inherit
+
   build-sdks:
     name: Build SDKs
     needs: [matrix]

@@ -32,7 +32,7 @@ on:
         description: "Version to produce"
         type: string
       version-set:
-        required: false
+        required: true
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
       enable-coverage:
@@ -131,6 +131,7 @@ jobs:
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
             | goreleaser release -f - -p 5 --skip-validate --clean --snapshot
       - uses: actions/upload-artifact@v2
+        if: ${{ inputs.os != 'js' }}
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
           retention-days: 1
