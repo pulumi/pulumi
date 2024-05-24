@@ -441,7 +441,7 @@ class LocalWorkspace(Workspace):
             )
             stack_list.append(stack)
         return stack_list
-    
+
     def list_all_stacks(self) -> List[StackSummary]:
         result = self._run_pulumi_cmd_sync(["stack", "ls", "--json", "--all"])
         json_list = json.loads(result.stdout)
