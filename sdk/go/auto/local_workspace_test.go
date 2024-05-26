@@ -2720,6 +2720,39 @@ func TestWhoAmIDetailed(t *testing.T) {
 	}
 }
 
+func TestListStacks(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1", 
+				   "current": false, 
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
+				  {"name": "testorg1/testproj1/teststack2", 
+				   "current": false, 
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	stacks, err := workspace.ListStacks(ctx)
+
+	assert.NoError(t, err)
+	assert.Len(t, stacks, 2)
+	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
+	assert.Equal(t, false, stacks[0].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
+	assert.Equal(t, "testorg1/testproj1/teststack2", stacks[1].Name)
+	assert.Equal(t, false, stacks[1].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack2", stacks[1].URL)
+}
+
 func TestListAllStacks(t *testing.T) {
 	t.Parallel()
 
@@ -2732,7 +2765,7 @@ func TestListAllStacks(t *testing.T) {
 				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
 				  {"name": "testorg1/testproj2/teststack2", 
 				   "current": false, 
-				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack1"}]`,
+				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
 		err:      nil,
@@ -2747,8 +2780,10 @@ func TestListAllStacks(t *testing.T) {
 	assert.Len(t, stacks, 2)
 	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
 	assert.Equal(t, false, stacks[0].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
 	assert.Equal(t, "testorg1/testproj2/teststack2", stacks[1].Name)
 	assert.Equal(t, false, stacks[1].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj2/teststack2", stacks[1].URL)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
