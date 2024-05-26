@@ -596,29 +596,28 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 // ListStacks returns all Stacks created under the current Project.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
 func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
-	var stacks []StackSummary
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
-	if err != nil {
-		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
-	}
-	err = json.Unmarshal([]byte(stdout), &stacks)
-	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal config value: %w", err)
-	}
-	return stacks, nil
+	return l.listStacks(ctx, false)
 }
 
 // ListAllStacks returns all Stacks the current logged-in Pulumi identity has access to.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
 func (l *LocalWorkspace) ListAllStacks(ctx context.Context) ([]StackSummary, error) {
+	return l.listStacks(ctx, true)
+}
+
+func (l *LocalWorkspace) listStacks(ctx context.Context, all bool) ([]StackSummary, error) {
 	var stacks []StackSummary
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json", "--all")
+	args := []string{"stack", "ls", "--json"}
+	if all {
+		args = append(args, "--all")
+	}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
-		return stacks, newAutoError(fmt.Errorf("could not list all stacks: %w", err), stdout, stderr, errCode)
+		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal all stacks value: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal list stacks value: %w", err)
 	}
 	return stacks, nil
 }
