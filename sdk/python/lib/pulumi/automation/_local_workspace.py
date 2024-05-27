@@ -415,35 +415,16 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
 
     def list_stacks(self) -> List[StackSummary]:
-        result = self._run_pulumi_cmd_sync(["stack", "ls", "--json"])
-        json_list = json.loads(result.stdout)
-        stack_list: List[StackSummary] = []
-        for stack_json in json_list:
-            stack = StackSummary(
-                name=stack_json["name"],
-                current=stack_json["current"],
-                update_in_progress=(
-                    stack_json["updateInProgress"]
-                    if "updateInProgress" in stack_json
-                    else None
-                ),
-                last_update=(
-                    datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT)
-                    if "lastUpdate" in stack_json
-                    else None
-                ),
-                resource_count=(
-                    stack_json["resourceCount"]
-                    if "resourceCount" in stack_json
-                    else None
-                ),
-                url=stack_json["url"] if "url" in stack_json else None,
-            )
-            stack_list.append(stack)
-        return stack_list
+        return self._list_stacks(all=False)
 
     def list_all_stacks(self) -> List[StackSummary]:
-        result = self._run_pulumi_cmd_sync(["stack", "ls", "--json", "--all"])
+        return self._list_stacks(all=True)
+
+    def _list_stacks(self, all: bool) -> List[StackSummary]:
+        args = ["stack", "ls", "--json"]
+        if all:
+            args.append("--all")
+        result = self._run_pulumi_cmd_sync(args)
         json_list = json.loads(result.stdout)
         stack_list: List[StackSummary] = []
         for stack_json in json_list:
