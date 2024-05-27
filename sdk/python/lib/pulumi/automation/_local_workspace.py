@@ -415,14 +415,14 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
 
     def list_stacks(self) -> List[StackSummary]:
-        return self._list_stacks(all=False)
+        return self._list_stacks(include_all=False)
 
     def list_all_stacks(self) -> List[StackSummary]:
-        return self._list_stacks(all=True)
+        return self._list_stacks(include_all=True)
 
-    def _list_stacks(self, all: bool) -> List[StackSummary]:
+    def _list_stacks(self, include_all: bool) -> List[StackSummary]:
         args = ["stack", "ls", "--json"]
-        if all:
+        if include_all:
             args.append("--all")
         result = self._run_pulumi_cmd_sync(args)
         json_list = json.loads(result.stdout)
