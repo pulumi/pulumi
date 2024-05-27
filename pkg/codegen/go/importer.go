@@ -50,6 +50,12 @@ type GoPackageInfo struct {
 	//
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
 
+	// Defines the pattern for how import paths should be constructed from the base import path and used module
+	// By default, the pattern is "{baseImportPath}/{module}" but can be overridden to support other patterns.
+	// for example you can use "{baseImportPath}/{module}/v2" which will replace {module} with the module name
+	// and {baseImportPath} with the base import path to compute the full path.
+	ImportPathPattern string `json:"importPathPattern,omitempty"`
+
 	// Generate container types (arrays, maps, pointer output types etc.) for each resource.
 	// These are typically used to support external references.
 	GenerateResourceContainerTypes bool `json:"generateResourceContainerTypes,omitempty"`
