@@ -143,6 +143,72 @@ describe("LocalWorkspace", () => {
             await workspace.removeStack(stackName);
         });
     });
+    describe("ListStack Methods", async () => {
+        it(`listStacks`, async () => {
+            const mockWithReturnedStacks = {
+                command: "pulumi",
+                version: null,
+                run: async () =>
+                    new CommandResult(
+                        `[{
+                              "name": "testorg1/testproj1/teststack1",
+                              "current": false,
+                              "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"
+                          },
+                          {
+                              "name": "testorg1/testproj1/teststack2",
+                              "current": false,
+                              "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"
+                          }]`,
+                        "",
+                        0,
+                    ),
+            };
+            const workspace = await LocalWorkspace.create({
+                pulumiCommand: mockWithReturnedStacks,
+            });
+            const stacks = await workspace.listStacks();
+            assert.strictEqual(stacks.length, 2);
+            assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
+            assert.strictEqual(stacks[0].current, false);
+            assert.strictEqual(stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1");
+            assert.strictEqual(stacks[1].name, "testorg1/testproj1/teststack2");
+            assert.strictEqual(stacks[1].current, false);
+            assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2");
+        });
+        it(`listAllStacks`, async () => {
+            const mockWithReturnedStacks = {
+                command: "pulumi",
+                version: null,
+                run: async () =>
+                    new CommandResult(
+                        `[{
+                              "name": "testorg1/testproj1/teststack1",
+                              "current": false,
+                              "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"
+                          },
+                          {
+                              "name": "testorg1/testproj2/teststack2",
+                              "current": false,
+                              "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"
+                          }]`,
+                        "",
+                        0,
+                    ),
+            };
+            const workspace = await LocalWorkspace.create({
+                pulumiCommand: mockWithReturnedStacks,
+            });
+            const stacks = await workspace.listAllStacks();
+            assert.strictEqual(stacks.length, 2);
+            assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
+            assert.strictEqual(stacks[0].current, false);
+            assert.strictEqual(stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1");
+            assert.strictEqual(stacks[1].name, "testorg1/testproj2/teststack2");
+            assert.strictEqual(stacks[1].current, false);
+            assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2");
+        });
+    });
     it(`Environment functions`, async function () {
         // Skipping test because the required environments are in the moolumi org.
         if (getTestOrg() !== "moolumi") {
