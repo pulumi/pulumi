@@ -34,6 +34,7 @@ from pulumi.automation import (
     PluginInfo,
     ProjectSettings,
     PulumiCommand,
+    CommandResult,
     StackSummary,
     Stack,
     StackSettings,
@@ -526,6 +527,74 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(result, project_name)
 
         ws.remove_stack(stack_name)
+
+    def test_list_stacks(self):
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: CommandResult(
+            stdout=json.dumps(
+                [
+                    {
+                        "name": "testorg1/testproj1/teststack1",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                    },
+                    {
+                        "name": "testorg1/testproj1/teststack2",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack2",
+                    },
+                ]
+            ),
+            stderr="",
+            code=0,
+        )
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        stacks = ws.list_stacks()
+        self.assertEqual(len(stacks), 2)
+        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
+        self.assertEqual(stacks[0].current, False)
+        self.assertEqual(
+            stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
+        )
+        self.assertEqual(stacks[1].name, "testorg1/testproj1/teststack2")
+        self.assertEqual(stacks[1].current, False)
+        self.assertEqual(
+            stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2"
+        )
+
+    def test_list_all_stacks(self):
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: CommandResult(
+            stdout=json.dumps(
+                [
+                    {
+                        "name": "testorg1/testproj1/teststack1",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                    },
+                    {
+                        "name": "testorg1/testproj2/teststack2",
+                        "current": False,
+                        "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
+                    },
+                ]
+            ),
+            stderr="",
+            code=0,
+        )
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        stacks = ws.list_all_stacks()
+        self.assertEqual(len(stacks), 2)
+        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
+        self.assertEqual(stacks[0].current, False)
+        self.assertEqual(
+            stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
+        )
+        self.assertEqual(stacks[1].name, "testorg1/testproj2/teststack2")
+        self.assertEqual(stacks[1].current, False)
+        self.assertEqual(
+            stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2"
+        )
 
     def test_stack_status_methods(self):
         project_name = "python_test"
