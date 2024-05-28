@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 )
 
@@ -27,11 +26,11 @@ const (
 )
 
 type PythonOptions struct {
-	// Virtual environment path to use.
+	// TODO: we could unify the two paths.
+	// Virtual environment path to use. Must be an absolute path.
 	Virtualenv string
-	// // The resolved virtual environment path.
-	// // TODO: why do we have both here?
-	// VirtualenvPath string
+	// The directory to use for poetry. Must be an absolute path.
+	PoetryDirectory string
 	// Use a typechecker to type check
 	Typechecker typeChecker
 	// The package manager to use for managing dependencies.
@@ -67,21 +66,11 @@ type PackageManager interface {
 	Setup(ctx context.Context) error
 }
 
-func ResolveToolchain(root string, options PythonOptions) (PackageManager, error) {
+func ResolveToolchain(options PythonOptions) (PackageManager, error) {
 	if options.PackageManager == PackageManagerPoetry {
-		return newPoetry()
+		return newPoetry(options.PoetryDirectory)
 	}
-	return newPip(root, options.Virtualenv)
-}
-
-func resolveVirtualEnvironmentPath(root, virtualenv string) string {
-	if virtualenv == "" {
-		return ""
-	}
-	if !filepath.IsAbs(virtualenv) {
-		return filepath.Join(root, virtualenv)
-	}
-	return virtualenv
+	return newPip(options.Virtualenv)
 }
 
 func virtualEnvBinDirName() string {

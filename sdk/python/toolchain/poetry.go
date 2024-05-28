@@ -11,30 +11,37 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type poetry struct {
-	poetryPath string
-	// TODO: should we store the root directory here?
+	// The executable path for poetry.
+	poetryExecutable string
+	// The directory that contains the poetry project.
+	directory string
 }
 
 var _ PackageManager = &poetry{}
 
-func newPoetry() (*poetry, error) {
+func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
 	if err != nil {
 		return nil, fmt.Errorf("poetry not found on path: %w", err)
 	}
+	logging.V(9).Infof("Python toolchain: using poetry at %s", poetryPath)
 	return &poetry{
-		poetryPath: poetryPath,
+		poetryExecutable: poetryPath,
+		directory:        directory,
 	}, nil
 }
 
 func (p *poetry) InstallDependenciesWithWriters(ctx context.Context,
 	root string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	poetryCmd := exec.Command(p.poetryPath, "install") //nolint:gosec
-	poetryCmd.Dir = root
+	poetryCmd := exec.Command(p.poetryExecutable, "install") //nolint:gosec
+	// poetryCmd.Dir = root
+	poetryCmd.Dir = p.directory
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter
 	// TODO: pip adds setuptools and wheels to the venv by default.
@@ -89,6 +96,7 @@ func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 		cmd = exec.CommandContext(ctx, cmdPath, args...)
 	}
 	cmd.Env = ActivateVirtualEnv(os.Environ(), virtualenvPath)
+	cmd.Dir = p.directory
 	fmt.Printf("cmd.Path = %s\n", cmd.Path)
 	return cmd, nil
 }
@@ -104,7 +112,8 @@ func (p *poetry) About(ctx context.Context) (Info, error) {
 }
 
 func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
-	pathCmd := exec.CommandContext(ctx, p.poetryPath, "env", "info", "--path") //nolint:gosec
+	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path") //nolint:gosec
+	pathCmd.Dir = p.directory
 	out, err := pathCmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get venv path: %w", err)

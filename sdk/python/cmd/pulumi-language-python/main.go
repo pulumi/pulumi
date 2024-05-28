@@ -184,15 +184,15 @@ type pythonLanguageHost struct {
 	engineAddress string
 	tracing       string
 
-	// used by lanaguge conformace tests to enable the PyProject.Enabled schema option
+	// used by language conformance tests to enable the PyProject.Enabled schema option
 	useToml bool
 }
 
-func parseOptions(options map[string]interface{}) (toolchain.PythonOptions, error) {
+func parseOptions(root string, options map[string]interface{}) (toolchain.PythonOptions, error) {
 	var pythonOptions toolchain.PythonOptions
 	if virtualenv, ok := options["virtualenv"]; ok {
 		if virtualenv, ok := virtualenv.(string); ok {
-			pythonOptions.Virtualenv = virtualenv
+			pythonOptions.Virtualenv = resolveVirtualEnvironmentPath(root, virtualenv)
 		} else {
 			return pythonOptions, errors.New("virtualenv option must be a string")
 		}
@@ -232,6 +232,16 @@ func parseOptions(options map[string]interface{}) (toolchain.PythonOptions, erro
 	return pythonOptions, nil
 }
 
+func resolveVirtualEnvironmentPath(root, virtualenv string) string {
+	if virtualenv == "" {
+		return ""
+	}
+	if !filepath.IsAbs(virtualenv) {
+		return filepath.Join(root, virtualenv)
+	}
+	return virtualenv
+}
+
 func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
@@ -246,13 +256,14 @@ func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
 func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
 
 	// Prepare the virtual environment (if needed).
-	err = host.prepareVirtualEnvironment(ctx, req.Info.ProgramDirectory, req.Info.RootDirectory, opts.Virtualenv)
+	// TODO: ensure opts.Virtualenv is an absolute path
+	err = host.prepareVirtualEnvironment(ctx, req.Info.RootDirectory, req.Info.ProgramDirectory, opts.Virtualenv)
 	if err != nil {
 		return nil, fmt.Errorf("preparing virtual environment: %w", err)
 	}
@@ -267,7 +278,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	plugins := []*pulumirpc.PluginDependency{}
 	for _, pkg := range pulumiPackages {
-		plugin, err := determinePluginDependency(req.Info.ProgramDirectory, pkg)
+		plugin, err := determinePluginDependency(pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -281,11 +292,10 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
-	tc, err := toolchain.ResolveToolchain(
-		req.PackageDirectory,
-		toolchain.PythonOptions{
-			PackageManager: toolchain.PackageManagerPip,
-		})
+	// TODO: this does not use a configured venv, should it?
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		PackageManager: toolchain.PackageManagerPip,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +369,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 
 // TODO: move this out of here and make part of pip?
 // prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
-func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, cwd, root, virtualenv string) error {
+func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, root, cwd, virtualenv string) error {
 	if virtualenv == "" {
 		return nil
 	}
@@ -418,17 +428,15 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			severity:     pulumirpc.LogSeverity_ERROR,
 		}
 
-		pm, err := toolchain.ResolveToolchain(
-			cwd,
-			toolchain.PythonOptions{
-				PackageManager: toolchain.PackageManagerPip,
-				Virtualenv:     virtualenv,
-			},
+		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+			PackageManager: toolchain.PackageManagerPip,
+			Virtualenv:     virtualenv,
+		},
 		)
 		if err != nil {
 			return err
 		}
-		if err := pm.InstallDependenciesWithWriters(ctx, root, true /*showOutput*/, infoWriter, errorWriter); err != nil {
+		if err := tc.InstallDependenciesWithWriters(ctx, cwd, true /*showOutput*/, infoWriter, errorWriter); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
@@ -506,7 +514,7 @@ func determinePulumiPackages(ctx context.Context, root string,
 ) ([]toolchain.PythonPackage, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
-	tc, err := toolchain.ResolveToolchain(root, options)
+	tc, err := toolchain.ResolveToolchain(options)
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +548,7 @@ func determinePulumiPackages(ctx context.Context, root string,
 // pulumi-plugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these
 // values are derived from the package name and version. If the plugin version cannot be determined from the package
 // version, nil is returned.
-func determinePluginDependency(cwd string, pkg toolchain.PythonPackage) (*pulumirpc.PluginDependency, error) {
+func determinePluginDependency(pkg toolchain.PythonPackage) (*pulumirpc.PluginDependency, error) {
 	var name, version, server string
 	plugin, err := readPulumiPluginJSON(pkg)
 	if plugin != nil && err == nil {
@@ -713,7 +721,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
@@ -739,7 +747,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	mkCmd := func(args []string) (*exec.Cmd, error) {
-		tc, err := toolchain.ResolveToolchain(req.Info.RootDirectory, opts)
+		tc, err := toolchain.ResolveToolchain(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -900,7 +908,7 @@ func validateVersion(ctx context.Context, root string, options toolchain.PythonO
 	var err error
 	versionArgs := []string{"--version"}
 
-	tc, err := toolchain.ResolveToolchain(root, options)
+	tc, err := toolchain.ResolveToolchain(options)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to configure python toolchain: %s\n", err)
 		return
@@ -935,7 +943,7 @@ func validateVersion(ctx context.Context, root string, options toolchain.PythonO
 func (host *pythonLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
 	}
@@ -949,11 +957,11 @@ func (host *pythonLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	pm, err := toolchain.ResolveToolchain(req.Info.RootDirectory, opts)
+	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return err
 	}
-	if err := pm.InstallDependenciesWithWriters(
+	if err := tc.InstallDependenciesWithWriters(
 		server.Context(),
 		req.Info.ProgramDirectory,
 		true, /*showOutput*/
@@ -970,10 +978,9 @@ func (host *pythonLanguageHost) InstallDependencies(
 func (host *pythonLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
 	// TODO: This seems wrong, we don't have options here, so we report the system python3, not
 	// the venv one.  We also can't tell if we should use poetry or pip.
-	tc, err := toolchain.ResolveToolchain(".",
-		toolchain.PythonOptions{
-			PackageManager: toolchain.PackageManagerPip,
-		})
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		PackageManager: toolchain.PackageManagerPip,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -992,12 +999,12 @@ func (host *pythonLanguageHost) About(ctx context.Context, req *emptypb.Empty) (
 func (host *pythonLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
 
-	tc, err := toolchain.ResolveToolchain(req.Info.RootDirectory, opts)
+	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1024,7 +1031,7 @@ func (host *pythonLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s", req.Info.ProgramDirectory)
 
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
 	}
@@ -1032,7 +1039,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	args := []string{req.Info.ProgramDirectory}
 	args = append(args, req.Args...)
 
-	tc, err := toolchain.ResolveToolchain(req.Info.RootDirectory, opts)
+	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return err
 	}

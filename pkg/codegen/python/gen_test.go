@@ -149,12 +149,10 @@ func buildVirtualEnv(ctx context.Context) error {
 		}
 	}
 
-	tc, err := toolchain.ResolveToolchain(
-		hereDir,
-		toolchain.PythonOptions{
-			PackageManager: toolchain.PackageManagerPip,
-			Virtualenv:     venvDir,
-		})
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		PackageManager: toolchain.PackageManagerPip,
+		Virtualenv:     filepath.Join(hereDir, venvDir),
+	})
 	if err != nil {
 		return err
 	}
@@ -207,12 +205,10 @@ func pyTestCheck(t *testing.T, codeDir string) {
 
 	cmd := func(args ...string) error {
 		t.Logf("cd %s && %s", codeDir, strings.Join(args, " "))
-		tc, err := toolchain.ResolveToolchain(
-			codeDir,
-			toolchain.PythonOptions{
-				PackageManager: toolchain.PackageManagerPip,
-				Virtualenv:     venvDir,
-			})
+		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+			PackageManager: toolchain.PackageManagerPip,
+			Virtualenv:     venvDir,
+		})
 		if err != nil {
 			return err
 		}

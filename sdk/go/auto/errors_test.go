@@ -404,11 +404,10 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.FailNow()
 	}
 
-	tc, err := toolchain.ResolveToolchain(pDir,
-		toolchain.PythonOptions{
-			PackageManager: toolchain.PackageManagerPip,
-			Virtualenv:     "venv",
-		})
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		PackageManager: toolchain.PackageManagerPip,
+		Virtualenv:     filepath.Join(pDir, "venv"),
+	})
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

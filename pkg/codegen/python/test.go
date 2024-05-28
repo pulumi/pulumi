@@ -38,16 +38,12 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	})
 	require.NoError(t, err)
 
-	// TODO: julienp
-	// Should this be cleaned up; test.RunCommand wants the path to the executable, we get it by
-	// creating a command and then getting the path from it.
-	tc, err := toolchain.ResolveToolchain(
-		codeDir,
-		toolchain.PythonOptions{
-			// TODO: should this take venv?
-			PackageManager: toolchain.PackageManagerPip,
-		})
+	// Find the path to global python
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		PackageManager: toolchain.PackageManagerPip,
+	})
 	require.NoError(t, err)
+	// Run `python -m py_compile` on all python files
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	cmd, err := tc.Command(context.Background(), args...)
 	require.NoError(t, err)

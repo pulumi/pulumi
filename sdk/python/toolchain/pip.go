@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -41,9 +42,9 @@ type pip struct {
 
 var _ PackageManager = &pip{}
 
-func newPip(root, virtualenvPath string) (*pip, error) {
-	absPath := resolveVirtualEnvironmentPath(root, virtualenvPath)
-	return &pip{absPath}, nil
+func newPip(virtualenvPath string) (*pip, error) {
+	logging.V(9).Infof("Python toolchain: using pip at %s", virtualenvPath)
+	return &pip{virtualenvPath}, nil
 }
 
 // InstallDependenciesWithWriters implements PackageManager.
@@ -340,7 +341,7 @@ func InstallDependencies(ctx context.Context, root, venvDir string, showOutput b
 }
 
 func InstallDependenciesWithWriters(ctx context.Context,
-	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
+	cwd, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
 	printmsg := func(message string) {
 		if showOutput {
@@ -353,7 +354,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 
 		// Create the virtual environment by running `python -m venv <venvDir>`.
 		if !filepath.IsAbs(venvDir) {
-			venvDir = filepath.Join(root, venvDir)
+			return fmt.Errorf("virtual environment path must be absolute: %s", venvDir)
 		}
 
 		cmd, err := Command(ctx, "-m", "venv", venvDir)
@@ -383,7 +384,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		} else {
 			pipCmd = VirtualEnvCommand(venvDir, "python", args...)
 		}
-		pipCmd.Dir = root
+		pipCmd.Dir = cwd
 		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
 		wrapError := func(err error) error {
@@ -421,7 +422,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	printmsg("Finished updating")
 
 	// If `requirements.txt` doesn't exist, exit early.
-	requirementsPath := filepath.Join(root, "requirements.txt")
+	requirementsPath := filepath.Join(cwd, "requirements.txt")
 	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
 		return nil
 	}
