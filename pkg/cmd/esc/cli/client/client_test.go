@@ -195,14 +195,16 @@ func TestGetEnvironment(t *testing.T) {
 
 		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
+			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
+		assert.Equal(t, 1, revision)
 	})
 
 	t.Run("Revision", func(t *testing.T) {
@@ -211,14 +213,16 @@ func TestGetEnvironment(t *testing.T) {
 
 		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/revisions/42", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
+			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "42", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "42", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
+		assert.Equal(t, 1, revision)
 	})
 
 	t.Run("Tag", func(t *testing.T) {
@@ -234,14 +238,16 @@ func TestGetEnvironment(t *testing.T) {
 
 		mux.HandleFunc("/api/preview/environments/test-org/test-env/revisions/42", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
+			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "42", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "42", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
+		assert.Equal(t, 1, revision)
 	})
 
 	t.Run("Decrypt", func(t *testing.T) {
@@ -250,14 +256,16 @@ func TestGetEnvironment(t *testing.T) {
 
 		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/decrypt", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
+			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", true)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", true)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
+		assert.Equal(t, 1, revision)
 	})
 
 	t.Run("Not found", func(t *testing.T) {
@@ -271,7 +279,7 @@ func TestGetEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		_, _, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", false)
+		_, _, _, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "", false)
 		assert.ErrorContains(t, err, "not found")
 	})
 }
@@ -288,11 +296,13 @@ func TestUpdateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, yaml, body)
 
+			w.Header().Set(revisionHeader, "1")
 			w.WriteHeader(http.StatusOK)
 		})
 
-		diags, err := client.UpdateEnvironment(context.Background(), "test-org", "test-env", yaml, tag)
+		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-env", yaml, tag)
 		require.NoError(t, err)
+		assert.Equal(t, 1, revision)
 		assert.Len(t, diags, 0)
 	})
 
@@ -327,7 +337,8 @@ func TestUpdateEnvironment(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		diags, err := client.UpdateEnvironment(context.Background(), "test-org", "test-env", nil, "")
+		diags, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-env", nil, "")
+		require.Equal(t, 0, revision)
 		require.NoError(t, err)
 		assert.Equal(t, expected, diags)
 	})
@@ -342,7 +353,8 @@ func TestUpdateEnvironment(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
-		_, err := client.UpdateEnvironment(context.Background(), "test-org", "test-env", nil, "")
+		_, revision, err := client.UpdateEnvironmentWithRevision(context.Background(), "test-org", "test-env", nil, "")
+		require.Equal(t, 0, revision)
 		assert.ErrorContains(t, err, "conflict")
 	})
 }

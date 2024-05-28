@@ -91,7 +91,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			yaml, tag, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", showSecrets)
+			yaml, tag, _, err := edit.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.envName, "", showSecrets)
 			if err != nil {
 				return fmt.Errorf("getting environment definition: %w", err)
 			}

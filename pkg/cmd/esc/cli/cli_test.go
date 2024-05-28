@@ -502,22 +502,22 @@ func (c *testPulumiClient) GetEnvironment(
 	envName string,
 	version string,
 	showSecrets bool,
-) ([]byte, string, error) {
+) ([]byte, string, int, error) {
 	_, env, err := c.getEnvironment(orgName, envName, version)
 	if err != nil {
-		return nil, "", err
+		return nil, "", 0, err
 	}
 
 	yaml := env.yaml
 	if showSecrets {
 		plaintext, err := eval.DecryptSecrets(ctx, envName, yaml, rot128{})
 		if err != nil {
-			return nil, "", err
+			return nil, "", 0, err
 		}
 		yaml = plaintext
 	}
 
-	return yaml, env.tag, nil
+	return yaml, env.tag, env.number, nil
 }
 
 func (c *testPulumiClient) UpdateEnvironment(
@@ -527,12 +527,23 @@ func (c *testPulumiClient) UpdateEnvironment(
 	yaml []byte,
 	tag string,
 ) ([]client.EnvironmentDiagnostic, error) {
+	diags, _, err := c.UpdateEnvironmentWithRevision(ctx, orgName, envName, yaml, tag)
+	return diags, err
+}
+
+func (c *testPulumiClient) UpdateEnvironmentWithRevision(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	yaml []byte,
+	tag string,
+) ([]client.EnvironmentDiagnostic, int, error) {
 	env, latest, err := c.getEnvironment(orgName, envName, "")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if tag != "" && tag != latest.tag {
-		return nil, errors.New("tag mismatch")
+		return nil, 0, errors.New("tag mismatch")
 	}
 
 	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml)
@@ -542,7 +553,7 @@ func (c *testPulumiClient) UpdateEnvironment(
 
 		yaml, err = eval.EncryptSecrets(ctx, envName, yaml, rot128{})
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		revisionNumber := len(env.revisions) + 1
@@ -554,7 +565,7 @@ func (c *testPulumiClient) UpdateEnvironment(
 		env.tags["latest"] = revisionNumber
 	}
 
-	return diags, err
+	return diags, env.tags["latest"], err
 }
 
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, envName string) error {

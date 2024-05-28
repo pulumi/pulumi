@@ -39,6 +39,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const etagHeader = "ETag"
+const revisionHeader = "Pulumi-ESC-Revision"
+
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client interface {
 	// Insecure returns true if this client is insecure (i.e. has TLS disabled).
@@ -79,15 +82,25 @@ type Client interface {
 		envName string,
 		version string,
 		decrypt bool,
-	) (yaml []byte, etag string, err error)
+	) (yaml []byte, etag string, revision int, err error)
 
-	// UpdateEnvironment updates the YAML for the environment envName in org orgName.
+	// UpdateEnvironmentWithRevision updates the YAML for the environment envName in org orgName.
 	//
 	// If the new environment definition contains errors, the update will fail with diagnostics.
 	//
 	// If etag is not the empty string and the environment's current etag does not match the provided etag
 	// (i.e. because a different entity has called UpdateEnvironment), the update will fail with a 409
 	// error.
+	UpdateEnvironmentWithRevision(
+		ctx context.Context,
+		orgName string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) ([]EnvironmentDiagnostic, int, error)
+
+	// This method has a legacy signature, please use UpdateEnvironmentWithRevision instead
+	// Remove this method once circular dependency between esc and pulumi/pulumi is resolved
 	UpdateEnvironment(
 		ctx context.Context,
 		orgName string,
@@ -373,10 +386,10 @@ func (pc *client) GetEnvironment(
 	envName string,
 	version string,
 	decrypt bool,
-) ([]byte, string, error) {
+) ([]byte, string, int, error) {
 	path, err := pc.resolveEnvironmentPath(ctx, orgName, envName, version)
 	if err != nil {
-		return nil, "", err
+		return nil, "", 0, err
 	}
 	if decrypt {
 		path += "/decrypt"
@@ -384,14 +397,19 @@ func (pc *client) GetEnvironment(
 
 	var resp *http.Response
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return nil, "", err
+		return nil, "", 0, err
 	}
 	yaml, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, "", err
+		return nil, "", 0, err
 	}
-	tag := resp.Header.Get("ETag")
-	return yaml, tag, nil
+	tag := resp.Header.Get(etagHeader)
+	revision, err := strconv.Atoi(resp.Header.Get(revisionHeader))
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	return yaml, tag, revision, nil
 }
 
 func (pc *client) UpdateEnvironment(
@@ -401,25 +419,43 @@ func (pc *client) UpdateEnvironment(
 	yaml []byte,
 	tag string,
 ) ([]EnvironmentDiagnostic, error) {
+	diags, _, err := pc.UpdateEnvironmentWithRevision(ctx, orgName, envName, yaml, tag)
+	return diags, err
+}
+
+func (pc *client) UpdateEnvironmentWithRevision(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	yaml []byte,
+	tag string,
+) ([]EnvironmentDiagnostic, int, error) {
 	header := http.Header{}
 	if tag != "" {
-		header.Set("ETag", tag)
+		header.Set(etagHeader, tag)
 	}
 
 	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/preview/environments/%v/%v", orgName, envName)
-	err := pc.restCallWithOptions(ctx, http.MethodPatch, path, nil, json.RawMessage(yaml), nil, httpCallOptions{
+	var resp *http.Response
+	err := pc.restCallWithOptions(ctx, http.MethodPatch, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
 		Header:        header,
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
 		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
-			return diags.Diagnostics, nil
+			return diags.Diagnostics, 0, nil
 		}
-		return nil, err
+		return nil, 0, err
 	}
-	return nil, nil
+
+	revision, err := strconv.Atoi(resp.Header.Get(revisionHeader))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return nil, revision, nil
 }
 
 func (pc *client) DeleteEnvironment(ctx context.Context, orgName, envName string) error {
