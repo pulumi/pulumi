@@ -406,7 +406,7 @@ func (pc *client) GetEnvironment(
 	tag := resp.Header.Get(etagHeader)
 	revision, err := strconv.Atoi(resp.Header.Get(revisionHeader))
 	if err != nil {
-		return nil, "", 0, err
+		return nil, "", 0, fmt.Errorf("parsing revision number: %w", err)
 	}
 
 	return yaml, tag, revision, nil
@@ -452,7 +452,7 @@ func (pc *client) UpdateEnvironmentWithRevision(
 
 	revision, err := strconv.Atoi(resp.Header.Get(revisionHeader))
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("parsing revision number: %w", err)
 	}
 
 	return nil, revision, nil
