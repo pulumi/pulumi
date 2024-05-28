@@ -26,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -595,22 +596,19 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 
 // ListStacks returns all Stacks created under the current Project.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
-	return l.listStacks(ctx, false)
-}
-
-// ListAllStacks returns all Stacks the current logged-in Pulumi identity has access to.
-// This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-func (l *LocalWorkspace) ListAllStacks(ctx context.Context) ([]StackSummary, error) {
-	return l.listStacks(ctx, true)
-}
-
-func (l *LocalWorkspace) listStacks(ctx context.Context, all bool) ([]StackSummary, error) {
+func (l *LocalWorkspace) ListStacks(ctx context.Context, opts ...optlist.Option) ([]StackSummary, error) {
 	var stacks []StackSummary
 	args := []string{"stack", "ls", "--json"}
-	if all {
+
+	optListOpts := &optlist.Options{}
+	for _, o := range opts {
+		o.ApplyOption(optListOpts)
+	}
+
+	if optListOpts.All {
 		args = append(args, "--all")
 	}
+
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
