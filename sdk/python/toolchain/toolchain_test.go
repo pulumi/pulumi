@@ -22,6 +22,8 @@ func TestValidateVenvPip(t *testing.T) {
 
 func TestValidateVenvPoetry(t *testing.T) {
 	t.Parallel()
+	// TODO: @julienp
+	t.Skip("Poetry is not supported yet")
 	tmp := t.TempDir()
 	tc, err := newPoetry(tmp)
 	require.NoError(t, err)
@@ -34,7 +36,8 @@ func TestValidateVenvPoetry(t *testing.T) {
 func TestListPackages(t *testing.T) {
 	t.Parallel()
 
-	for _, tc := range []toolchain{Pip, Poetry} {
+	// TODO: @julienp add poetry to CI
+	for _, tc := range []toolchain{Pip /*, Poetry*/} {
 		tc := tc
 		t.Run("empty/"+Name(tc), func(t *testing.T) {
 			t.Parallel()
