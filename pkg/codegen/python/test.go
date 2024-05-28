@@ -40,7 +40,7 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 
 	// Find the path to global python
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		PackageManager: toolchain.PackageManagerPip,
+		Toolchain: toolchain.Pip,
 	})
 	require.NoError(t, err)
 	// Run `python -m py_compile` on all python files

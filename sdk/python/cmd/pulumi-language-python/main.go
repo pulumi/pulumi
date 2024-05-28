@@ -97,8 +97,7 @@ func main() {
 	flag.String("virtualenv", "", "[obsolete] Virtual environment path to use")
 	flag.String("root", "", "[obsolete] Project root path to use")
 	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
-	// TODO: rename to toolchain
-	flag.String("packagemanager", "pip", "[obsolete] Select the package manager to use for dependency management.")
+	flag.String("toolchain", "pip", "[obsolete] Select the package manager to use for dependency management.")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -213,19 +212,19 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 		}
 	}
 
-	// TODO: rename to toolchain
-	if packagemanager, ok := options["packagemanager"]; ok {
-		if packagemanager, ok := packagemanager.(string); ok {
-			switch packagemanager {
+	// TODO: rename to tc
+	if tc, ok := options["toolchain"]; ok {
+		if tc, ok := tc.(string); ok {
+			switch tc {
 			case "pip":
-				pythonOptions.PackageManager = toolchain.PackageManagerPip
+				pythonOptions.Toolchain = toolchain.Pip
 			case "poetry":
-				pythonOptions.PackageManager = toolchain.PackageManagerPoetry
+				pythonOptions.Toolchain = toolchain.Poetry
 			default:
-				return pythonOptions, fmt.Errorf("unsupported packagemanager option: %s", packagemanager)
+				return pythonOptions, fmt.Errorf("unsupported toolchain option: %s", tc)
 			}
 		} else {
-			return pythonOptions, errors.New("packagemanager option must be a string")
+			return pythonOptions, errors.New("toolchain option must be a string")
 		}
 	}
 
@@ -294,7 +293,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
 	// TODO: this does not use a configured venv, should it?
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		PackageManager: toolchain.PackageManagerPip,
+		Toolchain: toolchain.Pip,
 	})
 	if err != nil {
 		return nil, err
@@ -429,8 +428,8 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, r
 		}
 
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-			PackageManager: toolchain.PackageManagerPip,
-			Virtualenv:     virtualenv,
+			Toolchain:  toolchain.Pip,
+			Virtualenv: virtualenv,
 		},
 		)
 		if err != nil {
@@ -979,7 +978,7 @@ func (host *pythonLanguageHost) About(ctx context.Context, req *emptypb.Empty) (
 	// TODO: This seems wrong, we don't have options here, so we report the system python3, not
 	// the venv one.  We also can't tell if we should use poetry or pip.
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		PackageManager: toolchain.PackageManagerPip,
+		Toolchain: toolchain.Pip,
 	})
 	if err != nil {
 		return nil, err

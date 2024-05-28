@@ -40,14 +40,13 @@ type pip struct {
 	virtualenvPath string
 }
 
-var _ PackageManager = &pip{}
+var _ Toolchain = &pip{}
 
 func newPip(virtualenvPath string) (*pip, error) {
 	logging.V(9).Infof("Python toolchain: using pip at %s", virtualenvPath)
 	return &pip{virtualenvPath}, nil
 }
 
-// InstallDependenciesWithWriters implements PackageManager.
 func (p *pip) InstallDependenciesWithWriters(ctx context.Context,
 	root string, showOutput bool, infoWriter io.Writer, errorWriter io.Writer,
 ) error {

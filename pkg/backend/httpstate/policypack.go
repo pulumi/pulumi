@@ -318,8 +318,8 @@ func completeNodeJSInstall(ctx context.Context, finalDir string) error {
 func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
 	// TODO: julienp: support poetry?
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		PackageManager: toolchain.PackageManagerPip,
-		Virtualenv:     filepath.Join(finalDir, "venv"),
+		Toolchain:  toolchain.Pip,
+		Virtualenv: filepath.Join(finalDir, "venv"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get toolchain: %w", err)

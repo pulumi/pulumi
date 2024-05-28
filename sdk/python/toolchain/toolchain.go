@@ -18,11 +18,11 @@ const (
 	TypeCheckerPyright
 )
 
-type packagemanager int
+type toolchain int
 
 const (
-	PackageManagerPip packagemanager = iota
-	PackageManagerPoetry
+	Pip toolchain = iota
+	Poetry
 )
 
 type PythonOptions struct {
@@ -34,7 +34,7 @@ type PythonOptions struct {
 	// Use a typechecker to type check
 	Typechecker typeChecker
 	// The package manager to use for managing dependencies.
-	PackageManager packagemanager
+	Toolchain toolchain
 }
 
 type PythonPackage struct {
@@ -48,8 +48,7 @@ type Info struct {
 	Version    string
 }
 
-// TODO: rename to Toolchain
-type PackageManager interface {
+type Toolchain interface {
 	// TODO: rename to InstallDependencies
 	InstallDependenciesWithWriters(ctx context.Context,
 		root string, showOutput bool, infoWriter, errorWriter io.Writer,
@@ -66,8 +65,8 @@ type PackageManager interface {
 	Setup(ctx context.Context) error
 }
 
-func ResolveToolchain(options PythonOptions) (PackageManager, error) {
-	if options.PackageManager == PackageManagerPoetry {
+func ResolveToolchain(options PythonOptions) (Toolchain, error) {
+	if options.Toolchain == Poetry {
 		return newPoetry(options.PoetryDirectory)
 	}
 	return newPip(options.Virtualenv)

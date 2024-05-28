@@ -22,7 +22,7 @@ type poetry struct {
 	directory string
 }
 
-var _ PackageManager = &poetry{}
+var _ Toolchain = &poetry{}
 
 func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
