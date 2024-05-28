@@ -151,7 +151,7 @@ func buildVirtualEnv(ctx context.Context) error {
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
-		Virtualenv: filepath.Join(hereDir, venvDir),
+		Virtualenv: venvDir,
 	})
 	if err != nil {
 		return err
