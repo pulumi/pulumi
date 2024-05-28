@@ -11,6 +11,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidateVenvPip(t *testing.T) {
+	t.Parallel()
+	tmp := t.TempDir()
+	tc, err := newPip(tmp, "venv")
+	require.NoError(t, err)
+	err = tc.ValidateVenv(context.Background())
+	require.ErrorContains(t, err, "he 'virtualenv' option in Pulumi.yaml is set to \"venv\"")
+}
+
+func TestValidateVenvPoetry(t *testing.T) {
+	t.Parallel()
+	tmp := t.TempDir()
+	tc, err := newPoetry(tmp)
+	require.NoError(t, err)
+	err = tc.ValidateVenv(context.Background())
+	require.Error(t, err)
+	// TODO: check error message
+	// require.ErrorContains(t, err, "he 'virtualenv' option in Pulumi.yaml is set to \"venv\"")
+}
+
 func TestListPackages(t *testing.T) {
 	t.Parallel()
 
@@ -22,9 +42,9 @@ func TestListPackages(t *testing.T) {
 			createVenv(t, tc, tmp)
 
 			tc, err := ResolveToolchain(PythonOptions{
-				Toolchain:       tc,
-				Virtualenv:      filepath.Join(tmp, "venv"),
-				PoetryDirectory: tmp,
+				Toolchain:  tc,
+				Virtualenv: filepath.Join(tmp, "venv"),
+				Root:       tmp,
 			})
 			require.NoError(t, err)
 
@@ -40,9 +60,9 @@ func TestListPackages(t *testing.T) {
 			createVenv(t, tc, tmp, "pulumi-random")
 
 			tc, err := ResolveToolchain(PythonOptions{
-				Toolchain:       tc,
-				Virtualenv:      filepath.Join(tmp, "venv"),
-				PoetryDirectory: tmp,
+				Toolchain:  tc,
+				Virtualenv: filepath.Join(tmp, "venv"),
+				Root:       tmp,
 			})
 			require.NoError(t, err)
 
@@ -84,8 +104,8 @@ func createVenv(t *testing.T, toolchain toolchain, dir string, packages ...strin
 		}
 	} else if toolchain == Poetry {
 		tc, err := ResolveToolchain(PythonOptions{
-			Toolchain:       Poetry,
-			PoetryDirectory: dir,
+			Toolchain: Poetry,
+			Root:      dir,
 		})
 		require.NoError(t, err)
 

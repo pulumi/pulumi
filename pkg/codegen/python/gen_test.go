@@ -151,7 +151,8 @@ func buildVirtualEnv(ctx context.Context) error {
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
-		Virtualenv: venvDir,
+		Root:       hereDir,
+		Virtualenv: "venv",
 	})
 	if err != nil {
 		return err
@@ -197,7 +198,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		// We won't run any tests since no extra tests were included.
 		return
 	}
-	venvDir, err := virtualEnvPath()
+	hereDir, err := absTestsPath()
 	if err != nil {
 		t.Error(err)
 		return
@@ -207,7 +208,8 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Logf("cd %s && %s", codeDir, strings.Join(args, " "))
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
-			Virtualenv: venvDir,
+			Root:       hereDir,
+			Virtualenv: "venv",
 		})
 		if err != nil {
 			return err

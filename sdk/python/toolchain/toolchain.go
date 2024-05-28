@@ -29,8 +29,8 @@ type PythonOptions struct {
 	// TODO: we could unify the two paths.
 	// Virtual environment path to use. Must be an absolute path.
 	Virtualenv string
-	// The directory to use for poetry. Must be an absolute path.
-	PoetryDirectory string
+	// The root directory of the project.
+	Root string
 	// Use a typechecker to type check
 	Typechecker typeChecker
 	// The package manager to use for managing dependencies.
@@ -53,7 +53,7 @@ type Toolchain interface {
 	InstallDependenciesWithWriters(ctx context.Context,
 		root string, showOutput bool, infoWriter, errorWriter io.Writer,
 	) error
-	// TODO: should this take root?
+	ValidateVenv(ctx context.Context) error
 	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	About(ctx context.Context) (Info, error)
@@ -72,9 +72,9 @@ func Name(tc toolchain) string {
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	if options.Toolchain == Poetry {
-		return newPoetry(options.PoetryDirectory)
+		return newPoetry(options.Root)
 	}
-	return newPip(options.Virtualenv)
+	return newPip(options.Root, options.Virtualenv)
 }
 
 func virtualEnvBinDirName() string {

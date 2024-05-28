@@ -319,7 +319,8 @@ func completePythonInstall(ctx context.Context, finalDir, projPath string, proj 
 	// TODO: julienp: support poetry?
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
-		Virtualenv: filepath.Join(finalDir, "venv"),
+		Root:       finalDir,
+		Virtualenv: "venv",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get toolchain: %w", err)

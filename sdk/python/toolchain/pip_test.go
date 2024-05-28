@@ -125,7 +125,7 @@ func TestCommand(t *testing.T) {
 
 	t.Setenv("MY_ENV_VAR", "HELLO")
 
-	tc, err := newPip(filepath.Join(tmp, "venv"))
+	tc, err := newPip(tmp, "venv")
 	require.NoError(t, err)
 
 	cmd, err := tc.Command(context.Background())
@@ -159,7 +159,7 @@ func TestCommand(t *testing.T) {
 func TestCommandNoVenv(t *testing.T) {
 	t.Parallel()
 
-	tc, err := newPip("")
+	tc, err := newPip(".", "")
 	require.NoError(t, err)
 
 	cmd, err := tc.Command(context.Background())
@@ -177,7 +177,7 @@ func TestCommandNoVenv(t *testing.T) {
 func TestCommandPulumiPythonCommand(t *testing.T) {
 	t.Setenv("PULUMI_PYTHON_CMD", "python-not-found")
 
-	tc, err := newPip("")
+	tc, err := newPip(".", "")
 	require.NoError(t, err)
 
 	cmd, err := tc.Command(context.Background())

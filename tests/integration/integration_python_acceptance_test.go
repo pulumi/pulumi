@@ -272,7 +272,6 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			absVenvPath = filepath.Join(e.RootPath, venvPath)
 		}
 
-		// TODO: julienp: do we want this exported?
 		if !toolchain.IsVirtualEnv(absVenvPath) {
 			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
 				absVenvPath)

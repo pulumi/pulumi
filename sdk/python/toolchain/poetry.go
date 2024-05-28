@@ -106,6 +106,18 @@ func (p *poetry) About(ctx context.Context) (Info, error) {
 	return Info{}, nil
 }
 
+func (p *poetry) ValidateVenv(ctx context.Context) error {
+	virtualenvPath, err := p.virtualenvPath(ctx)
+	if err != nil {
+		return err
+	}
+	if !IsVirtualEnv(virtualenvPath) {
+		// TODO: add remediation steps like in NewVirtualEnvError for pip
+		return fmt.Errorf("'%s' is not a virtualenv", virtualenvPath)
+	}
+	return nil
+}
+
 func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
 	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path") //nolint:gosec
 	pathCmd.Dir = p.directory

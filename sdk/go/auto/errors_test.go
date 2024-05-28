@@ -406,7 +406,8 @@ func TestRuntimeErrorPython(t *testing.T) {
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
-		Virtualenv: filepath.Join(pDir, "venv"),
+		Root:       pDir,
+		Virtualenv: "venv",
 	})
 	if err != nil {
 		t.Error(err)

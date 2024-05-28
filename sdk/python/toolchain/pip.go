@@ -37,14 +37,20 @@ const (
 )
 
 type pip struct {
+	// The absolute path to the virtual env. Empty if not using a virtual env.
 	virtualenvPath string
+	// The virtual option as set in Pulumi.yaml.
+	virtualenvOption string
+	// The root directory of the project.
+	root string
 }
 
 var _ Toolchain = &pip{}
 
-func newPip(virtualenvPath string) (*pip, error) {
+func newPip(root, virtualenv string) (*pip, error) {
+	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
 	logging.V(9).Infof("Python toolchain: using pip at %s", virtualenvPath)
-	return &pip{virtualenvPath}, nil
+	return &pip{virtualenvPath, virtualenv, root}, nil
 }
 
 func (p *pip) InstallDependenciesWithWriters(ctx context.Context,
@@ -92,10 +98,6 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 	if p.virtualenvPath == "" {
 		return Command(ctx, arg...)
 	}
-	// TODO:
-	// if !python.IsVirtualEnv(virtualenv) {
-	// 	return nil, python.NewVirtualEnvError(opts.virtualenv, virtualenv)
-	// }
 	name := "python"
 	if runtime.GOOS == windows {
 		name = name + ".exe"
@@ -130,6 +132,25 @@ func (p *pip) About(ctx context.Context) (Info, error) {
 		Executable: pyexe,
 		Version:    version,
 	}, nil
+}
+
+func (p *pip) ValidateVenv(ctx context.Context) error {
+	if p.virtualenvOption != "" && !IsVirtualEnv(p.virtualenvPath) {
+		return NewVirtualEnvError(p.virtualenvOption, p.virtualenvPath)
+	}
+	return nil
+}
+
+// IsVirtualEnv returns true if the specified directory contains a python binary.
+func IsVirtualEnv(dir string) bool {
+	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
+	if runtime.GOOS == windows {
+		pyBin = pyBin + ".exe"
+	}
+	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
+		return true
+	}
+	return false
 }
 
 // TODO: Everything below here should become private or inlined above
@@ -250,18 +271,6 @@ func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 	}
 	cmdPath := filepath.Join(virtualEnvDir, virtualEnvBinDirName(), name)
 	return exec.Command(cmdPath, arg...)
-}
-
-// IsVirtualEnv returns true if the specified directory contains a python binary.
-func IsVirtualEnv(dir string) bool {
-	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
-	if runtime.GOOS == windows {
-		pyBin = pyBin + ".exe"
-	}
-	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
-		return true
-	}
-	return false
 }
 
 // NewVirtualEnvError creates an error about the virtual environment with more info on how to resolve the issue.
@@ -428,4 +437,14 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	printmsg("Finished installing dependencies")
 
 	return nil
+}
+
+func resolveVirtualEnvironmentPath(root, virtualenv string) string {
+	if virtualenv == "" {
+		return ""
+	}
+	if !filepath.IsAbs(virtualenv) {
+		return filepath.Join(root, virtualenv)
+	}
+	return virtualenv
 }

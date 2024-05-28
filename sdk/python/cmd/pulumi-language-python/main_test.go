@@ -131,8 +131,9 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
 		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
-			Virtualenv: filepath.Join(cwd, "venv"),
 			Toolchain:  toolchain.Pip,
+			Root:       cwd,
+			Virtualenv: "venv",
 		})
 		assert.NoError(t, err)
 		assert.Empty(t, packages)
@@ -155,8 +156,9 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pip-install-test")
 		assert.NoError(t, err)
 		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
-			Virtualenv: filepath.Join(cwd, "venv"),
 			Toolchain:  toolchain.Pip,
+			Root:       cwd,
+			Virtualenv: "venv",
 		})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
@@ -199,8 +201,9 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("Wrote pulumipluing.json file: %s", path)
 		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
-			Virtualenv: filepath.Join(cwd, "venv"),
 			Toolchain:  toolchain.Pip,
+			Root:       cwd,
+			Virtualenv: "venv",
 		})
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(packages))
@@ -241,8 +244,9 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
 		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
-			Virtualenv: filepath.Join(cwd, "venv"),
 			Toolchain:  toolchain.Pip,
+			Root:       cwd,
+			Virtualenv: "venv",
 		})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
@@ -256,14 +260,10 @@ func TestDeterminePulumiPackages(t *testing.T) {
 func runPythonCommand(t *testing.T, virtualenv, cwd string, arg ...string) ([]byte, error) {
 	t.Helper()
 
-	virtualenvPath := ""
-	if virtualenv != "" {
-		virtualenvPath = filepath.Join(cwd, virtualenv)
-	}
-
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
-		Virtualenv: virtualenvPath,
+		Root:       cwd,
+		Virtualenv: virtualenv,
 	})
 	require.NoError(t, err)
 	cmd, err := tc.Command(context.Background(), arg...)

@@ -1466,7 +1466,8 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			// TODO: @julienp poetry support
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,
-				Virtualenv: filepath.Join(finalDir, "venv"),
+				Root:       finalDir,
+				Virtualenv: "venv",
 			})
 			if err != nil {
 				return fmt.Errorf("getting python toolchain: %w", err)

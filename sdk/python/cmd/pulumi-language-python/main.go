@@ -188,10 +188,14 @@ type pythonLanguageHost struct {
 }
 
 func parseOptions(root string, options map[string]interface{}) (toolchain.PythonOptions, error) {
-	var pythonOptions toolchain.PythonOptions
+	pythonOptions := toolchain.PythonOptions{
+		Root: root,
+	}
+
 	if virtualenv, ok := options["virtualenv"]; ok {
 		if virtualenv, ok := virtualenv.(string); ok {
-			pythonOptions.Virtualenv = resolveVirtualEnvironmentPath(root, virtualenv)
+			// pythonOptions.Virtualenv = resolveVirtualEnvironmentPath(root, virtualenv)
+			pythonOptions.Virtualenv = virtualenv
 		} else {
 			return pythonOptions, errors.New("virtualenv option must be a string")
 		}
@@ -212,7 +216,6 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 		}
 	}
 
-	// TODO: rename to tc
 	if tc, ok := options["toolchain"]; ok {
 		if tc, ok := tc.(string); ok {
 			switch tc {
@@ -229,16 +232,6 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 	}
 
 	return pythonOptions, nil
-}
-
-func resolveVirtualEnvironmentPath(root, virtualenv string) string {
-	if virtualenv == "" {
-		return ""
-	}
-	if !filepath.IsAbs(virtualenv) {
-		return filepath.Join(root, virtualenv)
-	}
-	return virtualenv
 }
 
 func newLanguageHost(exec, engineAddress, tracing string, useToml bool,
@@ -261,7 +254,6 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	// Prepare the virtual environment (if needed).
-	// TODO: ensure opts.Virtualenv is an absolute path
 	err = host.prepareVirtualEnvironment(ctx, req.Info.RootDirectory, req.Info.ProgramDirectory, opts.Virtualenv)
 	if err != nil {
 		return nil, fmt.Errorf("preparing virtual environment: %w", err)
@@ -373,9 +365,14 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, r
 		return nil
 	}
 
+	virtualenvAbsPath := virtualenv
+	if !filepath.IsAbs(virtualenvAbsPath) {
+		virtualenvAbsPath = filepath.Join(root, virtualenv)
+	}
+
 	// If the virtual environment directory doesn't exist, create it.
 	var createVirtualEnv bool
-	info, err := os.Stat(virtualenv)
+	info, err := os.Stat(virtualenvAbsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			createVirtualEnv = true
@@ -383,16 +380,25 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, r
 			return err
 		}
 	} else if !info.IsDir() {
-		return fmt.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenv)
+		return fmt.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenvAbsPath)
 	}
 
 	// If the virtual environment directory exists, but is empty, it needs to be created.
 	if !createVirtualEnv {
-		empty, err := fsutil.IsDirEmpty(virtualenv)
+		empty, err := fsutil.IsDirEmpty(virtualenvAbsPath)
 		if err != nil {
 			return err
 		}
 		createVirtualEnv = empty
+	}
+
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain:  toolchain.Pip,
+		Virtualenv: virtualenv,
+		Root:       root,
+	})
+	if err != nil {
+		return err
 	}
 
 	// Create the virtual environment and install dependencies into it, if needed.
@@ -427,23 +433,14 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, r
 			severity:     pulumirpc.LogSeverity_ERROR,
 		}
 
-		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-			Toolchain:  toolchain.Pip,
-			Virtualenv: virtualenv,
-		},
-		)
-		if err != nil {
-			return err
-		}
 		if err := tc.InstallDependenciesWithWriters(ctx, cwd, true /*showOutput*/, infoWriter, errorWriter); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
 
-	// Ensure the specified virtual directory is a valid virtual environment.
-	// if !python.IsVirtualEnv(virtualenv) {
-	// 	return python.NewVirtualEnvError(virtualenv, virtualenv)
-	// }
+	if err := tc.ValidateVenv(ctx); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -750,6 +747,11 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if err != nil {
 			return nil, err
 		}
+
+		if err := tc.ValidateVenv(ctx); err != nil {
+			return nil, err
+		}
+
 		return tc.Command(ctx, args...)
 	}
 
