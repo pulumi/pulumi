@@ -59,6 +59,17 @@ type Toolchain interface {
 	About(ctx context.Context) (Info, error)
 }
 
+func Name(tc toolchain) string {
+	switch tc {
+	case Pip:
+		return "Pip"
+	case Poetry:
+		return "Poetry"
+	default:
+		return "Unknown"
+	}
+}
+
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	if options.Toolchain == Poetry {
 		return newPoetry(options.PoetryDirectory)
