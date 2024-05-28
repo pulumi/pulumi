@@ -111,14 +111,6 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func (p *pip) Setup(ctx context.Context) error {
-	if p.virtualenvPath == "" {
-		return nil
-	}
-
-	return nil
-}
-
 func (p *pip) About(ctx context.Context) (Info, error) {
 	var cmd *exec.Cmd
 	// if CommandPath has an error, then so will Command. The error can

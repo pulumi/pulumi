@@ -101,11 +101,6 @@ func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	return cmd, nil
 }
 
-func (p *poetry) Setup(ctx context.Context) error {
-	// TODO
-	return nil
-}
-
 func (p *poetry) About(ctx context.Context) (Info, error) {
 	// TODO
 	return Info{}, nil

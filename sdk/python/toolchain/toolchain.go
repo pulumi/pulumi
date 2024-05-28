@@ -56,13 +56,7 @@ type Toolchain interface {
 	// TODO: should this take root?
 	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
-	// TODO: something to get the python executable path and version for use in About
-
 	About(ctx context.Context) (Info, error)
-
-	// TODO: something to install the venv? setup ?
-	// TODO: is this needed? looks like we tend to just call InstallDependenciesWithWriters
-	Setup(ctx context.Context) error
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
