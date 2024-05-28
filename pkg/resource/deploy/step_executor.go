@@ -160,12 +160,6 @@ func (se *stepExecutor) Unlock() {
 	se.workerLock.Unlock()
 }
 
-func (se *stepExecutor) ClearErroredSteps() {
-	se.erroredStepLock.Lock()
-	defer se.erroredStepLock.Unlock()
-	se.erroredSteps = make([]Step, 0)
-}
-
 func (se *stepExecutor) GetErroredSteps() []Step {
 	se.erroredStepLock.RLock()
 	defer se.erroredStepLock.RUnlock()

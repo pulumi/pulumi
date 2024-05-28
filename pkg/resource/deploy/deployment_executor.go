@@ -399,12 +399,17 @@ func (ex *deploymentExecutor) performDeletes(
 	// is conservative, but correct.
 	erroredDeps := mapset.NewSet[*resource.State]()
 	seenErrors := mapset.NewSet[Step]()
-	ex.stepExec.ClearErroredSteps()
 	for _, antichain := range deleteChains {
 		if ex.stepExec.opts.ContinueOnError {
 			erroredSteps := ex.stepExec.GetErroredSteps()
 			for _, step := range erroredSteps {
-				if seenErrors.Contains(step) {
+				// If we've already seen this error or the step isn't in the graph we can skip it.
+				//
+				// We also skip checking for dependencies of the error if it is not in the dependency graph.
+				// This can happen if an earlier create failed, thus the resource wouldn't have been added
+				// to the graph.  Since the resource was just tried to be  created it couldn't have any dependencies
+				// that should be deleted either.
+				if seenErrors.Contains(step) || !ex.deployment.depGraph.Contains(step.Res()) {
 					continue
 				}
 				deps := ex.deployment.depGraph.TransitiveDependenciesOf(step.Res())
