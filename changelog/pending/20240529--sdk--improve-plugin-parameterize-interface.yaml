@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk
+  description: Improve plugin parameterize interface

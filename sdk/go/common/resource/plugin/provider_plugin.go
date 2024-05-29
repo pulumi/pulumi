@@ -303,14 +303,49 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	return false
 }
 
-func (p *provider) Parameterize(
-	ctx context.Context, req *pulumirpc.ParameterizeRequest,
-) (*pulumirpc.ParameterizeResponse, error) {
-	resp, err := p.clientRaw.Parameterize(ctx, req)
-	if err != nil {
-		return nil, err
+func (p *provider) Parameterize(parameters ParameterizeParameters) (string, *semver.Version, error) {
+	var params pulumirpc.ParameterizeRequest
+	switch p := parameters.(type) {
+	case ParameterizeArgs:
+		params.Parameters = &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: p.Args,
+			},
+		}
+	case ParameterizeValue:
+		var version string
+		if p.Version != nil {
+			version = p.Version.String()
+		}
+		value, err := structpb.NewValue(p.Value)
+		if err != nil {
+			return "", nil, err
+		}
+		params.Parameters = &pulumirpc.ParameterizeRequest_Value{
+			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
+				Name:    p.Name,
+				Version: version,
+				Value:   value,
+			},
+		}
+	case nil:
+		// No args present. That should be Ok.
+	default:
+		panic(fmt.Sprintf("Impossible - type is constrained to ParameterizeArgs or ParameterizeValue, found %T", p))
 	}
-	return resp, nil
+	resp, err := p.clientRaw.Parameterize(p.requestContext(), &params)
+	if err != nil {
+		return "", nil, err
+	}
+	var version *semver.Version
+	if resp.Version != "" {
+		v, err := semver.ParseTolerant(resp.Version)
+		if err != nil {
+			return "", nil, err
+		}
+		version = &v
+	}
+	return resp.Name, version, err
 }
 
 // GetSchema fetches the schema for this resource provider, if any.
