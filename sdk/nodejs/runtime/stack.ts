@@ -221,10 +221,8 @@ export function registerStackTransformation(t: ResourceTransformation) {
 
 /**
  * Add a transformation to all future resources constructed in this Pulumi stack.
- *
- * This method is experimental.
  */
-export function xRegisterStackTransform(t: ResourceTransform) {
+export function registerStackTransform(t: ResourceTransform) {
     if (!getStore().supportsTransforms) {
         throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
     }

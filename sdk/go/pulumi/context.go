@@ -294,7 +294,7 @@ func (ctx *Context) IsConfigSecret(key string) bool {
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transform.
-func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback, error) {
+func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback, error) {
 	if !ctx.state.supportsTransforms {
 		return nil, errors.New("the Pulumi CLI does not support transforms. Please update the Pulumi CLI")
 	}
@@ -384,7 +384,7 @@ func (ctx *Context) registerTransform(t XResourceTransform) (*pulumirpc.Callback
 			opts.Version = rpcReq.Options.Version
 		}
 
-		args := &XResourceTransformArgs{
+		args := &ResourceTransformArgs{
 			Custom: rpcReq.Custom,
 			Type:   rpcReq.Type,
 			Name:   rpcReq.Name,
@@ -2118,10 +2118,8 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 	return nil
 }
 
-// XRegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
-//
-// Experimental.
-func (ctx *Context) XRegisterStackTransform(t XResourceTransform) error {
+// RegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
+func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
 	cb, err := ctx.registerTransform(t)
 	if err != nil {
 		return err

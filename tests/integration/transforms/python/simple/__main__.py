@@ -2,7 +2,7 @@
 
 import asyncio
 from pulumi import Output, ComponentResource, ResourceOptions, ResourceTransformArgs, ResourceTransformResult
-from pulumi.runtime import x_register_stack_transform
+from pulumi.runtime import register_stack_transform
 from random_ import Component, Random, Provider
 
 class MyComponent(ComponentResource):
@@ -55,7 +55,7 @@ def res3_transform(args: ResourceTransformArgs):
                 additional_secret_outputs=["result"],
             )))
 
-x_register_stack_transform(res3_transform)
+register_stack_transform(res3_transform)
 
 res3 = Random("res3", Output.secret(5))
 

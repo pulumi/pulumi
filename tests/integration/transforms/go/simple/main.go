@@ -69,11 +69,11 @@ func NewMyOtherComponent(ctx *pulumi.Context, name string, opts ...pulumi.Resour
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// Scenario #1 - apply a transform to a CustomResource
-		_, err := NewRandom(ctx, "res1", &RandomArgs{Length: pulumi.Int(5)}, pulumi.Transforms([]pulumi.XResourceTransform{
-			func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+		_, err := NewRandom(ctx, "res1", &RandomArgs{Length: pulumi.Int(5)}, pulumi.Transforms([]pulumi.ResourceTransform{
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res1 transform\n")
 				rta.Opts.AdditionalSecretOutputs = append(rta.Opts.AdditionalSecretOutputs, "result")
-				return &pulumi.XResourceTransformResult{
+				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
 					Opts:  rta.Opts,
 				}
@@ -84,12 +84,12 @@ func main() {
 		}
 
 		// Scenario #2 - apply a transform to a Component to transform it's children
-		_, err = NewMyComponent(ctx, "res2", pulumi.Transforms([]pulumi.XResourceTransform{
-			func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+		_, err = NewMyComponent(ctx, "res2", pulumi.Transforms([]pulumi.ResourceTransform{
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res2 transform\n")
 				if rta.Type == "testprovider:index:Random" {
 					rta.Opts.AdditionalSecretOutputs = append(rta.Opts.AdditionalSecretOutputs, "result")
-					return &pulumi.XResourceTransformResult{
+					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
@@ -102,14 +102,14 @@ func main() {
 		}
 
 		// Scenario #3 - apply a transform to the Stack to transform all (future) resources in the stack
-		err = ctx.XRegisterStackTransform(func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+		err = ctx.RegisterStackTransform(func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 			fmt.Printf("stack transform\n")
 			fmt.Printf("%v %v\n", rta.Type, rta.Props)
 			if rta.Type == "testprovider:index:Random" {
 				rta.Props["prefix"] = pulumi.String("stackDefault")
 				rta.Opts.AdditionalSecretOutputs = append(rta.Opts.AdditionalSecretOutputs, "result")
 
-				return &pulumi.XResourceTransformResult{
+				return &pulumi.ResourceTransformResult{
 					Props: rta.Props,
 					Opts:  rta.Opts,
 				}
@@ -132,25 +132,25 @@ func main() {
 		// 2. First parent transform
 		// 3. Second parent transform
 		// 4. Stack transform
-		_, err = NewMyComponent(ctx, "res4", pulumi.Transforms([]pulumi.XResourceTransform{
-			func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+		_, err = NewMyComponent(ctx, "res4", pulumi.Transforms([]pulumi.ResourceTransform{
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res4 transform\n")
 				if rta.Type == "testprovider:index:Random" {
 					rta.Props["prefix"] = pulumi.String("default1")
 
-					return &pulumi.XResourceTransformResult{
+					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
 				}
 				return nil
 			},
-			func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res4 transform 2\n")
 				if rta.Type == "testprovider:index:Random" {
 					rta.Props["prefix"] = pulumi.String("default2")
 
-					return &pulumi.XResourceTransformResult{
+					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
@@ -163,14 +163,14 @@ func main() {
 		}
 
 		// Scenario #5 - mutate the properties of a resource
-		_, err = NewRandom(ctx, "res5", &RandomArgs{Length: pulumi.Int(10)}, pulumi.Transforms([]pulumi.XResourceTransform{
-			func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+		_, err = NewRandom(ctx, "res5", &RandomArgs{Length: pulumi.Int(10)}, pulumi.Transforms([]pulumi.ResourceTransform{
+			func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 				fmt.Printf("res5 transform\n")
 				if rta.Type == "testprovider:index:Random" {
 					length := rta.Props["length"].(pulumi.Float64)
 					rta.Props["length"] = length * 2
 
-					return &pulumi.XResourceTransformResult{
+					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
@@ -194,11 +194,11 @@ func main() {
 
 		_, err = NewRandom(ctx, "res6", &RandomArgs{Length: pulumi.Int(10)},
 			pulumi.Provider(provider1),
-			pulumi.Transforms([]pulumi.XResourceTransform{
-				func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+			pulumi.Transforms([]pulumi.ResourceTransform{
+				func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 					fmt.Printf("res6 transform\n")
 					rta.Opts.Provider = provider2
-					return &pulumi.XResourceTransformResult{
+					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
@@ -212,11 +212,11 @@ func main() {
 		// Scenario #7 - mutate the provider on a component resource
 		_, err = NewComponent(ctx, "res7", &ComponentArgs{Length: pulumi.Int(10)},
 			pulumi.Provider(provider1),
-			pulumi.Transforms([]pulumi.XResourceTransform{
-				func(_ context.Context, rta *pulumi.XResourceTransformArgs) *pulumi.XResourceTransformResult {
+			pulumi.Transforms([]pulumi.ResourceTransform{
+				func(_ context.Context, rta *pulumi.ResourceTransformArgs) *pulumi.ResourceTransformResult {
 					fmt.Printf("res7 transform\n")
 					rta.Opts.Provider = provider2
-					return &pulumi.XResourceTransformResult{
+					return &pulumi.ResourceTransformResult{
 						Props: rta.Props,
 						Opts:  rta.Opts,
 					}
