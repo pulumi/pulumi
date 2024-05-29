@@ -320,18 +320,7 @@ func (pc *client) resolveEnvironmentPath(ctx context.Context, orgName, envName, 
 	if version == "" {
 		return fmt.Sprintf("/api/preview/environments/%v/%v", orgName, envName), nil
 	}
-
-	if version[0] >= '0' && version[0] <= '9' {
-		return fmt.Sprintf("/api/preview/environments/%v/%v/revisions/%v", orgName, envName, version), nil
-	}
-
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, version)
-
-	var resp EnvironmentRevisionTag
-	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return "", fmt.Errorf("resolving tag %q: %w", version, err)
-	}
-	return fmt.Sprintf("/api/preview/environments/%v/%v/revisions/%v", orgName, envName, resp.Revision), nil
+	return fmt.Sprintf("/api/preview/environments/%v/%v/versions/%v", orgName, envName, version), nil
 }
 
 func (pc *client) GetRevisionNumber(ctx context.Context, orgName, envName, version string) (int, error) {
@@ -345,7 +334,7 @@ func (pc *client) GetRevisionNumber(ctx context.Context, orgName, envName, versi
 		return int(rev), nil
 	}
 
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, version)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/tags/%v", orgName, envName, version)
 
 	var resp EnvironmentRevisionTag
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
@@ -605,7 +594,7 @@ func (pc *client) ListEnvironmentRevisions(
 	options ListEnvironmentRevisionsOptions,
 ) ([]EnvironmentRevision, error) {
 	var resp []EnvironmentRevision
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/revisions", orgName, envName)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions", orgName, envName)
 	err := pc.restCall(ctx, http.MethodGet, path, options, nil, &resp)
 	if err != nil {
 		return nil, err
@@ -622,7 +611,7 @@ func (pc *client) CreateEnvironmentRevisionTag(
 	revision *int,
 ) error {
 	req := CreateEnvironmentRevisionTagRequest{Revision: revision}
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/tags/%v", orgName, envName, tagName)
 	return pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
 }
 
@@ -634,7 +623,7 @@ func (pc *client) GetEnvironmentRevisionTag(
 	tagName string,
 ) (*EnvironmentRevisionTag, error) {
 	var resp EnvironmentRevisionTag
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/tags/%v", orgName, envName, tagName)
 	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
 	if err != nil {
 		return nil, err
@@ -651,7 +640,7 @@ func (pc *client) UpdateEnvironmentRevisionTag(
 	revision *int,
 ) error {
 	req := UpdateEnvironmentRevisionTagRequest{Revision: revision}
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/tags/%v", orgName, envName, tagName)
 	return pc.restCall(ctx, http.MethodPatch, path, nil, &req, nil)
 }
 
@@ -662,7 +651,7 @@ func (pc *client) DeleteEnvironmentRevisionTag(
 	envName string,
 	tagName string,
 ) error {
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags/%v", orgName, envName, tagName)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/tags/%v", orgName, envName, tagName)
 	return pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
 }
 
@@ -679,7 +668,7 @@ func (pc *client) ListEnvironmentRevisionTags(
 	options ListEnvironmentRevisionTagsOptions,
 ) ([]EnvironmentRevisionTag, error) {
 	var resp ListEnvironmentRevisionTagsResponse
-	path := fmt.Sprintf("/api/preview/environments/%v/%v/tags", orgName, envName)
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/tags", orgName, envName)
 	err := pc.restCall(ctx, http.MethodGet, path, options, nil, &resp)
 	if err != nil {
 		return nil, err

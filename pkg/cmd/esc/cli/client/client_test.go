@@ -211,7 +211,7 @@ func TestGetEnvironment(t *testing.T) {
 		expectedYAML := []byte("arbitrary content")
 		expectedTag := "new-tag"
 
-		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/revisions/42", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/preview/environments/test-org/test-env/versions/42", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
 			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
@@ -231,19 +231,14 @@ func TestGetEnvironment(t *testing.T) {
 
 		mux, client := newTestServer(t)
 
-		mux.HandleFunc("/api/preview/environments/test-org/test-env/tags/stable", func(w http.ResponseWriter, r *http.Request) {
-			err := json.NewEncoder(w).Encode(EnvironmentRevisionTag{Revision: 42})
-			require.NoError(t, err)
-		})
-
-		mux.HandleFunc("/api/preview/environments/test-org/test-env/revisions/42", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/api/preview/environments/test-org/test-env/versions/stable", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("ETag", expectedTag)
 			w.Header().Set(revisionHeader, "1")
 			_, err := w.Write(expectedYAML)
 			require.NoError(t, err)
 		})
 
-		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "42", false)
+		actualYAML, actualTag, revision, err := client.GetEnvironment(context.Background(), "test-org", "test-env", "stable", false)
 		require.NoError(t, err)
 		assert.Equal(t, string(expectedYAML), string(actualYAML))
 		assert.Equal(t, expectedTag, actualTag)
@@ -391,7 +386,7 @@ func TestOpenEnvironment(t *testing.T) {
 		const expectedID = "open-id"
 		duration := 2 * time.Hour
 
-		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/revisions/42/open", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodPost, "/api/preview/environments/test-org/test-env/versions/42/open", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
 
 			err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
@@ -410,12 +405,7 @@ func TestOpenEnvironment(t *testing.T) {
 
 		mux, client := newTestServer(t)
 
-		mux.HandleFunc("/api/preview/environments/test-org/test-env/tags/stable", func(w http.ResponseWriter, r *http.Request) {
-			err := json.NewEncoder(w).Encode(EnvironmentRevisionTag{Revision: 42})
-			require.NoError(t, err)
-		})
-
-		mux.HandleFunc("/api/preview/environments/test-org/test-env/revisions/42/open", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/api/preview/environments/test-org/test-env/versions/stable/open", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
 
 			err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
