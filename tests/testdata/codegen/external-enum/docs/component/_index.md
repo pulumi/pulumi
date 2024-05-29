@@ -229,7 +229,11 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var componentResource = new Example.Component("componentResource", new()
+{
+    LocalEnum = Example.Local.MyEnum.Pi,
+    RemoteEnum = GoogleNative.Accesscontextmanager.V1.DevicePolicyAllowedDeviceManagementLevelsItem.ManagementUnspecified,
+});
 ```
 
 </pulumi-choosable>
@@ -240,7 +244,10 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := example.NewComponent(ctx, "componentResource", &example.ComponentArgs{
+	LocalEnum:  local.MyEnumPi,
+	RemoteEnum: accesscontextmanager / v1.DevicePolicyAllowedDeviceManagementLevelsItemManagementUnspecified,
+})
 ```
 
 </pulumi-choosable>
@@ -252,7 +259,7 @@ Coming soon!
 
 ```java
 var componentResource = new Component("componentResource", ComponentArgs.builder()
-    .localEnum("pi")
+    .localEnum(3.1415)
     .remoteEnum("MANAGEMENT_UNSPECIFIED")
     .build());
 ```
@@ -265,7 +272,9 @@ var componentResource = new Component("componentResource", ComponentArgs.builder
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+component_resource = example.Component("componentResource",
+    local_enum=example.local.MyEnum.PI,
+    remote_enum=google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem.MANAGEMENT_UNSPECIFIED)
 ```
 
 </pulumi-choosable>
@@ -276,7 +285,10 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const componentResource = new example.Component("componentResource", {
+    localEnum: example.local.MyEnum.Pi,
+    remoteEnum: google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem.ManagementUnspecified,
+});
 ```
 
 </pulumi-choosable>
@@ -289,7 +301,7 @@ Coming soon!
 ```yaml
 type: example:Component
 properties:
-    localEnum: pi
+    localEnum: 3.1415
     remoteEnum: MANAGEMENT_UNSPECIFIED
 ```
 

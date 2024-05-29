@@ -568,7 +568,13 @@ func EnumMember(t *model.EnumType, value cty.Value) (*schema.Enum, bool) {
 	case t.Type.Equals(model.IntType):
 		f, _ := value.AsBigFloat().Int64()
 		for _, el := range src.Elements {
-			if el.Value.(int64) == f {
+			valueInt64, ok := el.Value.(int64)
+			if ok && valueInt64 == f {
+				return el, true
+			}
+
+			valueInt32, ok := el.Value.(int32)
+			if ok && int64(valueInt32) == f {
 				return el, true
 			}
 		}

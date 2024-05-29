@@ -384,7 +384,12 @@ func enumName(enum *model.EnumType) (string, string) {
 	et := e.(*schema.EnumType)
 	def, err := et.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", et.PackageReference.Name())
-	namespaceMap := def.Language["csharp"].(CSharpPackageInfo).Namespaces
+	var namespaceMap map[string]string
+	pkgInfo, ok := def.Language["csharp"].(CSharpPackageInfo)
+	if ok {
+		namespaceMap = pkgInfo.Namespaces
+	}
+
 	namespace := namespaceName(namespaceMap, components[0])
 	if components[1] != "" && components[1] != "index" {
 		namespace += "." + namespaceName(namespaceMap, components[1])
@@ -406,20 +411,22 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 			g.Fgenf(w, "%.v", from)
 			return
 		}
-		var convertFn string
-		switch {
-		case to.Type.Equals(model.StringType):
-			convertFn = fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
-		default:
+
+		convertFn := func() string {
+			if to.Type.Equals(model.StringType) {
+				return fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
+			}
+
 			panic(fmt.Sprintf(
 				"Unsafe enum conversions from type %s not implemented yet: %s => %s",
 				from.Type(), from, to))
 		}
+
 		if isOutput {
-			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
+			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn())
 		} else {
 			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
-				g.Fgenf(w, "%s(%v)", convertFn, from)
+				g.Fgenf(w, "%s(%v)", convertFn(), from)
 			})
 			if diag != nil {
 				g.diagnostics = append(g.diagnostics, diag)

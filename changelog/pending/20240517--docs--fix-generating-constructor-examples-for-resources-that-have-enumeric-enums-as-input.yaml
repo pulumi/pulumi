@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: docs
+  description: Fix generating constructor examples for resources that have numeric enums as input

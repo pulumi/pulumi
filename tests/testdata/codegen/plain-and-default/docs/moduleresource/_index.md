@@ -241,7 +241,26 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var moduleResourceResource = new FooBar.ModuleResource("moduleResourceResource", new()
+{
+    PlainRequiredBool = false,
+    RequiredString = "string",
+    RequiredNumber = 0,
+    RequiredEnum = FooBar.EnumThing.Four,
+    RequiredBool = false,
+    PlainRequiredString = "string",
+    PlainRequiredNumber = 0,
+    PlainRequiredConst = "string",
+    OptionalString = "string",
+    PlainOptionalString = "string",
+    PlainOptionalNumber = 0,
+    PlainOptionalConst = "string",
+    PlainOptionalBool = false,
+    OptionalBool = false,
+    OptionalNumber = 0,
+    OptionalEnum = FooBar.EnumThing.Four,
+    OptionalConst = "string",
+});
 ```
 
 </pulumi-choosable>
@@ -252,7 +271,25 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := foobar.NewModuleResource(ctx, "moduleResourceResource", &foobar.ModuleResourceArgs{
+	PlainRequiredBool:   false,
+	RequiredString:      pulumi.String("string"),
+	RequiredNumber:      pulumi.Float64(0),
+	RequiredEnum:        foobar.EnumThingFour,
+	RequiredBool:        pulumi.Bool(false),
+	PlainRequiredString: "string",
+	PlainRequiredNumber: 0,
+	PlainRequiredConst:  "string",
+	OptionalString:      pulumi.String("string"),
+	PlainOptionalString: "string",
+	PlainOptionalNumber: 0,
+	PlainOptionalConst:  "string",
+	PlainOptionalBool:   false,
+	OptionalBool:        pulumi.Bool(false),
+	OptionalNumber:      pulumi.Float64(0),
+	OptionalEnum:        foobar.EnumThingFour,
+	OptionalConst:       pulumi.String("string"),
+})
 ```
 
 </pulumi-choosable>
@@ -267,7 +304,7 @@ var moduleResourceResource = new ModuleResource("moduleResourceResource", Module
     .plainRequiredBool(false)
     .requiredString("string")
     .requiredNumber(0)
-    .requiredEnum("Four")
+    .requiredEnum(4)
     .requiredBool(false)
     .plainRequiredString("string")
     .plainRequiredNumber(0)
@@ -279,7 +316,7 @@ var moduleResourceResource = new ModuleResource("moduleResourceResource", Module
     .plainOptionalBool(false)
     .optionalBool(false)
     .optionalNumber(0)
-    .optionalEnum("Four")
+    .optionalEnum(4)
     .optionalConst("string")
     .build());
 ```
@@ -292,7 +329,24 @@ var moduleResourceResource = new ModuleResource("moduleResourceResource", Module
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+module_resource_resource = foobar.ModuleResource("moduleResourceResource",
+    plain_required_bool=False,
+    required_string="string",
+    required_number=0,
+    required_enum=foobar.EnumThing.FOUR,
+    required_bool=False,
+    plain_required_string="string",
+    plain_required_number=0,
+    plain_required_const="string",
+    optional_string="string",
+    plain_optional_string="string",
+    plain_optional_number=0,
+    plain_optional_const="string",
+    plain_optional_bool=False,
+    optional_bool=False,
+    optional_number=0,
+    optional_enum=foobar.EnumThing.FOUR,
+    optional_const="string")
 ```
 
 </pulumi-choosable>
@@ -303,7 +357,25 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const moduleResourceResource = new foobar.ModuleResource("moduleResourceResource", {
+    plainRequiredBool: false,
+    requiredString: "string",
+    requiredNumber: 0,
+    requiredEnum: foobar.EnumThing.Four,
+    requiredBool: false,
+    plainRequiredString: "string",
+    plainRequiredNumber: 0,
+    plainRequiredConst: "string",
+    optionalString: "string",
+    plainOptionalString: "string",
+    plainOptionalNumber: 0,
+    plainOptionalConst: "string",
+    plainOptionalBool: false,
+    optionalBool: false,
+    optionalNumber: 0,
+    optionalEnum: foobar.EnumThing.Four,
+    optionalConst: "string",
+});
 ```
 
 </pulumi-choosable>
@@ -318,7 +390,7 @@ type: foobar:ModuleResource
 properties:
     optionalBool: false
     optionalConst: string
-    optionalEnum: Four
+    optionalEnum: 4
     optionalNumber: 0
     optionalString: string
     plainOptionalBool: false
@@ -330,7 +402,7 @@ properties:
     plainRequiredNumber: 0
     plainRequiredString: string
     requiredBool: false
-    requiredEnum: Four
+    requiredEnum: 4
     requiredNumber: 0
     requiredString: string
 ```

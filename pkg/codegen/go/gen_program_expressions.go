@@ -200,10 +200,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			switch {
 			case to.Type.Equals(model.StringType):
 				underlyingType = "string"
+			case to.Type.Equals(model.IntType):
+				underlyingType = "int"
 			default:
-				panic(fmt.Sprintf(
-					"Unsafe enum conversions from type %s not implemented yet: %s => %s",
-					from.Type(), from, to))
+				underlyingType = "float64"
 			}
 			pkg, mod, typ, _ := pcl.DecomposeToken(to.Token, to.SyntaxNode().Range())
 			mod = g.getModOrAlias(pkg, mod, mod)

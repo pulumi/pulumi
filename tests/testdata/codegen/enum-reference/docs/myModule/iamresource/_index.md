@@ -228,7 +228,24 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var iamResourceResource = new Example.MyModule.IamResource("iamResourceResource", new()
+{
+    Config = new GoogleNative.Iam.Inputs.AuditConfigArgs
+    {
+        AuditLogConfigs = new[]
+        {
+            new GoogleNative.Iam.Inputs.AuditLogConfigArgs
+            {
+                ExemptedMembers = new[]
+                {
+                    "string",
+                },
+                LogType = GoogleNative.Iam.V1.AuditLogConfigLogType.LogTypeUnspecified,
+            },
+        },
+        Service = "string",
+    },
+});
 ```
 
 </pulumi-choosable>
@@ -281,7 +298,13 @@ var iamResourceResource = new IamResource("iamResourceResource", IamResourceArgs
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+iam_resource_resource = example.my_module.IamResource("iamResourceResource", config=google_native.iam.v1.AuditConfigArgs(
+    audit_log_configs=[google_native.iam.v1.AuditLogConfigArgs(
+        exempted_members=["string"],
+        log_type=google_native.iam.v1.AuditLogConfigLogType.LOG_TYPE_UNSPECIFIED,
+    )],
+    service="string",
+))
 ```
 
 </pulumi-choosable>

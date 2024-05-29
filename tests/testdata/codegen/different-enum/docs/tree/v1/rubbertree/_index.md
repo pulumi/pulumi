@@ -232,7 +232,20 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var rubberTreeResource = new Plant.Tree.V1.RubberTree("rubberTreeResource", new()
+{
+    Diameter = Other.Tree.V1.Diameter.Sixinch,
+    Type = Plant.Tree.V1.RubberTreeVariety.Burgundy,
+    Container = new Plant.Inputs.ContainerArgs
+    {
+        Size = Plant.ContainerSize.FourInch,
+        Brightness = Plant.ContainerBrightness.ZeroPointOne,
+        Color = Plant.ContainerColor.Red,
+        Material = "string",
+    },
+    Farm = Plant.Tree.V1.Farm.Pulumi_Planters_Inc_,
+    Size = Plant.Tree.V1.TreeSize.Small,
+});
 ```
 
 </pulumi-choosable>
@@ -243,7 +256,18 @@ Coming soon!
 <pulumi-choosable type="language" values="go">
 
 ```go
-Coming soon!
+example, err := tree.NewRubberTree(ctx, "rubberTreeResource", &tree.RubberTreeArgs{
+	Diameter: tree / v1.DiameterSixinch,
+	Type:     tree.RubberTreeVarietyBurgundy,
+	Container: &plant.ContainerArgs{
+		Size:       plant.ContainerSizeFourInch,
+		Brightness: plant.ContainerBrightnessZeroPointOne,
+		Color:      pulumi.String(plant.ContainerColorRed),
+		Material:   pulumi.String("string"),
+	},
+	Farm: pulumi.String(tree.Farm_Pulumi_Planters_Inc_),
+	Size: tree.TreeSizeSmall,
+})
 ```
 
 </pulumi-choosable>
@@ -255,11 +279,11 @@ Coming soon!
 
 ```java
 var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.builder()
-    .diameter("sixinch")
+    .diameter(6)
     .type("Burgundy")
     .container(ContainerArgs.builder()
-        .size("FourInch")
-        .brightness("ZeroPointOne")
+        .size(4)
+        .brightness(0.1)
         .color("red")
         .material("string")
         .build())
@@ -276,7 +300,17 @@ var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.bui
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+rubber_tree_resource = plant.tree.v1.RubberTree("rubberTreeResource",
+    diameter=other.tree.v1.Diameter.SIXINCH,
+    type=plant.tree.v1.RubberTreeVariety.BURGUNDY,
+    container=plant.ContainerArgs(
+        size=plant.ContainerSize.FOUR_INCH,
+        brightness=plant.ContainerBrightness.ZERO_POINT_ONE,
+        color=plant.ContainerColor.RED,
+        material="string",
+    ),
+    farm=plant.tree.v1.Farm.PULUMI_PLANTERS_INC_,
+    size=plant.tree.v1.TreeSize.SMALL)
 ```
 
 </pulumi-choosable>
@@ -287,7 +321,18 @@ Coming soon!
 <pulumi-choosable type="language" values="typescript">
 
 ```typescript
-Coming soon!
+const rubberTreeResource = new plant.tree.v1.RubberTree("rubberTreeResource", {
+    diameter: other.tree.v1.Diameter.Sixinch,
+    type: plant.tree.v1.RubberTreeVariety.Burgundy,
+    container: {
+        size: plant.ContainerSize.FourInch,
+        brightness: plant.ContainerBrightness.ZeroPointOne,
+        color: plant.ContainerColor.Red,
+        material: "string",
+    },
+    farm: plant.tree.v1.Farm.Pulumi_Planters_Inc_,
+    size: plant.tree.v1.TreeSize.Small,
+});
 ```
 
 </pulumi-choosable>
@@ -301,11 +346,11 @@ Coming soon!
 type: plant:tree/v1:RubberTree
 properties:
     container:
-        brightness: ZeroPointOne
+        brightness: 0.1
         color: red
         material: string
-        size: FourInch
-    diameter: sixinch
+        size: 4
+    diameter: 6
     farm: Pulumi Planters Inc.
     size: small
     type: Burgundy
