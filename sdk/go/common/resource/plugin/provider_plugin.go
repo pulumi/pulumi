@@ -339,7 +339,7 @@ func (p *provider) Parameterize(parameters ParameterizeParameters) (string, *sem
 	}
 	var version *semver.Version
 	if resp.Version != "" {
-		v, err := semver.ParseTolerant(resp.Version)
+		v, err := semver.Parse(resp.Version)
 		if err != nil {
 			return "", nil, err
 		}

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk
+  description: Exchange ParseTolerant for Parse in plugin.Provider.Parameterize

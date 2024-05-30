@@ -140,7 +140,7 @@ func (p *providerServer) Parameterize(
 	case *pulumirpc.ParameterizeRequest_Value:
 		var version *semver.Version
 		if v := p.Value.GetVersion(); v != "" {
-			pV, err := semver.ParseTolerant(v)
+			pV, err := semver.Parse(v)
 			if err != nil {
 				return nil, err
 			}
