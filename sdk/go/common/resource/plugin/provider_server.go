@@ -133,11 +133,37 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 func (p *providerServer) Parameterize(
 	ctx context.Context, req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	resp, err := p.provider.Parameterize(ctx, req)
+	var params ParameterizeParameters
+	switch p := req.Parameters.(type) {
+	case *pulumirpc.ParameterizeRequest_Args:
+		params = ParameterizeArgs{Args: p.Args.GetArgs()}
+	case *pulumirpc.ParameterizeRequest_Value:
+		var version *semver.Version
+		if v := p.Value.GetVersion(); v != "" {
+			pV, err := semver.ParseTolerant(v)
+			if err != nil {
+				return nil, err
+			}
+			version = &pV
+		}
+		params = ParameterizeValue{
+			Name:    p.Value.GetName(),
+			Version: version,
+			Value:   nil,
+		}
+	}
+	name, version, err := p.provider.Parameterize(params)
 	if err != nil {
 		return nil, err
 	}
-	return resp, nil
+	var v string
+	if version != nil {
+		v = version.String()
+	}
+	return &pulumirpc.ParameterizeResponse{
+		Name:    name,
+		Version: v,
+	}, nil
 }
 
 func (p *providerServer) GetSchema(ctx context.Context,

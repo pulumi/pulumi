@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type Provider struct {
@@ -39,7 +38,7 @@ type Provider struct {
 
 	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 
-	ParameterizeF func(context.Context, *pulumirpc.ParameterizeRequest) (*pulumirpc.ParameterizeResponse, error)
+	ParameterizeF func(plugin.ParameterizeParameters) (string, *semver.Version, error)
 
 	GetSchemaF func(request plugin.GetSchemaRequest) ([]byte, error)
 
@@ -101,13 +100,11 @@ func (prov *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (prov *Provider) Parameterize(
-	ctx context.Context, req *pulumirpc.ParameterizeRequest,
-) (*pulumirpc.ParameterizeResponse, error) {
+func (prov *Provider) Parameterize(params plugin.ParameterizeParameters) (string, *semver.Version, error) {
 	if prov.ParameterizeF == nil {
-		return nil, errors.New("no parameters")
+		return "", nil, errors.New("no parameters")
 	}
-	return prov.ParameterizeF(ctx, req)
+	return prov.ParameterizeF(params)
 }
 
 func (prov *Provider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {

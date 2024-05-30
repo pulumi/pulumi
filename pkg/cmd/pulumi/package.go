@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -114,25 +113,14 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
-		response, err := p.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
-			Parameters: &pulumirpc.ParameterizeRequest_Args{
-				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-					Args: args,
-				},
-			},
-		})
+		name, version, err := p.Parameterize(plugin.ParameterizeArgs{Args: args})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
 		}
 
-		ver, err := semver.Parse(response.Version)
-		if err != nil {
-			return nil, fmt.Errorf("parameterize returned invalid version: %w", err)
-		}
-
 		request = plugin.GetSchemaRequest{
-			SubpackageName:    response.Name,
-			SubpackageVersion: &ver,
+			SubpackageName:    name,
+			SubpackageVersion: version,
 		}
 	}
 

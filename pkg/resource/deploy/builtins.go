@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
@@ -15,7 +16,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type builtinProvider struct {
@@ -48,9 +48,8 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
-func (p *builtinProvider) Parameterize(context.Context, *pulumirpc.ParameterizeRequest,
-) (*pulumirpc.ParameterizeResponse, error) {
-	return nil, errors.New("the builtin provider has no parameters")
+func (p *builtinProvider) Parameterize(plugin.ParameterizeParameters) (string, *semver.Version, error) {
+	return "", nil, errors.New("the builtin provider has no parameters")
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.

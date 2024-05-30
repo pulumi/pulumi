@@ -15,7 +15,6 @@
 package plugin
 
 import (
-	"context"
 	"errors"
 	"io"
 
@@ -25,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type GetSchemaRequest struct {
@@ -36,6 +34,35 @@ type GetSchemaRequest struct {
 	// Subpackage version to get the schema for.
 	SubpackageVersion *semver.Version
 }
+
+type ParameterizeParameters interface {
+	isParameterizeParameters()
+}
+
+type (
+	ParameterizeArgs struct {
+		Args []string
+	}
+
+	ParameterizeValue struct {
+		Name    string
+		Version *semver.Version
+		// Value must be one of:
+		// - nil
+		// - bool
+		// - int, int32, int64
+		// - uint, uint32, uint64
+		// - float32, float64
+		// - string
+		// - []byte
+		// - map[string]interface{}
+		// - []interface{}
+		Value any
+	}
+)
+
+func (ParameterizeArgs) isParameterizeParameters()  {}
+func (ParameterizeValue) isParameterizeParameters() {}
 
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
@@ -54,9 +81,7 @@ type Provider interface {
 	Pkg() tokens.Package
 
 	// Parameterize adds a sub-package to this provider instance.
-	Parameterize(
-		ctx context.Context, req *pulumirpc.ParameterizeRequest,
-	) (*pulumirpc.ParameterizeResponse, error)
+	Parameterize(parameters ParameterizeParameters) (string, *semver.Version, error)
 
 	// GetSchema returns the schema for the provider.
 	GetSchema(request GetSchemaRequest) ([]byte, error)
