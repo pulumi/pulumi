@@ -958,12 +958,8 @@ func (host *pythonLanguageHost) InstallDependencies(
 	if err != nil {
 		return err
 	}
-	if err := tc.InstallDependencies(
-		server.Context(),
-		req.Info.ProgramDirectory,
-		true, /*showOutput*/
-		stdout,
-		stderr); err != nil {
+	if err := tc.InstallDependencies(server.Context(), req.Info.ProgramDirectory,
+		true /*showOutput*/, stdout, stderr); err != nil {
 		return err
 	}
 

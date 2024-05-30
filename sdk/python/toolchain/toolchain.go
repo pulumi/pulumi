@@ -48,9 +48,7 @@ type Info struct {
 }
 
 type Toolchain interface {
-	InstallDependencies(ctx context.Context,
-		root string, showOutput bool, infoWriter, errorWriter io.Writer,
-	) error
+	InstallDependencies(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
 	ValidateVenv(ctx context.Context) error
 	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)

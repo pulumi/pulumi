@@ -53,12 +53,12 @@ func newPip(root, virtualenv string) (*pip, error) {
 	return &pip{virtualenvPath, virtualenv, root}, nil
 }
 
-func (p *pip) InstallDependencies(ctx context.Context,
-	root string, showOutput bool, infoWriter io.Writer, errorWriter io.Writer,
+func (p *pip) InstallDependencies(ctx context.Context, cwd string, showOutput bool,
+	infoWriter io.Writer, errorWriter io.Writer,
 ) error {
 	return InstallDependencies(
 		ctx,
-		root,
+		cwd,
 		p.virtualenvPath,
 		showOutput,
 		infoWriter,
@@ -325,18 +325,8 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool) error {
-	return InstallDependencies(
-		ctx,
-		root,
-		venvDir,
-		showOutput,
-		os.Stdout,
-		os.Stderr)
-}
-
-func InstallDependencies(ctx context.Context,
-	cwd, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
+func InstallDependencies(ctx context.Context, cwd, venvDir string, showOutput bool,
+	infoWriter, errorWriter io.Writer,
 ) error {
 	printmsg := func(message string) {
 		if showOutput {
