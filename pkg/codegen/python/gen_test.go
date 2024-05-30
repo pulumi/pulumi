@@ -36,6 +36,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
+const venvRelDir = "venv"
+
 var pathTests = []struct {
 	input    string
 	expected string
@@ -120,7 +122,7 @@ func virtualEnvPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(hereDir, "venv"), nil
+	return filepath.Join(hereDir, venvRelDir), nil
 }
 
 // To serialize shared `venv` operations; without the lock running
@@ -152,7 +154,7 @@ func buildVirtualEnv(ctx context.Context) error {
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
 		Root:       hereDir,
-		Virtualenv: "venv",
+		Virtualenv: venvRelDir,
 	})
 	if err != nil {
 		return err
@@ -209,7 +211,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       hereDir,
-			Virtualenv: "venv",
+			Virtualenv: venvRelDir,
 		})
 		if err != nil {
 			return err

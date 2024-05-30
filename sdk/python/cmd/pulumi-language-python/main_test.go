@@ -122,8 +122,6 @@ func TestDeterminePluginVersion(t *testing.T) {
 func TestDeterminePulumiPackages(t *testing.T) {
 	t.Parallel()
 
-	// TODO: loop over toolchains
-
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 

@@ -43,11 +43,12 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 		Toolchain: toolchain.Pip,
 	})
 	require.NoError(t, err)
-	// Run `python -m py_compile` on all python files
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	cmd, err := tc.Command(context.Background(), args...)
 	require.NoError(t, err)
-	test.RunCommand(t, "python syntax check", codeDir, cmd.Path, args...)
+	pythonCmdPath := cmd.Path
+	// Run `python -m py_compile` on all python files
+	test.RunCommand(t, "python syntax check", codeDir, pythonCmdPath, args...)
 }
 
 func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
