@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
@@ -48,8 +47,10 @@ func (p *builtinProvider) Pkg() tokens.Package {
 	return "pulumi"
 }
 
-func (p *builtinProvider) Parameterize(plugin.ParameterizeParameters) (string, *semver.Version, error) {
-	return "", nil, errors.New("the builtin provider has no parameters")
+func (p *builtinProvider) Parameterize(
+	context.Context, plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
+	return plugin.ParameterizeResponse{}, errors.New("the builtin provider has no parameters")
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.

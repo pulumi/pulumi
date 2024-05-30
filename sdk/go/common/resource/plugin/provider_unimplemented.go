@@ -16,7 +16,8 @@
 package plugin
 
 import (
-	"github.com/blang/semver"
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -39,8 +40,8 @@ func (p *UnimplementedProvider) Pkg() tokens.Package {
 	return tokens.Package("")
 }
 
-func (p *UnimplementedProvider) Parameterize(ParameterizeParameters) (string, *semver.Version, error) {
-	return "", nil, status.Error(codes.Unimplemented, "Parameterize is not yet implemented")
+func (p *UnimplementedProvider) Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error) {
+	return ParameterizeResponse{}, status.Error(codes.Unimplemented, "Parameterize is not yet implemented")
 }
 
 func (p *UnimplementedProvider) GetSchema(GetSchemaRequest) ([]byte, error) {

@@ -152,16 +152,16 @@ func (p *providerServer) Parameterize(
 			Value:   nil,
 		}
 	}
-	name, version, err := p.provider.Parameterize(params)
+	resp, err := p.provider.Parameterize(ctx, ParameterizeRequest{Parameters: params})
 	if err != nil {
 		return nil, err
 	}
 	var v string
-	if version != nil {
-		v = version.String()
+	if resp.Version != nil {
+		v = resp.Version.String()
 	}
 	return &pulumirpc.ParameterizeResponse{
-		Name:    name,
+		Name:    resp.Name,
 		Version: v,
 	}, nil
 }

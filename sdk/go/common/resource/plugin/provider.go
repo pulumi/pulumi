@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"io"
 
@@ -64,6 +65,15 @@ type (
 func (ParameterizeArgs) isParameterizeParameters()  {}
 func (ParameterizeValue) isParameterizeParameters() {}
 
+type ParameterizeRequest struct {
+	Parameters ParameterizeParameters
+}
+
+type ParameterizeResponse struct {
+	Name    string
+	Version *semver.Version
+}
+
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
 //
@@ -75,13 +85,23 @@ func (ParameterizeValue) isParameterizeParameters() {}
 // best effort to ensure catastrophes do not occur.  The errors returned from mutating operations indicate both the
 // underlying error condition in addition to a bit indicating whether the operation was successfully rolled back.
 type Provider interface {
+	// When adding new methods:
+	//
+	// To ensure maximum backwards compatibility, each method should be of the form:
+	//
+	//	MyMethod(ctx context.Context, request MyMethodRequest) (MyMethodResponse, error)
+	//
+	// This intentionally mimics the style of gRPC methods and is required to ensure that adding a new input or
+	// output field doesn't break existing call sites.
+
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
 	// Parameterize adds a sub-package to this provider instance.
-	Parameterize(parameters ParameterizeParameters) (string, *semver.Version, error)
+	Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error)
 
 	// GetSchema returns the schema for the provider.
 	GetSchema(request GetSchemaRequest) ([]byte, error)

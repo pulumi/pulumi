@@ -303,9 +303,9 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	return false
 }
 
-func (p *provider) Parameterize(parameters ParameterizeParameters) (string, *semver.Version, error) {
+func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
 	var params pulumirpc.ParameterizeRequest
-	switch p := parameters.(type) {
+	switch p := request.Parameters.(type) {
 	case ParameterizeArgs:
 		params.Parameters = &pulumirpc.ParameterizeRequest_Args{
 			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
@@ -319,7 +319,7 @@ func (p *provider) Parameterize(parameters ParameterizeParameters) (string, *sem
 		}
 		value, err := structpb.NewValue(p.Value)
 		if err != nil {
-			return "", nil, err
+			return ParameterizeResponse{}, err
 		}
 		params.Parameters = &pulumirpc.ParameterizeRequest_Value{
 			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
@@ -335,17 +335,17 @@ func (p *provider) Parameterize(parameters ParameterizeParameters) (string, *sem
 	}
 	resp, err := p.clientRaw.Parameterize(p.requestContext(), &params)
 	if err != nil {
-		return "", nil, err
+		return ParameterizeResponse{}, err
 	}
 	var version *semver.Version
 	if resp.Version != "" {
 		v, err := semver.Parse(resp.Version)
 		if err != nil {
-			return "", nil, err
+			return ParameterizeResponse{}, err
 		}
 		version = &v
 	}
-	return resp.Name, version, err
+	return ParameterizeResponse{Name: resp.Name, Version: version}, err
 }
 
 // GetSchema fetches the schema for this resource provider, if any.

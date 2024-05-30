@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -253,10 +254,10 @@ func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
 
-func (r *Registry) Parameterize(plugin.ParameterizeParameters) (string, *semver.Version, error) {
+func (r *Registry) Parameterize(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
 	contract.Failf("Parameterize must not be called on the provider registry")
 
-	return "", nil, errors.New("the provider registry has no parameters")
+	return plugin.ParameterizeResponse{}, errors.New("the provider registry has no parameters")
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
