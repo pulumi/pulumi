@@ -256,7 +256,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, fmt.Errorf("preparing virtual environment: %w", err)
 	}
 
-	validateVersion(ctx, req.Info.RootDirectory, opts)
+	validateVersion(ctx, opts)
 
 	// Now, determine which Pulumi packages are installed.
 	pulumiPackages, err := determinePulumiPackages(ctx, opts)
@@ -897,7 +897,7 @@ func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.
 // validateVersion checks that python is running a valid version. If a version
 // is invalid, it prints to os.Stderr. This is interpreted as diagnostic message
 // by the Pulumi CLI program.
-func validateVersion(ctx context.Context, root string, options toolchain.PythonOptions) {
+func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 	var versionCmd *exec.Cmd
 	var err error
 	versionArgs := []string{"--version"}
