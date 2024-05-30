@@ -150,8 +150,6 @@ func IsVirtualEnv(dir string) bool {
 	return false
 }
 
-// TODO: Everything below here should become private or inlined above
-
 // CommandPath finds the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
 // variable is set it will be looked for on `PATH`, otherwise, `python3` and
 // `python` will be looked for.
