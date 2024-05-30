@@ -137,6 +137,9 @@ type ProgressDisplay struct {
 	// If all progress messages are done and we can print out the final display.
 	done bool
 
+	// True if one or more resource operations have failed.
+	failed bool
+
 	// The column that the suffix should be added to
 	suffixColumn int
 
@@ -1048,6 +1051,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			return
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
+		display.failed = true
 		row.SetFailed()
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
@@ -1331,25 +1335,51 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	return ""
 }
 
+// getStepOp returns the operation to display for the given step. Generally this
+// will be the operation already attached to the step, but there are some cases
+// where it makes sense for us to return a different operation. In particular,
+// we often think of replacements as a series of steps, e.g.:
+//
+// * create replacement
+// * replace
+// * delete original
+//
+// When these steps are being applied, we want to display the individual steps
+// to give the user the best indicator of what is happening currently. However,
+// both before we apply all of them, and before they're all done, we want to
+// show this sequence as a single conceptual "replace"/"replaced" step. We thus
+// rewrite the operation to be "replace" in these cases.
+//
+// There are two cases where we do not want to rewrite any operations:
+//
+//   - If we are operating in a non-interactive mode (that is, effectively
+//     outputting a log), we can afford to show all the individual steps, since we
+//     are not limited to a single line per resource, and we want the list of
+//     steps to be as clear and true to the actual operations as possible.
+//
+//   - If a resource operation fails (meaning the entire operation will likely
+//     fail), we want the user to be left with as true a representation of where
+//     we got to when the program terminates (e.g. we don't want to show
+//     "replaced" when in fact we have only completed the first step of the
+//     series).
 func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display.StepOp {
 	op := step.Op
+	if !display.isTerminal {
+		return op
+	}
 
-	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
-	// replacement', 'replace', 'delete original'.  During the actual application of these steps we
-	// want to see these individual steps.  However, both before we apply all of them, and after
-	// they're all done, we want to show this as a single conceptual 'replace'/'replaced' step.
+	if display.failed {
+		return op
+	}
+
+	// Replacing replace series with replace:
 	//
-	// Note: in non-interactive mode we can show these all as individual steps.  This only applies
-	// to interactive mode, where there is only one line shown per resource, and we want it to be as
-	// clear as possible
-	if display.isTerminal {
-		// During preview, show the steps for replacing as a single 'replace' plan.
-		// Once done, show the steps for replacing as a single 'replaced' step.
-		// During update, we'll show these individual steps.
-		if display.isPreview || display.done {
-			if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
-				return deploy.OpReplace
-			}
+	// * During preview -- we'll show a single "replace" plan.
+	// * During update -- we'll show the individual steps.
+	// * When done -- we'll show a single "replaced" step.
+	if display.isPreview || display.done {
+		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
+			return deploy.OpReplace
 		}
 	}
 

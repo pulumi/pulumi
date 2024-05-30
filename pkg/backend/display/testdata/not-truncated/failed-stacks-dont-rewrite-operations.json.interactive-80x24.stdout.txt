@@ -1,0 +1,43 @@
+<{%fg 13%}><{%bold%}>View in Browser (Ctrl+O): <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  project-stack  <{%bold%}><{%reset%}><{%reset%}>           <{%reset%}>Configuration:<{%reset%}>[K
+[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  test-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}>[K
+[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  running<{%bold%}><{%reset%}><{%reset%}>      <{%reset%}>Configuration:<{%reset%}>[K
+ <{%bold%}><{%fg 3%}>~ <{%reset%}>  └─ pulumi-python:dynamic:Resource  test-x    <{%bold%}><{%fg 3%}>updating<{%reset%}><{%bold%}><{%fg 3%}><{%reset%}>     [K
+[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>                <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  running<{%bold%}><{%reset%}><{%reset%}>               <{%reset%}>Configu[K
+ <{%bold%}><{%fg 3%}>~ <{%reset%}>  ├─ pulumi-python:dynamic:Resource  test-x    <{%bold%}><{%fg 3%}>updating<{%reset%}><{%bold%}><{%fg 3%}><{%reset%}>              [K
+ <{%bold%}><{%fg 9%}>--<{%reset%}>  └─ pulumi-python:dynamic:Resource  test-r    <{%bold%}><{%fg 9%}>deleting original<{%reset%}><{%bold%}><{%fg 9%}><{%reset%}>     [K
+[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>                  <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  running<{%bold%}><{%reset%}><{%reset%}>                 <{%reset%}>Confi[K
+ <{%fg 3%}>~ <{%reset%}>  ├─ pulumi-python:dynamic:Resource  test-x    <{%fg 1%}>**updating failed**<{%reset%}>     [K
+ <{%bold%}><{%fg 9%}>--<{%reset%}>  └─ pulumi-python:dynamic:Resource  test-r    <{%bold%}><{%fg 9%}>deleting original<{%reset%}><{%bold%}><{%fg 9%}><{%reset%}>       [K
+[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>                  <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  running<{%bold%}><{%reset%}><{%reset%}>                 <{%reset%}>Confi[K
+ <{%fg 3%}>~ <{%reset%}>  ├─ pulumi-python:dynamic:Resource  test-x    <{%fg 1%}>**updating failed**<{%reset%}>     [K
+ <{%fg 9%}>--<{%reset%}>  └─ pulumi-python:dynamic:Resource  test-r    <{%fg 9%}>deleted original<{%reset%}>        [K
+[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>                  <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  running<{%bold%}><{%reset%}><{%reset%}>                 <{%reset%}>Confi[K
+ <{%fg 3%}>~ <{%reset%}>  ├─ pulumi-python:dynamic:Resource  test-x    <{%fg 1%}>**updating failed**<{%reset%}>     [K
+ <{%fg 9%}>--<{%reset%}>  └─ pulumi-python:dynamic:Resource  test-r    <{%fg 9%}>deleted original<{%reset%}>        [K
+[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>                  <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  <{%reset%}><{%reset%}>                        1 <{%fg 5%}>mes<{%reset%}>[K
+ <{%fg 3%}>~ <{%reset%}>  ├─ pulumi-python:dynamic:Resource  test-x    <{%fg 1%}>**updating failed**<{%reset%}>     [K
+ <{%fg 9%}>--<{%reset%}>  └─ pulumi-python:dynamic:Resource  test-r    <{%fg 9%}>deleted original<{%reset%}>        [K
+[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                               <{%underline%}><{%fg 12%}>Name<{%reset%}>      <{%underline%}><{%fg 12%}>Status<{%reset%}>                  <{%underline%}><{%fg 12%}>Info<{%reset%}>[K
+ <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                test-dev  <{%reset%}><{%reset%}>                        1 <{%fg 5%}>mes<{%reset%}>[K
+ <{%fg 3%}>~ <{%reset%}>  ├─ pulumi-python:dynamic:Resource  test-x    <{%fg 1%}>**updating failed**<{%reset%}>     [K
+ <{%fg 9%}>--<{%reset%}>  └─ pulumi-python:dynamic:Resource  test-r    <{%fg 9%}>deleted original<{%reset%}>        [K
+[K
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:pulumi:Stack (test-dev):<{%reset%}>
+    <{%reset%}>Configuration:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 8s
+
