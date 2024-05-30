@@ -431,7 +431,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, r
 			severity:     pulumirpc.LogSeverity_ERROR,
 		}
 
-		if err := tc.InstallDependenciesWithWriters(ctx, cwd, true /*showOutput*/, infoWriter, errorWriter); err != nil {
+		if err := tc.InstallDependencies(ctx, cwd, true /*showOutput*/, infoWriter, errorWriter); err != nil {
 			return fmt.Errorf("installing dependencies: %w", err)
 		}
 	}
@@ -960,7 +960,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 	if err != nil {
 		return err
 	}
-	if err := tc.InstallDependenciesWithWriters(
+	if err := tc.InstallDependencies(
 		server.Context(),
 		req.Info.ProgramDirectory,
 		true, /*showOutput*/
