@@ -18,6 +18,8 @@ import (
 )
 
 type builtinProvider struct {
+	plugin.NotForwardCompatableProvider
+
 	context context.Context
 	cancel  context.CancelFunc
 	diag    diag.Sink

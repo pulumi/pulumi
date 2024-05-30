@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk
+  description: Require consumers to set an explicit forward compatibility policy for forward compatibility in plugin.Provider

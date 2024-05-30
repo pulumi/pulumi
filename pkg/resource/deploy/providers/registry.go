@@ -134,6 +134,8 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 // In order to fit neatly in to the existing infrastructure for managing resources using Pulumi, a provider regidstry
 // itself implements the plugin.Provider interface.
 type Registry struct {
+	plugin.NotForwardCompatableProvider
+
 	host      plugin.Host
 	isPreview bool
 	providers map[Reference]plugin.Provider

@@ -29,6 +29,8 @@ import (
 )
 
 type Provider struct {
+	plugin.NotForwardCompatableProvider
+
 	Name    string
 	Package tokens.Package
 	Version semver.Version

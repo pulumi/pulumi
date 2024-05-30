@@ -172,6 +172,13 @@ type Provider interface {
 	// error) if it doesn't have any mappings for the given key.
 	// If a provider implements this method GetMapping will be called using the results from this method.
 	GetMappings(key string) ([]string, error)
+
+	// mustEmbed *requires* that implementers make an explicit choice about forward compatibility.
+	//
+	// If [UnimplementedProvider] is embedded, then the struct will be forward compatible.
+	//
+	// If [NotForwardCompatableProvider] is embedded, then the struct *will not* be forward compatible.
+	mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatableProvider)
 }
 
 type GrpcProvider interface {

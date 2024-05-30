@@ -25,8 +25,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// UnimplementedProvider can be embedded to have forward compatible implementations.
-type UnimplementedProvider struct{}
+// NotForwardCompatable can be embedded to explicitly opt out of forward compatibility.
+//
+// Either NotForwardCompatableProvider or [UnimplementedProvider] must be embedded to
+// implement [Provider].
+type NotForwardCompatableProvider struct{}
+
+// UnimplementedProvider can be embedded to have a forward compatible implementation of
+// [Provider].
+//
+// Either NotForwardCompatableProvider or [UnimplementedProvider] must be embedded to
+// implement [Provider].
+type UnimplementedProvider struct{ NotForwardCompatableProvider }
 
 func (p *UnimplementedProvider) Close() error {
 	return status.Error(codes.Unimplemented, "Close is not yet implemented")
@@ -110,4 +120,7 @@ func (p *UnimplementedProvider) GetMapping(key, provider string) ([]byte, string
 
 func (p *UnimplementedProvider) GetMappings(key string) ([]string, error) {
 	return nil, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
+}
+
+func (p NotForwardCompatableProvider) mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatableProvider) {
 }
