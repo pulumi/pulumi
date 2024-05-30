@@ -81,9 +81,6 @@ func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackag
 		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(args, " "), err)
 	}
 
-	// Parse the JSON output; on some systems pip -v verbose mode
-	// follows JSON with non-JSON trailer, so we need to be
-	// careful when parsing and ignore the trailer.
 	var packages []PythonPackage
 	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
 	if err := jsonDecoder.Decode(&packages); err != nil {

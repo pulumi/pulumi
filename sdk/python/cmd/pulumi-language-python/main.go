@@ -194,7 +194,6 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 
 	if virtualenv, ok := options["virtualenv"]; ok {
 		if virtualenv, ok := virtualenv.(string); ok {
-			// pythonOptions.Virtualenv = resolveVirtualEnvironmentPath(root, virtualenv)
 			pythonOptions.Virtualenv = virtualenv
 		} else {
 			return pythonOptions, errors.New("virtualenv option must be a string")
@@ -281,7 +280,6 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
-	// TODO: this does not use a configured venv, should it?
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain: toolchain.Pip,
 	})
@@ -356,7 +354,6 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	}, nil
 }
 
-// TODO: move this out of here and make part of pip?
 // prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
 func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, root, cwd, virtualenv string) error {
 	if virtualenv == "" {
@@ -969,8 +966,6 @@ func (host *pythonLanguageHost) InstallDependencies(
 }
 
 func (host *pythonLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
-	// TODO: This seems wrong, we don't have options here, so we report the system python3, not
-	// the venv one.  We also can't tell if we should use poetry or pip.
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain: toolchain.Pip,
 	})
