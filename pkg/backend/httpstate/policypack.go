@@ -316,11 +316,12 @@ func completeNodeJSInstall(ctx context.Context, finalDir string) error {
 }
 
 func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
-	// TODO: julienp: support poetry?
+	const venvDir = "venv"
+	// TODO[pulumi/pulumi/issues/16286]: Allow using different toolchains for policy packs.
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Toolchain:  toolchain.Pip,
 		Root:       finalDir,
-		Virtualenv: "venv",
+		Virtualenv: venvDir,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get toolchain: %w", err)
@@ -331,7 +332,7 @@ func completePythonInstall(ctx context.Context, finalDir, projPath string, proj 
 	}
 
 	// Save project with venv info.
-	proj.Runtime.SetOption("virtualenv", "venv")
+	proj.Runtime.SetOption("virtualenv", venvDir)
 	if err := proj.Save(projPath); err != nil {
 		return fmt.Errorf("saving project at %s: %w", projPath, err)
 	}
