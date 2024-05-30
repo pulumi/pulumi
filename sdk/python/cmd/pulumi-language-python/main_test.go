@@ -128,7 +128,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		cwd := t.TempDir()
 		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
-		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       cwd,
 			Virtualenv: "venv",
@@ -153,7 +153,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NoError(t, err)
 		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pip-install-test")
 		assert.NoError(t, err)
-		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       cwd,
 			Virtualenv: "venv",
@@ -198,7 +198,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		err = os.WriteFile(path, bytes, 0o600)
 		require.NoError(t, err)
 		t.Logf("Wrote pulumipluing.json file: %s", path)
-		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       cwd,
 			Virtualenv: "venv",
@@ -241,7 +241,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NoError(t, err)
 
 		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
-		packages, err := determinePulumiPackages(context.Background(), cwd, toolchain.PythonOptions{
+		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       cwd,
 			Virtualenv: "venv",

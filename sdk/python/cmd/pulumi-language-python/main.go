@@ -260,7 +260,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	validateVersion(ctx, req.Info.RootDirectory, opts)
 
 	// Now, determine which Pulumi packages are installed.
-	pulumiPackages, err := determinePulumiPackages(ctx, req.Info.RootDirectory, opts)
+	pulumiPackages, err := determinePulumiPackages(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -503,9 +503,7 @@ func readPulumiPluginJSON(pkg toolchain.PythonPackage) (*plugin.PulumiPluginJSON
 	return plugin, nil
 }
 
-func determinePulumiPackages(ctx context.Context, root string,
-	options toolchain.PythonOptions,
-) ([]toolchain.PythonPackage, error) {
+func determinePulumiPackages(ctx context.Context, options toolchain.PythonOptions) ([]toolchain.PythonPackage, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
 	tc, err := toolchain.ResolveToolchain(options)
