@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +44,7 @@ type ProgramTest struct {
 	SkipCompile        codegen.StringSet
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
+	PluginHost         plugin.Host
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -153,6 +156,14 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		//   TODO[pulumi/pulumi#8074]
 		// Blocked on nodejs:
 		//   TODO[pulumi/pulumi#8075]
+	},
+	{
+		Directory:   "azure-native-v2-eventgrid",
+		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
+		// Specifically use a simplified azure-native v2.x schema when testing this program
+		// this schema only contains content from the eventgrid module which is sufficient to test with
+		PluginHost: utils.NewHostWithProviders(testdataPath,
+			utils.NewSchemaProvider("azure-native", "2.41.0")),
 	},
 	{
 		Directory:   "azure-sa",
@@ -624,7 +635,14 @@ func TestProgramCodegen(
 			hclFiles := map[string]*hcl.File{
 				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
 			}
-			opts := append(tt.BindOptions, pcl.PluginHost(utils.NewHost(testdataPath)))
+			var pluginHost plugin.Host
+			if tt.PluginHost != nil {
+				pluginHost = tt.PluginHost
+			} else {
+				pluginHost = utils.NewHost(testdataPath)
+			}
+
+			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
 			rootProgramPath := filepath.Join(testdataPath, tt.Directory+"-pp")
 			absoluteProgramPath, err := filepath.Abs(rootProgramPath)
 			if err != nil {

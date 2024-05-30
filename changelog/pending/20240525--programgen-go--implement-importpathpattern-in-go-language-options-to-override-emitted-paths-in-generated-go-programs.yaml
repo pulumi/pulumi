@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/go
+  description: Implement importPathPattern in Go language options to override emitted paths in generated Go programs

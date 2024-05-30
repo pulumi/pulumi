@@ -15,6 +15,10 @@ type SchemaProvider struct {
 	version string
 }
 
+func NewSchemaProvider(name, version string) SchemaProvider {
+	return SchemaProvider{name, version}
+}
+
 // NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
 // enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
 // program, it will panic.

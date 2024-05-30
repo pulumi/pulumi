@@ -888,20 +888,25 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 }
 
 func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
+	// We do this before we let the user set overrides. That way the user can still have a
+	// module named IndexToken.
+	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
 	importPath := func(mod, importBasePath string) string {
 		if importBasePath == "" {
 			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
 		}
 
 		if mod != "" && mod != IndexToken {
+			if info.ImportPathPattern != "" {
+				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)
+				return strings.ReplaceAll(importedPath, "{baseImportPath}", importBasePath)
+			}
+
 			return fmt.Sprintf("%s/%s", importBasePath, mod)
 		}
 		return importBasePath
 	}
 
-	// We do this before we let the user set overrides. That way the user can still have a
-	// module named IndexToken.
-	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
 	if !hasInfo {
 		mod = strings.SplitN(mod, "/", 2)[0]
 		path := importPath(mod, "")
@@ -1611,6 +1616,10 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	importPath := func(mod string) string {
 		importBasePath := info.ImportBasePath
 		if mod != "" && mod != IndexToken {
+			if info.ImportPathPattern != "" {
+				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)
+				return strings.ReplaceAll(importedPath, "{baseImportPath}", importBasePath)
+			}
 			return fmt.Sprintf("%s/%s", importBasePath, mod)
 		}
 		return importBasePath
