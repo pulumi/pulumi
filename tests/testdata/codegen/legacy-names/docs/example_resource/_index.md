@@ -229,7 +229,21 @@ The following reference example uses placeholder values for all [input propertie
 <pulumi-choosable type="language" values="csharp">
 
 ```csharp
-Coming soon!
+var example_resourceResource = new Legacy_names.Example_resource("example_resourceResource", new()
+{
+    Map_enum = new[]
+    {
+        
+        {
+            { "string", Legacy_names.Enum_XYZ.Plain },
+        },
+    },
+    Request_HTTP = new Legacy_names.HTTP_module.Inputs.RequestArgs
+    {
+        URL = "string",
+        Content_body = "string",
+    },
+});
 ```
 
 </pulumi-choosable>
@@ -278,7 +292,14 @@ var example_resourceResource = new Example_resource("example_resourceResource", 
 <pulumi-choosable type="language" values="python">
 
 ```python
-Coming soon!
+example_resource_resource = legacy_names.Example_resource("example_resourceResource",
+    map_enum=[{
+        "string": legacy_names.Enum_XYZ.PLAIN,
+    }],
+    request__http=legacy_names.htt_p_module.RequestArgs(
+        url="string",
+        content_body="string",
+    ))
 ```
 
 </pulumi-choosable>

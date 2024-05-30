@@ -33,6 +33,26 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 	t.Parallel()
 	pkg := bindTestSchema(t, schema.PackageSpec{
 		Name: "test",
+		Types: map[string]schema.ComplexTypeSpec{
+			"test:index:ExampleEnum": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "string",
+				},
+				Enum: []schema.EnumValueSpec{
+					{Value: "first", Name: "first"},
+					{Value: "second", Name: "second"},
+				},
+			},
+			"test:index:ExampleNumericEnum": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "integer",
+				},
+				Enum: []schema.EnumValueSpec{
+					{Value: 10, Name: "first"},
+					{Value: 20, Name: "second"},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			"test:index:First": {
 				InputProperties: map[string]schema.PropertySpec{
@@ -49,6 +69,16 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 					"fooBool": {
 						TypeSpec: schema.TypeSpec{
 							Type: "boolean",
+						},
+					},
+					"fooEnum": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/test:index:ExampleEnum",
+						},
+					},
+					"fooNumericEnum": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/test:index:ExampleNumericEnum",
 						},
 					},
 				},
@@ -87,7 +117,9 @@ func TestConstructorSyntaxGeneratorForSchema(t *testing.T) {
 var firstResource = new Test.First("firstResource", new()
 {
     FooBool = false,
+    FooEnum = Test.ExampleEnum.First,
     FooInt = 0,
+    FooNumericEnum = Test.ExampleNumericEnum.First,
     FooString = "string",
 });
 `)
@@ -107,7 +139,9 @@ var noInputsResource = new Test.NoInputs("noInputsResource");
 	equalPrograms(constructorSyntax.typescript, "test:index:First", `
 const firstResource = new test.First("firstResource", {
     fooBool: false,
+    fooEnum: test.ExampleEnum.First,
     fooInt: 0,
+    fooNumericEnum: test.ExampleNumericEnum.First,
     fooString: "string",
 });`)
 	equalPrograms(constructorSyntax.typescript, "test:index:Second", `
@@ -122,7 +156,9 @@ const noInputsResource = new test.NoInputs("noInputsResource", {});
 	equalPrograms(constructorSyntax.python, "test:index:First", `
 first_resource = test.First("firstResource",
     foo_bool=False,
+    foo_enum=test.ExampleEnum.FIRST,
     foo_int=0,
+    foo_numeric_enum=test.ExampleNumericEnum.FIRST,
     foo_string="string")`)
 	equalPrograms(constructorSyntax.python, "test:index:Second", `
 second_resource = test.Second("secondResource", bar_string="string")`)
@@ -134,9 +170,11 @@ no_inputs_resource = test.NoInputs("noInputsResource")
 	assert.Equal(t, expectedResources, len(constructorSyntax.golang.resources))
 	equalPrograms(constructorSyntax.golang, "test:index:First", `
 _, err := test.NewFirst(ctx, "firstResource", &test.FirstArgs{
-	FooBool:   pulumi.Bool(false),
-	FooInt:    pulumi.Int(0),
-	FooString: pulumi.String("string"),
+	FooBool:        pulumi.Bool(false),
+	FooEnum:        index.ExampleEnumFirst,
+	FooInt:         pulumi.Int(0),
+	FooNumericEnum: index.ExampleNumericEnumFirst,
+	FooString:      pulumi.String("string"),
 })`)
 
 	equalPrograms(constructorSyntax.golang, "test:index:Second", `
@@ -153,7 +191,9 @@ _, err = test.NewNoInputs(ctx, "noInputsResource", nil)
 type: test:First
 properties:
     fooBool: false
+    fooEnum: first
     fooInt: 0
+    fooNumericEnum: 10
     fooString: string
 `)
 
@@ -172,7 +212,9 @@ properties: {}
 	equalPrograms(constructorSyntax.java, "test:index:First", `
 var firstResource = new First("firstResource", FirstArgs.builder()
     .fooBool(false)
+    .fooEnum("first")
     .fooInt(0)
+    .fooNumericEnum(10)
     .fooString("string")
     .build());
 `)

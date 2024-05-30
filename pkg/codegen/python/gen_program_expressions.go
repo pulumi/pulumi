@@ -241,7 +241,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 			var moduleNameOverrides map[string]string
 			if pkg, err := enum.(*schema.EnumType).PackageReference.Definition(); err == nil {
-				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
+				if pkgInfo, ok := pkg.Language["python"].(PackageInfo); ok {
+					moduleNameOverrides = pkgInfo.ModuleNameOverrides
+				}
 			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
 			enumName := tokenToName(to.Token)

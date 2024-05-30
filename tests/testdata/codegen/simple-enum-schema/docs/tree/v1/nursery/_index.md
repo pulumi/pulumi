@@ -251,12 +251,12 @@ var nurseryResource = new Plant.Tree.V1.Nursery("nurseryResource", new()
 
 ```go
 example, err := tree.NewNursery(ctx, "nurseryResource", &tree.NurseryArgs{
-Varieties: treev1.RubberTreeVarietyArray{
-tree.RubberTreeVarietyBurgundy,
-},
-Sizes: treev1.TreeSizeMap{
-"string": tree.TreeSizeSmall,
-},
+	Varieties: treev1.RubberTreeVarietyArray{
+		tree.RubberTreeVarietyBurgundy,
+	},
+	Sizes: treev1.TreeSizeMap{
+		"string": tree.TreeSizeSmall,
+	},
 })
 ```
 
