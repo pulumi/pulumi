@@ -26,12 +26,11 @@ const (
 )
 
 type PythonOptions struct {
-	// TODO: we could unify the two paths.
-	// Virtual environment path to use. Must be an absolute path.
-	Virtualenv string
 	// The root directory of the project.
 	Root string
-	// Use a typechecker to type check
+	// Virtual environment to use, relative to `Root`.
+	Virtualenv string
+	// Use a typechecker to type check.
 	Typechecker typeChecker
 	// The package manager to use for managing dependencies.
 	Toolchain toolchain
