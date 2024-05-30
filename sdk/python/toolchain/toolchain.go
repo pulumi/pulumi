@@ -2,6 +2,7 @@ package toolchain
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os/exec"
 	"runtime"
@@ -22,7 +23,6 @@ type toolchain int
 
 const (
 	Pip toolchain = iota
-	Poetry
 )
 
 type PythonOptions struct {
@@ -61,16 +61,14 @@ func Name(tc toolchain) string {
 	switch tc {
 	case Pip:
 		return "Pip"
-	case Poetry:
-		return "Poetry"
 	default:
 		return "Unknown"
 	}
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	if options.Toolchain == Poetry {
-		return newPoetry(options.Root)
+	if options.Toolchain != Pip {
+		return nil, errors.New("only pip toolchain is supported")
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
