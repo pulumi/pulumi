@@ -236,6 +236,12 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resou
 	return set
 }
 
+// Contains returns whether the given resource is in the dependency graph.
+func (dg *DependencyGraph) Contains(res *resource.State) bool {
+	_, ok := dg.index[res]
+	return ok
+}
+
 // `TransitiveDependenciesOf` calculates the set of resources upon which the
 // given resource depends, directly or indirectly. This includes the resource's
 // provider, parent, any resources in the `Dependencies` list, any resources in
