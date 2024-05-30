@@ -29,7 +29,7 @@ import (
 )
 
 type Provider struct {
-	plugin.NotForwardCompatableProvider
+	plugin.NotForwardCompatibleProvider
 
 	Name    string
 	Package tokens.Package

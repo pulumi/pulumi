@@ -18,7 +18,7 @@ import (
 )
 
 type builtinProvider struct {
-	plugin.NotForwardCompatableProvider
+	plugin.NotForwardCompatibleProvider
 
 	context context.Context
 	cancel  context.CancelFunc

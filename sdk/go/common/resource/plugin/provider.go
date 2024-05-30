@@ -177,8 +177,8 @@ type Provider interface {
 	//
 	// If [UnimplementedProvider] is embedded, then the struct will be forward compatible.
 	//
-	// If [NotForwardCompatableProvider] is embedded, then the struct *will not* be forward compatible.
-	mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatableProvider)
+	// If [NotForwardCompatibleProvider] is embedded, then the struct *will not* be forward compatible.
+	mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatibleProvider)
 }
 
 type GrpcProvider interface {
