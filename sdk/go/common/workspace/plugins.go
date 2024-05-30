@@ -1463,7 +1463,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
-			// TODO: @julienp poetry support
+			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,
 				Root:       finalDir,
