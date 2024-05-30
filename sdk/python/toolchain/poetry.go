@@ -40,7 +40,6 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	root string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
 	poetryCmd := exec.Command(p.poetryExecutable, "install") //nolint:gosec
-	// poetryCmd.Dir = root
 	poetryCmd.Dir = p.directory
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter

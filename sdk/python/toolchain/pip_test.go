@@ -184,3 +184,12 @@ func TestCommandPulumiPythonCommand(t *testing.T) {
 	require.ErrorContains(t, err, "python-not-found")
 	require.Nil(t, cmd)
 }
+
+func TestValidateVenv(t *testing.T) {
+	t.Parallel()
+	tmp := t.TempDir()
+	tc, err := newPip(tmp, "mytestvenv")
+	require.NoError(t, err)
+	err = tc.ValidateVenv(context.Background())
+	require.ErrorContains(t, err, "The 'virtualenv' option in Pulumi.yaml is set to \"mytestvenv\"")
+}

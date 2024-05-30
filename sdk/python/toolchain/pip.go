@@ -107,9 +107,6 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 
 	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
 
-	// TODO: do we need to set cmd.Dir ?
-	// Review old cold and see where we did this
-	// only for replacements of runPythonCommand ?
 	return cmd, nil
 }
 
@@ -118,7 +115,7 @@ func (p *pip) About(ctx context.Context) (Info, error) {
 	// if CommandPath has an error, then so will Command. The error can
 	// therefore be ignored as redundant.
 	pyexe, _, _ := CommandPath()
-	cmd, err := Command(ctx, "--version")
+	cmd, err := p.Command(ctx, "--version")
 	if err != nil {
 		return Info{}, err
 	}

@@ -17,7 +17,7 @@ func TestValidateVenvPip(t *testing.T) {
 	tc, err := newPip(tmp, "venv")
 	require.NoError(t, err)
 	err = tc.ValidateVenv(context.Background())
-	require.ErrorContains(t, err, "he 'virtualenv' option in Pulumi.yaml is set to \"venv\"")
+	require.ErrorContains(t, err, "The 'virtualenv' option in Pulumi.yaml is set to \"venv\"")
 }
 
 func TestValidateVenvPoetry(t *testing.T) {
