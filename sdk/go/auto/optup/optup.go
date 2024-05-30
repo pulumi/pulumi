@@ -143,6 +143,13 @@ func Refresh() Option {
 	})
 }
 
+// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
+func ContinueOnError() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ContinueOnError = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
