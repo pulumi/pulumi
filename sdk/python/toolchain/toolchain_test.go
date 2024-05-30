@@ -141,7 +141,7 @@ python = "^3.8"
 		err = f.Close()
 		require.NoError(t, err)
 
-		err = tc.InstallDependenciesWithWriters(context.Background(), dir, true, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), dir, true, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 	}
 }

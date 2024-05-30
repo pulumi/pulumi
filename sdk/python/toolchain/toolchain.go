@@ -49,8 +49,7 @@ type Info struct {
 }
 
 type Toolchain interface {
-	// TODO: rename to InstallDependencies
-	InstallDependenciesWithWriters(ctx context.Context,
+	InstallDependencies(ctx context.Context,
 		root string, showOutput bool, infoWriter, errorWriter io.Writer,
 	) error
 	ValidateVenv(ctx context.Context) error

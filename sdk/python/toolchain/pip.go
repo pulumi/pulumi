@@ -53,7 +53,7 @@ func newPip(root, virtualenv string) (*pip, error) {
 	return &pip{virtualenvPath, virtualenv, root}, nil
 }
 
-func (p *pip) InstallDependenciesWithWriters(ctx context.Context,
+func (p *pip) InstallDependencies(ctx context.Context,
 	root string, showOutput bool, infoWriter io.Writer, errorWriter io.Writer,
 ) error {
 	return InstallDependenciesWithWriters(

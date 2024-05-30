@@ -36,7 +36,7 @@ func newPoetry(directory string) (*poetry, error) {
 	}, nil
 }
 
-func (p *poetry) InstallDependenciesWithWriters(ctx context.Context,
+func (p *poetry) InstallDependencies(ctx context.Context,
 	root string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
 	poetryCmd := exec.Command(p.poetryExecutable, "install") //nolint:gosec
