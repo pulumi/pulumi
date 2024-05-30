@@ -44,7 +44,7 @@ const res2 = new MyComponent("res2", {
 });
 
 // Scenario #3 - apply a transform to the Stack to transform all (future) resources in the stack
-pulumi.runtime.xRegisterStackTransform(async ({ type, props, opts }) => {
+pulumi.runtime.registerStackTransform(async ({ type, props, opts }) => {
     console.log("stack transform");
     if (type === "testprovider:index:Random") {
         return {

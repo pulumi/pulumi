@@ -45,7 +45,7 @@ from .settings import (
 from .stack import (
     run_in_stack,
     register_stack_transformation,
-    x_register_stack_transform,
+    register_stack_transform,
 )
 
 from .invoke import (
@@ -87,7 +87,7 @@ __all__ = [
     # stack
     "run_in_stack",
     "register_stack_transformation",
-    "x_register_stack_transform",
+    "register_stack_transform",
     # invoke
     "invoke",
     "invoke_async",
