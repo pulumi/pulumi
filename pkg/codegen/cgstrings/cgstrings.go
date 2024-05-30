@@ -14,15 +14,18 @@ func Unhyphenate(str string) string {
 	return ModifyStringAroundDelimeter(str, "-", UppercaseFirst)
 }
 
-// Unpunctuate removes all punctuation and whitespace from the given string.
+// Unpunctuate removes *most* punctuation and whitespace from the given string.
 // The result is camelCase.
+//
+// Underscores are preserved for backwards compatibility with schemas that
+// already contain underscores.
 func Unpunctuate(str string) string {
 	var builder strings.Builder
 	var parts []string
 
 	needsCapitalization := false
 	for _, r := range str {
-		if !(unicode.IsPunct(r) || unicode.IsSpace(r)) {
+		if !(unicode.IsPunct(r) || unicode.IsSpace(r)) || r == '_' {
 			if needsCapitalization {
 				r = unicode.ToUpper(r)
 				needsCapitalization = false

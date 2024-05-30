@@ -440,7 +440,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, underscoreInvalidRunes(p.Name), sigil, typ)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, cgstrings.Unpunctuate(p.Name), sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil
@@ -453,7 +453,7 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
 	for _, p := range properties {
-		name := underscoreInvalidRunes(p.Name)
+		name := cgstrings.Unpunctuate(p.Name)
 		if p.DefaultValue != nil {
 			dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {

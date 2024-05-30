@@ -98,16 +98,10 @@ func (d *typeDetails) markMap(input, output bool) {
 
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
-// It also removes $-prefix if any.
+// It also removes any punctuation except `_`.
 func Title(s string) string {
-	if s == "" {
-		return ""
-	}
-	if s[0] == '$' {
-		return Title(s[1:])
-	}
-	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unpunctuate(s)
+	s = cgstrings.UppercaseFirst(s)
 	return s
 }
 

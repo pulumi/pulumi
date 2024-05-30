@@ -443,7 +443,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "legacy-names",
 		Description: "Testing the use of snake_case names and tokens.",
-		Skip:        codegen.NewStringSet("go/test"),
 	},
 	{
 		Directory:   "kubernetes20",

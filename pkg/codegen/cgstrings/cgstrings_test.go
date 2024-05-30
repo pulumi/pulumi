@@ -53,7 +53,7 @@ func TestUnpunctuate(t *testing.T) {
 		{"", ""},
 		{"waldo", "waldo"},
 		{"waldo-thud-fred", "waldoThudFred"},
-		{"waldo_Thud.Fred!", "waldoThudFred"},
+		{"waldo_thud.fred!", "waldo_thudFred"},
 		{" waldo thud fred ", "waldoThudFred"},
 		{"WaldoThudFred", "WaldoThudFred"},
 	}
@@ -63,6 +63,25 @@ func TestUnpunctuate(t *testing.T) {
 			t.Parallel()
 			assert := assert.New(t)
 			assert.Equal(tc.expected, Unpunctuate(tc.input))
+		})
+	}
+}
+
+func TestUppercaseFirst(t *testing.T) {
+	t.Parallel()
+	testcases := []struct {
+		input, expected string
+	}{
+		{"", ""},
+		{"abc", "Abc"},
+		{"$same", "$same"},
+	}
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(fmt.Sprintf("Subtest:%q", tc.input), func(t *testing.T) {
+			t.Parallel()
+			assert := assert.New(t)
+			assert.Equal(tc.expected, UppercaseFirst(tc.input))
 		})
 	}
 }

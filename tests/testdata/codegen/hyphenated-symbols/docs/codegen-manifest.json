@@ -1,0 +1,7 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "foo/_index.md",
+    "provider/_index.md"
+  ]
+}
