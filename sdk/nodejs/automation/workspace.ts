@@ -14,6 +14,7 @@
 
 import { PulumiCommand } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
+import { ListOptions } from "./localWorkspace";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
@@ -229,15 +230,12 @@ export interface Workspace {
      */
     removeStack(stackName: string): Promise<void>;
     /**
-     * Returns all Stacks created under the current Project.
-     * This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
+     * Returns all Stacks from the underlying backend based on the provided options.
+     * This queries backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
+     *
+     * @param opts Options to customize the behavior of the list.
      */
-    listStacks(): Promise<StackSummary[]>;
-    /**
-     * Returns all Stacks the current logged-in Pulumi identity has access to.
-     * This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-     */
-    listAllStacks(): Promise<StackSummary[]>;
+    listStacks(opts: ListOptions): Promise<StackSummary[]>;
     /**
      * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
      *
