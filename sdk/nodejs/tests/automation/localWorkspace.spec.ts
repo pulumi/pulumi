@@ -144,69 +144,106 @@ describe("LocalWorkspace", () => {
         });
     });
     describe("ListStack Methods", async () => {
-        it(`listStacks`, async () => {
-            const mockWithReturnedStacks = {
-                command: "pulumi",
-                version: null,
-                run: async () =>
-                    new CommandResult(
-                        `[{
-                              "name": "testorg1/testproj1/teststack1",
-                              "current": false,
-                              "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"
-                          },
-                          {
-                              "name": "testorg1/testproj1/teststack2",
-                              "current": false,
-                              "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"
-                          }]`,
-                        "",
-                        0,
-                    ),
-            };
-            const workspace = await LocalWorkspace.create({
-                pulumiCommand: mockWithReturnedStacks,
+        describe("ListStacks", async () => {
+            const stackJson = `[
+                    {
+                        "name": "testorg1/testproj1/teststack1",
+                        "current": false,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"
+                    },
+                    {
+                        "name": "testorg1/testproj1/teststack2",
+                        "current": false,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"
+                    }
+                ]`;
+            it(`should handle stacks correctly for listStacks`, async () => {
+                const mockWithReturnedStacks = {
+                    command: "pulumi",
+                    version: null,
+                    run: async (args: string[], cwd: string, additionalEnv: { [key: string]: string }) => {
+                        return new CommandResult(stackJson, "", 0);
+                    },
+                };
+
+                const workspace = await LocalWorkspace.create({ pulumiCommand: mockWithReturnedStacks });
+                const stacks = await workspace.listStacks();
+
+                assert.strictEqual(stacks.length, 2);
+                assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
+                assert.strictEqual(stacks[0].current, false);
+                assert.strictEqual(stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1");
+                assert.strictEqual(stacks[1].name, "testorg1/testproj1/teststack2");
+                assert.strictEqual(stacks[1].current, false);
+                assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2");
             });
-            const stacks = await workspace.listStacks();
-            assert.strictEqual(stacks.length, 2);
-            assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
-            assert.strictEqual(stacks[0].current, false);
-            assert.strictEqual(stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1");
-            assert.strictEqual(stacks[1].name, "testorg1/testproj1/teststack2");
-            assert.strictEqual(stacks[1].current, false);
-            assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2");
+
+            it(`should use correct args for listStacks`, async () => {
+                let capturedArgs: string[] = [];
+                const mockPulumiCommand = {
+                    command: "pulumi",
+                    version: null,
+                    run: async (args: string[], cwd: string, additionalEnv: { [key: string]: string }) => {
+                        capturedArgs = args;
+                        return new CommandResult(stackJson, "", 0);
+                    },
+                };
+                const workspace = await LocalWorkspace.create({
+                    pulumiCommand: mockPulumiCommand,
+                });
+                await workspace.listStacks();
+                assert.deepStrictEqual(capturedArgs, ["stack", "ls", "--json"]);
+            });
         });
-        it(`listAllStacks`, async () => {
-            const mockWithReturnedStacks = {
-                command: "pulumi",
-                version: null,
-                run: async () =>
-                    new CommandResult(
-                        `[{
-                              "name": "testorg1/testproj1/teststack1",
-                              "current": false,
-                              "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"
-                          },
-                          {
-                              "name": "testorg1/testproj2/teststack2",
-                              "current": false,
-                              "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"
-                          }]`,
-                        "",
-                        0,
-                    ),
-            };
-            const workspace = await LocalWorkspace.create({
-                pulumiCommand: mockWithReturnedStacks,
+
+        describe("ListStacks with all", async () => {
+            const stackJson = `[
+                    {
+                        "name": "testorg1/testproj1/teststack1",
+                        "current": false,
+                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"
+                    },
+                    {
+                        "name": "testorg1/testproj2/teststack2",
+                        "current": false,
+                        "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"
+                    }
+                ]`;
+            it(`should handle stacks correctly for listStacks when all is set`, async () => {
+                const mockWithReturnedStacks = {
+                    command: "pulumi",
+                    version: null,
+                    run: async () => new CommandResult(stackJson, "", 0),
+                };
+                const workspace = await LocalWorkspace.create({
+                    pulumiCommand: mockWithReturnedStacks,
+                });
+                const stacks = await workspace.listStacks({ all: true });
+                assert.strictEqual(stacks.length, 2);
+                assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
+                assert.strictEqual(stacks[0].current, false);
+                assert.strictEqual(stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1");
+                assert.strictEqual(stacks[1].name, "testorg1/testproj2/teststack2");
+                assert.strictEqual(stacks[1].current, false);
+                assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2");
             });
-            const stacks = await workspace.listAllStacks();
-            assert.strictEqual(stacks.length, 2);
-            assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
-            assert.strictEqual(stacks[0].current, false);
-            assert.strictEqual(stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1");
-            assert.strictEqual(stacks[1].name, "testorg1/testproj2/teststack2");
-            assert.strictEqual(stacks[1].current, false);
-            assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2");
+
+            it(`should use correct args for listStacks when all is set`, async () => {
+                let capturedArgs: string[] = [];
+                const mockPuluiCommand = {
+                    command: "pulumi",
+                    version: null,
+                    run: async (args: string[], cwd: string, additionalEnv: { [key: string]: string }) => {
+                        capturedArgs = args;
+                        return new CommandResult(stackJson, "", 0);
+                    },
+                };
+                const workspace = await LocalWorkspace.create({
+                    pulumiCommand: mockPuluiCommand,
+                });
+                await workspace.listStacks({ all: true });
+                assert.deepStrictEqual(capturedArgs, ["stack", "ls", "--json", "--all"]);
+            });
         });
     });
     it(`Environment functions`, async function () {
