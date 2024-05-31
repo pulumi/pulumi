@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix panic with --continue-on-error on delete after failed create
