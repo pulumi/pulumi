@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: Add missing ContinueOnError option function
