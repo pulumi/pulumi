@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -37,15 +38,17 @@ func (p *AssetArchiveProvider) Close() error {
 	return nil
 }
 
-func (p *AssetArchiveProvider) Configure(inputs resource.PropertyMap) error {
-	return nil
+func (p *AssetArchiveProvider) Configure(
+	context.Context, plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
+	return plugin.ConfigureResponse{}, nil
 }
 
 func (p *AssetArchiveProvider) Pkg() tokens.Package {
 	return "asset-archive"
 }
 
-func (p *AssetArchiveProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
+func (p *AssetArchiveProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 	assetProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
@@ -88,11 +91,7 @@ func (p *AssetArchiveProvider) GetSchema(request plugin.GetSchemaRequest) ([]byt
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonBytes, nil
+	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
 
 func (p *AssetArchiveProvider) checkType(urn resource.URN) (bool, error) {
@@ -105,109 +104,116 @@ func (p *AssetArchiveProvider) checkType(urn resource.URN) (bool, error) {
 	return isAsset, nil
 }
 
-func (p *AssetArchiveProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *AssetArchiveProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := newInputs["version"]
+	version, ok := req.News["version"]
 	if !ok {
-		return nil, makeCheckFailure("version", "missing version"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
-		return nil, makeCheckFailure("version", "version is not a string"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
 	}
 	if version.StringValue() != "5.0.0" {
-		return nil, makeCheckFailure("version", "version is not 5.0.0"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 5.0.0")}, nil
 	}
 
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func (p *AssetArchiveProvider) Check(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	isAsset, err := p.checkType(urn)
+func (p *AssetArchiveProvider) Check(
+	_ context.Context, req plugin.CheckRequest,
+) (plugin.CheckResponse, error) {
+	isAsset, err := p.checkType(req.URN)
 	if err != nil {
-		return nil, makeCheckFailure("", err.Error()), nil
+		return plugin.CheckResponse{Failures: makeCheckFailure("", err.Error())}, nil
 	}
 
-	value, ok := newInputs["value"]
+	value, ok := req.News["value"]
 	if !ok {
-		return nil, makeCheckFailure("value", "missing value"), nil
+		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
 	if isAsset {
 		if !value.IsAsset() {
-			return nil, makeCheckFailure("value", "value is not an asset"), nil
+			return plugin.CheckResponse{Failures: makeCheckFailure("value", "value is not an asset")}, nil
 		}
 	} else {
 		if !value.IsArchive() {
-			return nil, makeCheckFailure("value", "value is not an archive"), nil
+			return plugin.CheckResponse{Failures: makeCheckFailure("value", "value is not an archive")}, nil
 		}
 	}
 
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News))}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
 func (p *AssetArchiveProvider) Create(
-	urn resource.URN, news resource.PropertyMap,
-	timeout float64, preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	_, err := p.checkType(urn)
+	_ context.Context, req plugin.CreateRequest,
+) (plugin.CreateResponse, error) {
+	_, err := p.checkType(req.URN)
 	if err != nil {
-		return "", nil, resource.StatusUnknown, err
+		return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 	}
 
 	id := "id"
-	if preview {
+	if req.Preview {
 		id = ""
 	}
 
-	return resource.ID(id), news, resource.StatusOK, nil
+	return plugin.CreateResponse{
+		ID:         resource.ID(id),
+		Properties: req.Properties,
+		Status:     resource.StatusOK,
+	}, nil
 }
 
-func (p *AssetArchiveProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *AssetArchiveProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	ver := semver.MustParse("5.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *AssetArchiveProvider) SignalCancellation() error {
+func (p *AssetArchiveProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *AssetArchiveProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return nil, "", nil
+func (p *AssetArchiveProvider) GetMapping(
+	context.Context, plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *AssetArchiveProvider) GetMappings(key string) ([]string, error) {
-	return nil, nil
+func (p *AssetArchiveProvider) GetMappings(
+	context.Context, plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
 }
 
 func (p *AssetArchiveProvider) DiffConfig(
-	urn resource.URN, oldInputs, ouldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+	context.Context, plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
 func (p *AssetArchiveProvider) Diff(
-	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+	context.Context, plugin.DiffRequest,
+) (plugin.DiffResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
 func (p *AssetArchiveProvider) Delete(
-	urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
-	return resource.StatusOK, nil
+	context.Context, plugin.DeleteRequest,
+) (plugin.DeleteResponse, error) {
+	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 }

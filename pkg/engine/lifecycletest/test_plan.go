@@ -289,29 +289,37 @@ func (op TestOp) runWithContext(
 // We're just checking that we have the right number of events and
 // that they have the expected types.  We don't do a deep comparison
 // here, because all that matters is that we have the same events in
-// some order.  The non-display tests are responsible for acually
+// some order.  The non-display tests are responsible for actually
 // checking the events properly.
-func compareEvents(expected, actual []engine.Event) error {
-	encountered := make(map[int]bool)
+func compareEvents(t testing.TB, expected, actual []engine.Event) {
+	encountered := make(map[int]struct{})
 	if len(expected) != len(actual) {
-		return fmt.Errorf("expected %d events, got %d", len(expected), len(actual))
+		t.Logf("expected %d events, got %d", len(expected), len(actual))
+		t.Fail()
 	}
 	for _, e := range expected {
 		found := false
 		for i, a := range actual {
-			if encountered[i] {
+			if _, ok := encountered[i]; ok {
 				continue
 			}
 			if a.Type == e.Type {
 				found = true
+				encountered[i] = struct{}{}
 				break
 			}
 		}
 		if !found {
-			return fmt.Errorf("expected event %v not found", e)
+			t.Logf("expected event %v not found", e)
+			t.Fail()
 		}
 	}
-	return nil
+	for i, e := range actual {
+		if _, ok := encountered[i]; ok {
+			continue
+		}
+		t.Logf("did not expect event %v", e)
+	}
 }
 
 func loadEvents(path string) (events []engine.Event, err error) {
@@ -390,8 +398,7 @@ func assertDisplay(t testing.TB, events []Event, path string) {
 		expectedEvents, err = loadEvents(filepath.Join(path, "eventstream.json"))
 		require.NoError(t, err)
 
-		err = compareEvents(expectedEvents, events)
-		require.NoError(t, err)
+		compareEvents(t, expectedEvents, events)
 	}
 
 	// ShowProgressEvents

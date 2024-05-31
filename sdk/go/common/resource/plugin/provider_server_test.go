@@ -53,23 +53,23 @@ type stubProvider struct {
 	ConfigureFunc func(resource.PropertyMap) error
 }
 
-func (p *stubProvider) Configure(inputs resource.PropertyMap) error {
+func (p *stubProvider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
 	if p.ConfigureFunc != nil {
-		return p.ConfigureFunc(inputs)
+		err := p.ConfigureFunc(req.Inputs)
+		return ConfigureResponse{}, err
 	}
-	return p.Provider.Configure(inputs)
+	return p.Provider.Configure(ctx, req)
 }
 
-func (p *stubProvider) Read(
-	urn resource.URN,
-	id resource.ID,
-	inputs,
-	state resource.PropertyMap,
-) (ReadResult, resource.Status, error) {
+func (p *stubProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse, error) {
 	if p.ReadFunc != nil {
-		return p.ReadFunc(urn, id, inputs, state)
+		props, status, err := p.ReadFunc(req.URN, req.ID, req.Inputs, req.State)
+		return ReadResponse{
+			ReadResult: props,
+			Status:     status,
+		}, err
 	}
-	return p.Provider.Read(urn, id, inputs, state)
+	return p.Provider.Read(ctx, req)
 }
 
 // When importing random passwords, the secret passed as "ID" should not leak in plain text into the final ID.

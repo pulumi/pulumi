@@ -399,7 +399,7 @@ func (host *pluginHost) SignalCancellation() error {
 
 	var err error
 	for _, prov := range host.providers {
-		if pErr := prov.SignalCancellation(); pErr != nil {
+		if pErr := prov.SignalCancellation(context.TODO()); pErr != nil {
 			err = pErr
 		}
 	}

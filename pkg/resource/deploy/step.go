@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -275,20 +276,27 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		var rst resource.Status
-		id, outs, rst, err = prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
+		resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
+			URN:        s.URN(),
+			Properties: s.new.Inputs,
+			Timeout:    s.new.CustomTimeouts.Create,
+			Preview:    s.deployment.preview,
+		})
 		if err != nil {
-			if rst != resource.StatusPartialFailure {
-				return rst, nil, err
+			if resp.Status != resource.StatusPartialFailure {
+				return resp.Status, nil, err
 			}
 
 			resourceError = err
-			resourceStatus = rst
+			resourceStatus = resp.Status
 
 			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 				s.new.InitErrors = initErr.Reasons
 			}
 		}
+
+		id = resp.ID
+		outs = resp.Properties
 
 		if !preview && id == "" {
 			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
@@ -464,8 +472,14 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
-			return rst, nil, err
+		if rst, err := prov.Delete(context.TODO(), plugin.DeleteRequest{
+			URN:     s.URN(),
+			ID:      s.old.ID,
+			Inputs:  s.old.Inputs,
+			Outputs: s.old.Outputs,
+			Timeout: s.old.CustomTimeouts.Delete,
+		}); err != nil {
+			return rst.Status, nil, err
 		}
 	}
 
@@ -595,19 +609,27 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
-		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
-			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
+		resp, upderr := prov.Update(context.TODO(), plugin.UpdateRequest{
+			URN:           s.URN(),
+			ID:            s.old.ID,
+			OldInputs:     s.old.Inputs,
+			OldOutputs:    s.old.Outputs,
+			NewInputs:     s.new.Inputs,
+			Timeout:       s.new.CustomTimeouts.Update,
+			IgnoreChanges: s.ignoreChanges,
+			Preview:       s.deployment.preview,
+		})
 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
 		if upderr != nil {
-			if rst != resource.StatusPartialFailure {
-				return rst, nil, upderr
+			if resp.Status != resource.StatusPartialFailure {
+				return resp.Status, nil, upderr
 			}
 
 			resourceError = upderr
-			resourceStatus = rst
+			resourceStatus = resp.Status
 
 			if initErr, isInitErr := upderr.(*plugin.InitError); isInitErr {
 				s.new.InitErrors = initErr.Reasons
@@ -615,7 +637,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.Outputs = outs
+		s.new.Outputs = resp.Properties
 
 		// UpdateStep doesn't create, but does modify state.
 		// Change the Modified timestamp.
@@ -808,18 +830,23 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
 		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
 		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
-		result, rst, err := prov.Read(urn, id, s.new.Inputs, s.new.Inputs)
+		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
+			URN:    urn,
+			ID:     id,
+			Inputs: s.new.Inputs,
+			State:  s.new.Inputs,
+		})
 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
 		if err != nil {
-			if rst != resource.StatusPartialFailure {
-				return rst, nil, err
+			if result.Status != resource.StatusPartialFailure {
+				return result.Status, nil, err
 			}
 
 			resourceError = err
-			resourceStatus = rst
+			resourceStatus = result.Status
 
 			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 				s.new.InitErrors = initErr.Reasons
@@ -940,10 +967,15 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 	}
 
 	var initErrors []string
-	refreshed, rst, err := prov.Read(s.old.URN, resourceID, s.old.Inputs, s.old.Outputs)
+	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
+		URN:    s.old.URN,
+		ID:     resourceID,
+		Inputs: s.old.Inputs,
+		State:  s.old.Outputs,
+	})
 	if err != nil {
-		if rst != resource.StatusPartialFailure {
-			return rst, nil, err
+		if refreshed.Status != resource.StatusPartialFailure {
+			return refreshed.Status, nil, err
 		}
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 			initErrors = initErr.Reasons
@@ -999,7 +1031,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = nil
 	}
 
-	return rst, nil, err
+	return refreshed.Status, nil, err
 }
 
 func (s *RefreshStep) Fail() {
@@ -1137,8 +1169,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
-		var read plugin.ReadResult
-		read, rst, err = prov.Read(s.new.URN, s.new.ID, nil, nil)
+		read, err := prov.Read(context.TODO(), plugin.ReadRequest{
+			URN: s.new.URN,
+			ID:  s.new.ID,
+		})
+		rst = read.Status
 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
@@ -1217,13 +1252,19 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
+		resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
+			URN:           s.new.URN,
+			Olds:          s.old.Inputs,
+			News:          s.new.Inputs,
+			AllowUnknowns: preview,
+			RandomSeed:    s.randomSeed,
+		})
 		if err != nil {
 			return rst, nil, err
 		}
 
 		// Print this warning before printing all the check failures to give better context.
-		if len(failures) != 0 {
+		if len(resp.Failures) != 0 {
 
 			// Based on if the user passed 'properties' or not we want to change the error message here.
 			var errorMessage string
@@ -1243,7 +1284,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				errorMessage)
 		}
 
-		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
+		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, resp.Failures)
 
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
 
@@ -1258,14 +1299,20 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
+	resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
+		URN:           s.new.URN,
+		Olds:          s.old.Inputs,
+		News:          s.new.Inputs,
+		AllowUnknowns: preview,
+		RandomSeed:    s.randomSeed,
+	})
 	if err != nil {
 		return rst, nil, err
 	}
-	if issueCheckErrors(s.deployment, s.new, s.new.URN, failures) {
+	if issueCheckErrors(s.deployment, s.new, s.new.URN, resp.Failures) {
 		return rst, nil, errors.New("one or more inputs failed to validate")
 	}
-	s.new.Inputs = inputs
+	s.new.Inputs = resp.Properties
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
 	// is from an import deployment.

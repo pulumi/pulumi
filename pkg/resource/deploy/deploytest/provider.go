@@ -80,7 +80,7 @@ type Provider struct {
 	GetMappingsF func(key string) ([]string, error)
 }
 
-func (prov *Provider) SignalCancellation() error {
+func (prov *Provider) SignalCancellation(context.Context) error {
 	if prov.CancelF == nil {
 		return nil
 	}
@@ -95,7 +95,7 @@ func (prov *Provider) Pkg() tokens.Package {
 	return prov.Package
 }
 
-func (prov *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (prov *Provider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    prov.Name,
 		Version: &prov.Version,
@@ -111,110 +111,121 @@ func (prov *Provider) Parameterize(
 	return prov.ParameterizeF(ctx, params)
 }
 
-func (prov *Provider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
+func (prov *Provider) GetSchema(_ context.Context, request plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 	if prov.GetSchemaF == nil {
-		return []byte("{}"), nil
+		return plugin.GetSchemaResponse{Schema: []byte("{}")}, nil
 	}
-	return prov.GetSchemaF(request)
+	bytes, err := prov.GetSchemaF(request)
+	return plugin.GetSchemaResponse{Schema: bytes}, err
 }
 
-func (prov *Provider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (prov *Provider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
 	if prov.CheckConfigF == nil {
-		return news, nil, nil
+		return plugin.CheckConfigResponse{Properties: req.News}, nil
 	}
-	return prov.CheckConfigF(urn, olds, news, allowUnknowns)
+	props, failures, err := prov.CheckConfigF(req.URN, req.Olds, req.News, req.AllowUnknowns)
+	return plugin.CheckConfigResponse{
+		Properties: props,
+		Failures:   failures,
+	}, err
 }
 
-func (prov *Provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool,
-	ignoreChanges []string,
-) (plugin.DiffResult, error) {
+func (prov *Provider) DiffConfig(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil
 	}
-	return prov.DiffConfigF(urn, oldInputs, oldOutputs, newInputs, ignoreChanges)
+	return prov.DiffConfigF(req.URN, req.OldInputs, req.OldOutputs, req.NewInputs, req.IgnoreChanges)
 }
 
-func (prov *Provider) Configure(inputs resource.PropertyMap) error {
+func (prov *Provider) Configure(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 	contract.Assertf(!prov.configured, "provider %v was already configured", prov.Name)
 	prov.configured = true
 
 	if prov.ConfigureF == nil {
-		prov.Config = inputs
-		return nil
+		prov.Config = req.Inputs
+		return plugin.ConfigureResponse{}, nil
 	}
-	return prov.ConfigureF(inputs)
+	return plugin.ConfigureResponse{}, prov.ConfigureF(req.Inputs)
 }
 
-func (prov *Provider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool, randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
+func (prov *Provider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	contract.Requiref(req.RandomSeed != nil, "randomSeed", "must not be nil")
 	if prov.CheckF == nil {
-		return news, nil, nil
+		return plugin.CheckResponse{Properties: req.News}, nil
 	}
-	return prov.CheckF(urn, olds, news, randomSeed)
+	props, failures, err := prov.CheckF(req.URN, req.Olds, req.News, req.RandomSeed)
+	return plugin.CheckResponse{Properties: props, Failures: failures}, err
 }
 
-func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
-	preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
+func (prov *Provider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	if prov.CreateF == nil {
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
-			return "", nil, resource.StatusOK, err
+			return plugin.CreateResponse{}, err
 		}
-		return resource.ID(uuid.String()), resource.PropertyMap{}, resource.StatusOK, nil
+		return plugin.CreateResponse{
+			ID:         resource.ID(uuid.String()),
+			Properties: resource.PropertyMap{},
+		}, nil
 	}
-	return prov.CreateF(urn, props, timeout, preview)
+	id, properties, status, err := prov.CreateF(req.URN, req.Properties, req.Timeout, req.Preview)
+	return plugin.CreateResponse{
+		ID:         id,
+		Properties: properties,
+		Status:     status,
+	}, err
 }
 
-func (prov *Provider) Diff(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+func (prov *Provider) Diff(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 	if prov.DiffF == nil {
-		return plugin.DiffResult{}, nil
+		return plugin.DiffResponse{}, nil
 	}
-	return prov.DiffF(urn, id, oldInputs, oldOutputs, newInputs, ignoreChanges)
+	return prov.DiffF(req.URN, req.ID, req.OldInputs, req.OldOutputs, req.NewInputs, req.IgnoreChanges)
 }
 
-func (prov *Provider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	timeout float64, ignoreChanges []string, preview bool,
-) (resource.PropertyMap, resource.Status, error) {
+func (prov *Provider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	if prov.UpdateF == nil {
-		return newInputs, resource.StatusOK, nil
+		return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
 	}
-	return prov.UpdateF(urn, id, oldInputs, oldOutputs, newInputs, timeout, ignoreChanges, preview)
+	properties, status, err := prov.UpdateF(req.URN, req.ID,
+		req.OldInputs, req.OldOutputs,
+		req.NewInputs,
+		req.Timeout, req.IgnoreChanges, req.Preview)
+	return plugin.UpdateResponse{Properties: properties, Status: status}, err
 }
 
-func (prov *Provider) Delete(urn resource.URN,
-	id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
+func (prov *Provider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 	if prov.DeleteF == nil {
-		return resource.StatusOK, nil
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
-	return prov.DeleteF(urn, id, oldInputs, oldOutputs, timeout)
+	status, err := prov.DeleteF(req.URN, req.ID, req.Inputs, req.Outputs, req.Timeout)
+	return plugin.DeleteResponse{Status: status}, err
 }
 
-func (prov *Provider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	contract.Assertf(urn != "", "Read URN was empty")
-	contract.Assertf(id != "", "Read ID was empty")
+func (prov *Provider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	contract.Assertf(req.URN != "", "Read URN was empty")
+	contract.Assertf(req.ID != "", "Read ID was empty")
 	if prov.ReadF == nil {
-		return plugin.ReadResult{
-			Outputs: resource.PropertyMap{},
-			Inputs:  resource.PropertyMap{},
-		}, resource.StatusUnknown, nil
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
+			},
+			Status: resource.StatusUnknown,
+		}, nil
 	}
-	return prov.ReadF(urn, id, inputs, state)
+
+	result, status, err := prov.ReadF(req.URN, req.ID, req.Inputs, req.State)
+	return plugin.ReadResponse{
+		ReadResult: result,
+		Status:     status,
+	}, err
 }
 
-func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name string, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions,
-) (plugin.ConstructResult, error) {
+func (prov *Provider) Construct(ctx context.Context, req plugin.ConstructRequest) (plugin.ConstructResult, error) {
 	if prov.ConstructF == nil {
 		return plugin.ConstructResult{}, nil
 	}
@@ -222,35 +233,34 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if prov.DialMonitorF != nil {
 		dialMonitorImpl = prov.DialMonitorF
 	}
-	monitor, err := dialMonitorImpl(context.Background(), info.MonitorAddress)
+	monitor, err := dialMonitorImpl(ctx, req.Info.MonitorAddress)
 	if err != nil {
 		return plugin.ConstructResult{}, err
 	}
-	return prov.ConstructF(monitor, string(typ), name, parent, inputs, info, options)
+	return prov.ConstructF(monitor, string(req.Type), req.Name, req.Parent, req.Inputs, req.Info, req.Options)
 }
 
-func (prov *Provider) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (prov *Provider) Invoke(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 	if prov.InvokeF == nil {
-		return resource.PropertyMap{}, nil, nil
+		return plugin.InvokeResponse{
+			Properties: resource.PropertyMap{},
+		}, nil
 	}
-	return prov.InvokeF(tok, args)
+	result, failures, err := prov.InvokeF(req.Tok, req.Args)
+	return plugin.InvokeResponse{Properties: result, Failures: failures}, err
 }
 
 func (prov *Provider) StreamInvoke(
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error,
-) ([]plugin.CheckFailure, error) {
+	_ context.Context, req plugin.StreamInvokeRequest,
+) (plugin.StreamInvokeResponse, error) {
 	if prov.StreamInvokeF == nil {
-		return []plugin.CheckFailure{}, errors.New("StreamInvoke unimplemented")
+		return plugin.StreamInvokeResponse{}, errors.New("StreamInvoke unimplemented")
 	}
-	return prov.StreamInvokeF(tok, args, onNext)
+	failures, err := prov.StreamInvokeF(req.Tok, req.Args, req.OnNext)
+	return plugin.StreamInvokeResponse{Failures: failures}, err
 }
 
-func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
+func (prov *Provider) Call(ctx context.Context, req plugin.CallRequest) (plugin.CallResponse, error) {
 	if prov.CallF == nil {
 		return plugin.CallResult{}, nil
 	}
@@ -258,23 +268,30 @@ func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, i
 	if prov.DialMonitorF != nil {
 		dialMonitorImpl = prov.DialMonitorF
 	}
-	monitor, err := dialMonitorImpl(context.Background(), info.MonitorAddress)
+	monitor, err := dialMonitorImpl(ctx, req.Info.MonitorAddress)
 	if err != nil {
 		return plugin.CallResult{}, err
 	}
-	return prov.CallF(monitor, tok, args, info, options)
+	return prov.CallF(monitor, req.Tok, req.Args, req.Info, req.Options)
 }
 
-func (prov *Provider) GetMapping(key, provider string) ([]byte, string, error) {
+func (prov *Provider) GetMapping(_ context.Context, req plugin.GetMappingRequest) (plugin.GetMappingResponse, error) {
 	if prov.GetMappingF == nil {
-		return nil, "", nil
+		return plugin.GetMappingResponse{}, nil
 	}
-	return prov.GetMappingF(key, provider)
+	data, provider, err := prov.GetMappingF(req.Key, req.Provider)
+	return plugin.GetMappingResponse{
+		Data:     data,
+		Provider: provider,
+	}, err
 }
 
-func (prov *Provider) GetMappings(key string) ([]string, error) {
+func (prov *Provider) GetMappings(
+	_ context.Context, req plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
 	if prov.GetMappingsF == nil {
-		return []string{}, nil
+		return plugin.GetMappingsResponse{}, nil
 	}
-	return prov.GetMappingsF(key)
+	keys, err := prov.GetMappingsF(req.Key)
+	return plugin.GetMappingsResponse{Keys: keys}, err
 }

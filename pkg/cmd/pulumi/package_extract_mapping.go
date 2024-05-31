@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -47,18 +48,21 @@ func newExtractMappingCommand() *cobra.Command {
 			}
 			defer p.Close()
 
-			data, mapped, err := p.GetMapping(key, provider)
+			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
+				Key:      key,
+				Provider: provider,
+			})
 			if err != nil {
 				return fmt.Errorf("get mapping: %w", err)
 			}
 
-			if mapped == "" {
+			if mapping.Provider == "" {
 				return fmt.Errorf("no mapping found for key %q", key)
 			}
 
-			fmt.Printf("%s maps to provider %s\n", source, mapped)
+			fmt.Printf("%s maps to provider %s\n", source, mapping.Provider)
 
-			err = os.WriteFile(out, data, 0o600)
+			err = os.WriteFile(out, mapping.Data, 0o600)
 			if err != nil {
 				return fmt.Errorf("write mapping data file: %w", err)
 			}

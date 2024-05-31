@@ -901,7 +901,10 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
-	ret, failures, err := prov.Invoke(tok, args)
+	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
+		Tok:  tok,
+		Args: args,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
 	}
@@ -914,7 +917,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		keepResources = true
 	}
 
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(resp.Properties, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -924,8 +927,8 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
-	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
-	for _, failure := range failures {
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(resp.Failures))
+	for _, failure := range resp.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
 			Reason:   failure.Reason,
@@ -998,7 +1001,12 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	// Do the all and then return the arguments.
 	logging.V(5).Infof(
 		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), info, options)
-	ret, err := prov.Call(tok, args, info, options)
+	ret, err := prov.Call(ctx, plugin.CallRequest{
+		Tok:     tok,
+		Args:    args,
+		Info:    info,
+		Options: options,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
 	}
@@ -1072,25 +1080,29 @@ func (rm *resmon) StreamInvoke(
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
 	// streaming operation completes!
 	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
-	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
-		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
-			Label:            label,
-			KeepUnknowns:     true,
-			KeepResources:    req.GetAcceptResources(),
-			WorkingDirectory: rm.workingDirectory,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to marshal return: %w", err)
-		}
+	resp, err := prov.StreamInvoke(context.TODO(), plugin.StreamInvokeRequest{
+		Tok:  tok,
+		Args: args,
+		OnNext: func(event resource.PropertyMap) error {
+			mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
+				Label:            label,
+				KeepUnknowns:     true,
+				KeepResources:    req.GetAcceptResources(),
+				WorkingDirectory: rm.workingDirectory,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to marshal return: %w", err)
+			}
 
-		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+			return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
-	for _, failure := range failures {
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(resp.Failures))
+	for _, failure := range resp.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
 			Reason:   failure.Reason,
@@ -1874,7 +1886,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			options.DeleteBeforeReplace = *opts.DeleteBeforeReplace
 		}
 
-		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
+		constructResult, err := provider.Construct(ctx, plugin.ConstructRequest{
+			Info:    rm.constructInfo,
+			Type:    t,
+			Name:    name,
+			Parent:  parent,
+			Inputs:  props,
+			Options: options,
+		})
 		if err != nil {
 			return nil, err
 		}

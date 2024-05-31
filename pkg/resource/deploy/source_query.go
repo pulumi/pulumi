@@ -224,24 +224,32 @@ func newQueryResourceMonitor(
 		for e := range providerRegChan {
 			urn := syntheticProviderURN(e.goal)
 
-			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false, nil)
+			checkResponse, err := reg.Check(context.TODO(), plugin.CheckRequest{
+				URN:  urn,
+				Olds: resource.PropertyMap{},
+				News: e.goal.Properties,
+			})
 			if err != nil {
 				providerRegErrChan <- err
 				return
 			}
-			id, _, _, err := reg.Create(urn, inputs, 9999, false)
+			resp, err := reg.Create(context.TODO(), plugin.CreateRequest{
+				URN:        urn,
+				Properties: checkResponse.Properties,
+				Timeout:    9999,
+			})
 			if err != nil {
 				providerRegErrChan <- err
 				return
 			}
 
-			contract.Assertf(id != "", "expected non-empty provider ID")
-			contract.Assertf(id != providers.UnknownID, "expected non-unknown provider ID")
+			contract.Assertf(resp.ID != "", "expected non-empty provider ID")
+			contract.Assertf(resp.ID != providers.UnknownID, "expected non-unknown provider ID")
 
 			e.done <- &RegisterResult{State: &resource.State{
 				Type: e.goal.Type,
 				URN:  urn,
-				ID:   id,
+				ID:   resp.ID,
 			}}
 		}
 	}()
@@ -408,11 +416,14 @@ func (rm *queryResmon) Invoke(
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("QueryResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
-	ret, failures, err := prov.Invoke(tok, args)
+	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
+		Tok:  tok,
+		Args: args,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(resp.Properties, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
 		KeepResources: req.GetAcceptResources(),
@@ -421,8 +432,8 @@ func (rm *queryResmon) Invoke(
 		return nil, fmt.Errorf("failed to marshal return: %w", err)
 	}
 
-	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
-	for _, failure := range failures {
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(resp.Failures))
+	for _, failure := range resp.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
 			Reason:   failure.Reason,
@@ -458,24 +469,28 @@ func (rm *queryResmon) StreamInvoke(
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
 	// streaming operation completes!
 	logging.V(5).Infof("QueryResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
-	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
-		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
-			Label:         label,
-			KeepUnknowns:  true,
-			KeepResources: req.GetAcceptResources(),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to marshal return: %w", err)
-		}
+	resp, err := prov.StreamInvoke(context.TODO(), plugin.StreamInvokeRequest{
+		Tok:  tok,
+		Args: args,
+		OnNext: func(event resource.PropertyMap) error {
+			mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
+				Label:         label,
+				KeepUnknowns:  true,
+				KeepResources: req.GetAcceptResources(),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to marshal return: %w", err)
+			}
 
-		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+			return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
-	for _, failure := range failures {
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(resp.Failures))
+	for _, failure := range resp.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
 			Reason:   failure.Reason,
@@ -530,7 +545,12 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequ
 	// Do the call and then return the arguments.
 	logging.V(5).Infof(
 		"QueryResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), rm.callInfo, options)
-	ret, err := prov.Call(tok, args, rm.callInfo, options)
+	ret, err := prov.Call(ctx, plugin.CallRequest{
+		Tok:     tok,
+		Args:    args,
+		Info:    rm.callInfo,
+		Options: options,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
 	}

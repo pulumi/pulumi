@@ -384,7 +384,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			host, host.ctx, pkg, version,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig))
 		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
+			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
 				return nil, infoerr
 			}
@@ -520,7 +520,7 @@ func (host *defaultHost) SignalCancellation() error {
 	_, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		var result error
 		for _, plug := range host.resourcePlugins {
-			if err := plug.Plugin.SignalCancellation(); err != nil {
+			if err := plug.Plugin.SignalCancellation(host.ctx.Request()); err != nil {
 				result = multierror.Append(result, errors.Wrapf(err,
 					"Error signaling cancellation to resource provider '%s'", plug.Info.Name))
 			}

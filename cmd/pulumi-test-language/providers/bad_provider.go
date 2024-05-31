@@ -15,13 +15,13 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -41,7 +41,7 @@ func (p *BadProvider) Pkg() tokens.Package {
 	return "bad"
 }
 
-func (p *BadProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
+func (p *BadProvider) GetSchema(_ context.Context, request plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 	// The whole point of this provider is to return an invalid schema, so just make up a type for the
 	// property value.
 	resourceProperties := map[string]schema.PropertySpec{
@@ -71,53 +71,55 @@ func (p *BadProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error)
 
 	jsonBytes, err := json.Marshal(pkg)
 	if err != nil {
-		return nil, err
+		return plugin.GetSchemaResponse{}, err
 	}
 
-	return jsonBytes, nil
+	return plugin.GetSchemaResponse{Schema: jsonBytes}, nil
 }
 
-func (p *BadProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *BadProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := newInputs["version"]
+	version, ok := req.News["version"]
 	if !ok {
-		return nil, makeCheckFailure("version", "missing version"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
-		return nil, makeCheckFailure("version", "version is not a string"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
 	}
 	if version.StringValue() != "3.0.0" {
-		return nil, makeCheckFailure("version", "version is not 3.0.0"), nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 3.0.0")}, nil
 	}
 
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func (p *BadProvider) Configure(inputs resource.PropertyMap) error {
-	return nil
+func (p *BadProvider) Configure(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *BadProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *BadProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	ver := semver.MustParse("3.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *BadProvider) SignalCancellation() error {
+func (p *BadProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *BadProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return nil, "", nil
+func (p *BadProvider) GetMapping(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *BadProvider) GetMappings(key string) ([]string, error) {
-	return nil, nil
+func (p *BadProvider) GetMappings(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
 }
