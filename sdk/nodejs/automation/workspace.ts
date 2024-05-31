@@ -235,7 +235,7 @@ export interface Workspace {
      *
      * @param opts Options to customize the behavior of the list.
      */
-    listStacks(opts: ListOptions): Promise<StackSummary[]>;
+    listStacks(opts?: ListOptions): Promise<StackSummary[]>;
     /**
      * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
      *
