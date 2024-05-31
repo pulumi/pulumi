@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.118.0 (2024-05-31)
+
+
+### Features
+
+- [sdk] Improve plugin parameterize interface
+  [#16283](https://github.com/pulumi/pulumi/pull/16283)
+
+- [sdk] Require consumers to set an explicit forward compatibility policy for forward compatibility in plugin.Provider
+  [#16293](https://github.com/pulumi/pulumi/pull/16293)
+
+- [programgen/go] Implement importPathPattern in Go language options to override emitted paths in generated Go programs
+  [#16267](https://github.com/pulumi/pulumi/pull/16267)
+
+- [sdk/{go,nodejs,python}] Make stack transforms a stable, non-experimental feature
+  [#16282](https://github.com/pulumi/pulumi/pull/16282)
+
+
+### Bug Fixes
+
+- [auto/go] Add missing ContinueOnError option function
+  [#16291](https://github.com/pulumi/pulumi/pull/16291)
+
+- [cli/display] Don't rewrite in-progress replacement steps if an error occurs
+  [#16292](https://github.com/pulumi/pulumi/pull/16292)
+
+- [docs] Fix generating constructor examples for resources that have numeric enums as input
+  [#16223](https://github.com/pulumi/pulumi/pull/16223)
+
+- [engine] Fix panic with --continue-on-error on delete after failed create
+  [#16261](https://github.com/pulumi/pulumi/pull/16261)
+
 ## 3.117.0 (2024-05-24)
 
 
