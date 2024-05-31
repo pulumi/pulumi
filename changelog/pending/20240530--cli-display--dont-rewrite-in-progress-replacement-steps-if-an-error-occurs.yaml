@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Don't rewrite in-progress replacement steps if an error occurs
