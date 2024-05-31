@@ -29,6 +29,8 @@ import (
 )
 
 type Provider struct {
+	plugin.NotForwardCompatibleProvider
+
 	Name    string
 	Package tokens.Package
 	Version semver.Version
@@ -38,7 +40,7 @@ type Provider struct {
 
 	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 
-	ParameterizeF func(plugin.ParameterizeParameters) (string, *semver.Version, error)
+	ParameterizeF func(ctx context.Context, request plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 
 	GetSchemaF func(request plugin.GetSchemaRequest) ([]byte, error)
 
@@ -100,11 +102,13 @@ func (prov *Provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
-func (prov *Provider) Parameterize(params plugin.ParameterizeParameters) (string, *semver.Version, error) {
+func (prov *Provider) Parameterize(
+	ctx context.Context, params plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
 	if prov.ParameterizeF == nil {
-		return "", nil, errors.New("no parameters")
+		return plugin.ParameterizeResponse{}, errors.New("no parameters")
 	}
-	return prov.ParameterizeF(params)
+	return prov.ParameterizeF(ctx, params)
 }
 
 func (prov *Provider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {

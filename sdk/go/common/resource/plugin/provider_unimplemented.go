@@ -16,7 +16,8 @@
 package plugin
 
 import (
-	"github.com/blang/semver"
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -24,8 +25,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// UnimplementedProvider can be embedded to have forward compatible implementations.
-type UnimplementedProvider struct{}
+// NotForwardCompatible can be embedded to explicitly opt out of forward compatibility.
+//
+// Either NotForwardCompatibleProvider or [UnimplementedProvider] must be embedded to
+// implement [Provider].
+type NotForwardCompatibleProvider struct{}
+
+// UnimplementedProvider can be embedded to have a forward compatible implementation of
+// [Provider].
+//
+// Either NotForwardCompatibleProvider or [UnimplementedProvider] must be embedded to
+// implement [Provider].
+type UnimplementedProvider struct{ NotForwardCompatibleProvider }
 
 func (p *UnimplementedProvider) Close() error {
 	return status.Error(codes.Unimplemented, "Close is not yet implemented")
@@ -39,8 +50,8 @@ func (p *UnimplementedProvider) Pkg() tokens.Package {
 	return tokens.Package("")
 }
 
-func (p *UnimplementedProvider) Parameterize(ParameterizeParameters) (string, *semver.Version, error) {
-	return "", nil, status.Error(codes.Unimplemented, "Parameterize is not yet implemented")
+func (p *UnimplementedProvider) Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error) {
+	return ParameterizeResponse{}, status.Error(codes.Unimplemented, "Parameterize is not yet implemented")
 }
 
 func (p *UnimplementedProvider) GetSchema(GetSchemaRequest) ([]byte, error) {
@@ -109,4 +120,7 @@ func (p *UnimplementedProvider) GetMapping(key, provider string) ([]byte, string
 
 func (p *UnimplementedProvider) GetMappings(key string) ([]string, error) {
 	return nil, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
+}
+
+func (p NotForwardCompatibleProvider) mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatibleProvider) {
 }
