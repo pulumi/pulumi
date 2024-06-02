@@ -1157,8 +1157,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	}
 
 	// If there were changes check for a replacement vs. an in-place update.
-	if diff.Changes == plugin.DiffSome {
-		if diff.Replace() {
+	if diff.Changes == plugin.DiffSome || old.PendingReplacement {
+		if diff.Replace() || old.PendingReplacement {
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
