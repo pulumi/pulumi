@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix creation of resource when set to pendingReplacement=true
