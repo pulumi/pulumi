@@ -1305,8 +1305,14 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", old.URN, err)
 				}
 
+				var deleteStep Step
+				if old.PendingReplacement {
+					deleteStep = NewRemovePendingReplaceStep(sg.deployment, old)
+				} else {
+					deleteStep = NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true)
+				}
 				return append(steps,
-					NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true),
+					deleteStep,
 					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
 					NewCreateReplacementStep(
 						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
