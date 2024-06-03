@@ -29,7 +29,7 @@ func TestValidateVenv(t *testing.T) {
 		opts := opts
 		t.Run("Doesnt-exist-"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
-			opts = copyOptions(opts)
+			opts := copyOptions(opts)
 
 			opts.Root = t.TempDir()
 			tc, err := ResolveToolchain(opts)
@@ -40,7 +40,7 @@ func TestValidateVenv(t *testing.T) {
 		})
 		t.Run("Exists-"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
-			opts = copyOptions(opts)
+			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
 			createVenv(t, opts)
 
@@ -89,9 +89,8 @@ func TestCommand(t *testing.T) {
 				require.Equal(t, filepath.Join("python.exe"), cmd.Path)
 			} else {
 				venvBin = filepath.Join(opts.Root, venvDir, "bin")
-				venvBin, err = filepath.EvalSymlinks(venvBin)
-				require.NoError(t, err)
-				require.Equal(t, filepath.Join(venvBin, "python"), cmd.Path)
+				cmdPath := normalizePath(t, cmd.Path)
+				require.Equal(t, filepath.Join(normalizePath(t, venvBin), "python"), cmdPath)
 			}
 
 			foundPath := false
@@ -125,9 +124,10 @@ func TestListPackages(t *testing.T) {
 		},
 	} {
 		opts := opts
+
 		t.Run("empty/"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
-			opts = copyOptions(opts)
+			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
 			createVenv(t, opts)
 
@@ -144,7 +144,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("non-empty/"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
-			opts = copyOptions(opts)
+			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
 			createVenv(t, opts, "pulumi-random")
 
@@ -161,6 +161,35 @@ func TestListPackages(t *testing.T) {
 			require.Equal(t, "pulumi_random", packages[1].Name)
 			require.Equal(t, "setuptools", packages[2].Name)
 			require.Equal(t, "wheel", packages[3].Name)
+		})
+	}
+}
+
+func TestAbout(t *testing.T) {
+	t.Parallel()
+
+	for _, opts := range []PythonOptions{
+		{
+			Toolchain:  Pip,
+			Virtualenv: "venv",
+		},
+		{
+			Toolchain: Poetry,
+		},
+	} {
+		opts := opts
+		t.Run(Name(opts.Toolchain), func(t *testing.T) {
+			t.Parallel()
+			opts := copyOptions(opts)
+			opts.Root = t.TempDir()
+			createVenv(t, opts)
+
+			tc, err := ResolveToolchain(opts)
+			require.NoError(t, err)
+			info, err := tc.About(context.Background())
+			require.NoError(t, err)
+			require.Regexp(t, "[0-9]+\\.[0-9]+\\.[0-9]+", info.Version)
+			require.Regexp(t, "python$", info.Executable)
 		})
 	}
 }
@@ -246,4 +275,17 @@ func copyOptions(opts PythonOptions) PythonOptions {
 		Typechecker: opts.Typechecker,
 		Toolchain:   opts.Toolchain,
 	}
+}
+
+// normalizePath resolves symlinks within the directory part of the given path.
+// This helps avoid test issues on macOS where for example /var -> /private/var.
+// Importantly, we do not evaluate the symlink of the whole path, as that would
+// resolve the python binary to the system python, since within in a virtualenv
+// bin/python points to the system python.
+func normalizePath(t *testing.T, path string) string {
+	t.Helper()
+	dir, bin := filepath.Split(path)
+	normDir, err := filepath.EvalSymlinks(dir)
+	require.NoError(t, err)
+	return filepath.Join(normDir, bin)
 }

@@ -29,7 +29,7 @@ func newPoetry(directory string) (*poetry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("poetry not found on path: %w", err)
 	}
-	logging.V(9).Infof("Python toolchain: using poetry at %s", poetryPath)
+	logging.V(9).Infof("Python toolchain: using poetry at %s in %s", poetryPath, directory)
 	return &poetry{
 		poetryExecutable: poetryPath,
 		directory:        directory,
@@ -96,8 +96,21 @@ func (p *poetry) ModuleCommand(ctx context.Context, module string, args ...strin
 }
 
 func (p *poetry) About(ctx context.Context) (Info, error) {
-	// TODO
-	return Info{}, nil
+	cmd, err := p.Command(ctx, "--version")
+	if err != nil {
+		return Info{}, err
+	}
+	executable := cmd.Path
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return Info{}, fmt.Errorf("failed to get version: %w", err)
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+
+	return Info{
+		Executable: executable,
+		Version:    version,
+	}, nil
 }
 
 func (p *poetry) ValidateVenv(ctx context.Context) error {
