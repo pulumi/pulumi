@@ -56,7 +56,11 @@ export function hasFunctionMember(obj: any, memberName: string | number | symbol
 }
 
 // Workaround errors we sometimes get on some machines saying that Object.values is not available.
-/** @internal */
+/**
+ * A polyfill for Object.values
+ *
+ * @internal
+ */
 export function values(obj: object): any[] {
     const result: any[] = [];
     for (const key of Object.keys(obj)) {
