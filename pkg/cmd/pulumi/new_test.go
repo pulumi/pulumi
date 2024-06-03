@@ -431,6 +431,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		chdir(t, tempdir)
 
 		args := newArgs{
+			chooseTemplate:    chooseTemplate,
 			interactive:       false,
 			yes:               true,
 			secretsProvider:   "default",
