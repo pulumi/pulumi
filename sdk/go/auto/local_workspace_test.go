@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
@@ -58,11 +59,12 @@ const (
 )
 
 type mockPulumiCommand struct {
-	version  semver.Version
-	stdout   string
-	stderr   string
-	exitCode int
-	err      error
+	version      semver.Version
+	stdout       string
+	stderr       string
+	exitCode     int
+	err          error
+	capturedArgs []string
 }
 
 func (m *mockPulumiCommand) Version() semver.Version {
@@ -77,6 +79,7 @@ func (m *mockPulumiCommand) Run(ctx context.Context,
 	additionalEnv []string,
 	args ...string,
 ) (string, string, int, error) {
+	m.capturedArgs = args
 	return m.stdout, m.stderr, m.exitCode, m.err
 }
 
@@ -2718,6 +2721,126 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.Errorf("failed to remove stack during cleanup. Resources have leaked, err: %v", err)
 		t.FailNow()
 	}
+}
+
+func TestListStacks(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1", 
+				   "current": false, 
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
+				  {"name": "testorg1/testproj1/teststack2", 
+				   "current": false, 
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	stacks, err := workspace.ListStacks(ctx)
+
+	assert.NoError(t, err)
+	assert.Len(t, stacks, 2)
+	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
+	assert.Equal(t, false, stacks[0].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
+	assert.Equal(t, "testorg1/testproj1/teststack2", stacks[1].Name)
+	assert.Equal(t, false, stacks[1].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack2", stacks[1].URL)
+}
+
+func TestListStacksCorrectArgs(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1", 
+				"current": false, 
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
+				{"name": "testorg1/testproj1/teststack2", 
+				"current": false, 
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	_, err = workspace.ListStacks(ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"stack", "ls", "--json"}, m.capturedArgs)
+}
+
+func TestListAllStacks(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1", 
+				   "current": false, 
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
+				  {"name": "testorg1/testproj2/teststack2", 
+				   "current": false, 
+				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	stacks, err := workspace.ListStacks(ctx, optlist.All())
+
+	assert.NoError(t, err)
+	assert.Len(t, stacks, 2)
+	assert.Equal(t, "testorg1/testproj1/teststack1", stacks[0].Name)
+	assert.Equal(t, false, stacks[0].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj1/teststack1", stacks[0].URL)
+	assert.Equal(t, "testorg1/testproj2/teststack2", stacks[1].Name)
+	assert.Equal(t, false, stacks[1].Current)
+	assert.Equal(t, "https://app.pulumi.com/testorg1/testproj2/teststack2", stacks[1].URL)
+}
+
+func TestListStacksAllCorrectArgs(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	m := mockPulumiCommand{
+		stdout: `[{"name": "testorg1/testproj1/teststack1", 
+				"current": false, 
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
+				{"name": "testorg1/testproj1/teststack2", 
+				"current": false, 
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
+		stderr:   "",
+		exitCode: 0,
+		err:      nil,
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	_, err = workspace.ListStacks(ctx, optlist.All())
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {

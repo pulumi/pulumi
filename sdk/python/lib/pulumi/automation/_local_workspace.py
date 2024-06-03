@@ -414,8 +414,11 @@ class LocalWorkspace(Workspace):
     def remove_stack(self, stack_name: str) -> None:
         self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
 
-    def list_stacks(self) -> List[StackSummary]:
-        result = self._run_pulumi_cmd_sync(["stack", "ls", "--json"])
+    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
+        args = ["stack", "ls", "--json"]
+        if include_all:
+            args.append("--all")
+        result = self._run_pulumi_cmd_sync(args)
         json_list = json.loads(result.stdout)
         stack_list: List[StackSummary] = []
         for stack_json in json_list:

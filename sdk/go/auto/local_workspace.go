@@ -26,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -595,15 +596,26 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 
 // ListStacks returns all Stacks created under the current Project.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
+func (l *LocalWorkspace) ListStacks(ctx context.Context, opts ...optlist.Option) ([]StackSummary, error) {
 	var stacks []StackSummary
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
+	args := []string{"stack", "ls", "--json"}
+
+	optListOpts := &optlist.Options{}
+	for _, o := range opts {
+		o.ApplyOption(optListOpts)
+	}
+
+	if optListOpts.All {
+		args = append(args, "--all")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal config value: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal list stacks value: %w", err)
 	}
 	return stacks, nil
 }

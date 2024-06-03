@@ -404,12 +404,13 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def list_stacks(self) -> List[StackSummary]:
+    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
         """
         Returns all Stacks created under the current Project.
         This queries underlying backend and may return stacks not present in the Workspace
         (as Pulumi.<stack>.yaml files).
 
+        :param include_all: List all stacks instead of just stacks for the current project
         :returns: List[StackSummary]
         """
 

@@ -714,11 +714,19 @@ export class LocalWorkspace implements Workspace {
         return undefined;
     }
     /**
-     * Returns all Stacks created under the current Project.
+     * Returns all Stacks from the underlying backend based on the provided options.
      * This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
+     *
+     * @param opts Options to customize the behavior of the list.
      */
-    async listStacks(): Promise<StackSummary[]> {
-        const result = await this.runPulumiCmd(["stack", "ls", "--json"]);
+    async listStacks(opts?: ListOptions): Promise<StackSummary[]> {
+        const args = ["stack", "ls", "--json"];
+        if (opts) {
+            if (opts.all) {
+                args.push("--all");
+            }
+        }
+        const result = await this.runPulumiCmd(args);
         return JSON.parse(result.stdout);
     }
     /**
@@ -1091,4 +1099,11 @@ function loadProjectSettings(workDir: string) {
         return yaml.safeLoad(contents) as ProjectSettings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
+}
+
+export interface ListOptions {
+    /**
+     * List all stacks instead of just stacks for the current project
+     */
+    all?: boolean;
 }
