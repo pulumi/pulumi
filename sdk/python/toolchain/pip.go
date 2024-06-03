@@ -114,9 +114,6 @@ func (p *pip) ModuleCommand(ctx context.Context, module string, args ...string) 
 
 func (p *pip) About(ctx context.Context) (Info, error) {
 	var cmd *exec.Cmd
-	// if CommandPath has an error, then so will Command. The error can
-	// therefore be ignored as redundant.
-	pyexe, _, _ := CommandPath()
 	cmd, err := p.Command(ctx, "--version")
 	if err != nil {
 		return Info{}, err
@@ -128,7 +125,7 @@ func (p *pip) About(ctx context.Context) (Info, error) {
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	return Info{
-		Executable: pyexe,
+		Executable: cmd.Path,
 		Version:    version,
 	}, nil
 }
