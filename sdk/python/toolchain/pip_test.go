@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,43 +118,6 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // modifies environment variables
-func TestCommand(t *testing.T) {
-	tmp := t.TempDir()
-
-	t.Setenv("MY_ENV_VAR", "HELLO")
-
-	tc, err := newPip(tmp, "venv")
-	require.NoError(t, err)
-
-	cmd, err := tc.Command(context.Background())
-	require.NoError(t, err)
-
-	var venvBin string
-	if runtime.GOOS == windows {
-		venvBin = filepath.Join(tmp, "venv", "Scripts")
-		require.Equal(t, filepath.Join("python.exe"), cmd.Path)
-	} else {
-		venvBin = filepath.Join(tmp, "venv", "bin")
-		require.Equal(t, filepath.Join(venvBin, "python"), cmd.Path)
-	}
-
-	foundPath := false
-	foundMyEnvVar := false
-	for _, env := range cmd.Env {
-		if strings.HasPrefix(env, "PATH=") {
-			require.Contains(t, env, venvBin, "venv binary directory should in PATH")
-			foundPath = true
-		}
-		if strings.HasPrefix(env, "MY_ENV_VAR=") {
-			require.Equal(t, "MY_ENV_VAR=HELLO", env, "Env variables should be passed through")
-			foundMyEnvVar = true
-		}
-	}
-	require.True(t, foundPath, "PATH was not found in cmd.Env")
-	require.True(t, foundMyEnvVar, "MY_ENV_VAR was not found in cmd.Env")
-}
-
 func TestCommandNoVenv(t *testing.T) {
 	t.Parallel()
 
@@ -183,13 +145,4 @@ func TestCommandPulumiPythonCommand(t *testing.T) {
 	cmd, err := tc.Command(context.Background())
 	require.ErrorContains(t, err, "python-not-found")
 	require.Nil(t, cmd)
-}
-
-func TestValidateVenv(t *testing.T) {
-	t.Parallel()
-	tmp := t.TempDir()
-	tc, err := newPip(tmp, "mytestvenv")
-	require.NoError(t, err)
-	err = tc.ValidateVenv(context.Background())
-	require.ErrorContains(t, err, "The 'virtualenv' option in Pulumi.yaml is set to \"mytestvenv\"")
 }

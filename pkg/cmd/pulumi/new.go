@@ -321,11 +321,14 @@ func runNew(ctx context.Context, args newArgs) error {
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
 	proj.Template = nil
+	// TODO[pulumi/pulumi/issues/16309]: This should be handled by the language runtime.
 	// Workaround for python, most of our templates don't specify a venv but we want to use one
 	if proj.Runtime.Name() == "python" {
-		// If the template does give virtualenv use it, else default to "venv"
-		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
-			proj.Runtime.SetOption("virtualenv", "venv")
+		// Backfill the virtualenv option if it's not already set and we are not using poetry
+		if tc, has := proj.Runtime.Options()["toolchain"]; has && tc != "poetry" {
+			if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+				proj.Runtime.SetOption("virtualenv", "venv")
+			}
 		}
 	}
 

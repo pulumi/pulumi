@@ -220,6 +220,8 @@ func parseOptions(root string, options map[string]interface{}) (toolchain.Python
 			switch tc {
 			case "pip":
 				pythonOptions.Toolchain = toolchain.Pip
+			case "poetry":
+				pythonOptions.Toolchain = toolchain.Poetry
 			default:
 				return pythonOptions, fmt.Errorf("unsupported toolchain option: %s", tc)
 			}
