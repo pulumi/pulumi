@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package events;
+
+import public "options.proto";
+
+// The granular CRUD operation performed on a particular resource during an update
+enum OpType {
+  SAME = 0 [(options.string_enum) = "same"];
+  CREATE = 1 [(options.string_enum) = "create"];
+  UPDATE = 2 [(options.string_enum) = "update"];
+  DELETE = 3 [(options.string_enum) = "delete"];
+  REPLACE = 4 [(options.string_enum) = "replace"];
+  CREATE_REPLACEMENT = 5 [(options.string_enum) = "create-replacement"];
+  DELETE_REPLACED = 6 [(options.string_enum) = "delete-replaced"];
+  READ = 7 [(options.string_enum) = "read"];
+  READ_REPLACED = 8 [(options.string_enum) = "read-replaced"];
+  REFRESH = 9 [(options.string_enum) = "refresh"];
+  DISCARD = 10 [(options.string_enum) = "discard"];
+  DISCARD_REPLACED = 11 [(options.string_enum) = "discard-replaced"];
+  REMOVE_PENDING_REPLACE = 12 [(options.string_enum) = "remove-pending-replace"];
+  IMPORT = 13 [(options.string_enum) = "import"];
+  IMPORT_REPLACEMENT = 14 [(options.string_enum) = "import-replacement"];
+}
+
+message BaseEvent {
+  option (options.abstract) = true;
+}
+
+// CancelEvent is emitted when the user initiates a cancellation of the update in progress
+// or the update successfully completes
+message CancelEvent {
+  option (options.base_type) = "BaseEvent";
+}
+
+// StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
+// from the pulumi CLI itself. Less common than DiagnosticEvent.
+message StdoutEngineEvent {
+  option (options.base_type) = "BaseEvent";
+  // The message
+  string message = 1;
+  // The color to render the message
+  string color = 2;
+}
+
+message PreludeEvent {
+  option (options.base_type) = "BaseEvent";
+  // config contains the keys and values for the update. Encrypted configuration values may be blinded.
+  map<string, string> config = 1;
+}
+
+message DiagnosticEvent {
+  option (options.base_type) = "BaseEvent";
+  // The message
+  string message = 1;
+  // The color to render the message
+  string color = 2;
+  string severity = 3;
+  optional string stream_id = 4;
+  optional bool ephemeral = 5;
+  optional string urn = 6;
+  optional string prefix = 7;
+}
+
+message SummaryEvent {
+  option (options.base_type) = "BaseEvent";
+  bool maybe_corrupt = 1 [(options.json_field) = "maybeCorrupt"];
+  int32 duration_seconds = 2 [(options.json_field) = "durationSeconds"];
+  map<string, OpType> resource_changes = 3 [(options.json_field) = "resourceChanges"];
+  map<string, string> policy_packs = 4 [(options.json_field) = "PolicyPacks"];
+}
+
+// DiffKind enumerates the possible kinds of diffs
+enum DiffKind {
+  // indicates that the property was added
+  ADD = 0 [(options.string_enum) = "add"];
+  // indicates that the property was added and requires that the resource be replaced.
+  ADD_REPLACE = 1 [(options.string_enum) = "add-replace"];
+  // delete indicates that the property was deleted
+  DiffKind_DELETE = 2 [(options.string_enum) = "delete"];
+  // indicates that the property was deleted and requires that the resource be replaced.
+  DELETE_REPLACE = 3 [(options.string_enum) = "delete-replace"];
+  // update indicates that the property was updated
+  DiffKind_UPDATE = 4 [(options.string_enum) = "update"];
+  // indicates that the property was updated and requires that the resource be replaced.
+  UPDATE_REPLACE = 5 [(options.string_enum) = "update-replace"];
+}
+
+// PropertyDiff describes the difference between a single property's old and new values
+message PropertyDiff {
+  // The type of diff that occurred
+  DiffKind kind = 1;
+  // The previous value of the property
+  bool input_diff = 2 [(options.json_field) = "inputDiff"];
+}

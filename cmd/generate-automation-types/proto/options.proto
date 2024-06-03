@@ -1,0 +1,16 @@
+package options;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.EnumValueOptions {
+  optional string string_enum = 101;
+}
+
+extend google.protobuf.FieldOptions {
+  optional string json_field = 102;
+}
+
+extend google.protobuf.MessageOptions {
+  optional string base_type = 123;
+  optional bool abstract = 124;
+}
