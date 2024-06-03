@@ -1,6 +1,7 @@
 package python
 
 import (
+	"context"
 	filesystem "io/fs"
 	"path/filepath"
 	"strings"
@@ -10,7 +11,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 func Check(t *testing.T, path string, _ codegen.StringSet) {
@@ -37,10 +38,17 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	})
 	require.NoError(t, err)
 
-	ex, _, err := python.CommandPath()
+	// Find the path to global python
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain: toolchain.Pip,
+	})
 	require.NoError(t, err)
+	info, err := tc.About(context.Background())
+	require.NoError(t, err)
+	pythonCmdPath := info.Executable
+	// Run `python -m py_compile` on all python files
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
-	test.RunCommand(t, "python syntax check", codeDir, ex, args...)
+	test.RunCommand(t, "python syntax check", codeDir, pythonCmdPath, args...)
 }
 
 func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {

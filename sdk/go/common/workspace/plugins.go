@@ -54,7 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 const (
@@ -1463,7 +1463,16 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
-			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
+			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
+			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+				Toolchain:  toolchain.Pip,
+				Root:       finalDir,
+				Virtualenv: "venv",
+			})
+			if err != nil {
+				return fmt.Errorf("getting python toolchain: %w", err)
+			}
+			if err := tc.InstallDependencies(ctx, finalDir, false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}

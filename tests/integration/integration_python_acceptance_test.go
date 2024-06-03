@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 func boolPointer(b bool) *bool {
@@ -272,7 +272,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			absVenvPath = filepath.Join(e.RootPath, venvPath)
 		}
 
-		if !python.IsVirtualEnv(absVenvPath) {
+		if !toolchain.IsVirtualEnv(absVenvPath) {
 			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
 				absVenvPath)
 		}

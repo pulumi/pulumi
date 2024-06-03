@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package python
+package toolchain
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -26,12 +28,129 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
 	windows             = "windows"
 	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
 )
+
+type pip struct {
+	// The absolute path to the virtual env. Empty if not using a virtual env.
+	virtualenvPath string
+	// The virtual option as set in Pulumi.yaml.
+	virtualenvOption string
+	// The root directory of the project.
+	root string
+}
+
+var _ Toolchain = &pip{}
+
+func newPip(root, virtualenv string) (*pip, error) {
+	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
+	logging.V(9).Infof("Python toolchain: using pip at %s", virtualenvPath)
+	return &pip{virtualenvPath, virtualenv, root}, nil
+}
+
+func (p *pip) InstallDependencies(ctx context.Context, cwd string, showOutput bool,
+	infoWriter io.Writer, errorWriter io.Writer,
+) error {
+	return InstallDependencies(
+		ctx,
+		cwd,
+		p.virtualenvPath,
+		showOutput,
+		infoWriter,
+		errorWriter)
+}
+
+func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
+	args := []string{"list", "-v", "--format", "json"}
+	if !transitive {
+		args = append(args, "--not-required")
+	}
+
+	cmd, err := p.ModuleCommand(ctx, "pip", args...)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(args, " "), err)
+	}
+
+	var packages []PythonPackage
+	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
+	if err := jsonDecoder.Decode(&packages); err != nil {
+		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(args, " "), err)
+	}
+
+	return packages, nil
+}
+
+func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+	if p.virtualenvPath == "" {
+		return Command(ctx, arg...)
+	}
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	cmdPath := filepath.Join(p.virtualenvPath, virtualEnvBinDirName(), name)
+	cmd = exec.Command(cmdPath, arg...)
+
+	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
+
+	return cmd, nil
+}
+
+func (p *pip) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
+	moduleArgs := append([]string{"-m", module}, args...)
+	return p.Command(ctx, moduleArgs...)
+}
+
+func (p *pip) About(ctx context.Context) (Info, error) {
+	var cmd *exec.Cmd
+	// if CommandPath has an error, then so will Command. The error can
+	// therefore be ignored as redundant.
+	pyexe, _, _ := CommandPath()
+	cmd, err := p.Command(ctx, "--version")
+	if err != nil {
+		return Info{}, err
+	}
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return Info{}, fmt.Errorf("failed to get version: %w", err)
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+
+	return Info{
+		Executable: pyexe,
+		Version:    version,
+	}, nil
+}
+
+func (p *pip) ValidateVenv(ctx context.Context) error {
+	if p.virtualenvOption != "" && !IsVirtualEnv(p.virtualenvPath) {
+		return NewVirtualEnvError(p.virtualenvOption, p.virtualenvPath)
+	}
+	return nil
+}
+
+// IsVirtualEnv returns true if the specified directory contains a python binary.
+func IsVirtualEnv(dir string) bool {
+	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
+	if runtime.GOOS == windows {
+		pyBin = pyBin + ".exe"
+	}
+	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
+		return true
+	}
+	return false
+}
 
 // CommandPath finds the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
 // variable is set it will be looked for on `PATH`, otherwise, `python3` and
@@ -151,18 +270,6 @@ func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
 	return exec.Command(cmdPath, arg...)
 }
 
-// IsVirtualEnv returns true if the specified directory contains a python binary.
-func IsVirtualEnv(dir string) bool {
-	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")
-	if runtime.GOOS == windows {
-		pyBin = pyBin + ".exe"
-	}
-	if info, err := os.Stat(pyBin); err == nil && !info.IsDir() {
-		return true
-	}
-	return false
-}
-
 // NewVirtualEnvError creates an error about the virtual environment with more info on how to resolve the issue.
 func NewVirtualEnvError(dir, fullPath string) error {
 	pythonBin := "python3"
@@ -220,12 +327,8 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool) error {
-	return InstallDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr)
-}
-
-func InstallDependenciesWithWriters(ctx context.Context,
-	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
+func InstallDependencies(ctx context.Context, cwd, venvDir string, showOutput bool,
+	infoWriter, errorWriter io.Writer,
 ) error {
 	printmsg := func(message string) {
 		if showOutput {
@@ -238,7 +341,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 
 		// Create the virtual environment by running `python -m venv <venvDir>`.
 		if !filepath.IsAbs(venvDir) {
-			venvDir = filepath.Join(root, venvDir)
+			return fmt.Errorf("virtual environment path must be absolute: %s", venvDir)
 		}
 
 		cmd, err := Command(ctx, "-m", "venv", venvDir)
@@ -268,7 +371,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		} else {
 			pipCmd = VirtualEnvCommand(venvDir, "python", args...)
 		}
-		pipCmd.Dir = root
+		pipCmd.Dir = cwd
 		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
 		wrapError := func(err error) error {
@@ -306,7 +409,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	printmsg("Finished updating")
 
 	// If `requirements.txt` doesn't exist, exit early.
-	requirementsPath := filepath.Join(root, "requirements.txt")
+	requirementsPath := filepath.Join(cwd, "requirements.txt")
 	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
 		return nil
 	}
@@ -323,9 +426,12 @@ func InstallDependenciesWithWriters(ctx context.Context,
 	return nil
 }
 
-func virtualEnvBinDirName() string {
-	if runtime.GOOS == windows {
-		return "Scripts"
+func resolveVirtualEnvironmentPath(root, virtualenv string) string {
+	if virtualenv == "" {
+		return ""
 	}
-	return "bin"
+	if !filepath.IsAbs(virtualenv) {
+		return filepath.Join(root, virtualenv)
+	}
+	return virtualenv
 }
