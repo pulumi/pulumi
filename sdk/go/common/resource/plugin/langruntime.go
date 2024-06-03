@@ -121,7 +121,7 @@ type LanguageRuntime interface {
 	InstallDependencies(info ProgramInfo) error
 
 	// About returns information about the language runtime.
-	About() (AboutInfo, error)
+	About(info ProgramInfo) (AboutInfo, error)
 
 	// GetProgramDependencies returns information about the dependencies for the given program.
 	GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)

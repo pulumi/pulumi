@@ -97,7 +97,7 @@ func (p *languageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
 	return nil
 }
 
-func (p *languageRuntime) About() (plugin.AboutInfo, error) {
+func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if p.closed {
 		return plugin.AboutInfo{}, ErrLanguageRuntimeIsClosed
 	}

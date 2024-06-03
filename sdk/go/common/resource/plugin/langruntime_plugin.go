@@ -336,9 +336,15 @@ func (h *langhost) InstallDependencies(info ProgramInfo) error {
 	return nil
 }
 
-func (h *langhost) About() (AboutInfo, error) {
+func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
-	resp, err := h.client.About(h.ctx.Request(), &emptypb.Empty{})
+	minfo, err := info.Marshal()
+	if err != nil {
+		return AboutInfo{}, err
+	}
+	resp, err := h.client.About(h.ctx.Request(), &pulumirpc.AboutRequest{
+		Info: minfo,
+	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)

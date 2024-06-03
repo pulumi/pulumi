@@ -965,10 +965,20 @@ func (host *pythonLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
-func (host *pythonLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain: toolchain.Pip,
-	})
+func (host *pythonLanguageHost) About(ctx context.Context,
+	req *pulumirpc.AboutRequest,
+) (*pulumirpc.AboutResponse, error) {
+	// Previously we did not pass any arguments to About and we always used the default python command.
+	opts := toolchain.PythonOptions{Toolchain: toolchain.Pip}
+	if req != nil && req.Info != nil {
+		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+		if err != nil {
+			return nil, err
+		}
+		opts = aboutOpts
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return nil, err
 	}
