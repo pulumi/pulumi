@@ -65,9 +65,11 @@ export function createUrn(
     return interpolate`${parentPrefix}${type}::${name}`;
 }
 
-// inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
-// This may involve changing the name of the resource in cases where the resource has a named derived from the name of
-// the parent, and the parent name changed.
+/**
+ * inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
+ * This may involve changing the name of the resource in cases where the resource has a named derived from the name of
+ * the parent, and the parent name changed.
+ */
 function inheritedChildAlias(
     childName: string,
     parentName: string,
@@ -96,7 +98,9 @@ function inheritedChildAlias(
     return createUrn(aliasName, childType, parentAlias);
 }
 
-// Extract the type and name parts of a URN
+/**
+ * Extracts the type and name from a URN.
+ */
 function urnTypeAndName(urn: URN) {
     const parts = urn.split("::");
     const typeParts = parts[2].split("$");
@@ -106,9 +110,12 @@ function urnTypeAndName(urn: URN) {
     };
 }
 
-// Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
-// If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
-// or, as calculated in the logic below, N+(M*(1+N)).
+/**
+ * allAliases computes the full set of aliases for a child resource given a set of aliases applied to the child and
+ * parent resources. This includes the child resource's own aliases, as well as aliases inherited from the parent.
+ * If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
+ * or, as calculated in the logic below, N+(M*(1+N)).
+ */
 export function allAliases(
     childAliases: Input<URN | Alias>[],
     childName: string,
@@ -293,26 +300,28 @@ export abstract class Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
-    // sourcePosition returns the source position of the user code that instantiated this resource.
-    //
-    // This is somewhat brittle in that it expects a call stack of the form:
-    // - Resource class constructor
-    // - abstract Resource subclass constructor
-    // - concrete Resource subclass constructor
-    // - user code
-    //
-    // This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
-    //
-    // For example, consider the AWS S3 Bucket resource. When user code instantiates a Bucket, the stack will look like
-    // this:
-    //
-    //     new Resource (/path/to/resource.ts:123:45)
-    //     new CustomResource (/path/to/resource.ts:678:90)
-    //     new Bucket (/path/to/bucket.ts:987:65)
-    //     <user code> (/path/to/index.ts:4:3)
-    //
-    // Because Node can only give us the stack trace as text, we parse out the source position using a regex that
-    // matches traces of this form (see stackTraceRegExp above).
+    /**
+     * sourcePosition returns the source position of the user code that instantiated this resource.
+     *
+     * This is somewhat brittle in that it expects a call stack of the form:
+     * - Resource class constructor
+     * - abstract Resource subclass constructor
+     * - concrete Resource subclass constructor
+     * - user code
+     *
+     * This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
+     *
+     * For example, consider the AWS S3 Bucket resource. When user code instantiates a Bucket, the stack will look like
+     * this:
+     *
+     *     new Resource (/path/to/resource.ts:123:45)
+     *     new CustomResource (/path/to/resource.ts:678:90)
+     *     new Bucket (/path/to/bucket.ts:987:65)
+     *     <user code> (/path/to/index.ts:4:3)
+     *
+     * Because Node can only give us the stack trace as text, we parse out the source position using a regex that
+     * matches traces of this form (see stackTraceRegExp above).
+     */
     private static sourcePosition(): SourcePosition | undefined {
         const stackObj: any = {};
         Error.captureStackTrace(stackObj, Resource.sourcePosition);
@@ -339,7 +348,9 @@ export abstract class Resource {
         };
     }
 
-    // getProvider fetches the provider for the given module member, if any.
+    /**
+     * Returns the provider for the given module member, if one exists.
+     */
     public getProvider(moduleMember: string): ProviderResource | undefined {
         const pkg = pkgFromType(moduleMember);
         if (pkg === undefined) {
@@ -610,7 +621,10 @@ export interface Alias {
     project?: Input<string>;
 }
 
-// collapseAliasToUrn turns an Alias into a URN given a set of default data
+/**
+ * Converts an alias into a URN given a set of default data for the missing
+ * values.
+ */
 function collapseAliasToUrn(
     alias: Input<Alias | string>,
     defaultName: string,
