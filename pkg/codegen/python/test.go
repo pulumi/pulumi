@@ -43,11 +43,11 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 		Toolchain: toolchain.Pip,
 	})
 	require.NoError(t, err)
-	args := append([]string{"-m", "py_compile"}, pythonFiles...)
-	cmd, err := tc.Command(context.Background(), args...)
+	info, err := tc.About(context.Background())
 	require.NoError(t, err)
-	pythonCmdPath := cmd.Path
+	pythonCmdPath := info.Executable
 	// Run `python -m py_compile` on all python files
+	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	test.RunCommand(t, "python syntax check", codeDir, pythonCmdPath, args...)
 }
 

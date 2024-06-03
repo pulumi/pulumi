@@ -180,7 +180,7 @@ func buildVirtualEnv(ctx context.Context) error {
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
-	pyCmd, err := tc.Command(ctx, "-m", "pip", "install", "-e", sdkDir)
+	pyCmd, err := tc.ModuleCommand(ctx, "pip", "install", "-e", sdkDir)
 	if err != nil {
 		contract.Failf("failed to create pip install command: %v", err)
 	}
@@ -206,8 +206,8 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		return
 	}
 
-	cmd := func(args ...string) error {
-		t.Logf("cd %s && %s", codeDir, strings.Join(args, " "))
+	moduleCmd := func(module string, args ...string) error {
+		t.Logf("cd %s && %s", codeDir, strings.Join(append([]string{module}, args...), " "))
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       hereDir,
@@ -217,7 +217,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 			return err
 		}
 
-		cmd, err := tc.Command(context.Background(), args...)
+		cmd, err := tc.ModuleCommand(context.Background(), module, args...)
 		if err != nil {
 			return err
 		}
@@ -232,7 +232,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 	installPackage := func() error {
 		venvMutex.Lock()
 		defer venvMutex.Unlock()
-		return cmd("-m", "pip", "install", "-e", ".")
+		return moduleCmd("pip", "install", "-e", ".")
 	}
 
 	if err = installPackage(); err != nil {
@@ -240,7 +240,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		return
 	}
 
-	if err = cmd("-m", "pytest", "."); err != nil {
+	if err = moduleCmd("pytest", "."); err != nil {
 		exitError, isExitError := err.(*exec.ExitError)
 		if isExitError && exitError.ExitCode() == 5 {
 			t.Logf("Could not find any pytest tests in %s", codeDir)

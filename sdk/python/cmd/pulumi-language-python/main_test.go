@@ -126,7 +126,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
+		_, err := runPythonModuleCommand(t, "", cwd, "venv", "venv")
 		assert.NoError(t, err)
 		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
@@ -140,18 +140,18 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
+		_, err := runPythonModuleCommand(t, "", cwd, "venv", "venv")
 		assert.NoError(t, err)
 
 		// Install the local Pulumi SDK into the virtual environment.
 		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
 		assert.NoError(t, err)
-		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "-e", sdkDir)
 		assert.NoError(t, err)
 
-		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pulumi-random")
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
-		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pip-install-test")
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "pip-install-test")
 		assert.NoError(t, err)
 		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
@@ -169,9 +169,9 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
+		_, err := runPythonModuleCommand(t, "", cwd, "venv", "venv")
 		require.NoError(t, err)
-		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "pip-install-test")
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "pip-install-test")
 		require.NoError(t, err)
 		// Find sitePackages folder in Python that contains pip_install_test subfolder.
 		var sitePackages string
@@ -221,23 +221,23 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand(t, "", cwd, "-m", "venv", "venv")
+		_, err := runPythonModuleCommand(t, "", cwd, "venv", "venv")
 		assert.NoError(t, err)
 
-		_, err = runPythonCommand(t,
-			"venv", cwd, "-m", "pip", "install", "--upgrade", "pip", "setuptools")
+		_, err = runPythonModuleCommand(t,
+			"venv", cwd, "pip", "install", "--upgrade", "pip", "setuptools")
 		assert.NoError(t, err)
 
 		// Install the local Pulumi SDK into the virtual environment.
 		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
 		assert.NoError(t, err)
-		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "-e", sdkDir)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "-e", sdkDir)
 		assert.NoError(t, err)
 
 		// Install a local old provider SDK that does not have a pulumi-plugin.json file.
 		oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
 		assert.NoError(t, err)
-		_, err = runPythonCommand(t, "venv", cwd, "-m", "pip", "install", "-e", oldSdkDir)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "-e", oldSdkDir)
 		assert.NoError(t, err)
 
 		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
@@ -255,7 +255,11 @@ func TestDeterminePulumiPackages(t *testing.T) {
 	})
 }
 
-func runPythonCommand(t *testing.T, virtualenv, cwd string, arg ...string) ([]byte, error) {
+func runPythonModuleCommand(t *testing.T, virtualenv, cwd, module string, args ...string) ([]byte, error) {
+	return runPythonCommand(t, virtualenv, cwd, append([]string{"-m", module}, args...)...)
+}
+
+func runPythonCommand(t *testing.T, virtualenv, cwd string, args ...string) ([]byte, error) {
 	t.Helper()
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
@@ -264,7 +268,7 @@ func runPythonCommand(t *testing.T, virtualenv, cwd string, arg ...string) ([]by
 		Virtualenv: virtualenv,
 	})
 	require.NoError(t, err)
-	cmd, err := tc.Command(context.Background(), arg...)
+	cmd, err := tc.Command(context.Background(), args...)
 	require.NoError(t, err)
 	cmd.Dir = cwd
 

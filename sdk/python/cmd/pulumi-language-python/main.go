@@ -287,7 +287,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		return nil, err
 	}
 	// ensure build is up-to-date
-	buildUpgradeCmd, err := tc.Command(ctx, "-m", "pip", "install", "--upgrade", "build")
+	buildUpgradeCmd, err := tc.ModuleCommand(ctx, "pip", "install", "--upgrade", "build")
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +303,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
 
-	buildCmd, err := tc.Command(ctx, "-m", "build", "--outdir", tmp)
+	buildCmd, err := tc.ModuleCommand(ctx, "build", "--outdir", tmp)
 	if err != nil {
 		return nil, err
 	}

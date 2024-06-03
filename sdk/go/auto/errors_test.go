@@ -426,7 +426,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
-	pyCmd, err := tc.Command(context.Background(), "-m", "pip", "install", "-e", pySDK)
+	pyCmd, err := tc.ModuleCommand(context.Background(), "pip", "install", "-e", pySDK)
 	if err != nil {
 		t.Errorf("failed to install the local SDK: %v", err)
 		t.FailNow()

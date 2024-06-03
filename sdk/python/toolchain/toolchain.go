@@ -48,10 +48,18 @@ type Info struct {
 }
 
 type Toolchain interface {
+	// InstallDependencies installs the dependencies of the project found in `cwd`.
 	InstallDependencies(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
+	// ListPackages returns a list of Python packages installed in the toolchain.
 	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
+	// Command returns an *exec.Cmd for running `python` using the configured toolchain.
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
+	// ModuleCommand returns an *exec.Cmd for running an installed python module using the configured toolchain.
+	// https://docs.python.org/3/using/cmdline.html#cmdoption-m
+	ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error)
+	// About returns information about the python executable of the toolchain.
 	About(ctx context.Context) (Info, error)
 }
 

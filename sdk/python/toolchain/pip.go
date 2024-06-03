@@ -66,12 +66,12 @@ func (p *pip) InstallDependencies(ctx context.Context, cwd string, showOutput bo
 }
 
 func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
+	args := []string{"list", "-v", "--format", "json"}
 	if !transitive {
 		args = append(args, "--not-required")
 	}
 
-	cmd, err := p.Command(ctx, args...)
+	cmd, err := p.ModuleCommand(ctx, "pip", args...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +105,11 @@ func (p *pip) Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 	cmd.Env = ActivateVirtualEnv(os.Environ(), p.virtualenvPath)
 
 	return cmd, nil
+}
+
+func (p *pip) ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error) {
+	moduleArgs := append([]string{"-m", module}, args...)
+	return p.Command(ctx, moduleArgs...)
 }
 
 func (p *pip) About(ctx context.Context) (Info, error) {
