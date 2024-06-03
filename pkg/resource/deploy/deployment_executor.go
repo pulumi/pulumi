@@ -255,7 +255,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				if err := ex.handleSingleEvent(event.Event); err != nil {
 					if !result.IsBail(err) {
 						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+						eventUrn, urnErr := ex.deployment.generateEventURN(event.Event)
+						if urnErr == nil {
+							ex.reportError(eventUrn, err)
+						}
 					}
 					cancel()
 					return false, result.BailError(err)
