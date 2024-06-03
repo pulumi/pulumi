@@ -51,7 +51,7 @@ class LanguageRuntimeStub:
     ]
     """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects."""
     About: grpc.UnaryUnaryMultiCallable[
-        google.protobuf.empty_pb2.Empty,
+        pulumi.language_pb2.AboutRequest,
         pulumi.language_pb2.AboutResponse,
     ]
     """About returns information about the runtime for this language."""
@@ -122,7 +122,7 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     
     def About(
         self,
-        request: google.protobuf.empty_pb2.Empty,
+        request: pulumi.language_pb2.AboutRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.language_pb2.AboutResponse:
         """About returns information about the runtime for this language."""

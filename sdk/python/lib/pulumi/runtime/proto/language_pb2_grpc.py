@@ -40,7 +40,7 @@ class LanguageRuntimeStub(object):
                 )
         self.About = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/About',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                request_serializer=pulumi_dot_language__pb2.AboutRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.AboutResponse.FromString,
                 )
         self.GetProgramDependencies = channel.unary_unary(
@@ -182,7 +182,7 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
             ),
             'About': grpc.unary_unary_rpc_method_handler(
                     servicer.About,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    request_deserializer=pulumi_dot_language__pb2.AboutRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.AboutResponse.SerializeToString,
             ),
             'GetProgramDependencies': grpc.unary_unary_rpc_method_handler(
@@ -307,7 +307,7 @@ class LanguageRuntime(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/About',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_language__pb2.AboutRequest.SerializeToString,
             pulumi_dot_language__pb2.AboutResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

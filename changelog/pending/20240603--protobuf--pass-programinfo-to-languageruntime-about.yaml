@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: protobuf
+  description: Pass ProgramInfo to LanguageRuntime.About

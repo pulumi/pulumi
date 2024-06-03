@@ -34,6 +34,17 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_AboutRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.AboutRequest)) {
+    throw new Error('Expected argument of type pulumirpc.AboutRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AboutRequest(buffer_arg) {
+  return pulumi_language_pb.AboutRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_AboutResponse(arg) {
   if (!(arg instanceof pulumi_language_pb.AboutResponse)) {
     throw new Error('Expected argument of type pulumirpc.AboutResponse');
@@ -311,10 +322,10 @@ about: {
     path: '/pulumirpc.LanguageRuntime/About',
     requestStream: false,
     responseStream: false,
-    requestType: google_protobuf_empty_pb.Empty,
+    requestType: pulumi_language_pb.AboutRequest,
     responseType: pulumi_language_pb.AboutResponse,
-    requestSerialize: serialize_google_protobuf_Empty,
-    requestDeserialize: deserialize_google_protobuf_Empty,
+    requestSerialize: serialize_pulumirpc_AboutRequest,
+    requestDeserialize: deserialize_pulumirpc_AboutRequest,
     responseSerialize: serialize_pulumirpc_AboutResponse,
     responseDeserialize: deserialize_pulumirpc_AboutResponse,
   },

@@ -42,6 +42,29 @@ export namespace ProgramInfo {
     }
 }
 
+export class AboutRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): AboutRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AboutRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AboutRequest): AboutRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AboutRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AboutRequest;
+    static deserializeBinaryFromReader(message: AboutRequest, reader: jspb.BinaryReader): AboutRequest;
+}
+
+export namespace AboutRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+    }
+}
+
 export class AboutResponse extends jspb.Message { 
     getExecutable(): string;
     setExecutable(value: string): AboutResponse;
