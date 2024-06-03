@@ -952,6 +952,10 @@ func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCl
 		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %s", resp.Status)
+	}
+
 	return resp.Body, nil
 }
 
