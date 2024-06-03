@@ -431,6 +431,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		chdir(t, tempdir)
 
 		args := newArgs{
+			chooseTemplate:    chooseTemplate,
 			interactive:       false,
 			yes:               true,
 			secretsProvider:   "default",
@@ -1055,32 +1056,57 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
 	tests := []struct {
-		input    string
+		argument string
+		prompted string
 		expected string
 	}{
 		{
 			"typescript",
+			"",
 			"typescript",
 		},
 		{
 			"https://github.com/pulumi/templates/tree/master/yaml?foo=bar",
+			"",
 			"https://github.com/pulumi/templates/tree/master/yaml",
+		},
+		{
+			"",
+			"python",
+			"python",
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
-		t.Run(tt.input, func(t *testing.T) {
+		name := tt.argument
+		if name == "" {
+			name = tt.prompted
+		}
+		t.Run(name, func(t *testing.T) {
 			tempdir := tempProjectDir(t)
 			chdir(t, tempdir)
+			uniqueProjectName := filepath.Base(tempdir) + "test"
+
+			chooseTemplateMock := func(templates []workspace.Template, opts display.Options,
+			) (workspace.Template, error) {
+				for _, template := range templates {
+					if template.Name == tt.prompted {
+						return template, nil
+					}
+				}
+				return workspace.Template{}, errors.New("template not found")
+			}
 
 			args := newArgs{
-				interactive:       false,
+				interactive:       tt.prompted != "",
 				generateOnly:      true,
 				yes:               true,
+				templateMode:      true,
 				name:              projectName,
-				prompt:            promptForValue,
+				prompt:            promptMock(uniqueProjectName, stackName),
+				chooseTemplate:    chooseTemplateMock,
 				secretsProvider:   "default",
-				templateNameOrURL: tt.input,
+				templateNameOrURL: tt.argument,
 			}
 
 			err := runNew(context.Background(), args)

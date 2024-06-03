@@ -57,6 +57,8 @@ const (
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error)
 
+type chooseTemplateFunc func(templates []workspace.Template, opts display.Options) (workspace.Template, error)
+
 type newArgs struct {
 	configArray       []string
 	configPath        bool
@@ -68,6 +70,7 @@ type newArgs struct {
 	name              string
 	offline           bool
 	prompt            promptForValueFunc
+	chooseTemplate    chooseTemplateFunc
 	secretsProvider   string
 	stack             string
 	templateNameOrURL string
@@ -201,7 +204,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else {
-		if template, err = chooseTemplate(templates, opts); err != nil {
+		if template, err = args.chooseTemplate(templates, opts); err != nil {
 			return err
 		}
 	}
@@ -326,8 +329,13 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	// Set the pulumi:template tag to the template name or URL.
+	templateTag := template.Name
+	if args.templateNameOrURL != "" {
+		templateTag = sanitizeTemplate(args.templateNameOrURL)
+	}
 	proj.AddConfigStackTags(map[string]string{
-		apitype.ProjectTemplateTag: sanitizeTemplate(args.templateNameOrURL),
+		apitype.ProjectTemplateTag: templateTag,
 	})
 
 	if err = workspace.SaveProject(proj); err != nil {
@@ -450,8 +458,9 @@ func useSpecifiedDir(dir string) (string, error) {
 //nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	args := newArgs{
-		interactive: cmdutil.Interactive(),
-		prompt:      promptForValue,
+		interactive:    cmdutil.Interactive(),
+		prompt:         promptForValue,
+		chooseTemplate: chooseTemplate,
 	}
 
 	getTemplates := func() ([]workspace.Template, error) {

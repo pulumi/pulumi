@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Populate pulumi:template tag also for interactively selected templates
