@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/service
+  description: Improve error reporting when policy pack download fails
