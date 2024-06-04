@@ -3,6 +3,7 @@
 package pager
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -26,7 +27,11 @@ func runSystemPager(pager []string, stdout, stderr io.Writer, f func(context.Con
 	go func() {
 		done <- func() error {
 			defer stdin.Close()
-			return f(ctx, stdin)
+
+			w := bufio.NewWriter(stdin)
+			defer w.Flush()
+
+			return f(ctx, w)
 		}()
 	}()
 

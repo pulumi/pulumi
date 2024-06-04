@@ -28,5 +28,6 @@ func Run(pager string, stdout, stderr io.Writer, f func(context.Context, io.Writ
 			return runSystemPager(pagerCommand, stdout, stderr, f)
 		}
 	}
-	return runTeaPager(stdout, f)
+
+	return runNoopPager(stdout, f)
 }
