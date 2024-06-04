@@ -2735,6 +2735,10 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		}
 	}
 
+	if len(props) == 0 {
+		fmt.Fprintf(w, "%spass\n", indent)
+	}
+
 	indent = "    "
 	fmt.Fprintf(w, "elif False:\n")
 	fmt.Fprintf(w, "%s%sDict: TypeAlias = Mapping[str, Any]\n", indent, name)
