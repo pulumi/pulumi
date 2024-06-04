@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Autoinstall dependencies using Poetry in GetRequiredPlugins

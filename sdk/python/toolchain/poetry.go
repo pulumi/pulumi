@@ -124,6 +124,15 @@ func (p *poetry) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
+func (p *poetry) EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	_, err := p.virtualenvPath(ctx)
+	if err != nil {
+		// Couldn't get the virtualenv path, this means it does not exist. Let's create it.
+		return p.InstallDependencies(ctx, cwd, showOutput, infoWriter, errorWriter)
+	}
+	return nil
+}
+
 func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
 	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path") //nolint:gosec
 	pathCmd.Dir = p.directory
