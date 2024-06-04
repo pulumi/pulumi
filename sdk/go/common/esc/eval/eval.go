@@ -639,6 +639,11 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor)
 
 	for len(accessors) > 0 {
 		accessor := accessors[0]
+		if receiver == nil {
+			e.errorf(x.repr.syntax(), "internal error: no receiver")
+			return e.invalidPropertyAccess(x.repr.syntax(), accessors)
+		}
+
 		switch repr := receiver.repr.(type) {
 		case *arrayExpr:
 			index, ok := e.arrayIndex(x.repr.syntax(), accessor.accessor, len(repr.elements))
