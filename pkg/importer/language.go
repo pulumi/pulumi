@@ -18,6 +18,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
+	"strings"
+
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 
@@ -64,18 +68,98 @@ func (e *DiagnosticsError) String() string {
 
 func removeDuplicatePathedValues(pathedValues []PathedLiteralValue) []PathedLiteralValue {
 	uniqueValues := make([]PathedLiteralValue, 0)
-	occurrences := make(map[string]int)
+	identityOccurrences := make(map[string]int)
+	outputOccurrences := make(map[string]int)
 	for _, pathedValue := range pathedValues {
-		occurrences[pathedValue.Value]++
+		if pathedValue.Identity {
+			identityOccurrences[pathedValue.Value]++
+		} else {
+			outputOccurrences[pathedValue.Value]++
+		}
 	}
 
 	for _, pathedValue := range pathedValues {
-		if occurrences[pathedValue.Value] > 1 {
+		if pathedValue.Identity && identityOccurrences[pathedValue.Value] > 1 {
+			// an identity value that has occurred multiple times is not unique
 			continue
 		}
+
+		if !pathedValue.Identity && outputOccurrences[pathedValue.Value] > 1 {
+			// an output value that has occurred multiple times is not unique
+			continue
+		}
+
 		uniqueValues = append(uniqueValues, pathedValue)
 	}
 	return uniqueValues
+}
+
+func nextPropertyPath(path hcl.Traversal, key hcl.Traverser) hcl.Traversal {
+	return append(path, key)
+}
+
+func createPathedValue(
+	root string,
+	property resource.PropertyValue,
+	currentPath hcl.Traversal,
+) []PathedLiteralValue {
+	pathedLiteralValues := make([]PathedLiteralValue, 0)
+	if property.IsNull() {
+		return pathedLiteralValues
+	}
+
+	if property.IsString() {
+		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
+			Root:  root,
+			Value: property.StringValue(),
+			ExpressionReference: &model.ScopeTraversalExpression{
+				RootName:  root,
+				Traversal: currentPath,
+			},
+		})
+	}
+
+	if property.IsSecret() {
+		// unwrap the secret
+		secret := property.SecretValue()
+		return createPathedValue(root, secret.Element, currentPath)
+	}
+
+	if property.IsArray() {
+		values := property.ArrayValue()
+		for i, element := range values {
+			nextPath := nextPropertyPath(currentPath, hcl.TraverseIndex{Key: cty.NumberIntVal(int64(i))})
+			foundLiterals := createPathedValue(root, element, nextPath)
+			pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
+		}
+	}
+
+	if property.IsObject() {
+		propertyMap := property.ObjectValue()
+		foundLiterals := createPathedValues(root, propertyMap, currentPath)
+		pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
+	}
+
+	return pathedLiteralValues
+}
+
+func createPathedValues(
+	root string,
+	data resource.PropertyMap,
+	currentPath hcl.Traversal,
+) []PathedLiteralValue {
+	pathedLiteralValues := make([]PathedLiteralValue, 0)
+	for key, value := range data {
+		nextPath := nextPropertyPath(currentPath, hcl.TraverseAttr{Name: string(key)})
+		foundLiterals := createPathedValue(root, value, nextPath)
+		pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
+	}
+
+	return pathedLiteralValues
+}
+
+func sanitizeName(name string) string {
+	return strings.ReplaceAll(name, ".", "_")
 }
 
 func createImportState(states []*resource.State, names NameTable) ImportState {
@@ -86,10 +170,11 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 			continue
 		}
 
-		name := state.URN.Name()
+		name := sanitizeName(state.URN.Name())
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:  name,
-			Value: resourceID,
+			Root:     name,
+			Value:    resourceID,
+			Identity: true,
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName: name,
 				Traversal: hcl.Traversal{
@@ -98,14 +183,29 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 				},
 			},
 		})
+
+		initialPath := hcl.Traversal{hcl.TraverseRoot{Name: name}}
+		literalValuesFromInputs := createPathedValues(name, state.Outputs, initialPath)
+		pathedLiteralValues = append(pathedLiteralValues, literalValuesFromInputs...)
 	}
 
 	// remove duplicates so that if multiple resources have the same ID, we don't refer to one or the other
 	// instead, we just maintain the literal value as is.
-	valuesWithoutDuplicates := removeDuplicatePathedValues(pathedLiteralValues)
+	// Similarly, when pathed resource outputs have the same value, remove them because they would be ambiguous.
+	// for example
+	// - resourceA.outputA = "value"
+	// - resourceB.outputB = "value"
+	// in this case we remove both outputs because choosing one would be arbitrary.
+	values := removeDuplicatePathedValues(pathedLiteralValues)
+
+	// sort values such that identities come first
+	sort.Slice(values, func(i, j int) bool {
+		return values[i].Identity && !values[j].Identity
+	})
+
 	return ImportState{
 		Names:               names,
-		PathedLiteralValues: valuesWithoutDuplicates,
+		PathedLiteralValues: values,
 	}
 }
 
@@ -113,39 +213,65 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
 	names NameTable,
 ) error {
-	var hcl2Text bytes.Buffer
+	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
+		var hcl2Text bytes.Buffer
+
+		for i, state := range states {
+			hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			pre := ""
+			if i > 0 {
+				pre = "\n"
+			}
+			_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+			contract.IgnoreError(err)
+		}
+
+		parser := syntax.NewParser()
+		if err := parser.ParseFile(&hcl2Text, "anonymous.pp"); err != nil {
+			return nil, nil, err
+		}
+		if parser.Diagnostics.HasErrors() {
+			// HCL2 text generation should always generate proper code.
+			return nil, nil, fmt.Errorf("internal error: %w", &DiagnosticsError{
+				diagnostics:         parser.Diagnostics,
+				newDiagnosticWriter: parser.NewDiagnosticWriter,
+			})
+		}
+
+		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+	}
 
 	importState := createImportState(states, names)
-	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
-		if err != nil {
+	program, diags, err := generateProgramText(importState)
+	if err != nil {
+		if strings.Contains(err.Error(), "circular reference") {
+			// hitting an edge case when guessing references between resources
+			// this happens when an input of a _parent_ resource is equal to the ID of a _child_ resource
+			// for example importing the following program:
+			//    const bucket = new aws.s3.Bucket("my-bucket", {
+			//        website: {
+			//            indexDocument: "index.html",
+			//        },
+			//    });
+			//
+			//    const bucketObject = new aws.s3.BucketObject("index.html", {
+			//        bucket: bucket.id
+			//    });
+			// fallback to the old code path where we don't guess references
+			// and instead just generate the code with the outputs as literals
+			program, diags, err = generateProgramText(ImportState{Names: names})
+			if err != nil {
+				return nil
+			}
+		} else {
 			return err
 		}
-
-		pre := ""
-		if i > 0 {
-			pre = "\n"
-		}
-		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
-		contract.IgnoreError(err)
 	}
 
-	parser := syntax.NewParser()
-	if err := parser.ParseFile(&hcl2Text, "anonymous.pp"); err != nil {
-		return err
-	}
-	if parser.Diagnostics.HasErrors() {
-		// HCL2 text generation should always generate proper code.
-		return fmt.Errorf("internal error: %w", &DiagnosticsError{
-			diagnostics:         parser.Diagnostics,
-			newDiagnosticWriter: parser.NewDiagnosticWriter,
-		})
-	}
-
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
-	if err != nil {
-		return err
-	}
 	if diags.HasErrors() {
 		// It is possible that the provided states do not contain appropriately-shaped inputs, so this may be user
 		// error.

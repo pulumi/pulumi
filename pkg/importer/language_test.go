@@ -20,6 +20,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
@@ -86,4 +88,80 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularReferences(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	generatedProgram := ""
+	generator := func(_ io.Writer, p *pcl.Program) error {
+		for _, content := range p.Source() {
+			generatedProgram += content
+		}
+		return nil
+	}
+
+	// Create a circular reference between two resources.
+	// here the bucket object references the bucket by its ID,
+	// however, the ID of the bucket object is the same value as firstBucket.website.indexDocument
+	// which creates a circular reference between the two.
+	// In this case, generating the PCL would fail with a circular reference error but we retry the codegen
+	// without guessing the dependencies between the resources.
+	resources := []apitype.ResourceV3{
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
+			ID:     "provider-generated-bucket-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucket:Bucket",
+			Outputs: map[string]interface{}{
+				"website": map[string]interface{}{
+					"indexDocument": "index.html",
+				},
+			},
+			Inputs: map[string]interface{}{
+				"website": map[string]interface{}{
+					"indexDocument": "index.html",
+				},
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::index.html",
+			ID:     "index.html",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "STANDARD",
+			},
+		},
+	}
+
+	states := make([]*resource.State, 0)
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		if !assert.NoError(t, err) {
+			t.Fatal()
+		}
+		states = append(states, state)
+	}
+
+	var names NameTable
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names)
+	assert.NoError(t, err)
+	// notice here the generated program doesn't have any references because
+	// we retried the codegen without guessing the dependencies between the resources.
+	expectedCode := `resource firstBucket "aws:s3/bucket:Bucket" {
+    website ={
+indexDocument = "index.html"}
+
+}
+
+resource index_html "aws:s3/bucketObject:BucketObject" {
+    bucket = "provider-generated-bucket-id-abc123"
+    storageClass = "STANDARD"
+
+}
+`
+	assert.Equal(t, expectedCode, generatedProgram)
 }

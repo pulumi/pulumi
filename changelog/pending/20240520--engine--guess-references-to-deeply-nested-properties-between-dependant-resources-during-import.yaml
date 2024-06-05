@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Guess references to (deeply nested) properties between dependant resources during import

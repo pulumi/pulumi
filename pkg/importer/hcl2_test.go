@@ -506,6 +506,133 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 	assert.Equal(t, expectedCode, hcl2Text.String(), "Generated HCL2 code does not match expected code")
 }
 
+func TestGenerateHCL2DefinitionsReplacesDeeplyNestedReferencesToLiterals(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			ID:     "provider-generated-bucket-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucket:Bucket",
+			Outputs: map[string]interface{}{
+				"someValue": "STANDARD",
+				"fromObject": map[string]interface{}{
+					"deeply": map[string]interface{}{
+						"nested": "nested value 123",
+					},
+				},
+				"fromArray": []interface{}{
+					map[string]interface{}{
+						"element": "array value 123",
+					},
+				},
+				"fromPlainArray": []interface{}{
+					"plain array value 123",
+				},
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject1",
+			ID:     "provider-generated-bucket-object-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "STANDARD",
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject2",
+			ID:     "provider-generated-bucket-object-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "nested value 123",
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject3",
+			ID:     "provider-generated-bucket-object-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "array value 123",
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject4",
+			ID:     "provider-generated-bucket-object-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "plain array value 123",
+			},
+		},
+	}
+
+	states := make([]*resource.State, 0)
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		if !assert.NoError(t, err) {
+			t.Fatal()
+		}
+		states = append(states, state)
+	}
+
+	importState := createImportState(states, names)
+
+	var hcl2Text strings.Builder
+	for i, state := range states {
+		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		pre := ""
+		if i > 0 {
+			pre = "\n"
+		}
+		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+		contract.IgnoreError(err)
+	}
+
+	expectedCode := `resource exampleBucket "aws:s3/bucket:Bucket" {
+
+}
+
+resource exampleBucketObject1 "aws:s3/bucketObject:BucketObject" {
+    bucket = exampleBucket.id
+    storageClass = exampleBucket.someValue
+
+}
+
+resource exampleBucketObject2 "aws:s3/bucketObject:BucketObject" {
+    bucket = exampleBucket.id
+    storageClass = exampleBucket.fromObject.deeply.nested
+
+}
+
+resource exampleBucketObject3 "aws:s3/bucketObject:BucketObject" {
+    bucket = exampleBucket.id
+    storageClass = exampleBucket.fromArray[0].element
+
+}
+
+resource exampleBucketObject4 "aws:s3/bucketObject:BucketObject" {
+    bucket = exampleBucket.id
+    storageClass = exampleBucket.fromPlainArray[0]
+
+}
+`
+
+	assert.Equal(t, expectedCode, hcl2Text.String(), "Generated HCL2 code does not match expected code")
+}
+
 func TestSimplerType(t *testing.T) {
 	t.Parallel()
 

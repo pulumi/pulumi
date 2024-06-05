@@ -41,6 +41,7 @@ var Null = &model.Variable{
 type PathedLiteralValue struct {
 	Root                string
 	Value               string
+	Identity            bool
 	ExpressionReference *model.ScopeTraversalExpression
 }
 
@@ -86,7 +87,7 @@ func GenerateHCL2Definition(
 	}
 
 	var items []model.BodyItem
-	name := state.URN.Name()
+	name := sanitizeName(state.URN.Name())
 	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
 	// the resource block.
 	if mappedName, ok := importState.Names[state.URN]; ok {
@@ -95,12 +96,12 @@ func GenerateHCL2Definition(
 			Value: &model.TemplateExpression{
 				Parts: []model.Expression{
 					&model.LiteralValueExpression{
-						Value: cty.StringVal(name),
+						Value: cty.StringVal(state.URN.Name()),
 					},
 				},
 			},
 		})
-		name = mappedName
+		name = sanitizeName(mappedName)
 	}
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
