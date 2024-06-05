@@ -71,6 +71,7 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 	cmd.AddCommand(newEnvVersionTagCmd(env))
 	cmd.AddCommand(newEnvVersionHistoryCmd(env))
 	cmd.AddCommand(newEnvVersionRetractCmd(env))
+	cmd.AddCommand(newEnvVersionRollbackCmd(env))
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
 

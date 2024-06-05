@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newEnvRollbackCmd(env *envCommand) *cobra.Command {
+func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rollback [<org-name>/]<environment-name>@<version>",
 		Args:  cobra.ExactArgs(1),
