@@ -36,7 +36,7 @@ go_library(
         "//sdk/go/common/util/retry",
         "//sdk/go/common/version",
         "//sdk/nodejs/npm",
-        "//sdk/python",
+        "//sdk/python/toolchain",
         "@com_github_blang_semver//:semver",
         "@com_github_cheggaaa_pb//:pb",
         "@com_github_djherbis_times//:times",

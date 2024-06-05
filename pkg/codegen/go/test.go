@@ -10,17 +10,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
 	dir := filepath.Dir(path)
-	ex, err := executable.FindExecutable("go")
+	ex, err := runfiles.Rlocation(os.Getenv("GO"))
 	require.NoError(t, err)
+
+	oldGoPath := os.Getenv("GOPATH")
+	defer os.Setenv("GOPATH", oldGoPath)
+	os.Setenv("GOPATH", os.Getenv("TEST_TMPDIR")+"/go")
 
 	// We remove go.mod to ensure tests are reproducible.
 	goMod := filepath.Join(dir, "go.mod")
@@ -51,8 +55,12 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 
 func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
 	dir := filepath.Dir(path)
-	ex, err := executable.FindExecutable("go")
+	ex, err := runfiles.Rlocation(os.Getenv("GO"))
 	require.NoError(t, err)
+
+	oldGoPath := os.Getenv("GOPATH")
+	defer os.Setenv("GOPATH", oldGoPath)
+	os.Setenv("GOPATH", os.Getenv("TEST_TMPDIR")+"/go")
 
 	err = integration.RunCommand(t, "go tidy after replace",
 		[]string{ex, "mod", "tidy"},

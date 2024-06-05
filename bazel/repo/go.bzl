@@ -209,14 +209,20 @@ def go_deps():
     go_repository(
         name = "com_github_alecthomas_assert_v2",
         importpath = "github.com/alecthomas/assert/v2",
-        sum = "h1:mAsH2wmvjsuvyBvAmCtm7zFsBlb8mIHx5ySLVdDZXL0=",
-        version = "v2.3.0",
+        sum = "h1:o3WJwILtexrEUk3cUVal3oiQY2tfgr/FHWiz/v2n4FU=",
+        version = "v2.6.0",
     )
     go_repository(
         name = "com_github_alecthomas_chroma",
         importpath = "github.com/alecthomas/chroma",
         sum = "h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=",
         version = "v0.10.0",
+    )
+    go_repository(
+        name = "com_github_alecthomas_chroma_v2",
+        importpath = "github.com/alecthomas/chroma/v2",
+        sum = "h1:VP72+99Fb2zEcYM0MeaWJmV+xQvz5v5cxRHd+ooU1lI=",
+        version = "v2.13.0",
     )
     go_repository(
         name = "com_github_alecthomas_kingpin_v2",
@@ -233,8 +239,8 @@ def go_deps():
     go_repository(
         name = "com_github_alecthomas_repr",
         importpath = "github.com/alecthomas/repr",
-        sum = "h1:HAzS41CIzNW5syS8Mf9UwXhNH1J9aix/BvDRf1Ml2Yk=",
-        version = "v0.2.0",
+        sum = "h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=",
+        version = "v0.4.0",
     )
     go_repository(
         name = "com_github_alecthomas_template",
@@ -603,6 +609,12 @@ def go_deps():
         version = "v1.6.1",
     )
     go_repository(
+        name = "com_github_azure_azure_sdk_for_go_sdk_resourcemanager_compute_armcompute_v4",
+        importpath = "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4",
+        sum = "h1:UPeCRD+XY7QlaGQte2EVI2iOcWvUYA2XY8w5T/8v0NQ=",
+        version = "v4.2.1",
+    )
+    go_repository(
         name = "com_github_azure_azure_sdk_for_go_sdk_resourcemanager_compute_armcompute_v5",
         importpath = "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5",
         sum = "h1:QfV5XZt6iNa2aWMAt96CZEbfJ7kgG/qYIpq465Shr5E=",
@@ -625,6 +637,18 @@ def go_deps():
         importpath = "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/managementgroups/armmanagementgroups",
         sum = "h1:pPvTJ1dY0sA35JOeFq6TsY2xj6Z85Yo23Pj4wCCvu4o=",
         version = "v1.0.0",
+    )
+    go_repository(
+        name = "com_github_azure_azure_sdk_for_go_sdk_resourcemanager_network_armnetwork",
+        importpath = "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork",
+        sum = "h1:QM6sE5k2ZT/vI5BEe0r7mqjsUSnhVBFbOsVkEuaEfiA=",
+        version = "v1.1.0",
+    )
+    go_repository(
+        name = "com_github_azure_azure_sdk_for_go_sdk_resourcemanager_network_armnetwork_v2",
+        importpath = "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2",
+        sum = "h1:bWh0Z2rOEDfB/ywv/l0iHN1JgyazE6kW/aIA89+CEK0=",
+        version = "v2.2.1",
     )
     go_repository(
         name = "com_github_azure_azure_sdk_for_go_sdk_resourcemanager_network_armnetwork_v4",
@@ -923,8 +947,8 @@ def go_deps():
     go_repository(
         name = "com_github_charmbracelet_bubbletea",
         importpath = "github.com/charmbracelet/bubbletea",
-        sum = "h1:uaQIKx9Ai6Gdh5zpTbGiWpytMU+CfsPp06RaW2cx/SY=",
-        version = "v0.24.2",
+        sum = "h1:bAfwk7jRz7FKFl9RzlIULPkStffg5k6pNt5dywy4TcM=",
+        version = "v0.25.0",
     )
     go_repository(
         name = "com_github_charmbracelet_glamour",
@@ -1429,8 +1453,8 @@ def go_deps():
     go_repository(
         name = "com_github_dlclark_regexp2",
         importpath = "github.com/dlclark/regexp2",
-        sum = "h1:F1rxgk7p4uKjwIQxBs9oAXe5CqrXlCduYEJvrF4u93E=",
-        version = "v1.4.0",
+        sum = "h1:G/nrcoOa7ZXlpoa/91N3X7mM3r8eIlMBBJZvsz/mxKI=",
+        version = "v1.11.0",
     )
     go_repository(
         name = "com_github_dnaeon_go_vcr",
@@ -1447,8 +1471,8 @@ def go_deps():
     go_repository(
         name = "com_github_docker_distribution",
         importpath = "github.com/docker/distribution",
-        sum = "h1:a5mlkVzth6W5A4fOsS3D2EO5BUmsJpcB+cRlLU7cSug=",
-        version = "v2.7.1+incompatible",
+        sum = "h1:T3de5rq0dB1j30rp0sA2rER+m322EBzniBPB6ZIzuh8=",
+        version = "v2.8.2+incompatible",
     )
     go_repository(
         name = "com_github_docker_docker",
@@ -1791,6 +1815,12 @@ def go_deps():
         importpath = "github.com/go-ini/ini",
         sum = "h1:Mujh4R/dH6YL8bxuISne3xX2+qcQ9p0IxKAP6ExWoUo=",
         version = "v1.25.4",
+    )
+    go_repository(
+        name = "com_github_go_jose_go_jose_v3",
+        importpath = "github.com/go-jose/go-jose/v3",
+        sum = "h1:fFKWeig/irsp7XD2zBxvnmA/XaRWp5V3CBsZXJF7G7k=",
+        version = "v3.0.3",
     )
     go_repository(
         name = "com_github_go_kit_kit",
@@ -2522,8 +2552,8 @@ def go_deps():
     go_repository(
         name = "com_github_hashicorp_go_retryablehttp",
         importpath = "github.com/hashicorp/go-retryablehttp",
-        sum = "h1:ZQgVdpTdAL7WpMIwLzCfbalOcSUdkDZnpUv3/+BxzFA=",
-        version = "v0.7.4",
+        sum = "h1:bJj+Pj19UZMIweq/iie+1u5YCdGrnxCT9yvm0e+Nd5M=",
+        version = "v0.7.5",
     )
     go_repository(
         name = "com_github_hashicorp_go_rootcerts",
@@ -2546,8 +2576,8 @@ def go_deps():
     go_repository(
         name = "com_github_hashicorp_go_secure_stdlib_parseutil",
         importpath = "github.com/hashicorp/go-secure-stdlib/parseutil",
-        sum = "h1:om4Al8Oy7kCm/B86rLCLah4Dt5Aa0Fr5rYBG60OzwHQ=",
-        version = "v0.1.6",
+        sum = "h1:iBt4Ew4XEGLfh6/bPk4rSYmuZJGizr6/x/AEizP0CQc=",
+        version = "v0.1.8",
     )
     go_repository(
         name = "com_github_hashicorp_go_secure_stdlib_password",
@@ -2570,8 +2600,8 @@ def go_deps():
     go_repository(
         name = "com_github_hashicorp_go_sockaddr",
         importpath = "github.com/hashicorp/go-sockaddr",
-        sum = "h1:ztczhD1jLxIRjVejw8gFomI1BQZOe2WoVOu0SyteCQc=",
-        version = "v1.0.2",
+        sum = "h1:RSG8rKU28VTUTvEKghe5gIhIQpv8evvNpnDEyqO4u9I=",
+        version = "v1.0.6",
     )
     go_repository(
         name = "com_github_hashicorp_go_syslog",
@@ -2648,9 +2678,8 @@ def go_deps():
     go_repository(
         name = "com_github_hashicorp_vault_api",
         importpath = "github.com/hashicorp/vault/api",
-        replace = "github.com/hashicorp/vault/api",
-        sum = "h1:ab7dI6W8DuCY7yCU8blo0UCYl2oHre/dloCmzMWg9w8=",
-        version = "v1.9.0",
+        sum = "h1:meCpJSesvzQyao8FCOgk2fGdoADAnbDu2WPJN1lDLJ4=",
+        version = "v1.12.0",
     )
     go_repository(
         name = "com_github_hashicorp_vault_sdk",
@@ -2717,6 +2746,12 @@ def go_deps():
         importpath = "github.com/hpcloud/tail",
         sum = "h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=",
         version = "v1.0.0",
+    )
+    go_repository(
+        name = "com_github_huandu_xstrings",
+        importpath = "github.com/huandu/xstrings",
+        sum = "h1:L18LIDzqlW6xN2rEkpdV8+oL/IXWJ1APd+vsdYy4Wdw=",
+        version = "v1.3.2",
     )
     go_repository(
         name = "com_github_hudl_fargo",
@@ -3211,10 +3246,22 @@ def go_deps():
         version = "v1.1.0",
     )
     go_repository(
+        name = "com_github_masterminds_goutils",
+        importpath = "github.com/Masterminds/goutils",
+        sum = "h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=",
+        version = "v1.1.1",
+    )
+    go_repository(
         name = "com_github_masterminds_semver_v3",
         importpath = "github.com/Masterminds/semver/v3",
         sum = "h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=",
         version = "v3.1.1",
+    )
+    go_repository(
+        name = "com_github_masterminds_sprig_v3",
+        importpath = "github.com/Masterminds/sprig/v3",
+        sum = "h1:n6EPaDyLSvCEa3frruQvAiHuNp2dhBlMSmkEr+HuzGc=",
+        version = "v3.2.1",
     )
     go_repository(
         name = "com_github_matryer_is",
@@ -3363,8 +3410,8 @@ def go_deps():
     go_repository(
         name = "com_github_mitchellh_cli",
         importpath = "github.com/mitchellh/cli",
-        sum = "h1:tEElEatulEHDeedTxwckzyYMA5c86fbmNIUL1hBIiTg=",
-        version = "v1.1.0",
+        sum = "h1:OxRIeJXpAMztws/XHlN2vu6imG5Dpq+j61AzAX5fLng=",
+        version = "v1.1.5",
     )
     go_repository(
         name = "com_github_mitchellh_copystructure",
@@ -4047,14 +4094,14 @@ def go_deps():
     go_repository(
         name = "com_github_pulumi_esc",
         importpath = "github.com/pulumi/esc",
-        sum = "h1:+z+l8cuwIauLSwXQS0uoI3rqB+YG4SzsZYtHfNoXBvw=",
-        version = "v0.6.2",
+        sum = "h1:HH5eEv8sgyxSpY5a8yePyqFXzA8cvBvapfH8457+mIs=",
+        version = "v0.9.1",
     )
     go_repository(
         name = "com_github_pulumi_pulumi_java_pkg",
         importpath = "github.com/pulumi/pulumi-java/pkg",
-        sum = "h1:D1i5MiiNrxYr2uJ1szcj1aQwF9DYv7TTsPmajB9dKSw=",
-        version = "v0.10.0",
+        sum = "h1:Jw9gBvyfmfOMq/EkYDm9+zGPxsDAA8jfeMpHmtZ+1oA=",
+        version = "v0.11.0",
     )
     go_repository(
         name = "com_github_pulumi_pulumi_yaml",
@@ -4137,8 +4184,8 @@ def go_deps():
     go_repository(
         name = "com_github_ryanuber_columnize",
         importpath = "github.com/ryanuber/columnize",
-        sum = "h1:j1Wcmh8OrK4Q7GXY+V7SVSY8nUWQxHW5TkBe7YUl+2s=",
-        version = "v2.1.0+incompatible",
+        sum = "h1:C89EOx/XBWwIXl8wm8OPJBd7kPF25UfsK2X7Ph/zCAk=",
+        version = "v2.1.2+incompatible",
     )
     go_repository(
         name = "com_github_ryanuber_go_glob",
@@ -5513,8 +5560,8 @@ def go_deps():
     go_repository(
         name = "dev_gocloud_secrets_hashivault",
         importpath = "gocloud.dev/secrets/hashivault",
-        sum = "h1:AAeGJXr0tiHHJgg5tL8atOGktB4eK9EJAqkZbPKAcOo=",
-        version = "v0.27.0",
+        sum = "h1:5ehGtUBP29DFAgAs6bPw7fVSgqQ3TxaoK2xVcLp1x+c=",
+        version = "v0.37.0",
     )
     go_repository(
         name = "ht_sr_git_sbinet_gg",
@@ -6060,14 +6107,14 @@ def go_deps():
     go_repository(
         name = "org_golang_x_crypto",
         importpath = "golang.org/x/crypto",
-        sum = "h1:g1v0xeRhjcugydODzvb3mEM9SQ0HGp9s/nh3COQ/C30=",
-        version = "v0.22.0",
+        sum = "h1:mnl8DM0o513X8fdIkmyFE/5hTYxbwYOjDS/+rK6qpRI=",
+        version = "v0.24.0",
     )
     go_repository(
         name = "org_golang_x_exp",
         importpath = "golang.org/x/exp",
-        sum = "h1:Q8/wZp0KX97QFTc2ywcOE0YRjZPVIx+MXInMzdvQqcA=",
-        version = "v0.0.0-20240119083558-1b970713d09a",
+        sum = "h1:LoYXNGAShUG3m/ehNk4iFctuhGX/+R1ZpfJ4/ia80JM=",
+        version = "v0.0.0-20240604190554-fc45aab8b7f8",
     )
     go_repository(
         name = "org_golang_x_image",
@@ -6090,14 +6137,14 @@ def go_deps():
     go_repository(
         name = "org_golang_x_mod",
         importpath = "golang.org/x/mod",
-        sum = "h1:dGoOF9QVLYng8IHTm7BAyWqCqSheQ5pYWGhzW00YJr0=",
-        version = "v0.14.0",
+        sum = "h1:5+9lSbEzPSdWkH32vYPBwEpX8KwDbM52Ud9xBUvNlb0=",
+        version = "v0.18.0",
     )
     go_repository(
         name = "org_golang_x_net",
         importpath = "golang.org/x/net",
-        sum = "h1:7EYJ93RZ9vYSZAIb2x3lnuvqO5zneoD6IvWjuhfxjTs=",
-        version = "v0.23.0",
+        sum = "h1:soB7SVo0PWrY4vPW/+ay0jKDNScG2X9wFeYlXIvJsOQ=",
+        version = "v0.26.0",
     )
     go_repository(
         name = "org_golang_x_oauth2",
@@ -6108,20 +6155,26 @@ def go_deps():
     go_repository(
         name = "org_golang_x_sync",
         importpath = "golang.org/x/sync",
-        sum = "h1:5BMeUDZ7vkXGfEr1x9B4bRcTH4lpkTkpdh0T/J+qjbQ=",
-        version = "v0.6.0",
+        sum = "h1:YsImfSBoP9QPYL0xyKJPq0gcaJdG3rInoqxTWbfQu9M=",
+        version = "v0.7.0",
     )
     go_repository(
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
-        sum = "h1:q5f1RH2jigJ1MoAWp2KTp3gm5zAGFUTarQZ5U386+4o=",
-        version = "v0.19.0",
+        sum = "h1:rF+pYz3DAGSQAxAu1CbC7catZg4ebC4UIeIhKxBZvws=",
+        version = "v0.21.0",
+    )
+    go_repository(
+        name = "org_golang_x_telemetry",
+        importpath = "golang.org/x/telemetry",
+        sum = "h1:zf5N6UOrA487eEFacMePxjXAJctxKmyjKUsjA11Uzuk=",
+        version = "v0.0.0-20240521205824-bda55230c457",
     )
     go_repository(
         name = "org_golang_x_term",
         importpath = "golang.org/x/term",
-        sum = "h1:+ThwsDv+tYfnJFhF4L8jITxu1tdTWRTZpdsWgEgjL6Q=",
-        version = "v0.19.0",
+        sum = "h1:WVXCp+/EBEHOj53Rvu+7KiT/iElMrO8ACK16SMZ3jaA=",
+        version = "v0.21.0",
     )
     go_repository(
         name = "org_golang_x_text",
@@ -6139,8 +6192,8 @@ def go_deps():
     go_repository(
         name = "org_golang_x_tools",
         importpath = "golang.org/x/tools",
-        sum = "h1:FvmRgNOcs3kOa+T20R1uhfP9F6HgG2mfxDv1vrx1Htc=",
-        version = "v0.17.0",
+        sum = "h1:gqSGLZqv+AI9lIQzniJ0nZDRG5GBPsSi+DRNHWNz6yA=",
+        version = "v0.22.0",
     )
     go_repository(
         name = "org_golang_x_xerrors",

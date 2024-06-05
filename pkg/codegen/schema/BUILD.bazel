@@ -8,6 +8,8 @@ go_library(
         "docs_renderer.go",
         "loader.go",
         "loader_client.go",
+        "loader_js.go",
+        "loader_mmap.go",
         "loader_server.go",
         "mock_pulumi_schema.go",
         "package_reference.go",
@@ -31,7 +33,6 @@ go_library(
         "//sdk/go/common/util/rpcutil/rpcerror",
         "//sdk/go/common/workspace",
         "@com_github_blang_semver//:semver",
-        "@com_github_edsrzf_mmap_go//:mmap-go",
         "@com_github_hashicorp_hcl_v2//:hcl",
         "@com_github_natefinch_atomic//:atomic",
         "@com_github_pgavlin_goldmark//:goldmark",
@@ -46,7 +47,48 @@ go_library(
         "@in_gopkg_yaml_v3//:yaml_v3",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials/insecure",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:aix": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:android": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:illumos": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:plan9": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@com_github_edsrzf_mmap_go//:mmap-go",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 alias(

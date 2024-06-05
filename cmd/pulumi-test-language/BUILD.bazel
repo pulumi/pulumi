@@ -49,6 +49,8 @@ go_library(
         "testdata/snapshots/sdks/asset-archive-5.0.0/test.txt",
         "testdata/snapshots/sdks/fail_on_create-4.0.0/test.txt",
         "testdata/snapshots/sdks/large-4.3.2/test.txt",
+        "testdata/l2-resource-asset-archive/folder/test.txt",
+        "testdata/snapshots/projects/l2-resource-asset-archive/folder/test.txt",
     ],
     importpath = "github.com/pulumi/pulumi/cmd/pulumi-test-language",
     visibility = ["//visibility:private"],

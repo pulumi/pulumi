@@ -33,6 +33,7 @@ go_test(
         "//pkg/resource/deploy/providers",
         "//sdk/go/common/resource",
         "//sdk/go/common/tokens",
+        "@com_github_deckarep_golang_set_v2//:golang-set",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@net_pgregory_rapid//:rapid",

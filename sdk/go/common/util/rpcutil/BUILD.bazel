@@ -6,6 +6,7 @@ go_library(
         "health.go",
         "interceptor.go",
         "pty.go",
+        "pty_js.go",
         "pty_windows.go",
         "serve.go",
         "writer.go",
@@ -49,9 +50,6 @@ go_library(
             "@com_github_pkg_term//termios",
         ],
         "@io_bazel_rules_go//go/platform:ios": [
-            "@com_github_pkg_term//termios",
-        ],
-        "@io_bazel_rules_go//go/platform:js": [
             "@com_github_pkg_term//termios",
         ],
         "@io_bazel_rules_go//go/platform:linux": [

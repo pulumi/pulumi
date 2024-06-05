@@ -17,6 +17,7 @@ go_library(
         "//pkg/codegen/schema",
         "//pkg/codegen/testing/utils",
         "//pkg/testing/integration",
+        "//sdk/go/common/resource/plugin",
         "//sdk/go/common/util/cmdutil",
         "//sdk/go/common/util/executable",
         "//sdk/go/common/workspace",
