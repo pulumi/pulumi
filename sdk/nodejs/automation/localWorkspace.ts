@@ -471,8 +471,20 @@ export class LocalWorkspace implements Workspace {
      *
      * @param stackName The stack to remove
      */
-    async removeStack(stackName: string): Promise<void> {
-        await this.runPulumiCmd(["stack", "rm", "--yes", stackName]);
+    async removeStack(stackName: string, opts?: RemoveOptions): Promise<void> {
+        const args = ["stack", "rm", "--yes"];
+
+        if (opts?.force) {
+            args.push("--force");
+        }
+
+        if (opts?.preserveConfig) {
+            args.push("--preserve-config");
+        }
+
+        args.push(stackName);
+
+        await this.runPulumiCmd(args);
     }
     /**
      * Adds environments to the end of a stack's import list. Imported environments are merged in order
@@ -1106,4 +1118,16 @@ export interface ListOptions {
      * List all stacks instead of just stacks for the current project
      */
     all?: boolean;
+}
+
+export interface RemoveOptions {
+    /**
+     * Forces deletion of the stack, leaving behind any resources managed by the stack
+     */
+    force?: boolean;
+
+    /**
+     * Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack
+     */
+    preserveConfig?: boolean;
 }
