@@ -25,10 +25,10 @@ require (
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	golang.org/x/crypto v0.23.0
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.25.0
-	golang.org/x/sys v0.20.0
+	golang.org/x/crypto v0.24.0
+	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/net v0.26.0
+	golang.org/x/sys v0.21.0
 	google.golang.org/grpc v1.63.2
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -37,7 +37,7 @@ require (
 
 require (
 	github.com/charmbracelet/bubbles v0.16.1
-	github.com/charmbracelet/bubbletea v0.24.2
+	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/uuid v1.6.0
@@ -45,10 +45,10 @@ require (
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/esc v0.6.2
+	github.com/pulumi/esc v0.9.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
-	golang.org/x/term v0.20.0
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
+	golang.org/x/term v0.21.0
 	lukechampine.com/frand v1.4.2
 )
 
@@ -78,8 +78,8 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 )
 
@@ -100,7 +100,7 @@ require (
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
