@@ -236,7 +236,7 @@ func (get *envGetCommand) getEntireEnvironment(
 		return nil, fmt.Errorf("unmarshaling environment definition: %w", err)
 	}
 	if docNode.Kind != yaml.DocumentNode {
-		return nil, nil
+		return &envGetTemplateData{Definition: string(def)}, nil
 	}
 
 	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)

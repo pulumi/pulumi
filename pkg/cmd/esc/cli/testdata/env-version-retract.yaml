@@ -1,0 +1,141 @@
+run: |
+  esc env version history test --utc
+  esc env version retract test@2 --reason "plaintext secret" --replace-with @3
+  esc env version history test --utc
+  esc env version retract test@3 --reason "test retraction" --replace-with @latest
+  esc env version history test --utc
+  esc env version retract test@4
+  esc env version history test --utc
+environments:
+  test-user/test:
+    revisions:
+      - yaml:
+          values:
+            secret: oh no
+      - yaml:
+          values:
+            hello: world
+      - yaml:
+          values:
+            hello: again
+      - yaml:
+          vaues:
+            goodbye: cruel world
+stdout: |+
+  > esc env version history test --utc
+  revision 5
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 05:00:00 +0000 UTC
+
+  revision 4
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+  revision 1
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env version retract test@2 --reason plaintext secret --replace-with @3
+  > esc env version history test --utc
+  revision 5
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 05:00:00 +0000 UTC
+
+  revision 4
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+  revision 2 (retracted)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+      Retracted by Test Tester <test-tester> at 1970-01-01 02:00:00 +0000 UTC and replaced with revision 3.
+
+      plaintext secret
+
+  revision 1
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env version retract test@3 --reason test retraction --replace-with @latest
+  > esc env version history test --utc
+  revision 5
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 05:00:00 +0000 UTC
+
+  revision 4
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+  revision 3 (retracted)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 5.
+
+      test retraction
+
+  revision 2 (retracted)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+      Retracted by Test Tester <test-tester> at 1970-01-01 02:00:00 +0000 UTC and replaced with revision 3.
+
+      plaintext secret
+
+  revision 1
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+  > esc env version retract test@4
+  > esc env version history test --utc
+  revision 5
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 05:00:00 +0000 UTC
+
+  revision 4 (retracted)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 04:00:00 +0000 UTC
+
+      Retracted by Test Tester <test-tester> at 1970-01-01 04:00:00 +0000 UTC and replaced with revision 42.
+
+  revision 3 (retracted)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 03:00:00 +0000 UTC
+
+      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 5.
+
+      test retraction
+
+  revision 2 (retracted)
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 02:00:00 +0000 UTC
+
+      Retracted by Test Tester <test-tester> at 1970-01-01 02:00:00 +0000 UTC and replaced with revision 3.
+
+      plaintext secret
+
+  revision 1
+  Author: Test Tester <test-tester>
+  Date:   1970-01-01 01:00:00 +0000 UTC
+
+stderr: |
+  > esc env version history test --utc
+  > esc env version retract test@2 --reason plaintext secret --replace-with @3
+  > esc env version history test --utc
+  > esc env version retract test@3 --reason test retraction --replace-with @latest
+  > esc env version history test --utc
+  > esc env version retract test@4
+  > esc env version history test --utc

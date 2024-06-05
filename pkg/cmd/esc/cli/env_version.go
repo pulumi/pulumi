@@ -9,6 +9,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/cmd/esc/cli/style"
@@ -55,13 +56,13 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				printRevision(env.esc.stdout, st, *rev, utc)
+				printRevision(env.esc.stdout, st, *rev, utcFlag(utc))
 			} else {
 				tag, err := env.esc.client.GetEnvironmentRevisionTag(ctx, ref.orgName, ref.envName, ref.version)
 				if err != nil {
 					return err
 				}
-				printRevisionTag(env.esc.stdout, st, *tag, utc)
+				printRevisionTag(env.esc.stdout, st, *tag, utcFlag(utc))
 			}
 			return nil
 		},
@@ -69,23 +70,37 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 
 	cmd.AddCommand(newEnvVersionTagCmd(env))
 	cmd.AddCommand(newEnvVersionHistoryCmd(env))
+	cmd.AddCommand(newEnvVersionRetractCmd(env))
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
 
 	return cmd
 }
 
-func printRevision(stdout io.Writer, st *style.Stylist, r client.EnvironmentRevision, utc bool) {
+type utcFlag bool
+
+func (utc utcFlag) time(t time.Time) time.Time {
+	if utc {
+		return t.UTC()
+	}
+	return t
+}
+
+func printRevision(stdout io.Writer, st *style.Stylist, r client.EnvironmentRevision, utc utcFlag) {
 	rules := style.Default()
 
 	st.Fprintf(stdout, rules.H1.StylePrimitive, "revision %v", r.Number)
-	switch len(r.Tags) {
-	case 0:
-		// OK
-	case 1:
-		st.Fprintf(stdout, rules.LinkText, " (tag: %v)", r.Tags[0])
-	default:
-		st.Fprintf(stdout, rules.LinkText, " (tags: %v)", strings.Join(r.Tags, ", "))
+	if r.Retracted != nil {
+		st.Fprintf(stdout, rules.CodeBlock.Chroma.GenericDeleted, " (retracted)")
+	} else {
+		switch len(r.Tags) {
+		case 0:
+			// OK
+		case 1:
+			st.Fprintf(stdout, rules.LinkText, " (tag: %v)", r.Tags[0])
+		default:
+			st.Fprintf(stdout, rules.LinkText, " (tags: %v)", strings.Join(r.Tags, ", "))
+		}
 	}
 	fmt.Fprintln(stdout, "")
 
@@ -95,30 +110,35 @@ func printRevision(stdout io.Writer, st *style.Stylist, r client.EnvironmentRevi
 		fmt.Fprintf(stdout, "Author: %v <%v>\n", r.CreatorName, r.CreatorLogin)
 	}
 
-	stamp := r.Created
-	if utc {
-		stamp = stamp.UTC()
-	} else {
-		stamp = stamp.Local()
-	}
+	fmt.Fprintf(stdout, "Date:   %v\n", utc.time(r.Created))
 
-	fmt.Fprintf(stdout, "Date:   %v\n", stamp)
+	if r.Retracted != nil {
+		if r.Retracted.ByLogin == "" {
+			fmt.Fprintf(stdout, "\n    Retracted by <unknown>")
+		} else {
+			fmt.Fprintf(stdout, "\n    Retracted by %v <%v>", r.Retracted.ByName, r.Retracted.ByLogin)
+		}
+
+		fmt.Fprintf(stdout, " at %v and replaced with revision %v.\n", utc.time(r.Retracted.At), r.Retracted.Replacement)
+
+		if r.Retracted.Reason != "" {
+			fmt.Fprintln(stdout, "")
+
+			reason := strings.Split(r.Retracted.Reason, "\n")
+			for _, line := range reason {
+				fmt.Fprintf(stdout, "    %v\n", line)
+			}
+		}
+	}
 }
 
-func printRevisionTag(stdout io.Writer, st *style.Stylist, tag client.EnvironmentRevisionTag, utc bool) {
+func printRevisionTag(stdout io.Writer, st *style.Stylist, tag client.EnvironmentRevisionTag, utc utcFlag) {
 	rules := style.Default()
 
 	st.Fprintf(stdout, rules.LinkText, "%v\n", tag.Name)
 	fmt.Fprintf(stdout, "Revision %v\n", tag.Revision)
 
-	stamp := tag.Modified
-	if utc {
-		stamp = stamp.UTC()
-	} else {
-		stamp = stamp.Local()
-	}
-
-	fmt.Fprintf(stdout, "Last updated at %v by ", stamp)
+	fmt.Fprintf(stdout, "Last updated at %v by ", utc.time(tag.Modified))
 	if tag.EditorLogin == "" {
 		fmt.Fprintf(stdout, "<unknown>")
 	} else {

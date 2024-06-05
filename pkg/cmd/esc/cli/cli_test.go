@@ -245,10 +245,16 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, envName string) 
 	return env.latest().yaml, rot128{}, nil
 }
 
+type testEnvironmentRetract struct {
+	replacement int
+	reason      string
+}
+
 type testEnvironmentRevision struct {
-	number int
-	yaml   []byte
-	tag    string
+	number    int
+	yaml      []byte
+	tag       string
+	retracted *testEnvironmentRetract
 }
 
 type testEnvironment struct {
@@ -660,16 +666,50 @@ func (c *testPulumiClient) ListEnvironmentRevisions(
 			tags = []string{tag}
 		}
 
+		var retracted *client.EnvironmentRevisionRetracted
+		if r := env.revisions[i-1].retracted; r != nil {
+			retracted = &client.EnvironmentRevisionRetracted{
+				Replacement: r.replacement,
+				At:          time.Unix(0, 0).Add(time.Duration(i) * time.Hour),
+				ByLogin:     "test-tester",
+				ByName:      "Test Tester",
+				Reason:      r.reason,
+			}
+		}
+
 		resp = append(resp, client.EnvironmentRevision{
 			Number:       i,
 			Created:      time.Unix(0, 0).Add(time.Duration(i) * time.Hour),
-			CreatorLogin: "Test Tester",
-			CreatorName:  "test-tester",
+			CreatorLogin: "test-tester",
+			CreatorName:  "Test Tester",
 			Tags:         tags,
+			Retracted:    retracted,
 		})
 	}
 
 	return resp, nil
+}
+
+// RetractEnvironmentRevision retracts a specific revision of an environment.
+func (c *testPulumiClient) RetractEnvironmentRevision(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	version string,
+	replacement *int,
+	reason string,
+) error {
+	_, rev, err := c.getEnvironment(orgName, envName, version)
+	if err != nil {
+		return err
+	}
+	if replacement == nil {
+		// It's okay to fake up a replacement here. We don't actually interpret this value.
+		rev.retracted = &testEnvironmentRetract{replacement: 42, reason: reason}
+	} else {
+		rev.retracted = &testEnvironmentRetract{replacement: *replacement, reason: reason}
+	}
+	return nil
 }
 
 // CreateEnvironmentRevisionTag creates a new revision tag with the given name.
@@ -919,9 +959,15 @@ type cliTestcaseProcess struct {
 	Commands map[string]string `yaml:"commands,omitempty"`
 }
 
+type cliTestcaseRetract struct {
+	Replacement int    `yaml:"replacement"`
+	Reason      string `yaml:"reason,omitempty"`
+}
+
 type cliTestcaseRevision struct {
-	YAML yaml.Node `yaml:"yaml"`
-	Tag  string    `yaml:"tag,omitempty"`
+	YAML      yaml.Node           `yaml:"yaml"`
+	Tag       string              `yaml:"tag,omitempty"`
+	Retracted *cliTestcaseRetract `yaml:"retracted,omitempty"`
 }
 
 type cliTestcaseRevisions struct {
@@ -992,10 +1038,19 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 				return nil, nil, err
 			}
 
+			var retract *testEnvironmentRetract
+			if rev.Retracted != nil {
+				retract = &testEnvironmentRetract{
+					replacement: rev.Retracted.Replacement,
+					reason:      rev.Retracted.Reason,
+				}
+			}
+
 			revisionNumber := len(envRevisions) + 1
 			envRevisions = append(envRevisions, &testEnvironmentRevision{
-				number: revisionNumber,
-				yaml:   bytes,
+				number:    revisionNumber,
+				yaml:      bytes,
+				retracted: retract,
 			})
 
 			if rev.Tag != "" {

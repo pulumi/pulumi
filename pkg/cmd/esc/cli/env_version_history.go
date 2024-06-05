@@ -67,7 +67,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 					before = revisions[len(revisions)-1].Number
 
 					for _, r := range revisions {
-						printRevision(stdout, st, r, utc)
+						printRevision(stdout, st, r, utcFlag(utc))
 						fmt.Fprintf(stdout, "\n")
 					}
 				}

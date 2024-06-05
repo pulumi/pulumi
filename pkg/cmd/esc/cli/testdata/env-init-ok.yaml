@@ -10,6 +10,7 @@ stdout: |+
   > esc env init test-env
   Environment created.
   > esc env get test-env
+
   > esc env init test-stdin -f=-
   Environment created.
   > esc env get test-stdin

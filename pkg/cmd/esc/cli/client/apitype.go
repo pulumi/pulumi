@@ -59,12 +59,22 @@ func diagsErrorString(envDiags []EnvironmentDiagnostic) string {
 	return diags.String()
 }
 
+type EnvironmentRevisionRetracted struct {
+	Replacement int       `json:"replacement"`
+	At          time.Time `json:"at"`
+	ByLogin     string    `json:"byLogin,omitempty"`
+	ByName      string    `json:"byName,omitempty"`
+	Reason      string    `json:"reason,omitempty"`
+}
+
 type EnvironmentRevision struct {
 	Number       int       `json:"number"`
 	Created      time.Time `json:"created"`
 	CreatorLogin string    `json:"creatorLogin"`
 	CreatorName  string    `json:"creatorName"`
 	Tags         []string  `json:"tags"`
+
+	Retracted *EnvironmentRevisionRetracted `json:"retracted,omitempty"`
 }
 
 type CreateEnvironmentRevisionTagRequest struct {
@@ -109,4 +119,9 @@ type CheckEnvironmentResponse struct {
 type OpenEnvironmentResponse struct {
 	ID          string                  `json:"id"`
 	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
+}
+
+type RetractEnvironmentRevisionRequest struct {
+	Replacement *int   `json:"replacement,omitempty"`
+	Reason      string `json:"reason,omitempty"`
 }

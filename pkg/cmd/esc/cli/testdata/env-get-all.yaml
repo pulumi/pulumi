@@ -127,6 +127,7 @@ stdout: |+
   ```
 
   > esc env get test@1
+
   > esc env get test@2
   # Value
   ```json

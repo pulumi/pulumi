@@ -61,7 +61,7 @@ func newEnvVersionTagLsCmd(env *envCommand) *cobra.Command {
 					after = tags[len(tags)-1].Name
 
 					for _, t := range tags {
-						printRevisionTag(stdout, st, t, utc)
+						printRevisionTag(stdout, st, t, utcFlag(utc))
 						fmt.Fprintf(stdout, "\n")
 					}
 				}

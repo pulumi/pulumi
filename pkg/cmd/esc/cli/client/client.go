@@ -176,6 +176,16 @@ type Client interface {
 		options ListEnvironmentRevisionsOptions,
 	) ([]EnvironmentRevision, error)
 
+	// RetractEnvironmentRevision retracts a specific revision of an environment.
+	RetractEnvironmentRevision(
+		ctx context.Context,
+		orgName string,
+		envName string,
+		version string,
+		replacement *int,
+		reason string,
+	) error
+
 	// CreateEnvironmentRevisionTag creates a new revision tag with the given name.
 	CreateEnvironmentRevisionTag(ctx context.Context, orgName, envName, tagName string, revision *int) error
 
@@ -433,7 +443,7 @@ func (pc *client) UpdateEnvironmentWithRevision(
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return diags.Diagnostics, 0, nil
 		}
 		return nil, 0, err
@@ -480,7 +490,7 @@ func (pc *client) OpenEnvironment(
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -501,7 +511,7 @@ func (pc *client) CheckYAMLEnvironment(
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return nil, diags.Diagnostics, nil
 		}
 		return nil, nil, err
@@ -531,7 +541,7 @@ func (pc *client) OpenYAMLEnvironment(
 	})
 	if err != nil {
 		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest {
+		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -600,6 +610,23 @@ func (pc *client) ListEnvironmentRevisions(
 		return nil, err
 	}
 	return resp, nil
+}
+
+// RetractEnvironmentRevision retracts a specific revision of an environment.
+func (pc *client) RetractEnvironmentRevision(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	version string,
+	replacement *int,
+	reason string,
+) error {
+	req := RetractEnvironmentRevisionRequest{
+		Replacement: replacement,
+		Reason:      reason,
+	}
+	path := fmt.Sprintf("/api/preview/environments/%v/%v/versions/%v/retract", orgName, envName, version)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
 }
 
 // CreateEnvironmentRevisionTag creates a new revision tag with the given name.
