@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs,python
-  description: Add support for `--all` parameter of the `stack ls` command to the Automation API

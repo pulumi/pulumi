@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.119.0 (2024-06-05)
+
+
+### Features
+
+- [cli] Incorporate v0.9.1 of the esc CLI.
+  [#16322](https://github.com/pulumi/pulumi/pull/16322)
+
+- [auto/{go,nodejs,python}] Add support for `--all` parameter of the `stack ls` command to the Automation API
+  [#16266](https://github.com/pulumi/pulumi/pull/16266)
+
+- [components/yaml] Upgrade pulumi-yaml to 1.8.0
+  [#16325](https://github.com/pulumi/pulumi/pull/16325)
+
+### Bug Fixes
+
+- [cli/new] Populate pulumi:template tag also for interactively selected templates
+  [#16308](https://github.com/pulumi/pulumi/pull/16308)
+
+- [backend/service] Improve error reporting when policy pack download fails
+  [#16306](https://github.com/pulumi/pulumi/pull/16306)
+
+
+### Miscellaneous
+
+- [sdk/python] Move dependency installation and python command invocation to Toolchain interface
+  [#16243](https://github.com/pulumi/pulumi/pull/16243)
+
 ## 3.118.0 (2024-05-31)
 
 

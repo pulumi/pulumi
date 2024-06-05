@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Move dependency installation and python command invocation to Toolchain interface
