@@ -245,7 +245,7 @@ go_test(
     data = glob([
         "convert_testdata/**",
         "pcl_convert_testdata/**",
-        "testdata/**"
+        "testdata/**",
     ]),
     embed = [":pulumi_lib"],
     deps = [

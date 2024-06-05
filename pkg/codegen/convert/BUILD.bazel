@@ -12,6 +12,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi/codegen:codegen_go_proto",
+        "//sdk/go/common/apitype",
         "//sdk/go/common/resource/plugin",
         "//sdk/go/common/tokens",
         "//sdk/go/common/util/contract",
@@ -36,6 +37,7 @@ go_test(
     srcs = ["plugin_mapper_test.go"],
     embed = [":convert"],
     deps = [
+        "//sdk/go/common/apitype",
         "//sdk/go/common/resource/plugin",
         "//sdk/go/common/tokens",
         "//sdk/go/common/workspace",

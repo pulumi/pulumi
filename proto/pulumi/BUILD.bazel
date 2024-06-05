@@ -41,6 +41,6 @@ go_proto_library(
 ts_proto_library(
     name = "pulumirpc_ts_proto",
     proto = ":pulumirpc_proto",
-    deps = ["//proto/pulumi/codegen:codegen_ts_proto"],
     visibility = ["//visibility:public"],
+    deps = ["//proto/pulumi/codegen:codegen_ts_proto"],
 )

@@ -32,6 +32,7 @@ go_test(
     ],
     embed = [":workspace"],
     deps = [
+        "//sdk/go/common/apitype",
         "//sdk/go/common/workspace",
         "@com_github_blang_semver//:semver",
         "@com_github_stretchr_testify//assert",

@@ -24,10 +24,13 @@ ts_project(
         "types/**/*.ts",
     ]),
     declaration = True,
-    transpiler = partial.make(swc, swcrc = "//:.swcrc"),
-    tsconfig = ":tsconfig.json",
     resolve_json_module = True,
     source_map = True,
+    transpiler = partial.make(
+        swc,
+        swcrc = "//:.swcrc",
+    ),
+    tsconfig = ":tsconfig.json",
     deps = [
         "//:node_modules/@grpc/grpc-js",
         "//:node_modules/@logdna/tail-file",
@@ -82,7 +85,6 @@ ts_project(
         #"//:node_modules/sinon",
         "//:node_modules/ts-node",
         "//:node_modules/typescript",
-
         "//proto/google/protobuf:status_ts_proto",
         "//proto/pulumi:pulumirpc_ts_proto",
     ],

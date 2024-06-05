@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "providers",
+    srcs = [
+        "asset_archive_provider.go",
+        "bad_provider.go",
+        "fail_on_create_provider.go",
+        "large_provider.go",
+        "simple_provider.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/cmd/pulumi-test-language/providers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen/schema",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":providers",
+    visibility = ["//visibility:public"],
+)

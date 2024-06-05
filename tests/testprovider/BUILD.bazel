@@ -9,6 +9,7 @@ filegroup(
 go_library(
     name = "testprovider_lib",
     srcs = [
+        "component.go",
         "echo.go",
         "fails_on_create.go",
         "fails_on_delete.go",
@@ -18,11 +19,14 @@ go_library(
     importpath = "github.com/pulumi/pulumi/tests/testprovider",
     visibility = ["//visibility:private"],
     deps = [
+        "//pkg/codegen/schema",
         "//pkg/resource/provider",
         "//proto/pulumi:pulumirpc_go_proto",
         "//sdk/go/common/resource",
         "//sdk/go/common/resource/plugin",
         "//sdk/go/common/util/cmdutil",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/provider",
         "@org_golang_google_protobuf//types/known/emptypb",
     ],
 )

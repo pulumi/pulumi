@@ -18,6 +18,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/workspace",
     visibility = ["//visibility:public"],
     deps = [
+        "//sdk/go/common/apitype",
         "//sdk/go/common/diag",
         "//sdk/go/common/diag/colors",
         "//sdk/go/common/encoding",
@@ -75,6 +76,7 @@ go_test(
     ],
     embed = [":workspace"],
     deps = [
+        "//sdk/go/common/apitype",
         "//sdk/go/common/diag",
         "//sdk/go/common/encoding",
         "//sdk/go/common/resource/config",

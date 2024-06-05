@@ -42,6 +42,7 @@ go_library(
         "//sdk/go/common/resource",
         "//sdk/go/common/resource/config",
         "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/resource/urn",
         "//sdk/go/common/slice",
         "//sdk/go/common/tokens",
         "//sdk/go/common/util/contract",

@@ -47,16 +47,16 @@ py_library(
 
 py_wheel(
     name = "sdk_wheel",
-    deps = [":sdk"],
-    distribution = "pulumi",
-    version = "0.0.1",
-    summary = "Pulumi's Python SDK",
     description_content_type = "text/markdown",
     description_file = ":README.md",
+    distribution = "pulumi",
     homepage = "https://github.com/pulumi/pulumi",
     license = "Apache-2.0",
     python_requires = ">=3.8",
     strip_path_prefixes = [
         "sdk/python/lib",
     ],
+    summary = "Pulumi's Python SDK",
+    version = "0.0.1",
+    deps = [":sdk"],
 )

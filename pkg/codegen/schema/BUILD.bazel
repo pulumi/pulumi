@@ -19,6 +19,7 @@ go_library(
     deps = [
         "//pkg/workspace",
         "//proto/pulumi/codegen:codegen_go_proto",
+        "//sdk/go/common/apitype",
         "//sdk/go/common/diag",
         "//sdk/go/common/env",
         "//sdk/go/common/resource/plugin",

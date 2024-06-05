@@ -80,6 +80,7 @@ go_test(
         "//pkg/resource/deploy",
         "//pkg/resource/deploy/deploytest",
         "//pkg/util/cancel",
+        "//sdk/go/common/apitype",
         "//sdk/go/common/resource",
         "//sdk/go/common/resource/plugin",
         "//sdk/go/common/testing/diagtest",

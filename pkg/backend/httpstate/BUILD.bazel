@@ -82,6 +82,7 @@ go_test(
         "//pkg/backend",
         "//pkg/backend/display",
         "//pkg/backend/httpstate/client",
+        "//pkg/display",
         "//pkg/engine",
         "//pkg/engine/lifecycletest",
         "//pkg/resource/deploy",

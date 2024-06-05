@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/pulumi/pulumi/pkg/v3/util",
     visibility = ["//visibility:public"],
     deps = [
+        "//sdk/go/common/apitype",
         "//sdk/go/common/util/contract",
         "//sdk/go/common/workspace",
         "@com_github_blang_semver//:semver",
@@ -23,6 +24,7 @@ go_test(
     srcs = ["plugin_test.go"],
     embed = [":util"],
     deps = [
+        "//sdk/go/common/apitype",
         "//sdk/go/common/workspace",
         "@com_github_stretchr_testify//assert",
     ],

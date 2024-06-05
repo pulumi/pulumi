@@ -4,9 +4,11 @@ go_test(
     name = "transforms_test",
     srcs = ["transforms_test.go"],
     deps = [
+        "//pkg/resource/deploy/providers",
         "//pkg/testing/integration",
         "//sdk/go/common/resource",
         "//sdk/go/common/tokens",
         "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
     ],
 )

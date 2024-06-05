@@ -56,7 +56,10 @@ load("@npm//:tsconfig-to-swcconfig/package_json.bzl", tsconfig_to_swcconfig = "b
 tsconfig_to_swcconfig.t2s(
     name = "swcrc",
     srcs = ["tsconfig.json"],
-    args = ["--filename", "$(location tsconfig.json)"],
+    args = [
+        "--filename",
+        "$(location tsconfig.json)",
+    ],
     stdout = ".swcrc",
     visibility = ["//:__subpackages__"],
 )

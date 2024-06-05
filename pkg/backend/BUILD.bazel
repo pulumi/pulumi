@@ -47,6 +47,7 @@ go_library(
         "@com_github_alecaivazis_survey_v2//core",
         "@com_github_opentracing_opentracing_go//:opentracing-go",
         "@com_github_pulumi_esc//:esc",
+        "@org_golang_x_exp//slices",
     ],
 )
 

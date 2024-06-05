@@ -16,6 +16,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/apitype",
         "//sdk/go/common/diag",
         "//sdk/go/common/resource",
         "//sdk/go/common/resource/plugin",
@@ -55,6 +56,7 @@ go_test(
     embed = [":deploytest"],
     deps = [
         "//proto/pulumi:pulumirpc_go_proto",
+        "//sdk/go/common/apitype",
         "//sdk/go/common/diag",
         "//sdk/go/common/resource",
         "//sdk/go/common/resource/plugin",

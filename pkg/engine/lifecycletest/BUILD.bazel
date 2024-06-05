@@ -41,6 +41,7 @@ go_test(
     srcs = [
         "alias_test.go",
         "analyzer_test.go",
+        "continue_on_error_test.go",
         "delete_before_replace_test.go",
         "golang_sdk_test.go",
         "import_test.go",
