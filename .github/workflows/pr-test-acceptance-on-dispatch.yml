@@ -4,6 +4,8 @@
 #
 # Reusable workflows, "uses" jobs, *must* specify the main branch.
 
+name: dispatched-acceptance-test
+
 on:
   repository_dispatch:
     types: [run-acceptance-tests-command]
