@@ -58,7 +58,7 @@ func trimPrefixSuffix(s string, prefix string, suffix string) string {
 }
 
 func parseType(fieldType string) FieldType {
-	switch trimPrefixSuffix(fieldType, " ", " ") {
+	switch strings.TrimSpace(fieldType) {
 	case "string":
 		return &StringType{}
 	case "int32":

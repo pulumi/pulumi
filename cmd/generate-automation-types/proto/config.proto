@@ -4,7 +4,7 @@ package config;
 
 // ConfigValue is the input/output of a `pulumi config` command.
 // It has a plaintext value, and an option boolean indicating secretness
-message Config {
+message ConfigValue {
   string value = 1;
   optional bool secret = 2;
 }
