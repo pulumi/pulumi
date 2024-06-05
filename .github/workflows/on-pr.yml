@@ -23,7 +23,6 @@ concurrency:
 jobs:
   changelog-comment:
     name: changelog preview
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     permissions:
       contents: read
       pull-requests: write
@@ -37,7 +36,6 @@ jobs:
 
   info:
     name: info
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     uses: ./.github/workflows/ci-info.yml
     permissions:
       contents: read
@@ -72,7 +70,6 @@ jobs:
 
   ci:
     name: CI
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info, inspect]
     uses: ./.github/workflows/ci.yml
     permissions:
@@ -113,8 +110,7 @@ jobs:
     name: prepare
     if: >- # No newlines or trailing newline.
       ${{
-        github.event.pull_request.head.repo.full_name == github.repository
-        && contains(github.event.pull_request.labels.*.name, 'ci/test')
+        contains(github.event.pull_request.labels.*.name, 'ci/test')
       }}
     needs: [info, ci]
     uses: ./.github/workflows/ci-prepare-release.yml
