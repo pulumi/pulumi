@@ -402,15 +402,6 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 
 	req = d.normalizeProviderRequest(req)
 
-	denyCreation, err := d.shouldDenyRequest(req)
-	if err != nil {
-		return providers.Reference{}, err
-	}
-	if denyCreation {
-		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
-	}
-
 	// Have we loaded this provider before? Use the existing reference, if so.
 	//
 	// Note that we are using the request's String as the key for the provider map. Go auto-derives hash and equality
@@ -420,6 +411,15 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	ref, ok := d.providers[req.String()]
 	if ok {
 		return ref, nil
+	}
+
+	denyCreation, err := d.shouldDenyRequest(req)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+	if denyCreation {
+		logging.V(5).Infof("denied default provider request for package %s", req)
+		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
 	}
 
 	event, done, err := d.newRegisterDefaultProviderEvent(req)
