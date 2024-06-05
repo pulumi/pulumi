@@ -641,6 +641,63 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`runs through the stack lifecycle with an inline program, testing removing without destroying`, async () => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        const stackConfig: ConfigMap = {
+            bar: { value: "abc" },
+            buzz: { value: "secret", secret: true },
+        };
+        await stack.setAllConfig(stackConfig);
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(Object.keys(upRes.outputs).length, 3);
+        assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+        assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
+        assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
+        assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        const preRes = await stack.preview({ userAgent });
+        assert.strictEqual(preRes.changeSummary.same, 1);
+
+        // pulumi refresh
+        const refRes = await stack.refresh({ userAgent });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        try {
+            await stack.workspace.removeStack(stackName);
+            throw new Error("Stack was able to remove without the force flag and without destroying it first");
+        } catch (e) {
+            // we expect there to be an error because the force flag was not set
+        }
+
+        await stack.workspace.removeStack(stackName, { force: true });
+
+        try {
+            await stack.workspace.selectStack(stackName);
+            throw new Error("Stack should have been removed, but we could still select it");
+        } catch (e) {
+            // we shouldn't be able to select the stack after it's been removed
+            // we expect this error
+        }
+    });
     it(`refreshes before preview`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
