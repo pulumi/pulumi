@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: components/yaml
+  description: Upgrade pulumi-yaml to 1.8.0
