@@ -35,10 +35,11 @@ ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 	cd tests && go mod download
 	@touch .ensure.phony
 
-.PHONY: build-proto
+.PHONY: build-proto build_proto
 PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
 PROTO_CKSUM = cksum ${PROTO_FILES} | sort --key=3
-build-proto:
+build-proto: build_proto
+build_proto:
 	@printf "Protobuffer interfaces are ....... "
 	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
 		printf "\033[0;32mup to date\033[0m\n"; \
@@ -49,10 +50,11 @@ build-proto:
 		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
 	fi
 
-.PHONY: check-proto
-check-proto:
+.PHONY: check-proto check_proto
+check-proto: check_proto
+check_proto:
 	@if [ "$$(cat proto/.checksum.txt)" != "`${PROTO_CKSUM}`" ]; then \
-		echo "Protobuff checksum doesn't match. Run \`make build-proto\` to rebuild."; \
+		echo "Protobuf checksum doesn't match. Run \`make build_proto\` to rebuild."; \
 		${PROTO_CKSUM} | diff - proto/.checksum.txt; \
 		exit 1; \
 	fi
@@ -62,7 +64,7 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-build:: build-proto build_display_wasm go.ensure
+build:: build_proto build_display_wasm go.ensure
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 build_display_wasm:: go.ensure

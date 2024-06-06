@@ -101,7 +101,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Check Protobufs
         run: |
-          make check-proto
+          make check_proto
 
   sdk-lint:
     name: Lint SDKs
