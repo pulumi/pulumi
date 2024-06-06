@@ -8,6 +8,10 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := eventgrid.NewEventSubscription(ctx, "example", &eventgrid.EventSubscriptionArgs{
+			Destination: &eventgrid.EventHubEventSubscriptionDestinationArgs{
+				EndpointType: pulumi.String("EventHub"),
+				ResourceId:   pulumi.String("example"),
+			},
 			ExpirationTimeUtc: pulumi.String("example"),
 			Scope:             pulumi.String("example"),
 		})

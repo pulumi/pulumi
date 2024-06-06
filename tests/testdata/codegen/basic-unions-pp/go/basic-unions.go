@@ -9,9 +9,9 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// properties field is bound to union case ServerPropertiesForReplica
 		_, err := basicunions.NewExampleServer(ctx, "replica", &basicunions.ExampleServerArgs{
-			Properties: basicunions.ServerPropertiesForReplica{
-				CreateMode: "Replica",
-				Version:    "0.1.0-dev",
+			Properties: &basicunions.ServerPropertiesForReplicaArgs{
+				CreateMode: pulumi.String("Replica"),
+				Version:    pulumi.String("0.1.0-dev"),
 			},
 		})
 		if err != nil {
@@ -19,9 +19,9 @@ func main() {
 		}
 		// properties field is bound to union case ServerPropertiesForRestore
 		_, err = basicunions.NewExampleServer(ctx, "restore", &basicunions.ExampleServerArgs{
-			Properties: basicunions.ServerPropertiesForRestore{
-				CreateMode:         "PointInTimeRestore",
-				RestorePointInTime: "example",
+			Properties: &basicunions.ServerPropertiesForRestoreArgs{
+				CreateMode:         pulumi.String("PointInTimeRestore"),
+				RestorePointInTime: pulumi.String("example"),
 			},
 		})
 		if err != nil {
