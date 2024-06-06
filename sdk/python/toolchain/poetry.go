@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -78,9 +79,13 @@ func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	}
 
 	var cmd *exec.Cmd
-	cmdPath := filepath.Join(virtualenvPath, virtualEnvBinDirName(), "python")
+	name := "python"
+	if runtime.GOOS == windows {
+		name = name + ".exe"
+	}
+	cmdPath := filepath.Join(virtualenvPath, virtualEnvBinDirName(), name)
 	if needsPythonShim(cmdPath) {
-		shimCmd := fmt.Sprintf(pythonShimCmdFormat, "python")
+		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
 		cmd = exec.CommandContext(ctx, shimCmd, args...)
 	} else {
 		cmd = exec.CommandContext(ctx, cmdPath, args...)
