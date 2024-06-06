@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: programgen/nodejs
-  description: Sort depdencies in GenerateProject
+  description: Sort dependencies in GenerateProject
