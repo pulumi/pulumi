@@ -2,7 +2,6 @@ package toolchain
 
 import (
 	"context"
-	"errors"
 	"io"
 	"os/exec"
 	"runtime"
@@ -23,6 +22,7 @@ type toolchain int
 
 const (
 	Pip toolchain = iota
+	Poetry
 )
 
 type PythonOptions struct {
@@ -50,6 +50,8 @@ type Info struct {
 type Toolchain interface {
 	// InstallDependencies installs the dependencies of the project found in `cwd`.
 	InstallDependencies(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	// EnsureVenv validates virtual environment of the toolchain and creates it if it doesn't exist.
+	EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
@@ -67,14 +69,16 @@ func Name(tc toolchain) string {
 	switch tc {
 	case Pip:
 		return "Pip"
+	case Poetry:
+		return "Poetry"
 	default:
 		return "Unknown"
 	}
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	if options.Toolchain != Pip {
-		return nil, errors.New("only pip toolchain is supported")
+	if options.Toolchain == Poetry {
+		return newPoetry(options.Root)
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
