@@ -544,6 +544,7 @@ func newImportCmd() *cobra.Command {
 	var execAgent string
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -815,6 +816,7 @@ func newImportCmd() *cobra.Command {
 				Type:             displayType,
 				EventLogPath:     eventLogPath,
 				Debug:            debug,
+				JSONDisplay:      jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -968,11 +970,11 @@ func newImportCmd() *cobra.Command {
 
 				if validImports {
 					// we only want to output the helper string if there is a set of valid imports to convert into code
-					// this protects against invalid package types or import errors that will not actually result in
+					// this protects against invalid package types or import errors that will not actually result
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" {
+					if outputFilePath == "" && !jsonDisplay {
 						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
 							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
@@ -1051,6 +1053,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not calculate a preview before performing the import")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the import diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
