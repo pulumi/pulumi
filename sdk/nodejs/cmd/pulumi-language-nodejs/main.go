@@ -863,7 +863,9 @@ func (host *nodeLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
-func (host *nodeLanguageHost) About(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AboutResponse, error) {
+func (host *nodeLanguageHost) About(ctx context.Context,
+	req *pulumirpc.AboutRequest,
+) (*pulumirpc.AboutResponse, error) {
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)
 		if err != nil {

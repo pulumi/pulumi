@@ -73,6 +73,24 @@ class ProgramInfo(google.protobuf.message.Message):
 global___ProgramInfo = ProgramInfo
 
 @typing_extensions.final
+class AboutRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INFO_FIELD_NUMBER: builtins.int
+    @property
+    def info(self) -> global___ProgramInfo:
+        """the program info to use."""
+    def __init__(
+        self,
+        *,
+        info: global___ProgramInfo | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["info", b"info"]) -> None: ...
+
+global___AboutRequest = AboutRequest
+
+@typing_extensions.final
 class AboutResponse(google.protobuf.message.Message):
     """AboutResponse returns runtime information about the language."""
 

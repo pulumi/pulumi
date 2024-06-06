@@ -749,7 +749,7 @@ type mockLanguageRuntime struct {
 
 	InstallDependenciesF func(info plugin.ProgramInfo) error
 
-	AboutF func() (plugin.AboutInfo, error)
+	AboutF func(info plugin.ProgramInfo) (plugin.AboutInfo, error)
 
 	GetProgramDependenciesF func(
 		info plugin.ProgramInfo, transitiveDependencies bool,
@@ -817,9 +817,9 @@ func (rt *mockLanguageRuntime) InstallDependencies(info plugin.ProgramInfo) erro
 	panic("unimplemented")
 }
 
-func (rt *mockLanguageRuntime) About() (plugin.AboutInfo, error) {
+func (rt *mockLanguageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if rt.AboutF != nil {
-		return rt.AboutF()
+		return rt.AboutF(info)
 	}
 	panic("unimplemented")
 }

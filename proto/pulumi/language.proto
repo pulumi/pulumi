@@ -37,7 +37,7 @@ service LanguageRuntime {
     rpc InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 
     // About returns information about the runtime for this language.
-    rpc About(google.protobuf.Empty) returns (AboutResponse) {}
+    rpc About(AboutRequest) returns (AboutResponse) {}
 
     // GetProgramDependencies returns the set of dependencies required by the program.
     rpc GetProgramDependencies(GetProgramDependenciesRequest) returns (GetProgramDependenciesResponse) {}
@@ -73,6 +73,10 @@ message ProgramInfo {
     string entry_point = 3;
     // JSON style options from the `Pulumi.yaml` runtime options section.
     google.protobuf.Struct options = 4;
+}
+
+message AboutRequest {
+    ProgramInfo info = 1; // the program info to use.
 }
 
 // AboutResponse returns runtime information about the language.

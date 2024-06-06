@@ -62,7 +62,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("About", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			_, err := p.About()
+			_, err := p.About(plugin.ProgramInfo{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("GetProgramDependencies", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("About", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			about, err := p.About()
+			about, err := p.About(plugin.ProgramInfo{})
 			assert.NoError(t, err)
 			assert.Equal(t, plugin.AboutInfo{}, about)
 		})

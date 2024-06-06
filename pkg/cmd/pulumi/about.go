@@ -151,7 +151,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 			if err != nil {
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
-				aboutResponse, err := lang.About()
+				aboutResponse, err := lang.About(programInfo)
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")
 				} else {
