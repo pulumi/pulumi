@@ -50,6 +50,8 @@ type Info struct {
 type Toolchain interface {
 	// InstallDependencies installs the dependencies of the project found in `cwd`.
 	InstallDependencies(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	// EnsureVenv validates virtual environment of the toolchain and creates it if it doesn't exist.
+	EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.

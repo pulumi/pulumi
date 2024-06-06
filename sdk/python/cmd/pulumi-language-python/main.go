@@ -30,6 +30,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -252,10 +253,17 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	// Prepare the virtual environment (if needed).
-	err = host.prepareVirtualEnvironment(ctx, req.Info.RootDirectory, req.Info.ProgramDirectory, opts.Virtualenv)
+	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
-		return nil, fmt.Errorf("preparing virtual environment: %w", err)
+		return nil, err
+	}
+
+	stdout, stderr, err := host.createEngineWriters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, true, stdout, stderr); err != nil {
+		return nil, err
 	}
 
 	validateVersion(ctx, opts)
@@ -356,90 +364,39 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	}, nil
 }
 
-// prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
-func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, root, cwd, virtualenv string) error {
-	if virtualenv == "" {
-		return nil
-	}
-
-	virtualenvAbsPath := virtualenv
-	if !filepath.IsAbs(virtualenvAbsPath) {
-		virtualenvAbsPath = filepath.Join(root, virtualenv)
-	}
-
-	// If the virtual environment directory doesn't exist, create it.
-	var createVirtualEnv bool
-	info, err := os.Stat(virtualenvAbsPath)
+// createEngineWriters creates a pair of writers that can be used to log messages to the engine.
+func (host *pythonLanguageHost) createEngineWriters(ctx context.Context) (io.Writer, io.Writer, error) {
+	// Make a connection to the real engine that we will log messages to.
+	conn, err := grpc.Dial(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
 	if err != nil {
-		if os.IsNotExist(err) {
-			createVirtualEnv = true
-		} else {
-			return err
-		}
-	} else if !info.IsDir() {
-		return fmt.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenvAbsPath)
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
 	}
 
-	// If the virtual environment directory exists, but is empty, it needs to be created.
-	if !createVirtualEnv {
-		empty, err := fsutil.IsDirEmpty(virtualenvAbsPath)
-		if err != nil {
-			return err
-		}
-		createVirtualEnv = empty
+	// Make a client around that connection.
+	engineClient := pulumirpc.NewEngineClient(conn)
+
+	// Create writers that log the output of the install operation as ephemeral messages.
+	streamID := rand.Int31() //nolint:gosec
+
+	infoWriter := &logWriter{
+		ctx:          ctx,
+		engineClient: engineClient,
+		streamID:     streamID,
+		severity:     pulumirpc.LogSeverity_INFO,
 	}
 
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Pip,
-		Virtualenv: virtualenv,
-		Root:       root,
-	})
-	if err != nil {
-		return err
+	errorWriter := &logWriter{
+		ctx:          ctx,
+		engineClient: engineClient,
+		streamID:     streamID,
+		severity:     pulumirpc.LogSeverity_ERROR,
 	}
 
-	// Create the virtual environment and install dependencies into it, if needed.
-	if createVirtualEnv {
-		// Make a connection to the real engine that we will log messages to.
-		conn, err := grpc.Dial(
-			host.engineAddress,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			rpcutil.GrpcChannelOptions(),
-		)
-		if err != nil {
-			return fmt.Errorf("language host could not make connection to engine: %w", err)
-		}
-
-		// Make a client around that connection.
-		engineClient := pulumirpc.NewEngineClient(conn)
-
-		// Create writers that log the output of the install operation as ephemeral messages.
-		streamID := rand.Int31() //nolint:gosec
-
-		infoWriter := &logWriter{
-			ctx:          ctx,
-			engineClient: engineClient,
-			streamID:     streamID,
-			severity:     pulumirpc.LogSeverity_INFO,
-		}
-
-		errorWriter := &logWriter{
-			ctx:          ctx,
-			engineClient: engineClient,
-			streamID:     streamID,
-			severity:     pulumirpc.LogSeverity_ERROR,
-		}
-
-		if err := tc.InstallDependencies(ctx, cwd, true /*showOutput*/, infoWriter, errorWriter); err != nil {
-			return fmt.Errorf("installing dependencies: %w", err)
-		}
-	}
-
-	if err := tc.ValidateVenv(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return infoWriter, errorWriter, nil
 }
 
 type logWriter struct {

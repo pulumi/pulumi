@@ -325,6 +325,34 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	})
 }
 
+func TestAutomaticVenvCreationPoetry(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory(filepath.Join("python", "poetry"))
+
+	// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
+	subdir := filepath.Join(e.RootPath, "subdir")
+	err := os.Mkdir(subdir, 0o755)
+	require.NoError(t, err)
+	e.CWD = subdir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "teststack")
+	e.RunCommand("pulumi", "preview")
+
+	localPoetryVenv := filepath.Join(e.RootPath, ".venv")
+	if !toolchain.IsVirtualEnv(localPoetryVenv) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there", localPoetryVenv)
+	}
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestMypySupport(t *testing.T) {
 	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

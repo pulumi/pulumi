@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -134,6 +135,44 @@ func (p *pip) ValidateVenv(ctx context.Context) error {
 	if p.virtualenvOption != "" && !IsVirtualEnv(p.virtualenvPath) {
 		return NewVirtualEnvError(p.virtualenvOption, p.virtualenvPath)
 	}
+	return nil
+}
+
+func (p *pip) EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	// If we are using global/ambient Python, do nothing.
+	if p.virtualenvOption == "" {
+		return nil
+	}
+
+	if IsVirtualEnv(p.virtualenvPath) {
+		return nil
+	}
+
+	var createVirtualEnv bool
+	info, err := os.Stat(p.virtualenvPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			createVirtualEnv = true
+		} else {
+			return err
+		}
+	} else if !info.IsDir() {
+		return fmt.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", p.virtualenvPath)
+	}
+
+	// If the virtual environment directory exists, but is empty, it needs to be created.
+	if !createVirtualEnv {
+		empty, err := fsutil.IsDirEmpty(p.virtualenvPath)
+		if err != nil {
+			return err
+		}
+		createVirtualEnv = empty
+	}
+
+	if createVirtualEnv {
+		return p.InstallDependencies(ctx, cwd, showOutput, infoWriter, errorWriter)
+	}
+
 	return nil
 }
 
