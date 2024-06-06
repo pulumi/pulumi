@@ -17,6 +17,8 @@ package pcl
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -134,6 +136,133 @@ func AnnotateResourceInputs(node *Resource) {
 	}
 }
 
+// resolveUnionOfObjects takes an object expression and its corresponding schema union type,
+// then tries to find out which type from the union is the one that matches the object expression.
+// We do this based on the discriminator field in the object expression.
+func resolveUnionOfObjects(objectExpr *model.ObjectConsExpression, union *schema.UnionType) schema.Type {
+	var discriminatorValue string
+	for _, item := range objectExpr.Items {
+		if key, ok := item.Key.(*model.LiteralValueExpression); ok {
+			if key.Value.AsString() == union.Discriminator {
+				if value, ok := item.Value.(*model.LiteralValueExpression); ok {
+					discriminatorValue = value.Value.AsString()
+					break
+				}
+
+				if value, ok := item.Value.(*model.TemplateExpression); ok && len(value.Parts) == 1 {
+					if literalValue, ok := value.Parts[0].(*model.LiteralValueExpression); ok {
+						discriminatorValue = literalValue.Value.AsString()
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if discriminatorValue == "" {
+		return union
+	}
+
+	if correspondingTypeToken, ok := union.Mapping[discriminatorValue]; ok {
+		for _, schemaType := range union.ElementTypes {
+			if schemaObjectType, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
+				parsedTypeToken, err := tokens.ParseTypeToken(correspondingTypeToken)
+				if err != nil {
+					continue
+				}
+
+				parsedObjectToken, err := tokens.ParseTypeToken(schemaObjectType.Token)
+				if err != nil {
+					continue
+				}
+
+				if string(parsedTypeToken.Name()) == string(parsedObjectToken.Name()) {
+					// found the corresponding object type
+					return schemaObjectType
+				}
+			}
+		}
+	}
+
+	return union
+}
+
+// resolveInputUnions will take input expressions and their corresponding schema type,
+// if the schema type is a union of objects and the input is an object, we use the
+// the discriminator field to determine which object type to use and reduce the union into
+// just an object type. This way program generators can easily work with the object type
+// directly instead of working out which object type they should be using based on the union
+func (b *binder) resolveInputUnions(
+	inputs map[string]model.Expression,
+	inputProperties []*schema.Property,
+) []*schema.Property {
+	resolvedProperties := make([]*schema.Property, len(inputProperties))
+	for i, property := range inputProperties {
+		resolvedType := property.Type
+		if value, ok := inputs[property.Name]; ok {
+			switch schemaType := codegen.UnwrapType(property.Type).(type) {
+			case *schema.UnionType:
+				if objectExpr, ok := value.(*model.ObjectConsExpression); ok {
+					resolvedType = resolveUnionOfObjects(objectExpr, schemaType)
+					switch resolvedType := resolvedType.(type) {
+					case *schema.ObjectType:
+						// found the corresponding object type for this PCL expression, resolve nested unions if any
+						nestedInputs := map[string]model.Expression{}
+						for _, item := range objectExpr.Items {
+							if key, ok := literalExprValue(item.Key); ok && key.Type().Equals(cty.String) {
+								nestedInputs[key.AsString()] = item.Value
+							}
+						}
+
+						b.resolveInputUnions(nestedInputs, resolvedType.Properties)
+					}
+				}
+			}
+		}
+
+		resolvedProperties[i] = &schema.Property{
+			Type:                 resolvedType,
+			Name:                 property.Name,
+			DeprecationMessage:   property.DeprecationMessage,
+			ConstValue:           property.ConstValue,
+			Secret:               property.Secret,
+			Plain:                property.Plain,
+			Language:             property.Language,
+			Comment:              property.Comment,
+			DefaultValue:         property.DefaultValue,
+			ReplaceOnChanges:     property.ReplaceOnChanges,
+			WillReplaceOnChanges: property.WillReplaceOnChanges,
+		}
+	}
+
+	return resolvedProperties
+}
+
+// rawResourceInputs returns the raw inputs for a resource. This is useful when we need to resolve unions of objects
+// and reduce them to just an object when possible. The inputs of a resource contain the discriminator field of which
+// the value is used to determine which object type to use and thus reduce unions into objects.
+func (b *binder) rawResourceInputs(node *Resource) map[string]model.Expression {
+	inputs := map[string]model.Expression{}
+	scopes := newResourceScopes(b.root, node, nil, nil)
+	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+	for _, item := range block.Body.Items {
+		switch item := item.(type) {
+		case *model.Attribute:
+			inputs[item.Name] = item.Value
+		}
+	}
+
+	return inputs
+}
+
+// reduceInputUnionTypes reduces the input types of a resource which are unions of objects
+// into just an object when possible. We use the actual inputs of the resource to determine which type object we should
+// use because objects in a union have a discriminator field which is used to determine which object type to use.
+func (b *binder) reduceInputUnionTypes(node *Resource, inputProperties []*schema.Property) []*schema.Property {
+	inputs := b.rawResourceInputs(node)
+	return b.resolveInputUnions(inputs, inputProperties)
+}
+
 // bindResourceTypes binds the input and output types for a resource.
 func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
@@ -164,7 +293,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	var pkgSchema *packageSchema
 
 	// It is important that we call `loadPackageSchema` instead of `getPackageSchema` here
-	// because the the version may be wrong. When the version should not be empty,
+	// because the version may be wrong. When the version should not be empty,
 	// `loadPackageSchema` will load the default version while `getPackageSchema` will
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
@@ -218,7 +347,9 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Token = token
 
 	// Create input and output types for the schema.
-	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})
+	// first reduce property types which are unions of objects into just an object when possible
+	inputObjectType := &schema.ObjectType{Properties: b.reduceInputUnionTypes(node, inputProperties)}
+	inputType := b.schemaTypeToType(inputObjectType)
 
 	outputProperties := map[string]model.Type{
 		"id":  model.NewOutputType(model.StringType),

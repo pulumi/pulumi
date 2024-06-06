@@ -247,9 +247,9 @@ var exampleServerResource = new Example.ExampleServer("exampleServerResource", n
 
 ```go
 example, err := example.NewExampleServer(ctx, "exampleServerResource", &example.ExampleServerArgs{
-	Properties: example.ServerPropertiesForReplica{
-		CreateMode: "Replica",
-		Version:    "string",
+	Properties: &example.ServerPropertiesForReplicaArgs{
+		CreateMode: pulumi.String("Replica"),
+		Version:    pulumi.String("string"),
 	},
 })
 ```
