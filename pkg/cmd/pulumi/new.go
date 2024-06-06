@@ -462,7 +462,6 @@ func useSpecifiedDir(dir string) (string, error) {
 //nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	args := newArgs{
-		interactive:    cmdutil.Interactive(),
 		prompt:         promptForValue,
 		chooseTemplate: chooseTemplate,
 	}
@@ -548,6 +547,7 @@ func newNewCmd() *cobra.Command {
 				return nil
 			}
 
+			args.interactive = cmdutil.Interactive()
 			args.yes = args.yes || skipConfirmations()
 			return runNew(ctx, args)
 		}),

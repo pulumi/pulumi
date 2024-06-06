@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config,new
+  description: Fix non-interactive flag for 'new' and 'config env' commands"
