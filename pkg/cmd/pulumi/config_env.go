@@ -34,8 +34,6 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
-		interactive:      cmdutil.Interactive(),
-		color:            cmdutil.GetGlobalColorization(),
 		readProject:      readProject,
 		requireStack:     requireStack,
 		loadProjectStack: loadProjectStack,
@@ -80,6 +78,11 @@ type configEnvCmd struct {
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
 
 	stackRef *string
+}
+
+func (cmd *configEnvCmd) initArgs() {
+	cmd.interactive = cmdutil.Interactive()
+	cmd.color = cmdutil.GetGlobalColorization()
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
