@@ -243,10 +243,10 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 type PluginHostFactory func() plugin.Host
 
 type pluginHost struct {
-	pluginLoaders   []*ProviderLoader
-	languageRuntime plugin.LanguageRuntime
-	sink            diag.Sink
-	statusSink      diag.Sink
+	pluginLoaders          []*ProviderLoader
+	languageRuntimeFactory LanguageRuntimeFactory
+	sink                   diag.Sink
+	statusSink             diag.Sink
 
 	engine *hostEngine
 
@@ -257,48 +257,46 @@ type pluginHost struct {
 	m         sync.Mutex
 }
 
-// NewPluginHostF returns a factory that produces a plugin host for an operation.
-func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
+func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeFactory LanguageRuntimeFactory,
 	pluginLoaders ...*ProviderLoader,
 ) PluginHostFactory {
 	return func() plugin.Host {
-		var lr plugin.LanguageRuntime
-		if languageRuntimeF != nil {
-			lr = languageRuntimeF()
+		engine := &hostEngine{
+			sink:       sink,
+			statusSink: statusSink,
+			stop:       make(chan bool),
 		}
-		return NewPluginHost(sink, statusSink, lr, pluginLoaders...)
+		handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+			Cancel: engine.stop,
+			Init: func(srv *grpc.Server) error {
+				pulumirpc.RegisterEngineServer(srv, engine)
+				return nil
+			},
+			Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		})
+		if err != nil {
+			panic(fmt.Errorf("could not start engine service: %w", err))
+		}
+		engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
+		return &pluginHost{
+			pluginLoaders:          pluginLoaders,
+			languageRuntimeFactory: languageRuntimeFactory,
+			sink:                   sink,
+			statusSink:             statusSink,
+			engine:                 engine,
+			plugins:                map[interface{}]io.Closer{},
+		}
 	}
 }
 
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
 	pluginLoaders ...*ProviderLoader,
 ) plugin.Host {
-	engine := &hostEngine{
-		sink:       sink,
-		statusSink: statusSink,
-		stop:       make(chan bool),
+	loader := func(string, plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+		return languageRuntime, nil
 	}
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: engine.stop,
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterEngineServer(srv, engine)
-			return nil
-		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
-	})
-	if err != nil {
-		panic(fmt.Errorf("could not start engine service: %w", err))
-	}
-	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
-
-	return &pluginHost{
-		pluginLoaders:   pluginLoaders,
-		languageRuntime: languageRuntime,
-		sink:            sink,
-		statusSink:      statusSink,
-		engine:          engine,
-		plugins:         map[interface{}]io.Closer{},
-	}
+	factory := NewPluginHostF(sink, statusSink, loader, pluginLoaders...)
+	return factory()
 }
 
 func (host *pluginHost) isClosed() bool {
@@ -383,11 +381,11 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(root string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
-	return host.languageRuntime, nil
+	return host.languageRuntimeFactory(runtime, info)
 }
 
 func (host *pluginHost) SignalCancellation() error {
@@ -503,7 +501,11 @@ func (host *pluginHost) GetRequiredPlugins(
 	info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginSpec, error) {
-	return host.languageRuntime.GetRequiredPlugins(info)
+	runtime, err := host.LanguageRuntime("", info)
+	if err != nil {
+		return nil, err
+	}
+	return runtime.GetRequiredPlugins(info)
 }
 
 func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {

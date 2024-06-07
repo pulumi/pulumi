@@ -182,7 +182,10 @@ func (sg *stepGenerator) generateURN(
 	parent resource.URN, ty tokens.Type, name string,
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
-	urn := sg.deployment.generateURN(parent, ty, name)
+	urn, err := sg.deployment.generateURN(parent, ty, name)
+	if err != nil {
+		return "", sg.bailDaig(diag.GetBadURNError(), fmt.Errorf("failed to generate URN: %v", err))
+	}
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDaig(diag.GetDuplicateResourceURNError(urn), urn)
