@@ -84,6 +84,7 @@ type newArgs struct {
 	aiPrompt             string
 	aiLanguage           httpstate.PulumiAILanguage
 	templateMode         bool
+	runtimeOptions       []string
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -335,6 +336,14 @@ func runNew(ctx context.Context, args newArgs) error {
 	proj.AddConfigStackTags(map[string]string{
 		apitype.ProjectTemplateTag: templateTag,
 	})
+
+	for _, opt := range args.runtimeOptions {
+		parts := strings.Split(strings.TrimSpace(opt), "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid runtime option: %s", opt)
+		}
+		proj.Runtime.SetOption(parts[0], parts[1])
+	}
 
 	if err = workspace.SaveProject(proj); err != nil {
 		return fmt.Errorf("saving project: %w", err)
@@ -653,6 +662,10 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
 		"Run in template mode, which will skip prompting for AI or Template functionality",
+	)
+	cmd.PersistentFlags().StringSliceVar(
+		&args.runtimeOptions, "runtime-options", []string{},
+		"Additional options for the language runtime (format: key1=value1,key2=value2)",
 	)
 
 	return cmd

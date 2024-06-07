@@ -442,7 +442,7 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 	e.Stdin = strings.NewReader("poetry\n")
-	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
+	e.RunCommand("pulumi", "new", "python", "--force", "--generate-only",
 		"--name", "test_project",
 		"--description", "A python test using poetry as toolchain",
 		"--stack", "test",
@@ -450,6 +450,31 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 
 	expected := map[string]interface{}{
 		"toolchain": "poetry",
+	}
+	checkRuntimeOptions(t, e.RootPath, expected)
+}
+
+func TestNewPythonRuntimeOptions(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+		"--runtime-options", "toolchain=pip,virtualenv=mytestenv",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "mytestenv",
 	}
 	checkRuntimeOptions(t, e.RootPath, expected)
 }

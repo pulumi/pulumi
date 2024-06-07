@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Allow passing runtime options as args in pulumi new
