@@ -34,6 +34,7 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/sdkgen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/tstypes"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
@@ -2747,26 +2748,29 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 func GeneratePackage(tool string, pkg *schema.Package,
 	extraFiles map[string][]byte, localDependencies map[string]string,
 ) (map[string][]byte, error) {
-	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
-	if err != nil {
-		return nil, err
-	}
-	pkg.Language["nodejs"] = info
+	files, err := sdkgen.GeneratePackage(tool, pkg, extraFiles, localDependencies)
 
-	files := codegen.Fs{}
-	for p, f := range extraFiles {
-		files.Add(p, f)
-	}
-	for _, mod := range modules {
-		if err := mod.gen(files); err != nil {
-			return nil, err
-		}
-	}
+	_, info, err := generateModuleContextMap(tool, pkg, extraFiles)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// pkg.Language["nodejs"] = info
+
+	// files := codegen.Fs{}
+	// for p, f := range extraFiles {
+	// 	files.Add(p, f)
+	// }
+	// for _, mod := range modules {
+	// 	if err := mod.gen(files); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
 	if err = genPackageMetadata(pkg, info, files, localDependencies); err != nil {
 		return nil, err
 	}
+
 	return files, nil
 }
 
