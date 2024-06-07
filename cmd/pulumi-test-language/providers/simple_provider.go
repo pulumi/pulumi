@@ -15,6 +15,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -37,15 +38,19 @@ func (p *SimpleProvider) Close() error {
 	return nil
 }
 
-func (p *SimpleProvider) Configure(inputs resource.PropertyMap) error {
-	return nil
+func (p *SimpleProvider) Configure(
+	context.Context, plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
+	return plugin.ConfigureResponse{}, nil
 }
 
 func (p *SimpleProvider) Pkg() tokens.Package {
 	return "simple"
 }
 
-func (p *SimpleProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, error) {
+func (p *SimpleProvider) GetSchema(
+	context.Context, plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
@@ -72,11 +77,7 @@ func (p *SimpleProvider) GetSchema(request plugin.GetSchemaRequest) ([]byte, err
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonBytes, nil
+	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
 
 func makeCheckFailure(property resource.PropertyKey, reason string) []plugin.CheckFailure {
@@ -86,103 +87,126 @@ func makeCheckFailure(property resource.PropertyKey, reason string) []plugin.Che
 	}}
 }
 
-func (p *SimpleProvider) CheckConfig(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *SimpleProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := newInputs["version"]
+	version, ok := req.News["version"]
 	if !ok {
-		return nil, makeCheckFailure("version", "missing version"), nil
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "missing version"),
+		}, nil
 	}
 	if !version.IsString() {
-		return nil, makeCheckFailure("version", "version is not a string"), nil
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "version is not a string"),
+		}, nil
 	}
 	if version.StringValue() != "2.0.0" {
-		return nil, makeCheckFailure("version", "version is not 2.0.0"), nil
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "version is not 2.0.0"),
+		}, nil
 	}
 
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func (p *SimpleProvider) Check(urn resource.URN, oldInputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (p *SimpleProvider) Check(
+	_ context.Context, req plugin.CheckRequest,
+) (plugin.CheckResponse, error) {
 	// URN should be of the form "simple:index:Resource"
-	if urn.Type() != "simple:index:Resource" {
-		return nil, makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", urn.Type())), nil
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
+		}, nil
 	}
 
 	// Expect just the boolean value
-	value, ok := newInputs["value"]
+	value, ok := req.News["value"]
 	if !ok {
-		return nil, makeCheckFailure("value", "missing value"), nil
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("value", "missing value"),
+		}, nil
 	}
 	if !value.IsBool() {
-		return nil, makeCheckFailure("value", "value is not a boolean"), nil
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("value", "value is not a boolean"),
+		}, nil
 	}
-	if len(newInputs) != 1 {
-		return nil, makeCheckFailure("", fmt.Sprintf("too many properties: %v", newInputs)), nil
+	if len(req.News) != 1 {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
 	}
 
-	return newInputs, nil, nil
+	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
 func (p *SimpleProvider) Create(
-	urn resource.URN, news resource.PropertyMap,
-	timeout float64, preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	_ context.Context, req plugin.CreateRequest,
+) (plugin.CreateResponse, error) {
 	// URN should be of the form "simple:index:Resource"
-	if urn.Type() != "simple:index:Resource" {
-		return "", nil, resource.StatusUnknown, fmt.Errorf("invalid URN type: %s", urn.Type())
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.CreateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
 	id := "id"
-	if preview {
+	if req.Preview {
 		id = ""
 	}
 
-	return resource.ID(id), news, resource.StatusOK, nil
+	return plugin.CreateResponse{
+		ID:         resource.ID(id),
+		Properties: req.Properties,
+		Status:     resource.StatusOK,
+	}, nil
 }
 
-func (p *SimpleProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *SimpleProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	ver := semver.MustParse("2.0.0")
 	return workspace.PluginInfo{
 		Version: &ver,
 	}, nil
 }
 
-func (p *SimpleProvider) SignalCancellation() error {
+func (p *SimpleProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *SimpleProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	return nil, "", nil
+func (p *SimpleProvider) GetMapping(
+	context.Context, plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *SimpleProvider) GetMappings(key string) ([]string, error) {
-	return nil, nil
+func (p *SimpleProvider) GetMappings(
+	context.Context, plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
 }
 
 func (p *SimpleProvider) DiffConfig(
-	urn resource.URN, oldInputs, ouldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+	context.Context, plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
 func (p *SimpleProvider) Diff(
-	urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+	context.Context, plugin.DiffRequest,
+) (plugin.DiffResponse, error) {
 	return plugin.DiffResult{}, nil
 }
 
 func (p *SimpleProvider) Delete(
-	urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
-	return resource.StatusOK, nil
+	context.Context, plugin.DeleteRequest,
+) (plugin.DeleteResponse, error) {
+	return plugin.DeleteResponse{}, nil
 }

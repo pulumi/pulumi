@@ -268,7 +268,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
+		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
+			URN:  urn,
+			News: inputs,
+		})
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to validate provider config: %w", err)
 		}
@@ -276,7 +279,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
 			nil, nil, nil, "", false, "", nil, nil, "")
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
-		if issueCheckErrors(i.deployment, state, urn, failures) {
+		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
 			return nil, false, nil
 		}
 

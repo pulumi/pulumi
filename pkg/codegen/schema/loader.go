@@ -16,6 +16,7 @@ package schema
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -145,7 +146,7 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 		return p, nil
 	}
 
-	schemaBytes, version, err := l.loadSchemaBytes(pkg, version)
+	schemaBytes, version, err := l.loadSchemaBytes(context.TODO(), pkg, version)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +211,9 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 	return ref, nil
 }
 
-func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]byte, *semver.Version, error) {
+func (l *pluginLoader) loadSchemaBytes(
+	ctx context.Context, pkg string, version *semver.Version,
+) ([]byte, *semver.Version, error) {
 	attachPort, err := plugin.GetProviderAttachPort(tokens.Package(pkg))
 	if err != nil {
 		return nil, nil, err
@@ -218,13 +221,13 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
 	// interaction and load the schema directly from the given port.
 	if attachPort != nil {
-		schemaBytes, provider, err := l.loadPluginSchemaBytes(pkg, version)
+		schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, pkg, version)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
 
 		if version == nil {
-			info, err := provider.GetPluginInfo()
+			info, err := provider.GetPluginInfo(ctx)
 			contract.IgnoreError(err) // nonfatal error
 			version = info.Version
 		}
@@ -276,7 +279,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		}
 	}
 
-	schemaBytes, provider, err := l.loadPluginSchemaBytes(pkg, version)
+	schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, pkg, version)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
@@ -289,14 +292,16 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 	}
 
 	if version == nil {
-		info, _ := provider.GetPluginInfo() // nonfatal error
+		info, _ := provider.GetPluginInfo(ctx) // nonfatal error
 		version = info.Version
 	}
 
 	return schemaBytes, version, nil
 }
 
-func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version) ([]byte, plugin.Provider, error) {
+func (l *pluginLoader) loadPluginSchemaBytes(
+	ctx context.Context, pkg string, version *semver.Version,
+) ([]byte, plugin.Provider, error) {
 	provider, err := l.host.Provider(tokens.Package(pkg), version)
 	if err != nil {
 		return nil, nil, err
@@ -304,12 +309,12 @@ func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version
 	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", pkg, version)
 
 	schemaFormatVersion := 0
-	schemaBytes, err := provider.GetSchema(plugin.GetSchemaRequest{
+	schema, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{
 		Version: schemaFormatVersion,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return schemaBytes, provider, nil
+	return schema.Schema, provider, nil
 }

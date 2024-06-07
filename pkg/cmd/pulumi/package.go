@@ -124,11 +124,11 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 		}
 	}
 
-	bytes, err := p.GetSchema(request)
+	schema, err := p.GetSchema(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(bytes, &spec)
+	err = json.Unmarshal(schema.Schema, &spec)
 	if err != nil {
 		return nil, err
 	}

@@ -34,8 +34,8 @@ func TestImportOption(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				DiffF: func(_ resource.URN, _ resource.ID,
+					_, oldOutputs, newInputs resource.PropertyMap, _ []string,
 				) (plugin.DiffResult, error) {
 					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -53,12 +53,12 @@ func TestImportOption(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
+				CreateF: func(_ resource.URN, news resource.PropertyMap, _ float64,
+					_ bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
+				ReadF: func(_ resource.URN, _ resource.ID,
 					inputs, state resource.PropertyMap,
 				) (plugin.ReadResult, resource.Status, error) {
 					assert.Equal(t, expectedInputs, inputs)
@@ -99,7 +99,7 @@ func TestImportOption(t *testing.T) {
 	// actual resource state.
 	project := p.GetProject()
 	_, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.ErrorContains(t, err, "step application failed: inputs to import do not match the existing resource")
+	require.ErrorContains(t, err, "step application failed: inputs to import do not match the existing resource")
 
 	// Run a second update after fixing the inputs. The import should succeed.
 	inputs["foo"] = resource.NewStringProperty("bar")

@@ -133,7 +133,7 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 	var provider plugin.Provider
 	for _, p := range l.providers {
 		if string(p.Pkg()) == pkg {
-			info, err := p.GetPluginInfo()
+			info, err := p.GetPluginInfo(context.TODO())
 			if err != nil {
 				return nil, fmt.Errorf("get plugin info for %s: %w", pkg, err)
 			}
@@ -149,13 +149,13 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 		return nil, fmt.Errorf("could not load schema for %s, provider not known", pkg)
 	}
 
-	jsonSchema, err := provider.GetSchema(plugin.GetSchemaRequest{})
+	jsonSchema, err := provider.GetSchema(context.TODO(), plugin.GetSchemaRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("get schema for %s: %w", pkg, err)
 	}
 
 	var spec schema.PartialPackageSpec
-	if _, err := json.Parse(jsonSchema, &spec, json.ZeroCopy); err != nil {
+	if _, err := json.Parse(jsonSchema.Schema, &spec, json.ZeroCopy); err != nil {
 		return nil, err
 	}
 
@@ -437,7 +437,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 	pkg := provider.Pkg()
-	info, err := provider.GetPluginInfo()
+	info, err := provider.GetPluginInfo(context.TODO())
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("get plugin info for %s: %w", pkg, err)
 	}
@@ -548,10 +548,11 @@ func (eng *languageTestServer) RunLanguageTest(
 	for _, provider := range test.providers {
 		pkg := string(provider.Pkg())
 
-		schemaBytes, err := provider.GetSchema(plugin.GetSchemaRequest{})
+		getSchema, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
 		if err != nil {
 			return nil, fmt.Errorf("get schema for provider %s: %w", pkg, err)
 		}
+		schemaBytes := getSchema.Schema
 
 		// Validate the schema and then remarshal it to JSON
 		var spec schema.PackageSpec

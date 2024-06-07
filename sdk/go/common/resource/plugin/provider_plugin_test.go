@@ -509,15 +509,18 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
 
 			// Must configure before we can use Construct.
-			require.NoError(t, p.Configure(nil), "configure failed")
+			_, err := p.Configure(context.Background(), ConfigureRequest{})
+			require.NoError(t, err, "configure failed")
 
-			_, err := p.Construct(
-				ConstructInfo{Project: "project", Stack: "stack"},
-				"type",
-				"name",
-				tt.parent,
-				resource.PropertyMap{},
-				tt.give,
+			_, err = p.Construct(context.Background(),
+				ConstructRequest{
+					Info:    ConstructInfo{Project: "project", Stack: "stack"},
+					Type:    "type",
+					Name:    "name",
+					Parent:  tt.parent,
+					Inputs:  resource.PropertyMap{},
+					Options: tt.give,
+				},
 			)
 			require.NoError(t, err)
 
@@ -568,20 +571,21 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		defer close(done)
 
 		close(deleting)
-		_, err := p.Delete(
+		_, err := p.Delete(context.Background(), DeleteRequest{
 			resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
 			"whatever",
 			props,
 			props,
 			1000,
-		)
+		})
 		assert.NoError(t, err, "Delete failed")
 	}()
 
 	// Wait until delete request has been sent to Configure
 	// and then wait until Delete has finished.
 	<-deleting
-	assert.NoError(t, p.Configure(props))
+	_, err := p.Configure(context.Background(), ConfigureRequest{Inputs: props})
+	assert.NoError(t, err)
 	<-done
 
 	s, ok := gotSecret.Kind.(*structpb.Value_StructValue)
@@ -678,27 +682,39 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
 	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
-	_, err := az.DiffConfig(
+	_, err := az.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
-		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
-		false, nil)
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		false,
+		nil,
+	})
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
 	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
-	diff, err := k8s.DiffConfig(
+	diff, err := k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
-		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
-		false, nil)
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		false,
+		nil,
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, DiffUnknown, diff.Changes)
 
 	// Test that some other error is not ignored if reported by kubernetes
 	diffErr = status.Errorf(codes.Unknown, "some other error")
-	_, err = k8s.DiffConfig(
+	_, err = k8s.DiffConfig(context.Background(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
-		resource.PropertyMap{}, resource.PropertyMap{}, resource.PropertyMap{},
-		false, nil)
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		resource.PropertyMap{},
+		false,
+		nil,
+	})
 	assert.ErrorContains(t, err, "some other error")
 }
 

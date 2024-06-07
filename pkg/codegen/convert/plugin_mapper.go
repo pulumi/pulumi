@@ -216,7 +216,10 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec, provider
 
 	// We'll delete this for loop once the plugins have had a chance to update.
 	for _, conversionKey := range conversionKeys {
-		data, mappedProvider, err := providerPlugin.GetMapping(conversionKey, provider)
+		mapping, err := providerPlugin.GetMapping(context.TODO(), plugin.GetMappingRequest{
+			Key:      conversionKey,
+			Provider: provider,
+		})
 		if err != nil {
 			// This was an error calling GetMapping, not just that GetMapping returned a nil result. It's fine for
 			// GetMapping to return (nil, "", nil) as that simply indicates that the plugin doesn't have a mapping
@@ -224,16 +227,16 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec, provider
 			return nil, "", fmt.Errorf("could not get mapping for provider '%s': %w", pluginSpec.name, err)
 		}
 		// A provider should return non-empty results if it has a mapping.
-		if mappedProvider != "" && len(data) != 0 {
-			return data, mappedProvider, nil
+		if mapping.Provider != "" && len(mapping.Data) != 0 {
+			return mapping.Data, mapping.Provider, nil
 		}
 		// If a provider returns (empty, "provider") we also treat that as no mapping, because only the slice part
 		// gets returned to the converter plugin and it needs to assume that empty means no mapping, but we warn
 		// that this is unexpected.
-		if mappedProvider != "" && len(data) == 0 {
+		if mapping.Provider != "" && len(mapping.Data) == 0 {
 			logging.Warningf(
 				"provider '%s' returned empty data but a filled provider name '%s' for '%s', "+
-					"this is unexpected behaviour assuming no mapping", pluginSpec.name, mappedProvider, conversionKey)
+					"this is unexpected behaviour assuming no mapping", pluginSpec.name, mapping.Provider, conversionKey)
 		}
 	}
 
@@ -252,13 +255,15 @@ func (l *pluginMapper) getMappingsForPlugin(pluginSpec *mapperPluginSpec, provid
 		}
 		defer contract.IgnoreClose(providerPlugin)
 
-		mappings, err := providerPlugin.GetMappings(l.conversionKey)
+		mappings, err := providerPlugin.GetMappings(context.TODO(), plugin.GetMappingsRequest{
+			Key: l.conversionKey,
+		})
 		if err != nil {
 			return nil, false, fmt.Errorf("could not get mappings for provider '%s': %w", pluginSpec.name, err)
 		}
 
 		pluginSpec.calledGetMappings = true
-		pluginSpec.mappings = mappings
+		pluginSpec.mappings = mappings.Keys
 	}
 
 	var hasMapping bool
@@ -280,17 +285,20 @@ func (l *pluginMapper) getMappingsForPlugin(pluginSpec *mapperPluginSpec, provid
 			defer contract.IgnoreClose(providerPlugin)
 		}
 
-		mappingData, returnedProvider, err := providerPlugin.GetMapping(l.conversionKey, provider)
+		mapping, err := providerPlugin.GetMapping(context.TODO(), plugin.GetMappingRequest{
+			Key:      l.conversionKey,
+			Provider: provider,
+		})
 		if err != nil {
 			return nil, false, fmt.Errorf("could not get mapping for provider '%s': %w", pluginSpec.name, err)
 		}
-		if returnedProvider != provider {
+		if mapping.Provider != provider {
 			return nil, false, fmt.Errorf(
 				"mapping call returned unexpected provider, expected '%s', got '%s'",
-				provider, returnedProvider)
+				provider, mapping.Provider)
 		}
 
-		return mappingData, true, nil
+		return mapping.Data, true, nil
 	}
 
 	return nil, false, nil

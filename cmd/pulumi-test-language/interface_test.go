@@ -102,13 +102,13 @@ func TestProviderVersions(t *testing.T) {
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
 
-			schema, err := provider.GetSchema(plugin.GetSchemaRequest{})
+			schema, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var schemaJSON struct {
 				Version string `json:"version"`
 			}
-			err = json.Unmarshal(schema, &schemaJSON)
+			err = json.Unmarshal(schema.Schema, &schemaJSON)
 			require.NoError(t, err)
 
 			assert.Equal(t, version.String(), schemaJSON.Version,
