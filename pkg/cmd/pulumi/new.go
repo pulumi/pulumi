@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -59,26 +60,30 @@ type promptForValueFunc func(yes bool, valueType string, defaultValue string, se
 
 type chooseTemplateFunc func(templates []workspace.Template, opts display.Options) (workspace.Template, error)
 
+type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
+	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
+
 type newArgs struct {
-	configArray       []string
-	configPath        bool
-	description       string
-	dir               string
-	force             bool
-	generateOnly      bool
-	interactive       bool
-	name              string
-	offline           bool
-	prompt            promptForValueFunc
-	chooseTemplate    chooseTemplateFunc
-	secretsProvider   string
-	stack             string
-	templateNameOrURL string
-	yes               bool
-	listTemplates     bool
-	aiPrompt          string
-	aiLanguage        httpstate.PulumiAILanguage
-	templateMode      bool
+	configArray          []string
+	configPath           bool
+	description          string
+	dir                  string
+	force                bool
+	generateOnly         bool
+	interactive          bool
+	name                 string
+	offline              bool
+	prompt               promptForValueFunc
+	promptRuntimeOptions runtimeOptionsFunc
+	chooseTemplate       chooseTemplateFunc
+	secretsProvider      string
+	stack                string
+	templateNameOrURL    string
+	yes                  bool
+	listTemplates        bool
+	aiPrompt             string
+	aiLanguage           httpstate.PulumiAILanguage
+	templateMode         bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -321,17 +326,6 @@ func runNew(ctx context.Context, args newArgs) error {
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
 	proj.Template = nil
-	// TODO[pulumi/pulumi/issues/16309]: This should be handled by the language runtime.
-	// Workaround for python, most of our templates don't specify a venv but we want to use one
-	if proj.Runtime.Name() == "python" {
-		// If we are using pip (the default toolchain), backfill the virtualenv option.
-		tc, hasToolchain := proj.Runtime.Options()["toolchain"]
-		if !hasToolchain || tc == "pip" {
-			if _, has := proj.Runtime.Options()["virtualenv"]; !has {
-				proj.Runtime.SetOption("virtualenv", "venv")
-			}
-		}
-	}
 
 	// Set the pulumi:template tag to the template name or URL.
 	templateTag := template.Name
@@ -364,6 +358,39 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 		// The backend will print "Created stack '<stack>'" on success.
 		fmt.Println()
+	}
+
+	// Query the language runtime for additional options.
+	if args.promptRuntimeOptions != nil {
+		span := opentracing.SpanFromContext(ctx)
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			false,
+			span,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		defer pluginCtx.Close()
+		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, opts,
+			args.yes, args.interactive, args.prompt)
+		if err != nil {
+			return err
+		}
+		if len(options) > 0 {
+			// Save the new options
+			for k, v := range options {
+				proj.Runtime.SetOption(k, v)
+			}
+			if err = workspace.SaveProject(proj); err != nil {
+				return fmt.Errorf("saving project: %w", err)
+			}
+		}
 	}
 
 	// Prompt for config values (if needed) and save.
@@ -456,14 +483,21 @@ func useSpecifiedDir(dir string) (string, error) {
 	return cwd, nil
 }
 
+// isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
+func isInteractive() bool {
+	test, ok := os.LookupEnv("PULUMI_TEST_INTERACTIVE")
+	return cmdutil.Interactive() || ok && cmdutil.IsTruthy(test)
+}
+
 // newNewCmd creates a New command with default dependencies.
 // Intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	args := newArgs{
-		prompt:         promptForValue,
-		chooseTemplate: chooseTemplate,
+		prompt:               promptForValue,
+		chooseTemplate:       chooseTemplate,
+		promptRuntimeOptions: runtimeOptions,
 	}
 
 	getTemplates := func() ([]workspace.Template, error) {
@@ -549,6 +583,7 @@ func newNewCmd() *cobra.Command {
 
 			args.interactive = cmdutil.Interactive()
 			args.yes = args.yes || skipConfirmations()
+			args.interactive = isInteractive()
 			return runNew(ctx, args)
 		}),
 	}
@@ -811,6 +846,101 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 	}
 
 	return saveProjectStack(stack, ps)
+}
+
+func runtimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
+) (map[string]interface{}, error) {
+	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
+	lang, err := ctx.Host.LanguageRuntime(info.Name(), programInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Name(), err)
+	}
+
+	options := make(map[string]interface{}, len(info.Options()))
+	for k, v := range info.Options() {
+		options[k] = v
+	}
+
+	// Keep querying for prompts until there are no more.
+	for {
+		// Update the program info with the latest runtime options.
+		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
+		prompts, err := lang.RuntimeOptionsPrompts(programInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)
+		}
+
+		if len(prompts) == 0 {
+			break
+		}
+
+		surveycore.DisableColor = true
+		for _, optionPrompt := range prompts {
+			if !interactive {
+				if optionPrompt.Default == nil {
+					return nil, fmt.Errorf("must provide a runtime option for '%s' in non-interactive mode", optionPrompt.Key)
+				}
+				options[optionPrompt.Key] = optionPrompt.Default.Value()
+				continue
+			}
+
+			if len(optionPrompt.Choices) == 1 {
+				// We got exactly one choice, so use that as default value without prompting the user.
+				choice := optionPrompt.Choices[0]
+				options[optionPrompt.Key] = choice.Value()
+			} else if len(optionPrompt.Choices) > 0 {
+				// Pick one among the choices
+				choices := make([]string, 0, len(optionPrompt.Choices))
+				// Map choice display string to the actual value
+				choiceMap := make(map[string]interface{}, len(optionPrompt.Choices))
+				for _, choice := range optionPrompt.Choices {
+					choices = append(choices, choice.String())
+					choiceMap[choice.String()] = choice.Value()
+				}
+
+				var response string
+				message := opts.Color.Colorize(colors.SpecPrompt + "\r" + optionPrompt.Description + colors.Reset)
+				if err := survey.AskOne(&survey.Select{
+					Message: message,
+					Options: choices,
+				}, &response, surveyIcons(opts.Color), nil); err != nil {
+					return nil, err
+				}
+				options[optionPrompt.Key] = choiceMap[response]
+			} else {
+				// Free form input
+				val, err := prompt(yes, optionPrompt.Description, "", false, makePromptValidator(optionPrompt), opts)
+				if err != nil {
+					return nil, err
+				}
+				r, err := plugin.RuntimeOptionValueFromString(optionPrompt.PromptType, val)
+				if err != nil {
+					return nil, err
+				}
+				options[optionPrompt.Key] = r.Value()
+			}
+		}
+	}
+
+	return options, nil
+}
+
+func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
+	return func(value string) error {
+		switch prompt.PromptType {
+		case plugin.PromptTypeInt32:
+			_, err := strconv.ParseInt(value, 10, 32)
+			if err != nil {
+				return fmt.Errorf("expected an integer value, got %q", value)
+			}
+		case plugin.PromptTypeString:
+			// No validation needed for strings.
+		default:
+			return fmt.Errorf("unexpected prompt type: %v", prompt.PromptType)
+		}
+		return nil
+	}
 }
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.

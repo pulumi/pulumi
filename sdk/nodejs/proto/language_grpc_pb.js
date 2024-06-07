@@ -265,6 +265,28 @@ function deserialize_pulumirpc_RunResponse(buffer_arg) {
   return pulumi_language_pb.RunResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RuntimeOptionsRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.RuntimeOptionsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RuntimeOptionsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RuntimeOptionsRequest(buffer_arg) {
+  return pulumi_language_pb.RuntimeOptionsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RuntimeOptionsResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.RuntimeOptionsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RuntimeOptionsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
+  return pulumi_language_pb.RuntimeOptionsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
@@ -316,6 +338,18 @@ installDependencies: {
     requestDeserialize: deserialize_pulumirpc_InstallDependenciesRequest,
     responseSerialize: serialize_pulumirpc_InstallDependenciesResponse,
     responseDeserialize: deserialize_pulumirpc_InstallDependenciesResponse,
+  },
+  // RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
+runtimeOptionsPrompts: {
+    path: '/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.RuntimeOptionsRequest,
+    responseType: pulumi_language_pb.RuntimeOptionsResponse,
+    requestSerialize: serialize_pulumirpc_RuntimeOptionsRequest,
+    requestDeserialize: deserialize_pulumirpc_RuntimeOptionsRequest,
+    responseSerialize: serialize_pulumirpc_RuntimeOptionsResponse,
+    responseDeserialize: deserialize_pulumirpc_RuntimeOptionsResponse,
   },
   // About returns information about the runtime for this language.
 about: {

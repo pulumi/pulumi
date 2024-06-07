@@ -97,6 +97,13 @@ func (p *languageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
 	return nil
 }
 
+func (p *languageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error) {
+	if p.closed {
+		return []plugin.RuntimeOptionPrompt{}, ErrLanguageRuntimeIsClosed
+	}
+	return []plugin.RuntimeOptionPrompt{}, nil
+}
+
 func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if p.closed {
 		return plugin.AboutInfo{}, ErrLanguageRuntimeIsClosed

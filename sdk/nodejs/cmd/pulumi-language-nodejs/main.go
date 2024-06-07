@@ -863,6 +863,12 @@ func (host *nodeLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
+func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
+	req *pulumirpc.RuntimeOptionsRequest,
+) (*pulumirpc.RuntimeOptionsResponse, error) {
+	return &pulumirpc.RuntimeOptionsResponse{}, nil
+}
+
 func (host *nodeLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {

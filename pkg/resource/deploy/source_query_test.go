@@ -749,6 +749,8 @@ type mockLanguageRuntime struct {
 
 	InstallDependenciesF func(info plugin.ProgramInfo) error
 
+	RuntimeOptionsPromptsF func(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error)
+
 	AboutF func(info plugin.ProgramInfo) (plugin.AboutInfo, error)
 
 	GetProgramDependenciesF func(
@@ -813,6 +815,13 @@ func (rt *mockLanguageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 func (rt *mockLanguageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
 	if rt.InstallDependenciesF != nil {
 		return rt.InstallDependenciesF(info)
+	}
+	panic("unimplemented")
+}
+
+func (rt *mockLanguageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error) {
+	if rt.RuntimeOptionsPromptsF != nil {
+		return rt.RuntimeOptionsPromptsF(info)
 	}
 	panic("unimplemented")
 }

@@ -36,6 +36,9 @@ service LanguageRuntime {
     // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
     rpc InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 
+    // RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
+    rpc RuntimeOptionsPrompts(RuntimeOptionsRequest) returns (RuntimeOptionsResponse) {}
+
     // About returns information about the runtime for this language.
     rpc About(AboutRequest) returns (AboutResponse) {}
 
@@ -152,6 +155,33 @@ message InstallDependenciesRequest {
 message InstallDependenciesResponse {
     bytes stdout = 1; // a line of stdout text.
     bytes stderr = 2; // a line of stderr text.
+}
+
+message RuntimeOptionsRequest {
+    ProgramInfo info = 1; // The current program info used to evaluate which prompts should be asked.
+}
+
+message RuntimeOptionPrompt {
+    enum RuntimeOptionType {
+        STRING = 0;
+        INT32 = 1;
+    }
+
+    message RuntimeOptionValue {
+        RuntimeOptionType promptType = 1;
+        string stringValue = 2;
+        int32 int32Value = 3;
+    }
+
+    string key = 1;
+    string description = 2;
+    RuntimeOptionType promptType = 3;
+    repeated RuntimeOptionValue choices = 4;
+    RuntimeOptionValue default = 5;
+}
+
+message RuntimeOptionsResponse {
+    repeated RuntimeOptionPrompt prompts = 1; // additional prompts to ask the user
 }
 
 message RunPluginRequest{

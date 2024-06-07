@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -405,4 +406,72 @@ func TestPyrightSupport(t *testing.T) {
 		ExpectFailure:          true,
 		ExtraRuntimeValidation: validation,
 	})
+}
+
+func TestNewPythonUsesPip(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only")
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "venv",
+	}
+	checkRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Modifies env
+func TestNewPythonChoosePoetry(t *testing.T) {
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.Stdin = strings.NewReader("poetry\n")
+	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain": "poetry",
+	}
+	checkRuntimeOptions(t, e.RootPath, expected)
+}
+
+func checkRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
+	t.Helper()
+
+	var config struct {
+		Runtime struct {
+			Name    string                 `yaml:"name"`
+			Options map[string]interface{} `yaml:"options"`
+		} `yaml:"runtime"`
+	}
+	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))
+	if err != nil {
+		t.Logf("could not read Pulumi.yaml in %s", root)
+		t.FailNow()
+	}
+	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
+		t.Logf("could not parse Pulumi.yaml in %s", root)
+		t.FailNow()
+	}
+
+	require.Equal(t, expected, config.Runtime.Options)
 }

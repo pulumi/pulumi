@@ -31,6 +31,8 @@ type LanguageRuntimeClient interface {
 	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error)
+	// RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
+	RuntimeOptionsPrompts(ctx context.Context, in *RuntimeOptionsRequest, opts ...grpc.CallOption) (*RuntimeOptionsResponse, error)
 	// About returns information about the runtime for this language.
 	About(ctx context.Context, in *AboutRequest, opts ...grpc.CallOption) (*AboutResponse, error)
 	// GetProgramDependencies returns the set of dependencies required by the program.
@@ -112,6 +114,15 @@ func (x *languageRuntimeInstallDependenciesClient) Recv() (*InstallDependenciesR
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *languageRuntimeClient) RuntimeOptionsPrompts(ctx context.Context, in *RuntimeOptionsRequest, opts ...grpc.CallOption) (*RuntimeOptionsResponse, error) {
+	out := new(RuntimeOptionsResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *languageRuntimeClient) About(ctx context.Context, in *AboutRequest, opts ...grpc.CallOption) (*AboutResponse, error) {
@@ -212,6 +223,8 @@ type LanguageRuntimeServer interface {
 	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error
+	// RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`.
+	RuntimeOptionsPrompts(context.Context, *RuntimeOptionsRequest) (*RuntimeOptionsResponse, error)
 	// About returns information about the runtime for this language.
 	About(context.Context, *AboutRequest) (*AboutResponse, error)
 	// GetProgramDependencies returns the set of dependencies required by the program.
@@ -244,6 +257,9 @@ func (UnimplementedLanguageRuntimeServer) GetPluginInfo(context.Context, *emptyp
 }
 func (UnimplementedLanguageRuntimeServer) InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error {
 	return status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) RuntimeOptionsPrompts(context.Context, *RuntimeOptionsRequest) (*RuntimeOptionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RuntimeOptionsPrompts not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) About(context.Context, *AboutRequest) (*AboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
@@ -352,6 +368,24 @@ type languageRuntimeInstallDependenciesServer struct {
 
 func (x *languageRuntimeInstallDependenciesServer) Send(m *InstallDependenciesResponse) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _LanguageRuntime_RuntimeOptionsPrompts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RuntimeOptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, req.(*RuntimeOptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LanguageRuntime_About_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -501,6 +535,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPluginInfo",
 			Handler:    _LanguageRuntime_GetPluginInfo_Handler,
+		},
+		{
+			MethodName: "RuntimeOptionsPrompts",
+			Handler:    _LanguageRuntime_RuntimeOptionsPrompts_Handler,
 		},
 		{
 			MethodName: "About",

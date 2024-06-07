@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -334,6 +335,40 @@ func (h *langhost) InstallDependencies(info ProgramInfo) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) success",
 		h.runtime, info)
 	return nil
+}
+
+func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error) {
+	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() executing", h.runtime)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return []RuntimeOptionPrompt{}, err
+	}
+
+	resp, err := h.client.RuntimeOptionsPrompts(h.ctx.Request(), &pulumirpc.RuntimeOptionsRequest{
+		Info: minfo,
+	})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() not implemented, returning no prompts", h.runtime)
+			return []RuntimeOptionPrompt{}, nil
+		}
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() failed: err=%v", h.runtime, rpcError)
+		return []RuntimeOptionPrompt{}, rpcError
+	}
+
+	prompts := []RuntimeOptionPrompt{}
+	for _, prompt := range resp.Prompts {
+		newPrompt, err := UnmarshallRuntimeOptionPrompt(prompt)
+		if err != nil {
+			return []RuntimeOptionPrompt{}, err
+		}
+		prompts = append(prompts, newPrompt)
+	}
+
+	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() success", h.runtime)
+	return prompts, nil
 }
 
 func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {

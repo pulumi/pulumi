@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -120,6 +121,9 @@ type LanguageRuntime interface {
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(info ProgramInfo) error
 
+	// RuntimeOptions returns additional options that can be set for the runtime.
+	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
+
 	// About returns information about the language runtime.
 	About(info ProgramInfo) (AboutInfo, error)
 
@@ -186,4 +190,88 @@ type RunInfo struct {
 	QueryMode         bool                  // true if we're only doing a query.
 	Parallel          int                   // the degree of parallelism for resource operations (<=1 for serial).
 	Organization      string                // the organization name housing the program being run (might be empty).
+}
+
+type RuntimeOptionType int
+
+const (
+	PromptTypeString RuntimeOptionType = iota
+	PromptTypeInt32
+)
+
+// RuntimeOptionValue represents a single value that can be selected for a runtime option.
+// The value can be either a string or an int32.
+type RuntimeOptionValue struct {
+	PromptType  RuntimeOptionType
+	StringValue string
+	Int32Value  int32
+}
+
+func (v RuntimeOptionValue) Value() interface{} {
+	if v.PromptType == PromptTypeString {
+		return v.StringValue
+	}
+	return v.Int32Value
+}
+
+func (v RuntimeOptionValue) String() string {
+	if v.PromptType == PromptTypeString {
+		return v.StringValue
+	}
+	return strconv.Itoa(int(v.Int32Value))
+}
+
+func RuntimeOptionValueFromString(promptType RuntimeOptionType, value string) (RuntimeOptionValue, error) {
+	switch promptType {
+	case PromptTypeString:
+		return RuntimeOptionValue{PromptType: PromptTypeString, StringValue: value}, nil
+	case PromptTypeInt32:
+		return RuntimeOptionValue{PromptType: PromptTypeInt32, Int32Value: 0}, nil
+	default:
+		return RuntimeOptionValue{}, fmt.Errorf("unknown prompt type %d", promptType)
+	}
+}
+
+// RuntimeOptionPrompt is a prompt for a runtime option. The prompt can have multiple choices or
+// be free-form if Choices is empty.
+// Key is the key as used in runtime.options.<Key> in the Pulumi.yaml file.
+type RuntimeOptionPrompt struct {
+	Key         string
+	Description string
+	Choices     []RuntimeOptionValue
+	Default     *RuntimeOptionValue
+	PromptType  RuntimeOptionType
+}
+
+type RuntimeOption struct {
+	Key   string
+	Value RuntimeOptionValue
+}
+
+func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOptionPrompt, error) {
+	choices := make([]RuntimeOptionValue, 0, len(p.Choices))
+	for _, choice := range p.Choices {
+		choices = append(choices, RuntimeOptionValue{
+			PromptType:  RuntimeOptionType(choice.PromptType),
+			StringValue: choice.StringValue,
+			Int32Value:  choice.Int32Value,
+		})
+	}
+
+	var defaultValue *RuntimeOptionValue
+	if p.Default != nil {
+		defaultValue = &RuntimeOptionValue{
+			PromptType:  RuntimeOptionType(p.Default.PromptType),
+			StringValue: p.Default.StringValue,
+			Int32Value:  p.Default.Int32Value,
+		}
+	}
+
+	return RuntimeOptionPrompt{
+		Key:         p.Key,
+		Description: p.Description,
+		Choices:     choices,
+		Default:     defaultValue,
+		PromptType:  RuntimeOptionType(p.PromptType),
+	}, nil
 }
