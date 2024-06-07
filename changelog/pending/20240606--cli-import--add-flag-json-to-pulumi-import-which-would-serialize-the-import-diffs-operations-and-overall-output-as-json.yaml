@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/import
+  description: Add flag --json to pulumi import which would serialize the import diffs, operations, and overall output as JSON
