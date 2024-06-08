@@ -40,6 +40,7 @@ from pulumi.automation import (
     StackSettings,
     StackAlreadyExistsError,
     fully_qualified_stack_name,
+    RemoveStackOptions,
 )
 
 from .test_utils import get_test_org, get_test_suffix, stack_namer
@@ -747,6 +748,65 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_stack_lifecycle_inline_program_remove_without_destroy(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True),
+        }
+
+        try:
+            stack.set_all_config(stack_config)
+
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            preview_result = stack.preview()
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi stack rm
+            removed_stack: bool
+            try:
+                stack.workspace.remove_stack(stack_name)
+                removed_stack = True
+            except:
+                removed_stack = False
+
+            self.assertFalse(removed_stack, "Stack was able to remove without the force flag and without destroying it first")
+
+            stack.workspace.remove_stack(stack_name, opts=RemoveStackOptions(force=True))
+
+            stack_exists: bool
+            try:
+                stack.workspace.select_stack(stack_name)
+                stack_exists = True
+            except:
+                stack_exists = False
+
+            self.assertFalse(stack_exists, "Stack should have been removed, but we could still select it")
         finally:
             stack.workspace.remove_stack(stack_name)
 
