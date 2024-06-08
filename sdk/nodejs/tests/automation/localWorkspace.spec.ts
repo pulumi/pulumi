@@ -681,22 +681,30 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(refRes.summary.kind, "refresh");
         assert.strictEqual(refRes.summary.result, "succeeded");
 
+        let removedStack: boolean;
         try {
             await stack.workspace.removeStack(stackName);
-            throw new Error("Stack was able to remove without the force flag and without destroying it first");
+            removedStack = true;
         } catch (e) {
             // we expect there to be an error because the force flag was not set
+            removedStack = false;
         }
+
+        assert.strictEqual(removedStack, false, "Stack was able to remove without the force flag and without destroying it first");
 
         await stack.workspace.removeStack(stackName, { force: true });
 
+        let stackExists: boolean;
         try {
             await stack.workspace.selectStack(stackName);
-            throw new Error("Stack should have been removed, but we could still select it");
+            stackExists = true;
         } catch (e) {
             // we shouldn't be able to select the stack after it's been removed
             // we expect this error
+            stackExists = false;
         }
+
+        assert.strictEqual(stackExists, false, "Stack should have been removed, but we could still select it");
     });
     it(`refreshes before preview`, async () => {
         // We create a simple program, and scan the output for an indication
