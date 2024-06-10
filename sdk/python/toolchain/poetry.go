@@ -1,6 +1,7 @@
 package toolchain
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,9 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -40,6 +43,19 @@ func newPoetry(directory string) (*poetry, error) {
 func (p *poetry) InstallDependencies(ctx context.Context,
 	root string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
+	// If pyproject.toml does not exist, but we have a  requirements.txt,
+	// generate a new pyproject.toml.
+	pyprojectToml := filepath.Join(root, "pyproject.toml")
+	if _, err := os.Stat(pyprojectToml); err != nil && errors.Is(err, os.ErrNotExist) {
+		requirementsTxt := filepath.Join(root, "requirements.txt")
+		if _, err := os.Stat(requirementsTxt); err != nil && errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("could not find pyproject.toml in %s", root)
+		}
+		if err := p.convertRequirementsTxt(requirementsTxt, pyprojectToml); err != nil {
+			return err
+		}
+	}
+
 	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
 	poetryCmd.Dir = p.directory
 	poetryCmd.Stdout = infoWriter
@@ -150,4 +166,108 @@ func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
 		return "", errors.New("expected a virtualenv path, got empty string")
 	}
 	return virtualenvPath, nil
+}
+
+func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string) error {
+	f, err := os.Open(requirementsTxt)
+	if err != nil {
+		return fmt.Errorf("failed to open %q", requirementsTxt)
+	}
+	defer f.Close()
+
+	deps, err := dependenciesFromRequirementsTxt(f)
+	if err != nil {
+		return fmt.Errorf("failed gather dependencies from %q", requirementsTxt)
+	}
+
+	b, err := p.generatePyProjectTOML(deps)
+	if err != nil {
+		return fmt.Errorf("failed to generate %q", pyprojectToml)
+	}
+
+	pyprojectFile, err := os.Create(pyprojectToml)
+	if err != nil {
+		return fmt.Errorf("failed to create %q", pyprojectToml)
+	}
+	defer pyprojectFile.Close()
+
+	if _, err := pyprojectFile.Write([]byte(b)); err != nil {
+		return fmt.Errorf("failed to write to %q", pyprojectToml)
+	}
+
+	if err := os.Remove(requirementsTxt); err != nil {
+		return fmt.Errorf("failed to remove %q", requirementsTxt)
+	}
+
+	return nil
+}
+
+func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, error) {
+	type BuildSystem struct {
+		Requires     []string `toml:"requires,omitempty" json:"requires,omitempty"`
+		BuildBackend string   `toml:"build-backend,omitempty" json:"build-backend,omitempty"`
+	}
+
+	type Pyproject struct {
+		BuildSystem *BuildSystem           `toml:"build-system,omitempty" json:"build-system,omitempty"`
+		Tool        map[string]interface{} `toml:"tool,omitempty" json:"tool,omitempty"`
+	}
+
+	pp := Pyproject{
+		BuildSystem: &BuildSystem{
+			Requires:     []string{"poetry-core"},
+			BuildBackend: "poetry.core.masonry.api",
+		},
+		Tool: map[string]any{
+			"poetry": map[string]any{
+				"package-mode": false,
+				"dependencies": dependencies,
+			},
+		},
+	}
+
+	w := &bytes.Buffer{}
+	if err := toml.NewEncoder(w).Encode(pp); err != nil {
+		return "", err
+	}
+	return w.String(), nil
+}
+
+func dependenciesFromRequirementsTxt(r io.Reader) (map[string]string, error) {
+	versionRe := regexp.MustCompile("[<>=]+.+")
+	deps := map[string]string{
+		"python": "^3.8",
+	}
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return map[string]string{}, err
+		}
+		line := strings.TrimSpace(scanner.Text())
+		// Skip empty lines and comment lines
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// Drop trailing comments
+		parts := strings.SplitN(line, "#", 2)
+		line = strings.TrimSpace(parts[0])
+
+		// find the version specififer: "pulumi>=3.0.0,<4.0.0" -> ">=3.0.0,<4.0.0".
+		version := string(versionRe.Find([]byte(line)))
+		// package is everything before the version specififer.
+		pkg := strings.TrimSpace(strings.Replace(line, version, "", 1))
+
+		version = strings.TrimSpace(version)
+		if version == "" {
+			version = "*"
+		}
+		// Drop `==` for an exact version match
+		if strings.HasPrefix(version, "==") {
+			version = strings.TrimSpace(version[2:])
+		}
+
+		deps[pkg] = version
+	}
+
+	return deps, nil
 }
