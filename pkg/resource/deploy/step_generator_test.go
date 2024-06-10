@@ -491,11 +491,12 @@ func TestGenerateAliases(t *testing.T) {
 			}
 
 			sg := newStepGenerator(&Deployment{
+				opts: &Options{},
 				target: &Target{
 					Name: stack,
 				},
 				source: NewNullSource(project),
-			}, Options{}, NewUrnTargets(nil), NewUrnTargets(nil))
+			})
 
 			if tt.parentAlias != nil {
 				sg.aliases = map[resource.URN]resource.URN{
@@ -547,10 +548,12 @@ func TestStepGenerator(t *testing.T) {
 
 		// Arrange.
 		sg := &stepGenerator{
-			opts: Options{
-				TargetDependents: false,
-				Targets: UrnTargets{
-					literals: []resource.URN{"b"},
+			deployment: &Deployment{
+				opts: &Options{
+					TargetDependents: false,
+					Targets: UrnTargets{
+						literals: []resource.URN{"b"},
+					},
 				},
 			},
 			targetsActual: UrnTargets{
@@ -668,10 +671,12 @@ func TestStepGenerator(t *testing.T) {
 		assert.NoError(t, err)
 
 		sg := &stepGenerator{
-			opts: Options{
-				TargetDependents: true,
-				Targets: UrnTargets{
-					literals: []resource.URN{"c"},
+			deployment: &Deployment{
+				opts: &Options{
+					TargetDependents: true,
+					Targets: UrnTargets{
+						literals: []resource.URN{"c"},
+					},
 				},
 			},
 			targetsActual: UrnTargets{
@@ -809,11 +814,14 @@ func TestStepGenerator(t *testing.T) {
 					"urn:pulumi:stack::::::": true,
 				},
 				deployment: &Deployment{
+					ctx: &plugin.Context{
+						Diag: &deploytest.NoopSink{},
+					},
+					opts: &Options{},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack"),
 					},
 					source: &nullSource{},
-					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
 				},
 			}
 			_, err := sg.GenerateReadSteps(&readResourceEvent{})

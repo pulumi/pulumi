@@ -61,13 +61,14 @@ func Destroy(
 		Events:        emitter,
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
-	}, dryRun)
+		DryRun:        dryRun,
+	})
 }
 
 func newDestroySource(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+	target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.
 	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described

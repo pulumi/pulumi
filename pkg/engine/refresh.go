@@ -65,12 +65,13 @@ func Refresh(
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 		isRefresh:     true,
-	}, dryRun)
+		DryRun:        dryRun,
+	})
 }
 
 func newRefreshSource(
 	ctx context.Context, client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main,
-	projectRoot string, target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+	projectRoot string, target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
 	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
