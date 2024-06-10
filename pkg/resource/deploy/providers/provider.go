@@ -24,37 +24,68 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// A ProviderRequest is a tuple of an optional semantic version, download server url and a package name. Whenever
-// the engine receives a registration for a resource that doesn't explicitly specify a provider, the engine creates
-// a ProviderRequest for that resource's provider, using the version passed to the engine as part of RegisterResource
-// and the package derived from the resource's token.
+type ProviderParameter struct {
+	// The name of the parametrized package.
+	pkg tokens.Package
+	// The version of the parametrized package.
+	version *semver.Version
+	// The value of the parameter (a JSON like value).
+	value interface{}
+}
+
+// NewProviderParameter constructs a new provider parameter.
+func NewProviderParameter(
+	pkg tokens.Package, version *semver.Version, value interface{},
+) *ProviderParameter {
+	return &ProviderParameter{
+		pkg:     pkg,
+		version: version,
+		value:   value,
+	}
+}
+
+// A ProviderRequest is a tuple of an optional semantic version, download server url, parameter, and a package name.
+// Whenever the engine receives a registration for a resource that doesn't explicitly specify a provider, the engine
+// creates a ProviderRequest for that resource's provider, using the version passed to the engine as part of
+// RegisterResource and the package derived from the resource's token.
 //
 // The source evaluator (source_eval.go) is responsible for servicing provider requests. It does this by interpreting
 // these provider requests and sending resource registrations to the engine for the providers themselves. These are
 // called "default providers".
 //
-// ProviderRequest is useful as a hash key. The engine is free to instantiate any number of provider requests, but it
-// is free to cache requests for a provider request that is equal to one that has already been serviced. If you do use
+// ProviderRequest is useful as a hash key. The engine is free to instantiate any number of provider requests, but it is
+// free to cache requests for a provider request that is equal to one that has already been serviced. If you do use
 // ProviderRequest as a hash key, you should call String() to get a usable key for string-based hash maps.
+// ProviderRequests only hash by their package name, version and download URL. The checksums and parameterization are
+// not used in the hash.
 type ProviderRequest struct {
 	version           *semver.Version
 	pkg               tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
+	parameterization  *ProviderParameter
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
-// pluginDownloadURL and package.
+// pluginDownloadURL, optional parameter, and package.
 func NewProviderRequest(
 	version *semver.Version, pkg tokens.Package,
 	pluginDownloadURL string, checksums map[string][]byte,
+	parameterization *ProviderParameter,
 ) ProviderRequest {
 	return ProviderRequest{
 		version:           version,
 		pkg:               pkg,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
+		parameterization:  parameterization,
 	}
+}
+
+// Parameterization returns the parameterization of this provider request. May be nil if no parameterization was
+// provided.
+func (p ProviderRequest) Parameterization() *ProviderParameter {
+	return p.parameterization
 }
 
 // Version returns this provider request's version. May be nil if no version was provided.

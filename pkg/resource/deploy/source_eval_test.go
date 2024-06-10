@@ -2061,7 +2061,7 @@ func TestDefaultProviders(t *testing.T) {
 					},
 				},
 			}
-			req := d.normalizeProviderRequest(providers.NewProviderRequest(nil, tokens.Package("pkg"), "", nil))
+			req := d.normalizeProviderRequest(providers.NewProviderRequest(nil, tokens.Package("pkg"), "", nil, nil))
 			assert.NotNil(t, req)
 			assert.Equal(t, &v1, req.Version())
 			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
@@ -2292,7 +2292,7 @@ func TestParseProviderRequest(t *testing.T) {
 	t.Parallel()
 	t.Run("bad version", func(t *testing.T) {
 		t.Parallel()
-		_, err := parseProviderRequest("", "bad-version", "", nil)
+		_, err := parseProviderRequest("", "bad-version", "", nil, nil)
 		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
 	})
 }

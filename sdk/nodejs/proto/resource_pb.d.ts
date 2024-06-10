@@ -723,6 +723,11 @@ export class RegisterProviderRequest extends jspb.Message {
     getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
     clearPluginChecksumsMap(): void;
 
+    hasParameter(): boolean;
+    clearParameter(): void;
+    getParameter(): ProviderParameter | undefined;
+    setParameter(value?: ProviderParameter): RegisterProviderRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterProviderRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterProviderRequest): RegisterProviderRequest.AsObject;
@@ -740,6 +745,7 @@ export namespace RegisterProviderRequest {
         pluginDownloadUrl: string,
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+        parameter?: ProviderParameter.AsObject,
     }
 }
 
@@ -760,6 +766,35 @@ export class RegisterProviderResponse extends jspb.Message {
 export namespace RegisterProviderResponse {
     export type AsObject = {
         ref: string,
+    }
+}
+
+export class ProviderParameter extends jspb.Message { 
+    getName(): string;
+    setName(value: string): ProviderParameter;
+    getVersion(): string;
+    setVersion(value: string): ProviderParameter;
+
+    hasValue(): boolean;
+    clearValue(): void;
+    getValue(): google_protobuf_struct_pb.Value | undefined;
+    setValue(value?: google_protobuf_struct_pb.Value): ProviderParameter;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ProviderParameter.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderParameter): ProviderParameter.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ProviderParameter, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderParameter;
+    static deserializeBinaryFromReader(message: ProviderParameter, reader: jspb.BinaryReader): ProviderParameter;
+}
+
+export namespace ProviderParameter {
+    export type AsObject = {
+        name: string,
+        version: string,
+        value?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 

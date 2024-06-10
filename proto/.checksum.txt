@@ -19,6 +19,6 @@
 3891986630 10474 proto/pulumi/language.proto
 2893249402 1992 proto/pulumi/plugin.proto
 3028749592 26559 proto/pulumi/provider.proto
-3731383000 16135 proto/pulumi/resource.proto
+441549670 16286 proto/pulumi/resource.proto
 607478140 1008 proto/pulumi/source.proto
 1507248916 2314 proto/pulumi/testing/language.proto
