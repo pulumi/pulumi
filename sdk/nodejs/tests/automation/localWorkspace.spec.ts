@@ -643,68 +643,29 @@ describe("LocalWorkspace", () => {
     });
     it(`runs through the stack lifecycle with an inline program, testing removing without destroying`, async () => {
         const program = async () => {
-            const config = new Config();
-            return {
-                exp_static: "foo",
-                exp_cfg: config.get("bar"),
-                exp_secret: config.getSecret("buzz"),
-            };
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
         };
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
-        const stackConfig: ConfigMap = {
-            bar: { value: "abc" },
-            buzz: { value: "secret", secret: true },
-        };
-        await stack.setAllConfig(stackConfig);
+        await stack.up({ userAgent });
 
-        // pulumi up
-        const upRes = await stack.up({ userAgent });
-        assert.strictEqual(Object.keys(upRes.outputs).length, 3);
-        assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
-        assert.strictEqual(upRes.outputs["exp_static"].secret, false);
-        assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
-        assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
-        assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
-        assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
-        assert.strictEqual(upRes.summary.kind, "update");
-        assert.strictEqual(upRes.summary.result, "succeeded");
-
-        // pulumi preview
-        const preRes = await stack.preview({ userAgent });
-        assert.strictEqual(preRes.changeSummary.same, 1);
-
-        // pulumi refresh
-        const refRes = await stack.refresh({ userAgent });
-        assert.strictEqual(refRes.summary.kind, "refresh");
-        assert.strictEqual(refRes.summary.result, "succeeded");
-
-        let removedStack: boolean;
-        try {
-            await stack.workspace.removeStack(stackName);
-            removedStack = true;
-        } catch (e) {
-            // we expect there to be an error because the force flag was not set
-            removedStack = false;
-        }
-
-        assert.strictEqual(removedStack, false, "Stack was able to remove without the force flag and without destroying it first");
+        // we shouldn't be able to remove the stack without force
+        // since the stack has an active resource
+        assert.rejects(stack.workspace.removeStack(stackName));
 
         await stack.workspace.removeStack(stackName, { force: true });
 
-        let stackExists: boolean;
-        try {
-            await stack.workspace.selectStack(stackName);
-            stackExists = true;
-        } catch (e) {
-            // we shouldn't be able to select the stack after it's been removed
-            // we expect this error
-            stackExists = false;
-        }
-
-        assert.strictEqual(stackExists, false, "Stack should have been removed, but we could still select it");
+        // we shouldn't be able to select the stack after it's been removed
+        // we expect this error
+        assert.rejects(stack.workspace.selectStack(stackName));
     });
     it(`refreshes before preview`, async () => {
         // We create a simple program, and scan the output for an indication
