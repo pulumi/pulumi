@@ -112,19 +112,6 @@ class Deployment:
         return f"Deployment(version={self.version!r}, deployment={self.deployment!r})"
 
 
-class RemoveStackOptions:
-    force: Optional[bool] = None
-    preserve_config: Optional[bool] = None
-
-    def __init__(
-        self,
-        force: Optional[bool] = None,
-        preserve_config: Optional[bool] = None
-    ):
-        self.force = force
-        self.preserve_config = preserve_config
-
-
 class Workspace(ABC):
     """
     Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -409,7 +396,7 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def remove_stack(self, stack_name: str, opts: Optional[RemoveStackOptions]) -> None:
+    def remove_stack(self, stack_name: str, force: Optional[bool] = None, preserve_config: Optional[bool] = None) -> None:
         """
         Deletes the stack and all associated configuration and history.
 

@@ -796,7 +796,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         self.assertFalse(removed_stack, "Stack was able to remove without the force flag and without destroying it first")
 
-        stack.workspace.remove_stack(stack_name, opts=RemoveStackOptions(force=True))
+        stack.workspace.remove_stack(stack_name, force=True)
 
         stack_exists: bool
         try:

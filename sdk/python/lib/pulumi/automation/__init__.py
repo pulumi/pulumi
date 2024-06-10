@@ -149,7 +149,6 @@ from ._workspace import (
     Workspace,
     WhoAmIResult,
     Deployment,
-    RemoveStackOptions
 )
 
 from ._output import OutputMap, OutputValue
@@ -221,7 +220,6 @@ __all__ = [
     "Workspace",
     "Deployment",
     "WhoAmIResult",
-    "RemoveStackOptions",
     # _output
     "OutputMap",
     "OutputValue",

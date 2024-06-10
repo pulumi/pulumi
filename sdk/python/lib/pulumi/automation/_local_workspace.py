@@ -38,7 +38,6 @@ from ._workspace import (
     StackSummary,
     WhoAmIResult,
     Workspace,
-    RemoveStackOptions,
 )
 from .errors import InvalidVersionError
 
@@ -412,13 +411,12 @@ class LocalWorkspace(Workspace):
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 
-    def remove_stack(self, stack_name: str, opts: Optional[RemoveStackOptions]) -> None:
+    def remove_stack(self, stack_name: str, force: Optional[bool] = None, preserve_config: Optional[bool] = None) -> None:
         args = ["stack", "rm", "--yes"]
-        if opts is not None:
-            if opts.force:
-                args.append("--force")
-            if opts.preserve_config:
-                args.append("--preserve-config")
+        if force:
+            args.append("--force")
+        if preserve_config:
+            args.append("--preserve-config")
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 
