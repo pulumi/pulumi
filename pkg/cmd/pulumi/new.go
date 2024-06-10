@@ -856,6 +856,7 @@ func runtimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 	if err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", info.Name(), err)
 	}
+	defer lang.Close()
 
 	options := make(map[string]interface{}, len(info.Options()))
 	for k, v := range info.Options() {
