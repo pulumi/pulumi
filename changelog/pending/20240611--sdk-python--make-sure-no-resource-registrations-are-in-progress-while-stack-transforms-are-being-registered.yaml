@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Make sure no resource registrations are in progress while stack transforms are being registered
