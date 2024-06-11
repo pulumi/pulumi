@@ -1384,6 +1384,19 @@ func TestESMTSCompiled(t *testing.T) {
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestMainOverridesPackageJSON(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "main-overrides-package-json"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+			assert.Equal(t, "This is the entrypoint from Pulumi.yaml", stack.Outputs["text"])
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNpmWorkspace(t *testing.T) {
 	preparePropject := func(projinfo *engine.Projinfo) error {
 		// The default nodejs prepare uses yarn to link dependencies.

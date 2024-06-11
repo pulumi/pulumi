@@ -277,6 +277,7 @@ export async function run(
         });
     }
 
+    const hasEntrypoint = argv._[0] !== ".";
     let program: string = argv._[0];
     if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
@@ -388,9 +389,9 @@ ${defaultMessage}`,
             const packageObject = packageObjectFromProjectRoot(packageRoot);
             let programExport: any;
 
-            // If the user provided an entrypoint, we use that file
-            // relative to the package directory.
-            if (packageObject["main"]) {
+            // If there is no entrypoint set in Pulumi.yaml via the main
+            // option, look for an entrypoint defined in package.json
+            if (!hasEntrypoint && packageObject["main"]) {
                 const packageMainPath = path.join(packageRoot, packageObject["main"]);
                 if (fs.existsSync(packageMainPath)) {
                     program = packageMainPath;
