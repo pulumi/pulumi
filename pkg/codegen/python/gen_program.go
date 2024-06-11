@@ -758,7 +758,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 	if hasInputs {
 		prefix = "\n" + g.Indent
 	}
-	g.Fprintf(w, ",%sopts=pulumi.ResourceOptions(", prefix)
+	g.Fprintf(w, ",%sopts = pulumi.ResourceOptions(", prefix)
 	g.Indented(func() {
 		for i, item := range block.Body.Items {
 			if i > 0 {

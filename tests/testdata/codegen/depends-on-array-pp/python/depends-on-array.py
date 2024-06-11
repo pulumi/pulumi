@@ -17,7 +17,7 @@ index_html = aws.s3.BucketObject("index.html",
     source=pulumi.FileAsset("./index.html"),
     content_type="text/html",
     acl="public-read",
-    opts=pulumi.ResourceOptions(depends_on=[
+    opts = pulumi.ResourceOptions(depends_on=[
             public_access_block,
             ownership_controls,
         ]))

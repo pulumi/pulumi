@@ -48,4 +48,4 @@ cluster = azure_native.containerservice.ManagedCluster("cluster",
         name=azure_native.containerservice.ManagedClusterSKUName.BASIC,
         tier=azure_native.containerservice.ManagedClusterSKUTier.FREE,
     ),
-    opts=pulumi.ResourceOptions(protect=True))
+    opts = pulumi.ResourceOptions(protect=True))

@@ -31,13 +31,13 @@ class ExampleComponent(pulumi.ComponentResource):
             length=16,
             special=True,
             override_special=args["input"],
-            opts=pulumi.ResourceOptions(parent=self))
+            opts = pulumi.ResourceOptions(parent=self))
 
         github_password = random.RandomPassword(f"{name}-githubPassword",
             length=16,
             special=True,
             override_special=args["githubApp"]["webhookSecret"],
-            opts=pulumi.ResourceOptions(parent=self))
+            opts = pulumi.ResourceOptions(parent=self))
 
         # Example of iterating a list of objects
         server_passwords = []
@@ -46,7 +46,7 @@ class ExampleComponent(pulumi.ComponentResource):
                 length=16,
                 special=True,
                 override_special=args["servers"][range["value"]]["name"],
-                opts=pulumi.ResourceOptions(parent=self)))
+                opts = pulumi.ResourceOptions(parent=self)))
 
         # Example of iterating a map of objects
         zone_passwords = []
@@ -55,9 +55,9 @@ class ExampleComponent(pulumi.ComponentResource):
                 length=16,
                 special=True,
                 override_special=range["value"]["zone"],
-                opts=pulumi.ResourceOptions(parent=self)))
+                opts = pulumi.ResourceOptions(parent=self)))
 
-        simple_component = SimpleComponent(f"{name}-simpleComponent", opts=pulumi.ResourceOptions(parent=self))
+        simple_component = SimpleComponent(f"{name}-simpleComponent", opts = pulumi.ResourceOptions(parent=self))
 
         self.result = password.result
         self.register_outputs({
