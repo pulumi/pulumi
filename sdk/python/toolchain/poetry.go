@@ -49,7 +49,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	if _, err := os.Stat(pyprojectToml); err != nil && errors.Is(err, os.ErrNotExist) {
 		requirementsTxt := filepath.Join(root, "requirements.txt")
 		if _, err := os.Stat(requirementsTxt); err != nil && errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("could not find pyproject.toml in %s", root)
+			return fmt.Errorf("could not find pyproject.toml or requirements.txt in %s", root)
 		}
 		if err := p.convertRequirementsTxt(requirementsTxt, pyprojectToml); err != nil {
 			return err
