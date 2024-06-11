@@ -396,7 +396,12 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def remove_stack(self, stack_name: str, force: Optional[bool] = None, preserve_config: Optional[bool] = None) -> None:
+    def remove_stack(
+        self,
+        stack_name: str,
+        force: Optional[bool] = None,
+        preserve_config: Optional[bool] = None,
+    ) -> None:
         """
         Deletes the stack and all associated configuration and history.
 

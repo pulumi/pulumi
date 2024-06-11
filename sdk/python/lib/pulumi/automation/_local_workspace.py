@@ -411,7 +411,12 @@ class LocalWorkspace(Workspace):
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 
-    def remove_stack(self, stack_name: str, force: Optional[bool] = None, preserve_config: Optional[bool] = None) -> None:
+    def remove_stack(
+        self,
+        stack_name: str,
+        force: Optional[bool] = None,
+        preserve_config: Optional[bool] = None,
+    ) -> None:
         args = ["stack", "rm", "--yes"]
         if force:
             args.append("--force")
