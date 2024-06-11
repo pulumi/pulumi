@@ -479,6 +479,37 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 	checkRuntimeOptions(t, e.RootPath, expected)
 }
 
+func TestNewPythonConvertRequirementsTxt(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Add a poetry.toml to make poetry create the virtualenv inside the temp
+	// directory. That way it gets cleaned up with the test.
+	poetryToml := `[virtualenvs]
+in-project = true`
+	err := os.WriteFile(filepath.Join(e.RootPath, "poetry.toml"), []byte(poetryToml), 0o600)
+	require.NoError(t, err)
+
+	template := "python"
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+		"--runtime-options", "toolchain=poetry",
+	)
+
+	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
+	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
+}
+
 func checkRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
 	t.Helper()
 
