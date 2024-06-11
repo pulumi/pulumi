@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Only look for main in package.json if no entyrpoint was set via Pulumi.yaml
