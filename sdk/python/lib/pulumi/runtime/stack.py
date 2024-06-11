@@ -311,6 +311,11 @@ def register_stack_transform(t: ResourceTransform):
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
 
+    loop = asyncio.get_event_loop()
+    pending = asyncio.all_tasks()
+    rpcs = {task for task in pending if task._coro.is_rpc_wrapper is True}
+    _sync_await(asyncio.gather(*rpcs))
+
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
         raise Exception("No callback server registered.")
