@@ -43,7 +43,7 @@ func newPoetry(directory string) (*poetry, error) {
 func (p *poetry) InstallDependencies(ctx context.Context,
 	root string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	// If pyproject.toml does not exist, but we have a  requirements.txt,
+	// If pyproject.toml does not exist, but we have a requirements.txt,
 	// generate a new pyproject.toml.
 	pyprojectToml := filepath.Join(root, "pyproject.toml")
 	if _, err := os.Stat(pyprojectToml); err != nil && errors.Is(err, os.ErrNotExist) {
@@ -177,7 +177,7 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string) e
 
 	deps, err := dependenciesFromRequirementsTxt(f)
 	if err != nil {
-		return fmt.Errorf("failed gather dependencies from %q", requirementsTxt)
+		return fmt.Errorf("failed to gather dependencies from %q", requirementsTxt)
 	}
 
 	b, err := p.generatePyProjectTOML(deps)
