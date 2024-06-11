@@ -45,6 +45,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+const (
+	TypedDictSettingNone       = "none"
+	TypedDictSettingSideBySide = "side-by-side"
+)
+
+func typedDictEnabled(setting string) bool {
+	return setting == TypedDictSettingSideBySide
+}
+
 type typeDetails struct {
 	outputType         bool
 	inputType          bool
@@ -130,7 +139,7 @@ type modContext struct {
 	liftSingleValueMethodReturns bool
 
 	// Emit TypedDicts types for inputs
-	typedDictArgs bool
+	typedDictArgs string
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -413,13 +422,13 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 
 	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
-	if mod.typedDictArgs {
+	if typedDictEnabled(mod.typedDictArgs) {
 		fmt.Fprintf(w, "import sys\n")
 	}
 	fmt.Fprintf(w, "import pulumi\n")
 	fmt.Fprintf(w, "import pulumi.runtime\n")
 	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
-	if mod.typedDictArgs {
+	if typedDictEnabled(mod.typedDictArgs) {
 		fmt.Fprintf(w, "if sys.version_info >= (3, 11):\n")
 		fmt.Fprintf(w, "    from typing import NotRequired, TypedDict, TypeAlias\n")
 		fmt.Fprintf(w, "else:\n")
@@ -1068,13 +1077,13 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
 				fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
-			if input && mod.typedDictArgs && mod.details(t).inputType {
+			if input && typedDictEnabled(mod.typedDictArgs) && mod.details(t).inputType {
 				fmt.Fprintf(w, "    '%sDict',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
 		}
 		fmt.Fprintf(w, "]\n\n")
 
-		if input && mod.typedDictArgs {
+		if input && typedDictEnabled(mod.typedDictArgs) {
 			fmt.Fprintf(w, "MYPY = False\n\n")
 		}
 
@@ -2401,8 +2410,8 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 		pkg, err := t.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "error loading definition for package %q", t.PackageReference.Name())
 		info, ok := pkg.Language["python"].(PackageInfo)
-		hasTypedDictArgs := ok && info.TypedDictArgs
-		if hasTypedDictArgs && input {
+		typedDicts := ok && typedDictEnabled(info.TypedDictArgs)
+		if typedDicts && input {
 			return fmt.Sprintf("Union[%s, %s]", typ, mod.objectType(t, input, true /*dictType*/))
 		}
 		return fmt.Sprintf("pulumi.InputType[%s]", typ)
@@ -2540,7 +2549,7 @@ func InitParamName(name string) string {
 func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
-	if input && mod.typedDictArgs {
+	if input && typedDictEnabled(mod.typedDictArgs) {
 		if err := mod.genDictType(w, name, obj.Comment, obj.Properties); err != nil {
 			return err
 		}
@@ -2839,6 +2848,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				compatibility:                info.Compatibility,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 				typedDictArgs:                info.TypedDictArgs,
+			}
+
+			if info.TypedDictArgs == "" {
+				// TODO[pulumi/pulumi/16375]: Flip default to side-by-side
+				mod.typedDictArgs = TypedDictSettingNone
 			}
 
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {
