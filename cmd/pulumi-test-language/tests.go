@@ -280,7 +280,7 @@ var languageTests = map[string]languageTest{
 				) {
 					requireStackResource(l, res, changes)
 
-					// Check we have the one simple resource in the snapshot, it's provider and the stack.
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					provider := snap.Resources[1]
@@ -288,6 +288,34 @@ var languageTests = map[string]languageTest{
 
 					simple := snap.Resources[2]
 					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-explicit-provider": {
+		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+					assert.Equal(l, "prov", provider.URN.Name(), "expected explicit provider resource")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
+					assert.Equal(l, string(provider.URN)+"::"+string(provider.ID), simple.Provider)
 
 					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
 					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
