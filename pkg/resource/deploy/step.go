@@ -280,7 +280,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			URN:        s.URN(),
 			Properties: s.new.Inputs,
 			Timeout:    s.new.CustomTimeouts.Create,
-			Preview:    s.deployment.preview,
+			Preview:    s.deployment.opts.DryRun,
 		})
 		if err != nil {
 			if resp.Status != resource.StatusPartialFailure {
@@ -617,7 +617,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			NewInputs:     s.new.Inputs,
 			Timeout:       s.new.CustomTimeouts.Update,
 			IgnoreChanges: s.ignoreChanges,
-			Preview:       s.deployment.preview,
+			Preview:       s.deployment.opts.DryRun,
 		})
 
 		s.new.Lock.Lock()

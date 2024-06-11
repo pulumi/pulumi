@@ -157,7 +157,9 @@ func TestCreateStep(t *testing.T) {
 					new: &resource.State{
 						Custom: true,
 					},
-					deployment: &Deployment{},
+					deployment: &Deployment{
+						opts: &Options{},
+					},
 					provider: &deploytest.Provider{
 						CreateF: func(
 							urn resource.URN, inputs resource.PropertyMap,
@@ -179,7 +181,9 @@ func TestCreateStep(t *testing.T) {
 					new: &resource.State{
 						Custom: true,
 					},
-					deployment: &Deployment{},
+					deployment: &Deployment{
+						opts: &Options{},
+					},
 					provider: &deploytest.Provider{
 						CreateF: func(
 							urn resource.URN, inputs resource.PropertyMap,
@@ -204,7 +208,9 @@ func TestCreateStep(t *testing.T) {
 					new: &resource.State{
 						Custom: true,
 					},
-					deployment: &Deployment{},
+					deployment: &Deployment{
+						opts: &Options{},
+					},
 					provider: &deploytest.Provider{
 						CreateF: func(
 							urn resource.URN, inputs resource.PropertyMap,
@@ -385,7 +391,9 @@ func TestUpdateStep(t *testing.T) {
 					// Use denydefaultprovider ID to ensure failure.
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
-				deployment: &Deployment{},
+				deployment: &Deployment{
+					opts: &Options{},
+				},
 				provider: &deploytest.Provider{
 					UpdateF: func(
 						urn resource.URN, id resource.ID,
@@ -409,7 +417,9 @@ func TestUpdateStep(t *testing.T) {
 					// Use denydefaultprovider ID to ensure failure.
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
-				deployment: &Deployment{},
+				deployment: &Deployment{
+					opts: &Options{},
+				},
 				provider: &deploytest.Provider{
 					UpdateF: func(
 						urn resource.URN, id resource.ID,

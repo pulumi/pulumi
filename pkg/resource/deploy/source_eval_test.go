@@ -221,7 +221,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed := 0
@@ -307,7 +307,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -423,7 +423,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
 	assert.NoError(t, err)
 
 	reads := 0
@@ -501,7 +501,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
 	assert.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -681,7 +681,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			ctx, err := newTestPluginContext(t, program)
 			assert.NoError(t, err)
 
-			iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+			iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
 			assert.NoError(t, err)
 
 			for {
@@ -881,7 +881,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			pluginCtx, err := newTestPluginContext(t, program)
 			require.NoError(t, err, "build plugin context")
 
-			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false)
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, EvalSourceOptions{})
 			defer func() {
 				assert.NoError(t, evalSource.Close(), "close eval source")
 			}()
@@ -911,7 +911,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			iter, res := evalSource.Iterate(ctx, Options{}, &testProviderSource{defaultProvider: provider})
+			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider})
 			require.Nil(t, res, "iterate eval source")
 
 			for ev, res := iter.Next(); ev != nil; ev, res = iter.Next() {
@@ -1421,7 +1421,7 @@ func TestStreamInvoke(t *testing.T) {
 					return nil, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1483,7 +1483,7 @@ func TestStreamInvoke(t *testing.T) {
 					return nil, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1549,7 +1549,7 @@ func TestStreamInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1611,7 +1611,7 @@ func TestStreamInvoke(t *testing.T) {
 				},
 			},
 			plugctx: plugctx,
-		}, reg, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, reg, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1842,7 +1842,7 @@ func TestEvalSource(t *testing.T) {
 					},
 				},
 			}
-			_, err := src.Iterate(context.Background(), Options{}, &providerSourceMock{})
+			_, err := src.Iterate(context.Background(), &providerSourceMock{})
 			assert.ErrorContains(t, err, "failed to decrypt config")
 			assert.True(t, decrypterCalled)
 		})
@@ -1877,7 +1877,7 @@ func TestEvalSource(t *testing.T) {
 					},
 				},
 			}
-			_, err := src.Iterate(context.Background(), Options{}, &providerSourceMock{})
+			_, err := src.Iterate(context.Background(), &providerSourceMock{})
 			assert.ErrorContains(t, err, "failed to convert config to map")
 			assert.True(t, decrypterCalled)
 		})
@@ -2341,7 +2341,7 @@ func TestInvoke(t *testing.T) {
 					return nil, nil, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2404,7 +2404,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2480,7 +2480,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResult{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2568,7 +2568,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResult{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2641,7 +2641,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResult{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2726,7 +2726,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, Options{}, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{

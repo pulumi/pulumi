@@ -214,7 +214,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		Events:        emitter,
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
-	}, dryRun)
+		DryRun:        dryRun,
+	})
 }
 
 // RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
@@ -427,7 +428,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+	target *deploy.Target, plugctx *plugin.Context,
 ) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
@@ -461,7 +462,7 @@ func newUpdateSource(ctx context.Context,
 		Project:      proj.Name.String(),
 		Stack:        target.Name.String(),
 		Config:       config,
-		DryRun:       dryRun,
+		DryRun:       opts.DryRun,
 	}
 	if err := installAndLoadPolicyPlugins(ctx, plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
@@ -481,29 +482,36 @@ func newUpdateSource(ctx context.Context,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, dryRun), nil
+	}, defaultProviderVersions, deploy.EvalSourceOptions{
+		DryRun:                    opts.DryRun,
+		Parallel:                  opts.Parallel,
+		DisableResourceReferences: opts.DisableResourceReferences,
+		DisableOutputValues:       opts.DisableOutputValues,
+	}), nil
 }
 
-func update(ctx *Context, info *deploymentContext, opts *deploymentOptions,
-	preview bool,
+func update(
+	ctx *Context,
+	info *deploymentContext,
+	opts *deploymentOptions,
 ) (*deploy.Plan, display.ResourceChanges, error) {
 	// Create an appropriate set of event listeners.
 	var actions runActions
-	if preview {
+	if opts.DryRun {
 		actions = newPreviewActions(opts)
 	} else {
 		actions = newUpdateActions(ctx, info.Update, opts)
 	}
 
 	// Initialize our deployment object with the context and options.
-	deployment, err := newDeployment(ctx, info, opts, preview)
+	deployment, err := newDeployment(ctx, info, actions, opts)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx, actions, preview)
+	return deployment.run(ctx)
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.

@@ -103,6 +103,7 @@ func TestStepExecutor(t *testing.T) {
 
 			se := &stepExecutor{
 				deployment: &Deployment{
+					opts: &Options{},
 					plan: &Plan{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
@@ -117,10 +118,10 @@ func TestStepExecutor(t *testing.T) {
 			t.Parallel()
 
 			se := &stepExecutor{
-				opts: Options{
-					GeneratePlan: true,
-				},
 				deployment: &Deployment{
+					opts: &Options{
+						GeneratePlan: true,
+					},
 					newPlans: &resourcePlans{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
@@ -139,16 +140,15 @@ func TestStepExecutor(t *testing.T) {
 				cancel: func() {
 					cancelCalled = true
 				},
-				opts: Options{
-					Events: &mockEvents{
-						OnResourceOutputsF: func(step Step) error {
-							return errors.New("expected error")
-						},
-					},
-				},
 				deployment: &Deployment{
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
+					},
+					opts: &Options{},
+					events: &mockEvents{
+						OnResourceOutputsF: func(step Step) error {
+							return errors.New("expected error")
+						},
 					},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
@@ -168,16 +168,15 @@ func TestStepExecutor(t *testing.T) {
 
 			expectedErr := errors.New("expected error")
 			se := &stepExecutor{
-				opts: Options{
-					Events: &mockEvents{
-						OnResourceStepPreF: func(step Step) (interface{}, error) {
-							return nil, expectedErr
-						},
-					},
-				},
 				deployment: &Deployment{
 					ctx: &plugin.Context{
 						Diag: &deploytest.NoopSink{},
+					},
+					opts: &Options{},
+					events: &mockEvents{
+						OnResourceStepPreF: func(step Step) (interface{}, error) {
+							return nil, expectedErr
+						},
 					},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
@@ -192,8 +191,12 @@ func TestStepExecutor(t *testing.T) {
 
 			expectedErr := errors.New("expected error")
 			se := &stepExecutor{
-				opts: Options{
-					Events: &mockEvents{
+				deployment: &Deployment{
+					ctx: &plugin.Context{
+						Diag: &deploytest.NoopSink{},
+					},
+					opts: &Options{},
+					events: &mockEvents{
 						OnResourceStepPreF: func(step Step) (interface{}, error) {
 							return nil, nil
 						},
@@ -202,11 +205,6 @@ func TestStepExecutor(t *testing.T) {
 						) error {
 							return expectedErr
 						},
-					},
-				},
-				deployment: &Deployment{
-					ctx: &plugin.Context{
-						Diag: &deploytest.NoopSink{},
 					},
 					goals: &gsync.Map[resource.URN, *resource.Goal]{},
 				},

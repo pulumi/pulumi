@@ -108,9 +108,9 @@ func (ex *deploymentExecutor) printPendingOperationsWarning() {
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
-func (ex *deploymentExecutor) reportExecResult(message string, preview bool) {
+func (ex *deploymentExecutor) reportExecResult(message string) {
 	kind := "update"
-	if preview {
+	if ex.deployment.opts.DryRun {
 		kind = "preview"
 	}
 
@@ -124,7 +124,7 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
-func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) (*Plan, error) {
+func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) {
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -146,43 +146,43 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// If this deployment is an import, run the imports and exit.
 	if ex.deployment.isImport {
-		return ex.importResources(callerCtx, opts, preview)
+		return ex.importResources(callerCtx)
 	}
 
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
-	if opts.Refresh {
-		if err := ex.refresh(callerCtx, opts, preview); err != nil {
+	if ex.deployment.opts.Refresh {
+		if err := ex.refresh(callerCtx); err != nil {
 			return nil, err
 		}
-		if opts.RefreshOnly {
+		if ex.deployment.opts.RefreshOnly {
 			return nil, nil
 		}
-	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) > 0 && !preview {
+	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) > 0 && !ex.deployment.opts.DryRun {
 		// Print a warning for users that there are pending operations.
 		// Explain that these operations can be cleared using pulumi refresh (except for CREATE operations)
 		// since these require user intevention:
 		ex.printPendingOperationsWarning()
 	}
 
-	if err := ex.checkTargets(opts.ReplaceTargets); err != nil {
+	if err := ex.checkTargets(ex.deployment.opts.ReplaceTargets); err != nil {
 		return nil, err
 	}
 
 	// Begin iterating the source.
-	src, err := ex.deployment.source.Iterate(callerCtx, opts, ex.deployment)
+	src, err := ex.deployment.source.Iterate(callerCtx, ex.deployment)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment, opts, opts.Targets, opts.ReplaceTargets)
+	ex.stepGen = newStepGenerator(ex.deployment)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
 	ctx, cancel := context.WithCancel(callerCtx)
 
 	// Set up a step generator and executor for this deployment.
-	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, opts, preview, false)
+	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
@@ -234,9 +234,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 				if event.Event == nil {
 					// Check targets before performDeletes mutates the initial Snapshot.
-					targetErr := ex.checkTargets(opts.Targets)
+					targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
-					err := ex.performDeletes(ctx, opts.Targets)
+					err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
 					if err != nil {
 						if !result.IsBail(err) {
 							logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
@@ -343,7 +343,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
-		ex.reportExecResult("failed", preview)
+		ex.reportExecResult("failed")
 		if err != nil {
 			return nil, result.BailError(err)
 		}
@@ -352,7 +352,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		}
 		return nil, result.BailErrorf("step generator errored")
 	} else if canceled {
-		ex.reportExecResult("canceled", preview)
+		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
 	}
 
@@ -400,7 +400,7 @@ func (ex *deploymentExecutor) performDeletes(
 	erroredDeps := mapset.NewSet[*resource.State]()
 	seenErrors := mapset.NewSet[Step]()
 	for _, antichain := range deleteChains {
-		if ex.stepExec.opts.ContinueOnError {
+		if ex.deployment.opts.ContinueOnError {
 			erroredSteps := ex.stepExec.GetErroredSteps()
 			for _, step := range erroredSteps {
 				// If we've already seen this error or the step isn't in the graph we can skip it.
@@ -458,7 +458,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
 	var newSteps []Step
 	skipped := false
-	if ex.stepExec.opts.ContinueOnError {
+	if ex.deployment.opts.ContinueOnError {
 		for _, errored := range ex.stepExec.GetErroredSteps() {
 			ex.skipped.Add(errored.Res().URN)
 		}
@@ -489,23 +489,18 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 }
 
 // import imports a list of resources into a stack.
-func (ex *deploymentExecutor) importResources(
-	callerCtx context.Context,
-	opts Options,
-	preview bool,
-) (*Plan, error) {
+func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan, error) {
 	if len(ex.deployment.imports) == 0 {
 		return nil, nil
 	}
 
 	// Create an executor for this import.
 	ctx, cancel := context.WithCancel(callerCtx)
-	stepExec := newStepExecutor(ctx, cancel, ex.deployment, opts, preview, true)
+	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
 
 	importer := &importer{
 		deployment: ex.deployment,
 		executor:   stepExec,
-		preview:    preview,
 	}
 	err := importer.importResources(ctx)
 	stepExec.SignalCompletion()
@@ -518,30 +513,30 @@ func (ex *deploymentExecutor) importResources(
 	stepExecutorError := stepExec.Errored()
 	if err != nil || stepExecutorError != nil {
 		if err != nil && !result.IsBail(err) {
-			ex.reportExecResult(fmt.Sprintf("failed: %s", err), preview)
+			ex.reportExecResult(fmt.Sprintf("failed: %s", err))
 		} else {
-			ex.reportExecResult("failed", preview)
+			ex.reportExecResult("failed")
 		}
 		if err != nil {
 			return nil, result.BailError(err)
 		}
 		return nil, result.BailErrorf("step executor errored: %w", stepExecutorError)
 	} else if canceled {
-		ex.reportExecResult("canceled", preview)
+		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
 	}
 	return ex.deployment.newPlans.plan(), nil
 }
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.
-func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, preview bool) error {
+func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	prev := ex.deployment.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	if err := ex.checkTargets(opts.Targets); err != nil {
+	if err := ex.checkTargets(ex.deployment.opts.Targets); err != nil {
 		return err
 	}
 
@@ -551,7 +546,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		if opts.Targets.Contains(res.URN) {
+		if ex.deployment.opts.Targets.Contains(res.URN) {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
 			if err != nil {
@@ -566,11 +561,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 
 	// Fire up a worker pool and issue each refresh in turn.
 	ctx, cancel := context.WithCancel(callerCtx)
-	// Refreshes have their own version of ignoring errors that clashes with ContinueOnError.
-	// Set ContinueOnError to false to avoid that clash.  We'll still get the correct error
-	// ignoring behaviour.
-	opts.ContinueOnError = false
-	stepExec := newStepExecutor(ctx, cancel, ex.deployment, opts, preview, true)
+
+	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
 	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
@@ -583,10 +575,10 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 
 	stepExecutorError := stepExec.Errored()
 	if stepExecutorError != nil {
-		ex.reportExecResult("failed", preview)
+		ex.reportExecResult("failed")
 		return result.BailErrorf("step executor errored: %w", stepExecutorError)
 	} else if canceled {
-		ex.reportExecResult("canceled", preview)
+		ex.reportExecResult("canceled")
 		return result.BailErrorf("canceled")
 	}
 	return nil

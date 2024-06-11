@@ -75,17 +75,32 @@ type EvalRunInfo struct {
 	Target *Target `json:"target,omitempty" yaml:"target,omitempty"`
 }
 
+// EvalRunInfoOptions provides options for configuring an evaluation source.
+type EvalSourceOptions struct {
+	// true if the evaluation is producing resources for a dry-run/preview.
+	DryRun bool
+	// the degree of parallelism for resource operations (<=1 for serial).
+	Parallel int
+	// true to disable resource reference support.
+	DisableResourceReferences bool
+	// true to disable output value support.
+	DisableOutputValues bool
+}
+
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec, dryRun bool,
+func NewEvalSource(
+	plugctx *plugin.Context,
+	runinfo *EvalRunInfo,
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec,
+	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
-		dryRun:              dryRun,
+		opts:                opts,
 	}
 }
 
@@ -93,7 +108,7 @@ type evalSource struct {
 	plugctx             *plugin.Context                         // the plugin context.
 	runinfo             *EvalRunInfo                            // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PluginSpec // the default provider versions for this source.
-	dryRun              bool                                    // true if this is a dry-run operation only.
+	opts                EvalSourceOptions                       // options for the evaluation source.
 }
 
 func (src *evalSource) Close() error {
@@ -113,9 +128,7 @@ func (src *evalSource) Stack() tokens.StackName {
 func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(
-	ctx context.Context, opts Options, providers ProviderSource,
-) (SourceIterator, error) {
+func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
@@ -136,8 +149,9 @@ func (src *evalSource) Iterate(
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
+
 	mon, err := newResourceMonitor(
-		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
+		src, providers, regChan, regOutChan, regReadChan, config, configSecretKeys, tracingSpan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
@@ -154,7 +168,7 @@ func (src *evalSource) Iterate(
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(opts, config, configSecretKeys, configMap)
+	iter.forkRun(config, configSecretKeys, configMap)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -217,9 +231,11 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	}
 }
 
-// forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
+// forkRun performs the evaluation from a distinct goroutine. This function blocks until it's our turn to go.
 func (iter *evalSourceIterator) forkRun(
-	opts Options, config map[config.Key]string, configSecretKeys []config.Key, configPropertyMap resource.PropertyMap,
+	config map[config.Key]string,
+	configSecretKeys []config.Key,
+	configPropertyMap resource.PropertyMap,
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
@@ -251,8 +267,8 @@ func (iter *evalSourceIterator) forkRun(
 				Config:            config,
 				ConfigSecretKeys:  configSecretKeys,
 				ConfigPropertyMap: configPropertyMap,
-				DryRun:            iter.src.dryRun,
-				Parallel:          opts.Parallel,
+				DryRun:            iter.src.opts.DryRun,
+				Parallel:          iter.src.opts.Parallel,
 				Organization:      string(iter.src.runinfo.Target.Organization),
 				Info:              programInfo,
 			})
@@ -588,22 +604,21 @@ type resmon struct {
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
 
-	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
-	resGoalsLock              sync.Mutex                         // locks the resGoals map.
-	diagnostics               diag.Sink                          // logger for user-facing messages
-	providers                 ProviderSource                     // the provider source itself.
-	componentProviders        map[resource.URN]map[string]string // which providers component resources used
-	componentProvidersLock    sync.Mutex                         // which locks the componentProviders map
-	defaultProviders          *defaultProviders                  // the default provider manager.
-	sourcePositions           *sourcePositions                   // source position manager.
-	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
-	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
-	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
-	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
-	cancel                    chan bool                          // a channel that can cancel the server.
-	done                      <-chan error                       // a channel that resolves when the server completes.
-	disableResourceReferences bool                               // true if resource references are disabled.
-	disableOutputValues       bool                               // true if output values are disabled.
+	resGoals               map[resource.URN]resource.Goal     // map of seen URNs and their goals.
+	resGoalsLock           sync.Mutex                         // locks the resGoals map.
+	diagnostics            diag.Sink                          // logger for user-facing messages
+	providers              ProviderSource                     // the provider source itself.
+	componentProviders     map[resource.URN]map[string]string // which providers component resources used
+	componentProvidersLock sync.Mutex                         // which locks the componentProviders map
+	defaultProviders       *defaultProviders                  // the default provider manager.
+	sourcePositions        *sourcePositions                   // source position manager.
+	constructInfo          plugin.ConstructInfo               // information for construct and call calls.
+	regChan                chan *registerResourceEvent        // the channel to send resource registrations to.
+	regOutChan             chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
+	regReadChan            chan *readResourceEvent            // the channel to send resource reads to.
+	cancel                 chan bool                          // a channel that can cancel the server.
+	done                   <-chan error                       // a channel that resolves when the server completes.
+	opts                   EvalSourceOptions                  // options for the resource monitor.
 
 	// the working directory for the resources sent to this monitor.
 	workingDirectory string
@@ -623,9 +638,15 @@ type resmon struct {
 var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
-	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent, opts Options,
-	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span,
+func newResourceMonitor(
+	src *evalSource,
+	provs ProviderSource,
+	regChan chan *registerResourceEvent,
+	regOutChan chan *registerResourceOutputsEvent,
+	regReadChan chan *readResourceEvent,
+	config map[config.Key]string,
+	configSecretKeys []config.Key,
+	tracingSpan opentracing.Span,
 ) (*resmon, error) {
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -642,24 +663,23 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		diagnostics:               src.plugctx.Diag,
-		providers:                 provs,
-		defaultProviders:          d,
-		workingDirectory:          src.runinfo.Pwd,
-		sourcePositions:           newSourcePositions(src.runinfo.ProjectRoot),
-		pendingTransforms:         map[string][]TransformFunction{},
-		parents:                   map[resource.URN]resource.URN{},
-		resGoals:                  map[resource.URN]resource.Goal{},
-		componentProviders:        map[resource.URN]map[string]string{},
-		regChan:                   regChan,
-		regOutChan:                regOutChan,
-		regReadChan:               regReadChan,
-		cancel:                    cancel,
-		disableResourceReferences: opts.DisableResourceReferences,
-		disableOutputValues:       opts.DisableOutputValues,
-		callbacks:                 map[string]*CallbacksClient{},
-		resourceTransforms:        map[resource.URN][]TransformFunction{},
-		packageRefMap:             map[string]providers.ProviderRequest{},
+		diagnostics:        src.plugctx.Diag,
+		providers:          provs,
+		defaultProviders:   d,
+		workingDirectory:   src.runinfo.Pwd,
+		sourcePositions:    newSourcePositions(src.runinfo.ProjectRoot),
+		pendingTransforms:  map[string][]TransformFunction{},
+		parents:            map[resource.URN]resource.URN{},
+		resGoals:           map[resource.URN]resource.Goal{},
+		componentProviders: map[resource.URN]map[string]string{},
+		regChan:            regChan,
+		regOutChan:         regOutChan,
+		regReadChan:        regReadChan,
+		cancel:             cancel,
+		opts:               src.opts,
+		callbacks:          map[string]*CallbacksClient{},
+		resourceTransforms: map[resource.URN][]TransformFunction{},
+		packageRefMap:      map[string]providers.ProviderRequest{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -680,8 +700,8 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		Stack:            src.runinfo.Target.Name.String(),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
-		DryRun:           src.dryRun,
-		Parallel:         opts.Parallel,
+		DryRun:           src.opts.DryRun,
+		Parallel:         src.opts.Parallel,
 		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	}
 	resmon.done = handle.Done
@@ -897,9 +917,9 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "secrets":
 		hasSupport = true
 	case "resourceReferences":
-		hasSupport = !rm.disableResourceReferences
+		hasSupport = !rm.opts.DisableResourceReferences
 	case "outputValues":
-		hasSupport = !rm.disableOutputValues
+		hasSupport = !rm.opts.DisableOutputValues
 	case "aliasSpecs":
 		hasSupport = true
 	case "deletedWith":

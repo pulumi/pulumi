@@ -66,8 +66,13 @@ type ImportOptions struct {
 //
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
-func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
-	preview bool,
+func NewImportDeployment(
+	ctx *plugin.Context,
+	opts *Options,
+	events Events,
+	target *Target,
+	projectName tokens.PackageName,
+	imports []Import,
 ) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
@@ -79,7 +84,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	}
 
 	// Produce a map of all old resources for fast access.
-	_, olds, err := buildResourceMap(prev, preview)
+	_, olds, err := buildResourceMap(prev, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +95,13 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	builtins := newBuiltinProvider(nil, nil, ctx.Diag)
 
 	// Create a new provider registry.
-	reg := providers.NewRegistry(ctx.Host, preview, builtins)
+	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
 	// Return the prepared deployment.
 	return &Deployment{
 		ctx:          ctx,
+		opts:         opts,
+		events:       events,
 		target:       target,
 		prev:         prev,
 		olds:         olds,
@@ -103,7 +110,6 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		isImport:     true,
 		schemaLoader: schema.NewPluginLoader(ctx.Host),
 		source:       NewErrorSource(projectName),
-		preview:      preview,
 		providers:    reg,
 		newPlans:     newResourcePlan(target.Config),
 		news:         &gsync.Map[resource.URN, *resource.State]{},
