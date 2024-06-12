@@ -413,6 +413,34 @@ func (d DiffKind) AsReplace() DiffKind {
 	}
 }
 
+// Invert returns the opposite diff kind to the receiver. That is:
+//
+//   - Add -> Delete
+//   - AddReplace -> DeleteReplace
+//   - Delete -> Add
+//   - DeleteReplace -> AddReplace
+//   - Update -> Update
+//   - UpdateReplace -> UpdateReplace
+func (d DiffKind) Invert() DiffKind {
+	switch d {
+	case DiffAdd:
+		return DiffDelete
+	case DiffAddReplace:
+		return DiffDeleteReplace
+	case DiffDelete:
+		return DiffAdd
+	case DiffDeleteReplace:
+		return DiffAddReplace
+	case DiffUpdate:
+		return DiffUpdate
+	case DiffUpdateReplace:
+		return DiffUpdateReplace
+	default:
+		contract.Failf("Unknown diff kind %v", int(d))
+		return DiffUpdate
+	}
+}
+
 const (
 	// DiffAdd indicates that the property was added.
 	DiffAdd DiffKind = 0
@@ -530,6 +558,27 @@ func (r DiffResult) Replace() bool {
 		}
 	}
 	return len(r.ReplaceKeys) > 0
+}
+
+// Invert computes the inverse diff of the receiver -- the diff that would be
+// required to "undo" this one.
+func (r DiffResult) Invert() DiffResult {
+	detailedDiff := make(map[string]PropertyDiff)
+	for k, v := range r.DetailedDiff {
+		detailedDiff[k] = PropertyDiff{
+			Kind:      v.Kind.Invert(),
+			InputDiff: v.InputDiff,
+		}
+	}
+
+	return DiffResult{
+		Changes:             r.Changes,
+		ReplaceKeys:         r.ReplaceKeys,
+		StableKeys:          r.StableKeys,
+		ChangedKeys:         r.ChangedKeys,
+		DeleteBeforeReplace: r.DeleteBeforeReplace,
+		DetailedDiff:        detailedDiff,
+	}
 }
 
 // DiffUnavailableError may be returned by a provider if the provider is unable to diff a resource.

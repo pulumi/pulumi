@@ -262,6 +262,7 @@ func newRefreshCmd() *cobra.Command {
 				Parallel:                  parallel,
 				Debug:                     debug,
 				UseLegacyDiff:             useLegacyDiff(),
+				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),

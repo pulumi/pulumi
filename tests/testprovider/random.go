@@ -39,6 +39,10 @@ func init() {
 					TypeSpec:    pschema.TypeSpec{Type: "integer"},
 					Description: "The length of the random string (not including the prefix, if any).",
 				},
+				"prefix": {
+					TypeSpec:    pschema.TypeSpec{Type: "string"},
+					Description: "An optional prefix.",
+				},
 				"result": {
 					TypeSpec:    pschema.TypeSpec{Type: "string"},
 					Description: "A random string.",
@@ -128,6 +132,9 @@ func (p *randomResourceProvider) Create(ctx context.Context, req *rpc.CreateRequ
 		"length": n,
 		"result": prefix + result,
 	})
+	if prefix != "" {
+		outputs["prefix"] = resource.NewStringProperty(prefix)
+	}
 	outputs["result"] = resource.MakeSecret(outputs["result"])
 
 	outputProperties, err := plugin.MarshalProperties(

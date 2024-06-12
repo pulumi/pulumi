@@ -905,11 +905,12 @@ func (s *ReadStep) Skip() {
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
 type RefreshStep struct {
-	deployment *Deployment     // the deployment that produced this refresh
-	old        *resource.State // the old resource state, if one exists for this urn
-	new        *resource.State // the new resource state, to be used to query the provider
-	done       chan<- bool     // the channel to use to signal completion, if any
-	provider   plugin.Provider // the optional provider to use.
+	deployment *Deployment       // the deployment that produced this refresh
+	old        *resource.State   // the old resource state, if one exists for this urn
+	new        *resource.State   // the new resource state, to be used to query the provider
+	done       chan<- bool       // the channel to use to signal completion, if any
+	provider   plugin.Provider   // the optional provider to use.
+	diff       plugin.DiffResult // the diff between the cloud provider and the state file
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -925,15 +926,17 @@ func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- boo
 	}
 }
 
-func (s *RefreshStep) Op() display.StepOp      { return OpRefresh }
-func (s *RefreshStep) Deployment() *Deployment { return s.deployment }
-func (s *RefreshStep) Type() tokens.Type       { return s.old.Type }
-func (s *RefreshStep) Provider() string        { return s.old.Provider }
-func (s *RefreshStep) URN() resource.URN       { return s.old.URN }
-func (s *RefreshStep) Old() *resource.State    { return s.old }
-func (s *RefreshStep) New() *resource.State    { return s.new }
-func (s *RefreshStep) Res() *resource.State    { return s.old }
-func (s *RefreshStep) Logical() bool           { return false }
+func (s *RefreshStep) Op() display.StepOp                           { return OpRefresh }
+func (s *RefreshStep) Deployment() *Deployment                      { return s.deployment }
+func (s *RefreshStep) Type() tokens.Type                            { return s.old.Type }
+func (s *RefreshStep) Provider() string                             { return s.old.Provider }
+func (s *RefreshStep) URN() resource.URN                            { return s.old.URN }
+func (s *RefreshStep) Old() *resource.State                         { return s.old }
+func (s *RefreshStep) New() *resource.State                         { return s.new }
+func (s *RefreshStep) Res() *resource.State                         { return s.old }
+func (s *RefreshStep) Logical() bool                                { return false }
+func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
+func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
@@ -941,9 +944,20 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 	if s.new == nil {
 		return OpDelete
 	}
-	if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
-		return OpSame
+
+	// Prior to us introducing refresh diffs against desired state, we only diffed
+	// outputs. For now, we support reverting to this behaviour for users that
+	// rely on it.
+	if s.deployment.opts.UseLegacyRefreshDiff {
+		if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
+			return OpSame
+		}
+	} else {
+		if s.new == s.old || s.diff.Changes == plugin.DiffNone {
+			return OpSame
+		}
 	}
+
 	return OpUpdate
 }
 
@@ -1011,12 +1025,20 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
 			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
-			s.old.SourcePosition,
+			s.old.SourcePosition, s.old.IgnoreChanges,
 		)
 		var inputsChange, outputsChange bool
 		if s.old != nil {
-			inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-			outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+			// Prior to us introducing refresh diffs against desired state, we only
+			// diffed outputs. For now, we support reverting to this behaviour for
+			// users that rely on it.
+			if s.deployment.opts.UseLegacyRefreshDiff {
+				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
+				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+			} else {
+				inputsChange = !inputs.DeepEquals(s.old.Inputs)
+				outputsChange = !outputs.DeepEquals(s.old.Outputs)
+			}
 		}
 
 		// Only update the Modified timestamp if refresh provides new values that differ
@@ -1026,6 +1048,40 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			// updated the Modified timestamp to track this.
 			now := time.Now().UTC()
 			s.new.Modified = &now
+		}
+
+		if !s.deployment.opts.UseLegacyRefreshDiff {
+			// To compute refresh diffs against the desired state, we compute the diff
+			// that a user would see if they immediately ran an `up` operation on a
+			// no-change program after this refresh. However, this will return the
+			// _opposite_ of what we want, since the `up`'s diff is framed in terms of
+			// the program being the source of truth (not the provider). That is, we
+			// want to show the user what changes are coming from the outputs into the
+			// inputs, not what changes are coming from the inputs into the outputs!
+			// We thus invert the diff (changing adds to deletes, and so on) before
+			// storing it against the step.
+			//
+			// Note that to compute the diff in this manner, we pass:
+			//
+			// * newInputs where oldInputs are expected
+			// * newOutputs where oldOutputs are expected
+			// * oldInputs where newInputs are expected
+			diff, err := diffResource(
+				s.new.URN, s.new.ID,
+				// pass new inputs/outputs as old inputs/outputs
+				s.new.Inputs, s.new.Outputs,
+				// pass old inputs as new inputs
+				s.old.Inputs,
+				prov, preview, s.old.IgnoreChanges,
+			)
+			if err != nil {
+				return refreshed.Status, nil, err
+			}
+
+			s.diff = diff.Invert()
+			logging.V(7).Infof("Refresh diff: %v", s.diff)
+		} else {
+			logging.V(7).Infof("Refresh diffing disabled; diffing outputs only")
 		}
 	} else {
 		s.new = nil
@@ -1210,7 +1266,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, inputs, outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
-		s.new.DeletedWith, nil, nil, s.new.SourcePosition)
+		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges)
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()

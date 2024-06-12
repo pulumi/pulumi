@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Change `pulumi refresh` to report diffs relative to desired state instead of relative to only output changes. Use `PULUMI_ENABLE_LEGACY_REFRESH_DIFF` to revert to the old behaviour.

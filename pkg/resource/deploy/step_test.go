@@ -569,6 +569,236 @@ func TestReadStep(t *testing.T) {
 	})
 }
 
+func TestRefreshStepPatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                 string
+		inputs               resource.PropertyMap
+		outputs              resource.PropertyMap
+		readInputs           resource.PropertyMap
+		readOutputs          resource.PropertyMap
+		diffResult           plugin.DiffResult
+		expectedDetailedDiff map[string]plugin.PropertyDiff
+		ignoreChanges        []string
+	}{
+		{
+			name:   "tfbridge 'computed' property changed",
+			inputs: resource.PropertyMap{},
+			outputs: resource.PropertyMap{
+				"etag": resource.NewStringProperty("abc"),
+			},
+			readInputs: resource.PropertyMap{},
+			readOutputs: resource.PropertyMap{
+				"etag": resource.NewStringProperty("def"),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes:      plugin.DiffNone,
+				DetailedDiff: map[string]plugin.PropertyDiff{},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+		},
+		{
+			// Note: this is probably a case where the TF provider has a bug, a pure in property
+			// really shouldn't change, but this is common in TF providers.
+			name: "tfbridge 'required' property changed",
+			inputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("test"),
+			},
+			outputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("test"),
+			},
+			readInputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("testtesttest"),
+			},
+			readOutputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("testtesttest"),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes: plugin.DiffSome,
+				DetailedDiff: map[string]plugin.PropertyDiff{
+					"title": {Kind: plugin.DiffUpdate},
+				},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{
+				"title": {Kind: plugin.DiffUpdate},
+			},
+		},
+		{
+			// Note: this is probably a case where the TF provider has a bug, a pure in property
+			// really shouldn't change, but this is common in TF providers.
+			name:          "tfbridge 'required' property changed w/ ignoreChanges",
+			ignoreChanges: []string{"title"},
+			inputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("test"),
+			},
+			outputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("test"),
+			},
+			readInputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("testtesttest"),
+			},
+			readOutputs: resource.PropertyMap{
+				"title": resource.NewStringProperty("testtesttest"),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes:      plugin.DiffNone,
+				DetailedDiff: map[string]plugin.PropertyDiff{},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+		},
+		{
+			// Note: this is probably a case where the TF provider has a bug, a pure in property
+			// really shouldn't change, but this is common in TF providers.
+			name:   "tfbridge 'optional' property changed",
+			inputs: resource.PropertyMap{},
+			outputs: resource.PropertyMap{
+				"body": resource.NewStringProperty(""),
+			},
+			readInputs: resource.PropertyMap{
+				// Pretty sure its a bug in tfbridge that it doesn't populate the new value
+				// into inputs for an `optional` property.  But that's what it does so
+				// testing against the current behaviour.
+			},
+			readOutputs: resource.PropertyMap{
+				"body": resource.NewStringProperty("bodybodybody"),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes: plugin.DiffSome,
+				DetailedDiff: map[string]plugin.PropertyDiff{
+					"body": {Kind: plugin.DiffDelete},
+				},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{
+				"body": {Kind: plugin.DiffAdd},
+			},
+		},
+		{
+			// Note: this is probably a case where the TF provider has a bug, a pure in property
+			// really shouldn't change, but this is common in TF providers.
+			name:          "tfbridge 'optional' property changed w/ ignoreChanges",
+			ignoreChanges: []string{"body"},
+			inputs:        resource.PropertyMap{},
+			outputs: resource.PropertyMap{
+				"body": resource.NewStringProperty(""),
+			},
+			readInputs: resource.PropertyMap{
+				// Pretty sure its a bug in tfbridge that it doesn't populate the new value
+				// into inputs for an `optional` property.  But that's what it does so
+				// testing against the current behaviour.
+			},
+			readOutputs: resource.PropertyMap{
+				"body": resource.NewStringProperty("bodybodybody"),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes:      plugin.DiffNone,
+				DetailedDiff: map[string]plugin.PropertyDiff{},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+		},
+		{
+			name:   "tfbridge 'optional+computed' property element added",
+			inputs: resource.PropertyMap{},
+			outputs: resource.PropertyMap{
+				"tags": resource.NewObjectProperty(resource.PropertyMap{}),
+			},
+			readInputs: resource.PropertyMap{},
+			readOutputs: resource.PropertyMap{
+				"tags": resource.NewObjectProperty((resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				})),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes: plugin.DiffSome,
+				DetailedDiff: map[string]plugin.PropertyDiff{
+					"tags":     {Kind: plugin.DiffUpdate},
+					"tags.foo": {Kind: plugin.DiffDelete},
+				},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{
+				"tags":     {Kind: plugin.DiffUpdate},
+				"tags.foo": {Kind: plugin.DiffAdd},
+			},
+		},
+		{
+			name: "tfbridge 'optional+computed' property element changed",
+			inputs: resource.PropertyMap{
+				"tags": resource.NewObjectProperty(resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				}),
+			},
+			outputs: resource.PropertyMap{
+				"tags": resource.NewObjectProperty(resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				}),
+			},
+			readInputs: resource.PropertyMap{
+				"tags": resource.NewObjectProperty((resource.PropertyMap{
+					"foo": resource.NewStringProperty("baz"),
+				})),
+			},
+			readOutputs: resource.PropertyMap{
+				"tags": resource.NewObjectProperty((resource.PropertyMap{
+					"foo": resource.NewStringProperty("baz"),
+				})),
+			},
+			diffResult: plugin.DiffResult{
+				// Diff newInputs, newOutputs, oldInputs
+				Changes: plugin.DiffSome,
+				DetailedDiff: map[string]plugin.PropertyDiff{
+					"tags.foo": {Kind: plugin.DiffUpdate},
+				},
+			},
+			expectedDetailedDiff: map[string]plugin.PropertyDiff{
+				"tags.foo": {Kind: plugin.DiffUpdate},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		s := &RefreshStep{
+			old: &resource.State{
+				URN:      "some-urn",
+				ID:       "some-id",
+				Type:     "some-type",
+				Custom:   true,
+				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+				Inputs:   tc.inputs,
+				Outputs:  tc.outputs,
+			},
+			deployment: &Deployment{
+				opts: &Options{},
+			},
+			provider: &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{
+						ID:      id,
+						Inputs:  tc.readInputs,
+						Outputs: tc.readOutputs,
+					}, resource.StatusOK, nil
+				},
+				DiffF: func(
+					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return tc.diffResult, nil
+				},
+			},
+		}
+		status, _, err := s.Apply(true)
+		assert.Equal(t, s.diff.DetailedDiff, tc.expectedDetailedDiff)
+		assert.NoError(t, err)
+		assert.Equal(t, resource.StatusOK, status)
+	}
+}
+
 func TestRefreshStep(t *testing.T) {
 	t.Parallel()
 	t.Run("Apply", func(t *testing.T) {
@@ -622,7 +852,8 @@ func TestRefreshStep(t *testing.T) {
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 				},
 				deployment: &Deployment{
-					ctx: &plugin.Context{Diag: &deploytest.NoopSink{}},
+					ctx:  &plugin.Context{Diag: &deploytest.NoopSink{}},
+					opts: &Options{},
 				},
 				provider: &deploytest.Provider{
 					ReadF: func(
