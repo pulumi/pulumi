@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Update current nodejs version to 22.x
