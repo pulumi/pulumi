@@ -75,6 +75,10 @@ func useLegacyDiff() bool {
 	return env.EnableLegacyDiff.Value()
 }
 
+func useLegacyRefreshDiff() bool {
+	return env.EnableLegacyRefreshDiff.Value()
+}
+
 func disableProviderPreview() bool {
 	return env.DisableProviderPreview.Value()
 }

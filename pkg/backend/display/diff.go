@@ -379,7 +379,7 @@ func renderDiffResourceOperationFailedEvent(
 func renderDiff(
 	out io.Writer,
 	metadata engine.StepEventMetadata,
-	planning, debug bool,
+	planning, debug, refresh bool,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) {
@@ -392,7 +392,7 @@ func renderDiff(
 	if metadata.Op != deploy.OpSame {
 		if metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
-			if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
+			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
 				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
 			} else {
 				PrintObject(
@@ -421,7 +421,7 @@ func renderDiffResourcePreEvent(
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
+		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, false /* refresh */, seen, opts)
 	}
 	return out.String()
 }
@@ -433,17 +433,36 @@ func renderDiffResourceOutputsEvent(
 ) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		// If this is the output step for an import, we actually want to display the diff at this point.
-		if payload.Metadata.Op == deploy.OpImport {
-			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
+
+		refresh := false // are these outputs from a refresh?
+		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+			refresh = true
+		}
+
+		// There are two cases where we want to display a diff at the point of a
+		// resource output event:
+		//
+		// * Imports, where we now have information from the provider about the
+		//   resource being imported.
+		// * Refreshes, where similarly we might have updated information about the
+		//   resource from the provider.
+		//
+		// Note that refresh step result operations will be OpUpdates (something
+		// changed in the provider), OpSames (nothing changed in the provider), or
+		// OpDeletes (the resource was deleted in the provider). We only want to
+		// display a diff in the OpUpdate case. In the OpSame case, there is no diff
+		// (otherwise the operation would have been OpUpdate), and in the OpDelete
+		// case, we will already be indicating a deletion and it doesn't make sense
+		// to display a diff that shows that we are deleting everything.
+		if payload.Metadata.Op == deploy.OpImport || (refresh && payload.Metadata.Op == deploy.OpUpdate) {
+			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, refresh, seen, opts)
 			return out.String()
 		}
 
 		indent := getIndent(payload.Metadata, seen)
 
-		refresh := false // are these outputs from a refresh?
-		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
-			refresh = true
+		if refresh {
+			// We would not have rendered the summary yet in this case, so do it now.
 			summary := getResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}

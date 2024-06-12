@@ -225,6 +225,7 @@ func newDeployment(
 		Targets:                   opts.Targets,
 		TargetDependents:          opts.TargetDependents,
 		UseLegacyDiff:             opts.UseLegacyDiff,
+		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		GeneratePlan:              opts.UpdateOptions.GeneratePlan,

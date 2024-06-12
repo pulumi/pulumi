@@ -71,6 +71,10 @@ type Options struct {
 	TargetDependents bool
 	// whether or not to use legacy diffing behavior.
 	UseLegacyDiff bool
+	// true if the deployment should use legacy refresh diffing behavior and
+	// report only output changes, as opposed to computing diffs against desired
+	// state.
+	UseLegacyRefreshDiff bool
 	// true to disable resource reference support.
 	DisableResourceReferences bool
 	// true to disable output value support.

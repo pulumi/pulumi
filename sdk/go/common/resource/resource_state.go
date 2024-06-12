@@ -57,6 +57,7 @@ type State struct {
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 	SourcePosition          string                // If set, the source location of the resource registration
+	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 }
 
 // Copy creates a deep copy of the resource state, except without copying the lock.
@@ -86,6 +87,7 @@ func (s *State) Copy() *State {
 		Created:                 s.Created,
 		Modified:                s.Modified,
 		SourcePosition:          s.SourcePosition,
+		IgnoreChanges:           s.IgnoreChanges,
 	}
 }
 
@@ -108,7 +110,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
-	sourcePosition string,
+	sourcePosition string, ignoreChanges []string,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -137,6 +139,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Created:                 created,
 		Modified:                modified,
 		SourcePosition:          sourcePosition,
+		IgnoreChanges:           ignoreChanges,
 	}
 
 	if timeouts != nil {

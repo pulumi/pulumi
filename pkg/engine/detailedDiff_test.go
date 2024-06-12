@@ -734,7 +734,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			Old:          &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
 			New:          &StepEventStateMetadata{Inputs: inputs},
 			DetailedDiff: c.detailedDiff,
-		})
+		}, false)
 		assert.Equal(t, c.expected, diff)
 	}
 }

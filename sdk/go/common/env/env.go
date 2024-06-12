@@ -50,6 +50,10 @@ var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugg
 
 var EnableLegacyDiff = env.Bool("ENABLE_LEGACY_DIFF", "")
 
+var EnableLegacyRefreshDiff = env.Bool("ENABLE_LEGACY_REFRESH_DIFF",
+	"Use legacy refresh diff behaviour, in which only output changes are "+
+		"reported and changes against the desired state are not calculated.")
+
 var DisableProviderPreview = env.Bool("DISABLE_PROVIDER_PREVIEW", "")
 
 var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")

@@ -427,6 +427,7 @@ func newPreviewCmd() *cobra.Command {
 					Refresh:                   refreshOption,
 					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 					UseLegacyDiff:             useLegacyDiff(),
+					UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 					DisableProviderPreview:    disableProviderPreview(),
 					DisableResourceReferences: disableResourceReferences(),
 					DisableOutputValues:       disableOutputValues(),

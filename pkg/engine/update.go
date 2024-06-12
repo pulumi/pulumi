@@ -144,6 +144,10 @@ type UpdateOptions struct {
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 
+	// true if the engine should use legacy refresh diffing behavior and report
+	// only output changes, as opposed to computing diffs against desired state.
+	UseLegacyRefreshDiff bool
+
 	// true if the engine should disable provider previews.
 	DisableProviderPreview bool
 

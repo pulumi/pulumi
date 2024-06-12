@@ -155,6 +155,7 @@ func newUpCmd() *cobra.Command {
 			Refresh:                   refreshOption,
 			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 			UseLegacyDiff:             useLegacyDiff(),
+			UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 			DisableProviderPreview:    disableProviderPreview(),
 			DisableResourceReferences: disableResourceReferences(),
 			DisableOutputValues:       disableOutputValues(),
@@ -381,11 +382,14 @@ func newUpCmd() *cobra.Command {
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refreshOption,
+
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan:    hasExperimentalCommands(),
-			Experimental:    hasExperimentalCommands(),
-			ContinueOnError: continueOnError,
+			GeneratePlan: hasExperimentalCommands(),
+			Experimental: hasExperimentalCommands(),
+
+			UseLegacyRefreshDiff: useLegacyRefreshDiff(),
+			ContinueOnError:      continueOnError,
 		}
 
 		// TODO for the URL case:

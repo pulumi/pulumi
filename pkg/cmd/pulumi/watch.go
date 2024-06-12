@@ -144,6 +144,7 @@ func newWatchCmd() *cobra.Command {
 				Debug:                     debug,
 				Refresh:                   refresh,
 				UseLegacyDiff:             useLegacyDiff(),
+				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),

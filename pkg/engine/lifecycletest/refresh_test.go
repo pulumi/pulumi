@@ -610,7 +610,7 @@ func TestRefreshBasics(t *testing.T) {
 
 	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
 	// targets specified)
-	// validateRefreshBasicsCombination(t, names, []string{})
+	validateRefreshBasicsCombination(t, names, []string{}, "all")
 
 	for i, subset := range subsets {
 		validateRefreshBasicsCombination(t, names, subset, strconv.Itoa(i))
@@ -662,11 +662,17 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
-		// B::1 and A::4 will have changes. The latter will also have input changes.
+		// B::1 has output-only changes which will not be reported as a refresh diff.
 		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+
+		// A::4 will have input and output changes. The changes that impact the inputs will be reported
+		// as a refresh diff.
 		"4": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+			Outputs: resource.PropertyMap{
+				"baz": resource.NewStringProperty("qux"),
+				"oof": resource.NewStringProperty("zab"),
+			},
+			Inputs: resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
 		},
 
 		// C::2 and C::5 will be deleted.
@@ -724,9 +730,9 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					assert.Nil(t, new)
 					assert.Equal(t, deploy.OpDelete, resultOp)
 				} else {
-					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
-					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
+					// If there were changes to the inputs, we want the result op to be an
+					// OpUpdate. Otherwise we want an OpSame.
+					if reflect.DeepEqual(old.Inputs, expected.Inputs) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -774,7 +780,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
 		assert.NoError(t, err)
 
-		targetedForRefresh := false
+		targetedForRefresh := len(refreshTargets) == 0
 		for _, targetUrn := range refreshTargets {
 			if targetUrn == r.URN {
 				targetedForRefresh = true
@@ -789,6 +795,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 			old.Outputs = expected.Outputs
 			old.Modified = r.Modified
 		}
+
 		assert.Equal(t, old, r)
 	}
 }
@@ -824,11 +831,19 @@ func TestCanceledRefresh(t *testing.T) {
 		newResource(urnC, "2", false),
 	}
 
-	newStates := map[resource.ID]resource.PropertyMap{
-		// A::0 and B::1 will have changes; D::3 will be deleted.
-		"0": {"foo": resource.NewStringProperty("bar")},
-		"1": {"baz": resource.NewStringProperty("qux")},
-		"2": nil,
+	newStates := map[resource.ID]plugin.ReadResult{
+		// A::0 will have input and output changes. The changes that impact the inputs will be reported
+		// as a refresh diff.
+		"0": {
+			Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("rab")},
+		},
+		// B::1 will have output changes.
+		"1": {
+			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
+		},
+		// C::2 will be deleted.
+		"2": {},
 	}
 
 	old := &deploy.Snapshot{
@@ -856,7 +871,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
-					return plugin.ReadResult{Outputs: new}, resource.StatusOK, nil
+					return new, resource.StatusOK, nil
 				},
 				CancelF: func() error {
 					close(cancelled)
@@ -893,22 +908,24 @@ func TestCanceledRefresh(t *testing.T) {
 			refreshed[old.ID] = true
 
 			expected, new := newStates[old.ID], entry.Step.New()
-			if expected == nil {
+			if expected.Outputs == nil {
 				// If the resource was deleted, we want the result op to be an OpDelete.
 				assert.Nil(t, new)
 				assert.Equal(t, deploy.OpDelete, resultOp)
 			} else {
-				// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
-				// an OpSame.
-				if reflect.DeepEqual(old.Outputs, expected) {
+				// If there were changes to the inputs, we want the result op to be an
+				// OpUpdate. Otherwise we want an OpSame.
+				if reflect.DeepEqual(old.Inputs, expected.Inputs) {
 					assert.Equal(t, deploy.OpSame, resultOp)
 				} else {
 					assert.Equal(t, deploy.OpUpdate, resultOp)
 				}
 
-				// Only the outputs and Modified timestamp should have changed (if anything changed).
+				// The inputs, outputs and modified timestamps should have changed (if
+				// anything changed at all).
 				old = old.Copy()
-				old.Outputs = expected
+				old.Inputs = expected.Inputs
+				old.Outputs = expected.Outputs
 				old.Modified = new.Modified
 
 				assert.Equal(t, old, new)
@@ -943,13 +960,15 @@ func TestCanceledRefresh(t *testing.T) {
 		if refreshed[r.ID] {
 			// The refreshed resource should have its new state.
 			expected := newStates[r.ID]
-			if expected == nil {
+			if expected.Outputs == nil {
 				assert.Fail(t, "refreshed resource was not deleted")
 			} else {
 				old := oldResources[int(idx)]
 
-				// Only the outputs and Modified timestamp should have changed (if anything changed).
-				old.Outputs = expected
+				// The inputs, outputs and modified timestamps should have changed (if
+				// anything changed at all).
+				old.Inputs = expected.Inputs
+				old.Outputs = expected.Outputs
 				old.Modified = r.Modified
 
 				assert.Equal(t, old, r)

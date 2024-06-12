@@ -131,7 +131,7 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 // TranslateDetailedDiff converts the detailed diff stored in the step event into an ObjectDiff that is appropriate
 // for display.
-func TranslateDetailedDiff(step *StepEventMetadata) *resource.ObjectDiff {
+func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) *resource.ObjectDiff {
 	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
@@ -149,7 +149,13 @@ func TranslateDetailedDiff(step *StepEventMetadata) *resource.ObjectDiff {
 		if pdiff.InputDiff {
 			olds = resource.NewObjectProperty(step.Old.Inputs)
 		}
-		addDiff(elements, pdiff.Kind, &diff, olds, resource.NewObjectProperty(step.New.Inputs))
+
+		news := resource.NewObjectProperty(step.New.Inputs)
+		if refresh {
+			news = resource.NewObjectProperty(step.New.Outputs)
+		}
+
+		addDiff(elements, pdiff.Kind, &diff, olds, news)
 	}
 
 	return diff.Object
