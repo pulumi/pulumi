@@ -6247,6 +6247,455 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 	return a.ToURNArrayArrayOutput()
 }
 
+var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
+
+// ResourceInput is an input type that accepts Resource and ResourceOutput values.
+//
+// Unfortunately `Resource` values do not implement `ResourceInput` in the current version. Use `NewResourceInput` instead.
+type ResourceInput interface {
+	Input
+
+	ToResourceOutput() ResourceOutput
+	ToResourceOutputWithContext(ctx context.Context) ResourceOutput
+}
+
+// ResourceOutput is an Output that returns Resource values.
+type ResourceOutput struct{ *OutputState }
+
+func (ResourceOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceOutput) ToOutput(ctx context.Context) pulumix.Output[Resource] {
+	return pulumix.Output[Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (Resource).
+func (ResourceOutput) ElementType() reflect.Type {
+	return resourceType
+}
+
+func (o ResourceOutput) ToResourceOutput() ResourceOutput {
+	return o
+}
+
+func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
+	return o
+}
+
+var resourceArrayType = reflect.TypeOf((*[]Resource)(nil)).Elem()
+
+// ResourceArrayInput is an input type that accepts ResourceArray and ResourceArrayOutput values.
+type ResourceArrayInput interface {
+	Input
+
+	ToResourceArrayOutput() ResourceArrayOutput
+	ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput
+}
+
+// ResourceArray is an input type for []ResourceInput values.
+type ResourceArray []ResourceInput
+
+// ElementType returns the element type of this Input ([]Resource).
+func (ResourceArray) ElementType() reflect.Type {
+	return resourceArrayType
+}
+
+func (in ResourceArray) ToOutput(ctx context.Context) pulumix.Output[[]Resource] {
+	return pulumix.Output[[]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ResourceArray) ToResourceArrayOutput() ResourceArrayOutput {
+	return ToOutput(in).(ResourceArrayOutput)
+}
+
+func (in ResourceArray) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
+	return ToOutputWithContext(ctx, in).(ResourceArrayOutput)
+}
+
+// ResourceArrayOutput is an Output that returns []Resource values.
+type ResourceArrayOutput struct{ *OutputState }
+
+func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]Resource] {
+	return pulumix.Output[[]Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]Resource).
+func (ResourceArrayOutput) ElementType() reflect.Type {
+	return resourceArrayType
+}
+
+func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {
+	return o
+}
+
+func (o ResourceArrayOutput) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ResourceArrayOutput) Index(i IntInput) ResourceOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) Resource {
+		arr := vs[0].([]Resource)
+		idx := vs[1].(int)
+		var ret Resource
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ResourceOutput)
+}
+
+var resourceMapType = reflect.TypeOf((*map[string]Resource)(nil)).Elem()
+
+// ResourceMapInput is an input type that accepts ResourceMap and ResourceMapOutput values.
+type ResourceMapInput interface {
+	Input
+
+	ToResourceMapOutput() ResourceMapOutput
+	ToResourceMapOutputWithContext(ctx context.Context) ResourceMapOutput
+}
+
+// ResourceMap is an input type for map[string]ResourceInput values.
+type ResourceMap map[string]ResourceInput
+
+// ElementType returns the element type of this Input (map[string]Resource).
+func (ResourceMap) ElementType() reflect.Type {
+	return resourceMapType
+}
+
+func (in ResourceMap) ToOutput(ctx context.Context) pulumix.Output[map[string]Resource] {
+	return pulumix.Output[map[string]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ResourceMap) ToResourceMapOutput() ResourceMapOutput {
+	return ToOutput(in).(ResourceMapOutput)
+}
+
+func (in ResourceMap) ToResourceMapOutputWithContext(ctx context.Context) ResourceMapOutput {
+	return ToOutputWithContext(ctx, in).(ResourceMapOutput)
+}
+
+// ResourceMapOutput is an Output that returns map[string]Resource values.
+type ResourceMapOutput struct{ *OutputState }
+
+func (ResourceMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]Resource] {
+	return pulumix.Output[map[string]Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]Resource).
+func (ResourceMapOutput) ElementType() reflect.Type {
+	return resourceMapType
+}
+
+func (o ResourceMapOutput) ToResourceMapOutput() ResourceMapOutput {
+	return o
+}
+
+func (o ResourceMapOutput) ToResourceMapOutputWithContext(ctx context.Context) ResourceMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ResourceMapOutput) MapIndex(k StringInput) ResourceOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) Resource {
+		return vs[0].(map[string]Resource)[vs[1].(string)]
+	}).(ResourceOutput)
+}
+
+var resourceArrayMapType = reflect.TypeOf((*map[string][]Resource)(nil)).Elem()
+
+// ResourceArrayMapInput is an input type that accepts ResourceArrayMap and ResourceArrayMapOutput values.
+type ResourceArrayMapInput interface {
+	Input
+
+	ToResourceArrayMapOutput() ResourceArrayMapOutput
+	ToResourceArrayMapOutputWithContext(ctx context.Context) ResourceArrayMapOutput
+}
+
+// ResourceArrayMap is an input type for map[string]ResourceArrayInput values.
+type ResourceArrayMap map[string]ResourceArrayInput
+
+// ElementType returns the element type of this Input (map[string][]Resource).
+func (ResourceArrayMap) ElementType() reflect.Type {
+	return resourceArrayMapType
+}
+
+func (in ResourceArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]Resource] {
+	return pulumix.Output[map[string][]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ResourceArrayMap) ToResourceArrayMapOutput() ResourceArrayMapOutput {
+	return ToOutput(in).(ResourceArrayMapOutput)
+}
+
+func (in ResourceArrayMap) ToResourceArrayMapOutputWithContext(ctx context.Context) ResourceArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(ResourceArrayMapOutput)
+}
+
+// ResourceArrayMapOutput is an Output that returns map[string][]Resource values.
+type ResourceArrayMapOutput struct{ *OutputState }
+
+func (ResourceArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]Resource] {
+	return pulumix.Output[map[string][]Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]Resource).
+func (ResourceArrayMapOutput) ElementType() reflect.Type {
+	return resourceArrayMapType
+}
+
+func (o ResourceArrayMapOutput) ToResourceArrayMapOutput() ResourceArrayMapOutput {
+	return o
+}
+
+func (o ResourceArrayMapOutput) ToResourceArrayMapOutputWithContext(ctx context.Context) ResourceArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ResourceArrayMapOutput) MapIndex(k StringInput) ResourceArrayOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) []Resource {
+		return vs[0].(map[string][]Resource)[vs[1].(string)]
+	}).(ResourceArrayOutput)
+}
+
+var resourceMapArrayType = reflect.TypeOf((*[]map[string]Resource)(nil)).Elem()
+
+// ResourceMapArrayInput is an input type that accepts ResourceMapArray and ResourceMapArrayOutput values.
+type ResourceMapArrayInput interface {
+	Input
+
+	ToResourceMapArrayOutput() ResourceMapArrayOutput
+	ToResourceMapArrayOutputWithContext(ctx context.Context) ResourceMapArrayOutput
+}
+
+// ResourceMapArray is an input type for []ResourceMapInput values.
+type ResourceMapArray []ResourceMapInput
+
+// ElementType returns the element type of this Input ([]map[string]Resource).
+func (ResourceMapArray) ElementType() reflect.Type {
+	return resourceMapArrayType
+}
+
+func (in ResourceMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Resource] {
+	return pulumix.Output[[]map[string]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ResourceMapArray) ToResourceMapArrayOutput() ResourceMapArrayOutput {
+	return ToOutput(in).(ResourceMapArrayOutput)
+}
+
+func (in ResourceMapArray) ToResourceMapArrayOutputWithContext(ctx context.Context) ResourceMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(ResourceMapArrayOutput)
+}
+
+// ResourceMapArrayOutput is an Output that returns []map[string]Resource values.
+type ResourceMapArrayOutput struct{ *OutputState }
+
+func (ResourceMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]Resource] {
+	return pulumix.Output[[]map[string]Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]Resource).
+func (ResourceMapArrayOutput) ElementType() reflect.Type {
+	return resourceMapArrayType
+}
+
+func (o ResourceMapArrayOutput) ToResourceMapArrayOutput() ResourceMapArrayOutput {
+	return o
+}
+
+func (o ResourceMapArrayOutput) ToResourceMapArrayOutputWithContext(ctx context.Context) ResourceMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ResourceMapArrayOutput) Index(i IntInput) ResourceMapOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) map[string]Resource {
+		arr := vs[0].([]map[string]Resource)
+		idx := vs[1].(int)
+		var ret map[string]Resource
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ResourceMapOutput)
+}
+
+var resourceMapMapType = reflect.TypeOf((*map[string]map[string]Resource)(nil)).Elem()
+
+// ResourceMapMapInput is an input type that accepts ResourceMapMap and ResourceMapMapOutput values.
+type ResourceMapMapInput interface {
+	Input
+
+	ToResourceMapMapOutput() ResourceMapMapOutput
+	ToResourceMapMapOutputWithContext(ctx context.Context) ResourceMapMapOutput
+}
+
+// ResourceMapMap is an input type for map[string]ResourceMapInput values.
+type ResourceMapMap map[string]ResourceMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]Resource).
+func (ResourceMapMap) ElementType() reflect.Type {
+	return resourceMapMapType
+}
+
+func (in ResourceMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Resource] {
+	return pulumix.Output[map[string]map[string]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ResourceMapMap) ToResourceMapMapOutput() ResourceMapMapOutput {
+	return ToOutput(in).(ResourceMapMapOutput)
+}
+
+func (in ResourceMapMap) ToResourceMapMapOutputWithContext(ctx context.Context) ResourceMapMapOutput {
+	return ToOutputWithContext(ctx, in).(ResourceMapMapOutput)
+}
+
+// ResourceMapMapOutput is an Output that returns map[string]map[string]Resource values.
+type ResourceMapMapOutput struct{ *OutputState }
+
+func (ResourceMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]Resource] {
+	return pulumix.Output[map[string]map[string]Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]Resource).
+func (ResourceMapMapOutput) ElementType() reflect.Type {
+	return resourceMapMapType
+}
+
+func (o ResourceMapMapOutput) ToResourceMapMapOutput() ResourceMapMapOutput {
+	return o
+}
+
+func (o ResourceMapMapOutput) ToResourceMapMapOutputWithContext(ctx context.Context) ResourceMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ResourceMapMapOutput) MapIndex(k StringInput) ResourceMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]Resource {
+		return vs[0].(map[string]map[string]Resource)[vs[1].(string)]
+	}).(ResourceMapOutput)
+}
+
+var resourceArrayArrayType = reflect.TypeOf((*[][]Resource)(nil)).Elem()
+
+// ResourceArrayArrayInput is an input type that accepts ResourceArrayArray and ResourceArrayArrayOutput values.
+type ResourceArrayArrayInput interface {
+	Input
+
+	ToResourceArrayArrayOutput() ResourceArrayArrayOutput
+	ToResourceArrayArrayOutputWithContext(ctx context.Context) ResourceArrayArrayOutput
+}
+
+// ResourceArrayArray is an input type for []ResourceArrayInput values.
+type ResourceArrayArray []ResourceArrayInput
+
+// ElementType returns the element type of this Input ([][]Resource).
+func (ResourceArrayArray) ElementType() reflect.Type {
+	return resourceArrayArrayType
+}
+
+func (in ResourceArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]Resource] {
+	return pulumix.Output[[][]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ResourceArrayArray) ToResourceArrayArrayOutput() ResourceArrayArrayOutput {
+	return ToOutput(in).(ResourceArrayArrayOutput)
+}
+
+func (in ResourceArrayArray) ToResourceArrayArrayOutputWithContext(ctx context.Context) ResourceArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(ResourceArrayArrayOutput)
+}
+
+// ResourceArrayArrayOutput is an Output that returns [][]Resource values.
+type ResourceArrayArrayOutput struct{ *OutputState }
+
+func (ResourceArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ResourceArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]Resource] {
+	return pulumix.Output[[][]Resource]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][]Resource).
+func (ResourceArrayArrayOutput) ElementType() reflect.Type {
+	return resourceArrayArrayType
+}
+
+func (o ResourceArrayArrayOutput) ToResourceArrayArrayOutput() ResourceArrayArrayOutput {
+	return o
+}
+
+func (o ResourceArrayArrayOutput) ToResourceArrayArrayOutputWithContext(ctx context.Context) ResourceArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ResourceArrayArrayOutput) Index(i IntInput) ResourceArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []Resource {
+		arr := vs[0].([][]Resource)
+		idx := vs[1].(int)
+		var ret []Resource
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ResourceArrayOutput)
+}
+
 func init() {
 	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
 	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
@@ -7204,6 +7653,93 @@ func (a AnyOutput) AsURNArrayArrayOutput() URNArrayArrayOutput {
 	}).(URNArrayArrayOutput)
 }
 
+// AsResourceOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// Resource and returns a `ResourceOutput` with that value. AsResourceOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsResourceOutput() ResourceOutput {
+	return a.ApplyT(func(i interface{}) Resource {
+		return i.(Resource)
+	}).(ResourceOutput)
+}
+
+// AsResourceArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []Resource or a compatible type and returns a `ResourceArrayOutput` with that value.
+// AsResourceArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsResourceArrayOutput() ResourceArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]Resource, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Resource)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]Resource), nil
+	}).(ResourceArrayOutput)
+}
+
+// AsResourceMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]Resource or a compatible type and returns a `ResourceMapOutput` with that value.
+// AsResourceMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsResourceMapOutput() ResourceMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]Resource, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Resource)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]Resource), nil
+	}).(ResourceMapOutput)
+}
+
+// AsResourceArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]Resource or a compatible type and returns a `ResourceArrayMapOutput` with that value.
+// AsResourceArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsResourceArrayMapOutput() ResourceArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]Resource, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Resource)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]Resource), nil
+	}).(ResourceArrayMapOutput)
+}
+
+// AsResourceMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]Resource or a compatible type and returns a `ResourceMapArrayOutput` with that value.
+// AsResourceMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsResourceMapArrayOutput() ResourceMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]Resource, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Resource)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]Resource), nil
+	}).(ResourceMapArrayOutput)
+}
+
+// AsResourceMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]Resource or a compatible type and returns a `ResourceMapMapOutput` with that value.
+// AsResourceMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsResourceMapMapOutput() ResourceMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]Resource, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Resource)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]Resource), nil
+	}).(ResourceMapMapOutput)
+}
+
+// AsResourceArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]Resource or a compatible type and returns a `ResourceArrayArrayOutput` with that value.
+// AsResourceArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsResourceArrayArrayOutput() ResourceArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]Resource, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Resource)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]Resource), nil
+	}).(ResourceArrayArrayOutput)
+}
+
 func init() {
 	RegisterInputType(reflect.TypeOf((*ArchiveArrayInput)(nil)).Elem(), ArchiveArray{})
 	RegisterInputType(reflect.TypeOf((*ArchiveMapInput)(nil)).Elem(), ArchiveMap{})
@@ -7278,6 +7814,12 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*URNMapArrayInput)(nil)).Elem(), URNMapArray{})
 	RegisterInputType(reflect.TypeOf((*URNMapMapInput)(nil)).Elem(), URNMapMap{})
 	RegisterInputType(reflect.TypeOf((*URNArrayArrayInput)(nil)).Elem(), URNArrayArray{})
+	RegisterInputType(reflect.TypeOf((*ResourceArrayInput)(nil)).Elem(), ResourceArray{})
+	RegisterInputType(reflect.TypeOf((*ResourceMapInput)(nil)).Elem(), ResourceMap{})
+	RegisterInputType(reflect.TypeOf((*ResourceArrayMapInput)(nil)).Elem(), ResourceArrayMap{})
+	RegisterInputType(reflect.TypeOf((*ResourceMapArrayInput)(nil)).Elem(), ResourceMapArray{})
+	RegisterInputType(reflect.TypeOf((*ResourceMapMapInput)(nil)).Elem(), ResourceMapMap{})
+	RegisterInputType(reflect.TypeOf((*ResourceArrayArrayInput)(nil)).Elem(), ResourceArrayArray{})
 	RegisterOutputType(ArchiveOutput{})
 	RegisterOutputType(ArchiveArrayOutput{})
 	RegisterOutputType(ArchiveMapOutput{})
@@ -7354,4 +7896,11 @@ func init() {
 	RegisterOutputType(URNMapArrayOutput{})
 	RegisterOutputType(URNMapMapOutput{})
 	RegisterOutputType(URNArrayArrayOutput{})
+	RegisterOutputType(ResourceOutput{})
+	RegisterOutputType(ResourceArrayOutput{})
+	RegisterOutputType(ResourceMapOutput{})
+	RegisterOutputType(ResourceArrayMapOutput{})
+	RegisterOutputType(ResourceMapArrayOutput{})
+	RegisterOutputType(ResourceMapMapOutput{})
+	RegisterOutputType(ResourceArrayArrayOutput{})
 }

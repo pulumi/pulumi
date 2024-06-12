@@ -27,4 +27,6 @@ var (
 	ResourcePropertyType model.Type = model.NewOpaqueType("Property")
 	// AssetOrArchiveType represents the set of Pulumi Archive values.
 	AssetOrArchiveType model.Type = model.NewUnionType(ArchiveType, AssetType)
+	// ResourceType represents the set of (untyped) Pulumi Resource values, a generic return type for a resource.
+	ResourceType model.Type = model.NewOpaqueType("Resource")
 )

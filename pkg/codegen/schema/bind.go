@@ -747,6 +747,8 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		return JSONType, nil, nil
 	case "pulumi.json#/Any":
 		return AnyType, nil, nil
+	case "pulumi.json#/Resource":
+		return AnyResourceType, nil, nil
 	}
 
 	ref, refDiags := t.parseTypeSpecRef(path, spec.Ref)

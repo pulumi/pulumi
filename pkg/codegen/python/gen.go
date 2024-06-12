@@ -2422,6 +2422,8 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 			fallthrough
 		case schema.AnyType:
 			return "Any"
+		case schema.AnyResourceType:
+			return "pulumi.Resource"
 		}
 	}
 
@@ -2461,6 +2463,8 @@ func (mod *modContext) pyType(typ schema.Type) string {
 			return "pulumi.Archive"
 		case schema.AssetType:
 			return "Union[pulumi.Asset, pulumi.Archive]"
+		case schema.AnyResourceType:
+			return "pulumi.Resource"
 		default:
 			return "dict"
 		}
