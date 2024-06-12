@@ -17,7 +17,7 @@ Support for automatic stack components.
 """
 import asyncio
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Awaitable, Optional, cast
 
 from .. import log
 from ..resource import (
@@ -311,9 +311,11 @@ def register_stack_transform(t: ResourceTransform):
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
 
-    loop = asyncio.get_event_loop()
+    # We need to make sure all the current resource registrations are finished before
+    # registering the transforms.  Do so by waiting for all RPCs to complete, before
+    # we go ahead and register the transform.
     pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task._coro.is_rpc_wrapper is True}
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
     _sync_await(asyncio.gather(*rpcs))
 
     callbacks = _sync_await(_get_callbacks())

@@ -81,8 +81,6 @@ class RPCManager:
 
             return result, exception
 
-        rpc_wrapper.is_rpc_wrapper = True
-
         return rpc_wrapper
 
     def clear(self) -> None:
