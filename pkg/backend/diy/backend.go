@@ -643,6 +643,10 @@ func (b *diyBackend) SupportsProgress() bool {
 	return false
 }
 
+func (b *diyBackend) SupportsDeployments() bool {
+	return false
+}
+
 func (b *diyBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
 	return b.parseStackReference(stackRef)
 }
@@ -1348,6 +1352,32 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 ) error {
 	// The diy backend does not currently persist tags.
 	return errors.New("stack tags not supported in diy mode")
+}
+
+func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
+	stack backend.Stack, secret string,
+) (string, error) {
+	// The local backend does not support managing deployments.
+	return "", errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
+	deployment apitype.DeploymentSettings,
+) error {
+	// The local backend does not support managing deployments.
+	return errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
+	// The local backend does not support managing deployments.
+	return errors.New("stack deployments not supported in --local mode")
+}
+
+func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
+	stack backend.Stack,
+) (*apitype.DeploymentSettings, error) {
+	// The local backend does not support managing deployments.
+	return nil, errors.New("stack deployments not supported in --local mode")
 }
 
 func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

@@ -686,6 +686,10 @@ func (b *cloudBackend) SupportsProgress() bool {
 	return true
 }
 
+func (b *cloudBackend) SupportsDeployments() bool {
+	return true
+}
+
 // qualifiedStackReference describes a qualified stack on the Pulumi Service. The Owner or Project
 // may be "" if unspecified, e.g. "pulumi/production" specifies the Owner and Name, but not the
 // Project. We infer the missing data and try to make things work as best we can in ParseStackReference.
@@ -1844,6 +1848,48 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	}
 
 	return b.client.UpdateStackTags(ctx, stackID, tags)
+}
+
+func (b *cloudBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
+	stack backend.Stack, secret string,
+) (string, error) {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return "", err
+	}
+
+	return b.client.EncryptStackDeploymentSettingsSecret(ctx, stackID, secret)
+}
+
+func (b *cloudBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
+	deployment apitype.DeploymentSettings,
+) error {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return err
+	}
+
+	return b.client.UpdateStackDeploymentSettings(ctx, stackID, deployment)
+}
+
+func (b *cloudBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return err
+	}
+
+	return b.client.DestroyStackDeploymentSettings(ctx, stackID)
+}
+
+func (b *cloudBackend) GetStackDeploymentSettings(ctx context.Context,
+	stack backend.Stack,
+) (*apitype.DeploymentSettings, error) {
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+
+	return b.client.GetStackDeploymentSettings(ctx, stackID)
 }
 
 const pulumiOperationHeader = "Pulumi operation"
