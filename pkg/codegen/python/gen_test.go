@@ -315,13 +315,12 @@ func TestCalculateDeps(t *testing.T) {
 		// Test 1: Give no explicit deps.
 		inputDeps: map[string]string{},
 		expected: [][2]string{
-			// We expect four alphabetized deps,
+			// We expect three alphabetized deps,
 			// with semver and parver formatted differently from Pulumi.
 			// Pulumi should not have a version.
 			{"parver>=0.2.1", ""},
 			{"pulumi", ""},
 			{"semver>=2.8.1"},
-			{"typing-extensions>=4.11; python_version < \"3.11\"", ""},
 		},
 	}, {
 		// Test 2: If you only one dep, we expect Pulumi to have a narrower
@@ -334,7 +333,6 @@ func TestCalculateDeps(t *testing.T) {
 			{"parver>=0.2.1", ""},
 			{"pulumi", ">=3.0.0,<4.0.0"},
 			{"semver>=2.8.1"},
-			{"typing-extensions>=4.11; python_version < \"3.11\"", ""},
 		},
 	}, {
 		// Test 3: If you provide pulumi, we expect the constraint to
@@ -343,12 +341,11 @@ func TestCalculateDeps(t *testing.T) {
 			"pulumi": ">=3.0.0,<3.50.0",
 		},
 		expected: [][2]string{
-			// We expect four alphabetized deps,
+			// We expect three alphabetized deps,
 			// with semver and parver formatted differently from Pulumi.
 			{"parver>=0.2.1", ""},
 			{"pulumi", ">=3.0.0,<3.50.0"},
 			{"semver>=2.8.1"},
-			{"typing-extensions>=4.11; python_version < \"3.11\"", ""},
 		},
 	}, {
 		// Test 4: If you provide an illegal pulumi version, we expect an error.

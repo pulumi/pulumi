@@ -138,7 +138,7 @@ type modContext struct {
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
 
-	// Emit TypedDicts types for inputs
+	// Controls if we emit TypedDict types, see PackageInfo.TypedDictArgs.
 	typedDictArgs string
 }
 
@@ -2145,6 +2145,15 @@ func genPackageMetadata(
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
+	if ok && info.TypedDictArgs == TypedDictSettingSideBySide {
+		// Add typing-extensions to the requires
+		updatedRequires := make(map[string]string, len(requires))
+		for key, value := range requires {
+			updatedRequires[key] = value
+		}
+		updatedRequires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
+		requires = updatedRequires
+	}
 	if pkg.SupportPack {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
@@ -3244,7 +3253,13 @@ func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
 func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 	requires := map[string]string{}
 	if info, ok := pkg.Language["python"].(PackageInfo); ok {
-		requires = info.Requires
+		requires = make(map[string]string, len(info.Requires))
+		for k, v := range info.Requires {
+			requires[k] = v
+		}
+		if info.TypedDictArgs == TypedDictSettingSideBySide {
+			requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
+		}
 	}
 	deps, err := calculateDeps(requires)
 	if err != nil {
@@ -3337,7 +3352,6 @@ func calculateDeps(requires map[string]string) ([][2]string, error) {
 	deps := []string{
 		"semver>=2.8.1",
 		"parver>=0.2.1",
-		"typing-extensions>=4.11; python_version < \"3.11\"",
 	}
 	for dep := range requires {
 		deps = append(deps, dep)

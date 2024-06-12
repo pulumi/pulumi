@@ -452,7 +452,12 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("go/test"),
 	},
 	{
-		Directory:   "python-typed-dict",
+		Directory:   "python-typed-dict-setuppy",
+		Description: "Testing TypedDict generation for inputs.",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "python-typed-dict-pyproject",
 		Description: "Testing TypedDict generation for inputs.",
 		Skip:        allLanguages.Except("python/any"),
 	},
