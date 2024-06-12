@@ -23,11 +23,15 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/eval"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
@@ -349,19 +353,38 @@ func ValidateProject(raw interface{}) error {
 		return err
 	}
 
-	// Couple of manual errors to match Validate
+	// Manually validate keys that need more validation than the raw JSON schema
+	// can provide.
 	name, ok := project["name"]
 	if !ok {
+		closest := findClosestKey("name", project, maxValidationAttributeDistance)
+		if closest != "" {
+			return fmt.Errorf(
+				"project is missing a 'name' attribute; found '%s' instead",
+				closest,
+			)
+		}
+
 		return errors.New("project is missing a 'name' attribute")
 	}
+
 	if strName, ok := name.(string); !ok || strName == "" {
 		return errors.New("project is missing a non-empty string 'name' attribute")
 	}
+
 	if _, ok := project["runtime"]; !ok {
+		closest := findClosestKey("runtime", project, maxValidationAttributeDistance)
+		if closest != "" {
+			return fmt.Errorf(
+				"project is missing a 'runtime' attribute; found '%s' instead",
+				closest,
+			)
+		}
 		return errors.New("project is missing a 'runtime' attribute")
 	}
 
-	// Let everything else be caught by jsonschema
+	// We'll catch everything else with JSON schema, though we'll still try to
+	// suggest fixes for common mistakes.
 	if err = ProjectSchema.Validate(project); err == nil {
 		return nil
 	}
@@ -369,6 +392,8 @@ func ValidateProject(raw interface{}) error {
 	if !ok {
 		return err
 	}
+
+	notAllowedRe := regexp.MustCompile(`'(\w[a-zA-Z0-9_]*)' not allowed$`)
 
 	var errs *multierror.Error
 	var appendError func(err *jsonschema.ValidationError)
@@ -379,7 +404,30 @@ func ValidateProject(raw interface{}) error {
 				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
 			}
 
-			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", err.Message))
+			msg := err.Message
+
+			if match := notAllowedRe.FindStringSubmatch(msg); match != nil {
+				attrName := match[1]
+				attributes := getSchemaPathAttributes(err.InstanceLocation)
+
+				closest := findClosestKey(attrName, attributes, maxValidationAttributeDistance)
+				if closest != "" {
+					msg = fmt.Sprintf("%s; did you mean '%s'?", msg, closest)
+				} else if len(attributes) > 0 {
+					valid := make([]string, 0, len(attributes))
+					for k := range attributes {
+						valid = append(valid, "'"+k+"'")
+					}
+					if len(valid) > 1 {
+						sort.StringSlice.Sort(valid)
+						msg = fmt.Sprintf("%s; the allowed attributes are %v and %s",
+							msg, strings.Join(valid[:len(valid)-1], ", "), valid[len(valid)-1])
+					} else {
+						msg = fmt.Sprintf("%s; the only allowed attribute is %s", msg, valid[0])
+					}
+				}
+			}
+			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", msg))
 		}
 		for _, err := range err.Causes {
 			appendError(err)
@@ -388,6 +436,120 @@ func ValidateProject(raw interface{}) error {
 	appendError(validationError)
 
 	return errs
+}
+
+// maxValidationAttributeDistance is the maximum Levenshtein distance we'll
+// tolerate when searching for attribute names the user might have meant to
+// type.
+const maxValidationAttributeDistance = 2
+
+// findClosestKey finds the closest attribute name in the given map to the
+// supplied needle, where "closest" means the name with the smallest Levenshtein
+// distance from the needle. The haystack will be sorted so that in the event
+// multiple attributes have the same distance, the result will be deterministic
+// (and be the first alphabetically).
+func findClosestKey(
+	needle string,
+	haystack map[string]interface{},
+	maxDistance int,
+) string {
+	match := ""
+	closest := maxDistance + 1
+
+	keys := maps.Keys(haystack)
+	slices.Sort(keys)
+
+	for _, key := range keys {
+		d := levenshtein.DistanceForStrings(
+			[]rune(strings.ToLower(needle)),
+			[]rune(strings.ToLower(key)),
+			levenshtein.DefaultOptionsWithSub,
+		)
+
+		if d == 0 {
+			// We can't do better than 0 so we can short circuit in this case. Note
+			// that a distance of 0 is possible since we lowercase the strings prior
+			// to checking the Levenshtein distance, so e.g. "Name" and "NAME" will
+			// become "name"/"name" and yield a distance of 0.
+			return key
+		} else if d < closest {
+			closest = d
+			match = key
+		} else {
+			continue
+		}
+	}
+
+	return match
+}
+
+// getSchemaPathAttributes walks the given path into the project schema and
+// returns a list of attributes that can be subsequently traversed at the end of
+// that path.
+func getSchemaPathAttributes(path string) map[string]interface{} {
+	elements := strings.Split(path, "/")
+	isNumber := regexp.MustCompile(`^\d+$`)
+
+	curr := ProjectSchema
+	for len(elements) > 0 {
+		attr := elements[0]
+		elements = elements[1:]
+
+		if attr == "" {
+			continue
+		}
+
+		// If this schema node references another, continue from there.
+		if curr.Ref != nil {
+			curr = curr.Ref
+		}
+
+		// Check properties for matching attributes.
+		if schema, ok := curr.Properties[attr]; ok {
+			curr = schema
+			continue
+		}
+
+		// Check additional properties.
+		if curr.AdditionalProperties != nil {
+			if additional, ok := curr.AdditionalProperties.(map[string]*jsonschema.Schema); ok {
+				if schema, ok := additional[attr]; ok {
+					curr = schema
+					continue
+				}
+			}
+		}
+
+		// If the attribute is numeric, check for an array that can be indexed.
+		if isNumber.MatchString(attr) && curr.Items2020 != nil {
+			curr = curr.Items2020
+			continue
+		}
+
+		// In all other cases we can't traverse the supplied path.
+		return nil
+	}
+
+	// If we end on a reference, resolve it to the actual element before
+	// enumerating attributes.
+	if curr.Ref != nil {
+		curr = curr.Ref
+	}
+
+	knownProperties := make(map[string]interface{})
+	for k, v := range curr.Properties {
+		knownProperties[k] = v
+	}
+
+	if curr.AdditionalProperties != nil {
+		if additional, ok := curr.AdditionalProperties.(map[string]*jsonschema.Schema); ok {
+			for k, v := range additional {
+				knownProperties[k] = v
+			}
+		}
+	}
+
+	return knownProperties
 }
 
 func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) string {
