@@ -51,7 +51,7 @@ func ParsePulumiOperation(o string) (PulumiOperation, error) {
 	case "remediate-drift":
 		return RemediateDrift, nil
 	default:
-		return "", fmt.Errorf("Invalid pulumi operation; %q", o)
+		return "", fmt.Errorf("invalid pulumi operation; %q", o)
 	}
 }
 
