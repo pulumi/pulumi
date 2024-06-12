@@ -243,11 +243,6 @@ type RuntimeOptionPrompt struct {
 	PromptType  RuntimeOptionType
 }
 
-type RuntimeOption struct {
-	Key   string
-	Value RuntimeOptionValue
-}
-
 func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOptionPrompt, error) {
 	choices := make([]RuntimeOptionValue, 0, len(p.Choices))
 	for _, choice := range p.Choices {
