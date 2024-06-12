@@ -36,7 +36,7 @@ const (
 	RemediateDrift PulumiOperation = "remediate-drift"
 )
 
-func StrToPulumiOperation(o string) (PulumiOperation, error) {
+func ParsePulumiOperation(o string) (PulumiOperation, error) {
 	switch o {
 	case "update":
 		return Update, nil
