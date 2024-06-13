@@ -46,12 +46,12 @@ import (
 )
 
 const (
-	TypedDictSettingNone       = "none"
-	TypedDictSettingSideBySide = "side-by-side"
+	InputTypesSettingClasses         = "classes"
+	InputTypesSettingClassesAndDicts = "classes-and-dicts"
 )
 
 func typedDictEnabled(setting string) bool {
-	return setting == TypedDictSettingSideBySide
+	return setting == InputTypesSettingClassesAndDicts
 }
 
 type typeDetails struct {
@@ -138,8 +138,8 @@ type modContext struct {
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
 
-	// Controls if we emit TypedDict types, see PackageInfo.TypedDictArgs.
-	typedDictArgs string
+	// Controls what types are used for inputs, see PackageInfo.InputTypes.
+	inputTypes string
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -422,13 +422,13 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 
 	fmt.Fprintf(w, "import copy\n")
 	fmt.Fprintf(w, "import warnings\n")
-	if typedDictEnabled(mod.typedDictArgs) {
+	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "import sys\n")
 	}
 	fmt.Fprintf(w, "import pulumi\n")
 	fmt.Fprintf(w, "import pulumi.runtime\n")
 	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
-	if typedDictEnabled(mod.typedDictArgs) {
+	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "if sys.version_info >= (3, 11):\n")
 		fmt.Fprintf(w, "    from typing import NotRequired, TypedDict, TypeAlias\n")
 		fmt.Fprintf(w, "else:\n")
@@ -1077,13 +1077,13 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
 				fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
-			if input && typedDictEnabled(mod.typedDictArgs) && mod.details(t).inputType {
+			if input && typedDictEnabled(mod.inputTypes) && mod.details(t).inputType {
 				fmt.Fprintf(w, "    '%sDict',\n", mod.unqualifiedObjectTypeName(t, input))
 			}
 		}
 		fmt.Fprintf(w, "]\n\n")
 
-		if input && typedDictEnabled(mod.typedDictArgs) {
+		if input && typedDictEnabled(mod.inputTypes) {
 			fmt.Fprintf(w, "MYPY = False\n\n")
 		}
 
@@ -2145,7 +2145,7 @@ func genPackageMetadata(
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
-	if ok && info.TypedDictArgs == TypedDictSettingSideBySide {
+	if ok && info.InputTypes == InputTypesSettingClassesAndDicts {
 		// Add typing-extensions to the requires
 		updatedRequires := make(map[string]string, len(requires))
 		for key, value := range requires {
@@ -2419,7 +2419,7 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 		pkg, err := t.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "error loading definition for package %q", t.PackageReference.Name())
 		info, ok := pkg.Language["python"].(PackageInfo)
-		typedDicts := ok && typedDictEnabled(info.TypedDictArgs)
+		typedDicts := ok && typedDictEnabled(info.InputTypes)
 		if typedDicts && input {
 			return fmt.Sprintf("Union[%s, %s]", typ, mod.objectType(t, input, true /*dictType*/))
 		}
@@ -2558,7 +2558,7 @@ func InitParamName(name string) string {
 func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
-	if input && typedDictEnabled(mod.typedDictArgs) {
+	if input && typedDictEnabled(mod.inputTypes) {
 		if err := mod.genDictType(w, name, obj.Comment, obj.Properties); err != nil {
 			return err
 		}
@@ -2856,12 +2856,12 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				modNameOverrides:             info.ModuleNameOverrides,
 				compatibility:                info.Compatibility,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
-				typedDictArgs:                info.TypedDictArgs,
+				inputTypes:                   info.InputTypes,
 			}
 
-			if info.TypedDictArgs == "" {
-				// TODO[pulumi/pulumi/16375]: Flip default to side-by-side
-				mod.typedDictArgs = TypedDictSettingNone
+			if info.InputTypes == "" {
+				// TODO[pulumi/pulumi/16375]: Flip default to classes-and-dicts
+				mod.inputTypes = InputTypesSettingClasses
 			}
 
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {
@@ -3257,7 +3257,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 		for k, v := range info.Requires {
 			requires[k] = v
 		}
-		if info.TypedDictArgs == TypedDictSettingSideBySide {
+		if info.InputTypes == InputTypesSettingClassesAndDicts {
 			requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
 		}
 	}

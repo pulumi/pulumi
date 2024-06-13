@@ -80,7 +80,7 @@
                 "pulumi": ">=3.0.0,<4.0.0",
                 "pulumi-kubernetes": ">=3.0.0,<4.0.0"
             },
-            "typedDictArgs": "side-by-side"
+            "inputTypes": "classes-and-dicts"
         }
     }
 }

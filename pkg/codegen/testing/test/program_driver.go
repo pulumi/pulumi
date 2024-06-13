@@ -287,7 +287,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	},
 	{
 		Directory:   "typeddict",
-		Description: "Use typeddict for inputs instead of args class",
+		Description: "Use TypedDicts for inputs side by side with args class",
 		Skip:        allProgLanguages.Except("python"),
 	},
 	{

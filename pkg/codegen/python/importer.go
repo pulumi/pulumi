@@ -60,12 +60,12 @@ type PackageInfo struct {
 		Enabled bool `json:"enabled,omitempty"`
 	} `json:"pyproject,omitempty"`
 
-	// Specifies if TypedDict based types should be generated.
+	// Specifies what types are used for inputs.
 	// Allowed values are the following:
-	// TODO[pulumi/pulumi/16375]: Flip default to side-by-side
-	// - "none" (default): do not generate TypedDict based types
-	// - "side-by-side": generate TypedDict based types side-by-side with Args classes.
-	TypedDictArgs string `json:"typedDictArgs,omitempty"`
+	// TODO[pulumi/pulumi/16375]: Flip default to classes-and-dicts
+	// - "classes" (default): Args classes only
+	// - "classes-and-dicts": TypedDicts side-by-side with Args classes.
+	InputTypes string `json:"inputTypes,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
