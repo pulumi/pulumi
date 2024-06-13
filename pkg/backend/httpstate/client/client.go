@@ -1131,6 +1131,39 @@ func (pc *Client) UpdateStackTags(
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
 }
 
+func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
+	deployment apitype.DeploymentSettings,
+) error {
+	return pc.restCall(ctx, "PUT", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
+}
+
+func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
+	stack StackIdentifier, secret string,
+) (string, error) {
+	request := apitype.SecretValue{Value: secret}
+	response := apitype.SecretValue{}
+	err := pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings", "encrypt"), nil, &request, &response)
+	if err != nil {
+		return "", err
+	}
+
+	return response.Value, nil
+}
+
+func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack StackIdentifier) error {
+	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
+}
+
+func (pc *Client) GetStackDeploymentSettings(ctx context.Context,
+	stack StackIdentifier,
+) (*apitype.DeploymentSettings, error) {
+	var response apitype.DeploymentSettings
+
+	err := pc.restCall(ctx, "GET", getStackPath(stack, "deployments", "settings"), nil, nil, &response)
+
+	return &response, err
+}
+
 func getDeploymentPath(stack StackIdentifier, components ...string) string {
 	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s/deployments", stack.Owner, stack.Project, stack.Stack)
 	return path.Join(append([]string{prefix}, components...)...)
