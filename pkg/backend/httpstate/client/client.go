@@ -1154,7 +1154,9 @@ func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack Stac
 	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
 }
 
-func (pc *Client) GetStackDeploymentSettings(ctx context.Context, stack StackIdentifier) (*apitype.DeploymentSettings, error) {
+func (pc *Client) GetStackDeploymentSettings(ctx context.Context,
+	stack StackIdentifier,
+) (*apitype.DeploymentSettings, error) {
 	var response apitype.DeploymentSettings
 
 	err := pc.restCall(ctx, "GET", getStackPath(stack, "deployments", "settings"), nil, nil, &response)

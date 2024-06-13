@@ -386,7 +386,9 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 	panic("not implemented")
 }
 
-func (be *MockBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (string, error) {
+func (be *MockBackend) EncryptStackDeploymentSettingsSecret(
+	ctx context.Context, stack Stack, secret string,
+) (string, error) {
 	if be.EncryptStackDeploymentSettingsSecretF != nil {
 		return be.EncryptStackDeploymentSettingsSecretF(ctx, stack, secret)
 	}
