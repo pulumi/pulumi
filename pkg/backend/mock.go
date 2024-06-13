@@ -387,7 +387,7 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 }
 
 func (be *MockBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (string, error) {
-	if be.UpdateStackTagsF != nil {
+	if be.EncryptStackDeploymentSettingsSecretF != nil {
 		return be.EncryptStackDeploymentSettingsSecretF(ctx, stack, secret)
 	}
 	panic("not implemented")
@@ -396,7 +396,7 @@ func (be *MockBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
 func (be *MockBackend) UpdateStackDeploymentSettings(ctx context.Context, stack Stack,
 	deployment apitype.DeploymentSettings,
 ) error {
-	if be.UpdateStackTagsF != nil {
+	if be.UpdateStackDeploymentSettingsF != nil {
 		return be.UpdateStackDeploymentSettingsF(ctx, stack, deployment)
 	}
 	panic("not implemented")
@@ -405,14 +405,14 @@ func (be *MockBackend) UpdateStackDeploymentSettings(ctx context.Context, stack 
 func (be *MockBackend) GetStackDeploymentSettings(ctx context.Context,
 	stack Stack,
 ) (*apitype.DeploymentSettings, error) {
-	if be.UpdateStackTagsF != nil {
+	if be.GetStackDeploymentSettingsF != nil {
 		return be.GetStackDeploymentSettingsF(ctx, stack)
 	}
 	panic("not implemented")
 }
 
 func (be *MockBackend) DestroyStackDeploymentSettings(ctx context.Context, stack Stack) error {
-	if be.UpdateStackTagsF != nil {
+	if be.DestroyStackDeploymentSettingsF != nil {
 		return be.DestroyStackDeploymentSettingsF(ctx, stack)
 	}
 	panic("not implemented")
