@@ -40,6 +40,8 @@ const (
 	versionKey         resource.PropertyKey = "version"
 	pluginDownloadKey  resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey resource.PropertyKey = "pluginChecksums"
+	envVarsKey         resource.PropertyKey = "pluginEnvVars"
+	envVarFromKey      resource.PropertyKey = "from"
 )
 
 // SetProviderChecksums sets the provider plugin checksums in the given property map.
@@ -122,6 +124,39 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 	return &sv, nil
 }
 
+// GetProviderEnvVars fetchs and returns provider envvar remappings from the inputs.
+func GetProviderEnvVars(inputs resource.PropertyMap) (map[string]plugin.ProviderEnvVar, error) {
+	envVarsInput, ok := inputs[envVarsKey]
+	if !ok {
+		return nil, nil
+	}
+
+	if !envVarsInput.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", envVarsKey)
+	}
+
+	envVars := make(map[string]plugin.ProviderEnvVar, len(envVarsInput.ObjectValue()))
+	for k, v := range envVarsInput.ObjectValue() {
+		switch {
+		case v.IsString():
+			envVars[string(k)] = plugin.ProviderEnvVar{Value: v.StringValue()}
+		case v.IsObject():
+			obj := v.ObjectValue()
+			if len(obj) != 1 {
+				return nil, fmt.Errorf("'%s[%q]' must be of the form '{\"from\": \"FROM_ENVVAR\"}'", envVarsKey, k)
+			}
+			from, ok := obj[envVarFromKey]
+			if !ok || !from.IsString() {
+				return nil, fmt.Errorf("'%s[%q].%s' must be a string", envVarsKey, k, envVarFromKey)
+			}
+			envVars[string(k)] = plugin.ProviderEnvVar{From: from.StringValue()}
+		default:
+			return nil, fmt.Errorf("'%s[%q]' must be a string or an object", envVarsKey, k)
+		}
+	}
+	return envVars, nil
+}
+
 // Registry manages the lifecylce of provider resources and their plugins and handles the resolution of provider
 // references to loaded plugins.
 //
@@ -146,14 +181,20 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
-func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	host plugin.Host, builtins plugin.Provider,
+func loadProvider(
+	pkg tokens.Package,
+	version *semver.Version,
+	downloadURL string,
+	checksums map[string][]byte,
+	envVars map[string]plugin.ProviderEnvVar,
+	host plugin.Host,
+	builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
 	}
 
-	provider, err := host.Provider(pkg, version)
+	provider, err := host.Provider(pkg, version, envVars)
 	if err == nil {
 		return provider, nil
 	}
@@ -192,7 +233,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(pkg, version)
+	return host.Provider(pkg, version, envVars)
 }
 
 // NewRegistry creates a new provider registry using the given host.
@@ -327,8 +368,13 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "pluginDownloadURL", Reason: err.Error()}}, nil
 	}
+	envVars, err := GetProviderEnvVars(news)
+	if err != nil {
+		return nil, []plugin.CheckFailure{{Property: envVarsKey, Reason: err.Error()}}, nil
+	}
+
 	// TODO: We should thread checksums through here.
-	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, downloadURL, nil, r.host, r.builtins)
+	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, downloadURL, nil, envVars, r.host, r.builtins)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -446,8 +492,12 @@ func (r *Registry) Same(res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
+		envVars, err := GetProviderEnvVars(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse envvars for %v provider '%v': %w", providerPkg, urn, err)
+		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
+		provider, err = loadProvider(providerPkg, version, downloadURL, nil, envVars, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -500,8 +550,13 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
+		envVars, err := GetProviderEnvVars(news)
+		if err != nil {
+			return "", nil, resource.StatusUnknown,
+				fmt.Errorf("parse envvars for %v provider '%v': %w", providerPkg, urn, err)
+		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
+		provider, err = loadProvider(providerPkg, version, downloadURL, nil, envVars, r.host, r.builtins)
 		if err != nil {
 			return "", nil, resource.StatusUnknown,
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)

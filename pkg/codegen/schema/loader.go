@@ -297,7 +297,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 }
 
 func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version) ([]byte, plugin.Provider, error) {
-	provider, err := l.host.Provider(tokens.Package(pkg), version)
+	provider, err := l.host.Provider(tokens.Package(pkg), version, nil)
 	if err != nil {
 		return nil, nil, err
 	}

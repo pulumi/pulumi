@@ -176,7 +176,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(tokens.Package(pkg), version)
+		provider, err := host.Provider(tokens.Package(pkg), version, nil)
 		if err != nil {
 			// There is an executable with the same name, so suggest that
 			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
@@ -205,7 +205,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 					return nil, err
 				}
 
-				p, err := host.Provider(tokens.Package(pkg), version)
+				p, err := host.Provider(tokens.Package(pkg), version, nil)
 				if err != nil {
 					return nil, err
 				}

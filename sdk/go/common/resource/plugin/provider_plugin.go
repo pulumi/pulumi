@@ -122,6 +122,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
+	envVars map[string]ProviderEnvVar,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
@@ -166,6 +167,13 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 		if jsonConfig != "" {
 			env = append(env, "PULUMI_CONFIG="+jsonConfig)
+		}
+		for k, v := range envVars {
+			value := v.Value
+			if v.From != "" {
+				value = os.Getenv(v.From)
+			}
+			env = append(env, fmt.Sprintf("%v=%v", k, value))
 		}
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
@@ -383,6 +391,12 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 		return nil, nil, err
 	}
 
+	news = news.Copy()
+	envVars, hasEnvVars := news["pluginEnvVars"]
+	if hasEnvVars {
+		delete(news, "pluginEnvVars")
+	}
+
 	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:        label + ".news",
 		KeepUnknowns: allowUnknowns,
@@ -422,6 +436,12 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+	if hasEnvVars {
+		if inputs == nil {
+			inputs = resource.PropertyMap{}
+		}
+		inputs["pluginEnvVars"] = envVars
 	}
 
 	// And now any properties that failed verification.
@@ -727,6 +747,11 @@ func restoreElidedAssetContents(original resource.PropertyMap, transformed resou
 func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := p.label() + ".Configure()"
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
+
+	inputs = inputs.Copy()
+	if _, hasEnvVars := inputs["pluginEnvVars"]; hasEnvVars {
+		delete(inputs, "pluginEnvVars")
+	}
 
 	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.

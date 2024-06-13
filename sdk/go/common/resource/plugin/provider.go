@@ -74,6 +74,8 @@ type ParameterizeResponse struct {
 	Version *semver.Version
 }
 
+type ProviderEnvVar = workspace.ProviderEnvVar
+
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
 //

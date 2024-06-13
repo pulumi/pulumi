@@ -365,7 +365,11 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (host *pluginHost) Provider(
+	pkg tokens.Package,
+	version *semver.Version,
+	envVars map[string]plugin.ProviderEnvVar,
+) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}

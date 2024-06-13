@@ -719,6 +719,12 @@ func (pp ProjectPlugin) Spec() PluginSpec {
 	}
 }
 
+// ProviderEnvVar represents an environment variable setting for a provider plugin.
+type ProviderEnvVar struct {
+	Value string // The value of the environment variable, if any.
+	From  string // If set, the name of the environment variable to copy from. Overrides Value.
+}
+
 // PluginSpec provides basic specification for a plugin.
 type PluginSpec struct {
 	Name              string             // the simple name of the plugin.
@@ -729,6 +735,9 @@ type PluginSpec struct {
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
+
+	// if set will be used to set environment variables.
+	EnvVars map[string]ProviderEnvVar
 }
 
 // Dir gets the expected plugin directory for this plugin.
