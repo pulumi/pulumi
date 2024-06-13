@@ -1370,14 +1370,14 @@ func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack ba
 
 func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
 	// The local backend does not support managing deployments.
-	return errors.New("stack deployments not supported in --local mode")
+	return errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
 	stack backend.Stack,
 ) (*apitype.DeploymentSettings, error) {
 	// The local backend does not support managing deployments.
-	return nil, errors.New("stack deployments not supported in --local mode")
+	return nil, errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
