@@ -142,3 +142,32 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	_, _, err = DetectProjectAndPath()
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
+
+//nolint:paralleltest // Theses test use and change the current working directory
+func TestDetectProjectStackDeploymentPath(t *testing.T) {
+	tmpDir := mkTempDir(t)
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+	err = os.Chdir(tmpDir)
+	assert.NoError(t, err)
+
+	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
+	yamlContents := "name: some_project\ndescription: Some project\nruntime: nodejs\n"
+
+	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	assert.NoError(t, err)
+
+	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
+	yamlDeployContents := ""
+
+	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
+	assert.NoError(t, err)
+
+	project, path, err := DetectProjectStackDeploymentPath("stack")
+	assert.NoError(t, err)
+	assert.Equal(t, yamlDeployPath, path)
+	assert.Equal(t, tokens.PackageName("some_project"), project.Name)
+	assert.Equal(t, "Some project", *project.Description)
+	assert.Equal(t, "nodejs", project.Runtime.name)
+}

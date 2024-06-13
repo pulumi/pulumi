@@ -60,6 +60,8 @@ const (
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
+	// DeploymentSuffix base suffix for the deployment file
+	DeploymentSuffix = "deploy"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
 	RepoFile = "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
@@ -100,6 +102,21 @@ func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 	}
 
 	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
+
+	if proj.StackConfigDir != "" {
+		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+	}
+
+	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
+}
+
+func DetectProjectStackDeploymentPath(stackName tokens.QName) (*Project, string, error) {
+	proj, projPath, err := DetectProjectAndPath()
+	if err != nil {
+		return nil, "", err
+	}
+
+	fileName := fmt.Sprintf("%s.%s.%s%s", ProjectFile, qnameFileName(stackName), DeploymentSuffix, filepath.Ext(projPath))
 
 	if proj.StackConfigDir != "" {
 		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
@@ -162,6 +179,15 @@ func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
 	return LoadProjectStack(project, path)
 }
 
+func DetectProjectStackDeployment(stackName tokens.QName) (*ProjectStackDeployment, error) {
+	_, path, err := DetectProjectStackDeploymentPath(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	return LoadProjectStackDeployment(path)
+}
+
 // DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
 // also returns the path where the package was found.
 func DetectProjectAndPath() (*Project, string, error) {
@@ -194,6 +220,15 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 	}
 
 	return stack.Save(path)
+}
+
+func SaveProjectStackDeployment(stackName tokens.QName, deployment *ProjectStackDeployment) error {
+	_, path, err := DetectProjectStackDeploymentPath(stackName)
+	if err != nil {
+		return err
+	}
+
+	return deployment.Save(path)
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like
