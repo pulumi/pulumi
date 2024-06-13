@@ -1,5 +1,53 @@
 # Changelog
 
+## 3.120.0 (2024-06-12)
+
+
+### Features
+
+- [components/dotnet] Upgrade dotnet to 3.64.0
+  [#16353](https://github.com/pulumi/pulumi/pull/16353)
+
+- [cli/import] Add flag --json to pulumi import which would serialize the import diffs, operations, and overall output as JSON
+  [#16342](https://github.com/pulumi/pulumi/pull/16342)
+
+- [engine] Change `pulumi refresh` to report diffs relative to desired state instead of relative to only output changes. Use `PULUMI_ENABLE_LEGACY_REFRESH_DIFF` to revert to the old behaviour.
+
+- [protobuf] Pass ProgramInfo to LanguageRuntime.About
+  [#16311](https://github.com/pulumi/pulumi/pull/16311)
+
+- [sdk/python] Support Poetry as Python toolchain
+  [#16315](https://github.com/pulumi/pulumi/pull/16315)
+
+- [sdk/python] Autoinstall dependencies using Poetry in GetRequiredPlugins
+  [#16315](https://github.com/pulumi/pulumi/pull/16315)
+
+
+### Bug Fixes
+
+- [cli/{config,new}] Fix non-interactive flag for 'new' and 'config env' commands"
+  [#16338](https://github.com/pulumi/pulumi/pull/16338)
+
+- [programgen/go] Fix union type resolution in Go program generation
+  [#16297](https://github.com/pulumi/pulumi/pull/16297)
+
+- [sdk/nodejs] Only look for main in package.json if no entyrpoint was set via Pulumi.yaml
+  [#16363](https://github.com/pulumi/pulumi/pull/16363)
+
+- [sdk/python] Make sure no resource registrations are in progress while stack transforms are being registered
+
+
+### Miscellaneous
+
+- [pkg] Refactor plugin.Provider to a `Method(context.Context, MethodRequest) (MethodResponse, error)` style interface.
+  [#16302](https://github.com/pulumi/pulumi/pull/16302)
+
+- [programgen/nodejs] Sort dependencies in GenerateProject
+  [#16341](https://github.com/pulumi/pulumi/pull/16341)
+
+- [sdk/nodejs] Update current nodejs version to 22.x
+  [#16378](https://github.com/pulumi/pulumi/pull/16378)
+
 ## 3.119.0 (2024-06-05)
 
 

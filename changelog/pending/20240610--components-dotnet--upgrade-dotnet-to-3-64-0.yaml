@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: components/dotnet
-  description: Upgrade dotnet to 3.64.0

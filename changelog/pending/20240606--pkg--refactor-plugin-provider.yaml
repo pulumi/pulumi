@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: pkg
-  description: Refactor plugin.Provider to a `Method(context.Context, MethodRequest) (MethodResponse, error)` style interface.
