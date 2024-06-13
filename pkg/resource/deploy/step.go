@@ -324,10 +324,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
-	if resourceError == nil {
-		return resourceStatus, complete, nil
+
+	if resourceError != nil {
+		// If we have a failure, we should return an empty complete function
+		// and let the Fail method handle the registration.
+		return resourceStatus, nil, resourceError
 	}
-	return resourceStatus, complete, resourceError
+
+	return resourceStatus, complete, nil
 }
 
 func (s *CreateStep) Fail() {
@@ -647,10 +651,13 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Finally, mark this operation as complete.
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
-	if resourceError == nil {
-		return resourceStatus, complete, nil
+
+	if resourceError != nil {
+		// If we have a failure, we should return an empty complete function
+		// and let the Fail method handle the registration.
+		return resourceStatus, nil, resourceError
 	}
-	return resourceStatus, complete, resourceError
+	return resourceStatus, complete, nil
 }
 
 func (s *UpdateStep) Fail() {
