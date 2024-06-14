@@ -59,7 +59,7 @@ func newDeploymentCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+		&stackDeploymentConfigFile, "config-file", "",
 		"Use the configuration values in the specified deployment file rather than detecting the file name")
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
@@ -83,7 +83,6 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
-	// cmd.AddCommand(newDeploymentSettingsUpdateCmd())
 
 	return cmd
 }
