@@ -57,10 +57,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def diameter(self) -> pulumi.Input['Diameter']:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""diameter is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "diameter")
 
     @diameter.setter
@@ -69,10 +67,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def type(self) -> pulumi.Input['RubberTreeVariety']:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""type is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "type")
 
     @type.setter
@@ -90,10 +86,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def farm(self) -> Optional[pulumi.Input[Union['Farm', str]]]:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""farm is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "farm")
 
     @farm.setter
@@ -102,10 +96,8 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
+    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def size(self) -> Optional[pulumi.Input['TreeSize']]:
-        warnings.warn("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""", DeprecationWarning)
-        pulumi.log.warn("""size is deprecated: Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-
         return pulumi.get(self, "size")
 
     @size.setter

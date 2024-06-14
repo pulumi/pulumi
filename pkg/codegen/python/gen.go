@@ -1527,14 +1527,13 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		} else {
 			fmt.Fprintf(w, "%s    @pulumi.getter(name=%q)\n", indent, prop.Name)
 		}
+		if prop.DeprecationMessage != "" {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+			fmt.Fprintf(w, "%s    @pulumi.deprecated(\"\"\"%s\"\"\")\n", indent, escaped)
+		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, indent+"        ")
-		}
-		if prop.DeprecationMessage != "" {
-			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "%s        warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", indent, escaped)
-			fmt.Fprintf(w, "%s        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n\n", indent, pname, escaped)
 		}
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 

@@ -36,6 +36,10 @@ from .config import (
     ConfigTypeError,
 )
 
+from .deprecated import (
+    deprecated,
+)
+
 from .errors import (
     RunError,
 )
@@ -117,6 +121,8 @@ __all__ = [
     "Config",
     "ConfigMissingError",
     "ConfigTypeError",
+    # deprecated
+    "deprecated",
     # errors
     "RunError",
     # invoke
