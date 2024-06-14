@@ -406,7 +406,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	}
 
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
-	status, stepComplete, err := step.Apply(se.deployment.opts.DryRun)
+	status, stepComplete, err := step.Apply()
 
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.

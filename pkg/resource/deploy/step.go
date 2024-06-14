@@ -32,32 +32,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// StepCompleteFunc is the type of functions returned from Step.Apply. These functions are to be called when the engine
-// has fully retired a step. You _should not_ modify the resource state in these functions, that will race with the
-// snapshot writing code.
+// StepCompleteFunc is the type of functions returned from Step.Apply. These
+// functions are to be called when the engine has fully retired a step. You
+// _should not_ modify the resource state in these functions -- doing so will
+// race with the snapshot writing code.
 type StepCompleteFunc func()
 
 // Step is a specification for a deployment operation.
 type Step interface {
-	// Apply applies or previews this step. It returns the status of the resource after the step application,
-	// a function to call to signal that this step has fully completed, and an error, if one occurred while applying
-	// the step.
+	// Apply applies this step. It returns the status of the resource after the
+	// step application, a function to call to signal that this step has fully
+	// completed, and an error, if one occurred while applying the step.
 	//
-	// The returned StepCompleteFunc, if not nil, must be called after committing the results of this step into
-	// the state of the deployment.
-	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
+	// The returned StepCompleteFunc, if not nil, must be called after committing
+	// the results of this step into the state of the deployment.
+	Apply() (resource.Status, StepCompleteFunc, error)
 
-	Op() display.StepOp      // the operation performed by this step.
-	URN() resource.URN       // the resource URN (for before and after).
-	Type() tokens.Type       // the type affected by this step.
-	Provider() string        // the provider reference for this step.
-	Old() *resource.State    // the state of the resource before performing this step.
-	New() *resource.State    // the state of the resource after performing this step.
-	Res() *resource.State    // the latest state for the resource that is known (worst case, old).
-	Logical() bool           // true if this step represents a logical operation in the program.
-	Deployment() *Deployment // the owning deployment.
-	Fail()                   // mark a step as failed.
-	Skip()                   // mark a step as skipped
+	// the operation performed by this step.
+	Op() display.StepOp
+	// the resource URN (for before and after).
+	URN() resource.URN
+	// the type of the resource affected by this step.
+	Type() tokens.Type
+	// the provider reference for the resource affected by this step.
+	Provider() string
+	// the state of the resource before performing this step.
+	Old() *resource.State
+	// the state of the resource after performing this step.
+	New() *resource.State
+	// the latest state for the resource that is known (worst case, old).
+	Res() *resource.State
+	// true if this step represents a logical operation in the program.
+	Logical() bool
+	// the deployment to which this step belongs.
+	Deployment() *Deployment
+
+	// Calling Fail will mark the step as failed.
+	Fail()
+	// Calling Skip will mark the step as skipped.
+	Skip()
 }
 
 // SameStep is a mutating step that does nothing.
@@ -130,7 +143,7 @@ func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
-func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Lock.Lock()
 	defer s.new.Lock.Unlock()
 
@@ -262,7 +275,7 @@ func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
-func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
 
@@ -298,7 +311,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		id = resp.ID
 		outs = resp.Properties
 
-		if !preview && id == "" {
+		if !s.deployment.opts.DryRun && id == "" {
 			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 		}
 	}
@@ -452,14 +465,14 @@ func (d deleteProtectedError) Error() string {
 		"`pulumi state unprotect %[2]s`", d.urn, d.urn.Quote())
 }
 
-func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources (unless we're replacing them in
 	// which case we will of checked protect elsewhere)
 	if !s.replacing && s.old.Protect {
 		return resource.StatusOK, nil, deleteProtectedError{urn: s.old.URN}
 	}
 
-	if preview {
+	if s.deployment.opts.DryRun {
 		// Do nothing in preview
 	} else if s.old.External {
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
@@ -524,7 +537,7 @@ func (s *RemovePendingReplaceStep) New() *resource.State    { return nil }
 func (s *RemovePendingReplaceStep) Res() *resource.State    { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool           { return false }
 
-func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *RemovePendingReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
 }
 
@@ -595,7 +608,7 @@ func (s *UpdateStep) Logical() bool                                { return true
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
-func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID and timestamps even in previews and refreshes.
 	s.new.Lock.Lock()
 	s.new.ID = s.old.ID
@@ -719,7 +732,7 @@ func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.d
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
 
-func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assertf(!s.pendingDelete || s.old.Delete,
 		"old resource %v should be marked for deletion if pending delete", s.old.URN)
@@ -815,7 +828,7 @@ func (s *ReadStep) New() *resource.State    { return s.new }
 func (s *ReadStep) Res() *resource.State    { return s.new }
 func (s *ReadStep) Logical() bool           { return !s.replacing }
 
-func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
 	id := s.new.ID
 
@@ -968,7 +981,7 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 	return OpUpdate
 }
 
-func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	var complete func()
 	if s.done != nil {
 		complete = func() { close(s.done) }
@@ -1079,7 +1092,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 				s.new.Inputs, s.new.Outputs,
 				// pass old inputs as new inputs
 				s.old.Inputs,
-				prov, preview, s.old.IgnoreChanges,
+				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
 			)
 			if err != nil {
 				return refreshed.Status, nil, err
@@ -1200,7 +1213,7 @@ func (s *ImportStep) Logical() bool                                { return !s.r
 func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
-func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
+func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	complete := func() {
 		s.reg.Done(&RegisterResult{State: s.new})
 	}
@@ -1319,7 +1332,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			URN:           s.new.URN,
 			Olds:          s.old.Inputs,
 			News:          s.new.Inputs,
-			AllowUnknowns: preview,
+			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})
 		if err != nil {
@@ -1366,7 +1379,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		URN:           s.new.URN,
 		Olds:          s.old.Inputs,
 		News:          s.new.Inputs,
-		AllowUnknowns: preview,
+		AllowUnknowns: s.deployment.opts.DryRun,
 		RandomSeed:    s.randomSeed,
 	})
 	if err != nil {
@@ -1379,8 +1392,14 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
 	// is from an import deployment.
-	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
-		s.ignoreChanges)
+	diff, err := diffResource(
+		s.new.URN, s.new.ID,
+		s.old.Inputs, s.old.Outputs,
+		s.new.Inputs,
+		prov,
+		s.deployment.opts.DryRun,
+		s.ignoreChanges,
+	)
 	if err != nil {
 		return rst, nil, err
 	}
@@ -1390,7 +1409,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if diff.Changes != plugin.DiffNone {
 		const message = "inputs to import do not match the existing resource"
 
-		if preview {
+		if s.deployment.opts.DryRun {
 			s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,
 				message+"; importing this resource will fail", 0))
 		} else {
