@@ -1019,7 +1019,7 @@ type ProjectRuntimeInfo struct {
 }
 
 type ProjectStackDeployment struct {
-	DeploymentSettings apitype.DeploymentSettings `json:"deploymentSettings" yaml:"deploymentSettings"`
+	DeploymentSettings apitype.DeploymentSettings `json:"settings" yaml:"settings"`
 }
 
 func (psd *ProjectStackDeployment) Save(path string) error {
