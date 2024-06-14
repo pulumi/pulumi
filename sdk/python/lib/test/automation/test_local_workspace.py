@@ -39,7 +39,12 @@ from pulumi.automation import (
     Stack,
     StackSettings,
     StackAlreadyExistsError,
+    StackNotFoundError,
     fully_qualified_stack_name,
+)
+from pulumi.resource import (
+    ComponentResource,
+    ResourceOptions,
 )
 
 from .test_utils import get_test_org, get_test_suffix, stack_namer
@@ -750,6 +755,27 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_stack_lifecycle_inline_program_remove_without_destroy(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        stack.up()
+
+        # we shouldn't be able to remove the stack without force
+        # since the stack has an active resource
+        with self.assertRaises(CommandError):
+            stack.workspace.remove_stack(stack_name)
+
+        stack.workspace.remove_stack(stack_name, force=True)
+
+        # we shouldn't be able to select the stack after it's been removed
+        # we expect this error
+        with self.assertRaises(StackNotFoundError):
+            stack.workspace.select_stack(stack_name)
+
     def test_stack_lifecycle_async_inline_program(self):
         project_name = "async_inline_python"
         stack_name = stack_namer(project_name)
@@ -1139,6 +1165,20 @@ def pulumi_program():
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
+
+
+def pulumi_program_with_resource():
+    class MyComponentResource(ComponentResource):
+        def __init__(
+            self,
+            name: str,
+            opts: Optional[ResourceOptions] = None,
+        ):
+            super(MyComponentResource, self).__init__(
+                "my:module:MyResource", name, None, opts
+            )
+
+    MyComponentResource("res")
 
 
 async def async_pulumi_program():

@@ -14,7 +14,7 @@
 
 import { PulumiCommand } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
-import { ListOptions } from "./localWorkspace";
+import { ListOptions, RemoveOptions } from "./localWorkspace";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
@@ -228,7 +228,7 @@ export interface Workspace {
      *
      * @param stackName The stack to remove
      */
-    removeStack(stackName: string): Promise<void>;
+    removeStack(stackName: string, opts?: RemoveOptions): Promise<void>;
     /**
      * Returns all Stacks from the underlying backend based on the provided options.
      * This queries backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
