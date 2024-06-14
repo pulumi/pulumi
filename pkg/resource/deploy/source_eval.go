@@ -1525,6 +1525,27 @@ func transformAliasForNodeJSCompat(alias *pulumirpc.Alias) *pulumirpc.Alias {
 	return alias
 }
 
+func (rm *resmon) resolveProvider(
+	provider string, providers map[string]string, parent resource.URN, pkg tokens.Package,
+) string {
+	if provider != "" {
+		return provider
+	}
+	if prov, ok := providers[string(pkg)]; ok {
+		return prov
+	}
+	if parent != "" {
+		rm.componentProvidersLock.Lock()
+		defer rm.componentProvidersLock.Unlock()
+		if parentsProvider, ok := rm.componentProviders[parent]; ok {
+			if prov, ok := parentsProvider[string(pkg)]; ok {
+				return prov
+			}
+		}
+	}
+	return ""
+}
+
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
@@ -1637,6 +1658,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		props = upgradeOutputValues(props, propertyDependencies)
 	}
 
+	provider := req.GetProvider()
+	if custom || remote {
+		provider = rm.resolveProvider(req.GetProvider(), req.GetProviders(), parent, t.Package())
+	}
+
 	opts := &pulumirpc.TransformResourceOptions{
 		DependsOn:               req.GetDependencies(),
 		Protect:                 req.GetProtect(),
@@ -1644,7 +1670,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		ReplaceOnChanges:        req.GetReplaceOnChanges(),
 		Version:                 req.GetVersion(),
 		Aliases:                 aliases,
-		Provider:                req.GetProvider(),
+		Provider:                provider,
 		Providers:               req.GetProviders(),
 		CustomTimeouts:          req.GetCustomTimeouts(),
 		PluginDownloadUrl:       req.GetPluginDownloadURL(),

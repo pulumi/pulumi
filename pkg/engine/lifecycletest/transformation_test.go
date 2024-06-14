@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/blang/semver"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -685,4 +687,116 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	assert.Equal(t, resource.PropertyMap{
 		"foo": resource.NewNumberProperty(2),
 	}, res.Inputs)
+}
+
+func TestTransformsProviderOpt(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				Package: "pkgA",
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "some-id", nil, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var explicitProvider string
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "explicit", true)
+		require.NoError(t, err)
+		explicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		resp, err = monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+		require.NoError(t, err)
+		implicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				fmt.Println("provider: ", opts.Provider)
+				if opts.Provider == "" {
+					opts.Provider = implicitProvider
+				}
+
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackTransform(callback)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "explicitProvider", true, deploytest.ResourceOptions{
+			Provider: explicitProvider,
+		})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "implicitProvider", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "explicitProvidersMap", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": explicitProvider},
+		})
+		require.NoError(t, err)
+
+		resp, err = monitor.RegisterResource("xmy:component:resource", "component", false, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": explicitProvider},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "parentedResource", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+
+		resp, err = monitor.RegisterResource("ymy:component:resource", "another-component", false, deploytest.ResourceOptions{
+			Provider: explicitProvider,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "parentedResource", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 2 resources
+	sort.Slice(snap.Resources, func(i, j int) bool {
+		return snap.Resources[i].URN < snap.Resources[j].URN
+	})
+	for _, res := range snap.Resources {
+		fmt.Println(res.URN)
+	}
+	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::explicitProvider"), snap.Resources[0].URN)
+	assert.Equal(t, explicitProvider, snap.Resources[0].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::explicitProvidersMap"), snap.Resources[1].URN)
+	assert.Equal(t, explicitProvider, snap.Resources[1].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::implicitProvider"), snap.Resources[2].URN)
+	assert.Equal(t, implicitProvider, snap.Resources[2].Provider)
+	assert.Equal(t,
+		urn.URN("urn:pulumi:test::test::xmy:component:resource$pkgA:m:typA::parentedResource"),
+		snap.Resources[5].URN)
+	assert.Equal(t, explicitProvider, snap.Resources[5].Provider)
+	assert.Equal(t,
+		urn.URN("urn:pulumi:test::test::ymy:component:resource$pkgA:m:typA::parentedResource"),
+		snap.Resources[7].URN)
+	assert.Equal(t, implicitProvider, snap.Resources[7].Provider)
 }
