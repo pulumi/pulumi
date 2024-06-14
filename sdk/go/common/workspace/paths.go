@@ -110,19 +110,19 @@ func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
-func DetectProjectStackDeploymentPath(stackName tokens.QName) (*Project, string, error) {
+func DetectProjectStackDeploymentPath(stackName tokens.QName) (string, error) {
 	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
-		return nil, "", err
+		return "", err
 	}
 
 	fileName := fmt.Sprintf("%s.%s.%s%s", ProjectFile, qnameFileName(stackName), DeploymentSuffix, filepath.Ext(projPath))
 
 	if proj.StackConfigDir != "" {
-		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
 	}
 
-	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
+	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
 var ErrProjectNotFound = errors.New("no project file found")
@@ -180,7 +180,7 @@ func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
 }
 
 func DetectProjectStackDeployment(stackName tokens.QName) (*ProjectStackDeployment, error) {
-	_, path, err := DetectProjectStackDeploymentPath(stackName)
+	path, err := DetectProjectStackDeploymentPath(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 }
 
 func SaveProjectStackDeployment(stackName tokens.QName, deployment *ProjectStackDeployment) error {
-	_, path, err := DetectProjectStackDeploymentPath(stackName)
+	path, err := DetectProjectStackDeploymentPath(stackName)
 	if err != nil {
 		return err
 	}

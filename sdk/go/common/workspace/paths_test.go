@@ -164,10 +164,7 @@ func TestDetectProjectStackDeploymentPath(t *testing.T) {
 	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
 	assert.NoError(t, err)
 
-	project, path, err := DetectProjectStackDeploymentPath("stack")
+	path, err := DetectProjectStackDeploymentPath("stack")
 	assert.NoError(t, err)
 	assert.Equal(t, yamlDeployPath, path)
-	assert.Equal(t, tokens.PackageName("some_project"), project.Name)
-	assert.Equal(t, "Some project", *project.Description)
-	assert.Equal(t, "nodejs", project.Runtime.name)
 }
