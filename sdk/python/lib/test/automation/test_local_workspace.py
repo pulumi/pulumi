@@ -39,10 +39,11 @@ from pulumi.automation import (
     Stack,
     StackSettings,
     StackAlreadyExistsError,
+    StackNotFoundError,
     fully_qualified_stack_name,
 )
 from pulumi.resource import (
-    CustomResource,
+    ComponentResource,
     ResourceOptions,
 )
 
@@ -772,7 +773,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # we shouldn't be able to select the stack after it's been removed
         # we expect this error
-        with self.assertRaises(CommandError):
+        with self.assertRaises(StackNotFoundError):
             stack.workspace.select_stack(stack_name)
 
     def test_stack_lifecycle_async_inline_program(self):
@@ -1167,17 +1168,17 @@ def pulumi_program():
 
 
 def pulumi_program_with_resource():
-    class MyCustomResource(CustomResource):
+    class MyComponentResource(ComponentResource):
         def __init__(
             self,
             name: str,
             opts: Optional[ResourceOptions] = None,
         ):
-            super(MyCustomResource, self).__init__(
+            super(MyComponentResource, self).__init__(
                 "my:module:MyResource", name, None, opts
             )
 
-    MyCustomResource("res")
+    MyComponentResource("res")
 
 
 async def async_pulumi_program():
