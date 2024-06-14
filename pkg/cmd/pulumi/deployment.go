@@ -27,6 +27,7 @@ import (
 
 var stackDeploymentConfigFile string
 
+//nolint:unused // temporary ignore until we introduce the new commands
 func loadProjectStackDeployment(stack backend.Stack) (*workspace.ProjectStackDeployment, error) {
 	if stackDeploymentConfigFile == "" {
 		return workspace.DetectProjectStackDeployment(stack.Ref().Name().Q())
@@ -43,12 +44,14 @@ func saveProjectStackDeployment(psd *workspace.ProjectStackDeployment, stack bac
 
 func newDeploymentCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deployment",
-		Short: "Manage stack deployments",
-		Long: "Manage stack deployments.\n" +
+		// This is temporarily hidden while we iterate over the new set of commands,
+		// we will remove before releasing these new set of features.
+		Hidden: true,
+		Use:    "deployment",
+		Short:  "Manage stack deployments on Pulumi Cloud",
+		Long: "Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
-			"Use this command to manage stack deployments, " +
-			"e.g. configuring deployment settings",
+			"Use this command to trigger deployment jobs and manage deployment settings.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return nil
@@ -57,7 +60,7 @@ func newDeploymentCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
+		"Use the configuration values in the specified deployment file rather than detecting the file name")
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
 
@@ -69,14 +72,18 @@ func newDeploymentSettingsCmd() *cobra.Command {
 		Use:   "settings",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Manages the stack's deployment settings",
-		Long:  "",
+		Long: "Manages the stack's deployment settings\n" +
+			"\n" +
+			"Use this command to manage stack's deployment settings like\n" +
+			"generating the deployment file, updating secrets or pushing the\n" +
+			"updated settings to Pulumi Cloud.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return nil
 		}),
 	}
 
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
-	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
+	// cmd.AddCommand(newDeploymentSettingsUpdateCmd())
 
 	return cmd
 }
@@ -128,61 +135,6 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 			}
 
 			err = saveProjectStackDeployment(newStackDeployment, s)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}),
-	}
-
-	return cmd
-}
-
-func newDeploymentSettingsUpdateCmd() *cobra.Command {
-	var stack string
-	cmd := &cobra.Command{
-		Use:        "up",
-		Aliases:    []string{"update"},
-		SuggestFor: []string{"apply", "deploy", "push"},
-		Args:       cmdutil.ExactArgs(0),
-		Short:      "Updates the stack's deployment settings with the data in the deployment yaml file",
-		Long:       "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			sd, err := loadProjectStackDeployment(s)
-			if err != nil {
-				return err
-			}
-
-			err = currentBe.UpdateStackDeploymentSettings(ctx, s, sd.DeploymentSettings)
 			if err != nil {
 				return err
 			}
