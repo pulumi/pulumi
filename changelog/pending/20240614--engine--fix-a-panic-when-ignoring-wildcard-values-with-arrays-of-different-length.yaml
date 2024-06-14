@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a panic when ignoring wildcard values with arrays of different length
