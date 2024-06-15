@@ -64,7 +64,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 				actualState = renderResource(t, res)
 				return nil
-			}, []*resource.State{state}, names)
+			}, []*resource.State{state}, names, nil)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -146,8 +146,18 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		states = append(states, state)
 	}
 
+	// intentionally create a circular reference between the two resources
+	ancestorTypes := map[string][]string{
+		"aws:s3/bucketObject:BucketObject": {
+			"aws:s3/bucket:Bucket",
+		},
+		"aws:s3/bucket:Bucket": {
+			"aws:s3/bucketObject:BucketObject",
+		},
+	}
+
 	var names NameTable
-	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names)
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names, ancestorTypes)
 	assert.NoError(t, err)
 	// notice here the generated program doesn't have any references because
 	// we retried the codegen without guessing the dependencies between the resources.

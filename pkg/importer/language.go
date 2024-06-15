@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"github.com/zclconf/go-cty/cty"
@@ -100,6 +99,7 @@ func nextPropertyPath(path hcl.Traversal, key hcl.Traverser) hcl.Traversal {
 
 func createPathedValue(
 	root string,
+	resourceType string,
 	property resource.PropertyValue,
 	currentPath hcl.Traversal,
 ) []PathedLiteralValue {
@@ -110,8 +110,9 @@ func createPathedValue(
 
 	if property.IsString() {
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:  root,
-			Value: property.StringValue(),
+			Root:         root,
+			ResourceType: resourceType,
+			Value:        property.StringValue(),
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName:  root,
 				Traversal: currentPath,
@@ -122,21 +123,21 @@ func createPathedValue(
 	if property.IsSecret() {
 		// unwrap the secret
 		secret := property.SecretValue()
-		return createPathedValue(root, secret.Element, currentPath)
+		return createPathedValue(root, resourceType, secret.Element, currentPath)
 	}
 
 	if property.IsArray() {
 		values := property.ArrayValue()
 		for i, element := range values {
 			nextPath := nextPropertyPath(currentPath, hcl.TraverseIndex{Key: cty.NumberIntVal(int64(i))})
-			foundLiterals := createPathedValue(root, element, nextPath)
+			foundLiterals := createPathedValue(root, resourceType, element, nextPath)
 			pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
 		}
 	}
 
 	if property.IsObject() {
 		propertyMap := property.ObjectValue()
-		foundLiterals := createPathedValues(root, propertyMap, currentPath)
+		foundLiterals := createPathedValues(root, resourceType, propertyMap, currentPath)
 		pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
 	}
 
@@ -145,13 +146,19 @@ func createPathedValue(
 
 func createPathedValues(
 	root string,
+	resourceType string,
 	data resource.PropertyMap,
 	currentPath hcl.Traversal,
 ) []PathedLiteralValue {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for key, value := range data {
+		// ignore internal properties
+		if strings.HasPrefix(string(key), "__") {
+			continue
+		}
+
 		nextPath := nextPropertyPath(currentPath, hcl.TraverseAttr{Name: string(key)})
-		foundLiterals := createPathedValue(root, value, nextPath)
+		foundLiterals := createPathedValue(root, resourceType, value, nextPath)
 		pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
 	}
 
@@ -172,9 +179,10 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 
 		name := sanitizeName(state.URN.Name())
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:     name,
-			Value:    resourceID,
-			Identity: true,
+			Root:         name,
+			Value:        resourceID,
+			ResourceType: state.Type.String(),
+			Identity:     true,
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName: name,
 				Traversal: hcl.Traversal{
@@ -185,39 +193,26 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 		})
 
 		initialPath := hcl.Traversal{hcl.TraverseRoot{Name: name}}
-		literalValuesFromInputs := createPathedValues(name, state.Outputs, initialPath)
-		pathedLiteralValues = append(pathedLiteralValues, literalValuesFromInputs...)
+		literalValuesFromOutputs := createPathedValues(name, state.Type.String(), state.Outputs, initialPath)
+		pathedLiteralValues = append(pathedLiteralValues, literalValuesFromOutputs...)
 	}
-
-	// remove duplicates so that if multiple resources have the same ID, we don't refer to one or the other
-	// instead, we just maintain the literal value as is.
-	// Similarly, when pathed resource outputs have the same value, remove them because they would be ambiguous.
-	// for example
-	// - resourceA.outputA = "value"
-	// - resourceB.outputB = "value"
-	// in this case we remove both outputs because choosing one would be arbitrary.
-	values := removeDuplicatePathedValues(pathedLiteralValues)
-
-	// sort values such that identities come first
-	sort.Slice(values, func(i, j int) bool {
-		return values[i].Identity && !values[j].Identity
-	})
 
 	return ImportState{
 		Names:               names,
-		PathedLiteralValues: values,
+		PathedLiteralValues: pathedLiteralValues,
 	}
 }
 
 // GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
 	names NameTable,
+	ancestorTypes map[string][]string,
 ) error {
 	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
 		var hcl2Text bytes.Buffer
 
 		for i, state := range states {
-			hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+			hcl2Def, err := GenerateHCL2Definition(loader, state, importState, ancestorTypes)
 			if err != nil {
 				return nil, nil, err
 			}

@@ -163,8 +163,9 @@ type importSpec struct {
 }
 
 type importFile struct {
-	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
-	Resources []importSpec            `json:"resources,omitempty"`
+	NameTable     map[string]resource.URN `json:"nameTable,omitempty"`
+	Resources     []importSpec            `json:"resources,omitempty"`
+	AncestorTypes map[string][]string     `json:"ancestorTypes,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
@@ -469,7 +470,7 @@ type programGeneratorFunc func(
 func generateImportedDefinitions(ctx *plugin.Context,
 	out io.Writer, stackName tokens.StackName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
-	imports []deploy.Import, protectResources bool,
+	imports []deploy.Import, protectResources bool, ancestorTypes map[string][]string,
 ) (bool, error) {
 	defer func() {
 		v := recover()
@@ -527,7 +528,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 			return err
 		}
 		return nil
-	}, resources, names)
+	}, resources, names, ancestorTypes)
 }
 
 func newImportCmd() *cobra.Command {
@@ -958,7 +959,7 @@ func newImportCmd() *cobra.Command {
 
 				validImports, err := generateImportedDefinitions(
 					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-					protectResources)
+					protectResources, importFile.AncestorTypes)
 				if err != nil {
 					if _, ok := err.(*importer.DiagnosticsError); ok {
 						err = fmt.Errorf("internal error: %w", err)

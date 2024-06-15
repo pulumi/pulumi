@@ -262,7 +262,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				Names: names,
 			}
 
-			block, err := GenerateHCL2Definition(loader, state, importState)
+			block, err := GenerateHCL2Definition(loader, state, importState, nil)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -346,11 +346,17 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		states = append(states, state)
 	}
 
+	ancestorTypes := map[string][]string{
+		"aws:s3/bucketObject:BucketObject": {
+			"aws:s3/bucket:Bucket",
+		},
+	}
+
 	importState := createImportState(states, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, err := GenerateHCL2Definition(loader, state, importState, ancestorTypes)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -417,11 +423,17 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		states = append(states, state)
 	}
 
+	ancestorTypes := map[string][]string{
+		"aws:s3/bucketObject:BucketObject": {
+			"aws:s3/bucket:Bucket",
+		},
+	}
+
 	importState := createImportState(states, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, err := GenerateHCL2Definition(loader, state, importState, ancestorTypes)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -483,7 +495,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, err := GenerateHCL2Definition(loader, state, importState, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -584,11 +596,17 @@ func TestGenerateHCL2DefinitionsReplacesDeeplyNestedReferencesToLiterals(t *test
 		states = append(states, state)
 	}
 
+	ancestorTypes := map[string][]string{
+		"aws:s3/bucketObject:BucketObject": {
+			"aws:s3/bucket:Bucket",
+		},
+	}
+
 	importState := createImportState(states, names)
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
+		hcl2Def, err := GenerateHCL2Definition(loader, state, importState, ancestorTypes)
 		if err != nil {
 			t.Fatal(err)
 		}

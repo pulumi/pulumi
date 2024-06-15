@@ -43,6 +43,7 @@ type PathedLiteralValue struct {
 	Value               string
 	Identity            bool
 	ExpressionReference *model.ScopeTraversalExpression
+	ResourceType        string
 }
 
 type ImportState struct {
@@ -50,19 +51,27 @@ type ImportState struct {
 	PathedLiteralValues []PathedLiteralValue
 }
 
-// filterSelfReferences filters out self-references from the import state so that if a resource has a property
+// filterReferences filters out self-references from the import state so that if a resource has a property
 // that happens to have the same value as the ID of that resource, it doesn't create a self-reference.
-func filterSelfReferences(resourceName string, importState ImportState) ImportState {
+// Also it filters out references to resources that are not ancestors of the resource.
+func filterReferences(resourceName string, importState ImportState, ancestorTypes []string) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, pathedLiteralValue := range importState.PathedLiteralValues {
 		if pathedLiteralValue.Root != resourceName {
-			pathedLiteralValues = append(pathedLiteralValues, pathedLiteralValue)
+			// only include values from resources that have the same type as the resource or one of its ancestors
+			for _, ancestorType := range ancestorTypes {
+				if pathedLiteralValue.ResourceType == ancestorType {
+					pathedLiteralValues = append(pathedLiteralValues, pathedLiteralValue)
+				}
+			}
 		}
 	}
 
+	withoutDuplicates := removeDuplicatePathedValues(pathedLiteralValues)
+
 	return ImportState{
 		Names:               importState.Names,
-		PathedLiteralValues: pathedLiteralValues,
+		PathedLiteralValues: withoutDuplicates,
 	}
 }
 
@@ -71,6 +80,7 @@ func GenerateHCL2Definition(
 	loader schema.Loader,
 	state *resource.State,
 	importState ImportState,
+	ancestorsTypes map[string][]string,
 ) (*model.Block, error) {
 	// TODO: pull the package version from the resource's provider
 	pkg, err := schema.LoadPackageReference(loader, string(state.Type.Package()), nil)
@@ -111,10 +121,15 @@ func GenerateHCL2Definition(
 		addedReferences[rootName] = true
 	}
 
-	importStateWithoutSelfRefs := filterSelfReferences(name, importState)
+	var allowedAncestorTypes []string
+	if ancestors, ok := ancestorsTypes[string(state.Type)]; ok {
+		allowedAncestorTypes = ancestors
+	}
+
+	importStateContext := filterReferences(name, importState, allowedAncestorTypes)
 	for _, p := range r.InputProperties {
 		input := state.Inputs[resource.PropertyKey(p.Name)]
-		x, err := generatePropertyValue(p, input, importStateWithoutSelfRefs, onReferenceFound)
+		x, err := generatePropertyValue(p, input, importStateContext, onReferenceFound)
 		if err != nil {
 			return nil, err
 		}
@@ -703,6 +718,10 @@ func generateValue(
 		switch arg := typ.(type) {
 		case *schema.ObjectType:
 			for _, p := range arg.Properties {
+				// Ignore internal properties.
+				if strings.HasPrefix(string(p.Name), "__") {
+					continue
+				}
 				x, err := generatePropertyValue(p, obj[resource.PropertyKey(p.Name)], importState, onReferenceFound)
 				if err != nil {
 					return nil, err
