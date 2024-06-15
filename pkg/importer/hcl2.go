@@ -718,10 +718,6 @@ func generateValue(
 		switch arg := typ.(type) {
 		case *schema.ObjectType:
 			for _, p := range arg.Properties {
-				// Ignore internal properties.
-				if strings.HasPrefix(string(p.Name), "__") {
-					continue
-				}
 				x, err := generatePropertyValue(p, obj[resource.PropertyKey(p.Name)], importState, onReferenceFound)
 				if err != nil {
 					return nil, err
