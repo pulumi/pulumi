@@ -367,6 +367,15 @@ func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githu
 			repository = "pulumi-yaml"
 		}
 	}
+
+	if kind == apitype.ToolPlugin {
+		// Convention for tool plugins is to have them in a repository named "pulumi-tool-<name>".
+		if !strings.HasPrefix(name, "pulumi-tool-") {
+			// if it is not already fully qualified, we will prefix it with "pulumi-tool-"
+			repository = "pulumi-tool-" + name
+		}
+	}
+
 	if len(parts) == 2 {
 		repository = parts[1]
 	}
