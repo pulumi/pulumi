@@ -1030,9 +1030,9 @@ class Resource:
             # providers map, so that it can be used for child resources.
             if provider_pkg in opts_providers:
                 message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
-                depreciation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
-                warnings.warn(f"{message} for resource {t}. " + depreciation)
-                log.warn(f"{message}. {depreciation}", resource=self)
+                deprecation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+                warnings.warn(f"{message} for resource {t}. " + deprecation)
+                log.warn(f"{message}. {deprecation}", resource=self)
             else:
                 opts_providers[provider_pkg] = opts.provider
 

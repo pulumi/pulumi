@@ -296,6 +296,7 @@ _PULUMI_NAME = "_pulumi_name"
 _PULUMI_INPUT_TYPE = "_pulumi_input_type"
 _PULUMI_OUTPUT_TYPE = "_pulumi_output_type"
 _PULUMI_PYTHON_TO_PULUMI_TABLE = "_pulumi_python_to_pulumi_table"
+_PULUMI_DEPRECATED_CALLABLE = "_pulumi_deprecated_callable"
 _TRANSLATE_PROPERTY = "_translate_property"
 
 
@@ -520,7 +521,17 @@ def input_type_to_dict(obj: Any) -> Dict[str, Any]:
     # Build a dictionary of properties to return
     result: Dict[str, Any] = {}
     for _, pulumi_name, prop in _py_properties(cls):
-        value = prop.fget(obj)  # type: ignore
+        fget = prop.fget
+
+        # If the property has a _pulumi_deprecated_callable attribute, use that
+        # as the getter. We do this so as to bypass the warnings which would
+        # otherwise be emitted, which are not appropriate here since the user
+        # has not written code that makes use of a deprecated identifier.
+        deprecated_callable = prop.fget.__dict__.get(_PULUMI_DEPRECATED_CALLABLE)
+        if deprecated_callable is not None:
+            fget = deprecated_callable
+
+        value = fget(obj)  # type: ignore
         # We treat properties with a value of None as if they don't exist.
         if value is not None:
             result[pulumi_name] = value
