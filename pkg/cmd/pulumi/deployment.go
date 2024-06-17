@@ -60,7 +60,7 @@ func newDeploymentCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&stackDeploymentConfigFile, "config-file", "",
-		"Use the configuration values in the specified deployment file rather than detecting the file name")
+		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
 
