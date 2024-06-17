@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -173,9 +174,9 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string) e
 	if err != nil {
 		return fmt.Errorf("failed to open %q", requirementsTxt)
 	}
-	defer f.Close()
 
 	deps, err := dependenciesFromRequirementsTxt(f)
+	contract.IgnoreError(f.Close())
 	if err != nil {
 		return fmt.Errorf("failed to gather dependencies from %q", requirementsTxt)
 	}
