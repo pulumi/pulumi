@@ -745,7 +745,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 
 	// Generate the constructor parameters.
 	for i, prop := range pt.properties {
-		paramName := csharpIdentifier(prop.Name)
+		paramName := csharpIdentifier(LowerCamelCase(pt.mod.propertyName(prop)))
 		typ := prop.Type
 		if !prop.IsRequired() && pt.mod.isK8sCompatMode() {
 			typ = codegen.RequiredType(prop)
@@ -757,7 +757,11 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 			terminator = ",\n"
 		}
 
-		paramDef := fmt.Sprintf("%s %s%s", paramType, paramName, terminator)
+		var paramDef string
+		if _, ok := pt.mod.propertyNames[prop]; ok {
+			paramDef = fmt.Sprintf("[OutputConstructorParameterAttribute(\"%s\")]\n%s        ", prop.Name, indent)
+		}
+		paramDef += fmt.Sprintf("%s %s%s", paramType, paramName, terminator)
 		if len(pt.properties) > 1 {
 			paramDef = fmt.Sprintf("\n%s        %s", indent, paramDef)
 		}
@@ -768,7 +772,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	// Generate the constructor body.
 	fmt.Fprintf(w, "%s    {\n", indent)
 	for _, prop := range pt.properties {
-		paramName := csharpIdentifier(prop.Name)
+		paramName := csharpIdentifier(LowerCamelCase(pt.mod.propertyName(prop)))
 		fieldName := pt.mod.propertyName(prop)
 		if fieldName == paramName {
 			// Avoid a no-op in case of field and property name collision.

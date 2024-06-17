@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/dotnet
+  description: Output type constructor parameters respect property name overrides
