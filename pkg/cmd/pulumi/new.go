@@ -506,7 +506,7 @@ func newNewCmd() *cobra.Command {
 	args := newArgs{
 		prompt:               promptForValue,
 		chooseTemplate:       chooseTemplate,
-		promptRuntimeOptions: runtimeOptions,
+		promptRuntimeOptions: promptRuntimeOptions,
 	}
 
 	getTemplates := func() ([]workspace.Template, error) {
@@ -860,7 +860,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 	return saveProjectStack(stack, ps)
 }
 
-func runtimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
 ) (map[string]interface{}, error) {
 	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, info.Options())
