@@ -590,7 +590,6 @@ func newNewCmd() *cobra.Command {
 				return nil
 			}
 
-			args.interactive = cmdutil.Interactive()
 			args.yes = args.yes || skipConfirmations()
 			args.interactive = isInteractive()
 			return runNew(ctx, args)
