@@ -19,6 +19,7 @@ package ints
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -441,7 +442,11 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.Stdin = strings.NewReader("poetry\n")
+	if runtime.GOOS == "windows" {
+		e.Stdin = strings.NewReader("poetry\r\n")
+	} else {
+		e.Stdin = strings.NewReader("poetry\n")
+	}
 	e.RunCommand("pulumi", "new", "python", "--force", "--generate-only",
 		"--name", "test_project",
 		"--description", "A python test using poetry as toolchain",
