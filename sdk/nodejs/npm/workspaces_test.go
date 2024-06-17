@@ -64,6 +64,7 @@ func TestFindWorkspaceRootFileArgument(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join("testdata", "workspace-nested"), root)
 }
+
 func TestNotAWorkspace(t *testing.T) {
 	t.Parallel()
 
