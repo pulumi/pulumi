@@ -434,7 +434,7 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	// The windows acceptance tests are run using git bash, but the survey library does not support this
 	// https://github.com/AlecAivazis/survey/issues/148
 	if runtime.GOOS == "windows" {
-		t.Skip("Skipping: Cannot create pseudo-terminal on Windows")
+		t.Skip("Skipping: survey library does not support git bash on Windows")
 	}
 
 	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
