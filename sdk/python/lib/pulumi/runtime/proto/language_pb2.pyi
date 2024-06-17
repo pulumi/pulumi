@@ -19,13 +19,15 @@ import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
+import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
 import pulumi.plugin_pb2
 import sys
+import typing
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 10):
     import typing as typing_extensions
 else:
     import typing_extensions
@@ -413,6 +415,103 @@ class InstallDependenciesResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
 
 global___InstallDependenciesResponse = InstallDependenciesResponse
+
+@typing_extensions.final
+class RuntimeOptionsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INFO_FIELD_NUMBER: builtins.int
+    @property
+    def info(self) -> global___ProgramInfo:
+        """The current program info used to evaluate which prompts should be asked."""
+    def __init__(
+        self,
+        *,
+        info: global___ProgramInfo | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["info", b"info"]) -> None: ...
+
+global___RuntimeOptionsRequest = RuntimeOptionsRequest
+
+@typing_extensions.final
+class RuntimeOptionPrompt(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    class _RuntimeOptionType:
+        ValueType = typing.NewType("ValueType", builtins.int)
+        V: typing_extensions.TypeAlias = ValueType
+
+    class _RuntimeOptionTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[RuntimeOptionPrompt._RuntimeOptionType.ValueType], builtins.type):  # noqa: F821
+        DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+        STRING: RuntimeOptionPrompt._RuntimeOptionType.ValueType  # 0
+        INT32: RuntimeOptionPrompt._RuntimeOptionType.ValueType  # 1
+
+    class RuntimeOptionType(_RuntimeOptionType, metaclass=_RuntimeOptionTypeEnumTypeWrapper): ...
+    STRING: RuntimeOptionPrompt.RuntimeOptionType.ValueType  # 0
+    INT32: RuntimeOptionPrompt.RuntimeOptionType.ValueType  # 1
+
+    @typing_extensions.final
+    class RuntimeOptionValue(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        PROMPTTYPE_FIELD_NUMBER: builtins.int
+        STRINGVALUE_FIELD_NUMBER: builtins.int
+        INT32VALUE_FIELD_NUMBER: builtins.int
+        promptType: global___RuntimeOptionPrompt.RuntimeOptionType.ValueType
+        stringValue: builtins.str
+        int32Value: builtins.int
+        def __init__(
+            self,
+            *,
+            promptType: global___RuntimeOptionPrompt.RuntimeOptionType.ValueType = ...,
+            stringValue: builtins.str = ...,
+            int32Value: builtins.int = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["int32Value", b"int32Value", "promptType", b"promptType", "stringValue", b"stringValue"]) -> None: ...
+
+    KEY_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    PROMPTTYPE_FIELD_NUMBER: builtins.int
+    CHOICES_FIELD_NUMBER: builtins.int
+    DEFAULT_FIELD_NUMBER: builtins.int
+    key: builtins.str
+    description: builtins.str
+    promptType: global___RuntimeOptionPrompt.RuntimeOptionType.ValueType
+    @property
+    def choices(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RuntimeOptionPrompt.RuntimeOptionValue]: ...
+    @property
+    def default(self) -> global___RuntimeOptionPrompt.RuntimeOptionValue: ...
+    def __init__(
+        self,
+        *,
+        key: builtins.str = ...,
+        description: builtins.str = ...,
+        promptType: global___RuntimeOptionPrompt.RuntimeOptionType.ValueType = ...,
+        choices: collections.abc.Iterable[global___RuntimeOptionPrompt.RuntimeOptionValue] | None = ...,
+        default: global___RuntimeOptionPrompt.RuntimeOptionValue | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["default", b"default"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["choices", b"choices", "default", b"default", "description", b"description", "key", b"key", "promptType", b"promptType"]) -> None: ...
+
+global___RuntimeOptionPrompt = RuntimeOptionPrompt
+
+@typing_extensions.final
+class RuntimeOptionsResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROMPTS_FIELD_NUMBER: builtins.int
+    @property
+    def prompts(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RuntimeOptionPrompt]:
+        """additional prompts to ask the user"""
+    def __init__(
+        self,
+        *,
+        prompts: collections.abc.Iterable[global___RuntimeOptionPrompt] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["prompts", b"prompts"]) -> None: ...
+
+global___RuntimeOptionsResponse = RuntimeOptionsResponse
 
 @typing_extensions.final
 class RunPluginRequest(google.protobuf.message.Message):

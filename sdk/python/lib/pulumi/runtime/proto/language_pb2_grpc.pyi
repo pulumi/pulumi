@@ -50,6 +50,11 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.InstallDependenciesResponse,
     ]
     """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects."""
+    RuntimeOptionsPrompts: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.RuntimeOptionsRequest,
+        pulumi.language_pb2.RuntimeOptionsResponse,
+    ]
+    """RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`."""
     About: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.AboutRequest,
         pulumi.language_pb2.AboutResponse,
@@ -119,6 +124,13 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> collections.abc.Iterator[pulumi.language_pb2.InstallDependenciesResponse]:
         """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects."""
+    
+    def RuntimeOptionsPrompts(
+        self,
+        request: pulumi.language_pb2.RuntimeOptionsRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.RuntimeOptionsResponse:
+        """RuntimeOptionsPrompts returns a list of additional prompts to ask during `pulumi new`."""
     
     def About(
         self,

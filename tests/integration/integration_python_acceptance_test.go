@@ -19,11 +19,13 @@ package ints
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -405,4 +407,134 @@ func TestPyrightSupport(t *testing.T) {
 		ExpectFailure:          true,
 		ExtraRuntimeValidation: validation,
 	})
+}
+
+func TestNewPythonUsesPip(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only")
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "venv",
+	}
+	checkRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Modifies env
+func TestNewPythonChoosePoetry(t *testing.T) {
+	// The windows acceptance tests are run using git bash, but the survey library does not support this
+	// https://github.com/AlecAivazis/survey/issues/148
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping: survey library does not support git bash on Windows")
+	}
+
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.Stdin = strings.NewReader("poetry\n")
+	e.RunCommand("pulumi", "new", "python", "--force", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain": "poetry",
+	}
+	checkRuntimeOptions(t, e.RootPath, expected)
+}
+
+func TestNewPythonRuntimeOptions(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+		"--runtime-options", "toolchain=pip,virtualenv=mytestenv",
+	)
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "mytestenv",
+	}
+	checkRuntimeOptions(t, e.RootPath, expected)
+}
+
+func TestNewPythonConvertRequirementsTxt(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Add a poetry.toml to make poetry create the virtualenv inside the temp
+	// directory. That way it gets cleaned up with the test.
+	poetryToml := `[virtualenvs]
+in-project = true`
+	err := os.WriteFile(filepath.Join(e.RootPath, "poetry.toml"), []byte(poetryToml), 0o600)
+	require.NoError(t, err)
+
+	template := "python"
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
+		"--name", "test_project",
+		"--description", "A python test using poetry as toolchain",
+		"--stack", "test",
+		"--runtime-options", "toolchain=poetry",
+	)
+
+	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
+	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
+}
+
+func checkRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
+	t.Helper()
+
+	var config struct {
+		Runtime struct {
+			Name    string                 `yaml:"name"`
+			Options map[string]interface{} `yaml:"options"`
+		} `yaml:"runtime"`
+	}
+	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))
+	if err != nil {
+		t.Logf("could not read Pulumi.yaml in %s", root)
+		t.FailNow()
+	}
+	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
+		t.Logf("could not parse Pulumi.yaml in %s", root)
+		t.FailNow()
+	}
+
+	require.Equal(t, expected, config.Runtime.Options)
 }

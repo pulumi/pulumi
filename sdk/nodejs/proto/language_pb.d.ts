@@ -377,6 +377,122 @@ export namespace InstallDependenciesResponse {
     }
 }
 
+export class RuntimeOptionsRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): RuntimeOptionsRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RuntimeOptionsRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RuntimeOptionsRequest): RuntimeOptionsRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RuntimeOptionsRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RuntimeOptionsRequest;
+    static deserializeBinaryFromReader(message: RuntimeOptionsRequest, reader: jspb.BinaryReader): RuntimeOptionsRequest;
+}
+
+export namespace RuntimeOptionsRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+    }
+}
+
+export class RuntimeOptionPrompt extends jspb.Message { 
+    getKey(): string;
+    setKey(value: string): RuntimeOptionPrompt;
+    getDescription(): string;
+    setDescription(value: string): RuntimeOptionPrompt;
+    getPrompttype(): RuntimeOptionPrompt.RuntimeOptionType;
+    setPrompttype(value: RuntimeOptionPrompt.RuntimeOptionType): RuntimeOptionPrompt;
+    clearChoicesList(): void;
+    getChoicesList(): Array<RuntimeOptionPrompt.RuntimeOptionValue>;
+    setChoicesList(value: Array<RuntimeOptionPrompt.RuntimeOptionValue>): RuntimeOptionPrompt;
+    addChoices(value?: RuntimeOptionPrompt.RuntimeOptionValue, index?: number): RuntimeOptionPrompt.RuntimeOptionValue;
+
+    hasDefault(): boolean;
+    clearDefault(): void;
+    getDefault(): RuntimeOptionPrompt.RuntimeOptionValue | undefined;
+    setDefault(value?: RuntimeOptionPrompt.RuntimeOptionValue): RuntimeOptionPrompt;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RuntimeOptionPrompt.AsObject;
+    static toObject(includeInstance: boolean, msg: RuntimeOptionPrompt): RuntimeOptionPrompt.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RuntimeOptionPrompt, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RuntimeOptionPrompt;
+    static deserializeBinaryFromReader(message: RuntimeOptionPrompt, reader: jspb.BinaryReader): RuntimeOptionPrompt;
+}
+
+export namespace RuntimeOptionPrompt {
+    export type AsObject = {
+        key: string,
+        description: string,
+        prompttype: RuntimeOptionPrompt.RuntimeOptionType,
+        choicesList: Array<RuntimeOptionPrompt.RuntimeOptionValue.AsObject>,
+        pb_default?: RuntimeOptionPrompt.RuntimeOptionValue.AsObject,
+    }
+
+
+    export class RuntimeOptionValue extends jspb.Message { 
+        getPrompttype(): RuntimeOptionPrompt.RuntimeOptionType;
+        setPrompttype(value: RuntimeOptionPrompt.RuntimeOptionType): RuntimeOptionValue;
+        getStringvalue(): string;
+        setStringvalue(value: string): RuntimeOptionValue;
+        getInt32value(): number;
+        setInt32value(value: number): RuntimeOptionValue;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): RuntimeOptionValue.AsObject;
+        static toObject(includeInstance: boolean, msg: RuntimeOptionValue): RuntimeOptionValue.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: RuntimeOptionValue, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): RuntimeOptionValue;
+        static deserializeBinaryFromReader(message: RuntimeOptionValue, reader: jspb.BinaryReader): RuntimeOptionValue;
+    }
+
+    export namespace RuntimeOptionValue {
+        export type AsObject = {
+            prompttype: RuntimeOptionPrompt.RuntimeOptionType,
+            stringvalue: string,
+            int32value: number,
+        }
+    }
+
+
+    export enum RuntimeOptionType {
+    STRING = 0,
+    INT32 = 1,
+    }
+
+}
+
+export class RuntimeOptionsResponse extends jspb.Message { 
+    clearPromptsList(): void;
+    getPromptsList(): Array<RuntimeOptionPrompt>;
+    setPromptsList(value: Array<RuntimeOptionPrompt>): RuntimeOptionsResponse;
+    addPrompts(value?: RuntimeOptionPrompt, index?: number): RuntimeOptionPrompt;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RuntimeOptionsResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RuntimeOptionsResponse): RuntimeOptionsResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RuntimeOptionsResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RuntimeOptionsResponse;
+    static deserializeBinaryFromReader(message: RuntimeOptionsResponse, reader: jspb.BinaryReader): RuntimeOptionsResponse;
+}
+
+export namespace RuntimeOptionsResponse {
+    export type AsObject = {
+        promptsList: Array<RuntimeOptionPrompt.AsObject>,
+    }
+}
+
 export class RunPluginRequest extends jspb.Message { 
     getPwd(): string;
     setPwd(value: string): RunPluginRequest;

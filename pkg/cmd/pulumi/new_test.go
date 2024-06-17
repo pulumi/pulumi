@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -1097,16 +1098,23 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 				return workspace.Template{}, errors.New("template not found")
 			}
 
+			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+				main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+			) (map[string]interface{}, error) {
+				return nil, nil
+			}
+
 			args := newArgs{
-				interactive:       tt.prompted != "",
-				generateOnly:      true,
-				yes:               true,
-				templateMode:      true,
-				name:              projectName,
-				prompt:            promptMock(uniqueProjectName, stackName),
-				chooseTemplate:    chooseTemplateMock,
-				secretsProvider:   "default",
-				templateNameOrURL: tt.argument,
+				interactive:          tt.prompted != "",
+				generateOnly:         true,
+				yes:                  true,
+				templateMode:         true,
+				name:                 projectName,
+				prompt:               promptMock(uniqueProjectName, stackName),
+				promptRuntimeOptions: runtimeOptionsMock,
+				chooseTemplate:       chooseTemplateMock,
+				secretsProvider:      "default",
+				templateNameOrURL:    tt.argument,
 			}
 
 			err := runNew(context.Background(), args)
@@ -1144,4 +1152,36 @@ func TestSanitizeTemplate(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+//nolint:paralleltest // changes directory for process
+func TestPulumiPromptRuntimeOptions(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
+		main string, opts display.Options, interactive, yes bool, prompt promptForValueFunc,
+	) (map[string]interface{}, error) {
+		return map[string]interface{}{"someOption": "someValue"}, nil
+	}
+
+	args := newArgs{
+		interactive:          false,
+		generateOnly:         true,
+		yes:                  true,
+		templateMode:         true,
+		name:                 projectName,
+		prompt:               promptForValue,
+		promptRuntimeOptions: runtimeOptionsMock,
+		secretsProvider:      "default",
+		templateNameOrURL:    "python",
+	}
+
+	err := runNew(context.Background(), args)
+	assert.NoError(t, err)
+
+	require.NoError(t, err)
+	proj := loadProject(t, tempdir)
+	require.Equal(t, 1, len(proj.Runtime.Options()))
+	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }

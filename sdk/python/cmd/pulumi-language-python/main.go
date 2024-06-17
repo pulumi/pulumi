@@ -924,6 +924,54 @@ func (host *pythonLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
+func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
+	req *pulumirpc.RuntimeOptionsRequest,
+) (*pulumirpc.RuntimeOptionsResponse, error) {
+	rawOpts := req.Info.Options.AsMap()
+
+	var prompts []*pulumirpc.RuntimeOptionPrompt
+
+	toolchain, hasToolchain := rawOpts["toolchain"]
+
+	if !hasToolchain {
+		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
+			Key:         "toolchain",
+			Description: "The toolchain to use for installing dependencies and running the program",
+			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+			Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				{StringValue: "pip", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+				{StringValue: "poetry", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+			},
+			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue: "pip",
+			},
+		})
+	}
+
+	if hasToolchain && toolchain == "pip" {
+		// If we are using the pip toolchain, set virtualenv to venv by default.
+		if _, hasVenv := rawOpts["virtualenv"]; !hasVenv {
+			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
+				Key:         "virtualenv",
+				Description: "The virtualenv to use",
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+					{StringValue: "venv", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+				},
+				Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+					PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+					StringValue: "venv",
+				},
+			})
+		}
+	}
+
+	return &pulumirpc.RuntimeOptionsResponse{
+		Prompts: prompts,
+	}, nil
+}
+
 func (host *pythonLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
