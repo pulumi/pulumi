@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -1144,4 +1145,34 @@ func TestSanitizeTemplate(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+//nolint:paralleltest // changes directory for process
+func TestPrintingInstructions(t *testing.T) {
+	templatePath, _ := filepath.Abs("./testdata/testtemplate")
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	uniqueProjectName := filepath.Base(tempdir)
+	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
+
+	var stdout bytes.Buffer
+	args := newArgs{
+		interactive:       true,
+		generateOnly:      true,
+		prompt:            promptMock(uniqueProjectName, orgStackName),
+		secretsProvider:   "default",
+		templateNameOrURL: templatePath,
+		stdout:            &stdout,
+	}
+
+	err := runNew(context.Background(), args)
+	assert.NoError(t, err)
+
+	// Note that we implicitly test that the coloring symbols are removed correctly.
+	assert.Contains(t, stdout.String(), `This command will walk you through creating a new Pulumi project.
+
+Test instructions
+Line 2.`)
 }

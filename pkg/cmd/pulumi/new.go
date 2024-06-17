@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -79,11 +80,16 @@ type newArgs struct {
 	aiPrompt          string
 	aiLanguage        httpstate.PulumiAILanguage
 	templateMode      bool
+	stdout            io.Writer
 }
 
 func runNew(ctx context.Context, args newArgs) error {
 	if !args.interactive && !args.yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+	}
+
+	if args.stdout == nil {
+		args.stdout = os.Stdout
 	}
 
 	// Prepare options.
@@ -257,8 +263,11 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Show instructions, if we're going to show at least one prompt.
 	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
 	if !args.yes && hasAtLeastOnePrompt {
-		fmt.Println("This command will walk you through creating a new Pulumi project.")
-		fmt.Println()
+		fmt.Fprintln(args.stdout, "This command will walk you through creating a new Pulumi project.")
+		fmt.Fprintln(args.stdout)
+		if template.Instructions != "" {
+			fmt.Fprintln(args.stdout, opts.Color.Colorize(template.Instructions))
+		}
 		fmt.Println(
 			opts.Color.Colorize(
 				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
