@@ -2730,6 +2730,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	indent := "    "
 	name = pythonCase(name)
 
+	// TODO[pulumi/pulumi/issues/16408]
 	// Running mypy gets very slow when there are a lot of TypedDicts.
 	// https://github.com/python/mypy/issues/17231
 	// For now we only use the TypedDict types when using a typechecker
