@@ -18,6 +18,7 @@ package ints
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -36,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 // TestStackTagValidation verifies various error scenarios related to stack names and tags.
@@ -1163,4 +1166,45 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: advisory_policy_pack; mandatory_policy_pack)")
+}
+
+// regresses https://github.com/pulumi/pulumi/issues/11092
+//
+//nolint:paralleltest // uses parallel programtest
+func TestPolicyPluginExtraArguments(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stackName, err := resource.NewUniqueHex("policy-plugin-extra-args", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	assert.NoError(t, err)
+	// Create a venv for the policy package and install the current python SDK into it
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Toolchain:  toolchain.Pip,
+		Root:       filepath.Join(e.CWD, "python_policy_pack"),
+		Virtualenv: "venv",
+	})
+	require.NoError(t, err)
+	require.NoError(t, tc.InstallDependencies(context.Background(),
+		filepath.Join(e.CWD, "python_policy_pack"), false, nil, nil))
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	require.NoError(t, err)
+	gotSdk, err := test.PathExists(sdkDir)
+	require.NoError(t, err)
+	if !gotSdk {
+		t.Log("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+		t.FailNow()
+	}
+	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", "-e", sdkDir)
+	require.NoError(t, err)
+	require.NoError(t, cmd.Run())
+
+	// Run with extra arguments
+	_, _, err = e.GetCommandResults("pulumi", "--logflow", "preview", "--logtostderr",
+		"--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
+	require.NoError(t, err)
 }
