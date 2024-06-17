@@ -459,6 +459,11 @@ func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret boo
 			} else if old.IsArray() && new.IsArray() {
 				oldArray := old.ArrayValue()
 				newArray := new.ArrayValue()
+				// If arrays are of different length then this is a path failure because we can't
+				// continue the search of this path down each PropertyValue.
+				if len(oldArray) != len(newArray) {
+					return false
+				}
 
 				for i := range oldArray {
 					if !p[1:].reset(oldArray[i], newArray[i], oldIsSecret, newIsSecret) {

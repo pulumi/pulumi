@@ -750,6 +750,30 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
+			"Nested wildcard, old array is longer fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+			}))},
+			nil,
+		},
+		{
+			"Nested wildcard, new array is longer fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
+			nil,
+		},
+		{
 			"Nested path, secret old",
 			PropertyPath{"root", "secret"},
 			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
