@@ -2151,7 +2151,7 @@ func genPackageMetadata(
 		for key, value := range requires {
 			updatedRequires[key] = value
 		}
-		updatedRequires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
+		updatedRequires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""
 		requires = updatedRequires
 	}
 	if pkg.SupportPack {
