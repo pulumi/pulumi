@@ -74,7 +74,7 @@ func newDeploymentSettingsCmd() *cobra.Command {
 		Short: "Manages the stack's deployment settings",
 		Long: "Manages the stack's deployment settings\n" +
 			"\n" +
-			"Use this command to manage stack's deployment settings like\n" +
+			"Use this command to manage a stack's deployment settings like\n" +
 			"generating the deployment file, updating secrets or pushing the\n" +
 			"updated settings to Pulumi Cloud.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
