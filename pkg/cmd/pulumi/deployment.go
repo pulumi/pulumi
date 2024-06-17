@@ -93,7 +93,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull",
 		Args:  cmdutil.ExactArgs(0),
-		Short: "Pulls the stack's deployment settings and updates the deployment yaml file",
+		Short: "Pulls the stack's deployment settings from Pulumi Cloud and updates the deployment yaml file",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
