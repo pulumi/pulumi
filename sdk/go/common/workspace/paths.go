@@ -60,7 +60,7 @@ const (
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
-	// DeploymentSuffix base suffix for the deployment file
+	// DeploymentSuffix is the base suffix for deployment settings files (e.g. "Pulumi.<stack>.deploy.yaml").
 	DeploymentSuffix = "deploy"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
 	RepoFile = "settings.json"
