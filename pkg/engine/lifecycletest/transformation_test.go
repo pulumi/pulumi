@@ -778,7 +778,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 	}
 	snap := p.Run(t, nil)
 	assert.NotNil(t, snap)
-	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 2 resources
+	assert.Equal(t, 9, len(snap.Resources)) // 2 providers + 7 resources
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
 	})
