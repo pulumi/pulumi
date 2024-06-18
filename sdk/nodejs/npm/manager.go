@@ -11,6 +11,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+type PackageManagerType string
+
+const (
+	// AutoPackageManager automatically choses a packagemanager by looking for environment variables and lockfiles.
+	AutoPackageManager PackageManagerType = "auto"
+	NpmPackageManager  PackageManagerType = "npm"
+	YarnPackageManager PackageManagerType = "yarn"
+	PnpmPackageManager PackageManagerType = "pnpm"
+)
+
 // A `PackageManager` is responsible for installing dependencies,
 // packaging Pulumi programs, and executing Node in the context of
 // installed packages. In practice, each implementation of this
@@ -31,8 +41,8 @@ type PackageManager interface {
 // tarball and returning it as `[]byte`. `stdout` is ignored for the command, as it does not
 // generate useful data. If the `PULUMI_PREFER_YARN` environment variable is set, `yarn pack` is run
 // instead of `npm pack`.
-func Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	pkgManager, err := ResolvePackageManager(dir)
+func Pack(ctx context.Context, packagemanager PackageManagerType, dir string, stderr io.Writer) ([]byte, error) {
+	pkgManager, err := ResolvePackageManager(packagemanager, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +53,10 @@ func Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 // app located there. If the `PULUMI_PREFER_YARN` environment variable is set, `yarn install` is used
 // instead of `npm install`.
 // The returned string is the name of the package manager used during installation.
-func Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) (string, error) {
-	pkgManager, err := ResolvePackageManager(dir)
+func Install(ctx context.Context, packagemanager PackageManagerType, dir string, production bool,
+	stdout, stderr io.Writer,
+) (string, error) {
+	pkgManager, err := ResolvePackageManager(packagemanager, dir)
 	if err != nil {
 		return "", err
 	}
@@ -72,12 +84,33 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	return name, nil
 }
 
-// ResolvePackageManager determines which package manager to use.  If the
-// `PULUMI_PREFER_YARN` environment variable is set, or if a yarn.lock file
-// exists, then YarnClassic is used. If a pnpm-lock.yaml file exists, then
-// pnpm is used.  Otherwise npm is used.  The argument pwd is the directory
-// we're checking for the presence of a lockfile.
-func ResolvePackageManager(pwd string) (PackageManager, error) {
+// ResolvePackageManager determines which package manager to use.
+//
+// If the packagemanager argument is set, and it is not `AutoPackageManager` then, that package
+// manager is used. Otherwise, if the `PULUMI_PREFER_YARN` environment variable is set, or if
+// a yarn.lock file exists, then YarnClassic is used. If a pnpm-lock.yaml file exists, then
+// pnpm is used.  Otherwise npm is used. The argument pwd is the directory  we're checking for
+// the presence of a lockfile.
+func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (PackageManager, error) {
+	// If a package manager is explicitly specified, use it.
+	if packagemanager != "" && packagemanager != AutoPackageManager {
+		switch packagemanager {
+		case AutoPackageManager:
+			// Make the linter for exhaustive switch cases happy, we never get here.
+			break
+		case NpmPackageManager:
+			return newNPM()
+		case YarnPackageManager:
+			return newYarnClassic()
+		case PnpmPackageManager:
+			return newPnpm()
+		default:
+			return nil, fmt.Errorf("unknown package manager: %s", packagemanager)
+		}
+	}
+
+	// No packagemanager specified, try to determine the best one to use.
+
 	// Prefer yarn if PULUMI_PREFER_YARN is truthy, or if yarn.lock exists.
 	if preferYarn() || checkYarnLock(pwd) {
 		yarn, err := newYarnClassic()

@@ -89,15 +89,19 @@ func TestResolvePackageManager(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
 		name      string
+		pm        PackageManagerType
 		exepcted  string
 		lockFiles []string
 	}{
-		{"defaults to npm", "npm", []string{}},
-		{"picks npm", "npm", []string{"npm"}},
-		{"picks yarn", "yarn", []string{"yarn"}},
-		{"picks pnpm", "pnpm", []string{"pnpm"}},
-		{"yarn > pnpm > npm", "yarn", []string{"yarn", "pnpm", "npm"}},
-		{"pnpm > npm", "pnpm", []string{"pnpm", "npm"}},
+		{"defaults to npm", AutoPackageManager, "npm", []string{}},
+		{"picks npm", NpmPackageManager, "npm", []string{}},
+		{"picks yarn", YarnPackageManager, "yarn", []string{}},
+		{"picks pnpm", PnpmPackageManager, "pnpm", []string{}},
+		{"picks npm based on lockfile", AutoPackageManager, "npm", []string{"npm"}},
+		{"picks yarn based on lockfile", AutoPackageManager, "yarn", []string{"yarn"}},
+		{"picks pnpm based on lockfile", AutoPackageManager, "pnpm", []string{"pnpm"}},
+		{"yarn > pnpm > npm", AutoPackageManager, "yarn", []string{"yarn", "pnpm", "npm"}},
+		{"pnpm > npm", AutoPackageManager, "pnpm", []string{"pnpm", "npm"}},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -106,7 +110,7 @@ func TestResolvePackageManager(t *testing.T) {
 			for _, lockFile := range tt.lockFiles {
 				writeLockFile(t, dir, lockFile)
 			}
-			pm, err := ResolvePackageManager(dir)
+			pm, err := ResolvePackageManager(tt.pm, dir)
 			require.NoError(t, err)
 			require.Equal(t, tt.exepcted, pm.Name())
 		})
@@ -131,7 +135,7 @@ func TestPack(t *testing.T) {
 			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 			stderr := new(bytes.Buffer)
 
-			artifact, err := Pack(context.Background(), dir, stderr)
+			artifact, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
 
 			require.NoError(t, err)
 			// check that the artifact contains a package.json
@@ -175,7 +179,7 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 			stderr := new(bytes.Buffer)
 
-			_, err := Pack(context.Background(), dir, stderr)
+			_, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
 
 			exitErr := new(exec.ExitError)
 			require.ErrorAs(t, err, &exitErr)
@@ -248,7 +252,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	ptesting.YarnInstallMutex.Lock()
 	defer ptesting.YarnInstallMutex.Unlock()
 	out := iotest.LogWriter(t)
-	bin, err := Install(context.Background(), pkgdir, production, out, out)
+	bin, err := Install(context.Background(), AutoPackageManager, pkgdir, production, out, out)
 	assert.NoError(t, err)
 	assert.Equal(t, packageManager, bin)
 }

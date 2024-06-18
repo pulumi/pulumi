@@ -101,6 +101,7 @@ func main() {
 	flag.String("tsconfig", "",
 		"[obsolete] Path to tsconfig.json to use")
 	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
+	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn or pnpm)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -202,9 +203,12 @@ type nodeOptions struct {
 	tsconfigpath string
 	// Arguments for the Node process
 	nodeargs string
+	// The packagemanger to use to install dependencies.
+	// One of auto, npm, yarn or pnpm, defaults to auto.
+	packagemanager npm.PackageManagerType
 }
 
-func parseOptions(root string, options map[string]interface{}) (nodeOptions, error) {
+func parseOptions(options map[string]interface{}) (nodeOptions, error) {
 	// typescript defaults to true
 	nodeOptions := nodeOptions{
 		typescript: true,
@@ -232,6 +236,27 @@ func parseOptions(root string, options map[string]interface{}) (nodeOptions, err
 		} else {
 			return nodeOptions, errors.New("nodeargs option must be a string")
 		}
+	}
+
+	if packagemanager, ok := options["packagemanager"]; ok {
+		if pm, ok := packagemanager.(string); ok {
+			switch pm {
+			case "auto":
+				nodeOptions.packagemanager = npm.AutoPackageManager
+			case "npm":
+				nodeOptions.packagemanager = npm.NpmPackageManager
+			case "yarn":
+				nodeOptions.packagemanager = npm.YarnPackageManager
+			case "pnpm":
+				nodeOptions.packagemanager = npm.PnpmPackageManager
+			default:
+				return nodeOptions, fmt.Errorf("packagemanager option must be one of auto, npm, yarn or pnpm, got %q", pm)
+			}
+		} else {
+			return nodeOptions, errors.New("packagemanager option must be a string")
+		}
+	} else {
+		nodeOptions.packagemanager = npm.AutoPackageManager
 	}
 
 	return nodeOptions, nil
@@ -648,7 +673,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	env = append(env, pulumiConfigVar+"="+config)
 	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap())
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
@@ -840,7 +865,12 @@ func (host *nodeLanguageHost) InstallDependencies(
 		workspaceRoot = newWorkspaceRoot
 	}
 
-	_, err = npm.Install(ctx, workspaceRoot, false /*production*/, stdout, stderr)
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return fmt.Errorf("failed to parse options: %w", err)
+	}
+
+	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("dependency installation failed: %w", err)
 	}
@@ -866,7 +896,29 @@ func (host *nodeLanguageHost) InstallDependencies(
 func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	req *pulumirpc.RuntimeOptionsRequest,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
-	return &pulumirpc.RuntimeOptionsResponse{}, nil
+	var prompts []*pulumirpc.RuntimeOptionPrompt
+	rawOpts := req.Info.Options.AsMap()
+
+	if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
+		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
+			Key:         "packagemanager",
+			Description: "The packagemangager to use for installing dependencies",
+			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+			Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				{StringValue: "npm", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+				{StringValue: "yarn", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+				{StringValue: "pnpm", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+			},
+			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue: "npm",
+			},
+		})
+	}
+
+	return &pulumirpc.RuntimeOptionsResponse{
+		Prompts: prompts,
+	}, nil
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context,

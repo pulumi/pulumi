@@ -25,7 +25,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -426,7 +425,7 @@ func TestNewPythonUsesPip(t *testing.T) {
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
-	checkRuntimeOptions(t, e.RootPath, expected)
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
 //nolint:paralleltest // Modifies env
@@ -458,7 +457,7 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	expected := map[string]interface{}{
 		"toolchain": "poetry",
 	}
-	checkRuntimeOptions(t, e.RootPath, expected)
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
 func TestNewPythonRuntimeOptions(t *testing.T) {
@@ -483,7 +482,7 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 		"toolchain":  "pip",
 		"virtualenv": "mytestenv",
 	}
-	checkRuntimeOptions(t, e.RootPath, expected)
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
 func TestNewPythonConvertRequirementsTxt(t *testing.T) {
@@ -515,26 +514,4 @@ in-project = true`
 
 	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
 	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
-}
-
-func checkRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
-	t.Helper()
-
-	var config struct {
-		Runtime struct {
-			Name    string                 `yaml:"name"`
-			Options map[string]interface{} `yaml:"options"`
-		} `yaml:"runtime"`
-	}
-	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))
-	if err != nil {
-		t.Logf("could not read Pulumi.yaml in %s", root)
-		t.FailNow()
-	}
-	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
-		t.Logf("could not parse Pulumi.yaml in %s", root)
-		t.FailNow()
-	}
-
-	require.Equal(t, expected, config.Runtime.Options)
 }

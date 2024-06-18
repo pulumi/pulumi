@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Add packagemanager prompt to pulumi new for nodejs

@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -241,4 +243,26 @@ func AssertHTTPResultWithRetry(
 	}
 	// Verify it matches expectations
 	return check(string(body))
+}
+
+func CheckRuntimeOptions(t *testing.T, root string, expected map[string]interface{}) {
+	t.Helper()
+
+	var config struct {
+		Runtime struct {
+			Name    string                 `yaml:"name"`
+			Options map[string]interface{} `yaml:"options"`
+		} `yaml:"runtime"`
+	}
+	yamlFile, err := os.ReadFile(filepath.Join(root, "Pulumi.yaml"))
+	if err != nil {
+		t.Logf("could not read Pulumi.yaml in %s", root)
+		t.FailNow()
+	}
+	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
+		t.Logf("could not parse Pulumi.yaml in %s", root)
+		t.FailNow()
+	}
+
+	require.Equal(t, expected, config.Runtime.Options)
 }

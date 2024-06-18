@@ -1467,7 +1467,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(ctx, finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}

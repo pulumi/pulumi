@@ -179,7 +179,7 @@ func (pack *cloudPolicyPack) Publish(
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	runtime := op.PolicyPack.Runtime.Name()
 	if strings.EqualFold(runtime, "nodejs") {
-		packTarball, err = npm.Pack(ctx, op.PlugCtx.Pwd, os.Stderr)
+		packTarball, err = npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
 		if err != nil {
 			return result.FromError(fmt.Errorf("could not publish policies because of error running npm pack: %w", err))
 		}
@@ -307,7 +307,7 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 }
 
 func completeNodeJSInstall(ctx context.Context, finalDir string) error {
-	if bin, err := npm.Install(ctx, finalDir, false /*production*/, nil, os.Stderr); err != nil {
+	if bin, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, false /*production*/, nil, os.Stderr); err != nil {
 		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
 			"in %q before this policy pack works"+": %w", bin, finalDir, err)
 	}
