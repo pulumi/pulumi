@@ -35,6 +35,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pgavlin/fx"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1015,6 +1016,16 @@ func (ps *ProjectStack) Save(path string) error {
 type ProjectRuntimeInfo struct {
 	name    string
 	options map[string]interface{}
+}
+
+type ProjectStackDeployment struct {
+	DeploymentSettings apitype.DeploymentSettings `json:"settings" yaml:"settings"`
+}
+
+func (psd *ProjectStackDeployment) Save(path string) error {
+	contract.Requiref(path != "", "path", "must not be empty")
+	contract.Requiref(psd != nil, "ps", "must not be nil")
+	return save(path, psd, true /*mkDirAll*/)
 }
 
 func NewProjectRuntimeInfo(name string, options map[string]interface{}) ProjectRuntimeInfo {
