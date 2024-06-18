@@ -17,17 +17,20 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 
+	git "github.com/go-git/go-git/v5"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 var stackDeploymentConfigFile string
 
-//nolint:unused // temporary ignore until we introduce the new commands
 func loadProjectStackDeployment(stack backend.Stack) (*workspace.ProjectStackDeployment, error) {
 	if stackDeploymentConfigFile == "" {
 		return workspace.DetectProjectStackDeployment(stack.Ref().Name().Q())
@@ -82,7 +85,110 @@ func newDeploymentSettingsCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.AddCommand(newDeploymentSettingsInitCmd())
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
+	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
+	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
+
+	return cmd
+}
+
+func newDeploymentSettingsInitCmd() *cobra.Command {
+	var stack string
+
+	cmd := &cobra.Command{
+		Use:        "init",
+		SuggestFor: []string{"new", "create"},
+		Args:       cmdutil.ExactArgs(0),
+		Short:      "Initializes the stack deployment settings file",
+		Long:       "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			repo, err := git.PlainOpen(wd)
+			if err != nil {
+				return err
+			}
+
+			newStackDeployment := &workspace.ProjectStackDeployment{
+				DeploymentSettings: apitype.DeploymentSettings{
+					SourceContext: &apitype.SourceContext{
+						Git: &apitype.SourceContextGit{
+							RepoDir: ".",
+						},
+					},
+					Operation: &apitype.OperationContext{
+						Options: &apitype.OperationContextOptions{},
+					},
+				},
+			}
+
+			remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
+			if err != nil {
+				return err
+			}
+
+			h, err := repo.Head()
+			if err != nil {
+				return err
+			}
+
+			if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
+				if vcsInfo.Kind == gitutil.GitHubHostName {
+					newStackDeployment.DeploymentSettings.GitHub = &apitype.DeploymentSettingsGitHub{
+						Repository:          fmt.Sprintf("%s/%s", vcsInfo.Owner, vcsInfo.Repo),
+						PreviewPullRequests: true,
+						DeployCommits:       true,
+					}
+				} else {
+					newStackDeployment.DeploymentSettings.SourceContext.Git.RepoURL = remoteURL
+				}
+			} else {
+				return fmt.Errorf("detecting VCS info for stack tags for remote %v: %w", remoteURL, err)
+			}
+
+			if h.Name().IsBranch() {
+				newStackDeployment.DeploymentSettings.SourceContext.Git.Branch = h.Name().String()
+			}
+
+			err = saveProjectStackDeployment(newStackDeployment, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
 
 	return cmd
 }
@@ -134,6 +240,111 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 			}
 
 			err = saveProjectStackDeployment(newStackDeployment, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	return cmd
+}
+
+func newDeploymentSettingsUpdateCmd() *cobra.Command {
+	var stack string
+	cmd := &cobra.Command{
+		Use:        "up",
+		Aliases:    []string{"update"},
+		SuggestFor: []string{"apply", "deploy", "push"},
+		Args:       cmdutil.ExactArgs(0),
+		Short:      "Updates the stack's deployment settings with the data in the deployment yaml file",
+		Long:       "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			sd, err := loadProjectStackDeployment(s)
+			if err != nil {
+				return err
+			}
+
+			err = currentBe.UpdateStackDeploymentSettings(ctx, s, sd.DeploymentSettings)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	return cmd
+}
+
+func newDeploymentSettingsDestroyCmd() *cobra.Command {
+	var stack string
+	cmd := &cobra.Command{
+		Use:        "destroy",
+		Aliases:    []string{"down", "dn"},
+		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
+		Args:       cmdutil.ExactArgs(0),
+		Short:      "Deletes all the stack deployment settings",
+		Long:       "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			err = currentBe.DestroyStackDeploymentSettings(ctx, s)
 			if err != nil {
 				return err
 			}
