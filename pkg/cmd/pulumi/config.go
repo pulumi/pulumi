@@ -49,9 +49,10 @@ import (
 )
 
 func newConfigCmd() *cobra.Command {
+	var opts *Options
+
 	var stack string
 	var showSecrets bool
-	var jsonOut bool
 	var open bool
 
 	cmd := &cobra.Command{
@@ -63,16 +64,14 @@ func newConfigCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
+			displayOpts := opts.AsDisplayOptions()
 
 			project, _, err := readProject()
 			if err != nil {
 				return err
 			}
 
-			stack, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -92,9 +91,14 @@ func newConfigCmd() *cobra.Command {
 				openEnvironment = showSecrets
 			}
 
-			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut, openEnvironment)
+			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, opts.Display.JSONDisplay, openEnvironment)
 		}),
 	}
+
+	opts = NewOptionsBuilder("config", cmd).
+		WithDisplayColor().
+		WithDisplayJSON().
+		Build()
 
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
@@ -103,9 +107,6 @@ func newConfigCmd() *cobra.Command {
 		&open, "open", false,
 		"Open and resolve any environments listed in the stack configuration. "+
 			"Defaults to true if --show-secrets is set, false otherwise")
-	cmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -301,7 +302,8 @@ func copyEntireConfigMap(currentStack backend.Stack,
 }
 
 func newConfigGetCmd(stack *string) *cobra.Command {
-	var jsonOut bool
+	var opts *Options
+
 	var open bool
 	var path bool
 
@@ -317,11 +319,9 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
+			displayOpts := opts.AsDisplayOptions()
 
-			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -331,12 +331,15 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(ctx, s, key, path, jsonOut, open)
+			return getConfig(ctx, s, key, path, opts.Display.JSONDisplay, open)
 		}),
 	}
-	getCmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
+
+	opts = NewOptionsBuilder("config.get", getCmd).
+		WithDisplayColor().
+		WithDisplayJSON().
+		Build()
+
 	getCmd.Flags().BoolVar(
 		&open, "open", true,
 		"Open and resolve any environments listed in the stack configuration")

@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -42,7 +41,8 @@ import (
 )
 
 func newDestroyCmd() *cobra.Command {
-	var debug bool
+	var opts *Options
+
 	var remove bool
 	var stackName string
 
@@ -53,20 +53,11 @@ func newDestroyCmd() *cobra.Command {
 	// Flags for remote operations.
 	remoteArgs := RemoteArgs{}
 
-	// Flags for engine.UpdateOptions.
-	var jsonDisplay bool
 	var diffDisplay bool
-	var eventLogPath string
 	var parallel int
 	var previewOnly bool
 	var refresh string
-	var showConfig bool
-	var showReplacementSteps bool
-	var showSames bool
 	var skipPreview bool
-	var suppressOutputs bool
-	var suppressProgress bool
-	var suppressPermalink string
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
@@ -103,50 +94,44 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			yes = yes || skipPreview || skipConfirmations()
-			interactive := cmdutil.Interactive()
+			interactive := opts.Display.IsInteractive
 			if !interactive && !yes && !previewOnly {
 				return result.FromError(
 					errors.New("--yes or --skip-preview or --preview-only " +
 						"must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			updateOpts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			displayType := display.DisplayProgress
-			if diffDisplay {
-				displayType = display.DisplayDiff
-			}
-
-			opts.Display = display.Options{
-				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				SuppressOutputs:      suppressOutputs,
-				SuppressProgress:     suppressProgress,
-				IsInteractive:        interactive,
-				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
-			}
-
-			// we only suppress permalinks if the user passes true. the default is an empty string
-			// which we pass as 'false'
-			if suppressPermalink == "true" {
-				opts.Display.SuppressPermalink = true
-			} else {
-				opts.Display.SuppressPermalink = false
-			}
+			updateOpts.Display = opts.AsDisplayOptions()
 
 			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
-					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
-					suppressOutputs, "default", targets, nil, nil,
-					targetDependents, "", stackConfigFile)
+				err = validateUnsupportedRemoteFlags(
+					false,
+					nil,
+					false,
+					"",
+					opts.Display.JSONDisplay,
+					nil,
+					nil,
+					refresh,
+					opts.Display.ShowConfig,
+					false,
+					opts.Display.ShowReplacementSteps,
+					opts.Display.ShowSameResources,
+					false,
+					opts.Display.SuppressOutputs,
+					"default",
+					targets,
+					nil,
+					nil,
+					targetDependents,
+					"",
+					stackConfigFile,
+				)
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -156,21 +141,21 @@ func newDestroyCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				return runDeployment(ctx, updateOpts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := isDIYBackend(opts.Display)
+			isDIYBackend, err := isDIYBackend()
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && isDIYBackend {
-				opts.Display.SuppressPermalink = true
+			if opts.Display.SuppressPermalink != "false" && isDIYBackend {
+				updateOpts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, updateOpts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -259,7 +244,7 @@ func newDestroyCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
-					if !jsonDisplay {
+					if !opts.Display.JSONDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
 					}
@@ -270,9 +255,9 @@ func newDestroyCmd() *cobra.Command {
 				}
 			}
 
-			opts.Engine = engine.UpdateOptions{
+			updateOpts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
-				Debug:                     debug,
+				Debug:                     opts.Display.Debug,
 				Refresh:                   refreshOption,
 				Targets:                   deploy.NewUrnTargets(targetUrns),
 				TargetDependents:          targetDependents,
@@ -289,18 +274,18 @@ func newDestroyCmd() *cobra.Command {
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
-				Opts:               opts,
+				Opts:               updateOpts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             backend.CancellationScopes,
 			})
 
-			if res == nil && protectedCount > 0 && !jsonDisplay {
+			if res == nil && protectedCount > 0 && !opts.Display.JSONDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
 			} else if res == nil && len(*targets) == 0 {
-				if !jsonDisplay && !remove && !previewOnly {
+				if !opts.Display.JSONDisplay && !remove && !previewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
@@ -313,7 +298,7 @@ func newDestroyCmd() *cobra.Command {
 					if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 							return result.FromError(err)
-						} else if !jsonDisplay {
+						} else if !opts.Display.JSONDisplay {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
@@ -326,9 +311,23 @@ func newDestroyCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&debug, "debug", "d", false,
-		"Print detailed debugging output during resource operations")
+	optsBuilder := NewOptionsBuilder("destroy", cmd).
+		WithDisplayDebug().
+		WithDisplayJSON().
+		WithDisplayShowConfig().
+		WithDisplayShowDiff().
+		WithDisplayShowReplacementSteps().
+		WithDisplayShowSameResources().
+		WithDisplaySuppressOutputs().
+		WithDisplaySuppressProgress().
+		WithDisplaySuppressPermalink()
+
+	if hasDebugCommands() {
+		optsBuilder = optsBuilder.WithDisplayEventLogPath()
+	}
+
+	opts = optsBuilder.Build()
+
 	cmd.PersistentFlags().BoolVar(
 		&remove, "remove", false,
 		"Remove the stack and its config file after all resources in the stack have been deleted")
@@ -357,9 +356,6 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.Flags().BoolVarP(
-		&jsonDisplay, "json", "j", false,
-		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -370,28 +366,9 @@ func newDestroyCmd() *cobra.Command {
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
-	cmd.PersistentFlags().BoolVar(
-		&showConfig, "show-config", false,
-		"Show configuration keys and variables")
-	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", false,
-		"Show detailed resource replacement creates and deletes instead of a single step")
-	cmd.PersistentFlags().BoolVar(
-		&showSames, "show-sames", false,
-		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
 		"Do not calculate a preview before performing the destroy")
-	cmd.PersistentFlags().BoolVar(
-		&suppressOutputs, "suppress-outputs", false,
-		"Suppress display of stack outputs (in case they contain sensitive values)")
-	cmd.PersistentFlags().BoolVar(
-		&suppressProgress, "suppress-progress", false,
-		"Suppress display of periodic progress dots")
-	cmd.PersistentFlags().StringVar(
-		&suppressPermalink, "suppress-permalink", "",
-		"Suppress display of the state permalink")
-	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVar(
 		&continueOnError, "continue-on-error", false,
 		"Continue to perform the destroy operation despite the occurrence of errors")
@@ -402,12 +379,6 @@ func newDestroyCmd() *cobra.Command {
 
 	// Remote flags
 	remoteArgs.applyFlags(cmd)
-
-	if hasDebugCommands() {
-		cmd.PersistentFlags().StringVar(
-			&eventLogPath, "event-log", "",
-			"Log events to a file at this path")
-	}
 
 	// internal flags
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
