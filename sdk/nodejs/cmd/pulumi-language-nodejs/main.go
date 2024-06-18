@@ -906,8 +906,8 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
 			Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 				{StringValue: "npm", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
-				{StringValue: "yarn", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
 				{StringValue: "pnpm", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
+				{StringValue: "yarn", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
 			},
 			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
