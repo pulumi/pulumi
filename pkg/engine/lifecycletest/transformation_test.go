@@ -782,9 +782,6 @@ func TestTransformsProviderOpt(t *testing.T) {
 	sort.Slice(snap.Resources, func(i, j int) bool {
 		return snap.Resources[i].URN < snap.Resources[j].URN
 	})
-	for _, res := range snap.Resources {
-		fmt.Println(res.URN)
-	}
 	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::explicitProvider"), snap.Resources[0].URN)
 	assert.Equal(t, explicitProvider, snap.Resources[0].Provider)
 	assert.Equal(t, urn.URN("urn:pulumi:test::test::pkgA:m:typA::explicitProvidersMap"), snap.Resources[1].URN)
