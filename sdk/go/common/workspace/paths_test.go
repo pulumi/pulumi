@@ -143,7 +143,7 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
 
-//nolint:paralleltest // Theses test use and change the current working directory
+//nolint:paralleltest // These tests use and change the current working directory
 func TestDetectProjectStackDeploymentPath(t *testing.T) {
 	tmpDir := mkTempDir(t)
 	cwd, err := os.Getwd()
