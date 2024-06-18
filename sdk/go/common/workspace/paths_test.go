@@ -153,7 +153,10 @@ func TestDetectProjectStackDeploymentPath(t *testing.T) {
 	assert.NoError(t, err)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
-	yamlContents := "name: some_project\ndescription: Some project\nruntime: nodejs\n"
+	yamlContents := `
+name: some_project
+description: Some project
+runtime: nodejs`
 
 	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
 	assert.NoError(t, err)

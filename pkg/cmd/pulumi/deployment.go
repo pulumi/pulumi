@@ -71,8 +71,8 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Manages the stack's deployment settings",
-		Long: "Manages the stack's deployment settings\n" +
+		Short: "Manage stack deployment settings",
+		Long: "Manage stack deployment settings\n" +
 			"\n" +
 			"Use this command to manage a stack's deployment settings like\n" +
 			"generating the deployment file, updating secrets or pushing the\n" +
