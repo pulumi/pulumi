@@ -1,0 +1,54 @@
+{
+    "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+    "name": "typeddict",
+    "version": "1.0.0",
+    "types": {
+        "typeddict:index:ExampleType": {
+            "properties": {
+                "stringProp": {
+                    "type": "string"
+                },
+                "nestedProp": {
+                    "type": "object",
+                    "properties": {
+                        "nestedStringProp": {
+                            "type": "string"
+                        },
+                        "nestedNumberProp": {
+                            "type": "number"
+                        }
+                    }
+                }
+            },
+            "required": [
+                "nestedProp",
+                "stringProp"
+            ],
+            "type": "object"
+        }
+    },
+    "resources": {
+        "typeddict:index:ExampleComponent": {
+            "isComponent": true,
+            "inputProperties": {
+                "myType": {
+                    "type": "object",
+                    "$ref": "#/types/typeddict:index:ExampleType"
+                },
+                "externalInput": {
+                    "type": "object",
+                    "$ref": "/aws/v5.4.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
+                }
+            }
+        }
+    },
+    "language": {
+        "python": {
+            "requires": {
+                "pulumi": ">=3.0.0,<4.0.0",
+                "pulumi-aws": ">=5.3.0,<6.0.0"
+            },
+            "inputTypes": "classes-and-dicts"
+        }
+    }
+}

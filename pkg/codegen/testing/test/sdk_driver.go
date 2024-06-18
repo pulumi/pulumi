@@ -451,6 +451,16 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing the kubernetes20 compatibility mode.",
 		Skip:        codegen.NewStringSet("go/test"),
 	},
+	{
+		Directory:   "python-typed-dict-setuppy",
+		Description: "Testing TypedDict generation for inputs.",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "python-typed-dict-pyproject",
+		Description: "Testing TypedDict generation for inputs.",
+		Skip:        allLanguages.Except("python/any"),
+	},
 }
 
 var genSDKOnly bool

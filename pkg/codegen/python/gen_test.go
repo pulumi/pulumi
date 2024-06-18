@@ -268,7 +268,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		require.True(t, ok)
 
 		return func(t schema.Type) string {
-			return root.typeString(t, false, false)
+			return root.typeString(t, false, false, false)
 		}
 	})
 }
