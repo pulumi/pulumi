@@ -90,18 +90,18 @@ func TestResolvePackageManager(t *testing.T) {
 	for _, tt := range []struct {
 		name      string
 		pm        PackageManagerType
-		exepcted  string
 		lockFiles []string
+		expected  string
 	}{
-		{"defaults to npm", AutoPackageManager, "npm", []string{}},
-		{"picks npm", NpmPackageManager, "npm", []string{}},
-		{"picks yarn", YarnPackageManager, "yarn", []string{}},
-		{"picks pnpm", PnpmPackageManager, "pnpm", []string{}},
-		{"picks npm based on lockfile", AutoPackageManager, "npm", []string{"npm"}},
-		{"picks yarn based on lockfile", AutoPackageManager, "yarn", []string{"yarn"}},
-		{"picks pnpm based on lockfile", AutoPackageManager, "pnpm", []string{"pnpm"}},
-		{"yarn > pnpm > npm", AutoPackageManager, "yarn", []string{"yarn", "pnpm", "npm"}},
-		{"pnpm > npm", AutoPackageManager, "pnpm", []string{"pnpm", "npm"}},
+		{"defaults to npm", AutoPackageManager, []string{}, "npm"},
+		{"picks npm", NpmPackageManager, []string{}, "npm"},
+		{"picks yarn", YarnPackageManager, []string{}, "yarn"},
+		{"picks pnpm", PnpmPackageManager, []string{}, "pnpm"},
+		{"picks npm based on lockfile", AutoPackageManager, []string{"npm"}, "npm"},
+		{"picks yarn based on lockfile", AutoPackageManager, []string{"yarn"}, "yarn"},
+		{"picks pnpm based on lockfile", AutoPackageManager, []string{"pnpm"}, "pnpm"},
+		{"yarn > pnpm > npm", AutoPackageManager, []string{"yarn", "pnpm", "npm"}, "yarn"},
+		{"pnpm > npm", AutoPackageManager, []string{"pnpm", "npm"}, "pnpm"},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestResolvePackageManager(t *testing.T) {
 			}
 			pm, err := ResolvePackageManager(tt.pm, dir)
 			require.NoError(t, err)
-			require.Equal(t, tt.exepcted, pm.Name())
+			require.Equal(t, tt.expected, pm.Name())
 		})
 	}
 }
