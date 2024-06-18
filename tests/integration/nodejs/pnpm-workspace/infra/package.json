@@ -4,6 +4,6 @@
   "version": "1.0.0",
   "dependencies": {
     "@pulumi/pulumi": "latest",
-    "my-random": "1.0.0"
+    "my-random": "workspace:1.0.0"
   }
 }
