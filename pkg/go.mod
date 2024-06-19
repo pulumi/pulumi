@@ -17,7 +17,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/djherbis/times v1.5.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/glog v1.2.0
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -36,6 +35,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
+	github.com/pulumi/inflector v0.1.0
 	github.com/pulumi/pulumi/sdk/v3 v3.120.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
