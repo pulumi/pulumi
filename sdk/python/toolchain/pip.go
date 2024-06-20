@@ -331,8 +331,8 @@ func NewVirtualEnvError(dir, fullPath string) error {
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
 // a virtual environment directory, and returns a new "activated" array with the virtual environment's
-// "bin" dir ("Scripts" on Windows) prepended to the `PATH` environment variable and `PYTHONHOME` variable
-// removed.
+// "bin" dir ("Scripts" on Windows) prepended to the `PATH` environment variable, the `VIRTUAL_ENV`
+// variable set to the path, and the `PYTHONHOME` variable removed.
 func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 	virtualEnvBin := filepath.Join(virtualEnvDir, virtualEnvBinDirName())
 	var hasPath bool
@@ -351,6 +351,8 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 			result = append(result, path)
 		} else if strings.EqualFold(key, "PYTHONHOME") {
 			// Skip PYTHONHOME to "unset" this value.
+		} else if strings.EqualFold(key, "VIRTUAL_ENV") {
+			// Skip VIRTUAL_ENV, we always set this to `virtualEnvDir`
 		} else {
 			result = append(result, env)
 		}
@@ -359,6 +361,8 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 		path := "PATH=" + virtualEnvBin
 		result = append(result, path)
 	}
+	virtualEnv := "VIRTUAL_ENV=" + virtualEnvDir
+	result = append(result, virtualEnv)
 	return result
 }
 
