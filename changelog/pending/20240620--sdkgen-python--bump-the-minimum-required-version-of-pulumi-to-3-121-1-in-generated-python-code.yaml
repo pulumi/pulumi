@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: Bump the minimum required version of `pulumi` to 3.121.1 in generated Python code

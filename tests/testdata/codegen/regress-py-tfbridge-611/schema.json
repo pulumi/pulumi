@@ -7,7 +7,7 @@
   "python": {
    "compatibility": "tfbridge20",
    "requires": {
-    "pulumi": ">=3.0.0,<4.0.0"
+    "pulumi": ">=3.121.1,<4.0.0"
    }
   }
  },

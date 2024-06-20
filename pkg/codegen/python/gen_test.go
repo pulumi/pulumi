@@ -312,43 +312,42 @@ func TestCalculateDeps(t *testing.T) {
 		expectedErr error
 	}
 	cases := []TestCase{{
-		// Test 1: Give no explicit deps.
+		// Test 1: Give no explicit dependencies.
 		inputDeps: map[string]string{},
 		expected: [][2]string{
-			// We expect three alphabetized deps,
-			// with semver and parver formatted differently from Pulumi.
-			// Pulumi should not have a version.
+			// We expect three alphabetized dependencies with semver and parver
+			// formatted differently from Pulumi. Pulumi should not have a version.
 			{"parver>=0.2.1", ""},
 			{"pulumi", ""},
 			{"semver>=2.8.1"},
 		},
 	}, {
-		// Test 2: If you only one dep, we expect Pulumi to have a narrower
-		//         constraint than if you had provided no deps.
+		// Test 2: If you provide only one dependency, we expect Pulumi to have a
+		// narrower constraint than if you had provided no dependencies
 		inputDeps: map[string]string{
 			"foobar": "7.10.8",
 		},
 		expected: [][2]string{
 			{"foobar", "7.10.8"},
 			{"parver>=0.2.1", ""},
-			{"pulumi", ">=3.0.0,<4.0.0"},
+			{"pulumi", ">=3.121.1,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
-		// Test 3: If you provide pulumi, we expect the constraint to
-		// be respected.
+		// Test 3: If you provide a valid Pulumi version, we expect the constraint
+		// to be respected.
 		inputDeps: map[string]string{
-			"pulumi": ">=3.0.0,<3.50.0",
+			"pulumi": ">=3.121.1,<3.500.0",
 		},
 		expected: [][2]string{
-			// We expect three alphabetized deps,
-			// with semver and parver formatted differently from Pulumi.
+			// We expect three alphabetized dependencies with semver and parver
+			// formatted differently from Pulumi.
 			{"parver>=0.2.1", ""},
-			{"pulumi", ">=3.0.0,<3.50.0"},
+			{"pulumi", ">=3.121.1,<3.500.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
-		// Test 4: If you provide an illegal pulumi version, we expect an error.
+		// Test 4: If you provide an illegal Pulumi version, we expect an error.
 		inputDeps: map[string]string{
 			"pulumi": ">=0.16.0,<4.0.0",
 		},

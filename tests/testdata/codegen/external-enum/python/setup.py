@@ -31,7 +31,7 @@ setup(name='pulumi_example',
       },
       install_requires=[
           'parver>=0.2.1',
-          'pulumi>=3.0.0,<4.0.0',
+          'pulumi>=3.121.1,<4.0.0',
           'pulumi-google-native>=0.20.0,<1.0.0',
           'semver>=2.8.1'
       ],

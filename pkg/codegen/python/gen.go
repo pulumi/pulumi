@@ -2094,9 +2094,9 @@ var (
 )
 
 var oldestAllowedPulumi = semver.Version{
-	Major: 0,
-	Minor: 17,
-	Patch: 28,
+	Major: 3,
+	Minor: 121,
+	Patch: 1,
 }
 
 func sanitizePackageDescription(description string) string {
@@ -3298,7 +3298,7 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 	// If the pulumi dep is missing, we require it to fall within
 	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = ">=3.0.0,<4.0.0"
+		deps["pulumi"] = ">=3.121.1,<4.0.0"
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.

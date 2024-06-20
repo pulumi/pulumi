@@ -665,7 +665,7 @@
             },
             "readme": "The native Azure provider package offers support for all Azure Resource Manager (ARM)\nresources and their properties. Resources are exposed as types from modules based on Azure Resource\nProviders such as 'compute', 'network', 'storage', and 'web', among many others. Using this package\nallows you to programmatically declare instances of any Azure resource and any supported resource\nversion using infrastructure as code, which Pulumi then uses to drive the ARM API.",
             "requires": {
-                "pulumi": "\u003e=3.0.0,\u003c4.0.0"
+                "pulumi": "\u003e=3.121.1,\u003c4.0.0"
             },
             "usesIOClasses": true
         }
