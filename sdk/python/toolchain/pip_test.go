@@ -50,10 +50,10 @@ func TestIsVirtualEnv(t *testing.T) {
 func TestActivateVirtualEnv(t *testing.T) {
 	t.Parallel()
 
-	venvName := "venv"
-	venvDir := filepath.Join(venvName, "bin")
+	venvDir := "/some/path/venv"
+	venvBinDir := filepath.Join(venvDir, "bin")
 	if runtime.GOOS == windows {
-		venvDir = filepath.Join(venvName, "Scripts")
+		venvBinDir = filepath.Join(venvDir, "Scripts")
 	}
 
 	tests := []struct {
@@ -61,16 +61,27 @@ func TestActivateVirtualEnv(t *testing.T) {
 		expected []string
 	}{
 		{
-			input:    []string{"PYTHONHOME=foo", "PATH=bar", "FOO=blah"},
-			expected: []string{fmt.Sprintf("PATH=%s%sbar", venvDir, string(os.PathListSeparator)), "FOO=blah"},
+			input: []string{"PYTHONHOME=foo", "PATH=bar", "FOO=blah"},
+			expected: []string{
+				fmt.Sprintf("PATH=%s%sbar", venvBinDir, string(os.PathListSeparator)),
+				"FOO=blah",
+				"VIRTUAL_ENV=" + venvDir,
+			},
 		},
 		{
-			input:    []string{"PYTHONHOME=foo", "FOO=blah"},
-			expected: []string{"FOO=blah", "PATH=" + venvDir},
+			input: []string{"PYTHONHOME=foo", "FOO=blah"},
+			expected: []string{
+				"FOO=blah",
+				"PATH=" + venvBinDir,
+				"VIRTUAL_ENV=" + venvDir,
+			},
 		},
 		{
-			input:    []string{"PythonHome=foo", "Path=bar"},
-			expected: []string{fmt.Sprintf("Path=%s%sbar", venvDir, string(os.PathListSeparator))},
+			input: []string{"PythonHome=foo", "Path=bar"},
+			expected: []string{
+				fmt.Sprintf("Path=%s%sbar", venvBinDir, string(os.PathListSeparator)),
+				"VIRTUAL_ENV=" + venvDir,
+			},
 		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -79,7 +90,7 @@ func TestActivateVirtualEnv(t *testing.T) {
 		t.Run(fmt.Sprintf("%#v", test.input), func(t *testing.T) {
 			t.Parallel()
 
-			actual := ActivateVirtualEnv(test.input, venvName)
+			actual := ActivateVirtualEnv(test.input, venvDir)
 			assert.Equal(t, test.expected, actual)
 		})
 	}

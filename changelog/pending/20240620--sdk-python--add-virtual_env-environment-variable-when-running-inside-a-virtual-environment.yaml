@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Add VIRTUAL_ENV environment variable when running inside a virtual environment
