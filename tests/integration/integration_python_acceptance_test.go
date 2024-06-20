@@ -420,7 +420,9 @@ func TestNewPythonUsesPip(t *testing.T) {
 	}()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only")
+	stdout, _ := e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only")
+
+	require.Contains(t, stdout, "pulumi install")
 
 	expected := map[string]interface{}{
 		"toolchain":  "pip",

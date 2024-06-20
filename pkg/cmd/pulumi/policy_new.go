@@ -245,11 +245,7 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 	var commands []string
 	if generateOnly {
 		// We didn't install dependencies, so instruct the user to do so.
-		if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-			commands = append(commands, "npm install")
-		} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-			commands = append(commands, pythonCommands()...)
-		}
+		commands = append(commands, "pulumi install")
 	}
 
 	if len(commands) == 1 {

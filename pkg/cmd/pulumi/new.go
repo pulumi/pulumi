@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -1000,11 +999,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 
 	if generateOnly {
 		// We didn't install dependencies, so instruct the user to do so.
-		if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-			commands = append(commands, "npm install")
-		} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-			commands = append(commands, pythonCommands()...)
-		}
+		commands = append(commands, "pulumi install")
 		// We didn't create a stack so show that as a command to run before `pulumi up`.
 		commands = append(commands, "pulumi stack init")
 	}
@@ -1038,37 +1033,6 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
-}
-
-// pythonCommands returns the set of Python commands to create a virtual environment, activate it, and
-// install dependencies.
-func pythonCommands() []string {
-	var commands []string
-
-	// Create the virtual environment.
-	switch runtime.GOOS {
-	case "windows":
-		commands = append(commands, "python -m venv venv")
-	default:
-		commands = append(commands, "python3 -m venv venv")
-	}
-
-	// Activate the virtual environment. Only active in the user's current shell, so we can't
-	// just run it for the user here.
-	switch runtime.GOOS {
-	case "windows":
-		commands = append(commands, "venv\\Scripts\\activate")
-	default:
-		commands = append(commands, "source venv/bin/activate")
-	}
-
-	// Update pip, setuptools, and wheel within the virtualenv.
-	commands = append(commands, "python -m pip install --upgrade pip setuptools wheel")
-
-	// Install dependencies within the virtualenv.
-	commands = append(commands, "python -m pip install -r requirements.txt")
-
-	return commands
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.

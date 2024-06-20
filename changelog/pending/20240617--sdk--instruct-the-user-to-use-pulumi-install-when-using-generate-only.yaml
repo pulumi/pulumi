@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/new
+  description: Instruct the user to use 'pulumi install' when using --generate-only
