@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Parallelize Construct and Call calls in the Node.js SDK
