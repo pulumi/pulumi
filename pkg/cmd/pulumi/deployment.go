@@ -174,7 +174,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 					newStackDeployment.DeploymentSettings.SourceContext.Git.RepoURL = remoteURL
 				}
 			} else {
-				return fmt.Errorf("detecting VCS info for stack tags for remote %v: %w", remoteURL, err)
+				return fmt.Errorf("detecting VCS info from stack tags for remote %v: %w", remoteURL, err)
 			}
 
 			if h.Name().IsBranch() {
