@@ -1352,7 +1352,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	// We should never call delete at preview time, so we should never see unknowns here
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
-	minputs, err := MarshalProperties(req.Outputs, MarshalOptions{
+	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
