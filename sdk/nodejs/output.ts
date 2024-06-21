@@ -202,7 +202,10 @@ To get the value of an Output<T> as an Output<string> consider either:
 1: o.apply(v => \`prefix\${v}suffix\`)
 2: pulumi.interpolate \`prefix\${v}suffix\`
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
+
+Or use ESLint with https://github.com/pulumi/eslint-plugin-pulumi to warn or
+error lint on using Output<T> in template literals.`;
             if (utils.errorOutputString) {
                 throw new Error(message);
             }
