@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: "Fix provider `Delete`s broken by #16302"
+  description: "Fix provider `Delete`s"
