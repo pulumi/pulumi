@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Resolve provider in the engine before passing it to transforms
