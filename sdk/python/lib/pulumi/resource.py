@@ -518,7 +518,7 @@ class ResourceOptions:
         :param Optional[List[str]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
         :param Optional[Input[str]] id: If provided, an existing resource ID to read, rather than create.
-        :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
+        :param Optional[str] import\\_: When provided with a resource ID, import indicates that this resource's provider should
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
