@@ -302,7 +302,7 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
-def register_resource_transform(t: ResourceTransform):
+def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """

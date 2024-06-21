@@ -2113,8 +2113,6 @@ func (ctx *Context) Export(name string, value Input) {
 }
 
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
-//
-// Deprecated: Use RegisterResourceTransform instead.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
 	ctx.state.stack.addTransformation(t)
 	return nil
@@ -2132,6 +2130,8 @@ func (ctx *Context) RegisterResourceTransform(t ResourceTransform) error {
 }
 
 // RegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
+//
+// Deprecated: Use RegisterResourceTransform instead.
 func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
 	return ctx.RegisterResourceTransform(t)
 }
