@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // Changes environment variables
 func TestContinueOnErrorEnvVar(t *testing.T) {
 	commands := []func() *cobra.Command{
 		newUpCmd,
