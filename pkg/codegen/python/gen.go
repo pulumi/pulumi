@@ -1560,7 +1560,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		}
 		if prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "%s    @pulumi.deprecated(\"\"\"%s\"\"\")\n", indent, escaped)
+			fmt.Fprintf(w, "%s    @_utilities.deprecated(\"\"\"%s\"\"\")\n", indent, escaped)
 		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
 		if prop.Comment != "" {

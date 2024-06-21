@@ -57,7 +57,7 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
-    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def diameter(self) -> pulumi.Input['Diameter']:
         return pulumi.get(self, "diameter")
 
@@ -67,7 +67,7 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
-    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def type(self) -> pulumi.Input['RubberTreeVariety']:
         return pulumi.get(self, "type")
 
@@ -86,7 +86,7 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
-    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def farm(self) -> Optional[pulumi.Input[Union['Farm', str]]]:
         return pulumi.get(self, "farm")
 
@@ -96,7 +96,7 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
-    @pulumi.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
+    @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
     def size(self) -> Optional[pulumi.Input['TreeSize']]:
         return pulumi.get(self, "size")
 

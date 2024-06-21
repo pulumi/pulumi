@@ -4,6 +4,7 @@
 
 
 import asyncio
+import functools
 import importlib.metadata
 import importlib.util
 import inspect
@@ -11,6 +12,7 @@ import json
 import os
 import sys
 import typing
+import warnings
 
 import pulumi
 import pulumi.runtime
@@ -18,6 +20,8 @@ from pulumi.runtime.sync_await import _sync_await
 
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
+
+C = typing.TypeVar("C", bound=typing.Callable)
 
 
 def get_env(*args):
@@ -286,6 +290,37 @@ async def _await_output(o: pulumi.Output[typing.Any]) -> typing.Tuple[object, bo
         await o._is_secret,
         await o._resources,
     )
+
+
+# This is included to provide an upgrade path for users who are using a version
+# of the Pulumi SDK (<3.121.0) that does not include the `deprecated` decorator.
+def deprecated(message: str) -> typing.Callable[[C], C]:
+    """
+    Decorator to indicate a function is deprecated.
+
+    As well as inserting appropriate statements to indicate that the function is
+    deprecated, this decorator also tags the function with a special attribute
+    so that Pulumi code can detect that it is deprecated and react appropriately
+    in certain situations.
+
+    message is the deprecation message that should be printed if the function is called.
+    """
+
+    def decorator(fn: C) -> C:
+        if not callable(fn):
+            raise TypeError("Expected fn to be callable")
+
+        @functools.wraps(fn)
+        def deprecated_fn(*args, **kwargs):
+            warnings.warn(message)
+            pulumi.warn(f"{fn.__name__} is deprecated: {message}")
+
+            return fn(*args, **kwargs)
+
+        deprecated_fn.__dict__["_pulumi_deprecated_callable"] = fn
+        return typing.cast(C, deprecated_fn)
+
+    return decorator
 
 def get_plugin_download_url():
 	return None
