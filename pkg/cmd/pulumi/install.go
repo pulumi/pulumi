@@ -50,19 +50,22 @@ func newInstallCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("getting the working directory: %w", err)
-			}
-
-			// Check if we are in a policy pack project and install the policy pack dependencies if so.
-			policyPackPath, err := workspace.DetectPolicyPackPathFrom(cwd)
-			if err == nil && policyPackPath != "" {
-				proj, _, root, err := readPolicyProject(policyPackPath)
+			projectPath, err := workspace.DetectProjectPath()
+			if err != nil || projectPath == "" {
+				// No project found, check if we are in a policy pack project and install the policy
+				// pack dependencies if so.
+				cwd, err := os.Getwd()
 				if err != nil {
-					return err
+					return fmt.Errorf("getting the working directory: %w", err)
 				}
-				return installPolicyPackDependencies(ctx, root, proj)
+				policyPackPath, err := workspace.DetectPolicyPackPathFrom(cwd)
+				if err == nil && policyPackPath != "" {
+					proj, _, root, err := readPolicyProject(policyPackPath)
+					if err != nil {
+						return err
+					}
+					return installPolicyPackDependencies(ctx, root, proj)
+				}
 			}
 
 			// Load the project
