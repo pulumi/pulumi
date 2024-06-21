@@ -2118,8 +2118,8 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 	return nil
 }
 
-// RegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
-func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
+// RegisterResourceTransform adds a transform to all future resources constructed in this Pulumi stack.
+func (ctx *Context) RegisterResourceTransform(t ResourceTransform) error {
 	cb, err := ctx.registerTransform(t)
 	if err != nil {
 		return err
@@ -2127,6 +2127,13 @@ func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
 
 	_, err = ctx.state.monitor.RegisterStackTransform(ctx.ctx, cb)
 	return err
+}
+
+// RegisterStackTransform adds a transform to all future resources constructed in this Pulumi stack.
+//
+// Deprecated: Use RegisterResourceTransform instead.
+func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
+	return ctx.RegisterResourceTransform(t)
 }
 
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
