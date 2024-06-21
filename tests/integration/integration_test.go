@@ -1208,3 +1208,44 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 		"--policy-pack", "python_policy_pack", "--tracing", "file:/trace.log")
 	require.NoError(t, err)
 }
+
+//nolint:paralleltest // uses parallel programtest
+func TestPolicyPackNewGenerateOnly(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	require.False(t, e.PathExists("venv"))
+	stdout, _ := e.RunCommand("pulumi", "policy", "new", "aws-python", "--force", "--generate-only")
+	require.Contains(t, stdout, "To install dependencies for the Policy Pack, run `pulumi install`")
+	require.False(t, e.PathExists("venv"))
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestPolicyPackNew(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	require.False(t, e.PathExists("venv"))
+	stdout, _ := e.RunCommand("pulumi", "policy", "new", "aws-python", "--force")
+	require.NotContains(t, stdout, "To install dependencies for the Policy Pack, run `pulumi install`")
+	require.Contains(t, stdout, "Finished creating virtual environment")
+	require.Contains(t, stdout, "Finished installing dependencies")
+	require.True(t, e.PathExists("venv"))
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestPolicyPackInstallDependencies(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory("policy/python_policy_pack")
+	require.False(t, e.PathExists("venv"))
+	stdout, _ := e.RunCommand("pulumi", "install")
+	require.Contains(t, stdout, "Finished creating virtual environment")
+	require.Contains(t, stdout, "Finished installing dependencies")
+	require.True(t, e.PathExists("venv"))
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestProjectInstallDependencies(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory("single_resource")
+	require.False(t, e.PathExists("node_modules"))
+	stdout, _ := e.RunCommand("pulumi", "install")
+	require.Contains(t, stdout, "Finished installing dependencies")
+	require.True(t, e.PathExists("node_modules"))
+}

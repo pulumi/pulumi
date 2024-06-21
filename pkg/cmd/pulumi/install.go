@@ -40,14 +40,32 @@ func newInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Args:  cmdutil.NoArgs,
-		Short: "Install packages and plugins for the current program",
-		Long: "Install packages and plugins for the current program.\n" +
+		Short: "Install packages and plugins for the current program or policy pack.",
+		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
-			"This command is used to manually install packages and plugins required by your program.",
+			"This command is used to manually install packages and plugins required by your program or policy pack.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			projectPath, err := workspace.DetectProjectPath()
+			if err != nil || projectPath == "" {
+				// No project found, check if we are in a policy pack project and install the policy
+				// pack dependencies if so.
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting the working directory: %w", err)
+				}
+				policyPackPath, err := workspace.DetectPolicyPackPathFrom(cwd)
+				if err == nil && policyPackPath != "" {
+					proj, _, root, err := readPolicyProject(policyPackPath)
+					if err != nil {
+						return err
+					}
+					return installPolicyPackDependencies(ctx, root, proj)
+				}
 			}
 
 			// Load the project

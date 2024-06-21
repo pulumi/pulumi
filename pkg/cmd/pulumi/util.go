@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/pflag"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -42,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -52,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1054,6 +1057,42 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 			}
 		}
 	}
+}
+
+func installPolicyPackDependencies(ctx context.Context, root string, proj *workspace.PolicyPackProject) error {
+	span := opentracing.SpanFromContext(ctx)
+	// Bit of a hack here. Creating a plugin context requires a "program project", but we've only got a
+	// policy project. Ideally we should be able to make a plugin context without any related project. But
+	// fow now this works.
+	projinfo := &engine.Projinfo{Proj: &workspace.Project{
+		Main:    proj.Main,
+		Runtime: proj.Runtime,
+	}, Root: root}
+	_, main, pluginCtx, err := engine.ProjectInfoContext(
+		projinfo,
+		nil,
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		false,
+		span,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+	defer pluginCtx.Close()
+
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, proj.Runtime.Options())
+	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	if err != nil {
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+	}
+
+	if err = lang.InstallDependencies(programInfo); err != nil {
+		return fmt.Errorf("installing dependencies failed: %w", err)
+	}
+
+	return nil
 }
 
 func surveyIcons(color colors.Colorization) survey.AskOpt {

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/install
+  description: Make pulumi install work for policy packs
