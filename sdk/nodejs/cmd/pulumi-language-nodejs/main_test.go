@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -303,4 +304,38 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 		"foo": "v1.2.3",
 		"bar": "v4.5.6",
 	}, actual)
+}
+
+func TestParseOptions(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseOptions(nil)
+	require.NoError(t, err)
+	require.Equal(t, npm.AutoPackageManager, opts.packagemanager)
+
+	_, err = parseOptions(map[string]interface{}{
+		"typescript": 123,
+	})
+	require.ErrorContains(t, err, "typescript option must be a boolean")
+
+	_, err = parseOptions(map[string]interface{}{
+		"packagemanager": "poetry",
+	})
+	require.ErrorContains(t, err, "packagemanager option must be one of")
+
+	for _, tt := range []struct {
+		input    string
+		expected npm.PackageManagerType
+	}{
+		{"auto", npm.AutoPackageManager},
+		{"npm", npm.NpmPackageManager},
+		{"yarn", npm.YarnPackageManager},
+		{"pnpm", npm.PnpmPackageManager},
+	} {
+		opts, err = parseOptions(map[string]interface{}{
+			"packagemanager": tt.input,
+		})
+		require.NoError(t, err)
+		require.Equal(t, tt.expected, opts.packagemanager)
+	}
 }
