@@ -393,8 +393,9 @@ func newDestroyCmd() *cobra.Command {
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", false,
-		"Continue to perform the destroy operation despite the occurrence of errors")
+		&continueOnError, "continue-on-error", cmdutil.IsTruthy(os.Getenv("PULUMI_CONTINUE_ON_ERROR")),
+		"Continue to perform the destroy operation despite the occurrence of errors "+
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR env var)")
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,

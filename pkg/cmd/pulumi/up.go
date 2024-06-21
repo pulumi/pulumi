@@ -631,8 +631,9 @@ func newUpCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", false,
-		"Continue updating resources even if an error is encountered")
+		&continueOnError, "continue-on-error", cmdutil.IsTruthy(os.Getenv("PULUMI_CONTINUE_ON_ERROR")),
+		"Continue updating resources even if an error is encountered "+
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR env var)")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
