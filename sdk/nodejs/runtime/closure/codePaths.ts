@@ -257,8 +257,10 @@ async function allFoldersForPackages(
     // and should not be uploaded.
     const referencedPackages = new Set<string>(includedPackages);
     const packageJSON = computeDependenciesDirectlyFromPackageFile(upath.join(workingDir, "package.json"), logResource);
-    for (const depName of Object.keys(packageJSON.dependencies)) {
-        referencedPackages.add(depName);
+    if (packageJSON.dependencies) {
+        for (const depName of Object.keys(packageJSON.dependencies)) {
+            referencedPackages.add(depName);
+        }
     }
 
     // Find the workspace root, fallback to current working directory if we are not in a workspaces setup.

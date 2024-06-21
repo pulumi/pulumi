@@ -1604,6 +1604,15 @@ func TestCodePathsWorkspaceTSC(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestCodePathsNoDependencies(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "codepaths-no-dependencies"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
 // Test that the resource stopwatch doesn't contain a negative time.
 func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
