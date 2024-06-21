@@ -37,7 +37,7 @@ class Server implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;
     readonly provider: Provider;
     readonly uncaughtErrors: Set<Error>;
-    private readonly _callbacks = new Map<string, any>();
+    private readonly _callbacks = new Map<Symbol, grpc.sendUnaryData<any>>();
 
     constructor(engineAddr: string | undefined, provider: Provider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
@@ -285,7 +285,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async construct(call: any, callback: any): Promise<void> {
         const callbackId = Symbol("id");
-        this._callbacks.set(callbackId.toString(), callback);
+        this._callbacks.set(callbackId, callback);
         try {
             const req: any = call.request;
             const type = req.getType();
@@ -347,13 +347,13 @@ class Server implements grpc.UntypedServiceImplementation {
             callback(e, undefined);
         } finally {
             // remove the gRPC callback context from the map of in-flight callbacks
-            this._callbacks.delete(callbackId.toString());
+            this._callbacks.delete(callbackId);
         }
     }
 
     public async call(call: any, callback: any): Promise<void> {
         const callbackId = Symbol("id");
-        this._callbacks.set(callbackId.toString(), callback);
+        this._callbacks.set(callbackId, callback);
         try {
             const req: any = call.request;
             if (!this.provider.call) {
@@ -403,7 +403,7 @@ class Server implements grpc.UntypedServiceImplementation {
             callback(e, undefined);
         } finally {
             // remove the gRPC callback context from the map of in-flight callbacks
-            this._callbacks.delete(callbackId.toString());
+            this._callbacks.delete(callbackId);
         }
     }
 
