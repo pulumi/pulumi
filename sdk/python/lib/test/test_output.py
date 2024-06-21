@@ -287,6 +287,12 @@ class OutputHoistingTests(unittest.TestCase):
         self.assertEqual(x_val, "hello")
 
     @pulumi_test
+    def test_attr_doesnt_hoist_dunders(self):
+        o = Output.from_input(Obj("hello"))
+        x = hasattr(o, "__fields__")
+        self.assertEqual(x, False)
+
+    @pulumi_test
     async def test_no_iter(self):
         x = Output.from_input([1, 2, 3])
         with self.assertRaises(TypeError):
