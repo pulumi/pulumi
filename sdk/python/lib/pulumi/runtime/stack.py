@@ -302,7 +302,7 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
-def register_stack_transform(t: ResourceTransform):
+def register_resource_transform(t: ResourceTransform):
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
@@ -322,3 +322,12 @@ def register_stack_transform(t: ResourceTransform):
     if callbacks is None:
         raise Exception("No callback server registered.")
     callbacks.register_stack_transform(t)
+
+
+def register_stack_transform(t: ResourceTransform):
+    """
+    Add a transform to all future resources constructed in this Pulumi stack.
+
+    Deprecated: use `register_resource_transform` instead.
+    """
+    register_resource_transform(t)
