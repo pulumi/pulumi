@@ -254,12 +254,31 @@ class Output(Generic[T_co]):
 
     def __getattr__(self, item: str) -> "Output[Any]":  # type: ignore
         """
-        Syntax sugar for retrieving attributes off of outputs.
+        Syntactic sugar for retrieving attributes off of outputs.
+
+        Note that strictly speaking, this implementation of __getattr__ violates
+        the contract expected by Python. __getattr__ is expected to raise
+        (synchronously) an AttributeError if the attribute is not found.
+        However, we return an Output value, which is asynchronous and represents
+        a future value. If we try to lift an attribute that does not exist
+        therefore, we'll violate the contract by returning an Output that will
+        later blow up with an AttributeError. This means that builtins such as
+        hasattr generally won't work correctly on Outputs.
+
+        This is generally fine for most Pulumi use cases, but it can cause
+        problems when interacting with other libraries that expect attribute
+        access to behave correctly. To try and strike a balance that works in a
+        majority of cases, we raise an AttributeError immediately if the
+        attribute is one of a set that we expect not to need to lift in order to
+        make provider SDKs ergonomic (e.g., things that "look reserved" such as
+        class-private identifiers and dunder methods).
 
         :param str item: An attribute name.
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
+        if item.startswith("__"):
+            raise AttributeError(f"'Output' object has no attribute '{item}'")
 
         def lift(v: Any) -> Any:
             return UNKNOWN if isinstance(v, Unknown) else getattr(v, item)
@@ -268,7 +287,7 @@ class Output(Generic[T_co]):
 
     def __getitem__(self, key: Any) -> "Output[Any]":
         """
-        Syntax sugar for looking up attributes dynamically off of outputs.
+        Syntactic sugar for looking up attributes dynamically off of outputs.
 
         :param Any key: Key for the attribute dictionary.
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
