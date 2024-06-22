@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Suggest valid attributes with similar names to unrecognised ones when validating project definitions

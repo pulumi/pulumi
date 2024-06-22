@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Avoid an unhandled error when `dependencies` is missing from `package.json` during closure serialization

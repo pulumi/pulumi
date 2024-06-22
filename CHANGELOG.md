@@ -1,5 +1,82 @@
 # Changelog
 
+## 3.121.0 (2024-06-22)
+
+
+### Features
+
+- [cli/install] Make pulumi install work for policy packs
+  [#16438](https://github.com/pulumi/pulumi/pull/16438)
+
+- [engine] Resolve provider in the engine before passing it to transforms
+  [#16409](https://github.com/pulumi/pulumi/pull/16409)
+
+- [sdk/go] Suggest valid attributes with similar names to unrecognised ones when validating project definitions
+  [#16097](https://github.com/pulumi/pulumi/pull/16097)
+
+- [cli/new] Allow passing runtime options as args in pulumi new
+  [#16346](https://github.com/pulumi/pulumi/pull/16346)
+
+- [cli/new] Query language runtime for options during “pulumi new”
+  [#16346](https://github.com/pulumi/pulumi/pull/16346)
+
+- [cli/new] Add packagemanager prompt to pulumi new for nodejs
+  [#16417](https://github.com/pulumi/pulumi/pull/16417)
+
+- [sdk/nodejs] Detect pnpm workspaces when running pulumi install
+  [#15525](https://github.com/pulumi/pulumi/pull/15525)
+
+- [sdk/nodejs] Add options to Workspace::removeStack()
+  [#16333](https://github.com/pulumi/pulumi/pull/16333)
+
+- [sdk/python] Automatically convert requirements.txt to pyproject.toml when using Poetry
+  [#16346](https://github.com/pulumi/pulumi/pull/16346)
+
+- [sdkgen/python] Generate TypedDict types for inputs
+  [#15957](https://github.com/pulumi/pulumi/pull/15957)
+
+
+### Bug Fixes
+
+- [engine] Fix a panic when ignoring wildcard values with arrays of different length
+  [#16406](https://github.com/pulumi/pulumi/pull/16406)
+
+- [engine] Fix provider `Delete`s
+  [#16441](https://github.com/pulumi/pulumi/pull/16441)
+
+- [cli/engine] Fix --continue-on-error running indefinitely when a resource fails to be created or updated
+  [#16371](https://github.com/pulumi/pulumi/pull/16371)
+
+- [sdk/nodejs] Avoid an unhandled error when `dependencies` is missing from `package.json` during closure serialization
+  [#16433](https://github.com/pulumi/pulumi/pull/16433)
+
+- [cli/plugin] Fix plugin install command when plugin type is tool
+  [#16407](https://github.com/pulumi/pulumi/pull/16407)
+
+- [sdk/python] Fix Python SDK docs by escaping the trailing underscore in a docstring
+  [#14866](https://github.com/pulumi/pulumi/pull/14866)
+
+- [sdk/python] Don't incorrectly emit deprecation warnings for non-deprecated properties
+  [#16400](https://github.com/pulumi/pulumi/pull/16400)
+
+- [sdk/python] Handle extra CLI arguments passed policy packs plugins
+  [#16402](https://github.com/pulumi/pulumi/pull/16402)
+
+- [sdk/python] Add VIRTUAL_ENV environment variable when running inside a virtual environment
+  [#16425](https://github.com/pulumi/pulumi/pull/16425)
+
+- [sdk/python] Don't lift dunder attributes on `Output`s
+  [#16439](https://github.com/pulumi/pulumi/pull/16439)
+
+
+### Miscellaneous
+
+- [sdk/{go,nodejs,python}] Add register resource transform alias for register stack transform
+  [#16435](https://github.com/pulumi/pulumi/pull/16435)
+
+- [cli/new] Instruct the user to use 'pulumi install' when using --generate-only
+  [#16411](https://github.com/pulumi/pulumi/pull/16411)
+
 ## 3.120.0 (2024-06-12)
 
 

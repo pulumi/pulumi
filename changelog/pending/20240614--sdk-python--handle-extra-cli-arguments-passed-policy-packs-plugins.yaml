@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Handle extra CLI arguments passed policy packs plugins
