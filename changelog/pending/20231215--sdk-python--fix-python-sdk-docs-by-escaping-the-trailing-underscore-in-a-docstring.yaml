@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix Python SDK docs by escaping the trailing underscore in a docstring

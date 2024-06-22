@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/go,nodejs,python
-  description: Add register resource transform alias for register stack transform

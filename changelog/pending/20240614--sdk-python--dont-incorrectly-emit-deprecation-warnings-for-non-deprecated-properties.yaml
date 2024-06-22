@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Don't incorrectly emit deprecation warnings for non-deprecated properties
