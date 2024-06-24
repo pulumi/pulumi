@@ -188,7 +188,10 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
 // StreamInvokeResponse represents a (potentially infinite) streaming response to `streamInvoke`,
 // with facilities to gracefully cancel and clean up the stream.
 export class StreamInvokeResponse<T> implements AsyncIterable<T> {
-    constructor(private source: AsyncIterable<T>, private cancelSource: () => void) {}
+    constructor(
+        private source: AsyncIterable<T>,
+        private cancelSource: () => void,
+    ) {}
 
     // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
     public cancel() {

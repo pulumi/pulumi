@@ -63,7 +63,10 @@ export interface PulumiCommandOptions {
 }
 
 export class PulumiCommand {
-    private constructor(readonly command: string, readonly version: semver.SemVer | null) {}
+    private constructor(
+        readonly command: string,
+        readonly version: semver.SemVer | null,
+    ) {}
 
     /**
      * Get a new Pulumi instance that uses the installation in `opts.root`.

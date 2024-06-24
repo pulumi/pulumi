@@ -62,7 +62,11 @@ export class ResourceError extends Error {
         return utils.isInstance<ResourceError>(obj, "__pulumResourceError");
     }
 
-    constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {
+    constructor(
+        message: string,
+        public resource: Resource | undefined,
+        public hideStack?: boolean,
+    ) {
         super(message);
     }
 }

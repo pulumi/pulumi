@@ -25,20 +25,20 @@ export type ResolvedResource<T extends Resource> = Omit<Resolved<T>, "urn" | "ge
 export type Resolved<T> = T extends Promise<infer U1>
     ? ResolvedSimple<U1>
     : T extends OutputInstance<infer U2>
-    ? ResolvedSimple<U2>
-    : ResolvedSimple<T>;
+      ? ResolvedSimple<U2>
+      : ResolvedSimple<T>;
 
 type primitive = string | number | boolean | undefined | null;
 
 type ResolvedSimple<T> = T extends primitive
     ? T
     : T extends Array<infer U>
-    ? ResolvedArray<U>
-    : T extends Function
-    ? never
-    : T extends object
-    ? ResolvedObject<T>
-    : never;
+      ? ResolvedArray<U>
+      : T extends Function
+        ? never
+        : T extends object
+          ? ResolvedObject<T>
+          : never;
 
 type ResolvedArray<T> = Array<Resolved<T>>;
 
