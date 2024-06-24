@@ -15,10 +15,49 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestShowStackName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		full     bool
+		desc     string
+		expected string
+	}{
+		{true, "full name", "text-corp/proj1/dev"},
+		{false, "just stack name", "dev"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			args := stackArgs{showStackName: true, fullyQualifyStackNames: tt.full}
+			var output bytes.Buffer
+			s := backend.MockStack{
+				RefF: func() backend.StackReference {
+					return &backend.MockStackReference{
+						StringV: "text-corp/proj1/dev",
+						NameV:   tokens.MustParseStackName("dev"),
+					}
+				},
+			}
+
+			err := runStack(context.Background(), &s, &output, args)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected+"\n", output.String())
+		})
+	}
+}
 
 func TestStringifyOutput(t *testing.T) {
 	t.Parallel()

@@ -103,7 +103,11 @@ func newStackCmd() *cobra.Command {
 
 func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
 	if args.showStackName {
-		fmt.Fprintln(out, s.Ref().Name())
+		if args.fullyQualifyStackNames {
+			fmt.Fprintln(out, s.Ref().String())
+		} else {
+			fmt.Fprintln(out, s.Ref().Name())
+		}
 		return nil
 	}
 
