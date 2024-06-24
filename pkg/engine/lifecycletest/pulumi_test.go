@@ -5660,16 +5660,10 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 		}),
 	}
 
-	inputs := resource.PropertyMap{
-		"privileges": resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("CREATE EXTERNAL TABLE"),
-			resource.NewStringProperty("CREATE TABLE"),
-			resource.NewStringProperty("CREATE VIEW"),
-			resource.NewStringProperty("CREATE TEMPORARY TABLE"),
-			resource.NewStringProperty("USAGE"),
-		}),
-	}
+	var inputs resource.PropertyMap
+
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		inputs = inputs.Copy()
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
@@ -5683,9 +5677,24 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 	}
 	// Run the initial update.
 	project := p.GetProject()
+
+	inputs = resource.PropertyMap{
+		"privileges": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("CREATE EXTERNAL TABLE"),
+			resource.NewStringProperty("CREATE TABLE"),
+			resource.NewStringProperty("CREATE VIEW"),
+			resource.NewStringProperty("CREATE TEMPORARY TABLE"),
+			resource.NewStringProperty("USAGE"),
+		}),
+	}
 	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
+	inputs = resource.PropertyMap{
+		"privileges": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("USAGE"),
+		}),
+	}
 	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 }
