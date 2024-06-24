@@ -336,7 +336,7 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, res, changes)
 
 					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
-					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
+					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
 
 					provider := snap.Resources[1]
 					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
@@ -357,6 +357,10 @@ var languageTests = map[string]languageTest{
 
 					folder, ok := resources["dir"]
 					require.True(l, ok, "expected folder resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", folder.Type.String(), "expected archive resource")
+
+					assarc, ok := resources["assarc"]
+					require.True(l, ok, "expected asset archive resource")
 					assert.Equal(l, "asset-archive:index:ArchiveResource", folder.Type.String(), "expected archive resource")
 
 					main := filepath.Join(projectDirectory, "subdir")
@@ -393,6 +397,24 @@ var languageTests = map[string]languageTest{
 
 					assert.Equal(l, want, folder.Inputs, "expected inputs to be {value: %v}", folderValue)
 					assert.Equal(l, folder.Inputs, folder.Outputs, "expected inputs and outputs to match")
+
+					stringAsset, err := resource.NewTextAsset("file contents")
+					require.NoError(l, err)
+
+					assarcValue, err := resource.NewAssetArchiveWithWD(map[string]interface{}{
+						"string":  stringAsset,
+						"file":    assetValue,
+						"folder":  folderValue,
+						"archive": archiveValue,
+					}, main)
+					require.NoError(l, err)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": assarcValue,
+					})
+
+					assert.Equal(l, want, assarc.Inputs, "expected inputs to be {value: %v}", assarcValue)
+					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

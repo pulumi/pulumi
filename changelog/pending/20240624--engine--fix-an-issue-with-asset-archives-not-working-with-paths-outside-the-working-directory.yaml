@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix an issue with asset archives not working with paths outside the working directory.

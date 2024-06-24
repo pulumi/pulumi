@@ -276,6 +276,40 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
+	assarc, err := plugin.MarshalArchive(&resource.Archive{
+		Assets: map[string]interface{}{
+			"string": &resource.Asset{
+				Text: "file contents",
+			},
+			"file": &resource.Asset{
+				Path: "../test.txt",
+			},
+			"folder": &resource.Archive{
+				Path: "../folder",
+			},
+			"archive": &resource.Archive{
+				Path: "../archive.tar",
+			},
+		},
+	}, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal asset archive: %w", err)
+	}
+
+	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "asset-archive:index:ArchiveResource",
+		Custom: true,
+		Name:   "assarc",
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": assarc,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register resource: %w", err)
+	}
+
 	return &pulumirpc.RunResponse{}, nil
 }
 
