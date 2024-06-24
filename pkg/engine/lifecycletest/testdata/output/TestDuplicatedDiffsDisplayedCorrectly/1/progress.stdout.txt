@@ -2,8 +2,8 @@
 
 
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
- <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-privileges<{%reset%}><{%fg 3%}>~privileges<{%reset%}><{%reset%}>]
- <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-privileges<{%reset%}><{%fg 3%}>~privileges<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~privileges<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~privileges<{%reset%}><{%reset%}>]
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>

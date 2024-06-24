@@ -1,0 +1,15 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 2%}>    privileges: <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>"CREATE EXTERNAL TABLE"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [1]: <{%reset%}><{%fg 2%}>"CREATE TABLE"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [2]: <{%reset%}><{%fg 2%}>"CREATE VIEW"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [3]: <{%reset%}><{%fg 2%}>"CREATE TEMPORARY TABLE"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [4]: <{%reset%}><{%fg 2%}>"USAGE"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

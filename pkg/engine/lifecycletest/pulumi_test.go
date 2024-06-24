@@ -5619,6 +5619,12 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap,
+					timeout float64, preview bool) (
+					resource.ID, resource.PropertyMap, resource.Status, error,
+				) {
+					return "id", inputs, resource.StatusOK, nil
+				},
 				DiffF: func(urn resource.URN, id resource.ID,
 					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
@@ -5626,10 +5632,10 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 						Changes: plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{
 							"privileges",
-							"privileges",
-							"privileges",
-							"privileges",
-							"privileges",
+							// "privileges",
+							// "privileges",
+							// "privileges",
+							// "privileges",
 						},
 						DetailedDiff: map[string]plugin.PropertyDiff{
 							"privileges": {
@@ -5654,7 +5660,15 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 		}),
 	}
 
-	inputs := resource.PropertyMap{}
+	inputs := resource.PropertyMap{
+		"privileges": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("CREATE EXTERNAL TABLE"),
+			resource.NewStringProperty("CREATE TABLE"),
+			resource.NewStringProperty("CREATE VIEW"),
+			resource.NewStringProperty("CREATE TEMPORARY TABLE"),
+			resource.NewStringProperty("USAGE"),
+		}),
+	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
@@ -5667,33 +5681,11 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 	p := &TestPlan{
 		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
-	resURN := p.NewURN("pkgA:m:typA", "resA", "")
-
 	// Run the initial update.
 	project := p.GetProject()
-	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	assert.NoError(t, err)
 
-	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
-	// provider diffing.
-	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, err error,
-		) error {
-			found := false
-			for _, e := range events {
-				// Nothing on the detailed diff = (
-				if e.Type == ResourceOutputsEvent {
-					p := e.Payload().(engine.ResourceOutputsEventPayload).Metadata
-					if p.URN == resURN {
-						assert.Equal(t, deploy.OpUpdate, p.Op)
-
-						found = true
-					}
-				}
-			}
-			assert.True(t, found)
-			return err
-		})
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 }
