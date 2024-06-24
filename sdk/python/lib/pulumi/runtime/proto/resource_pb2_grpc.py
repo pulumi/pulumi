@@ -58,10 +58,10 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
-        self.RegisterProvider = channel.unary_unary(
-                '/pulumirpc.ResourceMonitor/RegisterProvider',
-                request_serializer=pulumi_dot_resource__pb2.RegisterProviderRequest.SerializeToString,
-                response_deserializer=pulumi_dot_resource__pb2.RegisterProviderResponse.FromString,
+        self.RegisterPackage = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterPackage',
+                request_serializer=pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
                 )
 
 
@@ -117,7 +117,7 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RegisterProvider(self, request, context):
+    def RegisterPackage(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -166,10 +166,10 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
-            'RegisterProvider': grpc.unary_unary_rpc_method_handler(
-                    servicer.RegisterProvider,
-                    request_deserializer=pulumi_dot_resource__pb2.RegisterProviderRequest.FromString,
-                    response_serializer=pulumi_dot_resource__pb2.RegisterProviderResponse.SerializeToString,
+            'RegisterPackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterPackage,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterPackageRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.RegisterPackageResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -319,7 +319,7 @@ class ResourceMonitor(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def RegisterProvider(request,
+    def RegisterPackage(request,
             target,
             options=(),
             channel_credentials=None,
@@ -329,8 +329,8 @@ class ResourceMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterProvider',
-            pulumi_dot_resource__pb2.RegisterProviderRequest.SerializeToString,
-            pulumi_dot_resource__pb2.RegisterProviderResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterPackage',
+            pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
+            pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

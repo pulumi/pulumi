@@ -240,6 +240,8 @@ export class RegisterResourceRequest extends jspb.Message {
     addTransforms(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
     getSupportsresultreporting(): boolean;
     setSupportsresultreporting(value: boolean): RegisterResourceRequest;
+    getPackage(): string;
+    setPackage(value: string): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -288,6 +290,7 @@ export namespace RegisterResourceRequest {
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
+        pb_package: string,
     }
 
 
@@ -712,85 +715,85 @@ export namespace TransformResponse {
     }
 }
 
-export class RegisterProviderRequest extends jspb.Message { 
+export class RegisterPackageRequest extends jspb.Message { 
     getName(): string;
-    setName(value: string): RegisterProviderRequest;
+    setName(value: string): RegisterPackageRequest;
     getVersion(): string;
-    setVersion(value: string): RegisterProviderRequest;
+    setVersion(value: string): RegisterPackageRequest;
     getPluginDownloadUrl(): string;
-    setPluginDownloadUrl(value: string): RegisterProviderRequest;
+    setPluginDownloadUrl(value: string): RegisterPackageRequest;
 
     getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
     clearPluginChecksumsMap(): void;
 
     hasParameter(): boolean;
     clearParameter(): void;
-    getParameter(): ProviderParameter | undefined;
-    setParameter(value?: ProviderParameter): RegisterProviderRequest;
+    getParameter(): PackageParameter | undefined;
+    setParameter(value?: PackageParameter): RegisterPackageRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RegisterProviderRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RegisterProviderRequest): RegisterProviderRequest.AsObject;
+    toObject(includeInstance?: boolean): RegisterPackageRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterPackageRequest): RegisterPackageRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RegisterProviderRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RegisterProviderRequest;
-    static deserializeBinaryFromReader(message: RegisterProviderRequest, reader: jspb.BinaryReader): RegisterProviderRequest;
+    static serializeBinaryToWriter(message: RegisterPackageRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterPackageRequest;
+    static deserializeBinaryFromReader(message: RegisterPackageRequest, reader: jspb.BinaryReader): RegisterPackageRequest;
 }
 
-export namespace RegisterProviderRequest {
+export namespace RegisterPackageRequest {
     export type AsObject = {
         name: string,
         version: string,
         pluginDownloadUrl: string,
 
         pluginChecksumsMap: Array<[string, Uint8Array | string]>,
-        parameter?: ProviderParameter.AsObject,
+        parameter?: PackageParameter.AsObject,
     }
 }
 
-export class RegisterProviderResponse extends jspb.Message { 
+export class RegisterPackageResponse extends jspb.Message { 
     getRef(): string;
-    setRef(value: string): RegisterProviderResponse;
+    setRef(value: string): RegisterPackageResponse;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RegisterProviderResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: RegisterProviderResponse): RegisterProviderResponse.AsObject;
+    toObject(includeInstance?: boolean): RegisterPackageResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterPackageResponse): RegisterPackageResponse.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RegisterProviderResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RegisterProviderResponse;
-    static deserializeBinaryFromReader(message: RegisterProviderResponse, reader: jspb.BinaryReader): RegisterProviderResponse;
+    static serializeBinaryToWriter(message: RegisterPackageResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterPackageResponse;
+    static deserializeBinaryFromReader(message: RegisterPackageResponse, reader: jspb.BinaryReader): RegisterPackageResponse;
 }
 
-export namespace RegisterProviderResponse {
+export namespace RegisterPackageResponse {
     export type AsObject = {
         ref: string,
     }
 }
 
-export class ProviderParameter extends jspb.Message { 
+export class PackageParameter extends jspb.Message { 
     getName(): string;
-    setName(value: string): ProviderParameter;
+    setName(value: string): PackageParameter;
     getVersion(): string;
-    setVersion(value: string): ProviderParameter;
+    setVersion(value: string): PackageParameter;
 
     hasValue(): boolean;
     clearValue(): void;
     getValue(): google_protobuf_struct_pb.Value | undefined;
-    setValue(value?: google_protobuf_struct_pb.Value): ProviderParameter;
+    setValue(value?: google_protobuf_struct_pb.Value): PackageParameter;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ProviderParameter.AsObject;
-    static toObject(includeInstance: boolean, msg: ProviderParameter): ProviderParameter.AsObject;
+    toObject(includeInstance?: boolean): PackageParameter.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageParameter): PackageParameter.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ProviderParameter, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ProviderParameter;
-    static deserializeBinaryFromReader(message: ProviderParameter, reader: jspb.BinaryReader): ProviderParameter;
+    static serializeBinaryToWriter(message: PackageParameter, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageParameter;
+    static deserializeBinaryFromReader(message: PackageParameter, reader: jspb.BinaryReader): PackageParameter;
 }
 
-export namespace ProviderParameter {
+export namespace PackageParameter {
     export type AsObject = {
         name: string,
         version: string,

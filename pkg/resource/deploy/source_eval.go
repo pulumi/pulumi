@@ -784,11 +784,6 @@ func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req p
 			}
 			return ref, nil
 		}
-		var has bool
-		req, has = rm.packageRefMap[rawProviderRef]
-		if !has {
-			return providers.Reference{}, fmt.Errorf("unknown provider package '%v'", rawProviderRef)
-		}
 	}
 
 	ref, err := defaultProviders.getDefaultProviderRef(req)
@@ -842,10 +837,10 @@ func parseProviderRequest(
 	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums, parameterization), nil
 }
 
-func (rm *resmon) RegisterProvider(ctx context.Context,
-	req *pulumirpc.RegisterProviderRequest,
-) (*pulumirpc.RegisterProviderResponse, error) {
-	logging.V(5).Infof("ResourceMonitor.RegisterProvider(%v)", req)
+func (rm *resmon) RegisterPackage(ctx context.Context,
+	req *pulumirpc.RegisterPackageRequest,
+) (*pulumirpc.RegisterPackageResponse, error) {
+	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v)", req)
 
 	// First parse the request into a ProviderRequest
 	var version *semver.Version
@@ -885,16 +880,16 @@ func (rm *resmon) RegisterProvider(ctx context.Context,
 	// See if this package is already registered, else add it to the map.
 	for uuid, candidate := range rm.packageRefMap {
 		if reflect.DeepEqual(candidate, pi) {
-			logging.V(5).Infof("ResourceMonitor.RegisterProvider(%v) matched %s", req, uuid)
-			return &pulumirpc.RegisterProviderResponse{Ref: uuid}, nil
+			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, uuid)
+			return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
 		}
 	}
 
 	// Wasn't found add it to the map
 	uuid := uuid.New().String()
 	rm.packageRefMap[uuid] = pi
-	logging.V(5).Infof("ResourceMonitor.RegisterProvider(%v) created %s", req, uuid)
-	return &pulumirpc.RegisterProviderResponse{Ref: uuid}, nil
+	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, uuid)
+	return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -1793,6 +1788,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
 		if err != nil {
 			return nil, err
+		}
+
+		reqPackage := req.GetPackage()
+		if reqPackage != "" {
+			var has bool
+			providerReq, has = rm.packageRefMap[reqPackage]
+			if !has {
+				return nil, fmt.Errorf("unknown provider package '%v'", reqPackage)
+			}
 		}
 
 		providerRef, err = rm.getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())

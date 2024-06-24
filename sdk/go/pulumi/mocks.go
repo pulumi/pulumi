@@ -270,10 +270,10 @@ func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.
 	panic("not implemented")
 }
 
-func (m *mockMonitor) RegisterProvider(ctx context.Context, in *pulumirpc.RegisterProviderRequest,
+func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,
 	opts ...grpc.CallOption,
-) (*pulumirpc.RegisterProviderResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "RegisterProvider is not implemented")
+) (*pulumirpc.RegisterPackageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "RegisterPackage is not implemented")
 }
 
 type mockEngine struct {

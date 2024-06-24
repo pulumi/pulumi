@@ -61,9 +61,9 @@ class ResourceMonitorStub:
         pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
     ]
-    RegisterProvider: grpc.UnaryUnaryMultiCallable[
-        pulumi.resource_pb2.RegisterProviderRequest,
-        pulumi.resource_pb2.RegisterProviderResponse,
+    RegisterPackage: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterPackageRequest,
+        pulumi.resource_pb2.RegisterPackageResponse,
     ]
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
@@ -118,10 +118,10 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty: ...
     
-    def RegisterProvider(
+    def RegisterPackage(
         self,
-        request: pulumi.resource_pb2.RegisterProviderRequest,
+        request: pulumi.resource_pb2.RegisterPackageRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.resource_pb2.RegisterProviderResponse: ...
+    ) -> pulumi.resource_pb2.RegisterPackageResponse: ...
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
