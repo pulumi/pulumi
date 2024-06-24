@@ -84,8 +84,8 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	<-doneChannel
 
 	if !accept {
-		assert.Equal(t, string(expectedStdout), stdout.String())
-		assert.Equal(t, string(expectedStderr), stderr.String())
+		assert.Equal(t, stdout.String(), string(expectedStdout))
+		assert.Equal(t, stderr.String(), string(expectedStderr))
 	} else {
 		err = os.WriteFile(path+suffix+".stdout.txt", stdout.Bytes(), 0o600)
 		require.NoError(t, err)

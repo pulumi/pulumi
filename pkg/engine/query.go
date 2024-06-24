@@ -94,7 +94,7 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, q Query
 	opts QueryOptions,
 ) (deploy.QuerySource, error) {
 	allPlugins, defaultProviderVersions, err := installPlugins(cancel, q.GetProject(), opts.pwd, opts.main,
-		nil, opts.plugctx, false /*returnInstallErrors*/)
+		nil, opts.plugctx, nil, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
 	}

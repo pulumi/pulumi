@@ -187,7 +187,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
+func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink, deployOpts *deploymentOptions,
 	plugins pluginSet, projectPlugins []workspace.ProjectPlugin,
 ) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
@@ -228,7 +228,7 @@ func ensurePluginsAreInstalled(ctx context.Context, d diag.Sink,
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(ctx, info)
+			return installPlugin(ctx, deployOpts, info)
 		})
 	}
 
@@ -244,7 +244,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
+func installPlugin(ctx context.Context, deployOpts *deploymentOptions, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
@@ -262,9 +262,20 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
 
+	var callback func(out string)
+	pluginID := fmt.Sprintf("%s-%s", plugin.Name, plugin.Version)
+
 	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin",
+			cmdutil.GetGlobalColorization(), callback)
 	}
+	if deployOpts != nil {
+		withProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
+			return DownloadProgressReporter(deployOpts.Events, stream, size, PluginDownload, pluginID, "Downloading plugin")
+		}
+		defer deployOpts.Events.downloadProgressEvent(PluginDownload, pluginID, "", 100, 100, true)
+	}
+
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
 		logging.V(preparePluginVerboseLog).Infof(
 			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
@@ -276,7 +287,12 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	}
 	defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
 
-	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
+	installing := fmt.Sprintf("[%s plugin %s] installing", plugin.Kind, pluginID)
+	if deployOpts != nil {
+		deployOpts.Events.downloadProgressEvent(PluginDownload, pluginID, installing, 0, 0, false)
+	} else {
+		fmt.Fprintln(os.Stderr, installing)
+	}
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)

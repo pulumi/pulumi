@@ -226,7 +226,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		var err error
 		if cmd.file == "" {
 			withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-				return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmd.color)
+				return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmd.color, nil)
 			}
 			retry := func(err error, attempt int, limit int, delay time.Duration) {
 				cmd.diag.Warningf(

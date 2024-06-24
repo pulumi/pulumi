@@ -1,9 +1,9 @@
 package terminal
 
 import (
-	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	gotty "github.com/ijc/Gotty"
 )
@@ -26,8 +26,29 @@ type termInfo interface {
 
 type noTermInfo int // canary used when no terminfo.
 
+var termOps = map[string]string{
+	"el1":   "clear-to-cursor",
+	"el":    "clear-to-end",
+	"cuu":   "cursor-up",
+	"cud":   "cursor-down",
+	"civis": "hide-cursor",
+	"cnorm": "show-cursor",
+}
+
 func (ti noTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	return "", errors.New("noTermInfo")
+	opName, ok := termOps[attr]
+	if !ok {
+		opName = attr
+	}
+	if len(params) == 0 {
+		return fmt.Sprintf("<{%%%s%%}>", opName), nil
+	}
+	elements := make([]string, 0, 1+len(params))
+	elements = append(elements, opName)
+	for _, param := range params {
+		elements = append(elements, fmt.Sprint(param))
+	}
+	return fmt.Sprintf("<{%%%s%%}>", strings.Join(elements, ":")), nil
 }
 
 type info struct {

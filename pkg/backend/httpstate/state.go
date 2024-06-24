@@ -303,9 +303,9 @@ func persistEngineEvents(
 		close(done)
 	}()
 
-	// Need to filter the engine events here to exclude any internal events.
+	// Need to filter the engine events here to exclude any internal or display only events.
 	events = channel.FilterRead(events, func(e engine.Event) bool {
-		return !e.Internal()
+		return !e.Internal() && !e.DisplayEvent()
 	})
 
 	var eventBatch []engine.Event

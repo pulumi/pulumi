@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
@@ -239,6 +240,14 @@ func (r *messageRenderer) systemMessage(payload engine.StdoutEventPayload) {
 	}
 }
 
+func (r *messageRenderer) downloadProgress(payload engine.DownloadProgressEventPayload) {
+	if r.isInteractive {
+		r.render(false)
+	} else {
+		r.writeSimpleMessage(renderDownloadProgress(payload, 80, true))
+	}
+}
+
 func (r *messageRenderer) done() {
 	if r.isInteractive {
 		r.render(false)
@@ -278,8 +287,7 @@ func (r *messageRenderer) render(done bool) {
 
 	systemID := len(rows)
 
-	printedHeader := false
-	for _, payload := range r.display.systemEventPayloads {
+	for i, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		lines := splitIntoDisplayableLines(msg)
 
@@ -287,8 +295,7 @@ func (r *messageRenderer) render(done bool) {
 			continue
 		}
 
-		if !printedHeader {
-			printedHeader = true
+		if i == 0 {
 			r.colorizeAndWriteProgress(makeActionProgress(
 				strconv.Itoa(systemID), " "))
 			systemID++
@@ -303,6 +310,25 @@ func (r *messageRenderer) render(done bool) {
 			r.colorizeAndWriteProgress(makeActionProgress(
 				strconv.Itoa(systemID), "  "+line))
 			systemID++
+		}
+	}
+
+	if len(r.display.downloadProgressPayloads) > 0 {
+		keys := make([]string, 0, len(r.display.downloadProgressPayloads))
+		for key := range r.display.downloadProgressPayloads {
+			keys = append(keys, key)
+		}
+		slices.Sort(keys)
+
+		for i, key := range keys {
+			if i == 0 {
+				r.colorizeAndWriteProgress(makeActionProgress(
+					strconv.Itoa(systemID),
+					colors.Yellow+"Downloads"+colors.Reset))
+			}
+			payload := r.display.downloadProgressPayloads[key]
+			renderedPayload := renderDownloadProgress(payload, r.terminalWidth, true)
+			r.colorizeAndWriteProgress(makeActionProgress(payload.ID, renderedPayload))
 		}
 	}
 

@@ -174,6 +174,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 	case engine.PolicyLoadEvent:
 		apiEvent.PolicyLoadEvent = &apitype.PolicyLoadEvent{}
 
+	case engine.DownloadProgressEvent:
+		apiEvent.DownloadProgressEvent = &apitype.DownloadProgressEvent{}
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}

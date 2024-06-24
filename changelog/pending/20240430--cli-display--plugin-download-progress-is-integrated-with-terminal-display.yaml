@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Plugin download progress is integrated with terminal display
