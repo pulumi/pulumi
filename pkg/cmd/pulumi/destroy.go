@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -393,7 +394,7 @@ func newDestroyCmd() *cobra.Command {
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", cmdutil.IsTruthy(os.Getenv("PULUMI_CONTINUE_ON_ERROR")),
+		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue to perform the destroy operation despite the occurrence of errors "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR env var)")
 
