@@ -340,6 +340,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
     TRANSFORMS_FIELD_NUMBER: builtins.int
     SUPPORTSRESULTREPORTING_FIELD_NUMBER: builtins.int
+    PACKAGE_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -424,6 +425,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """a list of transforms to apply to the resource before registering it."""
     supportsResultReporting: builtins.bool
     """true if the request is from an SDK that supports the result field in the response."""
+    package: builtins.str
+    """a reference from RegisterProviderRequest."""
     def __init__(
         self,
         *,
@@ -459,9 +462,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
         transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
         supportsResultReporting: builtins.bool = ...,
+        package: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "package", b"package", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -900,7 +904,7 @@ class TransformResponse(google.protobuf.message.Message):
 global___TransformResponse = TransformResponse
 
 @typing_extensions.final
-class RegisterProviderRequest(google.protobuf.message.Message):
+class RegisterPackageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
@@ -930,7 +934,7 @@ class RegisterProviderRequest(google.protobuf.message.Message):
     @property
     def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
     @property
-    def parameter(self) -> global___ProviderParameter: ...
+    def parameter(self) -> global___PackageParameter: ...
     def __init__(
         self,
         *,
@@ -938,20 +942,20 @@ class RegisterProviderRequest(google.protobuf.message.Message):
         version: builtins.str = ...,
         plugin_download_url: builtins.str = ...,
         plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
-        parameter: global___ProviderParameter | None = ...,
+        parameter: global___PackageParameter | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["parameter", b"parameter"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "parameter", b"parameter", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "version", b"version"]) -> None: ...
 
-global___RegisterProviderRequest = RegisterProviderRequest
+global___RegisterPackageRequest = RegisterPackageRequest
 
 @typing_extensions.final
-class RegisterProviderResponse(google.protobuf.message.Message):
+class RegisterPackageResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     REF_FIELD_NUMBER: builtins.int
     ref: builtins.str
-    """The UUID package reference for this registered provider package."""
+    """The UUID package reference for this registered package."""
     def __init__(
         self,
         *,
@@ -959,10 +963,10 @@ class RegisterProviderResponse(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["ref", b"ref"]) -> None: ...
 
-global___RegisterProviderResponse = RegisterProviderResponse
+global___RegisterPackageResponse = RegisterPackageResponse
 
 @typing_extensions.final
-class ProviderParameter(google.protobuf.message.Message):
+class PackageParameter(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     NAME_FIELD_NUMBER: builtins.int
@@ -982,4 +986,4 @@ class ProviderParameter(google.protobuf.message.Message):
     def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
-global___ProviderParameter = ProviderParameter
+global___PackageParameter = PackageParameter

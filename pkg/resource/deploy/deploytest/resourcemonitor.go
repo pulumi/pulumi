@@ -153,6 +153,7 @@ type ResourceOptions struct {
 	Transforms []*pulumirpc.Callback
 
 	SupportsResultReporting bool
+	Package                 string
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -283,6 +284,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SourcePosition:             sourcePosition,
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
+		Package:                    opts.Package,
 	}
 
 	ctx := context.Background()
@@ -487,9 +489,9 @@ func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) 
 }
 
 func (rm *ResourceMonitor) RegisterProvider(pkg, version, pluginDownloadURL string,
-	parameter *pulumirpc.ProviderParameter,
+	parameter *pulumirpc.PackageParameter,
 ) (string, error) {
-	resp, err := rm.resmon.RegisterProvider(context.Background(), &pulumirpc.RegisterProviderRequest{
+	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
 		Name:              pkg,
 		Version:           version,
 		PluginDownloadUrl: pluginDownloadURL,
