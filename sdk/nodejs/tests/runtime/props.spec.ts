@@ -91,7 +91,7 @@ const TestStrEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestStrEnum = typeof TestStrEnum[keyof typeof TestStrEnum];
+type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestIntEnum = {
@@ -100,7 +100,7 @@ const TestIntEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestIntEnum = typeof TestIntEnum[keyof typeof TestIntEnum];
+type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestNumEnum = {
@@ -109,7 +109,7 @@ const TestNumEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestNumEnum = typeof TestNumEnum[keyof typeof TestNumEnum];
+type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestBoolEnum = {
@@ -118,7 +118,7 @@ const TestBoolEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestBoolEnum = typeof TestBoolEnum[keyof typeof TestBoolEnum];
+type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
 
 interface TestInputs {
     aNum: number;

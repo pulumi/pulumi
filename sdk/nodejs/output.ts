@@ -339,8 +339,8 @@ function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     const copy = Array.isArray(resources)
         ? new Set(resources)
         : resources instanceof Set
-        ? new Set(resources)
-        : new Set([resources]);
+          ? new Set(resources)
+          : new Set([resources]);
     return copy;
 }
 
@@ -517,10 +517,13 @@ function outputRec(val: any): any {
             // Note: we intentionally return a new value here and not 'val'.  This ensures we get a
             // copy.  This has been behavior we've had since the beginning and there may be subtle
             // logic out there that depends on this that we would not want ot break.
-            return promisedValues.reduce((o, kvp) => {
-                o[kvp.key] = kvp.value;
-                return o;
-            }, <any>{});
+            return promisedValues.reduce(
+                (o, kvp) => {
+                    o[kvp.key] = kvp.value;
+                    return o;
+                },
+                <any>{},
+            );
         }
 
         const promisedObject = getPromisedObject(promisedValues);
@@ -816,8 +819,8 @@ export type Unwrap<T> =
     T extends Promise<infer U1>
         ? UnwrapSimple<U1>
         : T extends OutputInstance<infer U2>
-        ? UnwrapSimple<U2>
-        : UnwrapSimple<T>;
+          ? UnwrapSimple<U2>
+          : UnwrapSimple<T>;
 
 type primitive = Function | string | number | boolean | undefined | null;
 
@@ -836,12 +839,12 @@ export type UnwrapSimple<T> =
     T extends primitive
         ? T
         : T extends Resource
-        ? T
-        : T extends Array<infer U>
-        ? UnwrappedArray<U>
-        : T extends object
-        ? UnwrappedObject<T>
-        : never;
+          ? T
+          : T extends Array<infer U>
+            ? UnwrappedArray<U>
+            : T extends object
+              ? UnwrappedObject<T>
+              : never;
 
 export type UnwrappedArray<T> = Array<Unwrap<T>>;
 
@@ -1005,14 +1008,14 @@ export type Lifted<T> =
     T extends string
         ? LiftedObject<String, NonFunctionPropertyNames<String>>
         : T extends Array<infer U>
-        ? LiftedArray<U>
-        : T extends object
-        ? LiftedObject<T, NonFunctionPropertyNames<T>>
-        : // fallback to lifting no properties.  Note that `Lifted` is used in
-          //    Output<T> = OutputInstance<T> & Lifted<T>
-          // so returning an empty object just means that we're adding nothing to Output<T>.
-          // This is needed for cases like `Output<any>`.
-          {};
+          ? LiftedArray<U>
+          : T extends object
+            ? LiftedObject<T, NonFunctionPropertyNames<T>>
+            : // fallback to lifting no properties.  Note that `Lifted` is used in
+              //    Output<T> = OutputInstance<T> & Lifted<T>
+              // so returning an empty object just means that we're adding nothing to Output<T>.
+              // This is needed for cases like `Output<any>`.
+              {};
 
 // The set of property names in T that are *not* functions.
 type NonFunctionPropertyNames<T> = {
@@ -1025,8 +1028,8 @@ export type LiftedObject<T, K extends keyof T> = {
     [P in K]: T[P] extends OutputInstance<infer T1>
         ? Output<T1>
         : T[P] extends Promise<infer T2>
-        ? Output<T2>
-        : Output<T[P]>;
+          ? Output<T2>
+          : Output<T[P]>;
 };
 
 export type LiftedArray<T> = {

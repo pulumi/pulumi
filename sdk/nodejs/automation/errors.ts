@@ -70,10 +70,10 @@ export function createCommandError(result: CommandResult): CommandError {
     return notFoundRegex.test(stderr)
         ? new StackNotFoundError(result)
         : alreadyExistsRegex.test(stderr)
-        ? new StackAlreadyExistsError(result)
-        : stderr.indexOf(conflictText) >= 0
-        ? new ConcurrentUpdateError(result)
-        : stderr.indexOf(diyBackendConflictText) >= 0
-        ? new ConcurrentUpdateError(result)
-        : new CommandError(result);
+          ? new StackAlreadyExistsError(result)
+          : stderr.indexOf(conflictText) >= 0
+            ? new ConcurrentUpdateError(result)
+            : stderr.indexOf(diyBackendConflictText) >= 0
+              ? new ConcurrentUpdateError(result)
+              : new CommandError(result);
 }
