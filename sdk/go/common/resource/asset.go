@@ -88,6 +88,10 @@ func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
 	return archive.FromAssets(assets)
 }
 
+func NewAssetArchiveWithWD(assets map[string]interface{}, wd string) (*Archive, error) {
+	return archive.FromAssetsWithWD(assets, wd)
+}
+
 func NewPathArchive(path string) (*Archive, error) {
 	return archive.FromPath(path)
 }
