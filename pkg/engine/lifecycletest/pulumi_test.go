@@ -5632,10 +5632,10 @@ func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
 						Changes: plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{
 							"privileges",
-							// "privileges",
-							// "privileges",
-							// "privileges",
-							// "privileges",
+							"privileges",
+							"privileges",
+							"privileges",
+							"privileges",
 						},
 						DetailedDiff: map[string]plugin.PropertyDiff{
 							"privileges": {
