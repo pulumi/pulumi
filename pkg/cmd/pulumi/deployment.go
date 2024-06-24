@@ -144,6 +144,9 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				DeploymentSettings: apitype.DeploymentSettings{
 					SourceContext: &apitype.SourceContext{
 						Git: &apitype.SourceContextGit{
+							// Setting this by default to be included in the deployment file
+							// so it is easier to manually change by users. This will be completed
+							// by the user when this gets converted to a wizard.
 							RepoDir: ".",
 						},
 					},
@@ -164,6 +167,9 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			}
 
 			if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
+				// If it is a GitHub repo, we will configure it to be used with the App. Otherwise, we will
+				// configure it as a barebone git repository (we wont be configuring credentials at this point
+				// users can use the `set` command to configure those afterwards).
 				if vcsInfo.Kind == gitutil.GitHubHostName {
 					newStackDeployment.DeploymentSettings.GitHub = &apitype.DeploymentSettingsGitHub{
 						Repository:          fmt.Sprintf("%s/%s", vcsInfo.Owner, vcsInfo.Repo),
