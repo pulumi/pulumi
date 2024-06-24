@@ -633,7 +633,7 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&continueOnError, "continue-on-error", cmdutil.IsTruthy(os.Getenv("PULUMI_CONTINUE_ON_ERROR")),
 		"Continue updating resources even if an error is encountered "+
-			"(can also be set with PULUMI_CONTINUE_ON_ERROR env var)")
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",

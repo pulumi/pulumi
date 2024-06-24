@@ -15,7 +15,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -56,7 +55,7 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 
 	for _, command := range commands {
 		for _, test := range testCases {
-			os.Setenv("PULUMI_CONTINUE_ON_ERROR", test.EnvVarValue)
+			t.Setenv("PULUMI_CONTINUE_ON_ERROR", test.EnvVarValue)
 			cmd := command()
 			f, err := cmd.PersistentFlags().GetBool("continue-on-error")
 			assert.Nil(t, err)
