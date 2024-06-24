@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -33,13 +35,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type stackArgs struct {
+	showIDs                bool
+	showURNs               bool
+	showSecrets            bool
+	startTime              string
+	showStackName          bool
+	fullyQualifyStackNames bool
+}
+
 func newStackCmd() *cobra.Command {
-	var showIDs bool
-	var showURNs bool
-	var showSecrets bool
 	var stackName string
-	var startTime string
-	var showStackName bool
+	args := stackArgs{}
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -50,7 +57,7 @@ func newStackCmd() *cobra.Command {
 			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -61,123 +68,21 @@ func newStackCmd() *cobra.Command {
 				return err
 			}
 
-			if showStackName {
-				fmt.Printf("%s\n", s.Ref().Name())
-				return nil
-			}
-
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-			if err != nil {
-				return err
-			}
-
-			// First print general info about the current stack.
-			fmt.Printf("Current stack is %s:\n", s.Ref())
-
-			be := s.Backend()
-			cloudBe, isCloud := be.(httpstate.Backend)
-			if !isCloud || cloudBe.CloudURL() != httpstate.PulumiCloudURL {
-				fmt.Printf("    Managed by %s\n", be.Name())
-			}
-			if isCloud {
-				if cs, ok := s.(httpstate.Stack); ok {
-					fmt.Printf("    Owner: %s\n", cs.OrgName())
-					// If there is an in-flight operation, provide info.
-					if currentOp := cs.CurrentOperation(); currentOp != nil {
-						fmt.Printf("    Update in progress:\n")
-						startTime = humanize.Time(time.Unix(currentOp.Started, 0))
-						fmt.Printf("	Started: %v\n", startTime)
-						fmt.Printf("	Requested By: %s\n", currentOp.Author)
-					}
-				}
-			}
-
-			if snap != nil {
-				t := snap.Manifest.Time.Local()
-				if startTime == "" {
-					// If a stack update is not in progress
-					if !t.IsZero() && t.Before(time.Now()) {
-						// If the update time is in the future, best to not display something incorrect based on
-						// inaccurate clocks.
-						fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
-					}
-				}
-				if snap.Manifest.Version != "" {
-					fmt.Printf("    Pulumi version used: %s\n", snap.Manifest.Version)
-				}
-				for _, p := range snap.Manifest.Plugins {
-					var pluginVersion string
-					if p.Version == nil {
-						pluginVersion = "?"
-					} else {
-						pluginVersion = p.Version.String()
-					}
-					fmt.Printf("    Plugin %s [%s] version: %s\n", p.Name, p.Kind, pluginVersion)
-				}
-			} else {
-				fmt.Printf("    No updates yet; run `pulumi up`\n")
-			}
-
-			// Now show the resources.
-			var resourceCount int
-			if snap != nil {
-				resourceCount = len(snap.Resources)
-			}
-			fmt.Printf("Current stack resources (%d):\n", resourceCount)
-			if resourceCount == 0 {
-				fmt.Printf("    No resources currently in this stack\n")
-			} else {
-				rows, ok := renderTree(snap, showURNs, showIDs)
-				if !ok {
-					for _, res := range snap.Resources {
-						rows = append(rows, renderResourceRow(res, "", "    ", showURNs, showIDs))
-					}
-				}
-
-				printTable(cmdutil.Table{
-					Headers: []string{"TYPE", "NAME"},
-					Rows:    rows,
-					Prefix:  "    ",
-				}, nil)
-
-				outputs, err := getStackOutputs(snap, showSecrets)
-				if err == nil {
-					fmt.Printf("\n")
-					_ = fprintStackOutputs(os.Stdout, outputs)
-					// stdout error ignored
-				}
-
-				if showSecrets {
-					log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
-				}
-			}
-
-			// Add a link to the pulumi.com console page for this stack, if it has one.
-			if isCloud {
-				if consoleURL, err := cloudBe.StackConsoleURL(s.Ref()); err == nil {
-					fmt.Printf("\n")
-					fmt.Printf("More information at: %s\n", consoleURL)
-				}
-			}
-
-			fmt.Printf("\n")
-
-			fmt.Printf("Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones\n")
-
-			return nil
+			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
+			return runStack(ctx, s, os.Stdout, args)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVarP(
-		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
+		&args.showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.Flags().BoolVarP(
-		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
+		&args.showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 	cmd.Flags().BoolVar(
-		&showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
+		&args.showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 	cmd.Flags().BoolVar(
-		&showStackName, "show-name", false, "Display only the stack name")
+		&args.showStackName, "show-name", false, "Display only the stack name")
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
@@ -194,6 +99,107 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackUnselectCmd())
 
 	return cmd
+}
+
+func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
+	if args.showStackName {
+		fmt.Fprintln(out, s.Ref().Name())
+		return nil
+	}
+
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(out, "Current stack is %s:\n", s.Ref())
+
+	be := s.Backend()
+	cloudBe, isCloud := be.(httpstate.Backend)
+	if !isCloud || cloudBe.CloudURL() != httpstate.PulumiCloudURL {
+		fmt.Fprintf(out, "    Managed by %s\n", be.Name())
+	}
+	if isCloud {
+		if cs, ok := s.(httpstate.Stack); ok {
+			fmt.Fprintf(out, "    Owner: %s\n", cs.OrgName())
+
+			if currentOp := cs.CurrentOperation(); currentOp != nil {
+				fmt.Fprintf(out, "    Update in progress:\n")
+				args.startTime = humanize.Time(time.Unix(currentOp.Started, 0))
+				fmt.Fprintf(out, "	Started: %v\n", args.startTime)
+				fmt.Fprintf(out, "	Requested By: %s\n", currentOp.Author)
+			}
+		}
+	}
+
+	if snap != nil {
+		t := snap.Manifest.Time.Local()
+		if args.startTime == "" {
+			if !t.IsZero() && t.Before(time.Now()) {
+				fmt.Fprintf(out, "    Last updated: %s (%v)\n", humanize.Time(t), t)
+			}
+		}
+		if snap.Manifest.Version != "" {
+			fmt.Fprintf(out, "    Pulumi version used: %s\n", snap.Manifest.Version)
+		}
+		for _, p := range snap.Manifest.Plugins {
+			var pluginVersion string
+			if p.Version == nil {
+				pluginVersion = "?"
+			} else {
+				pluginVersion = p.Version.String()
+			}
+			fmt.Fprintf(out, "    Plugin %s [%s] version: %s\n", p.Name, p.Kind, pluginVersion)
+		}
+	} else {
+		fmt.Fprintf(out, "    No updates yet; run `pulumi up`\n")
+	}
+
+	var resourceCount int
+	if snap != nil {
+		resourceCount = len(snap.Resources)
+	}
+	fmt.Fprintf(out, "Current stack resources (%d):\n", resourceCount)
+	if resourceCount == 0 {
+		fmt.Fprintf(out, "    No resources currently in this stack\n")
+	} else {
+		rows, ok := renderTree(snap, args.showURNs, args.showIDs)
+		if !ok {
+			for _, res := range snap.Resources {
+				rows = append(rows, renderResourceRow(res, "", "    ", args.showURNs, args.showIDs))
+			}
+		}
+
+		printTable(cmdutil.Table{
+			Headers: []string{"TYPE", "NAME"},
+			Rows:    rows,
+			Prefix:  "    ",
+		}, nil)
+
+		outputs, err := getStackOutputs(snap, args.showSecrets)
+		if err == nil {
+			fmt.Fprintf(out, "\n")
+			_ = fprintStackOutputs(os.Stdout, outputs)
+
+		}
+
+		if args.showSecrets {
+			log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
+		}
+	}
+
+	if isCloud {
+		if consoleURL, err := cloudBe.StackConsoleURL(s.Ref()); err == nil {
+			fmt.Fprintf(out, "\n")
+			fmt.Fprintf(out, "More information at: %s\n", consoleURL)
+		}
+	}
+
+	fmt.Fprintf(out, "\n")
+
+	fmt.Fprintf(out, "Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones\n")
+
+	return nil
 }
 
 func fprintStackOutputs(w io.Writer, outputs map[string]interface{}) error {
