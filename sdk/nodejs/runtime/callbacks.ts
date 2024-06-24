@@ -373,12 +373,16 @@ export class CallbackServer implements ICallbackServer {
         this.registerTransform(transform)
             .then(
                 (req) => {
-                    this._monitor.registerStackTransform(req, (err, _) => {
-                        if (err !== null) {
-                            // Remove this from the list of callbacks given we didn't manage to actually register it.
-                            this._callbacks.delete(req.getToken());
-                            return;
-                        }
+                    return new Promise((resolve, reject) => {
+                        this._monitor.registerStackTransform(req, (err, _) => {
+                            if (err !== null) {
+                                // Remove this from the list of callbacks given we didn't manage to actually register it.
+                                this._callbacks.delete(req.getToken());
+                                reject();
+                            } else {
+                                resolve();
+                            }
+                        });
                     });
                 },
                 (err) => log.error(`failed to register stack transform: ${err}`),
