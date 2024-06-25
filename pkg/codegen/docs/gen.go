@@ -1750,24 +1750,18 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 				example = ""
 			}
 			creationExampleSyntax["typescript"] = example
-		} else {
-			creationExampleSyntax["typescript"] = ""
 		}
 		if example, found := dctx.constructorSyntaxData.python.resources[r.Token]; found {
 			if strings.Contains(example, "not_implemented") || strings.Contains(example, "PANIC") {
 				example = ""
 			}
 			creationExampleSyntax["python"] = example
-		} else {
-			creationExampleSyntax["python"] = ""
 		}
 		if example, found := dctx.constructorSyntaxData.csharp.resources[r.Token]; found {
 			if strings.Contains(example, "NotImplemented") || strings.Contains(example, "PANIC") {
 				example = ""
 			}
 			creationExampleSyntax["csharp"] = example
-		} else {
-			creationExampleSyntax["csharp"] = ""
 		}
 		if example, found := dctx.constructorSyntaxData.golang.resources[r.Token]; found {
 			modified := strings.ReplaceAll(example, "_, err =", "example, err :=")
@@ -1776,18 +1770,12 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 				modified = ""
 			}
 			creationExampleSyntax["go"] = modified
-		} else {
-			creationExampleSyntax["go"] = ""
 		}
 		if example, found := dctx.constructorSyntaxData.java.resources[r.Token]; found {
 			creationExampleSyntax["java"] = example
-		} else {
-			creationExampleSyntax["java"] = ""
 		}
 		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
 			creationExampleSyntax["yaml"] = example
-		} else {
-			creationExampleSyntax["yaml"] = ""
 		}
 	}
 
