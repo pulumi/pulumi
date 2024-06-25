@@ -406,7 +406,7 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 			}
 		}
 		if pythonBin == "" {
-			t.Skipf("Skipping test: could not find python or python executable")
+			t.Skipf("Skipping test: could not find python3 or python executable")
 			return nil
 		}
 		return exec.Command(pythonBin, append([]string{src}, p.args...)...) //nolint:gosec
