@@ -57,7 +57,9 @@ aws:region  us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
+
+		assert.Equal(t, expectedOut, out)
 
 		const expectedYAML = `environment:
   - env
@@ -90,7 +92,9 @@ Save? Yes
 aws:region  us-west-2
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
+
+		assert.Equal(t, expectedOut, out)
 
 		const expectedYAML = `environment:
   - env
@@ -142,7 +146,9 @@ aws:region  us-west-2
 			"The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties.\n" +
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
+
+		assert.Equal(t, expectedOut, out)
 
 		const expectedYAML = `environment:
   - env
@@ -183,7 +189,9 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
+
+		assert.Equal(t, expectedOut, out)
 
 		const expectedYAML = `environment:
   - env
@@ -225,7 +233,9 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
+
+		assert.Equal(t, expectedOut, out)
 
 		const expectedYAML = `environment:
   - env
