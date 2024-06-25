@@ -1229,6 +1229,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				opText = "imported"
 			case deploy.OpImportReplacement:
 				opText = "imported replacement"
+			case deploy.OpRemovePendingReplace:
+				opText = ""
 			default:
 				contract.Failf("Unrecognized resource step op: %v", op)
 				return ""
@@ -1434,6 +1436,8 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			opText = "importing"
 		case deploy.OpImportReplacement:
 			opText = "importing replacement"
+		case deploy.OpRemovePendingReplace:
+			opText = ""
 		default:
 			contract.Failf("Unrecognized resource step op: %v", op)
 			return ""
