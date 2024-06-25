@@ -2,9 +2,10 @@ import signal
 import sys
 import time
 
+signal_received = False
+
 def signal_handler(signal, frame):
-    print("exiting cleanly", flush=True)
-    sys.exit(0)
+    signal_received = True
 
 signal.signal(signal.SIGINT, signal_handler)
 if hasattr(signal, "SIGBREAK"):
@@ -17,6 +18,9 @@ print("ready", flush=True)
 # so we'll sleep in small increments.
 timeout = 3.0
 while timeout > 0:
+    if signal_received:
+        print("exiting cleanly", flush=True)
+        sys.exit(0)
     time.sleep(0.05)
     timeout -= 0.05
 
