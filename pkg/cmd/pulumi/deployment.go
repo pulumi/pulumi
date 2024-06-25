@@ -100,7 +100,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Use:        "init",
 		SuggestFor: []string{"new", "create"},
 		Args:       cmdutil.ExactArgs(0),
-		Short:      "Initializes the stack deployment settings file",
+		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -205,7 +205,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull",
 		Args:  cmdutil.ExactArgs(0),
-		Short: "Pulls the stack's deployment settings from Pulumi Cloud and updates the deployment yaml file",
+		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -264,7 +264,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Args:       cmdutil.ExactArgs(0),
-		Short:      "Updates the stack's deployment settings with the data in the deployment yaml file",
+		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -319,7 +319,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Aliases:    []string{"down", "dn"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
 		Args:       cmdutil.ExactArgs(0),
-		Short:      "Deletes all the stack deployment settings",
+		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
