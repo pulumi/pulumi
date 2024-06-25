@@ -393,7 +393,22 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 		return exec.Command(nodeBin, append([]string{src}, p.args...)...)
 
 	case pythonTestProgram:
-		pythonBin := lookPathOrSkip(t, "python3")
+		pythonCmds := []string{"python3", "python"}
+		if runtime.GOOS == "windows" {
+			pythonCmds = []string{"python", "python3"}
+		}
+		pythonBin := ""
+		for _, bin := range pythonCmds {
+			bin, err := exec.LookPath(bin)
+			if err == nil {
+				pythonBin = bin
+				break
+			}
+		}
+		if pythonBin == "" {
+			t.Skipf("Skipping test: could not find python or python executable")
+			return nil
+		}
 		return exec.Command(pythonBin, append([]string{src}, p.args...)...)
 
 	default:
