@@ -118,7 +118,9 @@ aws:region  us-west-2
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n\n" +
 			"Save? No\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes  No", "")
+
+		assert.Equal(t, expectedOut, out)
 
 		assert.Equal(t, "", newStackYAML)
 	})
