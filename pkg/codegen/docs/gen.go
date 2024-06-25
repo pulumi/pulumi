@@ -1747,47 +1747,35 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	if !r.IsProvider && err == nil {
 		if example, found := dctx.constructorSyntaxData.typescript.resources[r.Token]; found {
 			if strings.Contains(example, "notImplemented") || strings.Contains(example, "PANIC") {
-				example = "Coming soon!"
+				example = ""
 			}
 			creationExampleSyntax["typescript"] = example
-		} else {
-			creationExampleSyntax["typescript"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.python.resources[r.Token]; found {
 			if strings.Contains(example, "not_implemented") || strings.Contains(example, "PANIC") {
-				example = "Coming soon!"
+				example = ""
 			}
 			creationExampleSyntax["python"] = example
-		} else {
-			creationExampleSyntax["python"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.csharp.resources[r.Token]; found {
 			if strings.Contains(example, "NotImplemented") || strings.Contains(example, "PANIC") {
-				example = "Coming soon!"
+				example = ""
 			}
 			creationExampleSyntax["csharp"] = example
-		} else {
-			creationExampleSyntax["csharp"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.golang.resources[r.Token]; found {
 			modified := strings.ReplaceAll(example, "_, err =", "example, err :=")
 			modified = strings.ReplaceAll(modified, "_, err :=", "example, err :=")
 			if strings.Contains(modified, "notImplemented") || strings.Contains(modified, "PANIC") {
-				modified = "Coming soon!"
+				modified = ""
 			}
 			creationExampleSyntax["go"] = modified
-		} else {
-			creationExampleSyntax["go"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.java.resources[r.Token]; found {
 			creationExampleSyntax["java"] = example
-		} else {
-			creationExampleSyntax["java"] = "Coming soon!"
 		}
 		if example, found := dctx.constructorSyntaxData.yaml.resources[collapseYAMLToken(r.Token)]; found {
 			creationExampleSyntax["yaml"] = example
-		} else {
-			creationExampleSyntax["yaml"] = "Coming soon!"
 		}
 	}
 

@@ -112,9 +112,9 @@ Resources are created with functions called constructors. To learn more about de
 </pulumi-choosable>
 </div>
 
-{{ if ne (len .CreationExampleSyntax) 0 }}
+{{ if and (ne (len .CreationExampleSyntax) 0) (and (ne (index .CreationExampleSyntax "typescript") "") (ne (index .CreationExampleSyntax "python") "") (ne (index .CreationExampleSyntax "java") "") (ne (index .CreationExampleSyntax "go") "") (ne (index .CreationExampleSyntax "csharp") "") (ne (index .CreationExampleSyntax "yaml") "")) }}
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 
