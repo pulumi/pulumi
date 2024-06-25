@@ -619,7 +619,10 @@ func newImportCmd() *cobra.Command {
 			"            {\n" +
 			"                ...\n" +
 			"            }\n" +
-			"        ]\n" +
+			"        ],\n" +
+			"        \"ancestorTypes\": {\n" +
+			"            \"child-type-token\": [\"ancestor-type-token1\", \"ancestor-type-token2\"]\n" +
+			"         },\n" +
 			"    }\n" +
 			"\n" +
 			"The name table maps language names to parent and provider URNs. These names are\n" +
@@ -645,6 +648,11 @@ func newImportCmd() *cobra.Command {
 			"\n" +
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n" +
+			"\n" +
+			"The ancestorTypes map is an optional field that maps child types to their ancestor types.\n" +
+			"When generating code from the import, the generator will use this map to guess input values of \n" +
+			"the child resource that correspond with outputs of the specified ancestor resources.\n" +
+			"The code generator will then replace the inputs to symbolic references of outputs of the ancestor types.\n" +
 			"\n" +
 			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
