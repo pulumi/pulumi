@@ -217,7 +217,7 @@ Resources are created with functions called constructors. To learn more about de
 
 
 
-### Example
+### Constructor example
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
