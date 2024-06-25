@@ -1,10 +1,12 @@
 import signal
 import sys
 import time
+import os
 
 signal_received = False
 
 def signal_handler(signal, frame):
+    global signal_received
     signal_received = True
 
 signal.signal(signal.SIGINT, signal_handler)

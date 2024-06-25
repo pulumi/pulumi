@@ -393,7 +393,7 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 		return exec.Command(nodeBin, append([]string{src}, p.args...)...)
 
 	case pythonTestProgram:
-		pythonBin := lookPathOrSkip(t, "python")
+		pythonBin := lookPathOrSkip(t, "python3")
 		return exec.Command(pythonBin, append([]string{src}, p.args...)...)
 
 	default:
