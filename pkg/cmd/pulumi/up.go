@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -631,8 +632,9 @@ func newUpCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", false,
-		"Continue updating resources even if an error is encountered")
+		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
+		"Continue updating resources even if an error is encountered "+
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
