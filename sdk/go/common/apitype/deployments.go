@@ -149,14 +149,14 @@ type SourceContext struct {
 }
 
 type SourceContextGit struct {
-	RepoURL string `json:"repoURL" yaml:"repoURL"`
+	RepoURL string `json:"repoURL" yaml:"repoURL,omitempty"`
 
 	Branch string `json:"branch" yaml:"branch"`
 
 	// (optional) RepoDir is the directory to work from in the project's source repository
 	// where Pulumi.yaml is located. It is used in case Pulumi.yaml is not
 	// in the project source root.
-	RepoDir string `json:"repoDir,omitempty" yaml:"repoDir"`
+	RepoDir string `json:"repoDir,omitempty" yaml:"repoDir,omitempty"`
 
 	// (optional) Commit is the hash of the commit to deploy. If used, HEAD will be in detached mode. This
 	// is mutually exclusive with the Branch setting. Either value needs to be specified.
@@ -205,13 +205,13 @@ type OperationContext struct {
 	// PreRunCommands is an optional list of arbitrary commands to run before Pulumi
 	// is invoked.
 	// ref: https://github.com/pulumi/pulumi/issues/9397
-	PreRunCommands []string `json:"preRunCommands" yaml:"preRunCommands"`
+	PreRunCommands []string `json:"preRunCommands" yaml:"preRunCommands,omitempty"`
 
 	// Operation is what we plan on doing.
-	Operation PulumiOperation `json:"operation" yaml:"operation"`
+	Operation PulumiOperation `json:"operation"`
 
 	// EnvironmentVariables contains environment variables to be applied during the execution.
-	EnvironmentVariables map[string]SecretValue `json:"environmentVariables" yaml:"environmentVariables"`
+	EnvironmentVariables map[string]SecretValue `json:"environmentVariables" yaml:"environmentVariables,omitempty"`
 
 	// Options is a bag of settings to specify or override default behavior
 	Options *OperationContextOptions `json:"options,omitempty" yaml:"options,omitempty"`
@@ -221,7 +221,7 @@ type OperationContext struct {
 type OperationContextOptions struct {
 	SkipInstallDependencies     bool   `json:"skipInstallDependencies" yaml:"skipInstallDependencies"`
 	SkipIntermediateDeployments bool   `json:"skipIntermediateDeployments" yaml:"skipIntermediateDeployments"`
-	Shell                       string `json:"shell" yaml:"shell"`
+	Shell                       string `json:"shell" yaml:"shell,omitempty"`
 	DeleteAfterDestroy          bool   `json:"deleteAfterDestroy" yaml:"deleteAfterDestroy"`
 	RemediateIfDriftDetected    bool   `json:"remediateIfDriftDetected" yaml:"remediateIfDriftDetected"`
 }
