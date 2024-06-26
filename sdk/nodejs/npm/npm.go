@@ -3,6 +3,7 @@ package npm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,10 +22,16 @@ var _ PackageManager = &npmManager{}
 
 func newNPM() (*npmManager, error) {
 	npmPath, err := exec.LookPath("npm")
-	instance := &npmManager{
-		executable: npmPath,
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return nil, fmt.Errorf("Could not find `npm` executable.\n" +
+				"Install npm from https://docs.npmjs.com/downloading-and-installing-node-js-and-npm and make sure it is in your PATH.")
+		}
+		return nil, err
 	}
-	return instance, err
+	return &npmManager{
+		executable: npmPath,
+	}, nil
 }
 
 func (node *npmManager) Name() string {

@@ -32,7 +32,8 @@ var _ Toolchain = &poetry{}
 func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
 	if err != nil {
-		return nil, fmt.Errorf("poetry not found on path: %w", err)
+		return nil, fmt.Errorf("Could not find `poetry` executable.\n" +
+			"Install poetry from https://python-poetry.org/ or set the toolchain option in Pulumi.yaml to `pip`.")
 	}
 	logging.V(9).Infof("Python toolchain: using poetry at %s in %s", poetryPath, directory)
 	return &poetry{

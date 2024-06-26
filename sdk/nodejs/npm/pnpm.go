@@ -17,6 +17,7 @@ package npm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,10 +36,16 @@ var _ PackageManager = &pnpmManager{}
 
 func newPnpm() (*pnpmManager, error) {
 	pnpmPath, err := exec.LookPath("pnpm")
-	instance := &pnpmManager{
-		executable: pnpmPath,
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return nil, fmt.Errorf("Could not find `pnpm` executable.\n" +
+				"Install pnpm from https://pnpm.io/installation and make sure it is in your PATH.")
+		}
+		return nil, err
 	}
-	return instance, err
+	return &pnpmManager{
+		executable: pnpmPath,
+	}, nil
 }
 
 func (pnpm *pnpmManager) Name() string {
