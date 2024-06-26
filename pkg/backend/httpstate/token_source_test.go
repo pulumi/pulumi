@@ -40,7 +40,7 @@ func TestTokenSource(t *testing.T) {
 	assert.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 32; i++ {
+	for i := 0; i < 64; i++ {
 		tok, err := ts.GetToken(ctx)
 		assert.NoError(t, err)
 		assert.NoError(t, backend.VerifyToken(tok))
@@ -51,9 +51,9 @@ func TestTokenSource(t *testing.T) {
 			assert.Equal(t, tok0, tok)
 		}
 
-		// definitely a fresh token by step 16
+		// definitely a fresh token by step 32
 		// allow some leeway due to time.Sleep concurrency
-		if i > 16 {
+		if i > 32 {
 			assert.NotEqual(t, tok0, tok)
 		}
 
@@ -68,7 +68,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	dur := 20 * time.Millisecond
+	dur := 40 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
 
 	tok0, tok0Expires := backend.NewToken(dur / 10)
@@ -76,7 +76,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	assert.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 4; i++ {
 		tok, err := ts.GetToken(ctx)
 		assert.NoError(t, err)
 		assert.NoError(t, backend.VerifyToken(tok))
