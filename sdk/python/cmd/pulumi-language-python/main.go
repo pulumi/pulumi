@@ -934,18 +934,20 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	toolchain, hasToolchain := rawOpts["toolchain"]
 
 	if !hasToolchain {
+		pipOption := &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+			StringValue: "pip",
+			DisplayName: "Pip",
+		}
+		// Pip is always available in a Python installation or virtual environment.
+		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
+		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
 			Description: "The toolchain to use for installing dependencies and running the program",
 			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
-				{StringValue: "pip", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
-				{StringValue: "poetry", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
-			},
-			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
-				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-				StringValue: "pip",
-			},
+			Choices:     choices,
+			Default:     pipOption,
 		})
 	}
 

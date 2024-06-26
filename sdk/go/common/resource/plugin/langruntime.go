@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
@@ -26,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -205,6 +209,7 @@ type RuntimeOptionValue struct {
 	PromptType  RuntimeOptionType
 	StringValue string
 	Int32Value  int32
+	DisplayName string
 }
 
 func (v RuntimeOptionValue) Value() interface{} {
@@ -250,6 +255,7 @@ func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOpt
 			PromptType:  RuntimeOptionType(choice.PromptType),
 			StringValue: choice.StringValue,
 			Int32Value:  choice.Int32Value,
+			DisplayName: choice.DisplayName,
 		})
 	}
 
@@ -259,6 +265,7 @@ func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOpt
 			PromptType:  RuntimeOptionType(p.Default.PromptType),
 			StringValue: p.Default.StringValue,
 			Int32Value:  p.Default.Int32Value,
+			DisplayName: p.Default.DisplayName,
 		}
 	}
 
@@ -269,4 +276,45 @@ func UnmarshallRuntimeOptionPrompt(p *pulumirpc.RuntimeOptionPrompt) (RuntimeOpt
 		Default:     defaultValue,
 		PromptType:  RuntimeOptionType(p.PromptType),
 	}, nil
+}
+
+// MakeRuntimeOptionPromptChoices creates a list of runtime option values from a list of executable names.
+// If an executable is not found, it will be listed with a `[not found]` suffix at the end of the list.
+func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue {
+	type packagemanagers struct {
+		name  string
+		found bool
+	}
+	pms := []packagemanagers{}
+	for _, pm := range executables {
+		found := false
+		if _, err := exec.LookPath(pm); err != nil {
+			found = true
+		}
+		pms = append(pms, packagemanagers{pm, found})
+	}
+
+	sort.SliceStable(pms, func(i, j int) bool {
+		// Don't reorder if both are found or both are not found.
+		if pms[i].found == pms[j].found {
+			return false
+		}
+		// pms[i] is less than pms[j] if pms[i] is not found.
+		return !pms[i].found
+	})
+
+	choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{}
+	caser := cases.Title(language.English)
+	for _, pm := range pms {
+		displayName := caser.String(pm.name)
+		if pm.found {
+			displayName += " [not found]"
+		}
+		choices = append(choices, &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+			StringValue: pm.name,
+			DisplayName: displayName,
+		})
+	}
+	return choices
 }

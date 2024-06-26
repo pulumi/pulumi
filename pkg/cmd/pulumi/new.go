@@ -907,8 +907,8 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 				// Map choice display string to the actual value
 				choiceMap := make(map[string]interface{}, len(optionPrompt.Choices))
 				for _, choice := range optionPrompt.Choices {
-					choices = append(choices, choice.String())
-					choiceMap[choice.String()] = choice.Value()
+					choices = append(choices, choice.DisplayName)
+					choiceMap[choice.DisplayName] = choice.Value()
 				}
 
 				var response string
