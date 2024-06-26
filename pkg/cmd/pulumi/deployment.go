@@ -77,7 +77,6 @@ func newDeploymentRunCmd() *cobra.Command {
 	remoteArgs := RemoteArgs{}
 
 	var stack string
-	var jsonDisplay bool
 	var suppressPermalink string
 
 	cmd := &cobra.Command{
@@ -99,8 +98,7 @@ func newDeploymentRunCmd() *cobra.Command {
 			}
 
 			display := display.Options{
-				Color:       cmdutil.GetGlobalColorization(),
-				JSONDisplay: jsonDisplay,
+				Color: cmdutil.GetGlobalColorization(),
 				// we only suppress permalinks if the user passes true. the default is an empty string
 				// which we pass as 'false'
 				SuppressPermalink: suppressPermalink == "true",
@@ -144,10 +142,6 @@ func newDeploymentRunCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-
-	cmd.Flags().BoolVarP(
-		&jsonDisplay, "json", "j", false,
-		"Serialize the update diffs, operations, and overall output as JSON")
 
 	return cmd
 }
