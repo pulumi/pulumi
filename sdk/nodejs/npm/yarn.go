@@ -26,7 +26,7 @@ func newYarnClassic() (*yarnClassic, error) {
 	yarnPath, err := exec.LookPath("yarn")
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			return nil, fmt.Errorf("Could not find `yarn` executable.\n" +
+			return nil, errors.New("Could not find `yarn` executable.\n" +
 				"Install yarn from https://classic.yarnpkg.com/en/docs/install and make sure it is in your PATH.")
 		}
 		return nil, err

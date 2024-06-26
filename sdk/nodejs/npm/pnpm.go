@@ -38,7 +38,7 @@ func newPnpm() (*pnpmManager, error) {
 	pnpmPath, err := exec.LookPath("pnpm")
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			return nil, fmt.Errorf("Could not find `pnpm` executable.\n" +
+			return nil, errors.New("Could not find `pnpm` executable.\n" +
 				"Install pnpm from https://pnpm.io/installation and make sure it is in your PATH.")
 		}
 		return nil, err
