@@ -198,3 +198,7 @@ func (urn URN) Rename(newName string) URN {
 		newName,
 	)
 }
+
+func (urn URN) RenameStack(stack tokens.StackName) URN {
+	return New(stack.Q(), urn.Project(), urn.QualifiedType(), urn.Type(), urn.Name())
+}
