@@ -21,13 +21,15 @@ import (
 )
 
 func TestMakeExecutablePromptChoices(t *testing.T) {
+	t.Parallel()
+
 	// Not found executables come after the found ones, and have a [not found] suffix.
-	choices := MakeExecutablePromptChoices("exectuable_that_does_not_exist_in_path", "ls")
+	choices := MakeExecutablePromptChoices("executable_that_does_not_exist_in_path", "ls")
 	require.Equal(t, 2, len(choices))
 	require.Equal(t, choices[0].StringValue, "ls")
 	require.Equal(t, choices[0].DisplayName, "Ls")
-	require.Equal(t, choices[1].StringValue, "exectuable_that_does_not_exist_in_path")
-	require.Equal(t, choices[1].DisplayName, "Exectuable_that_does_not_exist_in_path [not found]")
+	require.Equal(t, choices[1].StringValue, "executable_that_does_not_exist_in_path")
+	require.Equal(t, choices[1].DisplayName, "Executable_that_does_not_exist_in_path [not found]")
 
 	// Executables are not reordered within their group.
 	choices = MakeExecutablePromptChoices("ls", "cat", "zzz_does_not_exist", "aaa_does_not_exist")
