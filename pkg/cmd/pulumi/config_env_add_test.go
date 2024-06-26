@@ -31,6 +31,15 @@ func TestConfigEnvAddCmd(t *testing.T) {
 	projectYAML := `name: test
 runtime: yaml`
 
+	// The library sending the confirmation prompt may be able to print the prompt
+	// in full before recognizing the character we send to stdin for the test.
+	// There's nothing really wrong with that other than it makes the tests flake.
+	// This cleans the extra output from stdout in case it happens, as it either
+	// happening or not happening is fine.
+	cleanStdoutIncludingPrompt := func(stdout string) string {
+		return strings.ReplaceAll(cleanStdout(stdout), "Save? ▸Yes  No", "")
+	}
+
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
 
@@ -57,9 +66,7 @@ aws:region  us-west-2
 Save? Yes
 `
 
-		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
-
-		assert.Equal(t, expectedOut, out)
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -92,9 +99,7 @@ Save? Yes
 aws:region  us-west-2
 `
 
-		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
-
-		assert.Equal(t, expectedOut, out)
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -122,9 +127,7 @@ aws:region  us-west-2
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n\n" +
 			"Save? No\n"
 
-		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes  No", "")
-
-		assert.Equal(t, expectedOut, out)
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		assert.Equal(t, "", newStackYAML)
 	})
@@ -146,9 +149,7 @@ aws:region  us-west-2
 			"The stack's environment does not define the `environmentVariables`, `files`, or `pulumiConfig` properties.\n" +
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n"
 
-		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
-
-		assert.Equal(t, expectedOut, out)
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -189,9 +190,7 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
-
-		assert.Equal(t, expectedOut, out)
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -233,9 +232,7 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		out := strings.ReplaceAll(cleanStdout(stdout.String()), "Save? ▸Yes No", "")
-
-		assert.Equal(t, expectedOut, out)
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
