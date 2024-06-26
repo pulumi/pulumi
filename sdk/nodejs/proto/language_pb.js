@@ -3728,7 +3728,8 @@ proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.toObject = function(inclu
   var f, obj = {
     prompttype: jspb.Message.getFieldWithDefault(msg, 1, 0),
     stringvalue: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    int32value: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    int32value: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    displayname: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -3777,6 +3778,10 @@ proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.deserializeBinaryFromRead
       var value = /** @type {number} */ (reader.readInt32());
       msg.setInt32value(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDisplayname(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3824,6 +3829,13 @@ proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.serializeBinaryToWriter =
   if (f !== 0) {
     writer.writeInt32(
       3,
+      f
+    );
+  }
+  f = message.getDisplayname();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -3881,6 +3893,24 @@ proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.prototype.getInt32value =
  */
 proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.prototype.setInt32value = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
+};
+
+
+/**
+ * optional string displayName = 4;
+ * @return {string}
+ */
+proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.prototype.getDisplayname = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue} returns this
+ */
+proto.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue.prototype.setDisplayname = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

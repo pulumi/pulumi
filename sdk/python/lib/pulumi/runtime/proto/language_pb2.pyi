@@ -458,17 +458,20 @@ class RuntimeOptionPrompt(google.protobuf.message.Message):
         PROMPTTYPE_FIELD_NUMBER: builtins.int
         STRINGVALUE_FIELD_NUMBER: builtins.int
         INT32VALUE_FIELD_NUMBER: builtins.int
+        DISPLAYNAME_FIELD_NUMBER: builtins.int
         promptType: global___RuntimeOptionPrompt.RuntimeOptionType.ValueType
         stringValue: builtins.str
         int32Value: builtins.int
+        displayName: builtins.str
         def __init__(
             self,
             *,
             promptType: global___RuntimeOptionPrompt.RuntimeOptionType.ValueType = ...,
             stringValue: builtins.str = ...,
             int32Value: builtins.int = ...,
+            displayName: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["int32Value", b"int32Value", "promptType", b"promptType", "stringValue", b"stringValue"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["displayName", b"displayName", "int32Value", b"int32Value", "promptType", b"promptType", "stringValue", b"stringValue"]) -> None: ...
 
     KEY_FIELD_NUMBER: builtins.int
     DESCRIPTION_FIELD_NUMBER: builtins.int

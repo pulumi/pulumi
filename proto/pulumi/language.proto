@@ -171,6 +171,7 @@ message RuntimeOptionPrompt {
         RuntimeOptionType promptType = 1;
         string stringValue = 2;
         int32 int32Value = 3;
+        string displayName = 4;
     }
 
     string key = 1;

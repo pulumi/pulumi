@@ -444,6 +444,8 @@ export namespace RuntimeOptionPrompt {
         setStringvalue(value: string): RuntimeOptionValue;
         getInt32value(): number;
         setInt32value(value: number): RuntimeOptionValue;
+        getDisplayname(): string;
+        setDisplayname(value: string): RuntimeOptionValue;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): RuntimeOptionValue.AsObject;
@@ -460,6 +462,7 @@ export namespace RuntimeOptionPrompt {
             prompttype: RuntimeOptionPrompt.RuntimeOptionType,
             stringvalue: string,
             int32value: number,
+            displayname: string,
         }
     }
 
