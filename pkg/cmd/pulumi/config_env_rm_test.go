@@ -48,7 +48,7 @@ runtime: yaml`
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = "{}\n"
 
@@ -68,7 +68,7 @@ Save? Yes
 
 		const expectedOut = "KEY  VALUE\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = "{}\n"
 
@@ -93,7 +93,7 @@ Save? Yes
 
 		const expectedOut = "KEY  VALUE\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = "{}\n"
 
@@ -124,7 +124,7 @@ Save? Yes
 			"Without at least one of these properties, the environment will not affect the stack's behavior.\n\n\n" +
 			"Save? No\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 
 	t.Run("two imports, secrets", func(t *testing.T) {
@@ -160,7 +160,7 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -202,7 +202,7 @@ aws:region    us-west-2
 Save? Yes
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env

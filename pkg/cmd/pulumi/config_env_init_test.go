@@ -82,7 +82,7 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - test-stack
@@ -160,7 +160,7 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - test-stack
@@ -236,7 +236,7 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - test-stack
@@ -317,7 +317,7 @@ runtime: yaml`
 			"```\n" +
 			""
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
