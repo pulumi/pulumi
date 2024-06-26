@@ -28,8 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -287,11 +285,11 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 	}
 	pms := []packagemanagers{}
 	for _, pm := range executables {
-		found := false
+		found := true
 		if _, err := exec.LookPath(pm); err != nil {
-			found = true
+			found = false
 		}
-		pms = append(pms, packagemanagers{pm, found})
+		pms = append(pms, packagemanagers{name: pm, found: found})
 	}
 
 	sort.SliceStable(pms, func(i, j int) bool {
@@ -299,15 +297,14 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 		if pms[i].found == pms[j].found {
 			return false
 		}
-		// pms[i] is less than pms[j] if pms[i] is not found.
-		return !pms[i].found
+		// pms[i] is less than pms[j] if pms[i] is found.
+		return pms[i].found
 	})
 
 	choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{}
-	caser := cases.Title(language.English)
 	for _, pm := range pms {
-		displayName := caser.String(pm.name)
-		if pm.found {
+		displayName := pm.name
+		if !pm.found {
 			displayName += " [not found]"
 		}
 		choices = append(choices, &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{

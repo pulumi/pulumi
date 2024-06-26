@@ -937,7 +937,7 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		pipOption := &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
 			StringValue: "pip",
-			DisplayName: "Pip",
+			DisplayName: "pip",
 		}
 		// Pip is always available in a Python installation or virtual environment.
 		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
