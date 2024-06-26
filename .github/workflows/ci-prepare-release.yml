@@ -61,7 +61,7 @@ jobs:
           SHA=$(git rev-parse HEAD)
           ./.github/scripts/set-output sha "$SHA"
       - name: Download all artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
       - name: Rename SDKs
