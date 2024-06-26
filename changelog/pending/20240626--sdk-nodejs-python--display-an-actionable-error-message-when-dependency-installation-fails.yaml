@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs,python
+  description: Display an actionable error message when dependency installation fails
