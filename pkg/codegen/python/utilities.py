@@ -96,10 +96,6 @@ def _get_semver_version():
 _version = _get_semver_version()
 _version_str = str(_version)
 
-
-def get_version():
-    return _version_str
-
 def get_resource_opts_defaults() -> pulumi.ResourceOptions:
     return pulumi.ResourceOptions(
         version=get_version(),
