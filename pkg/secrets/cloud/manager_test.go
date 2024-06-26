@@ -39,6 +39,9 @@ func testURL(ctx context.Context, t *testing.T, url string) {
 
 	var err error
 	var manager secrets.Manager
+
+	// Creating a new cloud secrets manager is sometimes flaky, so we try a few times with backoff
+	// before giving up.
 	for i := 1; i < 10; i++ {
 		manager, err = NewCloudSecretsManager(info, url, false)
 		if err == nil {
