@@ -505,6 +505,11 @@ func newUpCmd() *cobra.Command {
 				if len(args) > 0 {
 					url = args[0]
 				}
+
+				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+					return errResult
+				}
+
 				return runDeployment(ctx, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 

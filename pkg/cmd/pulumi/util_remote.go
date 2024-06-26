@@ -154,6 +154,7 @@ func validateUnsupportedRemoteFlags(
 type RemoteArgs struct {
 	remote                   bool
 	inheritSettings          bool
+	streamLogs               bool
 	envVars                  []string
 	secretEnvVars            []string
 	preRunCommands           []string
@@ -171,6 +172,65 @@ type RemoteArgs struct {
 	executorImagePassword    string
 }
 
+func (r *RemoteArgs) applyFlagsForDeploymentCommand(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVar(
+		&r.inheritSettings, "inherit-settings", true,
+		"Inherit deployment settings from the current stack")
+	cmd.PersistentFlags().BoolVar(
+		&r.streamLogs, "stream-logs", false,
+		"Suppress log streaming of the deployment job")
+	cmd.PersistentFlags().StringArrayVar(
+		&r.envVars, "env", []string{},
+		"Environment variables to use in the remote operation of the form NAME=value "+
+			"(e.g. `--env FOO=bar`)")
+	cmd.PersistentFlags().StringArrayVar(
+		&r.secretEnvVars, "env-secret", []string{},
+		"Environment variables with secret values to use in the remote operation of the form "+
+			"NAME=secretvalue (e.g. `--env FOO=secret`)")
+	cmd.PersistentFlags().StringArrayVar(
+		&r.preRunCommands, "pre-run-command", []string{},
+		"Commands to run before the remote operation")
+	cmd.PersistentFlags().BoolVar(
+		&r.skipInstallDependencies, "skip-install-dependencies", false,
+		"Whether to skip the default dependency installation step")
+	cmd.PersistentFlags().StringVar(
+		&r.gitBranch, "git-branch", "",
+		"Git branch to deploy; this is mutually exclusive with --git-commit; "+
+			"either value needs to be specified")
+	cmd.PersistentFlags().StringVar(
+		&r.gitCommit, "git-commit", "",
+		"Git commit hash of the commit to deploy (if used, HEAD will be in detached mode); "+
+			"this is mutually exclusive with --git-branch; either value needs to be specified")
+	cmd.PersistentFlags().StringVar(
+		&r.gitRepoDir, "git-repo-dir", "",
+		"The directory to work from in the project's source repository "+
+			"where Pulumi.yaml is located; used when Pulumi.yaml is not in the project source root")
+	cmd.PersistentFlags().StringVar(
+		&r.gitAuthAccessToken, "git-auth-access-token", "",
+		"Git personal access token")
+	cmd.PersistentFlags().StringVar(
+		&r.gitAuthSSHPrivateKey, "git-auth-ssh-private-key", "",
+		"Git SSH private key; use --git-auth-password for the password, if needed")
+	cmd.PersistentFlags().StringVar(
+		&r.gitAuthSSHPrivateKeyPath, "git-auth-ssh-private-key-path", "",
+		"Git SSH private key path; use --git-auth-password for the password, if needed")
+	cmd.PersistentFlags().StringVar(
+		&r.gitAuthPassword, "git-auth-password", "",
+		"Git password; for use with username or with an SSH private key")
+	cmd.PersistentFlags().StringVar(
+		&r.gitAuthUsername, "git-auth-username", "",
+		"Git username")
+	cmd.PersistentFlags().StringVar(
+		&r.executorImage, "executor-image", "",
+		"The Docker image to use for the executor")
+	cmd.PersistentFlags().StringVar(
+		&r.executorImageUsername, "executor-image-username", "",
+		"The username for the credentials with access to the Docker image to use for the executor")
+	cmd.PersistentFlags().StringVar(
+		&r.executorImagePassword, "executor-image-password", "",
+		"The password for the credentials with access to the Docker image to use for the executor")
+}
+
 // Add flags to support remote operations
 func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	if !remoteSupported() {
@@ -180,6 +240,9 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(
 		&r.remote, "remote", false,
 		"[EXPERIMENTAL] Run the operation remotely")
+	cmd.PersistentFlags().BoolVar(
+		&r.streamLogs, "stream-logs", true,
+		"[EXPERIMENTAL] Suppress log streaming of the deployment job")
 	cmd.PersistentFlags().BoolVar(
 		&r.inheritSettings, "remote-inherit-settings", false,
 		"[EXPERIMENTAL] Inherit deployment settings from the current stack")
@@ -235,10 +298,7 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 		"[EXPERIMENTAL] The password for the credentials with access to the Docker image to use for the executor")
 }
 
-// runDeployment kicks off a remote deployment.
-func runDeployment(ctx context.Context, opts display.Options, operation apitype.PulumiOperation, stack, url string,
-	args RemoteArgs,
-) result.Result {
+func validateRemoteDeploymentFlags(url string, args RemoteArgs) result.Result {
 	// Validate args.
 	if url == "" && !args.inheritSettings {
 		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings"))
@@ -264,6 +324,42 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			"must both be specified"))
 	}
 
+	return nil
+}
+
+func validateDeploymentFlags(url string, args RemoteArgs) result.Result {
+	// Validate args.
+	if url == "" && !args.inheritSettings {
+		return result.FromError(errors.New("the url arg must be specified if not passing --inherit-settings"))
+	}
+	if args.gitBranch != "" && args.gitCommit != "" {
+		return result.FromError(errors.New("`--git-branch` and `--git-commit` cannot both be specified"))
+	}
+	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
+		return result.FromError(errors.New("either `--git-branch` or `--git-commit` is required " +
+			"if not passing --inherit-settings"))
+	}
+	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
+		return result.FromError(errors.New("`--git-auth-ssh-private-key` and " +
+			"`--git-auth-ssh-private-key-path` cannot both be specified"))
+	}
+	if args.executorImage == "" && (args.executorImageUsername != "" || args.executorImagePassword != "") {
+		return result.FromError(errors.New("`--executor-image-username` and `--executor-image-password` " +
+			"cannot be specified without `--executor-image`"))
+	}
+	if (args.executorImagePassword != "" && args.executorImageUsername == "") ||
+		(args.executorImageUsername != "" && args.executorImagePassword == "") {
+		return result.FromError(errors.New("`--executor-image-username` and `--executor-image-password` " +
+			"must both be specified"))
+	}
+
+	return nil
+}
+
+// runDeployment kicks off a remote deployment.
+func runDeployment(ctx context.Context, opts display.Options, operation apitype.PulumiOperation, stack, url string,
+	args RemoteArgs,
+) result.Result {
 	// Parse and validate the environment args.
 	env := map[string]apitype.SecretValue{}
 	for i, e := range append(args.envVars, args.secretEnvVars...) {
@@ -398,7 +494,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	// to "automation-api".
 	// In the future, we may want to expose initiating deployments from the CLI, in which case we would need to
 	// pass this value in from the CLI as a flag or environment variable.
-	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/)
+	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/, args.streamLogs)
 	if err != nil {
 		return result.FromError(err)
 	}

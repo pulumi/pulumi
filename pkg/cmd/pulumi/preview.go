@@ -338,6 +338,10 @@ func newPreviewCmd() *cobra.Command {
 					url = args[0]
 				}
 
+				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+					return errResult
+				}
+
 				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
