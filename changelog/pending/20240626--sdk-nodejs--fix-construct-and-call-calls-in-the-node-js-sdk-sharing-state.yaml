@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix Construct and Call calls in the Node.js SDK sharing state
