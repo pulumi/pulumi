@@ -25,8 +25,7 @@ func newNPM() (*npmManager, error) {
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
 			return nil, errors.New("Could not find `npm` executable.\n" +
-				"Install npm from https://docs.npmjs.com/downloading-and-installing-node-js-and-npm " +
-				"and make sure it is in your PATH.")
+				"Install npm and make sure it is in your PATH.")
 		}
 		return nil, err
 	}
