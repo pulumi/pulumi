@@ -134,8 +134,12 @@ jobs:
   ci-ok:
     name: ci-ok
     needs: [ci]
+    if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: CI failed
+        if: ${{ needs.ci.result != 'success' }}
+        run: exit 1
       - name: CI succeeded
         run: exit 0
 
