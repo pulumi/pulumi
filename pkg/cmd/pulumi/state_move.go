@@ -151,9 +151,9 @@ func (cmd *stateMoveCmd) Run(
 	for _, res := range providers {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
-		copy := res.Copy()
-		rewriteURNs(copy, dest)
-		destSnapshot.Resources = append(destSnapshot.Resources, copy)
+		r := res.Copy()
+		rewriteURNs(r, dest)
+		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
 	for _, res := range resourcesToMove {

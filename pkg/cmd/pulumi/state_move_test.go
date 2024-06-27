@@ -35,7 +35,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createStackWithResources(t *testing.T, b diy.Backend, stackName string, resources []*resource.State) backend.Stack {
+func createStackWithResources(
+	t *testing.T, b diy.Backend, stackName string, resources []*resource.State,
+) backend.Stack {
 	sm := b64.NewBase64SecretsManager()
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
