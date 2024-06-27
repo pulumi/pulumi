@@ -79,6 +79,8 @@ on:
 jobs:
   matrix:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -265,6 +267,8 @@ jobs:
     needs: [matrix]
     if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
+    strategy:
+      fail-fast: true
     with:
       ref: ${{ inputs.ref }}
       version-set: ${{ needs.matrix.outputs.version-set }}
@@ -273,9 +277,7 @@ jobs:
     name: build binaries
     needs: [matrix]
     strategy:
-      # To avoid tying up macOS runners:
-      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.matrix.outputs.build-targets, 'macos') }}
+      fail-fast: true
       matrix:
         target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
@@ -295,6 +297,8 @@ jobs:
     name: build display WASM module
     needs: [matrix]
     uses: ./.github/workflows/ci-build-binaries.yml
+    strategy:
+      fail-fast: true
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -308,6 +312,8 @@ jobs:
     name: Build SDKs
     needs: [matrix]
     uses: ./.github/workflows/ci-build-sdks.yml
+    strategy:
+      fail-fast: true
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -326,7 +332,7 @@ jobs:
     needs: [matrix, lint]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
-      fail-fast: ${{ contains(needs.matrix.outputs.unit-test-matrix, 'macos') }}
+      fail-fast: true
       matrix: ${{ fromJson(needs.matrix.outputs.unit-test-matrix) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
@@ -351,7 +357,7 @@ jobs:
     needs: [matrix, build-binaries, build-sdks, lint]
     if: ${{ needs.matrix.outputs.integration-test-matrix != '{}' }}
     strategy:
-      fail-fast: ${{ contains(needs.matrix.outputs.integration-test-matrix, 'macos') }}
+      fail-fast: true
       matrix: ${{ fromJson(needs.matrix.outputs.integration-test-matrix) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
@@ -479,9 +485,7 @@ jobs:
     needs: [matrix, unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
     if: ${{ inputs.enable-coverage }}
     strategy:
-      # To avoid tying up macOS runners:
-      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.matrix.outputs.build-targets, 'macos') }}
+      fail-fast: true
       matrix:
         target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
