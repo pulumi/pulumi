@@ -187,9 +187,7 @@ func TestStatusDisplayFlags(t *testing.T) {
 				URN: name,
 				Op:  tt.stepOp,
 				Old: &engine.StepEventStateMetadata{
-					State: &resource.State{
-						RetainOnDelete: true,
-					},
+					RetainOnDelete: true,
 				},
 			}
 
