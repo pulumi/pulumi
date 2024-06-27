@@ -85,7 +85,7 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
     steps:
       - uses: actions/checkout@v4
         with:
