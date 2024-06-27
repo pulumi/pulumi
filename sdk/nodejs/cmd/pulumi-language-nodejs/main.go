@@ -1450,7 +1450,10 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	if err != nil {
 		return nil, fmt.Errorf("npm pack output: %w", err)
 	}
-	go func() { io.Copy(os.Stderr, stderr) }()
+	go func() {
+		_, err := io.Copy(os.Stderr, stderr)
+		contract.IgnoreError(err)
+	}()
 	err = npmPackCmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("npm pack: %w", err)
@@ -1472,12 +1475,18 @@ func copyOutput(cmd *exec.Cmd) error {
 	if err != nil {
 		return err
 	}
-	go func() { io.Copy(os.Stderr, stderr) }()
+	go func() {
+		_, err := io.Copy(os.Stderr, stderr)
+		contract.IgnoreError(err)
+	}()
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	go func() { io.Copy(os.Stdout, stdout) }()
+	go func() {
+		_, err := io.Copy(os.Stdout, stdout)
+		contract.IgnoreError(err)
+	}()
 	return nil
 }
