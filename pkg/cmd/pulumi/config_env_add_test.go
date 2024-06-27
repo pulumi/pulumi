@@ -31,15 +31,6 @@ func TestConfigEnvAddCmd(t *testing.T) {
 	projectYAML := `name: test
 runtime: yaml`
 
-	// The library sending the confirmation prompt may be able to print the prompt
-	// in full before recognizing the character we send to stdin for the test.
-	// There's nothing really wrong with that other than it makes the tests flake.
-	// This cleans the extra output from stdout in case it happens, as it either
-	// happening or not happening is fine.
-	cleanStdoutIncludingPrompt := func(stdout string) string {
-		return strings.ReplaceAll(cleanStdout(stdout), "Save? ▸Yes  No", "")
-	}
-
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
 

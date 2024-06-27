@@ -57,7 +57,7 @@ runtime: yaml`
 		const expectedOut = "This stack configuration has no environments listed. " +
 			"Try adding one with `pulumi config env add [envName]`.\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 
 	t.Run("no imports, json", func(t *testing.T) {
@@ -81,7 +81,7 @@ runtime: yaml`
 
 		const expectedOut = "[]\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 
 	t.Run("with imports", func(t *testing.T) {
@@ -116,7 +116,7 @@ otherEnv
 thirdEnv
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 
 	t.Run("with imports, json", func(t *testing.T) {
@@ -152,7 +152,7 @@ thirdEnv
 ]
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 
 	t.Run("with imports", func(t *testing.T) {
@@ -187,7 +187,7 @@ otherEnv
 thirdEnv
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 
 	t.Run("repeated imports", func(t *testing.T) {
@@ -225,6 +225,6 @@ thirdEnv
 ]
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
 	})
 }

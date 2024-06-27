@@ -34,10 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func cleanStdout(s string) string {
-	return strings.ReplaceAll(stripansi.Strip(s), "\r", "")
-}
-
 func newConfigEnvCmdForTest(
 	stdin io.Reader,
 	stdout io.Writer,
@@ -231,4 +227,13 @@ func newConfigEnvCmdForInitTest(
 		},
 		newStackYAML,
 	)
+}
+
+// The library sending the confirmation prompt may be able to print the prompt
+// in full before recognizing the character we send to stdin for the test.
+// There's nothing really wrong with that other than it makes the tests flake.
+// This cleans the extra output from stdout in case it happens, as it either
+// happening or not happening is fine.
+func cleanStdoutIncludingPrompt(stdout string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(stripansi.Strip(stdout), "\r", ""), "Save? ▸Yes  No", "")
 }
