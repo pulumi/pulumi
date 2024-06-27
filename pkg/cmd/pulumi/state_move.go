@@ -16,61 +16,65 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/spf13/cobra"
 )
 
 type stateMoveCmd struct{}
 
-// func newStateMoveCommand() *cobra.Command {
-// 	var sourceStackName string
-// 	var destStackName string
-// 	stateMove := &stateMoveCmd{}
-// 	cmd := &cobra.Command{
-// 		Use:   "move",
-// 		Short: "Move resources from one stack to another",
-// 		Long: `Move resources from one stack to another
+func newStateMoveCommand() *cobra.Command {
+	var sourceStackName string
+	var destStackName string
+	stateMove := &stateMoveCmd{}
+	cmd := &cobra.Command{
+		Use:   "move",
+		Short: "Move resources from one stack to another",
+		Long: `Move resources from one stack to another
 
-// This command can be used to move resources from one stack to another. This can be useful when
-// splitting a stack into multiple stacks or when merging multiple stacks into one.`,
-// 		Args: cmdutil.MinimumNArgs(1),
-// 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-// 			ctx := cmd.Context()
+This command can be used to move resources from one stack to another. This can be useful when
+splitting a stack into multiple stacks or when merging multiple stacks into one.`,
+		Args: cmdutil.MinimumNArgs(1),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 
-// 			if sourceStackName == "" && destStackName == "" {
-// 				return errors.New("at least one of --source or --dest must be provided")
-// 			}
-// 			// TODO: make sure to load the source stack even if it is from a different project
-// 			sourceStack, err := requireStack(ctx, sourceStackName, stackLoadOnly, display.Options{
-// 				Color:         cmdutil.GetGlobalColorization(),
-// 				IsInteractive: true,
-// 			})
-// 			if err != nil {
-// 				return err
-// 			}
-// 			// TODO: make sure to load the dest stack even if it is from a different project.
-// 			destStack, err := requireStack(ctx, destStackName, stackLoadOnly, display.Options{
-// 				Color:         cmdutil.GetGlobalColorization(),
-// 				IsInteractive: true,
-// 			})
-// 			if err != nil {
-// 				return err
-// 			}
+			if sourceStackName == "" && destStackName == "" {
+				return errors.New("at least one of --source or --dest must be provided")
+			}
+			// TODO: make sure to load the source stack even if it is from a different project
+			sourceStack, err := requireStack(ctx, sourceStackName, stackLoadOnly, display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			})
+			if err != nil {
+				return err
+			}
+			// TODO: make sure to load the dest stack even if it is from a different project.
+			destStack, err := requireStack(ctx, destStackName, stackLoadOnly, display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			})
+			if err != nil {
+				return err
+			}
 
-// 			return stateMove.Run(ctx, sourceStack, destStack, args)
-// 		}),
-// 	}
+			return stateMove.Run(ctx, sourceStack, destStack, args)
+		}),
+	}
 
-// 	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")
-// 	cmd.Flags().StringVarP(&destStackName, "dest", "", "", "The name of the stack to move resources to")
+	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")
+	cmd.Flags().StringVarP(&destStackName, "dest", "", "", "The name of the stack to move resources to")
 
-// 	return cmd
-// }
+	return cmd
+}
 
 func resourceMatches(res *resource.State, args []string) bool {
 	for _, arg := range args {
