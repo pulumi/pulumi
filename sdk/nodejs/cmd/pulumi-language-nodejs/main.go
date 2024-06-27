@@ -34,6 +34,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -700,8 +701,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.Command(nodeBin, nodeargs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if err := copyOutput(cmd); err != nil {
+		return &pulumirpc.RunResponse{Error: fmt.Errorf("copy node output: %w", err).Error()}
+	}
 	cmd.Env = env
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -883,8 +885,9 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// in here works well enough for conformance testing.
 		tscCmd := exec.Command("npx", "tsc")
 		tscCmd.Dir = req.Info.ProgramDirectory
-		tscCmd.Stdout = stdout
-		tscCmd.Stderr = stderr
+		if err := copyOutput(tscCmd); err != nil {
+			return fmt.Errorf("copy tsc output: %w", err)
+		}
 		if err := tscCmd.Run(); err != nil {
 			return fmt.Errorf("failed to run tsc: %w", err)
 		}
@@ -1353,8 +1356,9 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
 		yarnInstallCmd.Dir = req.PackageDirectory
-		yarnInstallCmd.Stdout = os.Stdout
-		yarnInstallCmd.Stderr = os.Stderr
+		if err := copyOutput(yarnInstallCmd); err != nil {
+			return nil, fmt.Errorf("copy yarn install output: %w", err)
+		}
 		err = yarnInstallCmd.Run()
 		if err != nil {
 			return nil, fmt.Errorf("yarn install: %w", err)
@@ -1366,8 +1370,9 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		yarnTscCmd := exec.Command(yarn, "run", "tsc")
 		yarnTscCmd.Dir = req.PackageDirectory
-		yarnTscCmd.Stdout = os.Stdout
-		yarnTscCmd.Stderr = os.Stderr
+		if err := copyOutput(yarnTscCmd); err != nil {
+			return nil, fmt.Errorf("copy tsc output: %w", err)
+		}
 		err = yarnTscCmd.Run()
 		if err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
@@ -1397,8 +1402,9 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		npmInstallCmd := exec.Command(npm, "install")
 		npmInstallCmd.Dir = req.PackageDirectory
-		npmInstallCmd.Stdout = os.Stdout
-		npmInstallCmd.Stderr = os.Stderr
+		if err := copyOutput(npmInstallCmd); err != nil {
+			return nil, fmt.Errorf("copy npm install output: %w", err)
+		}
 		err = npmInstallCmd.Run()
 		if err != nil {
 			return nil, fmt.Errorf("npm install: %w", err)
@@ -1412,8 +1418,9 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		npmBuildCmd := exec.Command(npm, "run", "build")
 		npmBuildCmd.Dir = req.PackageDirectory
-		npmBuildCmd.Stdout = os.Stdout
-		npmBuildCmd.Stderr = os.Stderr
+		if err := copyOutput(npmBuildCmd); err != nil {
+			return nil, fmt.Errorf("copy npm build output: %w", err)
+		}
 		err = npmBuildCmd.Run()
 		if err != nil {
 			return nil, fmt.Errorf("npm run build: %w", err)
@@ -1439,7 +1446,14 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		filepath.Join(req.PackageDirectory, "bin"),
 		"--pack-destination", req.DestinationDirectory)
 	npmPackCmd.Stdout = &stdoutBuffer
-	npmPackCmd.Stderr = os.Stderr
+	stderr, err := npmPackCmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("npm pack output: %w", err)
+	}
+	go func() {
+		_, err := io.Copy(os.Stderr, stderr)
+		contract.IgnoreError(err)
+	}()
 	err = npmPackCmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("npm pack: %w", err)
@@ -1450,4 +1464,29 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	return &pulumirpc.PackResponse{
 		ArtifactPath: filepath.Join(req.DestinationDirectory, artifactName),
 	}, nil
+}
+
+// Node will sometimes set stdout or stderr into non-blocking mode, but go will not notice this.
+// When go attempts to write, we get an error: `write /dev/stdout: resource temporarily unavailable`.
+// To avoid this issue, we copy the output of the command to the stdout and stderr of the go process.
+// https://github.com/golang/go/issues/58408#issuecomment-1423621323
+func copyOutput(cmd *exec.Cmd) error {
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	go func() {
+		_, err := io.Copy(os.Stderr, stderr)
+		contract.IgnoreError(err)
+	}()
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	go func() {
+		_, err := io.Copy(os.Stdout, stdout)
+		contract.IgnoreError(err)
+	}()
+	return nil
 }
