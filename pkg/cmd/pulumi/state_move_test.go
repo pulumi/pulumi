@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -68,22 +69,18 @@ func TestMoveLeafResource(t *testing.T) {
 
 	ctx := context.Background()
 
-	// urn:pulumi:stack2::pulumi-test-moves::pulumi:providers:aws::default_5_43_0::4b0fb629-cd65-4914-a34b-23a258996f7b
-
-	providerURN := resource.NewURN("sourceStack", "test", "pulumi:providers:d", "a_provider", "1.0.0")
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
-			URN:  providerURN,
-			Type: "pulumi:providers:d",
-			ID:   "provider_id",
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
 		},
 		{
-			URN:  resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type: "a:b:c",
-			Inputs: resource.PropertyMap{
-				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
-			},
-			Provider: string(providerURN),
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
 		},
 	}
 	tmpDir := t.TempDir()
@@ -101,13 +98,14 @@ func TestMoveLeafResource(t *testing.T) {
 	destStackName := "organization/test/destStack"
 	destStack := createStackWithResources(t, b, destStackName, destResources)
 
-	stateMoveCmd := stateMoveCmd{}
-	stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[0].URN)})
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
 
-	// mp := &secrets.MockProvider{}
-	// mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
-	// 	return b64.NewBase64SecretsManager(), nil
-	// })
+	stateMoveCmd := stateMoveCmd{}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	assert.NoError(t, err)
 
 	// TODO: Check that the state on disk also reflects this state
 	// sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)

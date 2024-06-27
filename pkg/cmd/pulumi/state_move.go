@@ -23,8 +23,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -71,7 +73,7 @@ EXPERIMENTAL: this feature is currently in development.
 				return err
 			}
 
-			return stateMove.Run(ctx, sourceStack, destStack, args)
+			return stateMove.Run(ctx, sourceStack, destStack, args, stack.DefaultSecretsProvider)
 		}),
 	}
 
@@ -81,12 +83,15 @@ EXPERIMENTAL: this feature is currently in development.
 	return cmd
 }
 
-func (cmd *stateMoveCmd) Run(ctx context.Context, source backend.Stack, dest backend.Stack, args []string) error {
-	sourceSnapshot, err := source.Snapshot(ctx, stack.DefaultSecretsProvider)
+func (cmd *stateMoveCmd) Run(
+	ctx context.Context, source backend.Stack, dest backend.Stack, args []string,
+	secretsProvider secrets.Provider,
+) error {
+	sourceSnapshot, err := source.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return err
 	}
-	destSnapshot, err := dest.Snapshot(ctx, stack.DefaultSecretsProvider)
+	destSnapshot, err := dest.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return err
 	}
@@ -158,6 +163,15 @@ func (cmd *stateMoveCmd) Run(ctx context.Context, source backend.Stack, dest bac
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
 				return err
+			}
+			if rootStack == nil {
+				projectName, ok := source.Ref().Project()
+				if !ok {
+					return errors.New("failed to get project name of source stack")
+				}
+				rootStack = stack.CreateRootStackResource(
+					source.Ref().Name().Q(), tokens.PackageName(projectName))
+				destSnapshot.Resources = append(destSnapshot.Resources, rootStack)
 			}
 			res.Parent = rootStack.URN
 		}
