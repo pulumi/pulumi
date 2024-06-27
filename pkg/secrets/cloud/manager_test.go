@@ -21,11 +21,13 @@ import (
 	"math/big"
 	"net/url"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gocloud.dev/secrets"
+	gosecrets "gocloud.dev/secrets"
 	"gocloud.dev/secrets/driver"
 )
 
@@ -35,7 +37,18 @@ func testURL(ctx context.Context, t *testing.T, url string) {
 	info := &workspace.ProjectStack{}
 	info.SecretsProvider = url
 
-	manager, err := NewCloudSecretsManager(info, url, false)
+	var err error
+	var manager secrets.Manager
+
+	// Creating a new cloud secrets manager is sometimes flaky, so we try a few times with backoff
+	// before giving up.
+	for i := 1; i < 10; i++ {
+		manager, err = NewCloudSecretsManager(info, url, false)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Duration(i) * 100 * time.Millisecond)
+	}
 	require.NoError(t, err)
 
 	enc, err := manager.Encrypter()
@@ -74,7 +87,7 @@ func TestSecretsProviderOverride(t *testing.T) {
 	stackConfig := &workspace.ProjectStack{}
 
 	opener := &mockSecretsKeeperOpener{}
-	secrets.DefaultURLMux().RegisterKeeper("test", opener)
+	gosecrets.DefaultURLMux().RegisterKeeper("test", opener)
 
 	//nolint:paralleltest
 	t.Run("without override", func(t *testing.T) {
@@ -106,11 +119,11 @@ type mockSecretsKeeperOpener struct {
 	wantURL string
 }
 
-func (m *mockSecretsKeeperOpener) OpenKeeperURL(ctx context.Context, u *url.URL) (*secrets.Keeper, error) {
+func (m *mockSecretsKeeperOpener) OpenKeeperURL(ctx context.Context, u *url.URL) (*gosecrets.Keeper, error) {
 	if m.wantURL != u.String() {
 		return nil, fmt.Errorf("got keeper URL: %q, want: %q", u, m.wantURL)
 	}
-	return secrets.NewKeeper(dummySecretsKeeper{}), nil
+	return gosecrets.NewKeeper(dummySecretsKeeper{}), nil
 }
 
 type dummySecretsKeeper struct {
