@@ -76,58 +76,6 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 	return cmd
 }
 
-func resourceMatches(res *resource.State, args []string) bool {
-	for _, arg := range args {
-		if string(res.URN) == arg {
-			return true
-		}
-	}
-	return false
-}
-
-func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) {
-	j := 0
-	for _, dep := range res.Dependencies {
-		if _, ok := resourcesToMove[string(dep)]; !ok {
-			res.Dependencies[j] = dep
-			j++
-		}
-	}
-	res.Dependencies = res.Dependencies[:j]
-	for k, propDeps := range res.PropertyDependencies {
-		j = 0
-		for _, propDep := range propDeps {
-			if _, ok := resourcesToMove[string(propDep)]; !ok {
-				propDeps[j] = propDep
-				j++
-			}
-		}
-		res.PropertyDependencies[k] = propDeps[:j]
-	}
-	if _, ok := resourcesToMove[string(res.DeletedWith)]; !ok {
-		res.DeletedWith = ""
-	}
-}
-
-func rewriteURNs(res *resource.State, dest backend.Stack) {
-	// TODO: rewrite project name
-	res.URN = res.URN.RenameStack(dest.Ref().Name())
-	if res.Provider != "" {
-		res.Provider = string(urn.URN(res.Provider).RenameStack(dest.Ref().Name()))
-	}
-	for k, dep := range res.Dependencies {
-		res.Dependencies[k] = dep.RenameStack(dest.Ref().Name())
-	}
-	for k, propDeps := range res.PropertyDependencies {
-		for j, propDep := range propDeps {
-			res.PropertyDependencies[k][j] = propDep.RenameStack(dest.Ref().Name())
-		}
-	}
-	if res.DeletedWith != "" {
-		res.DeletedWith = res.DeletedWith.RenameStack(dest.Ref().Name())
-	}
-}
-
 func (cmd *stateMoveCmd) Run(ctx context.Context, source backend.Stack, dest backend.Stack, args []string) error {
 	sourceSnapshot, err := source.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
@@ -136,6 +84,15 @@ func (cmd *stateMoveCmd) Run(ctx context.Context, source backend.Stack, dest bac
 	destSnapshot, err := dest.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
+	}
+	err = destSnapshot.VerifyIntegrity()
+	if err != nil {
+		return fmt.Errorf("failed to verify integrity of destination snapshot: %w", err)
+	}
+
+	err = sourceSnapshot.VerifyIntegrity()
+	if err != nil {
+		return fmt.Errorf("failed to verify integrity of source snapshot: %w", err)
 	}
 
 	resourcesToMove := make(map[string]*resource.State)
@@ -214,4 +171,56 @@ func (cmd *stateMoveCmd) Run(ctx context.Context, source backend.Stack, dest bac
 	}
 
 	return nil
+}
+
+func resourceMatches(res *resource.State, args []string) bool {
+	for _, arg := range args {
+		if string(res.URN) == arg {
+			return true
+		}
+	}
+	return false
+}
+
+func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) {
+	j := 0
+	for _, dep := range res.Dependencies {
+		if _, ok := resourcesToMove[string(dep)]; !ok {
+			res.Dependencies[j] = dep
+			j++
+		}
+	}
+	res.Dependencies = res.Dependencies[:j]
+	for k, propDeps := range res.PropertyDependencies {
+		j = 0
+		for _, propDep := range propDeps {
+			if _, ok := resourcesToMove[string(propDep)]; !ok {
+				propDeps[j] = propDep
+				j++
+			}
+		}
+		res.PropertyDependencies[k] = propDeps[:j]
+	}
+	if _, ok := resourcesToMove[string(res.DeletedWith)]; !ok {
+		res.DeletedWith = ""
+	}
+}
+
+func rewriteURNs(res *resource.State, dest backend.Stack) {
+	// TODO: rewrite project name
+	res.URN = res.URN.RenameStack(dest.Ref().Name())
+	if res.Provider != "" {
+		res.Provider = string(urn.URN(res.Provider).RenameStack(dest.Ref().Name()))
+	}
+	for k, dep := range res.Dependencies {
+		res.Dependencies[k] = dep.RenameStack(dest.Ref().Name())
+	}
+	for k, propDeps := range res.PropertyDependencies {
+		for j, propDep := range propDeps {
+			res.PropertyDependencies[k][j] = propDep.RenameStack(dest.Ref().Name())
+		}
+	}
+	if res.DeletedWith != "" {
+		res.DeletedWith = res.DeletedWith.RenameStack(dest.Ref().Name())
+	}
 }
