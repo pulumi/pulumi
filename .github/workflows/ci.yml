@@ -50,6 +50,11 @@ on:
         default: false
         required: false
         type: boolean
+      fail-fast:
+        description: "Fail all workflows whenever one of them fails"
+        default: false
+        require: false
+        type: boolean
     secrets:
       PULUMI_BOT_TOKEN:
         required: true
@@ -268,7 +273,7 @@ jobs:
     if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
     with:
       ref: ${{ inputs.ref }}
       version-set: ${{ needs.matrix.outputs.version-set }}
@@ -277,7 +282,7 @@ jobs:
     name: build binaries
     needs: [matrix]
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
       matrix:
         target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
@@ -298,7 +303,7 @@ jobs:
     needs: [matrix]
     uses: ./.github/workflows/ci-build-binaries.yml
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -313,7 +318,7 @@ jobs:
     needs: [matrix]
     uses: ./.github/workflows/ci-build-sdks.yml
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -332,7 +337,7 @@ jobs:
     needs: [matrix, lint]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.unit-test-matrix) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
@@ -357,7 +362,7 @@ jobs:
     needs: [matrix, build-binaries, build-sdks, lint]
     if: ${{ needs.matrix.outputs.integration-test-matrix != '{}' }}
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.integration-test-matrix) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
@@ -408,7 +413,7 @@ jobs:
     if: ${{ needs.matrix.outputs.acceptance-test-matrix-macos != '{}' }}
     # alow jobs to fail if the platform contains windows
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
       matrix: ${{ fromJson(needs.matrix.outputs.acceptance-test-matrix-macos) }}
     uses: ./.github/workflows/ci-run-test.yml
     with:
@@ -485,7 +490,7 @@ jobs:
     needs: [matrix, unit-test, integration-test, acceptance-test-win, acceptance-test-macos]
     if: ${{ inputs.enable-coverage }}
     strategy:
-      fail-fast: true
+      fail-fast: ${{ inputs.fail-fast }}
       matrix:
         target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
