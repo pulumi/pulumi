@@ -461,6 +461,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing TypedDict generation for inputs.",
 		Skip:        allLanguages.Except("python/any"),
 	},
+	{
+		Directory:   "config-variables",
+		Description: "Testing config variables.",
+	},
 }
 
 var genSDKOnly bool
