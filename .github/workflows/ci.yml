@@ -51,9 +51,9 @@ on:
         required: false
         type: boolean
       fail-fast:
-        description: "Fail all workflows whenever one of them fails"
+        required: false
         default: false
-        require: false
+        description: "Fail all workflows whenever one of them fails"
         type: boolean
     secrets:
       PULUMI_BOT_TOKEN:
