@@ -1505,6 +1505,8 @@ func Color(op display.StepOp) string {
 		return colors.SpecUpdate
 	case OpReadDiscard, OpDiscardReplaced:
 		return colors.SpecDelete
+	case OpRemovePendingReplace:
+		return colors.SpecUnimportant
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -1559,6 +1561,8 @@ func RawPrefix(op display.StepOp) string {
 		return "= "
 	case OpImportReplacement:
 		return "=>"
+	case OpRemovePendingReplace:
+		return "~ "
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""

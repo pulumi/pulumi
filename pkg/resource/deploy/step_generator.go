@@ -1170,8 +1170,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	}
 
 	// If there were changes check for a replacement vs. an in-place update.
-	if diff.Changes == plugin.DiffSome {
-		if diff.Replace() {
+	if diff.Changes == plugin.DiffSome || old.PendingReplacement {
+		if diff.Replace() || old.PendingReplacement {
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
@@ -1324,8 +1324,15 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", old.URN, err)
 				}
 
+				var deleteStep Step
+				if old.PendingReplacement {
+					deleteStep = NewRemovePendingReplaceStep(sg.deployment, old)
+				} else {
+					deleteStep = NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true)
+				}
+
 				return append(steps,
-					NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true),
+					deleteStep,
 					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
 					NewCreateReplacementStep(
 						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
