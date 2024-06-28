@@ -201,5 +201,26 @@ func (urn URN) Rename(newName string) URN {
 
 // Returns a new URN with an updated stack part
 func (urn URN) RenameStack(stack tokens.StackName) URN {
-	return New(stack.Q(), urn.Project(), urn.QualifiedType(), urn.Type(), urn.Name())
+	return New(
+		stack.Q(),
+		urn.Project(),
+		// parent type is empty because
+		// assuming the qualified type already includes it
+		"",
+		urn.QualifiedType(),
+		urn.Name(),
+	)
+}
+
+// Returns a new URN with an updated project part
+func (urn URN) RenameProject(project tokens.PackageName) URN {
+	return New(
+		urn.Stack(),
+		project,
+		// parent type is empty because
+		// assuming the qualified type already includes it
+		"",
+		urn.QualifiedType(),
+		urn.Name(),
+	)
 }

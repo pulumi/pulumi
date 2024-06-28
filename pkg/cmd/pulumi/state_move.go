@@ -56,7 +56,6 @@ EXPERIMENTAL: this feature is currently in development.
 			if sourceStackName == "" && destStackName == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			// TODO: make sure to load the source stack even if it is from a different project
 			sourceStack, err := requireStack(ctx, sourceStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
@@ -64,7 +63,6 @@ EXPERIMENTAL: this feature is currently in development.
 			if err != nil {
 				return err
 			}
-			// TODO: make sure to load the dest stack even if it is from a different project.
 			destStack, err := requireStack(ctx, destStackName, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
@@ -152,13 +150,19 @@ func (cmd *stateMoveCmd) Run(
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
 		r := res.Copy()
-		rewriteURNs(r, dest)
+		err = rewriteURNs(r, dest)
+		if err != nil {
+			return err
+		}
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
 	for _, res := range resourcesToMove {
 		breakDependencies(res, remainingResources)
-		rewriteURNs(res, dest)
+		err = rewriteURNs(res, dest)
+		if err != nil {
+			return err
+		}
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
@@ -225,21 +229,51 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 	}
 }
 
-func rewriteURNs(res *resource.State, dest backend.Stack) {
-	// TODO: rewrite project name
-	res.URN = res.URN.RenameStack(dest.Ref().Name())
+func renameStackAndProject(urn urn.URN, stack backend.Stack) (urn.URN, error) {
+	newURN := urn.RenameStack(stack.Ref().Name())
+	if project, ok := stack.Ref().Project(); ok {
+		newURN = newURN.RenameProject(tokens.PackageName(project))
+	} else {
+		return "", errors.New("cannot get project name")
+	}
+	return newURN, nil
+}
+
+func rewriteURNs(res *resource.State, dest backend.Stack) error {
+	var err error
+	res.URN, err = renameStackAndProject(res.URN, dest)
+	if err != nil {
+		return err
+	}
 	if res.Provider != "" {
-		res.Provider = string(urn.URN(res.Provider).RenameStack(dest.Ref().Name()))
+		providerURN, err := renameStackAndProject(urn.URN(res.Provider), dest)
+		if err != nil {
+			return err
+		}
+		res.Provider = string(providerURN)
 	}
 	for k, dep := range res.Dependencies {
-		res.Dependencies[k] = dep.RenameStack(dest.Ref().Name())
+		depURN, err := renameStackAndProject(dep, dest)
+		if err != nil {
+			return err
+		}
+		res.Dependencies[k] = depURN
 	}
 	for k, propDeps := range res.PropertyDependencies {
 		for j, propDep := range propDeps {
-			res.PropertyDependencies[k][j] = propDep.RenameStack(dest.Ref().Name())
+			depURN, err := renameStackAndProject(propDep, dest)
+			if err != nil {
+				return err
+			}
+			res.PropertyDependencies[k][j] = depURN
 		}
 	}
 	if res.DeletedWith != "" {
-		res.DeletedWith = res.DeletedWith.RenameStack(dest.Ref().Name())
+		urn, err := renameStackAndProject(res.DeletedWith, dest)
+		if err != nil {
+			return err
+		}
+		res.DeletedWith = urn
 	}
+	return nil
 }
