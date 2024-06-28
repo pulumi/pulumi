@@ -22,6 +22,7 @@ import * as resource from "../resource";
 import * as config from "../runtime/config";
 import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
+import * as localState from "../runtime/state";
 import { parseArgs } from "./internals";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
@@ -284,127 +285,135 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     public async construct(call: any, callback: any): Promise<void> {
-        const callbackId = Symbol("id");
-        this._callbacks.set(callbackId, callback);
-        try {
-            const req: any = call.request;
-            const type = req.getType();
-            const name = req.getName();
+        // Setup a new async state store for this run
+        const store = new localState.LocalStore();
+        return localState.asyncLocalStorage.run(store, async () => {
+            const callbackId = Symbol("id");
+            this._callbacks.set(callbackId, callback);
+            try {
+                const req: any = call.request;
+                const type = req.getType();
+                const name = req.getName();
 
-            if (!this.provider.construct) {
-                callback(new Error(`unknown resource type ${type}`), undefined);
-                return;
-            }
-
-            await configureRuntime(req, this.engineAddr);
-
-            const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
-
-            // Rebuild the resource options.
-            const dependsOn: resource.Resource[] = [];
-            for (const urn of req.getDependenciesList()) {
-                dependsOn.push(new resource.DependencyResource(urn));
-            }
-            const providers: Record<string, resource.ProviderResource> = {};
-            const rpcProviders = req.getProvidersMap();
-            if (rpcProviders) {
-                for (const [pkg, ref] of rpcProviders.entries()) {
-                    providers[pkg] = createProviderResource(ref);
+                if (!this.provider.construct) {
+                    callback(new Error(`unknown resource type ${type}`), undefined);
+                    return;
                 }
+
+                await configureRuntime(req, this.engineAddr);
+
+                const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
+
+                // Rebuild the resource options.
+                const dependsOn: resource.Resource[] = [];
+                for (const urn of req.getDependenciesList()) {
+                    dependsOn.push(new resource.DependencyResource(urn));
+                }
+                const providers: Record<string, resource.ProviderResource> = {};
+                const rpcProviders = req.getProvidersMap();
+                if (rpcProviders) {
+                    for (const [pkg, ref] of rpcProviders.entries()) {
+                        providers[pkg] = createProviderResource(ref);
+                    }
+                }
+                const opts: resource.ComponentResourceOptions = {
+                    aliases: req.getAliasesList(),
+                    dependsOn: dependsOn,
+                    protect: req.getProtect(),
+                    providers: providers,
+                    parent: req.getParent() ? new resource.DependencyResource(req.getParent()) : undefined,
+                };
+
+                const result = await this.provider.construct(name, type, inputs, opts);
+
+                const resp = new provproto.ConstructResponse();
+
+                resp.setUrn(await output(result.urn).promise());
+
+                const [state, stateDependencies] = await rpc.serializeResourceProperties(
+                    `construct(${type}, ${name})`,
+                    result.state,
+                );
+                const stateDependenciesMap = resp.getStatedependenciesMap();
+                for (const [key, resources] of stateDependencies) {
+                    const deps = new provproto.ConstructResponse.PropertyDependencies();
+                    deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
+                    stateDependenciesMap.set(key, deps);
+                }
+                resp.setState(structproto.Struct.fromJavaScript(state));
+
+                // Wait for RPC operations to complete.
+                await settings.waitForRPCs();
+
+                callback(undefined, resp);
+            } catch (e) {
+                console.error(`${e}: ${e.stack}`);
+                callback(e, undefined);
+            } finally {
+                // remove the gRPC callback context from the map of in-flight callbacks
+                this._callbacks.delete(callbackId);
             }
-            const opts: resource.ComponentResourceOptions = {
-                aliases: req.getAliasesList(),
-                dependsOn: dependsOn,
-                protect: req.getProtect(),
-                providers: providers,
-                parent: req.getParent() ? new resource.DependencyResource(req.getParent()) : undefined,
-            };
-
-            const result = await this.provider.construct(name, type, inputs, opts);
-
-            const resp = new provproto.ConstructResponse();
-
-            resp.setUrn(await output(result.urn).promise());
-
-            const [state, stateDependencies] = await rpc.serializeResourceProperties(
-                `construct(${type}, ${name})`,
-                result.state,
-            );
-            const stateDependenciesMap = resp.getStatedependenciesMap();
-            for (const [key, resources] of stateDependencies) {
-                const deps = new provproto.ConstructResponse.PropertyDependencies();
-                deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
-                stateDependenciesMap.set(key, deps);
-            }
-            resp.setState(structproto.Struct.fromJavaScript(state));
-
-            // Wait for RPC operations to complete.
-            await settings.waitForRPCs();
-
-            callback(undefined, resp);
-        } catch (e) {
-            console.error(`${e}: ${e.stack}`);
-            callback(e, undefined);
-        } finally {
-            // remove the gRPC callback context from the map of in-flight callbacks
-            this._callbacks.delete(callbackId);
-        }
+        });
     }
 
     public async call(call: any, callback: any): Promise<void> {
-        const callbackId = Symbol("id");
-        this._callbacks.set(callbackId, callback);
-        try {
-            const req: any = call.request;
-            if (!this.provider.call) {
-                callback(new Error(`unknown function ${req.getTok()}`), undefined);
-                return;
-            }
-
-            await configureRuntime(req, this.engineAddr);
-
-            const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
-
-            const result = await this.provider.call(req.getTok(), args);
-
-            const resp = new provproto.CallResponse();
-
-            if (result.outputs) {
-                const [ret, retDependencies] = await rpc.serializeResourceProperties(
-                    `call(${req.getTok()})`,
-                    result.outputs,
-                );
-                const returnDependenciesMap = resp.getReturndependenciesMap();
-                for (const [key, resources] of retDependencies) {
-                    const deps = new provproto.CallResponse.ReturnDependencies();
-                    deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
-                    returnDependenciesMap.set(key, deps);
+        // Setup a new async state store for this run
+        const store = new localState.LocalStore();
+        return localState.asyncLocalStorage.run(store, async () => {
+            const callbackId = Symbol("id");
+            this._callbacks.set(callbackId, callback);
+            try {
+                const req: any = call.request;
+                if (!this.provider.call) {
+                    callback(new Error(`unknown function ${req.getTok()}`), undefined);
+                    return;
                 }
-                resp.setReturn(structproto.Struct.fromJavaScript(ret));
-            }
 
-            if ((result.failures || []).length !== 0) {
-                const failureList = [];
-                for (const f of result.failures!) {
-                    const failure = new provproto.CheckFailure();
-                    failure.setProperty(f.property);
-                    failure.setReason(f.reason);
-                    failureList.push(failure);
+                await configureRuntime(req, this.engineAddr);
+
+                const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
+
+                const result = await this.provider.call(req.getTok(), args);
+
+                const resp = new provproto.CallResponse();
+
+                if (result.outputs) {
+                    const [ret, retDependencies] = await rpc.serializeResourceProperties(
+                        `call(${req.getTok()})`,
+                        result.outputs,
+                    );
+                    const returnDependenciesMap = resp.getReturndependenciesMap();
+                    for (const [key, resources] of retDependencies) {
+                        const deps = new provproto.CallResponse.ReturnDependencies();
+                        deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
+                        returnDependenciesMap.set(key, deps);
+                    }
+                    resp.setReturn(structproto.Struct.fromJavaScript(ret));
                 }
-                resp.setFailuresList(failureList);
+
+                if ((result.failures || []).length !== 0) {
+                    const failureList = [];
+                    for (const f of result.failures!) {
+                        const failure = new provproto.CheckFailure();
+                        failure.setProperty(f.property);
+                        failure.setReason(f.reason);
+                        failureList.push(failure);
+                    }
+                    resp.setFailuresList(failureList);
+                }
+
+                // Wait for RPC operations to complete.
+                await settings.waitForRPCs();
+
+                callback(undefined, resp);
+            } catch (e) {
+                console.error(`${e}: ${e.stack}`);
+                callback(e, undefined);
+            } finally {
+                // remove the gRPC callback context from the map of in-flight callbacks
+                this._callbacks.delete(callbackId);
             }
-
-            // Wait for RPC operations to complete.
-            await settings.waitForRPCs();
-
-            callback(undefined, resp);
-        } catch (e) {
-            console.error(`${e}: ${e.stack}`);
-            callback(e, undefined);
-        } finally {
-            // remove the gRPC callback context from the map of in-flight callbacks
-            this._callbacks.delete(callbackId);
-        }
+        });
     }
 
     public async invoke(call: any, callback: any): Promise<void> {
