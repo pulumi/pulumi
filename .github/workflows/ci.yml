@@ -449,7 +449,7 @@ jobs:
       - name: Check tests completed successfully.
         run: |
           JSON='${{ toJson(needs) }}'
-          if test -z "$(echo $JSON | jq -r '.[] | .outputs | .result' | grep -v 'success')"; then
+          if test -z "$(echo $JSON | jq -r '.[] | .result' | grep -v 'success')"; then
               echo "Tests OK!"
           else
               echo "Test Failure.. skipping CodeCov upload."
