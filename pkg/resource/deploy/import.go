@@ -24,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -180,16 +181,13 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		}
 	}
 
-	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
-	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
-	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
-	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
+	stackName, projectName := i.deployment.target.Name, i.deployment.source.Project()
+	state := stack.CreateRootStackResource(stackName.Q(), projectName)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
 	}
-	return urn, true, true
+	return state.URN, true, true
 }
 
 func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, bool, error) {
