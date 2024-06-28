@@ -874,7 +874,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
 	if err != nil {
-		return fmt.Errorf("dependency installation failed: %w", err)
+		return err
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))

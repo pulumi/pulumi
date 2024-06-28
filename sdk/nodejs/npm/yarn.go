@@ -3,6 +3,7 @@ package npm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,10 +24,16 @@ var _ PackageManager = &yarnClassic{}
 
 func newYarnClassic() (*yarnClassic, error) {
 	yarnPath, err := exec.LookPath("yarn")
-	yarn := &yarnClassic{
-		executable: yarnPath,
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return nil, errors.New("Could not find `yarn` executable.\n" +
+				"Install yarn and make sure it is in your PATH.")
+		}
+		return nil, err
 	}
-	return yarn, err
+	return &yarnClassic{
+		executable: yarnPath,
+	}, nil
 }
 
 func (yarn *yarnClassic) Name() string {

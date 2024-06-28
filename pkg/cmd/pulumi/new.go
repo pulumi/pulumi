@@ -970,8 +970,8 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	}
 
 	if err = lang.InstallDependencies(programInfo); err != nil {
-		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
-			"then run `pulumi up` to perform an initial deployment: %w", err)
+		//revive:disable:error-strings // This error message is user facing.
+		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)
 	}
 
 	return nil
