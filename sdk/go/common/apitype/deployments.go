@@ -258,25 +258,31 @@ type DeploymentLogs struct {
 
 // A SecretValue describes a possibly-secret value.
 type SecretValue struct {
-	Value  string // Plaintext if Secret is false; ciphertext otherwise.
-	Secret bool
+	Value      string // Plaintext if Secret is false; ciphertext otherwise.
+	Ciphertext string // ciphertext
+	Secret     bool
 }
 
 type secretWorkflowValue struct {
-	Secret string `json:"secret" yaml:"secret"`
+	Secret     string `json:"secret,omitempty" yaml:"secret,omitempty"`
+	Ciphertext string `json:"ciphertext,omitempty" yaml:"ciphertext,omitempty"`
 }
 
 func (v SecretValue) MarshalJSON() ([]byte, error) {
-	if v.Secret {
+	switch {
+	case len(v.Ciphertext) != 0:
+		return json.Marshal(secretWorkflowValue{Ciphertext: v.Ciphertext})
+	case v.Secret:
 		return json.Marshal(secretWorkflowValue{Secret: v.Value})
+	default:
+		return json.Marshal(v.Value)
 	}
-	return json.Marshal(v.Value)
 }
 
 func (v *SecretValue) UnmarshalJSON(bytes []byte) error {
 	var secret secretWorkflowValue
 	if err := json.Unmarshal(bytes, &secret); err == nil {
-		v.Value, v.Secret = secret.Secret, true
+		v.Value, v.Ciphertext, v.Secret = secret.Secret, secret.Ciphertext, true
 		return nil
 	}
 
@@ -288,17 +294,21 @@ func (v *SecretValue) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-func (v SecretValue) MarshalYAML() (interface{}, error) {
-	if v.Secret {
+func (v SecretValue) MarshalYAML() (any, error) {
+	switch {
+	case len(v.Ciphertext) != 0:
+		return secretWorkflowValue{Ciphertext: v.Ciphertext}, nil
+	case v.Secret:
 		return secretWorkflowValue{Secret: v.Value}, nil
+	default:
+		return v.Value, nil
 	}
-	return v.Value, nil
 }
 
 func (v *SecretValue) UnmarshalYAML(node *yaml.Node) error {
 	var secret secretWorkflowValue
 	if err := node.Decode(&secret); err == nil {
-		v.Value, v.Secret = secret.Secret, true
+		v.Value, v.Ciphertext, v.Secret = secret.Secret, secret.Ciphertext, true
 		return nil
 	}
 

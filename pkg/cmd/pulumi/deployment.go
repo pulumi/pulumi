@@ -165,6 +165,8 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
 	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
 	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
+	cmd.AddCommand(newDeploymentSettingsEnvCmd())
+	cmd.AddCommand(newDeploymentSettingsSetCmd())
 
 	return cmd
 }
@@ -448,6 +450,260 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
+	return cmd
+}
+
+func newDeploymentSettingsSetCmd() *cobra.Command {
+	var stack string
+
+	var executorRepositoryPassword string
+	var gitPassword string
+	var gitSSHPrivateKey string
+	var gitSSHPrivateKeyPassword string
+
+	cmd := &cobra.Command{
+		Use:   "set-secret",
+		Args:  cmdutil.ExactArgs(0),
+		Short: "Updates stack's deployment settings secrets",
+		Long:  "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			if executorRepositoryPassword == "" &&
+				gitPassword == "" &&
+				gitSSHPrivateKey == "" &&
+				gitSSHPrivateKeyPassword == "" {
+				return errors.New("No scecrets provided")
+			}
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			sd, err := loadProjectStackDeployment(s)
+			if err != nil {
+				return err
+			}
+
+			if gitPassword != "" {
+				if sd.DeploymentSettings.SourceContext.Git.GitAuth != nil &&
+					sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth != nil {
+
+					secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, gitPassword)
+					if err != nil {
+						return err
+					}
+
+					sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.Password = *secret
+				} else {
+					return errors.New("git basic auth is not configured")
+				}
+			}
+
+			if gitSSHPrivateKey != "" || gitSSHPrivateKeyPassword != "" {
+				if sd.DeploymentSettings.SourceContext.Git.GitAuth != nil &&
+					sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth != nil {
+
+					if gitSSHPrivateKey != "" {
+						secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, gitSSHPrivateKey)
+						if err != nil {
+							return err
+						}
+
+						sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.SSHPrivateKey = *secret
+					}
+
+					if gitSSHPrivateKeyPassword != "" {
+						secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, gitSSHPrivateKeyPassword)
+						if err != nil {
+							return err
+						}
+
+						sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password = secret
+					}
+				} else {
+					return errors.New("git private key auth is not configured")
+				}
+			}
+
+			if executorRepositoryPassword != "" {
+				if sd.DeploymentSettings.Executor != nil && sd.DeploymentSettings.Executor.ExecutorImage != nil {
+					secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, executorRepositoryPassword)
+					if err != nil {
+						return err
+					}
+
+					sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Password = *secret
+				} else {
+					return errors.New("custom executor is not configured")
+				}
+			}
+
+			err = saveProjectStackDeployment(sd, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().StringVar(
+		&executorRepositoryPassword, "executor-repository-password", "",
+		"Key to update")
+
+	cmd.PersistentFlags().StringVar(
+		&gitPassword, "git-password", "",
+		"Value for the updated key")
+
+	cmd.PersistentFlags().StringVar(
+		&gitSSHPrivateKey, "git-ssh-private-key", "",
+		"Value for the updated key")
+
+	cmd.PersistentFlags().StringVar(
+		&gitSSHPrivateKeyPassword, "git-ssh-private-key-password", "",
+		"Value for the updated key")
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
+	return cmd
+}
+
+func newDeploymentSettingsEnvCmd() *cobra.Command {
+	var stack string
+
+	var secret bool
+	var remove bool
+
+	cmd := &cobra.Command{
+		Use:   "env <key> [value]",
+		Args:  cmdutil.RangeArgs(1, 2),
+		Short: "Update stack's deployment settings secrets",
+		Long:  "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			var (
+				key   string
+				value string
+			)
+
+			if len(args) > 1 {
+				key = args[0]
+			}
+
+			if len(args) == 2 {
+				if remove {
+					return errors.New("value not supported when removing keys")
+				}
+				value = args[1]
+			}
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			sd, err := loadProjectStackDeployment(s)
+			if err != nil {
+				return err
+			}
+
+			var secretValue *apitype.SecretValue
+			if secret {
+				secretValue, err = currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, value)
+				if err != nil {
+					return err
+				}
+			} else {
+				secretValue = &apitype.SecretValue{
+					Value:  value,
+					Secret: false,
+				}
+			}
+
+			if sd.DeploymentSettings.Operation == nil {
+				sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+			}
+
+			if sd.DeploymentSettings.Operation.EnvironmentVariables == nil {
+				sd.DeploymentSettings.Operation.EnvironmentVariables = make(map[string]apitype.SecretValue)
+			}
+
+			if remove {
+				delete(sd.DeploymentSettings.Operation.EnvironmentVariables, key)
+			} else {
+				sd.DeploymentSettings.Operation.EnvironmentVariables[key] = *secretValue
+			}
+
+			err = saveProjectStackDeployment(sd, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().BoolVar(
+		&secret, "secret", false,
+		"Key to update")
+
+	cmd.PersistentFlags().BoolVar(
+		&remove, "remove", false,
+		"Key to update")
+
+	cmd.MarkFlagsMutuallyExclusive("secret", "remove")
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
