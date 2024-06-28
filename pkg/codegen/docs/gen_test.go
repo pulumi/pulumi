@@ -644,3 +644,227 @@ func TestDecomposeDocstring(t *testing.T) {
 	},
 		info)
 }
+
+func TestGenOverlayResource(t *testing.T) {
+	t.Parallel()
+	dctx := newDocGenContext()
+	testPackageSpec := newTestPackageSpec()
+	testPackageSpec.Resources["prov:module/overlayResource:OverlayResource"] = schema.ResourceSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{
+			Description: "This is a module-level resource called OverlayResource.",
+			IsOverlay:   true,
+		},
+		InputProperties: map[string]schema.PropertySpec{
+			"prop": {
+				Description: "An input property.",
+				TypeSpec: schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+	}
+
+	testPackageSpec.Resources["prov:module/overlayResourceConstrainedLanguages:OverlayResourceConstrainedLanguages"] = schema.ResourceSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{
+			Description:               "This is a module-level resource called OverlayResourceConstrainedLanguages.",
+			IsOverlay:                 true,
+			OverlaySupportedLanguages: []string{"python", "go", "typescript"},
+		},
+		InputProperties: map[string]schema.PropertySpec{
+			"prop": {
+				Description: "An input property.",
+				TypeSpec: schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+	}
+
+	testPackageSpec.Resources["prov:module/overlayResourceWrongLanguage:OverlayResourceWrongLanguage"] = schema.ResourceSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{
+			Description:               "This is a module-level resource called OverlayResourceWrongLanguage.",
+			IsOverlay:                 true,
+			OverlaySupportedLanguages: []string{"python", "go", "typescript", "smalltalk"},
+		},
+		InputProperties: map[string]schema.PropertySpec{
+			"prop": {
+				Description: "An input property.",
+				TypeSpec: schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+	}
+
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
+	assert.NoError(t, err, "importing spec")
+
+	tests := []struct {
+		ResourceName                 string
+		ExpectedLangChooserLanguages string
+	}{
+		{
+			// regular resource, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
+			ResourceName:                 "Resource",
+			ExpectedLangChooserLanguages: "",
+		},
+		{
+			// Regular overlay resource, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
+			ResourceName:                 "OverlayResource",
+			ExpectedLangChooserLanguages: "",
+		},
+		{
+			// overlay resource with a constrained list of supported languages
+			// should support only the languages specified in OverlaySupportedLanguages
+			ResourceName:                 "OverlayResourceConstrainedLanguages",
+			ExpectedLangChooserLanguages: "go,python,typescript",
+		},
+		{
+			// overlay resource with a wrong language in OverlaySupportedLanguages
+			// should filter out the wrong language
+			ResourceName:                 "OverlayResourceWrongLanguage",
+			ExpectedLangChooserLanguages: "go,python,typescript",
+		},
+	}
+
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	dctx.initialize(unitTestTool, schemaPkg)
+
+	for _, test := range tests { //nolint:paralleltest
+		test := test
+		t.Run(test.ResourceName, func(t *testing.T) {
+			mod, ok := modules["module"]
+			if !ok {
+				t.Fatalf("could not find the module 'module' in modules map")
+			}
+
+			r := getResourceFromModule(test.ResourceName, mod)
+			if r == nil {
+				t.Fatalf("could not find %s in modules", test.ResourceName)
+			}
+			resourceDocs := mod.genResource(r)
+			assert.Equal(t, test.ExpectedLangChooserLanguages, resourceDocs.LangChooserLanguages)
+		})
+	}
+}
+
+func TestGenOverlayFunction(t *testing.T) {
+	t.Parallel()
+	dctx := newDocGenContext()
+	testPackageSpec := newTestPackageSpec()
+	testPackageSpec.Functions["prov:module/overlayFunction:overlayFunction"] = schema.FunctionSpec{
+		Description: "A module-level function.",
+		IsOverlay:   true,
+		Inputs: &schema.ObjectTypeSpec{
+			Description: "Inputs for getModuleResource.",
+			Type:        "object",
+			Properties: map[string]schema.PropertySpec{
+				"options": {
+					TypeSpec: schema.TypeSpec{
+						Ref: "#/types/prov:module/getModuleResource:getModuleResource",
+					},
+				},
+			},
+		},
+		Outputs: &schema.ObjectTypeSpec{
+			Description: "Outputs for getModuleResource.",
+			Properties:  simpleProperties,
+			Type:        "object",
+		},
+	}
+
+	testPackageSpec.Functions["prov:module/overlayFunctionConstrainedLanguages:overlayFunctionConstrainedLanguages"] = schema.FunctionSpec{
+		Description:               "A module-level function.",
+		IsOverlay:                 true,
+		OverlaySupportedLanguages: []string{"python", "go", "typescript"},
+		Inputs: &schema.ObjectTypeSpec{
+			Description: "Inputs for getModuleResource.",
+			Type:        "object",
+			Properties: map[string]schema.PropertySpec{
+				"options": {
+					TypeSpec: schema.TypeSpec{
+						Ref: "#/types/prov:module/getModuleResource:getModuleResource",
+					},
+				},
+			},
+		},
+		Outputs: &schema.ObjectTypeSpec{
+			Description: "Outputs for getModuleResource.",
+			Properties:  simpleProperties,
+			Type:        "object",
+		},
+	}
+
+	testPackageSpec.Functions["prov:module/overlayFunctionWrongLanguage:overlayFunctionWrongLanguage"] = schema.FunctionSpec{
+		Description:               "A module-level function.",
+		IsOverlay:                 true,
+		OverlaySupportedLanguages: []string{"python", "go", "typescript", "smalltalk"},
+		Inputs: &schema.ObjectTypeSpec{
+			Description: "Inputs for getModuleResource.",
+			Type:        "object",
+			Properties: map[string]schema.PropertySpec{
+				"options": {
+					TypeSpec: schema.TypeSpec{
+						Ref: "#/types/prov:module/getModuleResource:getModuleResource",
+					},
+				},
+			},
+		},
+		Outputs: &schema.ObjectTypeSpec{
+			Description: "Outputs for getModuleResource.",
+			Properties:  simpleProperties,
+			Type:        "object",
+		},
+	}
+
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
+	assert.NoError(t, err, "importing spec")
+
+	tests := []struct {
+		FunctionName                 string
+		ExpectedLangChooserLanguages string
+	}{
+		{
+			// regular function, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
+			FunctionName:                 "getModuleResource",
+			ExpectedLangChooserLanguages: "",
+		},
+		{
+			// Regular overlay function, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
+			FunctionName:                 "overlayFunction",
+			ExpectedLangChooserLanguages: "",
+		},
+		{
+			// overlay function with a constrained list of supported languages
+			// should support only the languages specified in OverlaySupportedLanguages
+			FunctionName:                 "overlayFunctionConstrainedLanguages",
+			ExpectedLangChooserLanguages: "go,python,typescript",
+		},
+		{
+			// overlay function with a wrong language in OverlaySupportedLanguages
+			// should filter out the wrong language
+			FunctionName:                 "overlayFunctionWrongLanguage",
+			ExpectedLangChooserLanguages: "go,python,typescript",
+		},
+	}
+
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	dctx.initialize(unitTestTool, schemaPkg)
+
+	for _, test := range tests { //nolint:paralleltest
+		test := test
+		t.Run(test.FunctionName, func(t *testing.T) {
+			mod, ok := modules["module"]
+			if !ok {
+				t.Fatalf("could not find the module 'module' in modules map")
+			}
+
+			f := getFunctionFromModule(test.FunctionName, mod)
+			if f == nil {
+				t.Fatalf("could not find %s in modules", test.FunctionName)
+			}
+			resourceDocs := mod.genFunction(f)
+			assert.Equal(t, test.ExpectedLangChooserLanguages, resourceDocs.LangChooserLanguages)
+		})
+	}
+}

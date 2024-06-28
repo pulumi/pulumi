@@ -36,6 +36,11 @@ type functionDocArgs struct {
 	Header header
 
 	Tool string
+	// LangChooserLanguages is a comma-separated list of languages to pass to the
+	// language chooser shortcode. Use this to customize the languages shown for a
+	// function. By default, the language chooser will show all languages supported
+	// by Pulumi.
+	LangChooserLanguages string
 
 	DeprecationMessage string
 	Comment            string
@@ -474,7 +479,8 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
 
-		Tool: mod.tool,
+		Tool:                 mod.tool,
+		LangChooserLanguages: mod.getSupportedLanguages(f.IsOverlay, f.OverlaySupportedLanguages),
 
 		FunctionName:   funcNameMap,
 		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap, false /*outputVersion*/),
