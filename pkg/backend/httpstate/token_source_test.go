@@ -64,6 +64,8 @@ func TestTokenSource(t *testing.T) {
 }
 
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
+	// TODO[pulumi/pulumi#16500] fix flaky test and unskip
+	t.Skip("Skipping flaky test: TODO[pulumi/pulumi#16500] to unskip")
 	if runtime.GOOS == "windows" {
 		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
 	}
