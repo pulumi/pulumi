@@ -130,10 +130,11 @@ jobs:
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
             | goreleaser release -f - -p 5 --skip-validate --clean --snapshot
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: ${{ inputs.os != 'js' }}
         with:
           name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
+          overwrite: true
           retention-days: 1
           path: |
             goreleaser/*.tar.gz

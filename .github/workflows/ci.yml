@@ -440,10 +440,11 @@ jobs:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
-          name: gotestsum-test-results
+          pattern: gotestsum-test-results-*
+          merge-multiple: true
           path: test-results
       - name: List and clean up test results
         continue-on-error: true
@@ -455,14 +456,11 @@ jobs:
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:
-      - name: Retrieve code coverage statuses
-        uses: actions/download-artifact@v3
-        with:
-          path: status
-      # Check that there are no incomplete tests.
+      # Check that there are no failed tests.
       - name: Check tests completed successfully.
         run: |
-          if test -z "$(grep -rl 'incomplete' ./status)"; then
+          JSON='${{ toJson(needs) }}'
+          if test -z "$(echo $JSON | jq -r '.[] | .result' | grep -v 'success')"; then
               echo "Tests OK!"
           else
               echo "Test Failure.. skipping CodeCov upload."
@@ -473,8 +471,10 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
+          pattern: coverage-*
+          merge-multiple: true
           path: coverage
       - name: Upload code coverage
         uses: codecov/codecov-action@v3

@@ -95,18 +95,8 @@ jobs:
       - name: Write test started file
         shell: bash
         run: |
-          HASH=$(echo '${{ inputs.test-name }}' | git hash-object --literally --stdin | awk '{ print $1 }')
+          HASH=$(echo '${{ inputs.test-name }}-${{ inputs.is-integration-test && 'integration' || 'unit' }}' | git hash-object --literally --stdin | awk '{ print $1 }')
           echo "TEST_HASH_ID=${HASH}" >> "$GITHUB_ENV"
-          echo "TEST_STATUS_FILE=status/test-${HASH}.txt" >> "$GITHUB_ENV"
-      # Consume env.TEST_STATUS_FILE to ensure it's able to be successfully used later.
-      - shell: bash
-        run: |
-          mkdir status
-          echo "incomplete" > "${{ env.TEST_STATUS_FILE }}"
-      - name: Register test started.
-        uses: actions/upload-artifact@v3
-        with:
-          path: ${{ env.TEST_STATUS_FILE }}
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
@@ -264,7 +254,7 @@ jobs:
       # Integration test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
           path: artifacts/cli
@@ -354,20 +344,13 @@ jobs:
             go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$TS.cov"
           fi
       - name: Upload code coverage
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.enable-coverage }}
         with:
           name: coverage-${{ env.TEST_HASH_ID }}
           path: |
             coverage/*
             !coverage/.gitkeep
-      - name: Register test OK.
-        shell: bash
-        run: mkdir status; echo "OK" > "${{ env.TEST_STATUS_FILE }}"
-      - name: Register test successful.
-        uses: actions/upload-artifact@v3
-        with:
-          path: ${{ env.TEST_STATUS_FILE }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:
@@ -391,7 +374,7 @@ jobs:
                       if [[ $? -eq 141 ]]; then true; else exit $?; fi
       - name: Upload artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: gotestsum-test-results
+          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
           path: test-results/*.json
