@@ -905,7 +905,7 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "packagemanager",
-			Description: "The packagemangager to use for installing dependencies",
+			Description: "The package manager to use for installing dependencies",
 			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
 			Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 				{StringValue: "npm", PromptType: pulumirpc.RuntimeOptionPrompt_STRING},
