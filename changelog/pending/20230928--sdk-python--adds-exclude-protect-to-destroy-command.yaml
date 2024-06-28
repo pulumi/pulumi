@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Support `--exclude-protected` for `destroy` in the Python automation SDK

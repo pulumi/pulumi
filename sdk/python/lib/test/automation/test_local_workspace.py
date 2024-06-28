@@ -44,6 +44,7 @@ from pulumi.automation import (
 )
 from pulumi.resource import (
     ComponentResource,
+    CustomResource,
     ResourceOptions,
 )
 
@@ -816,6 +817,60 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_stack_lifecycle_inline_program_with_exclude_protected(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+
+        def destroy_program():
+            class MyComponentResource(ComponentResource):
+                def __init__(
+                    self,
+                    name: str,
+                    opts: Optional[ResourceOptions] = None,
+                ):
+                    super(MyComponentResource, self).__init__(
+                        "my:module:MyResource", name, None, opts
+                    )
+
+            config = Config()
+            protect = config.get_bool("protect", False)
+
+            MyComponentResource("protected", opts=ResourceOptions(protect=protect))
+            MyComponentResource("unprotected")
+
+        stack = create_stack(
+            stack_name, program=destroy_program, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.set_all_config({"protect": ConfigValue(value="true")})
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi destroy with exclude protected
+            destroy_res = stack.destroy(exclude_protected=True)
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+            self.assertRegex(
+                destroy_res.stdout, "All unprotected resources were destroyed"
+            )
+
+            # unprotect resources
+            stack.remove_config("protect")
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi destroy without exclude protected
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+
         finally:
             stack.workspace.remove_stack(stack_name)
 
