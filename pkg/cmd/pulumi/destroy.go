@@ -161,7 +161,7 @@ func newDestroyCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				return runDeployment(cmd, ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)

@@ -170,6 +170,7 @@ type RemoteArgs struct {
 	executorImage            string
 	executorImageUsername    string
 	executorImagePassword    string
+	agentPoolID              string
 }
 
 func (r *RemoteArgs) applyFlagsForDeploymentCommand(cmd *cobra.Command) {
@@ -229,6 +230,10 @@ func (r *RemoteArgs) applyFlagsForDeploymentCommand(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(
 		&r.executorImagePassword, "executor-image-password", "",
 		"The password for the credentials with access to the Docker image to use for the executor")
+	cmd.PersistentFlags().StringVar(
+		&r.agentPoolID, "agent-pool-id", "",
+		"The agent pool to use to run the deployment job. When empty, the Pulumi Cloud shared queue "+
+			"will be used.")
 }
 
 // Add flags to support remote operations
@@ -357,8 +362,8 @@ func validateDeploymentFlags(url string, args RemoteArgs) result.Result {
 }
 
 // runDeployment kicks off a remote deployment.
-func runDeployment(ctx context.Context, opts display.Options, operation apitype.PulumiOperation, stack, url string,
-	args RemoteArgs,
+func runDeployment(cmd *cobra.Command, ctx context.Context, opts display.Options,
+	operation apitype.PulumiOperation, stack, url string, args RemoteArgs,
 ) result.Result {
 	// Parse and validate the environment args.
 	env := map[string]apitype.SecretValue{}
@@ -490,6 +495,19 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			Options:              operationOptions,
 		},
 	}
+
+	// we have a custom marshaller for CreateDeploymentRequest, to handle semantics around
+	// defined/undefined/null values on AgentPoolID
+	if cmd.Flag("agent-pool-id").Changed {
+		// if agent pool id is set, we forward it
+		// if it is empty, we will send a null, to make it default to the shared queue
+		v := apitype.AgentPoolIDMarshaller(args.agentPoolID)
+		req.AgentPoolID = &v
+	} else {
+		// if not set, it should be treated as undefined
+		req.AgentPoolID = nil
+	}
+
 	// For now, these commands are only used by automation API, so we can unilaterally set the initiator
 	// to "automation-api".
 	// In the future, we may want to expose initiating deployments from the CLI, in which case we would need to

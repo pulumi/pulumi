@@ -73,6 +73,20 @@ type CreateDeploymentRequest struct {
 
 	// Operation defines the options that the executor will use to run the Pulumi commands.
 	Operation *OperationContext `json:"operationContext,omitempty"`
+
+	AgentPoolID *AgentPoolIDMarshaller `json:"agentPoolID,omitempty"`
+}
+
+type AgentPoolIDMarshaller string
+
+func (d *AgentPoolIDMarshaller) MarshalJSON() ([]byte, error) {
+	if d == nil {
+		return json.Marshal([]byte{})
+	}
+	if *d != "" {
+		return json.Marshal(*d)
+	}
+	return json.Marshal(nil)
 }
 
 type DeploymentSettings struct {

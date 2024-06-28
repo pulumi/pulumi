@@ -77,7 +77,7 @@ func newDeploymentRunCmd() *cobra.Command {
 	remoteArgs := RemoteArgs{}
 
 	var stack string
-	var suppressPermalink string
+	var suppressPermalink bool
 
 	cmd := &cobra.Command{
 		Use:   "run <operation> [url]",
@@ -101,7 +101,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 				// we only suppress permalinks if the user passes true. the default is an empty string
 				// which we pass as 'false'
-				SuppressPermalink: suppressPermalink == "true",
+				SuppressPermalink: suppressPermalink,
 			}
 
 			project, _, err := readProject()
@@ -128,15 +128,15 @@ func newDeploymentRunCmd() *cobra.Command {
 				return errResult
 			}
 
-			return runDeployment(ctx, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			return runDeployment(cmd, ctx, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
 		}),
 	}
 
 	// Remote flags
 	remoteArgs.applyFlagsForDeploymentCommand(cmd)
 
-	cmd.PersistentFlags().StringVar(
-		&suppressPermalink, "suppress-permalink", "",
+	cmd.PersistentFlags().BoolVar(
+		&suppressPermalink, "suppress-permalink", false,
 		"Suppress display of the state permalink")
 
 	cmd.PersistentFlags().StringVarP(

@@ -1896,7 +1896,7 @@ const pulumiOperationHeader = "Pulumi operation"
 
 func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.StackReference,
 	req apitype.CreateDeploymentRequest, opts display.Options, deploymentInitiator string,
-	streamDeploymentLogs bool,
+	suppressStreamLogs bool,
 ) error {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -1917,7 +1917,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), resp.ConsoleURL)
 	}
 
-	if !streamDeploymentLogs {
+	if suppressStreamLogs {
 		return nil
 	}
 
