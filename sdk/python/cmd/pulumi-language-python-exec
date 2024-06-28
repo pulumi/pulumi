@@ -60,6 +60,7 @@ def _set_default_executor(loop, parallelism: Optional[int]):
     parallelism = max(parallelism, 1)
     exec = ThreadPoolExecutor(max_workers=parallelism)
     loop.set_default_executor(exec)
+    return exec
 
 if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
@@ -131,7 +132,7 @@ if __name__ == "__main__":
         asyncio.set_event_loop(loop)
     
     # Configure the event loop to respect the parallelism value provided as input.
-    _set_default_executor(loop, settings.parallel)
+    executor = _set_default_executor(loop, settings.parallel)
 
     # We are (unfortunately) suppressing the log output of asyncio to avoid showing to users some of the bad things we
     # do in our programming model.
@@ -197,6 +198,7 @@ if __name__ == "__main__":
         pulumi.log.error(error_msg)
         exit_code = PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE
     finally:
+        executor.shutdown(wait=True)
         loop.close()
         sys.stdout.flush()
         sys.stderr.flush()
