@@ -198,3 +198,8 @@ func (urn URN) Rename(newName string) URN {
 		newName,
 	)
 }
+
+// Returns a new URN with an updated stack part
+func (urn URN) RenameStack(stack tokens.StackName) URN {
+	return New(stack.Q(), urn.Project(), urn.QualifiedType(), urn.Type(), urn.Name())
+}

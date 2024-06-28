@@ -279,6 +279,15 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) mapset.Se
 	return dependencies
 }
 
+// ChildrenOf returns a slice containing all resources that are children of the given resource.
+func (dg *DependencyGraph) ChildrenOf(res *resource.State) []*resource.State {
+	children := make([]*resource.State, 0)
+	for _, childIndex := range dg.childrenOf[res.URN] {
+		children = append(children, dg.resources[childIndex])
+	}
+	return children
+}
+
 // Mark a resource and its provider, parent, dependencies, property
 // dependencies, and deletion dependencies, as a dependency. This is a helper
 // function for `TransitiveDependenciesOf`.

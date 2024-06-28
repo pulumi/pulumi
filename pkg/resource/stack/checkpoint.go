@@ -156,3 +156,12 @@ func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 	}
 	return nil, nil
 }
+
+// CreateRootStackResource creates a new root stack resource with the given name
+func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *resource.State {
+	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
+	urn := resource.NewURN(stackName, projectName, "", typ, name)
+	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
+		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
+	return state
+}
