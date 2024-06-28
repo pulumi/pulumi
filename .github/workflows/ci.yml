@@ -448,8 +448,8 @@ jobs:
       # Check that there are no failed tests.
       - name: Check tests completed successfully.
         run: |
-          # turn this into an if
-          if test -z "$(echo ${{ toJson(needs) }} | jq -r '.[] | .outputs | .result' | grep -v 'success')"; then
+          JSON='${{ toJson(needs) }}'
+          if test -z "$(echo $JSON | jq -r '.[] | .outputs | .result' | grep -v 'success')"; then
               echo "Tests OK!"
           else
               echo "Test Failure.. skipping CodeCov upload."
