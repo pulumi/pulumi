@@ -510,7 +510,7 @@ func newUpCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(cmd, ctx, opts.Display, apitype.Update, stackName, url, remoteArgs)
+				return runDeployment(ctx, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)

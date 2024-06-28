@@ -362,7 +362,7 @@ func validateDeploymentFlags(url string, args RemoteArgs) result.Result {
 }
 
 // runDeployment kicks off a remote deployment.
-func runDeployment(cmd *cobra.Command, ctx context.Context, opts display.Options,
+func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options,
 	operation apitype.PulumiOperation, stack, url string, args RemoteArgs,
 ) result.Result {
 	// Parse and validate the environment args.
