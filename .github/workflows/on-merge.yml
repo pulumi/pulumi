@@ -32,6 +32,8 @@ jobs:
     name: CI
     needs: [info]
     uses: ./.github/workflows/ci.yml
+    strategy:
+      fail-fast: true
     permissions:
       contents: read
       # To sign artifacts.
