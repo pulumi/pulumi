@@ -61,7 +61,6 @@ defaults:
     shell: bash
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_VERSION: ${{ inputs.version }}
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
@@ -223,18 +222,10 @@ jobs:
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.11.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.42
-          cache: enable
       - name: Install gotestsum
         uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo: gotestyourself/gotestsum
           tag: v1.8.1
@@ -242,7 +233,7 @@ jobs:
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo: pulumi/goteststats
           tag: v0.0.7

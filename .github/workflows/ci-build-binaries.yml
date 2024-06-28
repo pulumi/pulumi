@@ -102,9 +102,9 @@ jobs:
           # addressing the root cause of why GoReleaser v1.19.0 fails to read
           # the configuration.
           version: v1.18.2
-      - name: Set up bin dir
+      - name: Prepare bin dir for goreleaser
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOS: ${{ inputs.os }}
           GOARCH: ${{ inputs.arch }}
         run: ./scripts/prep-for-goreleaser.sh local
