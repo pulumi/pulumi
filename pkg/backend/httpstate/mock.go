@@ -41,7 +41,7 @@ type MockHTTPBackend struct {
 		req apitype.CreateDeploymentRequest,
 		opts display.Options,
 		deploymentInitiator string,
-		streamDeploymentLogs bool,
+		suppressStreamLogs bool,
 	) error
 }
 
@@ -75,9 +75,9 @@ func (b *MockHTTPBackend) RunDeployment(
 	req apitype.CreateDeploymentRequest,
 	opts display.Options,
 	deploymentInitiator string,
-	streamDeploymentLogs bool,
+	suppressStreamLogs bool,
 ) error {
-	return b.FRunDeployment(ctx, stackRef, req, opts, deploymentInitiator, streamDeploymentLogs)
+	return b.FRunDeployment(ctx, stackRef, req, opts, deploymentInitiator, suppressStreamLogs)
 }
 
 func (b *MockHTTPBackend) Search(

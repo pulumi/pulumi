@@ -80,9 +80,6 @@ type CreateDeploymentRequest struct {
 type AgentPoolIDMarshaller string
 
 func (d *AgentPoolIDMarshaller) MarshalJSON() ([]byte, error) {
-	if d == nil {
-		return json.Marshal([]byte{})
-	}
 	if *d != "" {
 		return json.Marshal(*d)
 	}
