@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto
+  description: Protect access to transport.UnsupportedCapabilities inside repo.FetchContext
