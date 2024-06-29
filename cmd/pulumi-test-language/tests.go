@@ -296,6 +296,32 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l2-resource-alpha": {
+		providers: []plugin.Provider{&providers.AlphaProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:alpha", provider.Type.String(), "expected alpha provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "alpha:index:Resource", simple.Type.String(), "expected alpha resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
 	"l2-explicit-provider": {
 		providers: []plugin.Provider{&providers.SimpleProvider{}},
 		runs: []testRun{

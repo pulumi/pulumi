@@ -874,6 +874,22 @@ func (eng *languageTestServer) RunLanguageTest(
 			// We have to do some fuzzy matching by name here because the language plugin returns the name of the
 			// library, which is generally _not_ just the plugin name. e.g. "@pulumi/aws" for the nodejs aws library.
 
+			// When checking for version equality we _want_ to do a semver exact match but not all languages support
+			// semver, so we will allow a fuzzy match of the version as well.
+			versionsMatch := func(expected, actual string) bool {
+				if expected == actual {
+					return true
+				}
+				// Expected _will_ be a semver (because we got it from the provider version), but actual could be
+				// _anything_. We assume it will at least have the major.minor.patch part from the expected semver.
+				expectedSV := semver.MustParse(expected)
+				expectedSV.Pre = nil
+				expectedSV.Build = nil
+				expected = expectedSV.String()
+
+				return strings.Contains(actual, expected)
+			}
+
 			// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
 			// so this is just to give better error messages. For our main dependencies we should have a different version
 			// for every package, so the fuzzy check by name then exact check by version should be unique.
@@ -890,7 +906,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 				if strings.Contains(sanatize(actual.Name), sanatize(expectedDependency.Name)) {
 					found = &actual.Version
-					if expectedDependency.Version == actual.Version {
+					if versionsMatch(expectedDependency.Version, actual.Version) {
 						break
 					}
 				}
@@ -898,7 +914,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 			if found == nil {
 				return makeTestResponse("missing expected dependency " + expectedDependency.Name), nil
-			} else if expectedDependency.Version != *found {
+			} else if !versionsMatch(expectedDependency.Version, *found) {
 				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
 					expectedDependency.Name, *found, expectedDependency.Version)), nil
 			}

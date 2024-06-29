@@ -493,6 +493,27 @@ func (mod *modContext) genUtilitiesFile() ([]byte, error) {
 def get_plugin_download_url():
 	return %s
 `, optionalURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// If a new style support pack library is being generated then write the _actual_ version to the utilities file
+	// rather than relying on re-parsing the pypi version from setup.py.
+	if pkg.SupportPack {
+		if pkg.Version == nil {
+			return nil, errors.New("package version is required")
+		}
+		_, err = fmt.Fprintf(buffer, `
+def get_version():
+    return %q
+`, pkg.Version.String())
+	} else {
+		_, err = fmt.Fprintf(buffer, `
+def get_version():
+     return _version_str
+`)
+	}
+
 	return buffer.Bytes(), err
 }
 
