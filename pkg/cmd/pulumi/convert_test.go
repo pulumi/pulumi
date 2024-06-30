@@ -35,7 +35,7 @@ func TestYamlConvert(t *testing.T) {
 
 	result := runConvert(
 		env.Global(), []string{}, "convert_testdata", []string{},
-		"yaml", "go", "convert_testdata/go", true, true)
+		"yaml", "go", "convert_testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -47,7 +47,7 @@ func TestPclConvert(t *testing.T) {
 
 	result := runConvert(
 		env.Global(), []string{}, "pcl_convert_testdata",
-		[]string{}, "pcl", "pcl", tmp, true, true)
+		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
 	// Check that we made one file
