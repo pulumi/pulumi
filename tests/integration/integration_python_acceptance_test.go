@@ -413,7 +413,8 @@ func TestTypecheckerMissingError(t *testing.T) {
 	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 		// Should get an event for the pyright failure.
 		found := false
-		expected := "The typechecker option is set to pyright, but pyright is not installed. Please add an entry for pyright to requirements.txt"
+		expected := "The typechecker option is set to pyright, but pyright is not installed." +
+			" Please add an entry for pyright to requirements.txt"
 		for _, event := range stack.Events {
 			if event.DiagnosticEvent != nil {
 				if strings.Contains(event.DiagnosticEvent.Message, expected) {
