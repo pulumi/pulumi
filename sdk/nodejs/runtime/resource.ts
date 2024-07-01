@@ -480,6 +480,7 @@ export function registerResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    pkgref?: Promise<string | undefined>,
 ): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
@@ -520,7 +521,19 @@ export function registerResource(
                 }
             }
 
+            // If we have a package reference, we need to wait for it to resolve.
+            let packageRef = undefined;
+            if (pkgref !== undefined) {
+                packageRef = await pkgref;
+                if (packageRef !== undefined) {
+                    // If we have a package reference we can clear some of the resource options
+                    opts.version = undefined;
+                    opts.pluginDownloadURL = undefined;
+                }
+            }
+
             const req = new resproto.RegisterResourceRequest();
+            req.setPackage(packageRef || "");
             req.setType(t);
             req.setName(name);
             req.setParent(resop.parentURN || "");

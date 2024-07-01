@@ -21,6 +21,7 @@ package nodejs
 import (
 	"bytes"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -910,12 +911,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// If it's a ComponentResource, set the remote option.
 	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/);\n", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts);\n", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, false /*remote*/", name)
 	}
 
-	fmt.Fprintf(w, "    }\n")
+	pkg, err := r.PackageReference.Definition()
+	if err != nil {
+		return resourceFileInfo{}, err
+	}
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n    }\n")
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) {
@@ -2364,6 +2373,7 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 type npmPackage struct {
 	Name             string                  `json:"name"`
 	Version          string                  `json:"version"`
+	Type             string                  `json:"type,omitempty"`
 	Description      string                  `json:"description,omitempty"`
 	Keywords         []string                `json:"keywords,omitempty"`
 	Homepage         string                  `json:"homepage,omitempty"`
@@ -2397,12 +2407,31 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		version = pkg.Version.String()
 		pluginVersion = version
 	}
-	if pkg.SupportPack {
+	// Parameterized schemas _always_ respect schema version
+	if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
 		pluginVersion = pkg.Version.String()
 		version = pluginVersion
+	}
+
+	var pulumiPlugin plugin.PulumiPluginJSON
+	if pkg.Parameterization != nil {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Name:     pkg.Parameterization.BaseProvider.Name,
+			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			// TODO: Need PluginDownloadURL on BaseProvider
+			// Server: pkg.BaseProvider.PluginDownloadURL,
+		}
+	} else {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     pkg.Name,
+			Version:  pluginVersion,
+		}
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2418,12 +2447,10 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
-		Pulumi: plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Name,
-			Version:  pluginVersion,
+		Dependencies: map[string]string{
+			"async-mutex": "^0.5.0",
 		},
+		Pulumi: pulumiPlugin,
 	}
 
 	// Copy the overlay dependencies, if any.
@@ -2788,6 +2815,51 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	}
 
 	_, err = fmt.Fprintf(w, "%s", code)
+	if err != nil {
+		return err
+	}
+
+	if def.Parameterization != nil {
+
+		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
+
+		_, err = fmt.Fprintf(w, `
+const _packageLock = new mutex.Mutex();
+var _packageRef : undefined | string = undefined;
+export async function getPackage() : Promise<string | undefined> {
+	if (_packageRef === undefined) {
+		await _packageLock.acquire();
+		if (_packageRef === undefined) {
+			const monitor = runtime.getMonitor();
+			const params = new resproto.Parameterization();
+			params.setName("%s");
+			params.setVersion("%s");
+			params.setValue(%s);
+
+			const req = new resproto.RegisterPackageRequest();
+			req.setName("%s");
+			req.setVersion("%s");
+			req.setDownloadUrl("%s");
+			req.setParameterization(params);
+			const resp : any = await new Promise((resolve, reject) => {
+				monitor!.registerPackage(req, (err: any, resp: any) => {
+					if (err) {
+						reject(err);
+					} else {
+						resolve(resp); 
+					}
+				});
+			});
+			_packageRef = resp.getRef();
+		}
+		_packageLock.release();
+	}
+	return _packageRef as string;
+}`,
+			def.Name, def.Version, parameterValue,
+			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.Parameterization.BaseProvider.PluginDownloadURL)
+	}
+
 	return err
 }
 

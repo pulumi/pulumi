@@ -18,6 +18,7 @@ package ints
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -2028,6 +2029,82 @@ func TestNodeOOM(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			t.Logf("stdout: %s", stderr.String())
 			assert.Contains(t, stderr.String(), "Detected a possible out of memory error")
+		},
+	})
+}
+
+// Test a paramaterized provider with nodejs.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestParamaterizedNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("nodejs/parameterized")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("nodejs", "parameterized", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "nodejs")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Verbose:       true,
+		DebugLogLevel: 10,
+		Dir:           filepath.Join("nodejs", "parameterized"),
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		PrePrepareProject: func(project *engine.Projinfo) error {
+			// Run pulumi pack on the generated SDK so we have a built .tar.gz that yarn/npm can successfully link to.
+			e.CWD = filepath.Join(project.Root, "sdk")
+
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs"))
+			if err != nil {
+				return err
+			}
+			e.RunCommand("pulumi", "package", "pack-sdk", "nodejs", coreSDK)
+
+			// Find the pulumi tgz written by the pack command
+			files, err := os.ReadDir(e.CWD)
+			if err != nil {
+				return err
+			}
+			var tgz string
+			for _, f := range files {
+				if strings.HasSuffix(f.Name(), ".tgz") {
+					tgz = f.Name()
+				}
+			}
+
+			// Edit the generated package.json to point to the local tgz
+			packageJSON := filepath.Join(e.CWD, "nodejs", "package.json")
+			data, err := os.ReadFile(packageJSON)
+			if err != nil {
+				return err
+			}
+			var pkgJSON map[string]interface{}
+			err = json.Unmarshal(data, &pkgJSON)
+			if err != nil {
+				return err
+			}
+			deps := pkgJSON["dependencies"].(map[string]interface{})
+			deps["@pulumi/pulumi"] = filepath.Join(e.CWD, tgz)
+			data, err = json.MarshalIndent(pkgJSON, "", "  ")
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(packageJSON, data, 0o644)
+			if err != nil {
+				return err
+			}
+
+			// Now we can pack the provider sdk
+			e.RunCommand("pulumi", "package", "pack-sdk", "nodejs", "nodejs")
+
+			return nil
 		},
 	})
 }
