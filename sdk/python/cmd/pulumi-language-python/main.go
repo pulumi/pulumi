@@ -759,15 +759,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == typechecker })
 		if idx < 0 {
-			installCommand := fmt.Sprintf("poetry add %s", typechecker)
+			installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", typechecker)
 			if opts.Toolchain != toolchain.Poetry {
+				pipCommand := fmt.Sprintf("%s/bin/pip install -r requirements.txt", opts.Virtualenv)
 				if runtime.GOOS == "windows" {
-					installCommand = fmt.Sprintf("%s\\Scripts\\pip install %s", opts.Virtualenv, typechecker)
-				} else {
-					installCommand = fmt.Sprintf("%s/bin/pip install %s", opts.Virtualenv, typechecker)
+					pipCommand = fmt.Sprintf("%s\\Scripts\\pip install -r requirements.txt", opts.Virtualenv)
 				}
+				installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", typechecker, pipCommand)
 			}
-			return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. Please install it using `%s`.",
+			return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
 				typechecker, typechecker, installCommand)
 		}
 
