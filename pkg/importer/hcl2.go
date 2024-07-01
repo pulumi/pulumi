@@ -41,7 +41,6 @@ var Null = &model.Variable{
 type PathedLiteralValue struct {
 	Root                string
 	Value               string
-	Identity            bool
 	ExpressionReference *model.ScopeTraversalExpression
 }
 

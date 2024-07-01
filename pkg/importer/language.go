@@ -65,24 +65,14 @@ func (e *DiagnosticsError) String() string {
 
 func removeDuplicatePathedValues(pathedValues []PathedLiteralValue) []PathedLiteralValue {
 	uniqueValues := make([]PathedLiteralValue, 0)
-	identityOccurrences := make(map[string]int)
-	outputOccurrences := make(map[string]int)
+	occurrences := make(map[string]int)
 	for _, pathedValue := range pathedValues {
-		if pathedValue.Identity {
-			identityOccurrences[pathedValue.Value]++
-		} else {
-			outputOccurrences[pathedValue.Value]++
-		}
+		occurrences[pathedValue.Value]++
 	}
 
 	for _, pathedValue := range pathedValues {
-		if pathedValue.Identity && identityOccurrences[pathedValue.Value] > 1 {
-			// an identity value that has occurred multiple times is not unique
-			continue
-		}
-
-		if !pathedValue.Identity && outputOccurrences[pathedValue.Value] > 1 {
-			// an output value that has occurred multiple times is not unique
+		if occurrences[pathedValue.Value] > 1 {
+			// a value that has occurred multiple times is not unique
 			continue
 		}
 
@@ -138,9 +128,8 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 
 		name := sanitizeName(state.URN.Name())
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:     name,
-			Value:    resourceID,
-			Identity: true,
+			Root:  name,
+			Value: resourceID,
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName: name,
 				Traversal: hcl.Traversal{
