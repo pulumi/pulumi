@@ -37,6 +37,11 @@ on:
         default: false
         required: false
         type: boolean
+      test-retries:
+        description: "How often tests are retried"
+        default: 0
+        required: false
+        type: number
 
       version-set:
         required: false
@@ -73,7 +78,7 @@ env:
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
   GO_TEST_SHUFFLE: off
-  PULUMI_TEST_RETRIES: 2
+  PULUMI_TEST_RETRIES: ${{ inputs.test-retries }}
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
