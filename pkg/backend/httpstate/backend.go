@@ -173,7 +173,7 @@ type Backend interface {
 	Client() *client.Client
 
 	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
-		opts display.Options, deploymentInitiator string) error
+		opts display.Options, deploymentInitiator string, streamDeploymentLogs bool) error
 
 	// Queries the backend for resources based on the given query parameters.
 	Search(
@@ -1896,6 +1896,7 @@ const pulumiOperationHeader = "Pulumi operation"
 
 func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.StackReference,
 	req apitype.CreateDeploymentRequest, opts display.Options, deploymentInitiator string,
+	suppressStreamLogs bool,
 ) error {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -1914,6 +1915,10 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 		fmt.Printf(opts.Color.Colorize(
 			colors.SpecHeadline+"View Live: "+
 				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), resp.ConsoleURL)
+	}
+
+	if suppressStreamLogs {
+		return nil
 	}
 
 	token := ""

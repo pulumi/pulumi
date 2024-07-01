@@ -157,7 +157,11 @@ func newDestroyCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+					return errResult
+				}
+
+				return runDeployment(ctx, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)

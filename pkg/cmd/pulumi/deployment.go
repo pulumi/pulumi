@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -66,6 +67,81 @@ func newDeploymentCmd() *cobra.Command {
 		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
+	cmd.AddCommand(newDeploymentRunCmd())
+
+	return cmd
+}
+
+func newDeploymentRunCmd() *cobra.Command {
+	// Flags for remote operations.
+	remoteArgs := RemoteArgs{}
+
+	var stack string
+	var suppressPermalink bool
+
+	cmd := &cobra.Command{
+		Use:   "run <operation> [url]",
+		Short: "Launch a deployment job on Pulumi Cloud",
+		Long:  "",
+		Args:  cmdutil.RangeArgs(1, 2),
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := cmd.Context()
+
+			operation, err := apitype.ParsePulumiOperation(args[0])
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			var url string
+			if len(args) > 1 {
+				url = args[1]
+			}
+
+			display := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+				// we only suppress permalinks if the user passes true. the default is an empty string
+				// which we pass as 'false'
+				SuppressPermalink: suppressPermalink,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return result.FromError(err)
+			}
+
+			currentBe, err := currentBackend(ctx, project, display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return result.FromError(fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name()))
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			if errResult := validateDeploymentFlags(url, remoteArgs); errResult != nil {
+				return errResult
+			}
+
+			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+		}),
+	}
+
+	// Remote flags
+	remoteArgs.applyFlagsForDeploymentCommand(cmd)
+
+	cmd.PersistentFlags().BoolVar(
+		&suppressPermalink, "suppress-permalink", false,
+		"Suppress display of the state permalink")
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }
@@ -196,6 +272,10 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
 	return cmd
 }
 
@@ -254,11 +334,16 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
 	return cmd
 }
 
 func newDeploymentSettingsUpdateCmd() *cobra.Command {
 	var stack string
+
 	cmd := &cobra.Command{
 		Use:        "up",
 		Aliases:    []string{"update"},
@@ -309,11 +394,16 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
 	return cmd
 }
 
 func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	var stack string
+
 	cmd := &cobra.Command{
 		Use:        "destroy",
 		Aliases:    []string{"down", "dn"},
@@ -358,6 +448,10 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }
