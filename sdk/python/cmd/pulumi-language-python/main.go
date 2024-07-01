@@ -767,6 +767,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 				}
 				installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", typechecker, pipCommand)
 			}
+			//revive:disable:error-strings // This error message is user facing.
 			return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
 				typechecker, typechecker, installCommand)
 		}
