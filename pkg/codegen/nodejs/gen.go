@@ -34,6 +34,7 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/tstypes"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
@@ -70,18 +71,18 @@ func title(s string) string {
 	if s == "" {
 		return ""
 	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
+	return cgstrings.UppercaseFirst(s)
 }
 
-// camel converts s to camel case.
+// dashedCamel converts s to camelCase while preserving punctuation. Not
+// appropriate for property names -- use cgstrings.Camel instead.
 //
 // Examples:
 // "helloWorld"    => "helloWorld"
 // "HelloWorld"    => "helloWorld"
 // "JSONObject"    => "jsonobject"
 // "My-FRIEND.Bob" => "my-FRIEND.Bob"
-func camel(s string) string {
+func dashedCamel(s string) string {
 	if s == "" {
 		return ""
 	}
@@ -281,15 +282,15 @@ func resourceName(r *schema.Resource) string {
 }
 
 func (mod *modContext) resourceFileName(r *schema.Resource) string {
-	fileName := camel(resourceName(r)) + ".ts"
+	fileName := dashedCamel(resourceName(r)) + ".ts"
 	if mod.isReservedSourceFileName(fileName) {
-		fileName = camel(resourceName(r)) + "_.ts"
+		fileName = dashedCamel(resourceName(r)) + "_.ts"
 	}
 	return fileName
 }
 
 func tokenToFunctionName(tok string) string {
-	return camel(tokenToName(tok))
+	return cgstrings.Camel(tokenToName(tok))
 }
 
 func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
@@ -439,7 +440,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, cgstrings.Unpunctuate(p.Name), sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil
@@ -452,26 +453,27 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
 	for _, p := range properties {
+		name := cgstrings.Unpunctuate(p.Name)
 		if p.DefaultValue != nil {
 			dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", name, name, dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
 			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
 			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
 			// because val.%arg existed in the input (type system enforced).
 			var compositeObject string
 			if codegen.IsNOptionalInput(p.Type) {
-				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", name, funcName)
 			} else {
-				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
+				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, name)
 			}
 			if !p.IsRequired() {
-				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", name, compositeObject)
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
+			defaults = append(defaults, fmt.Sprintf("%s: %s", name, compositeObject))
 		}
 	}
 
@@ -510,7 +512,7 @@ func provideDefaultsFuncNameFromName(typeName string) string {
 		i = in
 	}
 	// path + camel(name) + ProvideDefaults suffix
-	return typeName[:i] + camel(typeName[i:]) + "ProvideDefaults"
+	return typeName[:i] + cgstrings.Camel(typeName[i:]) + "ProvideDefaults"
 }
 
 // The name of the function used to set defaults on the plain type.
@@ -919,7 +921,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) {
-		methodName := camel(method.Name)
+		methodName := cgstrings.Camel(method.Name)
 		fun := method.Function
 
 		var objectReturnType *schema.ObjectType
@@ -1032,7 +1034,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 
 		if liftReturn {
-			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
+			fmt.Fprintf(w, "        return result.%s;\n", cgstrings.Camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
@@ -2060,9 +2062,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			return err
 		}
 
-		fileName := camel(tokenToName(f.Token)) + ".ts"
+		fileName := dashedCamel(tokenToName(f.Token)) + ".ts"
 		if mod.isReservedSourceFileName(fileName) {
-			fileName = camel(tokenToName(f.Token)) + "_.ts"
+			fileName = dashedCamel(tokenToName(f.Token)) + "_.ts"
 		}
 		addFunctionFile(funInfo, fileName, buffer.String())
 	}

@@ -89,8 +89,16 @@ func isLegalIdentifier(s string) bool {
 // makeValidIdentifier replaces characters that are not allowed in JavaScript identifiers with underscores. No attempt
 // is made to ensure that the result is unique.
 func makeValidIdentifier(name string) string {
+	name = underscoreInvalidRunes(name)
+	if isReservedWord(name) {
+		return "_" + name
+	}
+	return name
+}
+
+func underscoreInvalidRunes(s string) string {
 	var builder strings.Builder
-	for i, c := range name {
+	for i, c := range s {
 		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
@@ -100,11 +108,7 @@ func makeValidIdentifier(name string) string {
 			builder.WriteRune(c)
 		}
 	}
-	name = builder.String()
-	if isReservedWord(name) {
-		return "_" + name
-	}
-	return name
+	return builder.String()
 }
 
 func makeSafeEnumName(name, typeName string) (string, error) {

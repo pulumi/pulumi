@@ -29,10 +29,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -56,14 +56,13 @@ func Title(s string) string {
 	if s == "" {
 		return ""
 	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
+	return cgstrings.UppercaseFirst(s)
 }
 
 func csharpIdentifier(s string) string {
 	// Some schema field names may look like $ref or $schema. Remove the leading $ to make a valid identifier.
 	// This could lead to a clash if both `$foo` and `foo` are defined, but we don't try to de-duplicate now.
-	s = strings.TrimPrefix(s, "$")
+	s = underscoreInvalidRunes(strings.TrimPrefix(s, "$"))
 
 	switch s {
 	case "abstract", "as", "base", "bool",
@@ -167,7 +166,7 @@ func (mod *modContext) propertyName(p *schema.Property) string {
 	if n, ok := mod.propertyNames[p]; ok {
 		return n
 	}
-	return Title(p.Name)
+	return underscoreInvalidRunes(Title(p.Name))
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -1441,7 +1440,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		// first generate the function definition
 		fmt.Fprintf(w, "        public static async Task%s InvokeAsync(", typeParamOrEmpty(typeParameter))
 		for _, prop := range fun.Inputs.Properties {
-			argumentName := LowerCamelCase(prop.Name)
+			argumentName := cgstrings.Camel(prop.Name)
 			argumentType := mod.typeString(prop.Type, "", false, false, true)
 			paramDeclaration := fmt.Sprintf("%s %s", argumentType, argumentName)
 			if !prop.IsRequired() {
@@ -1464,7 +1463,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		funcBodyIndent()
 		fmt.Fprint(w, "var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
 		for _, prop := range fun.Inputs.Properties {
-			argumentName := LowerCamelCase(prop.Name)
+			argumentName := cgstrings.Camel(prop.Name)
 			funcBodyIndent()
 			fmt.Fprintf(w, "builder[\"%s\"] = %s;\n", prop.Name, argumentName)
 		}
@@ -1572,7 +1571,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		fmt.Fprintf(w, "        public static Output%s Invoke(", typeParamOrEmpty(typeParameter))
 		for _, prop := range fun.Inputs.Properties {
 			var paramDeclaration string
-			argumentName := LowerCamelCase(prop.Name)
+			argumentName := cgstrings.Camel(prop.Name)
 			propertyType := &schema.InputType{ElementType: prop.Type}
 			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 			if prop.IsRequired() {
@@ -1592,7 +1591,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		fmt.Fprint(w, "            var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
 		if fun.Inputs != nil {
 			for _, prop := range fun.Inputs.Properties {
-				argumentName := LowerCamelCase(prop.Name)
+				argumentName := cgstrings.Camel(prop.Name)
 				fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
 			}
 		}

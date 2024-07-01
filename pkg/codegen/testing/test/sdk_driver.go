@@ -369,7 +369,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "hyphenated-symbols",
 		Description: "Test that types can have names with hyphens in them",
-		Skip:        allLanguages.Except("go/any").Except("python/any"),
 	},
 	{
 		Directory:   "provider-type-schema",
@@ -444,7 +443,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "legacy-names",
 		Description: "Testing the use of snake_case names and tokens.",
-		Skip:        codegen.NewStringSet("go/test"),
 	},
 	{
 		Directory:   "kubernetes20",
