@@ -43,6 +43,7 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       enable-coverage: true
       fail-fast: true
+      test-retries: 2
     secrets: inherit
 
   prepare-release:
