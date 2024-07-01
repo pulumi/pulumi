@@ -132,6 +132,37 @@
         "language": {
             "description": "Additional language-specific data about the package.",
             "type": "object"
+        },
+        "parameterization": {
+            "description": "An optional object to define parameterization for the package.",
+            "type": "object",
+            "properties": {
+                "baseProvider": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
+                            "type": "string",
+                            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
+                        },
+                        "version": {
+                            "description": "The version of the package. The version must be valid semver.",
+                            "type": "string",
+                            "pattern": "^v?(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+                        },
+                        "pluginDownloadURL": {
+                            "description": "The URL to use when downloading the provider plugin binary.",
+                            "type": "string"
+                        }
+                    },
+                    "required": ["name", "version"],
+                    "additionalProperties": false
+                },
+                "parameter": {
+
+                }
+            },
+            "additionalProperties": false
         }
     },
     "additionalProperties": false,
