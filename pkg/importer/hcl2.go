@@ -43,7 +43,6 @@ type PathedLiteralValue struct {
 	Value               string
 	Identity            bool
 	ExpressionReference *model.ScopeTraversalExpression
-	ResourceType        string
 }
 
 type ImportState struct {
@@ -53,17 +52,12 @@ type ImportState struct {
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
 // that happens to have the same value as the ID of that resource, it doesn't create a self-reference.
-// Also it filters out references to resources that are not ancestors of the resource.
-func filterReferences(resourceName string, importState ImportState, ancestorTypes []string) ImportState {
+func filterReferences(resourceName string, importState ImportState) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, pathedLiteralValue := range importState.PathedLiteralValues {
 		if pathedLiteralValue.Root != resourceName {
-			// only include values from resources that have the same type as the resource or one of its ancestors
-			for _, ancestorType := range ancestorTypes {
-				if pathedLiteralValue.ResourceType == ancestorType {
-					pathedLiteralValues = append(pathedLiteralValues, pathedLiteralValue)
-				}
-			}
+			// if the pathedLiteralValue is not a self-reference, add it to the list
+			pathedLiteralValues = append(pathedLiteralValues, pathedLiteralValue)
 		}
 	}
 
@@ -80,7 +74,6 @@ func GenerateHCL2Definition(
 	loader schema.Loader,
 	state *resource.State,
 	importState ImportState,
-	ancestorsTypes map[string][]string,
 ) (*model.Block, error) {
 	// TODO: pull the package version from the resource's provider
 	pkg, err := schema.LoadPackageReference(loader, string(state.Type.Package()), nil)
@@ -121,12 +114,7 @@ func GenerateHCL2Definition(
 		addedReferences[rootName] = true
 	}
 
-	var allowedAncestorTypes []string
-	if ancestors, ok := ancestorsTypes[string(state.Type)]; ok {
-		allowedAncestorTypes = ancestors
-	}
-
-	importStateContext := filterReferences(name, importState, allowedAncestorTypes)
+	importStateContext := filterReferences(name, importState)
 	for _, p := range r.InputProperties {
 		input := state.Inputs[resource.PropertyKey(p.Name)]
 		x, err := generatePropertyValue(p, input, importStateContext, onReferenceFound)

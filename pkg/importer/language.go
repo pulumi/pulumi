@@ -20,8 +20,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/zclconf/go-cty/cty"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 
 	"github.com/hashicorp/hcl/v2"
@@ -99,70 +97,31 @@ func nextPropertyPath(path hcl.Traversal, key hcl.Traverser) hcl.Traversal {
 
 func createPathedValue(
 	root string,
-	resourceType string,
 	property resource.PropertyValue,
 	currentPath hcl.Traversal,
-) []PathedLiteralValue {
-	pathedLiteralValues := make([]PathedLiteralValue, 0)
+) *PathedLiteralValue {
 	if property.IsNull() {
-		return pathedLiteralValues
+		return nil
 	}
 
 	if property.IsString() {
-		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:         root,
-			ResourceType: resourceType,
-			Value:        property.StringValue(),
+		return &PathedLiteralValue{
+			Root:  root,
+			Value: property.StringValue(),
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName:  root,
 				Traversal: currentPath,
 			},
-		})
+		}
 	}
 
 	if property.IsSecret() {
 		// unwrap the secret
 		secret := property.SecretValue()
-		return createPathedValue(root, resourceType, secret.Element, currentPath)
+		return createPathedValue(root, secret.Element, currentPath)
 	}
 
-	if property.IsArray() {
-		values := property.ArrayValue()
-		for i, element := range values {
-			nextPath := nextPropertyPath(currentPath, hcl.TraverseIndex{Key: cty.NumberIntVal(int64(i))})
-			foundLiterals := createPathedValue(root, resourceType, element, nextPath)
-			pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
-		}
-	}
-
-	if property.IsObject() {
-		propertyMap := property.ObjectValue()
-		foundLiterals := createPathedValues(root, resourceType, propertyMap, currentPath)
-		pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
-	}
-
-	return pathedLiteralValues
-}
-
-func createPathedValues(
-	root string,
-	resourceType string,
-	data resource.PropertyMap,
-	currentPath hcl.Traversal,
-) []PathedLiteralValue {
-	pathedLiteralValues := make([]PathedLiteralValue, 0)
-	for key, value := range data {
-		// ignore internal properties
-		if strings.HasPrefix(string(key), "__") {
-			continue
-		}
-
-		nextPath := nextPropertyPath(currentPath, hcl.TraverseAttr{Name: string(key)})
-		foundLiterals := createPathedValue(root, resourceType, value, nextPath)
-		pathedLiteralValues = append(pathedLiteralValues, foundLiterals...)
-	}
-
-	return pathedLiteralValues
+	return nil
 }
 
 func sanitizeName(name string) string {
@@ -179,10 +138,9 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 
 		name := sanitizeName(state.URN.Name())
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
-			Root:         name,
-			Value:        resourceID,
-			ResourceType: state.Type.String(),
-			Identity:     true,
+			Root:     name,
+			Value:    resourceID,
+			Identity: true,
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName: name,
 				Traversal: hcl.Traversal{
@@ -193,8 +151,15 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 		})
 
 		initialPath := hcl.Traversal{hcl.TraverseRoot{Name: name}}
-		literalValuesFromOutputs := createPathedValues(name, state.Type.String(), state.Outputs, initialPath)
-		pathedLiteralValues = append(pathedLiteralValues, literalValuesFromOutputs...)
+
+		for key, value := range state.Outputs {
+			if string(key) == "name" || string(key) == "arn" {
+				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: string(key)})
+				if output := createPathedValue(name, value, nextPath); output != nil {
+					pathedLiteralValues = append(pathedLiteralValues, *output)
+				}
+			}
+		}
 	}
 
 	return ImportState{
@@ -206,13 +171,12 @@ func createImportState(states []*resource.State, names NameTable) ImportState {
 // GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
 	names NameTable,
-	ancestorTypes map[string][]string,
 ) error {
 	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
 		var hcl2Text bytes.Buffer
 
 		for i, state := range states {
-			hcl2Def, err := GenerateHCL2Definition(loader, state, importState, ancestorTypes)
+			hcl2Def, err := GenerateHCL2Definition(loader, state, importState)
 			if err != nil {
 				return nil, nil, err
 			}

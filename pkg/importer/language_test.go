@@ -64,7 +64,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 				actualState = renderResource(t, res)
 				return nil
-			}, []*resource.State{state}, names, nil)
+			}, []*resource.State{state}, names)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
@@ -103,36 +103,25 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	}
 
 	// Create a circular reference between two resources.
-	// here the bucket object references the bucket by its ID,
-	// however, the ID of the bucket object is the same value as firstBucket.website.indexDocument
-	// which creates a circular reference between the two.
 	// In this case, generating the PCL would fail with a circular reference error but we retry the codegen
 	// without guessing the dependencies between the resources.
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
-			ID:     "provider-generated-bucket-id-abc123",
-			Custom: true,
-			Type:   "aws:s3/bucket:Bucket",
-			Outputs: map[string]interface{}{
-				"website": map[string]interface{}{
-					"indexDocument": "index.html",
-				},
-			},
-			Inputs: map[string]interface{}{
-				"website": map[string]interface{}{
-					"indexDocument": "index.html",
-				},
-			},
-		},
-		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::index.html",
-			ID:     "index.html",
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::first",
+			ID:     "bucket-object-1",
 			Custom: true,
 			Type:   "aws:s3/bucketObject:BucketObject",
 			Inputs: map[string]interface{}{
-				"bucket":       "provider-generated-bucket-id-abc123",
-				"storageClass": "STANDARD",
+				"bucket": "bucket-object-2",
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::second",
+			ID:     "bucket-object-2",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket": "bucket-object-1",
 			},
 		},
 	}
@@ -146,30 +135,18 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		states = append(states, state)
 	}
 
-	// intentionally create a circular reference between the two resources
-	ancestorTypes := map[string][]string{
-		"aws:s3/bucketObject:BucketObject": {
-			"aws:s3/bucket:Bucket",
-		},
-		"aws:s3/bucket:Bucket": {
-			"aws:s3/bucketObject:BucketObject",
-		},
-	}
-
 	var names NameTable
-	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names, ancestorTypes)
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names)
 	assert.NoError(t, err)
 	// notice here the generated program doesn't have any references because
 	// we retried the codegen without guessing the dependencies between the resources.
-	expectedCode := `resource firstBucket "aws:s3/bucket:Bucket" {
-    website ={
-indexDocument = "index.html"}
+	expectedCode := `resource first "aws:s3/bucketObject:BucketObject" {
+    bucket = "bucket-object-2"
 
 }
 
-resource index_html "aws:s3/bucketObject:BucketObject" {
-    bucket = "provider-generated-bucket-id-abc123"
-    storageClass = "STANDARD"
+resource second "aws:s3/bucketObject:BucketObject" {
+    bucket = "bucket-object-1"
 
 }
 `

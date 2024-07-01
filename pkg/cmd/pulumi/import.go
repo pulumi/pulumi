@@ -163,9 +163,8 @@ type importSpec struct {
 }
 
 type importFile struct {
-	NameTable     map[string]resource.URN `json:"nameTable,omitempty"`
-	Resources     []importSpec            `json:"resources,omitempty"`
-	AncestorTypes map[string][]string     `json:"ancestorTypes,omitempty"`
+	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
+	Resources []importSpec            `json:"resources,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
@@ -470,7 +469,7 @@ type programGeneratorFunc func(
 func generateImportedDefinitions(ctx *plugin.Context,
 	out io.Writer, stackName tokens.StackName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
-	imports []deploy.Import, protectResources bool, ancestorTypes map[string][]string,
+	imports []deploy.Import, protectResources bool,
 ) (bool, error) {
 	defer func() {
 		v := recover()
@@ -528,7 +527,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 			return err
 		}
 		return nil
-	}, resources, names, ancestorTypes)
+	}, resources, names)
 }
 
 func newImportCmd() *cobra.Command {
@@ -620,9 +619,6 @@ func newImportCmd() *cobra.Command {
 			"                ...\n" +
 			"            }\n" +
 			"        ],\n" +
-			"        \"ancestorTypes\": {\n" +
-			"            \"child-type-token\": [\"ancestor-type-token1\", \"ancestor-type-token2\"]\n" +
-			"         },\n" +
 			"    }\n" +
 			"\n" +
 			"The name table maps language names to parent and provider URNs. These names are\n" +
@@ -648,11 +644,6 @@ func newImportCmd() *cobra.Command {
 			"\n" +
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n" +
-			"\n" +
-			"The ancestorTypes map is an optional field that maps child types to their ancestor types.\n" +
-			"When generating code from the import, the generator will use this map to guess input values of \n" +
-			"the child resource that correspond with outputs of the specified ancestor resources.\n" +
-			"The code generator will then replace the inputs to symbolic references of outputs of the ancestor types.\n" +
 			"\n" +
 			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
@@ -967,7 +958,7 @@ func newImportCmd() *cobra.Command {
 
 				validImports, err := generateImportedDefinitions(
 					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-					protectResources, importFile.AncestorTypes)
+					protectResources)
 				if err != nil {
 					if _, ok := err.(*importer.DiagnosticsError); ok {
 						err = fmt.Errorf("internal error: %w", err)
