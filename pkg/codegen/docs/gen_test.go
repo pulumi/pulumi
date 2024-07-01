@@ -480,7 +480,7 @@ func TestExamplesProcessing(t *testing.T) {
 	dctx := newDocGenContext()
 
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
-	docInfo := dctx.decomposeDocstring(description)
+	docInfo := dctx.decomposeDocstring(description, dctx.getSupportedSnippetLanguages(false, nil))
 	examplesSection := docInfo.examples
 	importSection := docInfo.importDetails
 
@@ -602,7 +602,7 @@ func TestDecomposeDocstring(t *testing.T) {
 		" "
 	dctx := newDocGenContext()
 
-	info := dctx.decomposeDocstring(awsVpcDocs)
+	info := dctx.decomposeDocstring(awsVpcDocs, dctx.getSupportedSnippetLanguages(false, nil))
 	assert.Equal(t, docInfo{
 		description: "Provides a VPC resource.\n",
 		examples: []exampleSection{
