@@ -155,17 +155,12 @@ export class MockMonitor {
 
     public async readResource(req: any, callback: (err: any, innterResponse: any) => void) {
         try {
-            let custom = false;
-            if (typeof req.getCustom === "function") {
-                custom = req.getCustom();
-            }
-
             const result: MockResourceResult = await this.mocks.newResource({
                 type: req.getType(),
                 name: req.getName(),
                 inputs: deserializeProperties(req.getProperties()),
                 provider: req.getProvider(),
-                custom: custom,
+                custom: true,
                 id: req.getId(),
             });
 
