@@ -234,7 +234,8 @@ func renameStackAndProject(urn urn.URN, stack backend.Stack) (urn.URN, error) {
 	if project, ok := stack.Ref().Project(); ok {
 		newURN = newURN.RenameProject(tokens.PackageName(project))
 	} else {
-		return "", errors.New("cannot get project name.  Please upgrade your project with `pulumi state upgrade` to solve this.")
+		return "", errors.New("cannot get project name.  " +
+			"Please upgrade your project with `pulumi state upgrade` to solve this.")
 	}
 	return newURN, nil
 }
