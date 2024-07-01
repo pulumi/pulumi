@@ -83,6 +83,15 @@ class Instance extends pulumi.CustomResource {
 
 class MyCustom extends pulumi.CustomResource {
     instance!: pulumi.Output<Instance>;
+    static get(
+        name: string,
+        id: pulumi.Input<pulumi.ID>,
+        state?: Record<string, any>,
+        opts?: pulumi.CustomResourceOptions,
+    ): MyCustom {
+        return new MyCustom(name, state, { ...opts, id });
+    }
+
     constructor(name: string, props?: Record<string, any>, opts?: CustomResourceOptions) {
         super("pkg:index:MyCustom", name, props, opts);
     }
@@ -104,6 +113,7 @@ setups.forEach(([test, isAsyncNewResource, isAsyncCall]) => {
         let component: MyComponent;
         let instance: Instance;
         let custom: MyCustom;
+        let read: MyCustom;
         let invokeResult: Promise<number>;
         let remoteComponent: MyRemoteComponent;
 
@@ -127,6 +137,7 @@ setups.forEach(([test, isAsyncNewResource, isAsyncCall]) => {
             component = new MyComponent("mycomponent", "hello");
             instance = new Instance("instance");
             custom = new MyCustom("mycustom", { instance: instance });
+            read = MyCustom.get("mycustom", "read");
             invokeResult = invoke();
             remoteComponent = new MyRemoteComponent("myremotecomponent", pulumi.interpolate`hello: ${instance.id}`);
         });
@@ -159,6 +170,13 @@ setups.forEach(([test, isAsyncNewResource, isAsyncCall]) => {
 
             it("mycustom has expected output value", (done) => {
                 custom.instance.apply((_) => {
+                    done();
+                });
+            });
+
+            it("can be read with get", (done) => {
+                read.id.apply((id) => {
+                    assert.strictEqual(id, "read");
                     done();
                 });
             });
