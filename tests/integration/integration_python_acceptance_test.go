@@ -408,6 +408,31 @@ func TestPyrightSupport(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestTypecheckerMissingError(t *testing.T) {
+	validation := func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		// Should get an event for the pyright failure.
+		found := false
+		expected := "The typechecker option is set to pyright, but pyright is not installed." +
+			" Please add an entry for pyright to requirements.txt"
+		for _, event := range stack.Events {
+			if event.DiagnosticEvent != nil {
+				if strings.Contains(event.DiagnosticEvent.Message, expected) {
+					found = true
+				}
+			}
+		}
+		assert.True(t, found, "Did not find expected pyright diagnostic event")
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("python", "pyright-missing"),
+		Quick:                  true,
+		ExpectFailure:          true,
+		ExtraRuntimeValidation: validation,
+	})
+}
+
 func TestNewPythonUsesPip(t *testing.T) {
 	t.Parallel()
 

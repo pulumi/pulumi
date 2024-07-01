@@ -36,6 +36,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -746,6 +748,30 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
+		// If the typechecker is not installed, tell the user to install it.
+		tc, err := toolchain.ResolveToolchain(opts)
+		if err != nil {
+			return nil, err
+		}
+		packages, err := tc.ListPackages(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+		idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == typechecker })
+		if idx < 0 {
+			installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", typechecker)
+			if opts.Toolchain != toolchain.Poetry {
+				pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
+				if runtime.GOOS == "windows" {
+					pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
+				}
+				installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", typechecker, pipCommand)
+			}
+			//revive:disable:error-strings // This error message is user facing.
+			return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
+				typechecker, typechecker, installCommand)
+		}
+
 		if err := typecheckerCmd.Run(); err != nil {
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
