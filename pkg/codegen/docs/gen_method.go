@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -37,7 +38,7 @@ type methodDocArgs struct {
 
 	DeprecationMessage string
 	Comment            string
-	ExamplesSection    []exampleSection
+	ExamplesSection    examplesSection
 
 	// MethodName is a map of the language and the method name in that language.
 	MethodName map[string]string
@@ -94,7 +95,17 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 		methodNameMap[lang] = docHelper.GetMethodName(m)
 	}
 
-	docInfo := dctx.decomposeDocstring(f.Comment)
+	defer glog.Flush()
+	resourceSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(r.IsOverlay, r.OverlaySupportedLanguages)
+	methodSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(f.IsOverlay, f.OverlaySupportedLanguages)
+	if resourceSnippetLanguages != methodSnippetLanguages {
+		// All code choosers are tied together. If the method doesn't support the same languages as the resource, we
+		// default to the resource's supported languages for consistency.
+		glog.Warningf("Resource %s (%s) and method %s (%s) have different supported snippet languages. Defaulting to the resources supported snippet languages.",
+			r.Token, resourceSnippetLanguages, m.Name, methodSnippetLanguages)
+	}
+
+	docInfo := dctx.decomposeDocstring(f.Comment, resourceSnippetLanguages)
 	args := methodDocArgs{
 		Title: title(m.Name, ""),
 
@@ -106,7 +117,10 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 
 		Comment:            docInfo.description,
 		DeprecationMessage: f.DeprecationMessage,
-		ExamplesSection:    docInfo.examples,
+		ExamplesSection: examplesSection{
+			Examples:             docInfo.examples,
+			LangChooserLanguages: resourceSnippetLanguages,
+		},
 
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,

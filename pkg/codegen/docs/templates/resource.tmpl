@@ -9,7 +9,7 @@
 
 {{ htmlSafe .Comment }}
 
-{{- if ne (len .ExamplesSection) 0 }}
+{{- if ne (len .ExamplesSection.Examples) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
@@ -20,15 +20,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
-<div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
-</div>
-{{- end }}
 
 {{/*
     Render the specific snippet to construct the resource, e.g.
@@ -118,15 +110,7 @@ Resources are created with functions called constructors. To learn more about de
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
-<div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
-</div>
-{{- end }}
 
 {{ range $lang, $code := .CreationExampleSyntax }}
 <div>
@@ -171,15 +155,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{- end }}
 
 {{ htmlSafe .Comment }}
-{{- if ne (len .ExamplesSection) 0 }}
+{{- if ne (len .ExamplesSection.Examples) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
 #### Using {{ .Title }}
 
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
+<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
 
 <!-- TS/JS -->
 <div>
@@ -229,15 +211,7 @@ The following arguments are supported:
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
-{{- if eq .LangChooserLanguages "" }}
-<div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
-</div>
-{{- else }}
-<div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
-</div>
-{{- end }}
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">

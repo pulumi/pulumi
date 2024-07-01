@@ -369,7 +369,7 @@ type resourceDocArgs struct {
 
 	// Comment represents the introductory resource comment.
 	Comment            string
-	ExamplesSection    []exampleSection
+	ExamplesSection    examplesSection
 	DeprecationMessage string
 
 	// Import
@@ -487,25 +487,22 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 }
 
 // getSupportedSnippetLanguages returns a string containing the supported snippet languages for the given type.
-// If the type is not an overlay or if there are no overlay supported languages, an empty string is returned.
-// This means that the type is supported in all languages.
+// If the type is not an overlay or if there are no overlay supported languages, all languages are supported.
 // The returned string contains the supported languages joined by commas.
 func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
+	var supportedLanguages []string
 	// By default, all languages are supported.
 	if !isOverlay || len(overlaySupportedLanguages) == 0 {
-		return ""
-	}
-
-	var supportedLanguages []string
-	supportedSnippetLanguages := codegen.NewStringSet(dctx.snippetLanguages...)
-
-	// Ensure that the overlay supported languages are a subset of the supported snippet languages.
-	for _, lang := range overlaySupportedLanguages {
-		if supportedSnippetLanguages.Has(lang) {
-			supportedLanguages = append(supportedLanguages, lang)
+		supportedLanguages = dctx.snippetLanguages
+	} else {
+		supportedSnippetLanguages := codegen.NewStringSet(dctx.snippetLanguages...)
+		// Ensure that the overlay supported languages are a subset of the supported snippet languages.
+		for _, lang := range overlaySupportedLanguages {
+			if supportedSnippetLanguages.Has(lang) {
+				supportedLanguages = append(supportedLanguages, lang)
+			}
 		}
 	}
-	sort.Strings(supportedLanguages)
 
 	return strings.Join(supportedLanguages, ",")
 }
@@ -1819,15 +1816,19 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		maxNestedTypes = 200
 	}
 
-	docInfo := dctx.decomposeDocstring(r.Comment)
+	supportedSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(r.IsOverlay, r.OverlaySupportedLanguages)
+	docInfo := dctx.decomposeDocstring(r.Comment, supportedSnippetLanguages)
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:                docInfo.description,
-		DeprecationMessage:     r.DeprecationMessage,
-		ExamplesSection:        docInfo.examples,
+		Comment:            docInfo.description,
+		DeprecationMessage: r.DeprecationMessage,
+		ExamplesSection: examplesSection{
+			Examples:             docInfo.examples,
+			LangChooserLanguages: supportedSnippetLanguages,
+		},
 		ImportDocs:             docInfo.importDetails,
 		CreationExampleSyntax:  creationExampleSyntax,
 		ConstructorParams:      renderedCtorParams,
@@ -1847,7 +1848,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Methods: mod.genMethods(r),
 
 		PackageDetails:       packageDetails,
-		LangChooserLanguages: mod.docGenContext.getSupportedSnippetLanguages(r.IsOverlay, r.OverlaySupportedLanguages),
+		LangChooserLanguages: supportedSnippetLanguages,
 	}
 
 	return data

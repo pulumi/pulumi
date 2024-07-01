@@ -44,7 +44,7 @@ type functionDocArgs struct {
 
 	DeprecationMessage string
 	Comment            string
-	ExamplesSection    []exampleSection
+	ExamplesSection    examplesSection
 
 	// FunctionName is a map of the language and the function name in that language.
 	FunctionName map[string]string
@@ -475,12 +475,13 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Notes:          def.Attribution,
 	}
 
-	docInfo := dctx.decomposeDocstring(f.Comment)
+	supportedSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(f.IsOverlay, f.OverlaySupportedLanguages)
+	docInfo := dctx.decomposeDocstring(f.Comment, supportedSnippetLanguages)
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
 
 		Tool:                 mod.tool,
-		LangChooserLanguages: mod.docGenContext.getSupportedSnippetLanguages(f.IsOverlay, f.OverlaySupportedLanguages),
+		LangChooserLanguages: supportedSnippetLanguages,
 
 		FunctionName:   funcNameMap,
 		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap, false /*outputVersion*/),
@@ -488,7 +489,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 
 		Comment:            docInfo.description,
 		DeprecationMessage: f.DeprecationMessage,
-		ExamplesSection:    docInfo.examples,
+		ExamplesSection: examplesSection{
+			Examples:             docInfo.examples,
+			LangChooserLanguages: supportedSnippetLanguages,
+		},
 
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,
