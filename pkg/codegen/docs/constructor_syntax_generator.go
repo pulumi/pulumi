@@ -123,7 +123,13 @@ func (g *constructorSyntaxGenerator) writeValue(
 				}
 
 				g.indent(buffer)
-				write("%s = ", p.Name)
+				propertyName := p.Name
+				// quote property names that start with a dollar sign: $ref => "$ref"
+				if strings.HasPrefix(propertyName, "$") {
+					propertyName = fmt.Sprintf("%q", propertyName)
+				}
+
+				write("%s = ", propertyName)
 				if p.ConstValue != nil {
 					// constant values used for discriminator properties of object need to be exact
 					// we write them out here as strings to generate correct programs
