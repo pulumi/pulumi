@@ -417,6 +417,11 @@ func NewPulumiCmd() *cobra.Command {
 		contract.IgnoreError(err)
 	}
 
+	// Since we define a custom command for generating shell completions
+	// (`gen-completion` / `newGenCompletionCmd`), we disable Cobra's default
+	// completion command as a recommended best practice.
+	cmd.CompletionOptions.DisableDefaultCmd = true
+
 	return cmd
 }
 
