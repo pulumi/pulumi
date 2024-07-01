@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -67,7 +69,7 @@ func createStackWithResources(
 	return s
 }
 
-func runMove(t *testing.T, sourceResources []*resource.State, args []string) (*deploy.Snapshot, *deploy.Snapshot) {
+func runMove(t *testing.T, sourceResources []*resource.State, args []string) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	t.Cleanup(func() {
@@ -89,7 +91,13 @@ func runMove(t *testing.T, sourceResources []*resource.State, args []string) (*d
 		return b64.NewBase64SecretsManager(), nil
 	})
 
-	stateMoveCmd := stateMoveCmd{}
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp)
 	assert.NoError(t, err)
 
@@ -99,7 +107,7 @@ func runMove(t *testing.T, sourceResources []*resource.State, args []string) (*d
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
 	assert.NoError(t, err)
 
-	return sourceSnapshot, destSnapshot
+	return sourceSnapshot, destSnapshot, stdout
 }
 
 func TestMoveLeafResource(t *testing.T) {
@@ -120,7 +128,7 @@ func TestMoveLeafResource(t *testing.T) {
 		},
 	}
 
-	sourceSnapshot, destSnapshot := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
+	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
 
 	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
 
@@ -161,7 +169,7 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 		},
 	}
 
-	sourceSnapshot, destSnapshot := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
+	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
 
 	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
 
@@ -228,7 +236,11 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 		},
 	}
 
-	sourceSnapshot, destSnapshot := runMove(t, sourceResources, []string{string(resToMoveURN)})
+	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(resToMoveURN)})
+
+	assert.Contains(t, stdout.String(), "Planning to move the following resources from sourceStack to destStack:")
+	assert.Contains(t, stdout.String(), string(resToMoveURN))
+
 	// Only the provider and the resources that are not moved should remain in the source stack
 	assert.Equal(t, 5, len(sourceSnapshot.Resources))
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),

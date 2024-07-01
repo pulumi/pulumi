@@ -18,12 +18,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -31,12 +34,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type stateMoveCmd struct{}
+type stateMoveCmd struct {
+	Stdin     io.Reader
+	Stdout    io.Writer
+	Colorizer colors.Colorization
+	Yes       bool
+}
 
 func newStateMoveCommand() *cobra.Command {
 	var sourceStackName string
 	var destStackName string
-	stateMove := &stateMoveCmd{}
+	var yes bool
+	stateMove := &stateMoveCmd{
+		Colorizer: cmdutil.GetGlobalColorization(),
+	}
 	cmd := &cobra.Command{
 		Use:   "move",
 		Short: "Move resources from one stack to another",
@@ -71,12 +82,15 @@ EXPERIMENTAL: this feature is currently in development.
 				return err
 			}
 
+			stateMove.Yes = yes
+
 			return stateMove.Run(ctx, sourceStack, destStack, args, stack.DefaultSecretsProvider)
 		}),
 	}
 
 	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")
 	cmd.Flags().StringVarP(&destStackName, "dest", "", "", "The name of the stack to move resources to")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the move")
 
 	return cmd
 }
@@ -85,6 +99,13 @@ func (cmd *stateMoveCmd) Run(
 	ctx context.Context, source backend.Stack, dest backend.Stack, args []string,
 	secretsProvider secrets.Provider,
 ) error {
+	if cmd.Stdin == nil {
+		cmd.Stdin = os.Stdin
+	}
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
+
 	sourceSnapshot, err := source.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return err
@@ -140,6 +161,7 @@ func (cmd *stateMoveCmd) Run(
 	// longer valid.
 	//
 	var providers []*resource.State
+	var brokenSourceDependencies []brokenDependency
 	i := 0
 	for _, res := range sourceSnapshot.Resources {
 		// Find providers that need to be copied
@@ -152,7 +174,7 @@ func (cmd *stateMoveCmd) Run(
 
 		sourceSnapshot.Resources[i] = res
 		i++
-		breakDependencies(res, resourcesToMove)
+		brokenSourceDependencies = append(brokenSourceDependencies, breakDependencies(res, resourcesToMove)...)
 	}
 	sourceSnapshot.Resources = sourceSnapshot.Resources[:i]
 
@@ -182,6 +204,9 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
+	// TODO: conflict on resources that are already on the destination stack
+
+	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
@@ -191,13 +216,68 @@ func (cmd *stateMoveCmd) Run(
 			res.Parent = rootStack.URN
 		}
 
-		breakDependencies(res, remainingResources)
+		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(res, remainingResources)...)
 		err = rewriteURNs(res, dest)
 		if err != nil {
 			return err
 		}
 
 		destSnapshot.Resources = append(destSnapshot.Resources, res)
+	}
+
+	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
+		source.Ref().Name(), dest.Ref().Name())
+
+	for _, res := range sourceSnapshot.Resources {
+		if _, ok := resourcesToMove[string(res.URN)]; ok {
+			fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
+		}
+	}
+
+	fmt.Fprintf(cmd.Stdout, "\n")
+
+	if len(brokenSourceDependencies) > 0 {
+		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+			colors.SpecWarning+"The following resources remaining in %s have dependencies on resources moved to %s:\n"+
+				colors.Reset), source.Ref().Name(), dest.Ref().Name())
+	}
+
+	cmd.printBrokenDependencyRelationships(brokenSourceDependencies)
+
+	if len(brokenDestDependencies) > 0 {
+		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+			colors.SpecWarning+"The following resources being moved to %s have dependencies on resources in %s:\n"+
+				colors.Reset), dest.Ref().Name(), source.Ref().Name())
+	}
+
+	cmd.printBrokenDependencyRelationships(brokenDestDependencies)
+
+	if len(brokenSourceDependencies) > 0 || len(brokenDestDependencies) > 0 {
+		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+			colors.SpecInfo+"\nIf you go ahead with moving these dependencies, it will be necessary to create the "+
+				"appropriate inputs and outputs in program for the stack the resources are moved to.\n"+
+				colors.Reset))
+	}
+
+	fmt.Fprintf(cmd.Stdout, "\n")
+
+	if !cmd.Yes {
+		yes := "yes"
+		no := "no"
+		msg := "Do you want to perform this move?"
+		options := []string{
+			yes,
+			no,
+		}
+
+		switch response := promptUser(msg, options, no, cmdutil.GetGlobalColorization()); response {
+		case yes:
+		// continue
+		case no:
+			fmt.Println("confirmation denied, not proceeding with the state move")
+			return nil
+		}
 	}
 
 	err = destSnapshot.VerifyIntegrity()
@@ -230,6 +310,10 @@ This is a bug! We would appreciate a report: https://github.com/pulumi/pulumi/is
 		return fmt.Errorf("failed to save source snapshot: %w", err)
 	}
 
+	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+		colors.SpecHeadline+"Successfully moved resources from %s to %s\n"+colors.Reset),
+		source.Ref().Name(), dest.Ref().Name())
+
 	return nil
 }
 
@@ -242,12 +326,29 @@ func resourceMatches(res *resource.State, args []string) bool {
 	return false
 }
 
-func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) {
+type dependencyType int
+
+const (
+	dependency dependencyType = iota
+	propertyDependency
+	deletedWith
+)
+
+type brokenDependency struct {
+	urn            urn.URN
+	dependencyType dependencyType
+	propdepKey     resource.PropertyKey
+}
+
+func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) []brokenDependency {
+	var brokenDeps []brokenDependency
 	j := 0
 	for _, dep := range res.Dependencies {
 		if _, ok := resourcesToMove[string(dep)]; !ok {
 			res.Dependencies[j] = dep
 			j++
+		} else {
+			brokenDeps = append(brokenDeps, brokenDependency{urn: dep, dependencyType: dependency})
 		}
 	}
 	res.Dependencies = res.Dependencies[:j]
@@ -257,13 +358,17 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			if _, ok := resourcesToMove[string(propDep)]; !ok {
 				propDeps[j] = propDep
 				j++
+			} else {
+				brokenDeps = append(brokenDeps, brokenDependency{urn: propDep, dependencyType: propertyDependency, propdepKey: k})
 			}
 		}
 		res.PropertyDependencies[k] = propDeps[:j]
 	}
 	if _, ok := resourcesToMove[string(res.DeletedWith)]; ok {
 		res.DeletedWith = ""
+		brokenDeps = append(brokenDeps, brokenDependency{urn: res.DeletedWith, dependencyType: deletedWith})
 	}
+	return brokenDeps
 }
 
 func renameStackAndProject(urn urn.URN, stack backend.Stack) (urn.URN, error) {
@@ -320,4 +425,17 @@ func rewriteURNs(res *resource.State, dest backend.Stack) error {
 		res.DeletedWith = urn
 	}
 	return nil
+}
+
+func (cmd *stateMoveCmd) printBrokenDependencyRelationships(brokenDeps []brokenDependency) {
+	for _, res := range brokenDeps {
+		switch res.dependencyType {
+		case dependency:
+			fmt.Fprintf(cmd.Stdout, "  %s has a dependency on %s\n", res.urn, res.urn)
+		case propertyDependency:
+			fmt.Fprintf(cmd.Stdout, "  %s (%s) has a property dependency on %s\n", res.urn, res.propdepKey, res.urn)
+		case deletedWith:
+			fmt.Fprintf(cmd.Stdout, "  %s is marked as deleted with %s\n", res.urn, res.urn)
+		}
+	}
 }
