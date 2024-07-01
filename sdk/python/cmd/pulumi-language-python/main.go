@@ -761,9 +761,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if idx < 0 {
 			installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", typechecker)
 			if opts.Toolchain != toolchain.Poetry {
-				pipCommand := fmt.Sprintf("%s/bin/pip install -r requirements.txt", opts.Virtualenv)
+				pipCommand := opts.Virtualenv + "/bin/pip install -r requirements.txt"
 				if runtime.GOOS == "windows" {
-					pipCommand = fmt.Sprintf("%s\\Scripts\\pip install -r requirements.txt", opts.Virtualenv)
+					pipCommand = opts.Virtualenv + "\\Scripts\\pip install -r requirements.txt"
 				}
 				installCommand = fmt.Sprintf("Please add an entry for %s to requirements.txt and run `%s`", typechecker, pipCommand)
 			}
