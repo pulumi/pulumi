@@ -60,7 +60,7 @@ func (cmd *packCmd) Run(ctx context.Context, args []string) error {
 	language := args[0]
 	path := args[1]
 
-	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, "", nil)
+	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, ".", nil)
 	languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
 	if err != nil {
 		return err

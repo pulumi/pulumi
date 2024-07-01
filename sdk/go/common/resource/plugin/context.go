@@ -73,8 +73,7 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 		}
 	}
 
-	root := ""
-	return NewContextWithRoot(d, statusD, host, pwd, root, runtimeOptions,
+	return NewContextWithRoot(d, statusD, host, pwd, pwd, runtimeOptions,
 		disableProviderPreview, parentSpan, plugins, nil)
 }
 
