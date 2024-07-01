@@ -480,7 +480,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Header: mod.genFunctionHeader(f),
 
 		Tool:                 mod.tool,
-		LangChooserLanguages: mod.getSupportedLanguages(f.IsOverlay, f.OverlaySupportedLanguages),
+		LangChooserLanguages: mod.docGenContext.getSupportedSnippetLanguages(f.IsOverlay, f.OverlaySupportedLanguages),
 
 		FunctionName:   funcNameMap,
 		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap, false /*outputVersion*/),

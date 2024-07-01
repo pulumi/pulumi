@@ -486,18 +486,18 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	return &newctx
 }
 
-// GetSupportedLanguages returns a string containing the supported languages for the given type.
+// getSupportedSnippetLanguages returns a string containing the supported snippet languages for the given type.
 // If the type is not an overlay or if there are no overlay supported languages, an empty string is returned.
 // This means that the type is supported in all languages.
 // The returned string contains the supported languages joined by commas.
-func (mod *modContext) getSupportedLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
+func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
 	// By default, all languages are supported.
 	if !isOverlay || len(overlaySupportedLanguages) == 0 {
 		return ""
 	}
 
 	var supportedLanguages []string
-	supportedSnippetLanguages := codegen.NewStringSet(mod.docGenContext.snippetLanguages...)
+	supportedSnippetLanguages := codegen.NewStringSet(dctx.snippetLanguages...)
 
 	// Ensure that the overlay supported languages are a subset of the supported snippet languages.
 	for _, lang := range overlaySupportedLanguages {
@@ -1847,7 +1847,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Methods: mod.genMethods(r),
 
 		PackageDetails:       packageDetails,
-		LangChooserLanguages: mod.getSupportedLanguages(r.IsOverlay, r.OverlaySupportedLanguages),
+		LangChooserLanguages: mod.docGenContext.getSupportedSnippetLanguages(r.IsOverlay, r.OverlaySupportedLanguages),
 	}
 
 	return data
