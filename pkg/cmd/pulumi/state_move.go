@@ -125,10 +125,20 @@ func (cmd *stateMoveCmd) Run(
 		}
 	}
 
+	// We want to move there resources in the order they appear in the source snapshot,
+	// resources with relationships are in the right order.
+	var resourcesToMoveOrdered []*resource.State
+	for _, res := range sourceSnapshot.Resources {
+		if _, ok := resourcesToMove[string(res.URN)]; ok {
+			resourcesToMoveOrdered = append(resourcesToMoveOrdered, res)
+		}
+	}
+
 	// run through the source snapshot and find all the providers
 	// that need to be copied, remove all the resources that need
 	// to be removed, and break the dependencies that are no
 	// longer valid.
+	//
 	var providers []*resource.State
 	i := 0
 	for _, res := range sourceSnapshot.Resources {
@@ -172,18 +182,19 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
-	for _, res := range resourcesToMove {
-		breakDependencies(res, remainingResources)
-		err = rewriteURNs(res, dest)
-		if err != nil {
-			return err
-		}
+	for _, res := range resourcesToMoveOrdered {
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
 				return err
 			}
 			res.Parent = rootStack.URN
+		}
+
+		breakDependencies(res, remainingResources)
+		err = rewriteURNs(res, dest)
+		if err != nil {
+			return err
 		}
 
 		destSnapshot.Resources = append(destSnapshot.Resources, res)
@@ -250,7 +261,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 		}
 		res.PropertyDependencies[k] = propDeps[:j]
 	}
-	if _, ok := resourcesToMove[string(res.DeletedWith)]; !ok {
+	if _, ok := resourcesToMove[string(res.DeletedWith)]; ok {
 		res.DeletedWith = ""
 	}
 }
@@ -277,6 +288,13 @@ func rewriteURNs(res *resource.State, dest backend.Stack) error {
 			return err
 		}
 		res.Provider = string(providerURN)
+	}
+	if res.Parent != "" {
+		parentURN, err := renameStackAndProject(res.Parent, dest)
+		if err != nil {
+			return err
+		}
+		res.Parent = parentURN
 	}
 	for k, dep := range res.Dependencies {
 		depURN, err := renameStackAndProject(dep, dest)
