@@ -1565,6 +1565,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
     deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
+    createifnotexists: jspb.Message.getFieldWithDefault(msg, 34, ""),
     aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
     sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
     transformsList: jspb.Message.toObjectList(msg.getTransformsList(),
@@ -1727,6 +1728,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 27:
       var value = /** @type {string} */ (reader.readString());
       msg.setDeletedwith(value);
+      break;
+    case 34:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCreateifnotexists(value);
       break;
     case 28:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -1966,6 +1971,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       27,
+      f
+    );
+  }
+  f = message.getCreateifnotexists();
+  if (f.length > 0) {
+    writer.writeString(
+      34,
       f
     );
   }
@@ -3021,6 +3033,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getDeletedwith = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(value) {
   return jspb.Message.setProto3StringField(this, 27, value);
+};
+
+
+/**
+ * optional string createIfNotExists = 34;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getCreateifnotexists = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 34, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setCreateifnotexists = function(value) {
+  return jspb.Message.setProto3StringField(this, 34, value);
 };
 
 
@@ -4833,7 +4863,8 @@ proto.pulumirpc.TransformResourceOptions.toObject = function(includeInstance, ms
     deleteBeforeReplace: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     additionalSecretOutputsList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
+    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+    createIfNotExists: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
   if (includeInstance) {
@@ -4935,6 +4966,10 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
+      break;
+    case 16:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCreateIfNotExists(value);
       break;
     default:
       reader.skipField();
@@ -5065,6 +5100,13 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
   f = message.getPluginChecksumsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(15, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
+  }
+  f = message.getCreateIfNotExists();
+  if (f.length > 0) {
+    writer.writeString(
+      16,
+      f
+    );
   }
 };
 
@@ -5478,6 +5520,24 @@ proto.pulumirpc.TransformResourceOptions.prototype.getPluginChecksumsMap = funct
 proto.pulumirpc.TransformResourceOptions.prototype.clearPluginChecksumsMap = function() {
   this.getPluginChecksumsMap().clear();
   return this;};
+
+
+/**
+ * optional string create_if_not_exists = 16;
+ * @return {string}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getCreateIfNotExists = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 16, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setCreateIfNotExists = function(value) {
+  return jspb.Message.setProto3StringField(this, 16, value);
+};
 
 
 

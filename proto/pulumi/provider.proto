@@ -37,7 +37,7 @@ service ResourceProvider {
     //
     // Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
     // should return the sub-package name and version (which for `ParametersValue` should match the given input).
-    // 
+    //
     // For extension resources their CRUD operations will include the version of which sub-package they correspond to.
     rpc Parameterize(ParameterizeRequest) returns (ParameterizeResponse) {}
 
@@ -427,6 +427,7 @@ message ConstructRequest {
     repeated string ignoreChanges           = 22; // properties that should be ignored during a diff
     repeated string replaceOnChanges        = 23; // properties that, when changed, trigger a replacement
     bool retainOnDelete                     = 24; // whether to retain the resource in the cloud provider when it is deleted
+    string createIfNotExists                = 26; // if set, this resource should be created if and only if the specified ID does not exist in the provider.
 
     bool accepts_output_values = 25; // the engine can be passed output values back, stateDependencies can be left blank if returning output values.
 }

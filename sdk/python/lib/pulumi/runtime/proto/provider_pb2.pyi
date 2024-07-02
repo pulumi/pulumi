@@ -1121,6 +1121,7 @@ class ConstructRequest(google.protobuf.message.Message):
     IGNORECHANGES_FIELD_NUMBER: builtins.int
     REPLACEONCHANGES_FIELD_NUMBER: builtins.int
     RETAINONDELETE_FIELD_NUMBER: builtins.int
+    CREATEIFNOTEXISTS_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
@@ -1184,6 +1185,8 @@ class ConstructRequest(google.protobuf.message.Message):
         """properties that, when changed, trigger a replacement"""
     retainOnDelete: builtins.bool
     """whether to retain the resource in the cloud provider when it is deleted"""
+    createIfNotExists: builtins.str
+    """if set, this resource should be created if and only if the specified ID does not exist in the provider."""
     accepts_output_values: builtins.bool
     """the engine can be passed output values back, stateDependencies can be left blank if returning output values."""
     def __init__(
@@ -1213,10 +1216,11 @@ class ConstructRequest(google.protobuf.message.Message):
         ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
         replaceOnChanges: collections.abc.Iterable[builtins.str] | None = ...,
         retainOnDelete: builtins.bool = ...,
+        createIfNotExists: builtins.str = ...,
         accepts_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "createIfNotExists", b"createIfNotExists", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
 
 global___ConstructRequest = ConstructRequest
 

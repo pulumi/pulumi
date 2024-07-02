@@ -466,6 +466,15 @@ class ResourceOptions:
     if specified resource is being deleted as well.
     """
 
+    create_if_not_exists: Optional[str]
+    """
+    create_if_not_exists specifies an ID that should be looked up in the provider.
+    If the ID exists, the resource should be imported from that ID. For an import
+    to succeed, the inputs to the resource's constructor must align with the
+    resource's current state. If the ID does not exist, the resource should be
+    created with the supplied inputs.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(
         self,
@@ -493,6 +502,7 @@ class ResourceOptions:
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
+        create_if_not_exists: Optional[str] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -537,6 +547,10 @@ class ResourceOptions:
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
                if specified resource is being deleted as well.
+        :param Optional[str] create_if_not_exists: Specifies an ID that should be looked up in the provider. If the ID exists,
+               the resource should be imported from that ID. For an import to succeed, the inputs to the resource's constructor
+               must align with the resource's current state. If the ID does not exist, the resource should be created with the
+               supplied inputs.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -564,6 +578,7 @@ class ResourceOptions:
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
+        self.create_if_not_exists = create_if_not_exists
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -732,6 +747,11 @@ class ResourceOptions:
         )
         dest.deleted_with = (
             dest.deleted_with if source.deleted_with is None else source.deleted_with
+        )
+        dest.create_if_not_exists = (
+            dest.create_if_not_exists
+            if source.create_if_not_exists is None
+            else source.create_if_not_exists
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then

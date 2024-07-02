@@ -138,6 +138,7 @@ type ResourceOptions struct {
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
+	CreateIfNotExists       resource.ID
 	DeletedWith             resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
@@ -277,6 +278,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		PluginChecksums:            opts.PluginChecksums,
 		RetainOnDelete:             opts.RetainOnDelete,
+		CreateIfNotExists:          string(opts.CreateIfNotExists),
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    opts.Aliases,
 		DeletedWith:                string(opts.DeletedWith),

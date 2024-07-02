@@ -1010,6 +1010,8 @@ export class ConstructRequest extends jspb.Message {
     addReplaceonchanges(value: string, index?: number): string;
     getRetainondelete(): boolean;
     setRetainondelete(value: boolean): ConstructRequest;
+    getCreateifnotexists(): string;
+    setCreateifnotexists(value: string): ConstructRequest;
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): ConstructRequest;
 
@@ -1052,6 +1054,7 @@ export namespace ConstructRequest {
         ignorechangesList: Array<string>,
         replaceonchangesList: Array<string>,
         retainondelete: boolean,
+        createifnotexists: string,
         acceptsOutputValues: boolean,
     }
 

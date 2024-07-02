@@ -128,6 +128,7 @@ message RegisterResourceRequest {
     bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
     repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
     string deletedWith = 27;                                    // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
+    string createIfNotExists = 34;                              // if set, this resource should be created if and only if the specified ID does not exist in the provider.
 
     // Indicates that alias specs are specified correctly according to the spec.
     // Older versions of the Node.js SDK did not send alias specs correctly.
@@ -227,6 +228,7 @@ message TransformResourceOptions {
     repeated string additional_secret_outputs = 13;
     map<string, string> providers = 14;
     map<string, bytes> plugin_checksums = 15;
+    string create_if_not_exists = 16;
 }
 
 message TransformRequest {
@@ -253,10 +255,10 @@ message RegisterPackageRequest {
 
 message RegisterPackageResponse {
     // The UUID package reference for this registered package.
-    string ref = 1; 
+    string ref = 1;
 }
 
-message PackageParameter { 
+message PackageParameter {
     string name = 1;
     string version = 2;
     google.protobuf.Value value = 3;

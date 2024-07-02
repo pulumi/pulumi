@@ -367,7 +367,7 @@ var ResourceProviderService = exports.ResourceProviderService = {
 //
 // Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
 // should return the sub-package name and version (which for `ParametersValue` should match the given input).
-// 
+//
 // For extension resources their CRUD operations will include the version of which sub-package they correspond to.
 parameterize: {
     path: '/pulumirpc.ResourceProvider/Parameterize',

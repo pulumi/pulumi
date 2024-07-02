@@ -328,6 +328,9 @@ type ResourceV3 struct {
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	// If set, this resource should be created if and only if the specified ID
+	// does not exist in the provider.
+	CreateIfNotExists resource.ID `json:"createIfNotExists,omitempty" yaml:"createIfNotExists,omitempty"`
 	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
 	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.

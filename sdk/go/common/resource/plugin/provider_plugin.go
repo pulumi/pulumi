@@ -1487,6 +1487,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		IgnoreChanges:           req.Options.IgnoreChanges,
 		ReplaceOnChanges:        req.Options.ReplaceOnChanges,
 		RetainOnDelete:          req.Options.RetainOnDelete,
+		CreateIfNotExists:       string(req.Options.CreateIfNotExists),
 		AcceptsOutputValues:     true,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
