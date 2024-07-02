@@ -10,3 +10,4 @@ assarc = asset_archive.ArchiveResource("assarc", value=pulumi.AssetArchive({
     "folder": pulumi.FileArchive("../folder"),
     "archive": pulumi.FileArchive("../archive.tar"),
 }))
+remoteass = asset_archive.AssetResource("remoteass", value=pulumi.RemoteAsset("https://raw.githubusercontent.com/pulumi/pulumi/master/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt"))

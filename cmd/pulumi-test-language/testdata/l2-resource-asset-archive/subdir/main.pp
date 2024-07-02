@@ -18,3 +18,7 @@ resource "assarc" "asset-archive:index:ArchiveResource" {
         "archive": fileArchive("../archive.tar"),
     })
 }
+
+resource "remoteass" "asset-archive:index:AssetResource" {
+    value = remoteAsset("https://raw.githubusercontent.com/pulumi/pulumi/master/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt")
+}

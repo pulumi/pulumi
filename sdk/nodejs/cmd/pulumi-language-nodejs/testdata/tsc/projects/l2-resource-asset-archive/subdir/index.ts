@@ -10,3 +10,4 @@ const assarc = new asset_archive.ArchiveResource("assarc", {value: new pulumi.as
     folder: new pulumi.asset.FileArchive("../folder"),
     archive: new pulumi.asset.FileArchive("../archive.tar"),
 })});
+const remoteass = new asset_archive.AssetResource("remoteass", {value: new pulumi.asset.RemoteAsset("https://raw.githubusercontent.com/pulumi/pulumi/master/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt")});
