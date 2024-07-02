@@ -299,7 +299,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "stringAsset":
 		g.Fgenf(w, "pulumi.StringAsset(%.v)", expr.Args[0])
 	case "remoteAsset":
-		g.Fgenf(w, "pulumi.remoteAsset(%.v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
 	case "filebase64sha256":
