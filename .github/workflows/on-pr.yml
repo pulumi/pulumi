@@ -137,6 +137,12 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      # If the PR is a community PR we don't run the usual checks, but rather run them
+      # through /run-acceptance-tests.  This means ci-ok is not a useful status there.
+      # For those PRs, just mark this as a success always.
+      - name: Community PR
+        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        run: exit 0
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}
         run: exit 1
