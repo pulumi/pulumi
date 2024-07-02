@@ -158,7 +158,7 @@ func (cmd *stateMoveCmd) Run(
 		}
 		rootStack = stack.CreateRootStackResource(
 			dest.Ref().Name().Q(), tokens.PackageName(projectName))
-		destSnapshot.Resources = append(destSnapshot.Resources, rootStack)
+		destSnapshot.Resources = append([]*resource.State{rootStack}, destSnapshot.Resources...)
 	}
 
 	for _, res := range providers {
@@ -206,17 +206,19 @@ This is a bug! We would appreciate a report: https://github.com/pulumi/pulumi/is
 	// We're saving the destination snapshot first, so that if saving a snapshot fails
 	// the resources will always still be tracked.  If the source snapshot fails the user
 	// will have to manually remove the resources from the source stack.
-	//
-	// TODO: give a better error message and instructions for how the user can fix this
-	// situation.
 	err = saveSnapshot(ctx, dest, destSnapshot, false)
 	if err != nil {
-		return fmt.Errorf("failed to save destination snapshot: %w", err)
+		return fmt.Errorf(`failed to save destination snapshot: %w
+
+None of the resources have been moved, it is safe to try again`, err)
 	}
 
 	err = saveSnapshot(ctx, source, sourceSnapshot, false)
 	if err != nil {
-		return fmt.Errorf("failed to save source snapshot: %w", err)
+		return fmt.Errorf(`failed to save source snapshot: %w
+
+The resources being moved have already been appended to the destination stack, but will still also be in the
+source stack.  Please remove the resources from the source stack manually using 'pulumi state delete'`, err)
 	}
 
 	return nil
