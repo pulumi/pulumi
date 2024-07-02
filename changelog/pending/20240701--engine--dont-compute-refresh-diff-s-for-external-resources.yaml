@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Don't compute refresh `Diff`s for external resources
+  description: Avoid computing refresh `Diff`s for external resources
