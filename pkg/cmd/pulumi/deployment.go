@@ -457,6 +457,242 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	return cmd
 }
 
+func newDeploymentSettingsSetCmd() *cobra.Command {
+	var stack string
+	var gitSSHPrivateKeyPath string
+
+	cmd := &cobra.Command{
+		Use:   "set [configuration]",
+		Args:  cmdutil.MaximumNArgs(1),
+		Short: "Updates stack's deployment settings secrets",
+		Long:  "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			sd, err := loadProjectStackDeployment(s)
+			if err != nil {
+				return err
+			}
+
+			if sd == nil {
+				return fmt.Errorf("Deployment file not initialized, please run `pulumi deployment settings init` instead")
+			}
+
+			var configuration string
+			if len(args) == 1 {
+				configuration = args[0]
+			} else {
+				var option string
+				if err := survey.AskOne(&survey.Select{
+					Message: "Configure:",
+					Options: []string{
+						"Git",
+						"Executor image",
+						"Advanced settings",
+						"AWS OpenID Connect integration",
+						"Azure OpenID Connect integration",
+						"GCP OpenID Connect integration",
+					},
+				}, &option, surveyIcons(displayOpts.Color)); err != nil {
+					return fmt.Errorf("confirmation cancelled")
+				}
+
+				switch option {
+				case "Git":
+					configuration = "git"
+				case "Executor image":
+					configuration = "executor-image"
+				case "Advanced settings":
+					configuration = "advanced-settings"
+				case "AWS OpenID Connect integration":
+					configuration = "oidc-aws"
+				case "Azure OpenID Connect integration":
+					configuration = "oidc-azure"
+				case "GCP OpenID Connect integration":
+					configuration = "oidc-gcp"
+				}
+			}
+
+			switch configuration {
+			case "git":
+				err = configureGit(ctx, displayOpts, currentBe, s, sd, gitSSHPrivateKeyPath)
+			case "executor-image":
+				err = configureImageRepository(ctx, displayOpts, currentBe, s, sd)
+			case "advanced-settings":
+				err = configureAdvancedSettings(displayOpts, sd)
+			case "oidc-aws":
+				err = configureOidcAws(sd)
+			case "oidc-azure":
+				err = configureOidcAzure(sd)
+			case "oidc-gcp":
+				err = configureOidcGCP(sd)
+			default:
+				err = fmt.Errorf("Invalid option %q", configuration)
+			}
+			if err != nil {
+				return err
+			}
+
+			err = saveProjectStackDeployment(sd, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().StringVarP(
+		&gitSSHPrivateKeyPath, "git-ssh-private-key", "k", "",
+		"Private key path")
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
+	return cmd
+}
+
+func newDeploymentSettingsEnvCmd() *cobra.Command {
+	var stack string
+
+	var secret bool
+	var remove bool
+
+	cmd := &cobra.Command{
+		Use:   "env <key> [value]",
+		Args:  cmdutil.RangeArgs(1, 2),
+		Short: "Update stack's deployment settings secrets",
+		Long:  "",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			interactive := cmdutil.Interactive()
+
+			var (
+				key   string
+				value string
+			)
+
+			if len(args) > 1 {
+				key = args[0]
+			}
+
+			if len(args) == 2 {
+				if remove {
+					return errors.New("value not supported when removing keys")
+				}
+				value = args[1]
+			}
+
+			displayOpts := display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+			}
+
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			if !currentBe.SupportsDeployments() {
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
+			}
+
+			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			sd, err := loadProjectStackDeployment(s)
+			if err != nil {
+				return err
+			}
+
+			var secretValue *apitype.SecretValue
+			if secret {
+				secretValue, err = currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, value)
+				if err != nil {
+					return err
+				}
+			} else {
+				secretValue = &apitype.SecretValue{
+					Value:  value,
+					Secret: false,
+				}
+			}
+
+			if sd.DeploymentSettings.Operation == nil {
+				sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+			}
+
+			if sd.DeploymentSettings.Operation.EnvironmentVariables == nil {
+				sd.DeploymentSettings.Operation.EnvironmentVariables = make(map[string]apitype.SecretValue)
+			}
+
+			if remove {
+				delete(sd.DeploymentSettings.Operation.EnvironmentVariables, key)
+			} else {
+				sd.DeploymentSettings.Operation.EnvironmentVariables[key] = *secretValue
+			}
+
+			err = saveProjectStackDeployment(sd, s)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().BoolVar(
+		&secret, "secret", false,
+		"Key to update")
+
+	cmd.PersistentFlags().BoolVar(
+		&remove, "remove", false,
+		"Key to update")
+
+	cmd.MarkFlagsMutuallyExclusive("secret", "remove")
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
+	return cmd
+}
+
 func configureGit(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -1000,210 +1236,6 @@ func configureImageRepository(ctx context.Context, displayOpts display.Options, 
 	}
 
 	return nil
-}
-
-func newDeploymentSettingsSetCmd() *cobra.Command {
-	var stack string
-	var gitSSHPrivateKeyPath string
-
-	cmd := &cobra.Command{
-		Use:   "set [configuration]",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Updates stack's deployment settings secrets",
-		Long:  "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			configuration := args[0]
-			// validate
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			sd, err := loadProjectStackDeployment(s)
-			if err != nil {
-				return err
-			}
-
-			if sd == nil {
-				return fmt.Errorf("Deployment file not initialized, please run `pulumi deployment settings init` instead")
-			}
-
-			switch configuration {
-			case "git":
-				err = configureGit(ctx, displayOpts, currentBe, s, sd, gitSSHPrivateKeyPath)
-			case "executor-image":
-				err = configureImageRepository(ctx, displayOpts, currentBe, s, sd)
-			case "advanced-settings":
-				err = configureAdvancedSettings(displayOpts, sd)
-			case "oidc-aws":
-				err = configureOidcAws(sd)
-			case "oidc-azure":
-				err = configureOidcAzure(sd)
-			case "oidc-gcp":
-				err = configureOidcGCP(sd)
-			default:
-				err = fmt.Errorf("Invalid option %q", configuration)
-			}
-			if err != nil {
-				return err
-			}
-
-			err = saveProjectStackDeployment(sd, s)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}),
-	}
-
-	cmd.PersistentFlags().StringVarP(
-		&gitSSHPrivateKeyPath, "git-ssh-private-key", "k", "",
-		"Private key path")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
-func newDeploymentSettingsEnvCmd() *cobra.Command {
-	var stack string
-
-	var secret bool
-	var remove bool
-
-	cmd := &cobra.Command{
-		Use:   "env <key> [value]",
-		Args:  cmdutil.RangeArgs(1, 2),
-		Short: "Update stack's deployment settings secrets",
-		Long:  "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			var (
-				key   string
-				value string
-			)
-
-			if len(args) > 1 {
-				key = args[0]
-			}
-
-			if len(args) == 2 {
-				if remove {
-					return errors.New("value not supported when removing keys")
-				}
-				value = args[1]
-			}
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			sd, err := loadProjectStackDeployment(s)
-			if err != nil {
-				return err
-			}
-
-			var secretValue *apitype.SecretValue
-			if secret {
-				secretValue, err = currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, value)
-				if err != nil {
-					return err
-				}
-			} else {
-				secretValue = &apitype.SecretValue{
-					Value:  value,
-					Secret: false,
-				}
-			}
-
-			if sd.DeploymentSettings.Operation == nil {
-				sd.DeploymentSettings.Operation = &apitype.OperationContext{}
-			}
-
-			if sd.DeploymentSettings.Operation.EnvironmentVariables == nil {
-				sd.DeploymentSettings.Operation.EnvironmentVariables = make(map[string]apitype.SecretValue)
-			}
-
-			if remove {
-				delete(sd.DeploymentSettings.Operation.EnvironmentVariables, key)
-			} else {
-				sd.DeploymentSettings.Operation.EnvironmentVariables[key] = *secretValue
-			}
-
-			err = saveProjectStackDeployment(sd, s)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}),
-	}
-
-	cmd.PersistentFlags().BoolVar(
-		&secret, "secret", false,
-		"Key to update")
-
-	cmd.PersistentFlags().BoolVar(
-		&remove, "remove", false,
-		"Key to update")
-
-	cmd.MarkFlagsMutuallyExclusive("secret", "remove")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
 }
 
 // As go-git do not support an analogous to `git rev-parse --show-toplevel`,
