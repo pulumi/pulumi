@@ -619,7 +619,7 @@ func newImportCmd() *cobra.Command {
 			"            {\n" +
 			"                ...\n" +
 			"            }\n" +
-			"        ]\n" +
+			"        ],\n" +
 			"    }\n" +
 			"\n" +
 			"The name table maps language names to parent and provider URNs. These names are\n" +

@@ -20,6 +20,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
@@ -86,4 +88,67 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularReferences(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	generatedProgram := ""
+	generator := func(_ io.Writer, p *pcl.Program) error {
+		for _, content := range p.Source() {
+			generatedProgram += content
+		}
+		return nil
+	}
+
+	// Create a circular reference between two resources.
+	// In this case, generating the PCL would fail with a circular reference error but we retry the codegen
+	// without guessing the dependencies between the resources.
+	resources := []apitype.ResourceV3{
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::first",
+			ID:     "bucket-object-1",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket": "bucket-object-2",
+			},
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::second",
+			ID:     "bucket-object-2",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]interface{}{
+				"bucket": "bucket-object-1",
+			},
+		},
+	}
+
+	states := make([]*resource.State, 0)
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		if !assert.NoError(t, err) {
+			t.Fatal()
+		}
+		states = append(states, state)
+	}
+
+	var names NameTable
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, names)
+	assert.NoError(t, err)
+	// notice here the generated program doesn't have any references because
+	// we retried the codegen without guessing the dependencies between the resources.
+	expectedCode := `resource first "aws:s3/bucketObject:BucketObject" {
+    bucket = "bucket-object-2"
+
+}
+
+resource second "aws:s3/bucketObject:BucketObject" {
+    bucket = "bucket-object-1"
+
+}
+`
+	assert.Equal(t, expectedCode, generatedProgram)
 }

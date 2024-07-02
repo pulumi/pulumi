@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Guess references to properties 'name' and 'arn' between dependant resources during import

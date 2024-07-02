@@ -49,19 +49,22 @@ type ImportState struct {
 	PathedLiteralValues []PathedLiteralValue
 }
 
-// filterSelfReferences filters out self-references from the import state so that if a resource has a property
+// filterReferences filters out self-references from the import state so that if a resource has a property
 // that happens to have the same value as the ID of that resource, it doesn't create a self-reference.
-func filterSelfReferences(resourceName string, importState ImportState) ImportState {
+func filterReferences(resourceName string, importState ImportState) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, pathedLiteralValue := range importState.PathedLiteralValues {
 		if pathedLiteralValue.Root != resourceName {
+			// if the pathedLiteralValue is not a self-reference, add it to the list
 			pathedLiteralValues = append(pathedLiteralValues, pathedLiteralValue)
 		}
 	}
 
+	withoutDuplicates := removeDuplicatePathedValues(pathedLiteralValues)
+
 	return ImportState{
 		Names:               importState.Names,
-		PathedLiteralValues: pathedLiteralValues,
+		PathedLiteralValues: withoutDuplicates,
 	}
 }
 
@@ -86,7 +89,7 @@ func GenerateHCL2Definition(
 	}
 
 	var items []model.BodyItem
-	name := state.URN.Name()
+	name := sanitizeName(state.URN.Name())
 	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
 	// the resource block.
 	if mappedName, ok := importState.Names[state.URN]; ok {
@@ -95,12 +98,12 @@ func GenerateHCL2Definition(
 			Value: &model.TemplateExpression{
 				Parts: []model.Expression{
 					&model.LiteralValueExpression{
-						Value: cty.StringVal(name),
+						Value: cty.StringVal(state.URN.Name()),
 					},
 				},
 			},
 		})
-		name = mappedName
+		name = sanitizeName(mappedName)
 	}
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
@@ -110,10 +113,10 @@ func GenerateHCL2Definition(
 		addedReferences[rootName] = true
 	}
 
-	importStateWithoutSelfRefs := filterSelfReferences(name, importState)
+	importStateContext := filterReferences(name, importState)
 	for _, p := range r.InputProperties {
 		input := state.Inputs[resource.PropertyKey(p.Name)]
-		x, err := generatePropertyValue(p, input, importStateWithoutSelfRefs, onReferenceFound)
+		x, err := generatePropertyValue(p, input, importStateContext, onReferenceFound)
 		if err != nil {
 			return nil, err
 		}
