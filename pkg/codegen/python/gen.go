@@ -513,8 +513,61 @@ def get_version():
      return _version_str
 `)
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	return buffer.Bytes(), err
+	if pkg.Parameterization != nil {
+		// If a parameterized package is being generated then we _need_ to use package references
+
+		buildValue := func(value interface{}) string {
+			switch v := value.(type) {
+			case string:
+				return fmt.Sprintf("struct_pb2.Value(string_value=%q)", v)
+			default:
+				panic(fmt.Sprintf("unsupported parameter value type %v", reflect.TypeOf(value)))
+			}
+		}
+
+		param := buildValue(pkg.Parameterization.Parameter)
+
+		_, err = fmt.Fprintf(buffer, `
+_package_lock = asyncio.Lock()
+_package_ref = ...
+async def get_package():
+	global _package_ref
+	if _package_ref is ...:
+		async with _package_lock:
+			if _package_ref is ...:
+				monitor = pulumi.runtime.settings.get_monitor()
+				parameter = resource_pb2.PackageParameter(
+					name=%q,
+					version=%q,
+					value=%s,
+				)
+				try:
+					registerPackageResponse = monitor.RegisterPackage(
+						resource_pb2.RegisterPackageRequest(
+							name=%q,
+							version=get_version(),
+							plugin_download_url=get_plugin_download_url(),
+							parameter=parameter,
+						))
+					_package_ref = registerPackageResponse.ref
+				except:
+					_package_ref = None
+	if _package_ref is None:
+		raise Exception("The Pulumi CLI does not support package references. Please update the Pulumi CLI.")
+	return _package_ref
+	`,
+			pkg.Parameterization.BaseProvider.Name, pkg.Parameterization.BaseProvider.Version,
+			param, pkg.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return buffer.Bytes(), nil
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
@@ -1504,11 +1557,18 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__,\n")
 	if res.IsComponent {
 		fmt.Fprintf(w, "            opts,\n")
-		fmt.Fprintf(w, "            remote=True)\n")
+		fmt.Fprintf(w, "            remote=True")
 	} else {
-		fmt.Fprintf(w, "            opts)\n")
+		fmt.Fprintf(w, "            opts")
 	}
-	fmt.Fprintf(w, "\n")
+	pkg, err := res.PackageReference.Definition()
+	if err != nil {
+		return "", err
+	}
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ",\n            package=_utilities.get_package()")
+	}
+	fmt.Fprintf(w, ")\n\n")
 
 	if !res.IsProvider && !res.IsComponent {
 		fmt.Fprintf(w, "    @staticmethod\n")
@@ -2141,6 +2201,11 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	if pkg.SupportPack {
 		plugin.Version = pkg.Version.String()
 	}
+	if pkg.Parameterization != nil {
+		plugin.Name = pkg.Parameterization.BaseProvider.Name
+		plugin.Version = pkg.Parameterization.BaseProvider.Version.String()
+		// TODO: Need PluginDownloadURL on BaseProvider
+	}
 
 	return plugin.JSON()
 }
@@ -2174,7 +2239,8 @@ func genPackageMetadata(
 		updatedRequires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""
 		requires = updatedRequires
 	}
-	if pkg.SupportPack {
+	// Parameterized schemas _always_ respect schema version
+	if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
@@ -3194,7 +3260,7 @@ func genPyprojectTOML(tool string,
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = PypiVersion(*pkg.Version)
 	}
-	if pkg.SupportPack {
+	if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}

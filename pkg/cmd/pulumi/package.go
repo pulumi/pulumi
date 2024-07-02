@@ -113,7 +113,7 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
-		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: plugin.ParameterizeArgs{Args: args}})
+		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: &plugin.ParameterizeArgs{Args: args}})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
 		}

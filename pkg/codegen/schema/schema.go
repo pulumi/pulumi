@@ -567,6 +567,20 @@ func (fun *Function) NeedsOutputVersion() bool {
 	return fun.ReturnType != nil
 }
 
+// BaseProvider
+type BaseProvider struct {
+	// Name is the name of the provider.
+	Name string
+	// Version is the version of the provider.
+	Version semver.Version
+}
+
+type Parameterization struct {
+	BaseProvider BaseProvider
+	// Parameter is the parameter for the provider.
+	Parameter interface{}
+}
+
 // Package describes a Pulumi package.
 type Package struct {
 	// True if this package should be written in the new style to support pack and conformance testing.
@@ -619,6 +633,9 @@ type Package struct {
 	Functions []*Function
 	// Language specifies additional language-specific data about the package.
 	Language map[string]interface{}
+
+	// Parameterization is the optional parameterization for the package, if any.
+	Parameterization *Parameterization
 
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType
@@ -943,6 +960,17 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		}
 	}
 
+	var parameterization *ParameterizationSpec
+	if pkg.Parameterization != nil {
+		parameterization = &ParameterizationSpec{
+			BaseProvider: BaseProviderSpec{
+				Name:    pkg.Parameterization.BaseProvider.Name,
+				Version: pkg.Parameterization.BaseProvider.Version.String(),
+			},
+			Parameter: pkg.Parameterization.Parameter,
+		}
+	}
+
 	spec = &PackageSpec{
 		Name:                pkg.Name,
 		Version:             version,
@@ -961,6 +989,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Resources:           map[string]ResourceSpec{},
 		Functions:           map[string]FunctionSpec{},
 		AllowedPackageNames: pkg.AllowedPackageNames,
+		Parameterization:    parameterization,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -1888,6 +1917,25 @@ type PackageInfoSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
+// BaseProviderSpec is the serializable description of a Pulumi base provider.
+type BaseProviderSpec struct {
+	// The name of the base provider.
+	Name string `json:"name" yaml:"name"`
+	// The version of the base provider.
+	Version string `json:"version" yaml:"version"`
+}
+
+// ParameterizationSpec is the serializable description of a provider parameterization.
+type ParameterizationSpec struct {
+	// The base provider to parameterize.
+	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
+	// The parameter to apply to the base provider.
+	//
+	// Parameter can be any type round-tripable through [json.Marshal]/[json.Unmarshal] and
+	// [yaml.Marshal]/[yaml.Unmarshal].
+	Parameter interface{} `json:"parameter" yaml:"parameter"`
+}
+
 // PackageSpec is the serializable description of a Pulumi package.
 type PackageSpec struct {
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
@@ -1941,6 +1989,9 @@ type PackageSpec struct {
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]FunctionSpec `json:"functions,omitempty" yaml:"functions,omitempty"`
+
+	// Parameterization is the optional parameterization for this package.
+	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {
