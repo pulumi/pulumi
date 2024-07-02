@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Set the --continue-on-error flag with PULUMI_CONTINUE_ON_ERROR environment variable

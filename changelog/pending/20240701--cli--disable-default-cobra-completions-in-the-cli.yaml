@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Disable default Cobra completions in the CLI
