@@ -1356,9 +1356,9 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 
 func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
 	stack backend.Stack, secret string,
-) (string, error) {
+) (*apitype.SecretValue, error) {
 	// The local backend does not support managing deployments.
-	return "", errors.New("stack deployments not supported with diy backends")
+	return nil, errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,

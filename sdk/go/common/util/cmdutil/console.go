@@ -75,6 +75,21 @@ func ReadConsole(prompt string) (string, error) {
 	return readConsoleFancy(os.Stdout, os.Stdin, prompt, false /* secret */)
 }
 
+// ReadConsoleWithDefault reads the console with the given prompt text with support for a default value.
+func ReadConsoleWithDefault(prompt string, defaultValue string) (string, error) {
+	promptMessage := fmt.Sprintf("%s [%s]", prompt, defaultValue)
+	value, err := ReadConsole(promptMessage)
+	if err != nil {
+		return "", err
+	}
+
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value, nil
+}
+
 // readConsolePlain prints the given prompt (if any),
 // and reads the user's response from stdin.
 //

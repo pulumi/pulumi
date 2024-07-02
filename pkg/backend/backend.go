@@ -213,7 +213,7 @@ type Backend interface {
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
 	// Encrypt secrets using the DS encryption key
-	EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (string, error)
+	EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (*apitype.SecretValue, error)
 	// UpdateStackDeploymentSettings updates the stacks's deployment settings.
 	UpdateStackDeploymentSettings(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
 	// Fetch deployment settings

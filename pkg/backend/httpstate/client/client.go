@@ -1139,15 +1139,15 @@ func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack Stack
 
 func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
 	stack StackIdentifier, secret string,
-) (string, error) {
+) (*apitype.SecretValue, error) {
 	request := apitype.SecretValue{Value: secret}
 	response := apitype.SecretValue{}
 	err := pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings", "encrypt"), nil, &request, &response)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return response.Value, nil
+	return &response, nil
 }
 
 func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack StackIdentifier) error {

@@ -176,8 +176,7 @@ func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
 
 	b, err := readFileStripUTF8BOM(path)
 	if os.IsNotExist(err) {
-		defaultProjectStackDeployment := ProjectStackDeployment{}
-		return &defaultProjectStackDeployment, nil
+		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
