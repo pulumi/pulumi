@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -260,7 +261,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				},
 				Default: "No",
 			}, &option, surveyIcons(display.Color)); err != nil {
-				return errors.New("Failed to select oidc options")
+				return errors.New("selection cancelled")
 			}
 
 			switch option {
@@ -324,6 +325,8 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 				return err
 			}
 
+			fmt.Println("Done")
+
 			return nil
 		}),
 	}
@@ -337,6 +340,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 
 func newDeploymentSettingsUpdateCmd() *cobra.Command {
 	var stack string
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:        "up",
@@ -346,7 +350,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, _, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx, displayOpts, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
@@ -355,10 +359,22 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
+			if !yes {
+				confirm, err := askForConfirmation("This action will override the stack's deployment settings, do you want to continue?", displayOpts.Color)
+				if err != nil {
+					return err
+				}
+				if !confirm {
+					return nil
+				}
+			}
+
 			err = be.UpdateStackDeploymentSettings(ctx, s, sd.DeploymentSettings)
 			if err != nil {
 				return err
 			}
+
+			fmt.Println("Done")
 
 			return nil
 		}),
@@ -368,11 +384,16 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
+		"Automatically confirm every confirmation prompt")
+
 	return cmd
 }
 
 func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	var stack string
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:        "destroy",
@@ -382,15 +403,27 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, _, s, _, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx, displayOpts, s, _, be, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
+			}
+
+			if !yes {
+				confirm, err := askForConfirmation("This action will clear the stack's deployment settings, do you want to continue?", displayOpts.Color)
+				if err != nil {
+					return err
+				}
+				if !confirm {
+					return nil
+				}
 			}
 
 			err = be.DestroyStackDeploymentSettings(ctx, s)
 			if err != nil {
 				return err
 			}
+
+			fmt.Println("Done")
 
 			return nil
 		}),
@@ -400,6 +433,10 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
+		"Automatically confirm every confirmation prompt")
+
 	return cmd
 }
 
@@ -408,8 +445,8 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 	var gitSSHPrivateKeyPath string
 
 	cmd := &cobra.Command{
-		Use:   "set [configuration]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "configure",
+		Args:  cmdutil.ExactArgs(0),
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -422,57 +459,36 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
-			var configuration string
-			if len(args) == 1 {
-				configuration = args[0]
-			} else {
-				var option string
-				if err := survey.AskOne(&survey.Select{
-					Message: "Configure:",
-					Options: []string{
-						"Git",
-						"Executor image",
-						"Advanced settings",
-						"AWS OpenID Connect integration",
-						"Azure OpenID Connect integration",
-						"GCP OpenID Connect integration",
-					},
-				}, &option, surveyIcons(displayOpts.Color)); err != nil {
-					return errors.New("confirmation cancelled")
-				}
-
-				switch option {
-				case "Git":
-					configuration = "git"
-				case "Executor image":
-					configuration = "executor-image"
-				case "Advanced settings":
-					configuration = "advanced-settings"
-				case "AWS OpenID Connect integration":
-					configuration = "oidc-aws"
-				case "Azure OpenID Connect integration":
-					configuration = "oidc-azure"
-				case "GCP OpenID Connect integration":
-					configuration = "oidc-gcp"
-				}
+			var option string
+			if err := survey.AskOne(&survey.Select{
+				Message: "Configure:",
+				Options: []string{
+					"Git",
+					"Executor image",
+					"Advanced settings",
+					"AWS OpenID Connect integration",
+					"Azure OpenID Connect integration",
+					"GCP OpenID Connect integration",
+				},
+			}, &option, surveyIcons(displayOpts.Color)); err != nil {
+				return errors.New("selection cancelled")
 			}
 
-			switch configuration {
-			case "git":
+			switch option {
+			case "Git":
 				err = configureGit(ctx, displayOpts, be, s, sd, gitSSHPrivateKeyPath)
-			case "executor-image":
+			case "Executor image":
 				err = configureImageRepository(ctx, displayOpts, be, s, sd)
-			case "advanced-settings":
+			case "Advanced settings":
 				err = configureAdvancedSettings(displayOpts, sd)
-			case "oidc-aws":
+			case "AWS OpenID Connect integration":
 				err = configureOidcAws(sd)
-			case "oidc-azure":
+			case "Azure OpenID Connect integration":
 				err = configureOidcAzure(sd)
-			case "oidc-gcp":
+			case "GCP OpenID Connect integration":
 				err = configureOidcGCP(sd)
-			default:
-				err = fmt.Errorf("Invalid option %q", configuration)
 			}
+
 			if err != nil {
 				return err
 			}
@@ -481,6 +497,8 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			fmt.Println("Done")
 
 			return nil
 		}),
@@ -534,19 +552,6 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 				value = args[1]
 			}
 
-			var secretValue *apitype.SecretValue
-			if secret {
-				secretValue, err = be.EncryptStackDeploymentSettingsSecret(ctx, s, value)
-				if err != nil {
-					return err
-				}
-			} else {
-				secretValue = &apitype.SecretValue{
-					Value:  value,
-					Secret: false,
-				}
-			}
-
 			if sd.DeploymentSettings.Operation == nil {
 				sd.DeploymentSettings.Operation = &apitype.OperationContext{}
 			}
@@ -558,6 +563,19 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			if remove {
 				delete(sd.DeploymentSettings.Operation.EnvironmentVariables, key)
 			} else {
+				var secretValue *apitype.SecretValue
+				if secret {
+					secretValue, err = be.EncryptStackDeploymentSettingsSecret(ctx, s, value)
+					if err != nil {
+						return err
+					}
+				} else {
+					secretValue = &apitype.SecretValue{
+						Value:  value,
+						Secret: false,
+					}
+				}
+
 				sd.DeploymentSettings.Operation.EnvironmentVariables[key] = *secretValue
 			}
 
@@ -565,6 +583,8 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			fmt.Println("Done")
 
 			return nil
 		}),
@@ -653,16 +673,10 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 		useGiHub := vcsInfo.Kind == gitutil.GitHubHostName
 
 		if useGiHub {
-			var option string
-			if err := survey.AskOne(&survey.Select{
-				Message: "A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
-				Options: []string{"yes", "no"},
-				Default: string("yes"),
-			}, &option, surveyIcons(displayOpts.Color)); err != nil {
-				return errors.New("confirmation cancelled")
+			useGiHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?", displayOpts.Color)
+			if err != nil {
+				return err
 			}
-
-			useGiHub = option == "yes"
 		}
 
 		if useGiHub {
@@ -699,7 +713,7 @@ func configureGitHubRepo(displayOpts *display.Options,
 			"Use this stack as a template for pull request stacks",
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
-		return errors.New("Failed to select git options")
+		return errors.New("selection cancelled")
 	}
 
 	if slices.Contains(options, "Run previews for pull requests") {
@@ -731,7 +745,7 @@ func configureBareGitRepo(ctx context.Context, displayOpts *display.Options,
 			"SSH key",
 		},
 	}, &option, surveyIcons(displayOpts.Color)); err != nil {
-		return errors.New("Failed to select git authentication")
+		return errors.New("selection cancelled")
 	}
 	switch option {
 	case "Username/Password":
@@ -1045,7 +1059,7 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 			"Skip intermediate deployments",
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
-		return errors.New("confirmation cancelled")
+		return errors.New("selection cancelled")
 	}
 
 	if sd.DeploymentSettings.Operation == nil {
@@ -1067,6 +1081,22 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 	return nil
 }
 
+func askForConfirmation(prompt string, color colors.Colorization) (bool, error) {
+	yes := "yes"
+	no := "no"
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message: prompt,
+		Options: []string{yes, no},
+		Default: string(no),
+	}, &option, surveyIcons(color)); err != nil {
+		return false, errors.New("selection cancelled")
+	}
+
+	return option == yes, nil
+}
+
 func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment,
 ) error {
@@ -1075,16 +1105,12 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	var password string
 	var err error
 
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message: "Do you want to use a custom executor image?",
-		Options: []string{"yes", "no"},
-		Default: string("no"),
-	}, &option, surveyIcons(displayOpts.Color)); err != nil {
-		return errors.New("confirmation cancelled")
+	confirm, err := askForConfirmation("Do you want to use a custom executor image?", displayOpts.Color)
+	if err != nil {
+		return err
 	}
 
-	if option == "no" {
+	if !confirm {
 		sd.DeploymentSettings.Executor = nil
 		return nil
 	}
@@ -1116,10 +1142,10 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	}
 
 	if sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username != "" {
-		imageReference, err = cmdutil.ReadConsoleWithDefault("Enter the image repository username",
+		imageReference, err = cmdutil.ReadConsoleWithDefault("(Optional) Enter the image repository username",
 			sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
 	} else {
-		username, err = cmdutil.ReadConsole("Enter the image repository username")
+		username, err = cmdutil.ReadConsole("(Optional) Enter the image repository username")
 	}
 
 	if err != nil {
