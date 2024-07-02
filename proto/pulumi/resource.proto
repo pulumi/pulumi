@@ -36,6 +36,7 @@ service ResourceMonitor {
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
+    rpc RegisterInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
 }
@@ -243,6 +244,24 @@ message TransformResponse {
     TransformResourceOptions options = 2; // the options for the resource.
 }
 
+message TransformInvokeRequest {
+    string token = 1; // the token for the invoke request.
+    google.protobuf.Struct args = 2; // the input args of the resource.
+    TransformInvokeOptions options = 3; // the options for the resource.
+}
+
+message TransformInvokeResponse {
+    google.protobuf.Struct args = 1; // the transformed input args.
+    TransformInvokeOptions options = 2; // the options for the resource.
+}
+
+message TransformInvokeOptions {
+    string provider = 1;
+    string plugin_download_url = 2;
+    string version = 3;
+    map<string, bytes> plugin_checksums = 5;
+}
+
 message RegisterPackageRequest {
     string name = 1;
     string version = 2;
@@ -253,10 +272,10 @@ message RegisterPackageRequest {
 
 message RegisterPackageResponse {
     // The UUID package reference for this registered package.
-    string ref = 1; 
+    string ref = 1;
 }
 
-message PackageParameter { 
+message PackageParameter {
     string name = 1;
     string version = 2;
     google.protobuf.Value value = 3;

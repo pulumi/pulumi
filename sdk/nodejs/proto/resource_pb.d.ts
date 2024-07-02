@@ -715,6 +715,98 @@ export namespace TransformResponse {
     }
 }
 
+export class TransformInvokeRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): TransformInvokeRequest;
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): google_protobuf_struct_pb.Struct | undefined;
+    setArgs(value?: google_protobuf_struct_pb.Struct): TransformInvokeRequest;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): TransformInvokeOptions | undefined;
+    setOptions(value?: TransformInvokeOptions): TransformInvokeRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformInvokeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformInvokeRequest): TransformInvokeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformInvokeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformInvokeRequest;
+    static deserializeBinaryFromReader(message: TransformInvokeRequest, reader: jspb.BinaryReader): TransformInvokeRequest;
+}
+
+export namespace TransformInvokeRequest {
+    export type AsObject = {
+        token: string,
+        args?: google_protobuf_struct_pb.Struct.AsObject,
+        options?: TransformInvokeOptions.AsObject,
+    }
+}
+
+export class TransformInvokeResponse extends jspb.Message { 
+
+    hasArgs(): boolean;
+    clearArgs(): void;
+    getArgs(): google_protobuf_struct_pb.Struct | undefined;
+    setArgs(value?: google_protobuf_struct_pb.Struct): TransformInvokeResponse;
+
+    hasOptions(): boolean;
+    clearOptions(): void;
+    getOptions(): TransformInvokeOptions | undefined;
+    setOptions(value?: TransformInvokeOptions): TransformInvokeResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformInvokeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformInvokeResponse): TransformInvokeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformInvokeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformInvokeResponse;
+    static deserializeBinaryFromReader(message: TransformInvokeResponse, reader: jspb.BinaryReader): TransformInvokeResponse;
+}
+
+export namespace TransformInvokeResponse {
+    export type AsObject = {
+        args?: google_protobuf_struct_pb.Struct.AsObject,
+        options?: TransformInvokeOptions.AsObject,
+    }
+}
+
+export class TransformInvokeOptions extends jspb.Message { 
+    getProvider(): string;
+    setProvider(value: string): TransformInvokeOptions;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): TransformInvokeOptions;
+    getVersion(): string;
+    setVersion(value: string): TransformInvokeOptions;
+
+    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginChecksumsMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TransformInvokeOptions.AsObject;
+    static toObject(includeInstance: boolean, msg: TransformInvokeOptions): TransformInvokeOptions.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TransformInvokeOptions, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TransformInvokeOptions;
+    static deserializeBinaryFromReader(message: TransformInvokeOptions, reader: jspb.BinaryReader): TransformInvokeOptions;
+}
+
+export namespace TransformInvokeOptions {
+    export type AsObject = {
+        provider: string,
+        pluginDownloadUrl: string,
+        version: string,
+
+        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+    }
+}
+
 export class RegisterPackageRequest extends jspb.Message { 
     getName(): string;
     setName(value: string): RegisterPackageRequest;

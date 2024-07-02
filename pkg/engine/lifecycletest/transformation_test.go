@@ -81,6 +81,50 @@ func TransformFunction(
 	}
 }
 
+func TransformInvokeFunction(
+	f func(
+		token string, props resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error),
+) func([]byte) (proto.Message, error) {
+	return func(request []byte) (proto.Message, error) {
+		var transformationRequest pulumirpc.TransformInvokeRequest
+		err := proto.Unmarshal(request, &transformationRequest)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+
+		margs, err := plugin.UnmarshalProperties(transformationRequest.Args, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling properties: %w", err)
+		}
+
+		ret, opts, err := f(
+			transformationRequest.Token, margs, transformationRequest.Options)
+		if err != nil {
+			return nil, err
+		}
+		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return &pulumirpc.TransformInvokeResponse{
+			Args:    mret,
+			Options: opts,
+		}, nil
+	}
+}
+
 func pvApply(pv resource.PropertyValue, f func(resource.PropertyValue) resource.PropertyValue) resource.PropertyValue {
 	if pv.IsOutput() {
 		o := pv.OutputValue()
@@ -796,4 +840,127 @@ func TestTransformsProviderOpt(t *testing.T) {
 		urn.URN("urn:pulumi:test::test::ymy:component:resource$pkgA:m:typA::parentedResource"),
 		snap.Resources[7].URN)
 	assert.Equal(t, implicitProvider, snap.Resources[7].Provider)
+}
+
+func TestTransformInvoke(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				Package: "pkgA",
+				InvokeF: func(
+					tok tokens.ModuleMember, inputs resource.PropertyMap,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return inputs, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+		require.NoError(t, err)
+		implicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformInvokeFunction(func(token string,
+				args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+				args["foo"] = resource.NewStringProperty("bar")
+
+				return args, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterInvokeTransform(callback)
+		require.NoError(t, err)
+
+		input := resource.PropertyMap{
+			"foo": resource.NewStringProperty("baz"),
+			"bar": resource.NewStringProperty("qux"),
+		}
+
+		result, _, err := monitor.Invoke("pkgA:m:typA", input, implicitProvider, "0.0.0")
+		require.NoError(t, err)
+
+		assert.Equal(t, "bar", result["foo"].StringValue())
+		assert.Equal(t, "qux", result["bar"].StringValue())
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	_ = p.Run(t, nil)
+}
+
+func TestTransformInvokeTransformProvider(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				Package: "pkgA",
+				InvokeF: func(
+					tok tokens.ModuleMember, inputs resource.PropertyMap,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return inputs, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	var implicitProvider string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "implicit", true)
+		require.NoError(t, err)
+		implicitProvider = string(resp.URN) + "::" + resp.ID.String()
+
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		callback, err := callbacks.Allocate(
+			TransformInvokeFunction(func(token string,
+				args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+				if opts.Provider == "" {
+					opts.Provider = implicitProvider
+				}
+
+				return args, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterInvokeTransform(callback)
+		require.NoError(t, err)
+
+		input := resource.PropertyMap{}
+
+		_, _, err = monitor.Invoke("pkgA:m:typA", input, "", "")
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []TestStep{
+			{
+				Op: Update,
+			},
+		},
+	}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Equal(t, 1, len(snap.Resources)) // expect no default provider to be created for the invoke
 }

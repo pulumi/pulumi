@@ -158,6 +158,11 @@ func (k *testproviderProvider) Parameterize(_ context.Context, req *rpc.Paramete
 // Invoke dynamically executes a built-in function in the provider.
 func (k *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
 	tok := req.GetTok()
+	if tok == "testprovider:index:returnArgs" {
+		return &rpc.InvokeResponse{
+			Return: req.Args,
+		}, nil
+	}
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", tok)
 }
 

@@ -576,6 +576,12 @@ type TransformFunction func(
 	opts *pulumirpc.TransformResourceOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
 
+// A transformation function that can be applied to an invoke.
+type TransformInvokeFunction func(
+	ctx context.Context, token string, args resource.PropertyMap,
+	opts *pulumirpc.TransformInvokeOptions,
+) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error)
+
 type CallbacksClient struct {
 	pulumirpc.CallbacksClient
 
@@ -625,6 +631,8 @@ type resmon struct {
 
 	stackTransformsLock    sync.Mutex
 	stackTransforms        []TransformFunction // stack transformation functions
+	invokeTransformsLock   sync.Mutex
+	invokeTransforms       []TransformInvokeFunction // invoke transformation functions
 	resourceTransformsLock sync.Mutex
 	resourceTransforms     map[resource.URN][]TransformFunction // option transformation functions per resource
 	callbacksLock          sync.Mutex
@@ -921,6 +929,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "transforms":
 		hasSupport = true
+	case "invokeTransforms":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -934,19 +944,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(
-		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
-	if err != nil {
-		return nil, err
-	}
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
-	if err != nil {
-		return nil, fmt.Errorf("Invoke: %w", err)
-	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
-
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{
 			Label:            label,
@@ -957,6 +956,44 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
+	}
+
+	opts := &pulumirpc.TransformInvokeOptions{
+		Provider:          req.GetProvider(),
+		Version:           req.GetVersion(),
+		PluginDownloadUrl: req.GetPluginDownloadURL(),
+		PluginChecksums:   req.GetPluginChecksums(),
+	}
+
+	// Then lock the stack transformations and run all of those
+	err = func() error {
+		// Function exists to scope the lock
+		rm.invokeTransformsLock.Lock()
+		defer rm.invokeTransformsLock.Unlock()
+
+		for _, transform := range rm.invokeTransforms {
+			newArgs, newOpts, err := transform(ctx, string(tok), args, opts)
+			if err != nil {
+				return err
+			}
+
+			args = newArgs
+			opts = newOpts
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	providerReq, err := parseProviderRequest(
+		tok.Package(), opts.Version, opts.PluginDownloadUrl, opts.PluginChecksums, nil)
+	if err != nil {
+		return nil, err
+	}
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, opts.Provider, tok)
+	if err != nil {
+		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
 	// Do the invoke and then return the arguments.
@@ -1354,6 +1391,77 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 	}, nil
 }
 
+func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (TransformInvokeFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(
+		ctx context.Context, invokeToken string,
+		args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+		logging.V(5).Infof("Invoke Transform: token=%v props=%v opts=%v",
+			invokeToken, args, opts)
+
+		margs := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+			WorkingDirectory: rm.workingDirectory,
+		}
+
+		mprops, err := plugin.MarshalProperties(args, margs)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var request []byte
+		request, err = proto.Marshal(&pulumirpc.TransformInvokeRequest{
+			Token:   invokeToken,
+			Args:    mprops,
+			Options: opts,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshaling request: %w", err)
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(5).Infof("Transform callback error: %v", err)
+			return nil, nil, err
+		}
+
+		newOpts := opts
+		var newProps resource.PropertyMap
+		var response pulumirpc.TransformInvokeResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
+		}
+
+		if response.Options != nil {
+			newOpts = response.Options
+		}
+		newProps = args
+		if response.Args != nil {
+			newProps, err = plugin.UnmarshalProperties(response.Args, margs)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
+
+		return newProps, newOpts, nil
+	}, nil
+}
+
 func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
 	rm.stackTransformsLock.Lock()
 	defer rm.stackTransformsLock.Unlock()
@@ -1368,6 +1476,23 @@ func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Call
 	}
 
 	rm.stackTransforms = append(rm.stackTransforms, wrapped)
+	return &emptypb.Empty{}, nil
+}
+
+func (rm *resmon) RegisterInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+	rm.invokeTransformsLock.Lock()
+	defer rm.invokeTransformsLock.Unlock()
+
+	if cb.Target == "" {
+		return nil, errors.New("target must be specified")
+	}
+
+	wrapped, err := rm.wrapInvokeTransformCallback(cb)
+	if err != nil {
+		return nil, err
+	}
+
+	rm.invokeTransforms = append(rm.invokeTransforms, wrapped)
 	return &emptypb.Empty{}, nil
 }
 
@@ -2426,7 +2551,7 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 func upgradeOutputValues(
 	v resource.PropertyMap, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
 ) resource.PropertyMap {
-	// We assume that by the time this is being called we've upgraded all Secret/Computed values to outputs. We just
+	// We assume that by the time this is being called we've upgradeqd all Secret/Computed values to outputs. We just
 	// need to add the dependency information from propertyDependencies.
 
 	result := make(resource.PropertyMap)

@@ -270,6 +270,12 @@ func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.
 	panic("not implemented")
 }
 
+func (m *mockMonitor) RegisterInvokeTransform(ctx context.Context, in *pulumirpc.Callback,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	panic("not implemented")
+}
+
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterPackageResponse, error) {
