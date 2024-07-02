@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Don't re-delete resources that are marked as `pendingReplacement`

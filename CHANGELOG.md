@@ -1,5 +1,73 @@
 # Changelog
 
+## 3.122.0 (2024-07-01)
+
+
+### Features
+
+- [cli] Set the --continue-on-error flag with PULUMI_CONTINUE_ON_ERROR environment variable
+  [#16442](https://github.com/pulumi/pulumi/pull/16442)
+
+- [sdk/nodejs] Parallelize Construct and Call calls in the Node.js SDK
+  [#16428](https://github.com/pulumi/pulumi/pull/16428)
+
+- [sdk/python] Support `--exclude-protected` for `destroy` in the Python automation SDK
+  [#16457](https://github.com/pulumi/pulumi/pull/16457)
+
+
+### Bug Fixes
+
+- [auto] Protect access to transport.UnsupportedCapabilities inside repo.FetchContext
+  [#16517](https://github.com/pulumi/pulumi/pull/16517)
+
+- [cli] Disable default Cobra completions in the CLI
+  [#16540](https://github.com/pulumi/pulumi/pull/16540)
+
+- [engine] Fix an issue with asset archives not working with paths outside the working directory.
+  [#16455](https://github.com/pulumi/pulumi/pull/16455)
+
+- [engine] Don't re-delete resources that are marked as `pendingReplacement`
+  [#16510](https://github.com/pulumi/pulumi/pull/16510)
+
+- [cli/display] Print a fully qualified stack name on `pulumi stack --show-name --fully-qualify-stack-names`
+  [#16453](https://github.com/pulumi/pulumi/pull/16453)
+
+- [cli/display] Display `[retain]` in all cases of delete retention
+  [#16506](https://github.com/pulumi/pulumi/pull/16506)
+
+- [sdkgen/dotnet] Bump the default version range for the referenced Pulumi package to a version that supports Config.GetDouble
+  [#16483](https://github.com/pulumi/pulumi/pull/16483)
+
+- [cli/new] Add not-found markers to missing executables for packagemanagers
+  [#16488](https://github.com/pulumi/pulumi/pull/16488)
+
+- [sdk/go] Fix concurrent map write when registering transform callbacks
+  [#16444](https://github.com/pulumi/pulumi/pull/16444)
+
+- [sdk/nodejs] Fix race condition when registering stack transforms
+  [#16443](https://github.com/pulumi/pulumi/pull/16443)
+
+- [sdk/nodejs] Fix Construct and Call calls in the Node.js SDK sharing state
+  [#16487](https://github.com/pulumi/pulumi/pull/16487)
+
+- [sdk/nodejs] Fix non-blocking stdout/err with nodejs
+  [#16504](https://github.com/pulumi/pulumi/pull/16504)
+
+- [sdk/{nodejs,python}] Display an actionable error message when dependency installation fails
+  [#16489](https://github.com/pulumi/pulumi/pull/16489)
+
+- [sdk/python] Wait for pending tasks before shutting down python programs.
+  [#16505](https://github.com/pulumi/pulumi/pull/16505)
+
+- [sdk/python] Provide installation instructions for the python typechecker
+  [#16539](https://github.com/pulumi/pulumi/pull/16539)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Migrate from Rome to Biome
+  [#16456](https://github.com/pulumi/pulumi/pull/16456)
+
 ## 3.121.0 (2024-06-22)
 
 

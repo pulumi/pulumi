@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet
-  description: Bump the default version range for the referenced Pulumi package to a version that supports Config.GetDouble
