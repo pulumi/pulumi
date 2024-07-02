@@ -25,9 +25,9 @@ import (
 )
 
 type ProviderParameter struct {
-	// The name of the parametrized package.
+	// The name of the parametrized provider plugin.
 	pkg tokens.Package
-	// The version of the parametrized package.
+	// The version of the parametrized provider plugin.
 	version *semver.Version
 	// The value of the parameter (a JSON like value).
 	value interface{}
