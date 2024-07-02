@@ -15,6 +15,7 @@
 package docs
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -55,7 +56,7 @@ func getCodeSection(doc string) []codeLocation {
 	return fences
 }
 
-func markupBlock(block string) string {
+func markupBlock(block, supportedSnippetLanguages string) string {
 	languages := []struct{ tag, choosable string }{
 		{"typescript", "<div>\n<pulumi-choosable type=\"language\" values=\"javascript,typescript\">\n\n"},
 		{"python", "<div>\n<pulumi-choosable type=\"language\" values=\"python\">\n\n"},
@@ -66,13 +67,13 @@ func markupBlock(block string) string {
 	}
 	const (
 		//nolint:lll
-		chooserStart = "<div>\n<pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser>\n</div>\n"
-		choosableEnd = "</pulumi-choosable>\n</div>\n"
+		chooserStartFmt = "<div>\n<pulumi-chooser type=\"language\" options=\"%s\"></pulumi-chooser>\n</div>\n"
+		choosableEnd    = "</pulumi-choosable>\n</div>\n"
 	)
 
 	var markedUpBlock strings.Builder
 	// first, append the start chooser
-	markedUpBlock.WriteString(chooserStart)
+	markedUpBlock.WriteString(fmt.Sprintf(chooserStartFmt, supportedSnippetLanguages))
 
 	for _, lang := range languages {
 		// Add language specific open choosable
@@ -97,7 +98,7 @@ func markupBlock(block string) string {
 	return markedUpBlock.String()
 }
 
-func (dctx *docGenContext) processDescription(description string) docInfo {
+func (dctx *docGenContext) processDescription(description, supportedSnippetLanguages string) docInfo {
 	importDetails := ""
 	parts := strings.Split(description, "\n\n## Import")
 	if len(parts) > 1 {
@@ -114,7 +115,7 @@ func (dctx *docGenContext) processDescription(description string) docInfo {
 		markedUpDescription += description[startIndex:block.open]
 		codeBlock := description[block.open:block.close]
 		// append marked up block
-		markedUpDescription += markupBlock(codeBlock)
+		markedUpDescription += markupBlock(codeBlock, supportedSnippetLanguages)
 		startIndex = block.close + len(endCodeBlock)
 	}
 	// append remainder of description, if any

@@ -5,7 +5,7 @@ Creates and manages Scaleway Kubernetes clusters. For more information, see [the
 ### Basic
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,python,typescript,yaml,java"></pulumi-chooser>
 </div>
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -196,7 +196,7 @@ resources:
 ### Multicloud
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,python,typescript,yaml,java"></pulumi-chooser>
 </div>
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -382,7 +382,7 @@ For a detailed example of how to add or run Elastic Metal servers instead of ins
 ### With additional configuration
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,python,typescript,yaml,java"></pulumi-chooser>
 </div>
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -597,7 +597,7 @@ Coming soon!
 Before:
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,python,typescript,yaml,java"></pulumi-chooser>
 </div>
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
@@ -687,7 +687,7 @@ resources:
 After:
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,python,typescript,yaml,java"></pulumi-chooser>
 </div>
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">

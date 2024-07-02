@@ -25,8 +25,8 @@ func TestProcessDescription(t *testing.T) {
 			t.Parallel()
 
 			input := readFile(t, filepath.Join("testdata", tt.prefix+".md"))
-
-			actual := newDocGenContext().processDescription(input).description
+			dctx := newDocGenContext()
+			actual := dctx.processDescription(input, dctx.getSupportedSnippetLanguages(false, nil)).description
 
 			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
@@ -50,7 +50,8 @@ func TestDecomposeDocstringDescription(t *testing.T) {
 
 			input := readFile(t, filepath.Join("testdata", tt.prefix+".md"))
 
-			actual := newDocGenContext().decomposeDocstring(input).description
+			dctx := newDocGenContext()
+			actual := dctx.decomposeDocstring(input, dctx.getSupportedSnippetLanguages(false, nil)).description
 
 			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
