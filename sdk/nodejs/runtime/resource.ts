@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import * as query from "@pulumi/query";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { getAllResources, Input, Inputs, Output, output } from "../output";
+import { Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     Alias,
@@ -35,6 +35,7 @@ import {
     URN,
 } from "../resource";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
+import { gatherExplicitDependencies } from "./dependsOn";
 import { invoke } from "./invoke";
 import { getStore } from "./state";
 
@@ -973,42 +974,6 @@ async function addTransitivelyReferencedChildResourcesOfComponentResources(
             }
         }
     }
-}
-
-/**
- * Gathers explicit dependent Resources from a list of Resources (possibly Promises and/or Outputs).
- */
-async function gatherExplicitDependencies(
-    dependsOn: Input<Input<Resource>[]> | Input<Resource> | undefined,
-): Promise<Resource[]> {
-    if (dependsOn) {
-        if (Array.isArray(dependsOn)) {
-            const dos: Resource[] = [];
-            for (const d of dependsOn) {
-                dos.push(...(await gatherExplicitDependencies(d)));
-            }
-            return dos;
-        } else if (dependsOn instanceof Promise) {
-            return gatherExplicitDependencies(await dependsOn);
-        } else if (Output.isInstance(dependsOn)) {
-            // Recursively gather dependencies, await the promise, and append the output's dependencies.
-            const dos = (dependsOn as Output<Input<Resource>[] | Input<Resource>>).apply((v) =>
-                gatherExplicitDependencies(v),
-            );
-            const urns = await dos.promise();
-            const dosResources = await getAllResources(dos);
-            const implicits = await gatherExplicitDependencies([...dosResources]);
-            return (urns ?? []).concat(implicits);
-        } else {
-            if (!Resource.isInstance(dependsOn)) {
-                throw new Error("'dependsOn' was passed a value that was not a Resource.");
-            }
-
-            return [dependsOn];
-        }
-    }
-
-    return [];
 }
 
 /**
