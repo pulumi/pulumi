@@ -1,4 +1,5 @@
 dist: goreleaser
+version: 2
 
 project_name: pulumi
 
@@ -54,18 +55,16 @@ archives:
   format_overrides:
     - goos: windows
       format: zip
-  replacements:
-    amd64: x64
   files:
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
       dst: '.'
       strip_parent: true
       # binaries
-    - src: bin/{{ .Os }}-{{ .Arch }}/*
+    - src: 'bin/{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}/*'
       dst: '.'
       strip_parent: true
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}'
 
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
