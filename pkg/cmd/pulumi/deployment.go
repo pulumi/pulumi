@@ -233,6 +233,33 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				return err
 			}
 
+			var option string
+			if err := survey.AskOne(&survey.Select{
+				Message: "Do you want to configure an OpenID Connect integration?",
+				Options: []string{
+					"No",
+					"Enable AWS integration",
+					"Enable Azure integration",
+					"Enable Google Cloud integration",
+				},
+				Default: "No",
+			}, &option, surveyIcons(displayOpts.Color)); err != nil {
+				return fmt.Errorf("Failed to select oidc options")
+			}
+
+			switch option {
+			case "Enable AWS integration":
+				err = configureOidcAws(newStackDeployment)
+			case "Enable Azure integration":
+				err = configureOidcAzure(newStackDeployment)
+			case "Enable Google Cloud integration":
+				err = configureOidcGCP(newStackDeployment)
+			}
+
+			if err != nil {
+				return err
+			}
+
 			err = saveProjectStackDeployment(newStackDeployment, s)
 			if err != nil {
 				return err
@@ -678,6 +705,189 @@ func configureGitSSH(ctx context.Context, be backend.Backend, s backend.Stack, s
 	return nil
 }
 
+func configureOidcAws(sd *workspace.ProjectStackDeployment) error {
+	if sd.DeploymentSettings.Operation == nil {
+		sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC == nil {
+		sd.DeploymentSettings.Operation.OIDC = &apitype.OperationContextOIDCConfiguration{}
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.AWS == nil {
+		sd.DeploymentSettings.Operation.OIDC.AWS = &apitype.OperationContextAWSOIDCConfiguration{}
+	}
+
+	var roleARN string
+	var sessionName string
+	var err error
+
+	if sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN != "" {
+		roleARN, err = ReadConsoleWithDefault("AWS role ARN", sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN)
+	} else {
+		roleARN, err = cmdutil.ReadConsole("AWS role ARN")
+	}
+	if err != nil {
+		return err
+	}
+	if roleARN == "" {
+		return fmt.Errorf("Role ARN is required")
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.AWS.SessionName != "" {
+		sessionName, err = ReadConsoleWithDefault("AWS session name", sd.DeploymentSettings.Operation.OIDC.AWS.SessionName)
+	} else {
+		sessionName, err = cmdutil.ReadConsole("AWS session name")
+	}
+	if err != nil {
+		return err
+	}
+	if sessionName == "" {
+		return fmt.Errorf("Session name is required")
+	}
+
+	sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN = roleARN
+	sd.DeploymentSettings.Operation.OIDC.AWS.SessionName = sessionName
+
+	return nil
+}
+
+func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
+	if sd.DeploymentSettings.Operation == nil {
+		sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC == nil {
+		sd.DeploymentSettings.Operation.OIDC = &apitype.OperationContextOIDCConfiguration{}
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.GCP == nil {
+		sd.DeploymentSettings.Operation.OIDC.GCP = &apitype.OperationContextGCPOIDCConfiguration{}
+	}
+
+	var projectID string
+	var providerID string
+	var workloadPoolID string
+	var serviceAccount string
+	var err error
+
+	if sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID != "" {
+		projectID, err = ReadConsoleWithDefault("GCP project id", sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID)
+	} else {
+		projectID, err = cmdutil.ReadConsole("GCP project id")
+	}
+	if err != nil {
+		return err
+	}
+	if projectID == "" {
+		return fmt.Errorf("Project id is required")
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID != "" {
+		providerID, err = ReadConsoleWithDefault("GCP provider id", sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID)
+	} else {
+		providerID, err = cmdutil.ReadConsole("GCP provider id")
+	}
+	if err != nil {
+		return err
+	}
+	if providerID == "" {
+		return fmt.Errorf("Provider id is required")
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID != "" {
+		workloadPoolID, err = ReadConsoleWithDefault("GCP identity provider id", sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID)
+	} else {
+		workloadPoolID, err = cmdutil.ReadConsole("GCP identity provider id")
+	}
+	if err != nil {
+		return err
+	}
+	if workloadPoolID == "" {
+		return fmt.Errorf("Identity provider id is required")
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount != "" {
+		serviceAccount, err = ReadConsoleWithDefault("GCP service account email address", sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount)
+	} else {
+		serviceAccount, err = cmdutil.ReadConsole("GCP service account email address")
+	}
+	if err != nil {
+		return err
+	}
+	if serviceAccount == "" {
+		return fmt.Errorf("service account email address is required")
+	}
+
+	sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID = projectID
+	sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID = providerID
+	sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID = workloadPoolID
+	sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount = serviceAccount
+
+	return nil
+}
+
+func configureOidcAzure(sd *workspace.ProjectStackDeployment) error {
+	if sd.DeploymentSettings.Operation == nil {
+		sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC == nil {
+		sd.DeploymentSettings.Operation.OIDC = &apitype.OperationContextOIDCConfiguration{}
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.Azure == nil {
+		sd.DeploymentSettings.Operation.OIDC.Azure = &apitype.OperationContextAzureOIDCConfiguration{}
+	}
+
+	var clientID string
+	var tenantID string
+	var subscriptionID string
+	var err error
+
+	if sd.DeploymentSettings.Operation.OIDC.Azure.ClientID != "" {
+		clientID, err = ReadConsoleWithDefault("Azure client id", sd.DeploymentSettings.Operation.OIDC.Azure.ClientID)
+	} else {
+		clientID, err = cmdutil.ReadConsole("Azure client id")
+	}
+	if err != nil {
+		return err
+	}
+	if clientID == "" {
+		return fmt.Errorf("Client id is required")
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.Azure.TenantID != "" {
+		tenantID, err = ReadConsoleWithDefault("Azure tenant id", sd.DeploymentSettings.Operation.OIDC.Azure.TenantID)
+	} else {
+		tenantID, err = cmdutil.ReadConsole("Azure tenant id")
+	}
+	if err != nil {
+		return err
+	}
+	if tenantID == "" {
+		return fmt.Errorf("Tenant id is required")
+	}
+
+	if sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID != "" {
+		subscriptionID, err = ReadConsoleWithDefault("Azure subscription id", sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID)
+	} else {
+		subscriptionID, err = cmdutil.ReadConsole("Azure subscription id")
+	}
+	if err != nil {
+		return err
+	}
+	if subscriptionID == "" {
+		return fmt.Errorf("Subscription id is required")
+	}
+
+	sd.DeploymentSettings.Operation.OIDC.Azure.ClientID = clientID
+	sd.DeploymentSettings.Operation.OIDC.Azure.TenantID = tenantID
+	sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID = subscriptionID
+
+	return nil
+}
+
 func configureAdvancedSettings(displayOpts display.Options, sd *workspace.ProjectStackDeployment) error {
 	var options []string
 	if err := survey.AskOne(&survey.MultiSelect{
@@ -849,6 +1059,12 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 				err = configureImageRepository(ctx, displayOpts, currentBe, s, sd)
 			case "advanced-settings":
 				err = configureAdvancedSettings(displayOpts, sd)
+			case "oidc-aws":
+				err = configureOidcAws(sd)
+			case "oidc-azure":
+				err = configureOidcAzure(sd)
+			case "oidc-gcp":
+				err = configureOidcGCP(sd)
 			default:
 				err = fmt.Errorf("Invalid option %q", configuration)
 			}

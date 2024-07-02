@@ -213,6 +213,8 @@ type BasicAuth struct {
 
 // OperationContext describes what to do.
 type OperationContext struct {
+	// OIDC contains the OIDC configuration for the operation.
+	OIDC *OperationContextOIDCConfiguration `json:"oidc,omitempty" yaml:"oidc,omitempty"`
 	// PreRunCommands is an optional list of arbitrary commands to run before Pulumi
 	// is invoked.
 	// ref: https://github.com/pulumi/pulumi/issues/9397
@@ -226,6 +228,50 @@ type OperationContext struct {
 
 	// Options is a bag of settings to specify or override default behavior
 	Options *OperationContextOptions `json:"options,omitempty" yaml:"options,omitempty"`
+}
+
+type OperationContextOIDCConfiguration struct {
+	// AWS contains AWS-specific configuration.
+	AWS *OperationContextAWSOIDCConfiguration `json:"aws,omitempty" yaml:"aws,omitempty"`
+	// Azure contains Azure-specific configuration.
+	Azure *OperationContextAzureOIDCConfiguration `json:"azure,omitempty" yaml:"azure,omitempty"`
+	// GCP contains GCP-specific configuration.
+	GCP *OperationContextGCPOIDCConfiguration `json:"gcp,omitempty" yaml:"gcp,omitempty"`
+}
+
+type OperationContextAWSOIDCConfiguration struct {
+	// Duration is the duration of the assume-role session.
+	Duration time.Duration `json:"duration,omitempty" yaml:"duration,omitempty"`
+	// PolicyARNs is an optional set of IAM policy ARNs that further restrict the assume-role session.
+	PolicyARNs []string `json:"policyArns,omitempty" yaml:"policyArns,omitempty"`
+	// The ARN of the role to assume using the OIDC token.
+	RoleARN string `json:"roleArn" yaml:"roleArn"`
+	// The name of the assume-role session.
+	SessionName string `json:"sessionName" yaml:"sessionName"`
+}
+
+type OperationContextAzureOIDCConfiguration struct {
+	// ClientID is the client ID of the federated workload identity.
+	ClientID string `json:"clientId,omitempty" yaml:"clientId,omitempty"`
+	// TenantID is the tenant ID of the federated workload identity.
+	TenantID string `json:"tenantId,omitempty" yaml:"tenantId,omitempty"`
+	// SubscriptionID is the subscription ID of the federated workload identity.
+	SubscriptionID string `json:"subscriptionId,omitempty" yaml:"subscriptionId,omitempty"`
+}
+
+type OperationContextGCPOIDCConfiguration struct {
+	// ProjectID is the numerical ID of the GCP project.
+	ProjectID string `json:"projectId" yaml:"projectId"`
+	// Region is the region of the GCP project.
+	Region string `json:"region,omitempty" yaml:"region,omitempty"`
+	// WorkloadPoolID is the ID of the workload pool to use.
+	WorkloadPoolID string `json:"workloadPoolId" yaml:"workloadPoolId"`
+	// ProviderID is the ID of the identity provider associated with the workload pool.
+	ProviderID string `json:"providerId" yaml:"providerId"`
+	// ServiceAccount is the email address of the service account to use.
+	ServiceAccount string `json:"serviceAccount" yaml:"serviceAccount"`
+	// TokenLifetime is the lifetime of the temporary credentials.
+	TokenLifetime time.Duration `json:"tokenLifetime,omitempty" yaml:"tokenLifetime,omitempty"`
 }
 
 // OperationContextOptions is a bag of settings to specify or override default behavior in a deployment
