@@ -848,3 +848,63 @@ func (r byShortNameLengthDesc) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
 func (r byShortNameLengthDesc) Less(i, j int) bool {
 	return len(r[j].Short()) < len(r[i].Short())
 }
+
+// As go-git do not support an analogous to `git rev-parse --show-toplevel`,
+// I am bringing this from a suggestion in an open issue tracking the requirement
+// https://github.com/go-git/go-git/issues/74#issuecomment-647779420
+func DetectGitRootDirectory(path string) (string, error) {
+	// normalize the path
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		fi, err := os.Stat(filepath.Join(path, ".git"))
+		if err == nil {
+			if !fi.IsDir() {
+				return "", errors.New(".git exist but is not a directory")
+			}
+			return path, nil
+		}
+		if !os.IsNotExist(err) {
+			// unknown error
+			return "", err
+		}
+
+		// detect bare repo
+		ok, err := isGitDir(path)
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return path, nil
+		}
+
+		var parent string
+		if parent = filepath.Dir(path); parent == path {
+			return "", errors.New(".git not found")
+		}
+
+		path = parent
+	}
+}
+
+func isGitDir(path string) (bool, error) {
+	markers := []string{"HEAD", "objects", "refs"}
+
+	for _, marker := range markers {
+		_, err := os.Stat(filepath.Join(path, marker))
+		if err == nil {
+			continue
+		}
+		if !os.IsNotExist(err) {
+			// unknown error
+			return false, err
+		}
+
+		return false, nil
+	}
+
+	return true, nil
+}

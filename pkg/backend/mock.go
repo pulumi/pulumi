@@ -62,12 +62,13 @@ type MockBackend struct {
 	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF                     func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF                     func(context.Context, Stack, *apitype.UntypedDeployment) error
-	EncryptStackDeploymentSettingsSecretF func(ctx context.Context, stack Stack, secret string) (*apitype.SecretValue, error)
-	UpdateStackDeploymentSettingsF        func(context.Context, Stack, apitype.DeploymentSettings) error
-	DestroyStackDeploymentSettingsF       func(ctx context.Context, stack Stack) error
-	GetStackDeploymentSettingsF           func(context.Context, Stack) (*apitype.DeploymentSettings, error)
-	CurrentUserF                          func() (string, []string, *workspace.TokenInformation, error)
-	PreviewF                              func(context.Context, Stack,
+	EncryptStackDeploymentSettingsSecretF func(ctx context.Context,
+		stack Stack, secret string) (*apitype.SecretValue, error)
+	UpdateStackDeploymentSettingsF  func(context.Context, Stack, apitype.DeploymentSettings) error
+	DestroyStackDeploymentSettingsF func(ctx context.Context, stack Stack) error
+	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
+	CurrentUserF                    func() (string, []string, *workspace.TokenInformation, error)
+	PreviewF                        func(context.Context, Stack,
 		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	UpdateF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)

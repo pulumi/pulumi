@@ -175,6 +175,45 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	return cmd
 }
 
+func initializeDeploymentSettingsCmd(cmd *cobra.Command, stack string) (context.Context, *display.Options,
+	backend.Stack, *workspace.ProjectStackDeployment, backend.Backend, error,
+) {
+	ctx := cmd.Context()
+	interactive := cmdutil.Interactive()
+
+	displayOpts := display.Options{
+		Color:         cmdutil.GetGlobalColorization(),
+		IsInteractive: interactive,
+	}
+
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	be, err := currentBackend(ctx, project, displayOpts)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	if !be.SupportsDeployments() {
+		return nil, nil, nil, nil, nil, fmt.Errorf("backends of this type %q do not support deployments",
+			be.Name())
+	}
+
+	s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	sd, err := loadProjectStackDeployment(s)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	return ctx, &displayOpts, s, sd, be, nil
+}
+
 func newDeploymentSettingsInitCmd() *cobra.Command {
 	var stack string
 	var gitSSHPrivateKeyPath string
@@ -186,30 +225,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
+			ctx, display, s, _, be, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
@@ -218,17 +234,17 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				DeploymentSettings: apitype.DeploymentSettings{},
 			}
 
-			err = configureGit(ctx, displayOpts, currentBe, s, newStackDeployment, gitSSHPrivateKeyPath)
+			err = configureGit(ctx, display, be, s, newStackDeployment, gitSSHPrivateKeyPath)
 			if err != nil {
 				return err
 			}
 
-			err = configureImageRepository(ctx, displayOpts, currentBe, s, newStackDeployment)
+			err = configureImageRepository(ctx, display, be, s, newStackDeployment)
 			if err != nil {
 				return err
 			}
 
-			err = configureAdvancedSettings(displayOpts, newStackDeployment)
+			err = configureAdvancedSettings(display, newStackDeployment)
 			if err != nil {
 				return err
 			}
@@ -243,8 +259,8 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 					"Enable Google Cloud integration",
 				},
 				Default: "No",
-			}, &option, surveyIcons(displayOpts.Color)); err != nil {
-				return fmt.Errorf("Failed to select oidc options")
+			}, &option, surveyIcons(display.Color)); err != nil {
+				return errors.New("Failed to select oidc options")
 			}
 
 			switch option {
@@ -289,41 +305,18 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			ctx, _, s, _, currentBe, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			deploymentSettings, err := currentBe.GetStackDeploymentSettings(ctx, s)
+			ds, err := currentBe.GetStackDeploymentSettings(ctx, s)
 			if err != nil {
 				return err
 			}
 
 			newStackDeployment := &workspace.ProjectStackDeployment{
-				DeploymentSettings: *deploymentSettings,
+				DeploymentSettings: *ds,
 			}
 
 			err = saveProjectStackDeployment(newStackDeployment, s)
@@ -353,40 +346,16 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			ctx, _, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
+			if sd == nil {
+				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			sd, err := loadProjectStackDeployment(s)
-			if err != nil {
-				return err
-			}
-
-			err = currentBe.UpdateStackDeploymentSettings(ctx, s, sd.DeploymentSettings)
+			err = be.UpdateStackDeploymentSettings(ctx, s, sd.DeploymentSettings)
 			if err != nil {
 				return err
 			}
@@ -413,35 +382,12 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
+			ctx, _, s, _, be, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			err = currentBe.DestroyStackDeploymentSettings(ctx, s)
+			err = be.DestroyStackDeploymentSettings(ctx, s)
 			if err != nil {
 				return err
 			}
@@ -467,41 +413,13 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
-
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			sd, err := loadProjectStackDeployment(s)
+			ctx, displayOpts, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
 			if sd == nil {
-				return fmt.Errorf("Deployment file not initialized, please run `pulumi deployment settings init` instead")
+				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
 			var configuration string
@@ -520,7 +438,7 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 						"GCP OpenID Connect integration",
 					},
 				}, &option, surveyIcons(displayOpts.Color)); err != nil {
-					return fmt.Errorf("confirmation cancelled")
+					return errors.New("confirmation cancelled")
 				}
 
 				switch option {
@@ -541,9 +459,9 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 
 			switch configuration {
 			case "git":
-				err = configureGit(ctx, displayOpts, currentBe, s, sd, gitSSHPrivateKeyPath)
+				err = configureGit(ctx, displayOpts, be, s, sd, gitSSHPrivateKeyPath)
 			case "executor-image":
-				err = configureImageRepository(ctx, displayOpts, currentBe, s, sd)
+				err = configureImageRepository(ctx, displayOpts, be, s, sd)
 			case "advanced-settings":
 				err = configureAdvancedSettings(displayOpts, sd)
 			case "oidc-aws":
@@ -591,8 +509,14 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Short: "Update stack's deployment settings secrets",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			interactive := cmdutil.Interactive()
+			ctx, _, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			if err != nil {
+				return err
+			}
+
+			if sd == nil {
+				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
+			}
 
 			var (
 				key   string
@@ -610,39 +534,9 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 				value = args[1]
 			}
 
-			displayOpts := display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-			}
-
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			currentBe, err := currentBackend(ctx, project, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			if !currentBe.SupportsDeployments() {
-				return fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name())
-			}
-
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
-			if err != nil {
-				return err
-			}
-
-			sd, err := loadProjectStackDeployment(s)
-			if err != nil {
-				return err
-			}
-
 			var secretValue *apitype.SecretValue
 			if secret {
-				secretValue, err = currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, value)
+				secretValue, err = be.EncryptStackDeploymentSettingsSecret(ctx, s, value)
 				if err != nil {
 					return err
 				}
@@ -693,13 +587,15 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 	return cmd
 }
 
-func configureGit(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string) error {
+func configureGit(ctx context.Context, displayOpts *display.Options, be backend.Backend,
+	s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string,
+) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	repoRoot, err := detectGitPath(wd)
+	repoRoot, err := gitutil.DetectGitRootDirectory(wd)
 	if err != nil {
 		return err
 	}
@@ -719,7 +615,7 @@ func configureGit(ctx context.Context, displayOpts display.Options, be backend.B
 		defaultRepoDir = sd.DeploymentSettings.SourceContext.Git.RepoDir
 	}
 
-	repoDir, err := ReadConsoleWithDefault("Enter the repo directory", defaultRepoDir)
+	repoDir, err := cmdutil.ReadConsoleWithDefault("Enter the repo directory", defaultRepoDir)
 	if err != nil {
 		return err
 	}
@@ -737,9 +633,9 @@ func configureGit(ctx context.Context, displayOpts display.Options, be backend.B
 
 	var branch string
 	if sd.DeploymentSettings.SourceContext.Git.Branch != "" {
-		branch, err = ReadConsoleWithDefault("Enter the branch name", sd.DeploymentSettings.SourceContext.Git.Branch)
+		branch, err = cmdutil.ReadConsoleWithDefault("Enter the branch name", sd.DeploymentSettings.SourceContext.Git.Branch)
 	} else if h.Name().IsBranch() {
-		branch, err = ReadConsoleWithDefault("Enter the branch name", h.Name().String())
+		branch, err = cmdutil.ReadConsoleWithDefault("Enter the branch name", h.Name().String())
 	} else {
 		branch, err = cmdutil.ReadConsole("Enter the branch name")
 	}
@@ -763,7 +659,7 @@ func configureGit(ctx context.Context, displayOpts display.Options, be backend.B
 				Options: []string{"yes", "no"},
 				Default: string("yes"),
 			}, &option, surveyIcons(displayOpts.Color)); err != nil {
-				return fmt.Errorf("confirmation cancelled")
+				return errors.New("confirmation cancelled")
 			}
 
 			useGiHub = option == "yes"
@@ -787,7 +683,9 @@ func configureGit(ctx context.Context, displayOpts display.Options, be backend.B
 	return nil
 }
 
-func configureGitHubRepo(displayOpts display.Options, sd *workspace.ProjectStackDeployment, vcsInfo *gitutil.VCSInfo) error {
+func configureGitHubRepo(displayOpts *display.Options,
+	sd *workspace.ProjectStackDeployment, vcsInfo *gitutil.VCSInfo,
+) error {
 	sd.DeploymentSettings.GitHub = &apitype.DeploymentSettingsGitHub{
 		Repository: fmt.Sprintf("%s/%s", vcsInfo.Owner, vcsInfo.Repo),
 	}
@@ -801,7 +699,7 @@ func configureGitHubRepo(displayOpts display.Options, sd *workspace.ProjectStack
 			"Use this stack as a template for pull request stacks",
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
-		return fmt.Errorf("Failed to select git options")
+		return errors.New("Failed to select git options")
 	}
 
 	if slices.Contains(options, "Run previews for pull requests") {
@@ -819,7 +717,10 @@ func configureGitHubRepo(displayOpts display.Options, sd *workspace.ProjectStack
 	return nil
 }
 
-func configureBareGitRepo(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, remoteURL string, gitSSHPrivateKeyPath string) error {
+func configureBareGitRepo(ctx context.Context, displayOpts *display.Options,
+	be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment,
+	remoteURL string, gitSSHPrivateKeyPath string,
+) error {
 	sd.DeploymentSettings.SourceContext.Git.RepoURL = remoteURL
 
 	var option string
@@ -830,7 +731,7 @@ func configureBareGitRepo(ctx context.Context, displayOpts display.Options, be b
 			"SSH key",
 		},
 	}, &option, surveyIcons(displayOpts.Color)); err != nil {
-		return fmt.Errorf("Failed to select git authentication")
+		return errors.New("Failed to select git authentication")
 	}
 	switch option {
 	case "Username/Password":
@@ -842,7 +743,9 @@ func configureBareGitRepo(ctx context.Context, displayOpts display.Options, be b
 	return nil
 }
 
-func configureGitPassword(ctx context.Context, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment) error {
+func configureGitPassword(ctx context.Context, be backend.Backend,
+	s backend.Stack, sd *workspace.ProjectStackDeployment,
+) error {
 	var username string
 	var password string
 	var err error
@@ -863,8 +766,10 @@ func configureGitPassword(ctx context.Context, be backend.Backend, s backend.Sta
 		sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth = &apitype.BasicAuth{}
 	}
 
-	if sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value != "" && !sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Secret {
-		username, err = ReadConsoleWithDefault("Enter the git username", sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
+	if sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value != "" &&
+		!sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Secret {
+		username, err = cmdutil.ReadConsoleWithDefault("Enter the git username",
+			sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
 	} else {
 		username, err = cmdutil.ReadConsole("Enter the git username")
 	}
@@ -876,7 +781,7 @@ func configureGitPassword(ctx context.Context, be backend.Backend, s backend.Sta
 		return err
 	}
 	if password == "" {
-		return fmt.Errorf("Invalid empty password")
+		return errors.New("Invalid empty password")
 	}
 
 	secret, err := be.EncryptStackDeploymentSettingsSecret(ctx, s, password)
@@ -894,9 +799,11 @@ func configureGitPassword(ctx context.Context, be backend.Backend, s backend.Sta
 	return nil
 }
 
-func configureGitSSH(ctx context.Context, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string) error {
+func configureGitSSH(ctx context.Context, be backend.Backend, s backend.Stack,
+	sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string,
+) error {
 	if gitSSHPrivateKeyPath == "" {
-		return fmt.Errorf("No SSH private key was provided")
+		return errors.New("No SSH private key was provided")
 	}
 
 	privateKey, err := os.ReadFile(gitSSHPrivateKeyPath)
@@ -959,7 +866,7 @@ func configureOidcAws(sd *workspace.ProjectStackDeployment) error {
 	var err error
 
 	if sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN != "" {
-		roleARN, err = ReadConsoleWithDefault("AWS role ARN", sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN)
+		roleARN, err = cmdutil.ReadConsoleWithDefault("AWS role ARN", sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN)
 	} else {
 		roleARN, err = cmdutil.ReadConsole("AWS role ARN")
 	}
@@ -967,11 +874,12 @@ func configureOidcAws(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if roleARN == "" {
-		return fmt.Errorf("Role ARN is required")
+		return errors.New("Role ARN is required")
 	}
 
 	if sd.DeploymentSettings.Operation.OIDC.AWS.SessionName != "" {
-		sessionName, err = ReadConsoleWithDefault("AWS session name", sd.DeploymentSettings.Operation.OIDC.AWS.SessionName)
+		sessionName, err = cmdutil.ReadConsoleWithDefault("AWS session name",
+			sd.DeploymentSettings.Operation.OIDC.AWS.SessionName)
 	} else {
 		sessionName, err = cmdutil.ReadConsole("AWS session name")
 	}
@@ -979,7 +887,7 @@ func configureOidcAws(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if sessionName == "" {
-		return fmt.Errorf("Session name is required")
+		return errors.New("Session name is required")
 	}
 
 	sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN = roleARN
@@ -1008,7 +916,7 @@ func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
 	var err error
 
 	if sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID != "" {
-		projectID, err = ReadConsoleWithDefault("GCP project id", sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID)
+		projectID, err = cmdutil.ReadConsoleWithDefault("GCP project id", sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID)
 	} else {
 		projectID, err = cmdutil.ReadConsole("GCP project id")
 	}
@@ -1016,11 +924,12 @@ func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if projectID == "" {
-		return fmt.Errorf("Project id is required")
+		return errors.New("Project id is required")
 	}
 
 	if sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID != "" {
-		providerID, err = ReadConsoleWithDefault("GCP provider id", sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID)
+		providerID, err = cmdutil.ReadConsoleWithDefault("GCP provider id",
+			sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID)
 	} else {
 		providerID, err = cmdutil.ReadConsole("GCP provider id")
 	}
@@ -1028,11 +937,12 @@ func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if providerID == "" {
-		return fmt.Errorf("Provider id is required")
+		return errors.New("Provider id is required")
 	}
 
 	if sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID != "" {
-		workloadPoolID, err = ReadConsoleWithDefault("GCP identity provider id", sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID)
+		workloadPoolID, err = cmdutil.ReadConsoleWithDefault("GCP identity provider id",
+			sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID)
 	} else {
 		workloadPoolID, err = cmdutil.ReadConsole("GCP identity provider id")
 	}
@@ -1040,11 +950,12 @@ func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if workloadPoolID == "" {
-		return fmt.Errorf("Identity provider id is required")
+		return errors.New("Identity provider id is required")
 	}
 
 	if sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount != "" {
-		serviceAccount, err = ReadConsoleWithDefault("GCP service account email address", sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount)
+		serviceAccount, err = cmdutil.ReadConsoleWithDefault("GCP service account email address",
+			sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount)
 	} else {
 		serviceAccount, err = cmdutil.ReadConsole("GCP service account email address")
 	}
@@ -1052,7 +963,7 @@ func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if serviceAccount == "" {
-		return fmt.Errorf("service account email address is required")
+		return errors.New("service account email address is required")
 	}
 
 	sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID = projectID
@@ -1082,7 +993,7 @@ func configureOidcAzure(sd *workspace.ProjectStackDeployment) error {
 	var err error
 
 	if sd.DeploymentSettings.Operation.OIDC.Azure.ClientID != "" {
-		clientID, err = ReadConsoleWithDefault("Azure client id", sd.DeploymentSettings.Operation.OIDC.Azure.ClientID)
+		clientID, err = cmdutil.ReadConsoleWithDefault("Azure client id", sd.DeploymentSettings.Operation.OIDC.Azure.ClientID)
 	} else {
 		clientID, err = cmdutil.ReadConsole("Azure client id")
 	}
@@ -1090,11 +1001,11 @@ func configureOidcAzure(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if clientID == "" {
-		return fmt.Errorf("Client id is required")
+		return errors.New("Client id is required")
 	}
 
 	if sd.DeploymentSettings.Operation.OIDC.Azure.TenantID != "" {
-		tenantID, err = ReadConsoleWithDefault("Azure tenant id", sd.DeploymentSettings.Operation.OIDC.Azure.TenantID)
+		tenantID, err = cmdutil.ReadConsoleWithDefault("Azure tenant id", sd.DeploymentSettings.Operation.OIDC.Azure.TenantID)
 	} else {
 		tenantID, err = cmdutil.ReadConsole("Azure tenant id")
 	}
@@ -1102,11 +1013,12 @@ func configureOidcAzure(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if tenantID == "" {
-		return fmt.Errorf("Tenant id is required")
+		return errors.New("Tenant id is required")
 	}
 
 	if sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID != "" {
-		subscriptionID, err = ReadConsoleWithDefault("Azure subscription id", sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID)
+		subscriptionID, err = cmdutil.ReadConsoleWithDefault("Azure subscription id",
+			sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID)
 	} else {
 		subscriptionID, err = cmdutil.ReadConsole("Azure subscription id")
 	}
@@ -1114,7 +1026,7 @@ func configureOidcAzure(sd *workspace.ProjectStackDeployment) error {
 		return err
 	}
 	if subscriptionID == "" {
-		return fmt.Errorf("Subscription id is required")
+		return errors.New("Subscription id is required")
 	}
 
 	sd.DeploymentSettings.Operation.OIDC.Azure.ClientID = clientID
@@ -1124,7 +1036,7 @@ func configureOidcAzure(sd *workspace.ProjectStackDeployment) error {
 	return nil
 }
 
-func configureAdvancedSettings(displayOpts display.Options, sd *workspace.ProjectStackDeployment) error {
+func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.ProjectStackDeployment) error {
 	var options []string
 	if err := survey.AskOne(&survey.MultiSelect{
 		Message: "Advanced settings",
@@ -1133,7 +1045,7 @@ func configureAdvancedSettings(displayOpts display.Options, sd *workspace.Projec
 			"Skip intermediate deployments",
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
-		return fmt.Errorf("confirmation cancelled")
+		return errors.New("confirmation cancelled")
 	}
 
 	if sd.DeploymentSettings.Operation == nil {
@@ -1155,7 +1067,9 @@ func configureAdvancedSettings(displayOpts display.Options, sd *workspace.Projec
 	return nil
 }
 
-func configureImageRepository(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment) error {
+func configureImageRepository(ctx context.Context, displayOpts *display.Options,
+	be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment,
+) error {
 	var imageReference string
 	var username string
 	var password string
@@ -1167,7 +1081,7 @@ func configureImageRepository(ctx context.Context, displayOpts display.Options, 
 		Options: []string{"yes", "no"},
 		Default: string("no"),
 	}, &option, surveyIcons(displayOpts.Color)); err != nil {
-		return fmt.Errorf("confirmation cancelled")
+		return errors.New("confirmation cancelled")
 	}
 
 	if option == "no" {
@@ -1188,7 +1102,8 @@ func configureImageRepository(ctx context.Context, displayOpts display.Options, 
 	}
 
 	if sd.DeploymentSettings.Executor.ExecutorImage.Reference != "" {
-		imageReference, err = ReadConsoleWithDefault("Enter the image reference", sd.DeploymentSettings.Executor.ExecutorImage.Reference)
+		imageReference, err = cmdutil.ReadConsoleWithDefault("Enter the image reference",
+			sd.DeploymentSettings.Executor.ExecutorImage.Reference)
 	} else {
 		imageReference, err = cmdutil.ReadConsole("Enter the image reference")
 	}
@@ -1197,11 +1112,12 @@ func configureImageRepository(ctx context.Context, displayOpts display.Options, 
 		return err
 	}
 	if imageReference == "" {
-		return fmt.Errorf("Invalid empty image reference")
+		return errors.New("Invalid empty image reference")
 	}
 
 	if sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username != "" {
-		imageReference, err = ReadConsoleWithDefault("Enter the image repository username", sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
+		imageReference, err = cmdutil.ReadConsoleWithDefault("Enter the image repository username",
+			sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
 	} else {
 		username, err = cmdutil.ReadConsole("Enter the image repository username")
 	}
@@ -1222,7 +1138,7 @@ func configureImageRepository(ctx context.Context, displayOpts display.Options, 
 		return err
 	}
 	if password == "" {
-		return fmt.Errorf("Invalid empty password")
+		return errors.New("Invalid empty password")
 	}
 
 	secret, err := be.EncryptStackDeploymentSettingsSecret(ctx, s, password)
@@ -1236,77 +1152,4 @@ func configureImageRepository(ctx context.Context, displayOpts display.Options, 
 	}
 
 	return nil
-}
-
-// As go-git do not support an analogous to `git rev-parse --show-toplevel`,
-// I am bringing this from a suggestion in an open issue tracking the requirement
-// https://github.com/go-git/go-git/issues/74#issuecomment-647779420
-func detectGitPath(path string) (string, error) {
-	// normalize the path
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		fi, err := os.Stat(filepath.Join(path, ".git"))
-		if err == nil {
-			if !fi.IsDir() {
-				return "", fmt.Errorf(".git exist but is not a directory")
-			}
-			return path, nil
-		}
-		if !os.IsNotExist(err) {
-			// unknown error
-			return "", err
-		}
-
-		// detect bare repo
-		ok, err := isGitDir(path)
-		if err != nil {
-			return "", err
-		}
-		if ok {
-			return path, nil
-		}
-
-		if parent := filepath.Dir(path); parent == path {
-			return "", fmt.Errorf(".git not found")
-		} else {
-			path = parent
-		}
-	}
-}
-
-func isGitDir(path string) (bool, error) {
-	markers := []string{"HEAD", "objects", "refs"}
-
-	for _, marker := range markers {
-		_, err := os.Stat(filepath.Join(path, marker))
-		if err == nil {
-			continue
-		}
-		if !os.IsNotExist(err) {
-			// unknown error
-			return false, err
-		} else {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func ReadConsoleWithDefault(prompt string, defaultValue string) (string, error) {
-	promptMessage := fmt.Sprintf("%s [%s]", prompt, defaultValue)
-	value, err := cmdutil.ReadConsole(promptMessage)
-	if err != nil {
-		return "", err
-	}
-
-	if value == "" {
-		value = defaultValue
-	}
-
-	return value, nil
 }
