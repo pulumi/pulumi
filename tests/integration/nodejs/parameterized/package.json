@@ -1,0 +1,12 @@
+{
+    "name": "parameterized",
+    "devDependencies": {
+        "typescript": "^3.0.0"
+    },
+    "dependencies": {
+        "@pulumi/pkg": "file:./sdk/nodejs"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

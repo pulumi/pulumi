@@ -187,12 +187,16 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(typeDiags)
 
+	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
+	diags = diags.Extend(parameterizationDiags)
+
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
+	pkg.Parameterization = parameterization
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
@@ -1324,6 +1328,33 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 		})
 	}
 	return result, diags, nil
+}
+
+func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Diagnostics) {
+	if spec == nil {
+		return nil, nil
+	}
+
+	if spec.BaseProvider.Name == "" {
+		return nil, hcl.Diagnostics{errorf(
+			"#/parameterization/baseProvider/name",
+			"provider name must be specified")}
+	}
+
+	ver, err := semver.Parse(spec.BaseProvider.Version)
+	if err != nil {
+		return nil, hcl.Diagnostics{errorf(
+			"#/parameterization/baseProvider/version",
+			"invalid version %q: %v", spec.BaseProvider.Version, err)}
+	}
+
+	return &Parameterization{
+		BaseProvider: BaseProvider{
+			Name:    spec.BaseProvider.Name,
+			Version: ver,
+		},
+		Parameter: spec.Parameter,
+	}, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, error) {

@@ -910,12 +910,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// If it's a ComponentResource, set the remote option.
 	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/);\n", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts);\n", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, false /*remote*/", name)
 	}
 
-	fmt.Fprintf(w, "    }\n")
+	pkg, err := r.PackageReference.Definition()
+	if err != nil {
+		return resourceFileInfo{}, err
+	}
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n    }\n")
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) {
@@ -2364,6 +2372,7 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 type npmPackage struct {
 	Name             string                  `json:"name"`
 	Version          string                  `json:"version"`
+	Type             string                  `json:"type,omitempty"`
 	Description      string                  `json:"description,omitempty"`
 	Keywords         []string                `json:"keywords,omitempty"`
 	Homepage         string                  `json:"homepage,omitempty"`
@@ -2397,12 +2406,31 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		version = pkg.Version.String()
 		pluginVersion = version
 	}
-	if pkg.SupportPack {
+	// Parameterized schemas _always_ respect schema version
+	if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
 		pluginVersion = pkg.Version.String()
 		version = pluginVersion
+	}
+
+	var pulumiPlugin plugin.PulumiPluginJSON
+	if pkg.Parameterization != nil {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Name:     pkg.Parameterization.BaseProvider.Name,
+			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			// TODO: Need PluginDownloadURL on BaseProvider
+			// Server: pkg.BaseProvider.PluginDownloadURL,
+		}
+	} else {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     pkg.Name,
+			Version:  pluginVersion,
+		}
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2418,12 +2446,12 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
-		Pulumi: plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Name,
-			Version:  pluginVersion,
-		},
+		Pulumi:          pulumiPlugin,
+	}
+
+	// If we're building a parameterized package tell node it's a module so we can local link it
+	if pkg.Parameterization != nil {
+		npminfo.Type = "module"
 	}
 
 	// Copy the overlay dependencies, if any.
@@ -2788,6 +2816,23 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	}
 
 	_, err = fmt.Fprintf(w, "%s", code)
+	if err != nil {
+		return err
+	}
+
+	// If a parameterized package is being generated then we _need_ to use package references
+	pkg, err := mod.pkg.Definition()
+	if err != nil {
+		return err
+	}
+
+	if pkg.Parameterization != nil {
+		_, err = fmt.Fprintf(w, `
+export async function getPackage() {
+	return undefined;
+}`)
+	}
+
 	return err
 }
 

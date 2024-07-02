@@ -839,6 +839,7 @@ class Resource:
         opts: Optional[ResourceOptions] = None,
         remote: bool = False,
         dependency: bool = False,
+        package: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str t: The type of this resource.
@@ -852,6 +853,7 @@ class Resource:
                resource.
         :param bool remote: True if this is a remote component resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
+        :param Optional[Awaitable[Optional[str]]] package: The package reference for this resource.
         """
 
         if dependency:
@@ -974,7 +976,7 @@ class Resource:
             read_resource(cast("CustomResource", self), t, name, props, opts, typ)
         else:
             register_resource(
-                self, t, name, custom, remote, DependencyResource, props, opts, typ
+                self, t, name, custom, remote, DependencyResource, props, opts, typ, package
             )
 
     def _get_providers(
@@ -1112,6 +1114,7 @@ class CustomResource(Resource):
         props: Optional["Inputs"] = None,
         opts: Optional[ResourceOptions] = None,
         dependency: bool = False,
+        package: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str t: The type of this resource.
@@ -1120,8 +1123,9 @@ class CustomResource(Resource):
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
+        :param Optional[Awaitable[Optional[str]]] package: The package reference for this resource.
         """
-        Resource.__init__(self, t, name, True, props, opts, False, dependency)
+        Resource.__init__(self, t, name, True, props, opts, False, dependency, package)
 
     @property
     def id(self) -> "Output[str]":
@@ -1148,6 +1152,7 @@ class ComponentResource(Resource):
         props: Optional["Inputs"] = None,
         opts: Optional[ResourceOptions] = None,
         remote: bool = False,
+        package: Optional[Awaitable[Optional[str]]] = None,
     ) -> None:
         """
         :param str t: The type of this resource.
@@ -1156,8 +1161,9 @@ class ComponentResource(Resource):
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool remote: True if this is a remote component resource.
+        :param Optional[Awaitable[Optional[str]]] package: The package reference for this resource.
         """
-        Resource.__init__(self, t, name, False, props, opts, remote, False)
+        Resource.__init__(self, t, name, False, props, opts, remote, False, package)
         if not remote:
             self.__dict__["id"] = None
         self._remote = remote

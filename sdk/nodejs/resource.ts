@@ -382,6 +382,7 @@ export abstract class Resource {
         opts: ResourceOptions = {},
         remote: boolean = false,
         dependency: boolean = false,
+        pkgref?: Promise<string | undefined>,
     ) {
         this.__pulumiType = t;
 
@@ -526,6 +527,7 @@ export abstract class Resource {
                 props,
                 opts,
                 sourcePosition,
+                pkgref,
             );
         }
     }

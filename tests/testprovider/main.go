@@ -136,23 +136,23 @@ func (k *testproviderProvider) Parameterize(_ context.Context, req *rpc.Paramete
 			return nil, fmt.Errorf("expected exactly one argument")
 		}
 		k.parameter = args[0]
-		return &rpc.ParameterizeResponse{
-			Name:    k.parameter,
-			Version: version,
-		}, nil
 	case *rpc.ParameterizeRequest_Value:
 		val := params.Value.Value.GetStringValue()
 		if val == "" {
 			return nil, fmt.Errorf("expected a non-empty string value")
 		}
 		k.parameter = val
-		return &rpc.ParameterizeResponse{
-			Name:    k.parameter,
-			Version: version,
-		}, nil
+	default:
+		return nil, fmt.Errorf("unexpected parameter type")
 	}
 
-	return nil, fmt.Errorf("unexpected parameter type")
+	// Add the random resource to the map of types.
+	resourceProviders[k.parameter+":index:Random"] = &randomResourceProvider{}
+
+	return &rpc.ParameterizeResponse{
+		Name:    k.parameter,
+		Version: version,
+	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
@@ -285,7 +285,18 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 	if req.SubpackageName != "" {
 		if req.SubpackageName == k.parameter {
 			sch = pschema.PackageSpec{
-				Name: k.parameter,
+				Name:    k.parameter,
+				Version: "1.0.0",
+				Parameterization: &pschema.ParameterizationSpec{
+					BaseProvider: pschema.BaseProviderSpec{
+						Name:    "testprovider",
+						Version: version,
+					},
+					Parameter: k.parameter,
+				},
+				Resources: map[string]pschema.ResourceSpec{
+					"pkg:index:Random": providerSchema.Resources["testprovider:index:Random"],
+				},
 			}
 		} else {
 			return nil, fmt.Errorf("expected subpackage %s", req.SubpackageName)

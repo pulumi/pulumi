@@ -347,6 +347,12 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
+		// ProgramInfo needs pluginDir to be an absolute path
+		pluginDir, err = filepath.Abs(pluginDir)
+		if err != nil {
+			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
+		}
+
 		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
 		if err != nil {

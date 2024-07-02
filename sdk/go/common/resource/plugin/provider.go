@@ -62,8 +62,8 @@ type (
 	}
 )
 
-func (ParameterizeArgs) isParameterizeParameters()  {}
-func (ParameterizeValue) isParameterizeParameters() {}
+func (*ParameterizeArgs) isParameterizeParameters()  {}
+func (*ParameterizeValue) isParameterizeParameters() {}
 
 type ParameterizeRequest struct {
 	Parameters ParameterizeParameters
