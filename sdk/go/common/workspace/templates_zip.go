@@ -17,6 +17,7 @@ package workspace
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -165,6 +166,17 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 	if err != nil {
 		return "", err
 	}
+
+	var pulProjFile *zip.File
+	for _, f := range archive.File {
+		if !f.FileInfo().IsDir() && f.FileInfo().Name() == "Pulumi.yaml" {
+			pulProjFile = f
+		}
+	}
+	if pulProjFile == nil {
+		return "", errors.New("template does not have Pulumi.yaml file")
+	}
+
 	for _, file := range archive.File {
 		filePath, err := sanitizeArchivePath(tempDir, file.Name)
 		if err != nil {
@@ -175,21 +187,21 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 			if err != nil {
 				return "", err
 			}
-		} else {
-			fileReader, err := file.Open()
-			if err != nil {
-				return "", err
-			}
-			defer fileReader.Close()
-			destinationFile, err := os.Create(filePath)
-			if err != nil {
-				return "", err
-			}
-			defer destinationFile.Close()
-			_, err = io.Copy(destinationFile, fileReader) // #nosec G110
-			if err != nil {
-				return "", err
-			}
+			continue
+		}
+		fileReader, err := file.Open()
+		if err != nil {
+			return "", err
+		}
+		defer fileReader.Close()
+		destinationFile, err := os.Create(filePath)
+		if err != nil {
+			return "", err
+		}
+		defer destinationFile.Close()
+		_, err = io.Copy(destinationFile, fileReader) // #nosec G110
+		if err != nil {
+			return "", err
 		}
 	}
 	return tempDir, nil
