@@ -281,6 +281,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  registerInvokeTransform: {
+    path: '/pulumirpc.ResourceMonitor/RegisterInvokeTransform',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_callback_pb.Callback,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_Callback,
+    requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   registerPackage: {
     path: '/pulumirpc.ResourceMonitor/RegisterPackage',
     requestStream: false,

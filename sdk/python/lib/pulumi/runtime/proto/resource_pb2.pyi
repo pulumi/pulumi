@@ -904,6 +904,97 @@ class TransformResponse(google.protobuf.message.Message):
 global___TransformResponse = TransformResponse
 
 @typing_extensions.final
+class TransformInvokeRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """the token for the invoke request."""
+    @property
+    def args(self) -> google.protobuf.struct_pb2.Struct:
+        """the input args of the resource."""
+    @property
+    def options(self) -> global___TransformInvokeOptions:
+        """the options for the resource."""
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        args: google.protobuf.struct_pb2.Struct | None = ...,
+        options: global___TransformInvokeOptions | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options", "token", b"token"]) -> None: ...
+
+global___TransformInvokeRequest = TransformInvokeRequest
+
+@typing_extensions.final
+class TransformInvokeResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARGS_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    @property
+    def args(self) -> google.protobuf.struct_pb2.Struct:
+        """the transformed input args."""
+    @property
+    def options(self) -> global___TransformInvokeOptions:
+        """the options for the resource."""
+    def __init__(
+        self,
+        *,
+        args: google.protobuf.struct_pb2.Struct | None = ...,
+        options: global___TransformInvokeOptions | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options"]) -> None: ...
+
+global___TransformInvokeResponse = TransformInvokeResponse
+
+@typing_extensions.final
+class TransformInvokeOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    PROVIDER_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    provider: builtins.str
+    plugin_download_url: builtins.str
+    version: builtins.str
+    @property
+    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    def __init__(
+        self,
+        *,
+        provider: builtins.str = ...,
+        plugin_download_url: builtins.str = ...,
+        version: builtins.str = ...,
+        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "provider", b"provider", "version", b"version"]) -> None: ...
+
+global___TransformInvokeOptions = TransformInvokeOptions
+
+@typing_extensions.final
 class RegisterPackageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
