@@ -271,3 +271,127 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 		destSnapshot.Resources[2].URN)
 	assert.Equal(t, 0, len(destSnapshot.Resources[2].Dependencies))
 }
+
+func TestMoveWithExistingProvider(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+	}
+
+	destResources := []*resource.State{
+		{
+			URN:    resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0"),
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "other_provider_id",
+			Custom: true,
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/test/destStack"
+	destStack := createStackWithResources(t, b, destStackName, destResources)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	assert.ErrorContains(t, err, "provider urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0 "+
+		"already exists in destination stack")
+}
+
+func TestMoveWithExistingResource(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+	}
+
+	otherProviderURN := resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_1")
+	destResources := []*resource.State{
+		{
+			URN:    otherProviderURN,
+			Type:   "pulumi:providers:a::default_1_0_1",
+			ID:     "other_provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("destStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(otherProviderURN) + "::other_provider_id",
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/test/destStack"
+	destStack := createStackWithResources(t, b, destStackName, destResources)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	assert.ErrorContains(t, err, "resource urn:pulumi:destStack::test::d:e:f$a:b:c::name "+
+		"already exists in destination stack")
+}

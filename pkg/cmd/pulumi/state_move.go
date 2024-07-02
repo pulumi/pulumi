@@ -193,6 +193,11 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, rootStack)
 	}
 
+	destResMap := make(map[urn.URN]bool)
+	for _, res := range destSnapshot.Resources {
+		destResMap[res.URN] = true
+	}
+
 	for _, res := range providers {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
@@ -201,6 +206,11 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
+
+		if _, ok := destResMap[r.URN]; ok {
+			return fmt.Errorf("provider %s already exists in destination stack", r.URN)
+		}
+
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
@@ -220,6 +230,10 @@ func (cmd *stateMoveCmd) Run(
 		err = rewriteURNs(res, dest)
 		if err != nil {
 			return err
+		}
+
+		if _, ok := destResMap[res.URN]; ok {
+			return fmt.Errorf("resource %s already exists in destination stack", res.URN)
 		}
 
 		destSnapshot.Resources = append(destSnapshot.Resources, res)
