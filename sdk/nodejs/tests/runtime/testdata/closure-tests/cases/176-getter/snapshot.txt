@@ -1,0 +1,86 @@
+exports.handler = __f0;
+
+function __f1(__0, __1, __2, __3) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __Queue() {
+  return (function() {
+    with({ Queue: __Queue, this: undefined, arguments: undefined }) {
+
+return function /*Queue*/(initial = []) {
+    let xs = initial.slice();
+    let index = 0;
+    return {
+        get length() {
+            return xs.length - index;
+        },
+    };
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return () => 1;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __outsideFunctionDeclaration() {
+  return (function() {
+    with({ outsideArrowFunctionExpression: __f2, outsideFunctionDeclaration: __outsideFunctionDeclaration, this: undefined, arguments: undefined }) {
+
+return function /*outsideFunctionDeclaration*/() {
+    return outsideArrowFunctionExpression();
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, Queue: __Queue, outsideConstant: "outsideConstant", outsideFunctionDeclaration: __outsideFunctionDeclaration, outsideVariable: 1, this: undefined, arguments: undefined }) {
+
+return () => __awaiter(void 0, void 0, void 0, function* () {
+    Queue();
+    const obj = {
+        objectFieldValue: "objectField",
+        get objectField() {
+            return this.objectFieldValue;
+        },
+        get outsideConstant() {
+            return outsideConstant;
+        },
+        get outsideFunctionDeclaration() {
+            return outsideFunctionDeclaration();
+        },
+        set outsideVariable(value) {
+            console.log(outsideVariable, value);
+        },
+    };
+});
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
