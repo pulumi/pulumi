@@ -219,7 +219,7 @@ type OperationContext struct {
 	PreRunCommands []string `json:"preRunCommands" yaml:"preRunCommands,omitempty"`
 
 	// Operation is what we plan on doing.
-	Operation PulumiOperation `json:"operation"`
+	Operation PulumiOperation `json:"operation" yaml:"-"`
 
 	// EnvironmentVariables contains environment variables to be applied during the execution.
 	EnvironmentVariables map[string]SecretValue `json:"environmentVariables" yaml:"environmentVariables,omitempty"`

@@ -218,7 +218,20 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				DeploymentSettings: apitype.DeploymentSettings{},
 			}
 
-			configureGit(ctx, displayOpts, currentBe, s, newStackDeployment, gitSSHPrivateKeyPath)
+			err = configureGit(ctx, displayOpts, currentBe, s, newStackDeployment, gitSSHPrivateKeyPath)
+			if err != nil {
+				return err
+			}
+
+			err = configureImageRepository(ctx, displayOpts, currentBe, s, newStackDeployment)
+			if err != nil {
+				return err
+			}
+
+			err = configureAdvancedSettings(displayOpts, newStackDeployment)
+			if err != nil {
+				return err
+			}
 
 			err = saveProjectStackDeployment(newStackDeployment, s)
 			if err != nil {
@@ -449,7 +462,7 @@ func configureGit(ctx context.Context, displayOpts display.Options, be backend.B
 	}
 	sd.DeploymentSettings.SourceContext.Git.RepoDir = repoDir
 
-	repo, err := git.PlainOpen(wd)
+	repo, err := git.PlainOpen(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -478,7 +491,22 @@ func configureGit(ctx context.Context, displayOpts display.Options, be backend.B
 	}
 
 	if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
-		if vcsInfo.Kind == gitutil.GitHubHostName {
+		useGiHub := vcsInfo.Kind == gitutil.GitHubHostName
+
+		if useGiHub {
+			var option string
+			if err := survey.AskOne(&survey.Select{
+				Message: "A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
+				Options: []string{"yes", "no"},
+				Default: string("yes"),
+			}, &option, surveyIcons(displayOpts.Color)); err != nil {
+				return fmt.Errorf("confirmation cancelled")
+			}
+
+			useGiHub = option == "yes"
+		}
+
+		if useGiHub {
 			err := configureGitHubRepo(displayOpts, sd, vcsInfo)
 			if err != nil {
 				return err
@@ -650,11 +678,56 @@ func configureGitSSH(ctx context.Context, be backend.Backend, s backend.Stack, s
 	return nil
 }
 
-func configureImageRepository(ctx context.Context, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment) error {
+func configureAdvancedSettings(displayOpts display.Options, sd *workspace.ProjectStackDeployment) error {
+	var options []string
+	if err := survey.AskOne(&survey.MultiSelect{
+		Message: "Advanced settings",
+		Options: []string{
+			"Skip automatic dependency installation step",
+			"Skip intermediate deployments",
+		},
+	}, &options, surveyIcons(displayOpts.Color)); err != nil {
+		return fmt.Errorf("confirmation cancelled")
+	}
+
+	if sd.DeploymentSettings.Operation == nil {
+		sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+	}
+
+	if sd.DeploymentSettings.Operation.Options == nil {
+		sd.DeploymentSettings.Operation.Options = &apitype.OperationContextOptions{}
+	}
+
+	if slices.Contains(options, "Skip automatic dependency installation step") {
+		sd.DeploymentSettings.Operation.Options.SkipInstallDependencies = true
+	}
+
+	if slices.Contains(options, "Skip intermediate deployments") {
+		sd.DeploymentSettings.Operation.Options.SkipIntermediateDeployments = true
+	}
+
+	return nil
+}
+
+func configureImageRepository(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment) error {
 	var imageReference string
 	var username string
 	var password string
 	var err error
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message: "Do you want to use a custom executor image?",
+		Options: []string{"yes", "no"},
+		Default: string("no"),
+	}, &option, surveyIcons(displayOpts.Color)); err != nil {
+		return fmt.Errorf("confirmation cancelled")
+	}
+
+	if option == "no" {
+		sd.DeploymentSettings.Executor = nil
+		return nil
+	}
 
 	if sd.DeploymentSettings.Executor == nil {
 		sd.DeploymentSettings.Executor = &apitype.ExecutorContext{}
@@ -691,8 +764,12 @@ func configureImageRepository(ctx context.Context, be backend.Backend, s backend
 		return err
 	}
 
+	sd.DeploymentSettings.Executor.ExecutorImage = &apitype.DockerImage{
+		Reference: imageReference,
+	}
+
 	if username == "" {
-		return fmt.Errorf("Invalid empty username")
+		return nil
 	}
 
 	if password, err = cmdutil.ReadConsoleNoEcho("Enter the image repository password"); err != nil {
@@ -707,12 +784,9 @@ func configureImageRepository(ctx context.Context, be backend.Backend, s backend
 		return err
 	}
 
-	sd.DeploymentSettings.Executor.ExecutorImage = &apitype.DockerImage{
-		Reference: imageReference,
-		Credentials: &apitype.DockerImageCredentials{
-			Username: username,
-			Password: *secret,
-		},
+	sd.DeploymentSettings.Executor.ExecutorImage.Credentials = &apitype.DockerImageCredentials{
+		Username: username,
+		Password: *secret,
 	}
 
 	return nil
@@ -772,7 +846,9 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 			case "git":
 				err = configureGit(ctx, displayOpts, currentBe, s, sd, gitSSHPrivateKeyPath)
 			case "executor-image":
-				err = configureImageRepository(ctx, currentBe, s, sd)
+				err = configureImageRepository(ctx, displayOpts, currentBe, s, sd)
+			case "advanced-settings":
+				err = configureAdvancedSettings(displayOpts, sd)
 			default:
 				err = fmt.Errorf("Invalid option %q", configuration)
 			}
