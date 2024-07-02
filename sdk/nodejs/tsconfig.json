@@ -51,6 +51,7 @@
         "runtime/asyncIterableUtil.ts",
         "runtime/config.ts",
         "runtime/debuggable.ts",
+        "runtime/dependsOn.ts",
         "runtime/invoke.ts",
         "runtime/mocks.ts",
         "runtime/resource.ts",
