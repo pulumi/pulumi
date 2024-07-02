@@ -129,6 +129,75 @@ func TestExternalRefresh(t *testing.T) {
 	assert.True(t, snap.Resources[1].External)
 }
 
+// External resources should only have their outputs diffed during a refresh, in
+// line with the "legacy" implementation. Consequently Diff should not be called
+// for them. This test checks that case.
+func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
+	t.Parallel()
+
+	readCall := 0
+	diffCalled := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN,
+					id resource.ID,
+					inputs resource.PropertyMap,
+					state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					readCall++
+					return plugin.ReadResult{
+						Outputs: resource.PropertyMap{
+							"o1": resource.NewNumberProperty(float64(readCall)),
+						},
+					}, resource.StatusOK, nil
+				},
+
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					oldInputs resource.PropertyMap,
+					oldOutputs resource.PropertyMap,
+					newInputs resource.PropertyMap,
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					diffCalled = true
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Our program reads a resource and exits.
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "")
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []TestStep{{Op: Update}},
+	}
+
+	snap := p.RunWithName(t, nil, "0")
+
+	p = &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []TestStep{{Op: Refresh}},
+	}
+
+	p.RunWithName(t, snap, "1")
+
+	assert.False(t, diffCalled, "Refresh should not diff external resources")
+}
+
 func TestRefreshInitFailure(t *testing.T) {
 	t.Parallel()
 

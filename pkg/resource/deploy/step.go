@@ -965,10 +965,19 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 		return OpDelete
 	}
 
-	// Prior to us introducing refresh diffs against desired state, we only diffed
-	// outputs. For now, we support reverting to this behaviour for users that
-	// rely on it.
-	if s.deployment.opts.UseLegacyRefreshDiff {
+	// There are two cases in which we'll diff only resource outputs on a
+	// refresh:
+	//
+	// * The resource is external, that is, it is not managed by Pulumi.
+	//   In these cases, we care somewhat equally about inputs and outputs, but
+	//   the Diff contract we currently support forces us to bias one side
+	//   (typically inputs). Moreover, some providers might not support
+	//   diff/handle diffing correctly for external resources. This can lead to
+	//   surprising results, so for now we sidestep the issue by only looking at
+	//   outputs.
+	// * The user has explicitly opted into this legacy behaviour by setting
+	//   the `UseLegacyRefreshDiff` option to true.
+	if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
 		if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
 			return OpSame
 		}
@@ -1049,10 +1058,19 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		)
 		var inputsChange, outputsChange bool
 		if s.old != nil {
-			// Prior to us introducing refresh diffs against desired state, we only
-			// diffed outputs. For now, we support reverting to this behaviour for
-			// users that rely on it.
-			if s.deployment.opts.UseLegacyRefreshDiff {
+			// There are two cases in which we'll diff only resource outputs on a
+			// refresh:
+			//
+			// * The resource is external, that is, it is not managed by Pulumi.
+			//   In these cases, we care somewhat equally about inputs and outputs, but
+			//   the Diff contract we currently support forces us to bias one side
+			//   (typically inputs). Moreover, some providers might not support
+			//   diff/handle diffing correctly for external resources. This can lead to
+			//   surprising results, so for now we sidestep the issue by only looking at
+			//   outputs.
+			// * The user has explicitly opted into this legacy behaviour by setting
+			//   the `UseLegacyRefreshDiff` option to true.
+			if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
 				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
 				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
 			} else {
@@ -1070,7 +1088,11 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.Modified = &now
 		}
 
-		if !s.deployment.opts.UseLegacyRefreshDiff {
+		if s.old.External {
+			logging.V(7).Infof("External resource %s; diffing outputs only", s.URN())
+		} else if s.deployment.opts.UseLegacyRefreshDiff {
+			logging.V(7).Infof("Refresh diffing disabled; diffing outputs only (%s)", s.URN())
+		} else {
 			// To compute refresh diffs against the desired state, we compute the diff
 			// that a user would see if they immediately ran an `up` operation on a
 			// no-change program after this refresh. However, this will return the
@@ -1099,9 +1121,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			}
 
 			s.diff = diff.Invert()
-			logging.V(7).Infof("Refresh diff: %v", s.diff)
-		} else {
-			logging.V(7).Infof("Refresh diffing disabled; diffing outputs only")
+			logging.V(7).Infof("Refresh diff for %s: %v", s.URN(), s.diff)
 		}
 	} else {
 		s.new = nil
