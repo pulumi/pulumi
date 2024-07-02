@@ -15,10 +15,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"slices"
 
+	survey "github.com/AlecAivazis/survey/v2"
 	git "github.com/go-git/go-git/v5"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -173,6 +177,7 @@ func newDeploymentSettingsCmd() *cobra.Command {
 
 func newDeploymentSettingsInitCmd() *cobra.Command {
 	var stack string
+	var gitSSHPrivateKeyPath string
 
 	cmd := &cobra.Command{
 		Use:        "init",
@@ -209,61 +214,11 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				return err
 			}
 
-			wd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			repo, err := git.PlainOpen(wd)
-			if err != nil {
-				return err
-			}
-
 			newStackDeployment := &workspace.ProjectStackDeployment{
-				DeploymentSettings: apitype.DeploymentSettings{
-					SourceContext: &apitype.SourceContext{
-						Git: &apitype.SourceContextGit{
-							// Setting this by default to be included in the deployment file
-							// so it is easier to manually change by users. This will be completed
-							// by the user when this gets converted to a wizard.
-							RepoDir: ".",
-						},
-					},
-					Operation: &apitype.OperationContext{
-						Options: &apitype.OperationContextOptions{},
-					},
-				},
+				DeploymentSettings: apitype.DeploymentSettings{},
 			}
 
-			remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
-			if err != nil {
-				return err
-			}
-
-			h, err := repo.Head()
-			if err != nil {
-				return err
-			}
-
-			if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
-				// If it is a GitHub repo, we will configure it to be used with the App. Otherwise, we will
-				// configure it as a barebone git repository (we wont be configuring credentials at this point
-				// users can use the `set` command to configure those afterwards).
-				if vcsInfo.Kind == gitutil.GitHubHostName {
-					newStackDeployment.DeploymentSettings.GitHub = &apitype.DeploymentSettingsGitHub{
-						Repository:          fmt.Sprintf("%s/%s", vcsInfo.Owner, vcsInfo.Repo),
-						PreviewPullRequests: true,
-						DeployCommits:       true,
-					}
-				} else {
-					newStackDeployment.DeploymentSettings.SourceContext.Git.RepoURL = remoteURL
-				}
-			} else {
-				return fmt.Errorf("detecting VCS info from stack tags for remote %v: %w", remoteURL, err)
-			}
-
-			if h.Name().IsBranch() {
-				newStackDeployment.DeploymentSettings.SourceContext.Git.Branch = h.Name().String()
-			}
+			configureGit(ctx, displayOpts, currentBe, s, newStackDeployment, gitSSHPrivateKeyPath)
 
 			err = saveProjectStackDeployment(newStackDeployment, s)
 			if err != nil {
@@ -273,6 +228,10 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().StringVarP(
+		&gitSSHPrivateKeyPath, "git-ssh-private-key", "k", "",
+		"Private key path")
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
@@ -458,29 +417,322 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	return cmd
 }
 
+func configureGit(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	repoRoot, err := detectGitPath(wd)
+	if err != nil {
+		return err
+	}
+
+	defaultRepoDir, err := filepath.Rel(repoRoot, wd)
+	if err != nil {
+		return err
+	}
+
+	if sd.DeploymentSettings.SourceContext == nil {
+		sd.DeploymentSettings.SourceContext = &apitype.SourceContext{}
+	}
+	if sd.DeploymentSettings.SourceContext.Git == nil {
+		sd.DeploymentSettings.SourceContext.Git = &apitype.SourceContextGit{}
+	}
+	if sd.DeploymentSettings.SourceContext.Git.RepoDir != "" {
+		defaultRepoDir = sd.DeploymentSettings.SourceContext.Git.RepoDir
+	}
+
+	repoDir, err := ReadConsoleWithDefault("Enter the repo directory", defaultRepoDir)
+	if err != nil {
+		return err
+	}
+	sd.DeploymentSettings.SourceContext.Git.RepoDir = repoDir
+
+	repo, err := git.PlainOpen(wd)
+	if err != nil {
+		return err
+	}
+
+	h, err := repo.Head()
+	if err != nil {
+		return err
+	}
+
+	var branch string
+	if sd.DeploymentSettings.SourceContext.Git.Branch != "" {
+		branch, err = ReadConsoleWithDefault("Enter the branch name", sd.DeploymentSettings.SourceContext.Git.Branch)
+	} else if h.Name().IsBranch() {
+		branch, err = ReadConsoleWithDefault("Enter the branch name", h.Name().String())
+	} else {
+		branch, err = cmdutil.ReadConsole("Enter the branch name")
+	}
+	if err != nil {
+		return err
+	}
+	sd.DeploymentSettings.SourceContext.Git.Branch = branch
+
+	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
+	if err != nil {
+		return err
+	}
+
+	if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
+		if vcsInfo.Kind == gitutil.GitHubHostName {
+			err := configureGitHubRepo(displayOpts, sd, vcsInfo)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := configureBareGitRepo(ctx, displayOpts, be, s, sd, remoteURL, gitSSHPrivateKeyPath)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		return fmt.Errorf("detecting VCS info from stack tags for remote %v: %w", remoteURL, err)
+	}
+
+	return nil
+}
+
+func configureGitHubRepo(displayOpts display.Options, sd *workspace.ProjectStackDeployment, vcsInfo *gitutil.VCSInfo) error {
+	sd.DeploymentSettings.GitHub = &apitype.DeploymentSettingsGitHub{
+		Repository: fmt.Sprintf("%s/%s", vcsInfo.Owner, vcsInfo.Repo),
+	}
+
+	var options []string
+	if err := survey.AskOne(&survey.MultiSelect{
+		Message: "What kind of authentication it should use?",
+		Options: []string{
+			"Run previews for pull requests",
+			"Run updates for pushed commits",
+			"Use this stack as a template for pull request stacks",
+		},
+	}, &options, surveyIcons(displayOpts.Color)); err != nil {
+		return fmt.Errorf("Failed to select git options")
+	}
+
+	if slices.Contains(options, "Run previews for pull requests") {
+		sd.DeploymentSettings.GitHub.PreviewPullRequests = true
+	}
+
+	if slices.Contains(options, "Run updates for pushed commits") {
+		sd.DeploymentSettings.GitHub.DeployCommits = true
+	}
+
+	if slices.Contains(options, "Use this stack as a template for pull request stacks") {
+		sd.DeploymentSettings.GitHub.PullRequestTemplate = true
+	}
+
+	return nil
+}
+
+func configureBareGitRepo(ctx context.Context, displayOpts display.Options, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, remoteURL string, gitSSHPrivateKeyPath string) error {
+	sd.DeploymentSettings.SourceContext.Git.RepoURL = remoteURL
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message: "What kind of authentication it should use?",
+		Options: []string{
+			"Username/Password",
+			"SSH key",
+		},
+	}, &option, surveyIcons(displayOpts.Color)); err != nil {
+		return fmt.Errorf("Failed to select git authentication")
+	}
+	switch option {
+	case "Username/Password":
+		return configureGitPassword(ctx, be, s, sd)
+	case "SSH key":
+		return configureGitSSH(ctx, be, s, sd, gitSSHPrivateKeyPath)
+	}
+
+	return nil
+}
+
+func configureGitPassword(ctx context.Context, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment) error {
+	var username string
+	var password string
+	var err error
+
+	if sd.DeploymentSettings.SourceContext == nil {
+		sd.DeploymentSettings.SourceContext = &apitype.SourceContext{}
+	}
+
+	if sd.DeploymentSettings.SourceContext.Git == nil {
+		sd.DeploymentSettings.SourceContext.Git = &apitype.SourceContextGit{}
+	}
+
+	if sd.DeploymentSettings.SourceContext.Git.GitAuth == nil {
+		sd.DeploymentSettings.SourceContext.Git.GitAuth = &apitype.GitAuthConfig{}
+	}
+
+	if sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth == nil {
+		sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth = &apitype.BasicAuth{}
+	}
+
+	if sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value != "" && !sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Secret {
+		username, err = ReadConsoleWithDefault("Enter the git username", sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
+	} else {
+		username, err = cmdutil.ReadConsole("Enter the git username")
+	}
+	if err != nil {
+		return err
+	}
+
+	if password, err = cmdutil.ReadConsoleNoEcho("Enter the git password"); err != nil {
+		return err
+	}
+	if password == "" {
+		return fmt.Errorf("Invalid empty password")
+	}
+
+	secret, err := be.EncryptStackDeploymentSettingsSecret(ctx, s, password)
+	if err != nil {
+		return err
+	}
+
+	sd.DeploymentSettings.SourceContext.Git.GitAuth = &apitype.GitAuthConfig{
+		BasicAuth: &apitype.BasicAuth{
+			UserName: apitype.SecretValue{Value: username},
+			Password: *secret,
+		},
+	}
+
+	return nil
+}
+
+func configureGitSSH(ctx context.Context, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string) error {
+	if gitSSHPrivateKeyPath == "" {
+		return fmt.Errorf("No SSH private key was provided")
+	}
+
+	privateKey, err := os.ReadFile(gitSSHPrivateKeyPath)
+	if err != nil {
+		return err
+	}
+
+	secret, err := be.EncryptStackDeploymentSettingsSecret(ctx, s, string(privateKey))
+	if err != nil {
+		return err
+	}
+
+	if sd.DeploymentSettings.SourceContext == nil {
+		sd.DeploymentSettings.SourceContext = &apitype.SourceContext{}
+	}
+
+	if sd.DeploymentSettings.SourceContext.Git == nil {
+		sd.DeploymentSettings.SourceContext.Git = &apitype.SourceContextGit{}
+	}
+
+	sd.DeploymentSettings.SourceContext.Git.GitAuth = &apitype.GitAuthConfig{
+		SSHAuth: &apitype.SSHAuth{
+			SSHPrivateKey: *secret,
+		},
+	}
+
+	var password string
+
+	if password, err = cmdutil.ReadConsoleNoEcho("Enter the private key password []"); err != nil {
+		return err
+	}
+
+	if password != "" {
+		secret, err := be.EncryptStackDeploymentSettingsSecret(ctx, s, password)
+		if err != nil {
+			return err
+		}
+
+		sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password = secret
+	}
+
+	return nil
+}
+
+func configureImageRepository(ctx context.Context, be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment) error {
+	var imageReference string
+	var username string
+	var password string
+	var err error
+
+	if sd.DeploymentSettings.Executor == nil {
+		sd.DeploymentSettings.Executor = &apitype.ExecutorContext{}
+	}
+
+	if sd.DeploymentSettings.Executor.ExecutorImage == nil {
+		sd.DeploymentSettings.Executor.ExecutorImage = &apitype.DockerImage{}
+	}
+
+	if sd.DeploymentSettings.Executor.ExecutorImage.Credentials == nil {
+		sd.DeploymentSettings.Executor.ExecutorImage.Credentials = &apitype.DockerImageCredentials{}
+	}
+
+	if sd.DeploymentSettings.Executor.ExecutorImage.Reference != "" {
+		imageReference, err = ReadConsoleWithDefault("Enter the image reference", sd.DeploymentSettings.Executor.ExecutorImage.Reference)
+	} else {
+		imageReference, err = cmdutil.ReadConsole("Enter the image reference")
+	}
+
+	if err != nil {
+		return err
+	}
+	if imageReference == "" {
+		return fmt.Errorf("Invalid empty image reference")
+	}
+
+	if sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username != "" {
+		imageReference, err = ReadConsoleWithDefault("Enter the image repository username", sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
+	} else {
+		username, err = cmdutil.ReadConsole("Enter the image repository username")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if username == "" {
+		return fmt.Errorf("Invalid empty username")
+	}
+
+	if password, err = cmdutil.ReadConsoleNoEcho("Enter the image repository password"); err != nil {
+		return err
+	}
+	if password == "" {
+		return fmt.Errorf("Invalid empty password")
+	}
+
+	secret, err := be.EncryptStackDeploymentSettingsSecret(ctx, s, password)
+	if err != nil {
+		return err
+	}
+
+	sd.DeploymentSettings.Executor.ExecutorImage = &apitype.DockerImage{
+		Reference: imageReference,
+		Credentials: &apitype.DockerImageCredentials{
+			Username: username,
+			Password: *secret,
+		},
+	}
+
+	return nil
+}
+
 func newDeploymentSettingsSetCmd() *cobra.Command {
 	var stack string
-
-	var executorRepositoryPassword string
-	var gitPassword string
-	var gitSSHPrivateKey string
-	var gitSSHPrivateKeyPassword string
+	var gitSSHPrivateKeyPath string
 
 	cmd := &cobra.Command{
-		Use:   "set-secret",
-		Args:  cmdutil.ExactArgs(0),
+		Use:   "set [configuration]",
+		Args:  cmdutil.ExactArgs(1),
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 
-			if executorRepositoryPassword == "" &&
-				gitPassword == "" &&
-				gitSSHPrivateKey == "" &&
-				gitSSHPrivateKeyPassword == "" {
-				return errors.New("No scecrets provided")
-			}
+			configuration := args[0]
+			// validate
 
 			displayOpts := display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
@@ -512,58 +764,20 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 				return err
 			}
 
-			if gitPassword != "" {
-				if sd.DeploymentSettings.SourceContext.Git.GitAuth != nil &&
-					sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth != nil {
-
-					secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, gitPassword)
-					if err != nil {
-						return err
-					}
-
-					sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.Password = *secret
-				} else {
-					return errors.New("git basic auth is not configured")
-				}
+			if sd == nil {
+				return fmt.Errorf("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
-			if gitSSHPrivateKey != "" || gitSSHPrivateKeyPassword != "" {
-				if sd.DeploymentSettings.SourceContext.Git.GitAuth != nil &&
-					sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth != nil {
-
-					if gitSSHPrivateKey != "" {
-						secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, gitSSHPrivateKey)
-						if err != nil {
-							return err
-						}
-
-						sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.SSHPrivateKey = *secret
-					}
-
-					if gitSSHPrivateKeyPassword != "" {
-						secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, gitSSHPrivateKeyPassword)
-						if err != nil {
-							return err
-						}
-
-						sd.DeploymentSettings.SourceContext.Git.GitAuth.SSHAuth.Password = secret
-					}
-				} else {
-					return errors.New("git private key auth is not configured")
-				}
+			switch configuration {
+			case "git":
+				err = configureGit(ctx, displayOpts, currentBe, s, sd, gitSSHPrivateKeyPath)
+			case "executor-image":
+				err = configureImageRepository(ctx, currentBe, s, sd)
+			default:
+				err = fmt.Errorf("Invalid option %q", configuration)
 			}
-
-			if executorRepositoryPassword != "" {
-				if sd.DeploymentSettings.Executor != nil && sd.DeploymentSettings.Executor.ExecutorImage != nil {
-					secret, err := currentBe.EncryptStackDeploymentSettingsSecret(ctx, s, executorRepositoryPassword)
-					if err != nil {
-						return err
-					}
-
-					sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Password = *secret
-				} else {
-					return errors.New("custom executor is not configured")
-				}
+			if err != nil {
+				return err
 			}
 
 			err = saveProjectStackDeployment(sd, s)
@@ -575,21 +789,9 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&executorRepositoryPassword, "executor-repository-password", "",
-		"Key to update")
-
-	cmd.PersistentFlags().StringVar(
-		&gitPassword, "git-password", "",
-		"Value for the updated key")
-
-	cmd.PersistentFlags().StringVar(
-		&gitSSHPrivateKey, "git-ssh-private-key", "",
-		"Value for the updated key")
-
-	cmd.PersistentFlags().StringVar(
-		&gitSSHPrivateKeyPassword, "git-ssh-private-key-password", "",
-		"Value for the updated key")
+	cmd.PersistentFlags().StringVarP(
+		&gitSSHPrivateKeyPath, "git-ssh-private-key", "k", "",
+		"Private key path")
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
@@ -710,4 +912,77 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
+}
+
+// As go-git do not support an analogous to `git rev-parse --show-toplevel`,
+// I am bringing this from a suggestion in an open issue tracking the requirement
+// https://github.com/go-git/go-git/issues/74#issuecomment-647779420
+func detectGitPath(path string) (string, error) {
+	// normalize the path
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		fi, err := os.Stat(filepath.Join(path, ".git"))
+		if err == nil {
+			if !fi.IsDir() {
+				return "", fmt.Errorf(".git exist but is not a directory")
+			}
+			return path, nil
+		}
+		if !os.IsNotExist(err) {
+			// unknown error
+			return "", err
+		}
+
+		// detect bare repo
+		ok, err := isGitDir(path)
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return path, nil
+		}
+
+		if parent := filepath.Dir(path); parent == path {
+			return "", fmt.Errorf(".git not found")
+		} else {
+			path = parent
+		}
+	}
+}
+
+func isGitDir(path string) (bool, error) {
+	markers := []string{"HEAD", "objects", "refs"}
+
+	for _, marker := range markers {
+		_, err := os.Stat(filepath.Join(path, marker))
+		if err == nil {
+			continue
+		}
+		if !os.IsNotExist(err) {
+			// unknown error
+			return false, err
+		} else {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func ReadConsoleWithDefault(prompt string, defaultValue string) (string, error) {
+	promptMessage := fmt.Sprintf("%s [%s]", prompt, defaultValue)
+	value, err := cmdutil.ReadConsole(promptMessage)
+	if err != nil {
+		return "", err
+	}
+
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value, nil
 }
