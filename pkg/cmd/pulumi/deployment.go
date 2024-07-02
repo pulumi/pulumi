@@ -360,7 +360,8 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 			}
 
 			if !yes {
-				confirm, err := askForConfirmation("This action will override the stack's deployment settings, do you want to continue?", displayOpts.Color)
+				confirm, err := askForConfirmation("This action will override the stack's deployment settings, "+
+					"do you want to continue?", displayOpts.Color)
 				if err != nil {
 					return err
 				}
@@ -409,7 +410,8 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			}
 
 			if !yes {
-				confirm, err := askForConfirmation("This action will clear the stack's deployment settings, do you want to continue?", displayOpts.Color)
+				confirm, err := askForConfirmation("This action will clear the stack's deployment settings, "+
+					"do you want to continue?", displayOpts.Color)
 				if err != nil {
 					return err
 				}
@@ -673,7 +675,8 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 		useGiHub := vcsInfo.Kind == gitutil.GitHubHostName
 
 		if useGiHub {
-			useGiHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?", displayOpts.Color)
+			useGiHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
+				displayOpts.Color)
 			if err != nil {
 				return err
 			}
@@ -1089,7 +1092,7 @@ func askForConfirmation(prompt string, color colors.Colorization) (bool, error) 
 	if err := survey.AskOne(&survey.Select{
 		Message: prompt,
 		Options: []string{yes, no},
-		Default: string(no),
+		Default: no,
 	}, &option, surveyIcons(color)); err != nil {
 		return false, errors.New("selection cancelled")
 	}
