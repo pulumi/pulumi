@@ -304,8 +304,8 @@ type DeploymentLogs struct {
 
 // A SecretValue describes a possibly-secret value.
 type SecretValue struct {
-	Value      string // Plaintext if Secret is false; ciphertext otherwise.
-	Ciphertext string // ciphertext
+	Value      string
+	Ciphertext string
 	Secret     bool
 }
 

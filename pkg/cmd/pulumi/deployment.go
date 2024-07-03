@@ -378,7 +378,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 
 			if !yes {
 				confirm, err := askForConfirmation("This action will override the stack's deployment settings, "+
-					"do you want to continue?", displayOpts.Color)
+					"do you want to continue?", displayOpts.Color, false)
 				if err != nil {
 					return err
 				}
@@ -428,7 +428,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 
 			if !yes {
 				confirm, err := askForConfirmation("This action will clear the stack's deployment settings, "+
-					"do you want to continue?", displayOpts.Color)
+					"do you want to continue?", displayOpts.Color, false)
 				if err != nil {
 					return err
 				}
@@ -692,7 +692,7 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 
 		if useGiHub {
 			useGiHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
-				displayOpts.Color)
+				displayOpts.Color, true)
 			if err != nil {
 				return err
 			}
@@ -1101,19 +1101,6 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 	return nil
 }
 
-func askForConfirmation(prompt string, color colors.Colorization) (bool, error) {
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message: prompt,
-		Options: []string{opt_yes, opt_no},
-		Default: opt_no,
-	}, &option, surveyIcons(color)); err != nil {
-		return false, errors.New("selection cancelled")
-	}
-
-	return option == opt_yes, nil
-}
-
 func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	be backend.Backend, s backend.Stack, sd *workspace.ProjectStackDeployment,
 ) error {
@@ -1122,7 +1109,7 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	var password string
 	var err error
 
-	confirm, err := askForConfirmation("Do you want to use a custom executor image?", displayOpts.Color)
+	confirm, err := askForConfirmation("Do you want to use a custom executor image?", displayOpts.Color, false)
 	if err != nil {
 		return err
 	}
@@ -1194,4 +1181,21 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	}
 
 	return nil
+}
+
+func askForConfirmation(prompt string, color colors.Colorization, defaultValue bool) (bool, error) {
+	var option string
+	def := opt_no
+	if defaultValue {
+		def = opt_yes
+	}
+	if err := survey.AskOne(&survey.Select{
+		Message: prompt,
+		Options: []string{opt_yes, opt_no},
+		Default: def,
+	}, &option, surveyIcons(color)); err != nil {
+		return false, errors.New("selection cancelled")
+	}
+
+	return option == opt_yes, nil
 }
