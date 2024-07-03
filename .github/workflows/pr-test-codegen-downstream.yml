@@ -125,6 +125,7 @@ jobs:
           with:
             tool-cache: false
             swap-storage: false
+            dotnet: false
         - name: Test Downstream
           uses: pulumi/action-test-provider-downstream@v0.0.1-beta
           env:
