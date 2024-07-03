@@ -509,7 +509,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		return
 	}
 
-	var temps []interface{}
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true
@@ -521,24 +520,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	isMap := strings.HasPrefix(typeName, "map[")
 
 	// TODO: retrieve schema and propagate optionals to emit bool ptr, etc.
-
-	// first lower all inner expressions and emit temps
-	for i, item := range expr.Items {
-		// don't treat keys as inputs
-		//nolint:revive
-		k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
-		temps = append(temps, kTemps...)
-		item.Key = k
-		x, xTemps := g.lowerExpression(item.Value, item.Value.Type())
-		x, invokeTemps := g.rewriteInlineInvokes(x)
-		temps = append(temps, xTemps...)
-		for _, t := range invokeTemps {
-			temps = append(temps, t)
-		}
-		item.Value = x
-		expr.Items[i] = item
-	}
-	g.genTemps(w, temps)
 
 	if g.inGenTupleConExprListArgs {
 		if g.isPtrArg {
@@ -751,18 +732,6 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 // GenTupleConsExpression generates code for a TupleConsExpression.
 func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExpression, destType model.Type) {
 	isInput := isInputty(destType)
-
-	var temps []interface{}
-	for i, item := range expr.Expressions {
-		item, itemTemps := g.lowerExpression(item, item.Type())
-		item, invokeTemps := g.rewriteInlineInvokes(item)
-		temps = append(temps, itemTemps...)
-		for _, t := range invokeTemps {
-			temps = append(temps, t)
-		}
-		expr.Expressions[i] = item
-	}
-	g.genTemps(w, temps)
 	argType := g.argumentTypeName(expr, destType, isInput)
 	// don't need to generate type for list args if not a pointer, i.e. []ec2.SubnetSpecArgs{ {Type: ...} }
 	// unless it contains an interface, i.e. []map[string]interface{ map[string]interface{"key": "val"} }
@@ -775,14 +744,8 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		}
 	}
 	g.Fgenf(w, "%s{\n", argType)
-	switch len(expr.Expressions) {
-	case 0:
-		// empty array
-		break
-	default:
-		for _, v := range expr.Expressions {
-			g.Fgenf(w, "%v,\n", v)
-		}
+	for _, v := range expr.Expressions {
+		g.Fgenf(w, "%v,\n", v)
 	}
 	g.Fgenf(w, "}")
 }

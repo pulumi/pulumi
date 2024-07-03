@@ -20,32 +20,32 @@ func main() {
 				},
 			},
 			Spec: &corev1.PodSpecArgs{
-				Containers: []corev1.ContainerArgs{
-					{
+				Containers: corev1.ContainerArray{
+					&corev1.ContainerArgs{
 						Name:  pulumi.String("nginx"),
 						Image: pulumi.String("nginx:1.14-alpine"),
 						Ports: corev1.ContainerPortArray{
-							{
+							&corev1.ContainerPortArgs{
 								ContainerPort: pulumi.Int(80),
 							},
 						},
-						Resources: {
-							Limits: {
+						Resources: &corev1.ResourceRequirementsArgs{
+							Limits: pulumi.StringMap{
 								"memory": pulumi.String("20Mi"),
 								"cpu":    pulumi.String("0.2"),
 							},
 						},
 					},
-					{
+					&corev1.ContainerArgs{
 						Name:  pulumi.String("nginx2"),
 						Image: pulumi.String("nginx:1.14-alpine"),
 						Ports: corev1.ContainerPortArray{
-							{
+							&corev1.ContainerPortArgs{
 								ContainerPort: pulumi.Int(80),
 							},
 						},
-						Resources: {
-							Limits: {
+						Resources: &corev1.ResourceRequirementsArgs{
+							Limits: pulumi.StringMap{
 								"memory": pulumi.String("20Mi"),
 								"cpu":    pulumi.String("0.2"),
 							},
