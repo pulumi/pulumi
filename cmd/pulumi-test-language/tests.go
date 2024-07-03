@@ -362,7 +362,7 @@ var languageTests = map[string]languageTest{
 					requireStackResource(l, res, changes)
 
 					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
-					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
+					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
 
 					provider := snap.Resources[1]
 					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
@@ -387,7 +387,11 @@ var languageTests = map[string]languageTest{
 
 					assarc, ok := resources["assarc"]
 					require.True(l, ok, "expected asset archive resource")
-					assert.Equal(l, "asset-archive:index:ArchiveResource", folder.Type.String(), "expected archive resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", assarc.Type.String(), "expected archive resource")
+
+					remoteass, ok := resources["remoteass"]
+					require.True(l, ok, "expected remote asset resource")
+					assert.Equal(l, "asset-archive:index:AssetResource", remoteass.Type.String(), "expected asset resource")
 
 					main := filepath.Join(projectDirectory, "subdir")
 
@@ -441,6 +445,23 @@ var languageTests = map[string]languageTest{
 
 					assert.Equal(l, want, assarc.Inputs, "expected inputs to be {value: %v}", assarcValue)
 					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
+
+					remoteassValue, err := resource.NewURIAsset(
+						"https://raw.githubusercontent.com/pulumi/pulumi/master" +
+							"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
+					)
+					require.NoError(l, err)
+
+					want = resource.NewPropertyMapFromMap(map[string]any{
+						"value": remoteassValue,
+					})
+
+					assert.Equal(l, want, remoteass.Inputs, "expected inputs to be {value: %v}", remoteassValue)
+					assert.Equal(l, remoteass.Inputs, remoteass.Outputs, "expected inputs and outputs to match")
+					bs, err := remoteassValue.Bytes()
+					require.NoError(l, err)
+					assert.Equal(l, "text", string(bs))
+					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", remoteassValue.Hash)
 				},
 			},
 		},

@@ -310,6 +310,33 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
+	remoteass, err := resource.NewURIAsset(
+		"https://raw.githubusercontent.com/pulumi/pulumi/master" +
+			"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not create remote asset: %w", err)
+	}
+
+	mremoteass, err := plugin.MarshalAsset(remoteass, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal remote asset: %w", err)
+	}
+
+	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "asset-archive:index:AssetResource",
+		Custom: true,
+		Name:   "remoteass",
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": mremoteass,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register resource: %w", err)
+	}
+
 	return &pulumirpc.RunResponse{}, nil
 }
 
