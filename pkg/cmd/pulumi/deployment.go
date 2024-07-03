@@ -36,21 +36,21 @@ import (
 )
 
 const (
-	opt_yes                           = "Yes"
-	opt_no                            = "No"
-	opt_oidc_aws                      = "Enable AWS integration"
-	opt_oidc_azure                    = "Enable Azure integration"
-	opt_oidc_gcp                      = "Enable Google Cloud integration"
-	opt_git                           = "Git"
-	opt_executor_image                = "Executor image"
-	opt_advanced_settings             = "Advanced settings"
-	opt_preview_pr                    = "Run previews for pull requests"
-	opt_update_pushes                 = "Run updates for pushed commits"
-	opt_pr_template                   = "Use this stack as a template for pull request stacks"
-	opt_user_pass                     = "Username/Password"
-	opt_ssh                           = "SSH key"
-	opt_skip_deps_install             = "Skip automatic dependency installation step"
-	opt_skip_intermediate_deployments = "Skip intermediate deployments"
+	optYes                         = "Yes"
+	optNo                          = "No"
+	optOidcAws                     = "Enable AWS integration"
+	optOidcAzure                   = "Enable Azure integration"
+	optOidcGcp                     = "Enable Google Cloud integration"
+	optGit                         = "Git"
+	optExecutorImage               = "Executor image"
+	optAdvancedSettings            = "Advanced settings"
+	optPreviewPr                   = "Run previews for pull requests"
+	optUpdatePushes                = "Run updates for pushed commits"
+	optPrTemplate                  = "Use this stack as a template for pull request stacks"
+	optUserPass                    = "Username/Password"
+	optSSH                         = "SSH key"
+	optSkipDepsInstall             = "Skip automatic dependency installation step"
+	optSkipIntermediateDeployments = "Skip intermediate deployments"
 )
 
 var stackDeploymentConfigFile string
@@ -272,22 +272,22 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			if err := survey.AskOne(&survey.Select{
 				Message: "Do you want to configure an OpenID Connect integration?",
 				Options: []string{
-					opt_no,
-					opt_oidc_aws,
-					opt_oidc_azure,
-					opt_oidc_gcp,
+					optNo,
+					optOidcAws,
+					optOidcAzure,
+					optOidcGcp,
 				},
-				Default: opt_no,
+				Default: optNo,
 			}, &option, surveyIcons(display.Color)); err != nil {
 				return errors.New("selection cancelled")
 			}
 
 			switch option {
-			case opt_oidc_aws:
+			case optOidcAws:
 				err = configureOidcAws(newStackDeployment)
-			case opt_oidc_azure:
+			case optOidcAzure:
 				err = configureOidcAzure(newStackDeployment)
-			case opt_oidc_gcp:
+			case optOidcGcp:
 				err = configureOidcGCP(newStackDeployment)
 			}
 			if err != nil {
@@ -482,29 +482,29 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 			if err := survey.AskOne(&survey.Select{
 				Message: "Configure:",
 				Options: []string{
-					opt_git,
-					opt_executor_image,
-					opt_advanced_settings,
-					opt_oidc_aws,
-					opt_oidc_azure,
-					opt_oidc_gcp,
+					optGit,
+					optExecutorImage,
+					optAdvancedSettings,
+					optOidcAws,
+					optOidcAzure,
+					optOidcGcp,
 				},
 			}, &option, surveyIcons(displayOpts.Color)); err != nil {
 				return errors.New("selection cancelled")
 			}
 
 			switch option {
-			case opt_git:
+			case optGit:
 				err = configureGit(ctx, displayOpts, be, s, sd, gitSSHPrivateKeyPath)
-			case opt_executor_image:
+			case optExecutorImage:
 				err = configureImageRepository(ctx, displayOpts, be, s, sd)
-			case opt_advanced_settings:
+			case optAdvancedSettings:
 				err = configureAdvancedSettings(displayOpts, sd)
-			case opt_oidc_aws:
+			case optOidcAws:
 				err = configureOidcAws(sd)
-			case opt_oidc_azure:
+			case optOidcAzure:
 				err = configureOidcAzure(sd)
-			case opt_oidc_gcp:
+			case optOidcGcp:
 				err = configureOidcGCP(sd)
 			}
 			if err != nil {
@@ -727,23 +727,27 @@ func configureGitHubRepo(displayOpts *display.Options,
 	if err := survey.AskOne(&survey.MultiSelect{
 		Message: "What kind of authentication should it use?",
 		Options: []string{
-			opt_preview_pr,
-			opt_update_pushes,
-			opt_pr_template,
+			optPreviewPr,
+			optUpdatePushes,
+			optPrTemplate,
+		},
+		Default: []string{
+			optPreviewPr,
+			optUpdatePushes,
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
 		return errors.New("selection cancelled")
 	}
 
-	if slices.Contains(options, opt_preview_pr) {
+	if slices.Contains(options, optPreviewPr) {
 		sd.DeploymentSettings.GitHub.PreviewPullRequests = true
 	}
 
-	if slices.Contains(options, opt_update_pushes) {
+	if slices.Contains(options, optUpdatePushes) {
 		sd.DeploymentSettings.GitHub.DeployCommits = true
 	}
 
-	if slices.Contains(options, opt_pr_template) {
+	if slices.Contains(options, optPrTemplate) {
 		sd.DeploymentSettings.GitHub.PullRequestTemplate = true
 	}
 
@@ -760,16 +764,16 @@ func configureBareGitRepo(ctx context.Context, displayOpts *display.Options,
 	if err := survey.AskOne(&survey.Select{
 		Message: "What kind of authentication should it use?",
 		Options: []string{
-			opt_user_pass,
-			opt_ssh,
+			optUserPass,
+			optSSH,
 		},
 	}, &option, surveyIcons(displayOpts.Color)); err != nil {
 		return errors.New("selection cancelled")
 	}
 	switch option {
-	case opt_user_pass:
+	case optUserPass:
 		return configureGitPassword(ctx, be, s, sd)
-	case opt_ssh:
+	case optSSH:
 		return configureGitSSH(ctx, be, s, sd, gitSSHPrivateKeyPath)
 	}
 
@@ -1075,8 +1079,11 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 	if err := survey.AskOne(&survey.MultiSelect{
 		Message: "Advanced settings",
 		Options: []string{
-			opt_skip_deps_install,
-			opt_skip_intermediate_deployments,
+			optSkipIntermediateDeployments,
+			optSkipDepsInstall,
+		},
+		Default: []string{
+			optSkipIntermediateDeployments,
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
 		return errors.New("selection cancelled")
@@ -1090,11 +1097,11 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 		sd.DeploymentSettings.Operation.Options = &apitype.OperationContextOptions{}
 	}
 
-	if slices.Contains(options, opt_skip_deps_install) {
+	if slices.Contains(options, optSkipDepsInstall) {
 		sd.DeploymentSettings.Operation.Options.SkipInstallDependencies = true
 	}
 
-	if slices.Contains(options, opt_skip_intermediate_deployments) {
+	if slices.Contains(options, optSkipIntermediateDeployments) {
 		sd.DeploymentSettings.Operation.Options.SkipIntermediateDeployments = true
 	}
 
@@ -1185,17 +1192,17 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 
 func askForConfirmation(prompt string, color colors.Colorization, defaultValue bool) (bool, error) {
 	var option string
-	def := opt_no
+	def := optNo
 	if defaultValue {
-		def = opt_yes
+		def = optYes
 	}
 	if err := survey.AskOne(&survey.Select{
 		Message: prompt,
-		Options: []string{opt_yes, opt_no},
+		Options: []string{optYes, optNo},
 		Default: def,
 	}, &option, surveyIcons(color)); err != nil {
 		return false, errors.New("selection cancelled")
 	}
 
-	return option == opt_yes, nil
+	return option == optYes, nil
 }
