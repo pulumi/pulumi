@@ -120,6 +120,11 @@ jobs:
           with:
             ref: ${{ github.event.pull_request.head.sha }}
             token: ${{ secrets.PULUMI_BOT_TOKEN }}
+        - name: Free Disk Space (Ubuntu)
+          uses: jlumbroso/free-disk-space@v1.3.1
+          with:
+            tool-cache: false
+            swap-storage: false
         - name: Test Downstream
           uses: pulumi/action-test-provider-downstream@v0.0.1-beta
           env:
