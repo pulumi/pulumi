@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -220,7 +220,7 @@ Resources are created with functions called constructors. To learn more about de
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -448,7 +448,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using MeaningOfLife
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -480,6 +480,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
 
 
 
@@ -491,7 +505,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using ObjectMix
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -519,6 +533,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>Output&lt;<span class="nx"><a href="#method_ObjectMix_result">Configurer.ObjectMixResult</a></span>&gt; <span class="nx">ObjectMix</span><span class="p">()</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -669,7 +697,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using TlsProvider
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -697,6 +725,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>Output&lt;<span class="nx"><a href="#method_TlsProvider_result">Pulumi.Tls.Provider</a></span>&gt; <span class="nx">TlsProvider</span><span class="p">()</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
 </pulumi-choosable>
 </div>
 

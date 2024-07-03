@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -219,7 +219,7 @@ Resources are created with functions called constructors. To learn more about de
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -391,7 +391,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using GetKubeconfig
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -421,6 +421,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>Output&lt;<span class="nx"><a href="#method_GetKubeconfig_result">string</a></span>&gt; <span class="nx">GetKubeconfig</span><span class="p">(<span class="nx">Foo.GetKubeconfigArgs</span><span class="p">? </span><span class="nx">args)</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
 </pulumi-choosable>
 </div>
 

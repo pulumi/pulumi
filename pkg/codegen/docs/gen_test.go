@@ -668,7 +668,7 @@ func TestGenOverlayResource(t *testing.T) {
 		ObjectTypeSpec: schema.ObjectTypeSpec{
 			Description:               "This is a module-level resource called OverlayResourceConstrainedLanguages.",
 			IsOverlay:                 true,
-			OverlaySupportedLanguages: []string{"python", "go", "typescript"},
+			OverlaySupportedLanguages: []string{"python", "go", "nodejs"},
 		},
 		InputProperties: map[string]schema.PropertySpec{
 			"prop": {
@@ -684,7 +684,7 @@ func TestGenOverlayResource(t *testing.T) {
 		ObjectTypeSpec: schema.ObjectTypeSpec{
 			Description:               "This is a module-level resource called OverlayResourceWrongLanguage.",
 			IsOverlay:                 true,
-			OverlaySupportedLanguages: []string{"python", "go", "typescript", "smalltalk"},
+			OverlaySupportedLanguages: []string{"python", "go", "nodejs", "smalltalk"},
 		},
 		InputProperties: map[string]schema.PropertySpec{
 			"prop": {
@@ -706,12 +706,12 @@ func TestGenOverlayResource(t *testing.T) {
 		{
 			// regular resource, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
 			ResourceName:                 "Resource",
-			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
+			ExpectedLangChooserLanguages: "csharp,go,typescript,python,yaml,java",
 		},
 		{
 			// Regular overlay resource, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
 			ResourceName:                 "OverlayResource",
-			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
+			ExpectedLangChooserLanguages: "csharp,go,typescript,python,yaml,java",
 		},
 		{
 			// overlay resource with a constrained list of supported languages
@@ -776,7 +776,7 @@ func TestGenOverlayFunction(t *testing.T) {
 	testPackageSpec.Functions["prov:module/overlayFunctionConstrainedLanguages:overlayFunctionConstrainedLanguages"] = schema.FunctionSpec{
 		Description:               "A module-level function.",
 		IsOverlay:                 true,
-		OverlaySupportedLanguages: []string{"python", "go", "typescript"},
+		OverlaySupportedLanguages: []string{"python", "go", "nodejs"},
 		Inputs: &schema.ObjectTypeSpec{
 			Description: "Inputs for getModuleResource.",
 			Type:        "object",
@@ -798,7 +798,7 @@ func TestGenOverlayFunction(t *testing.T) {
 	testPackageSpec.Functions["prov:module/overlayFunctionWrongLanguage:overlayFunctionWrongLanguage"] = schema.FunctionSpec{
 		Description:               "A module-level function.",
 		IsOverlay:                 true,
-		OverlaySupportedLanguages: []string{"python", "go", "typescript", "smalltalk"},
+		OverlaySupportedLanguages: []string{"python", "go", "nodejs", "smalltalk"},
 		Inputs: &schema.ObjectTypeSpec{
 			Description: "Inputs for getModuleResource.",
 			Type:        "object",
@@ -827,12 +827,12 @@ func TestGenOverlayFunction(t *testing.T) {
 		{
 			// regular function, should support all languages
 			FunctionName:                 "getModuleResource",
-			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
+			ExpectedLangChooserLanguages: "csharp,go,typescript,python,yaml,java",
 		},
 		{
 			// Regular overlay function, should support all languages
 			FunctionName:                 "overlayFunction",
-			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
+			ExpectedLangChooserLanguages: "csharp,go,typescript,python,yaml,java",
 		},
 		{
 			// overlay function with a constrained list of supported languages
