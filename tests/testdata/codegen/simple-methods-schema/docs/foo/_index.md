@@ -437,20 +437,6 @@ A description of bar.
 </div>
 
 
-<div>
-<pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
 
 The following arguments are supported:
 
@@ -1197,20 +1183,6 @@ The following arguments are supported:
 </div>
 
 
-<div>
-<pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
 
 
 
@@ -1253,20 +1225,6 @@ Do something with something else
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>Output&lt;<span class="nx"><a href="#method_GenerateKubeconfig_result">Foo.GenerateKubeconfigResult</a></span>&gt; <span class="nx">GenerateKubeconfig</span><span class="p">(<span class="nx">Foo.GenerateKubeconfigArgs</span><span class="p"> </span><span class="nx">args)</span></code></pre></div>
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
 </pulumi-choosable>
 </div>
 

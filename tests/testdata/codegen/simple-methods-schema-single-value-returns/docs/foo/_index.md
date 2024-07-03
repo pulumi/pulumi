@@ -425,20 +425,6 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 
-<div>
-<pulumi-choosable type="language" values="java">
-<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in Java.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
-<div>
-<pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
-</pulumi-choosable>
-</div>
-
-
 
 The following arguments are supported:
 

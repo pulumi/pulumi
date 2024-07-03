@@ -85,12 +85,6 @@ jobs:
             role-duration-seconds: 3600
             role-session-name: awsx@githubActions
             role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
-        - name: Free Disk Space (Ubuntu)
-          uses: jlumbroso/free-disk-space@v1.3.1
-          with:
-            tool-cache: false
-            swap-storage: false
-            dotnet: false
         - name: Setup Go
           uses: actions/setup-go@v5
           with:
@@ -117,10 +111,6 @@ jobs:
           uses: jaxxstorm/action-install-gh-release@v1.11.0
           with:
             repo: gotesttools/gotestfmt
-        - name: Install pulumictl
-          uses: jaxxstorm/action-install-gh-release@v1.10.0
-          with:
-            repo: pulumi/pulumictl
         - name: Check out source code
           uses: actions/checkout@v4
           with:
