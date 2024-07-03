@@ -890,6 +890,58 @@ func TestIsOverlay(t *testing.T) {
 	})
 }
 
+// TestOverlaySupportedLanguages tests that the OverlaySupportedLanguages field is set correctly for resources, types, and functions.
+// Does not test codegen.
+func TestOverlaySupportedLanguages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("overlay", func(t *testing.T) {
+		t.Parallel()
+
+		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay-supported-languages.json"))
+
+		pkg, err := ImportSpec(pkgSpec, nil)
+		if err != nil {
+			t.Error(err)
+		}
+		for _, v := range pkg.Resources {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
+			}
+			if strings.Contains(v.Token, "ConstrainedLanguages") {
+				assert.Equalf(t, []string{"go", "typescript", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			} else {
+				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Types {
+			switch v := v.(type) {
+			case *ObjectType:
+				if strings.Contains(v.Token, "Overlay") {
+					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
+				} else {
+					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
+				}
+				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Functions {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
+			}
+			if strings.Contains(v.Token, "ConstrainedLanguages") {
+				assert.Equalf(t, []string{"go", "typescript", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			} else {
+				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
+			}
+		}
+	})
+}
+
 func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 	t.Parallel()
 
