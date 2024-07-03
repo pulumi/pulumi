@@ -537,3 +537,61 @@ func TestParseAuthURL(t *testing.T) {
 		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
 	})
 }
+
+type mockDetectGitAccessors struct {
+	KnownDirectories map[string]*mockDetectGitFileInfo
+}
+
+func (a mockDetectGitAccessors) Stat(name string) (detectGitFileInfo, error) {
+	d, ok := a.KnownDirectories[name]
+
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+
+	return d, nil
+}
+
+type mockDetectGitFileInfo struct {
+	IsDirValue bool
+}
+
+func (m mockDetectGitFileInfo) IsDir() bool {
+	return m.IsDirValue
+}
+
+func TestDetectGitRootDirectory(t *testing.T) {
+	t.Parallel()
+	t.Run("should return the parent directory that contains a .git directory", func(t *testing.T) {
+		t.Parallel()
+		d, err := detectGitRootDirectory("/home/user/repos/git/something/nested", mockDetectGitAccessors{
+			KnownDirectories: map[string]*mockDetectGitFileInfo{
+				"/home/user/repos/git/.git": {IsDirValue: true},
+			},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "/home/user/repos/git", d)
+	})
+
+	t.Run("not git directory found", func(t *testing.T) {
+		t.Parallel()
+		d, err := detectGitRootDirectory("/home/user/repos/git/something/nested", mockDetectGitAccessors{
+			KnownDirectories: map[string]*mockDetectGitFileInfo{},
+		})
+		assert.Error(t, err, ".git not found")
+		assert.Empty(t, d)
+	})
+
+	t.Run("there are git markers set", func(t *testing.T) {
+		t.Parallel()
+		d, err := detectGitRootDirectory("/home/user/repos/git/something/nested", mockDetectGitAccessors{
+			KnownDirectories: map[string]*mockDetectGitFileInfo{
+				"/home/user/repos/git/HEAD":    {IsDirValue: false},
+				"/home/user/repos/git/objects": {IsDirValue: false},
+				"/home/user/repos/git/refs":    {IsDirValue: false},
+			},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "/home/user/repos/git", d)
+	})
+}
