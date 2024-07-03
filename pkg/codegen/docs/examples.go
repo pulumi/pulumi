@@ -57,12 +57,6 @@ func (dctx *docGenContext) decomposeDocstring(docstring, supportedSnippetLanguag
 		return docInfo{}
 	}
 	if strings.Contains(docstring, beginCodeBlock) {
-		// var snippetLanguages string
-		// if supportedSnippetLanguages != "" {
-		// 	snippetLanguages = supportedSnippetLanguages
-		// } else {
-		// 	snippetLanguages = dctx.snippetLanguages
-		// }
 		return dctx.processDescription(docstring, supportedSnippetLanguages)
 	}
 
