@@ -30,6 +30,16 @@ import (
 
 const defaultMissingExampleSnippetPlaceholder = "Coming soon!"
 
+type examplesSection struct {
+	// Examples is a list of exampleSections. Each exampleSection contains a title and code snippets
+	Examples []exampleSection
+	// LangChooserLanguages is a comma-separated list of languages to pass to the
+	// language chooser shortcode. Use this to customize the languages shown for a
+	// resource. By default, the language chooser will show all languages supported
+	// by Pulumi for all resources.
+	LangChooserLanguages string
+}
+
 type exampleSection struct {
 	Title string
 	// Snippets is a map of language to its code snippet, if any.
@@ -42,12 +52,12 @@ type docInfo struct {
 	importDetails string
 }
 
-func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
+func (dctx *docGenContext) decomposeDocstring(docstring, supportedSnippetLanguages string) docInfo {
 	if docstring == "" {
 		return docInfo{}
 	}
 	if strings.Contains(docstring, beginCodeBlock) {
-		return dctx.processDescription(docstring)
+		return dctx.processDescription(docstring, supportedSnippetLanguages)
 	}
 
 	languages := codegen.NewStringSet(dctx.snippetLanguages...)
