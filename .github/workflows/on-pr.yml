@@ -137,30 +137,14 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      # If the PR is a community PR we don't run the usual checks, but rather run them
-      # through /run-acceptance-tests.  This means ci-ok is not a useful status there.
-      # For those PRs, just mark this as a success always.
-      - name: Community PR
-        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
-        run: exit 0
+      # If the PR is a community PR, we don't run the usual checks, but instead
+      # require maintainers to run them manually by commenting with
+      # /run-acceptance-tests. Since the checks then run outside of the PR,
+      # ci-ok is not a useful status in these cases. We thus want to skip this
+      # job for community PRs. We detect community contributions by checking if
+      # the head repository is different to the base repository.
       - name: CI failed
-        if: ${{ needs.ci.result != 'success' }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && needs.ci.result != 'success' }}
         run: exit 1
       - name: CI succeeded
         run: exit 0
-
-  # release:
-  #   name: release
-  #   if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
-  #   needs: [info, matrix, prepare-release]
-  #   uses: ./.github/workflows/release.yml
-  #   permissions:
-  #     contents: write
-  #     pull-requests: write
-  #   with:
-  #     ref: ${{ github.ref }}
-  #     version: ${{ needs.info.outputs.version }}
-  #     release-notes: ${{ needs.info.outputs.release-notes }}
-  #     version-set: ${{ needs.matrix.outputs.version-set }}
-  #     queue-merge: false
-  #   secrets: inherit
