@@ -560,12 +560,10 @@ func (m mockDetectGitFileInfo) IsDir() bool {
 	return m.IsDirValue
 }
 
-type mockFileDir struct {
-	KnownDirectories []string
-}
-
 func TestDetectGitRootDirectory(t *testing.T) {
+	t.Parallel()
 	t.Run("should return the parent directory that contains a .git directory", func(t *testing.T) {
+		t.Parallel()
 		d, err := detectGitRootDirectory("/home/user/repos/git/something/nested", mockDetectGitAccessors{
 			KnownDirectories: map[string]*mockDetectGitFileInfo{
 				"/home/user/repos/git/.git": {IsDirValue: true},
@@ -576,6 +574,7 @@ func TestDetectGitRootDirectory(t *testing.T) {
 	})
 
 	t.Run("not git directory found", func(t *testing.T) {
+		t.Parallel()
 		d, err := detectGitRootDirectory("/home/user/repos/git/something/nested", mockDetectGitAccessors{
 			KnownDirectories: map[string]*mockDetectGitFileInfo{},
 		})
@@ -584,6 +583,7 @@ func TestDetectGitRootDirectory(t *testing.T) {
 	})
 
 	t.Run("there are git markers set", func(t *testing.T) {
+		t.Parallel()
 		d, err := detectGitRootDirectory("/home/user/repos/git/something/nested", mockDetectGitAccessors{
 			KnownDirectories: map[string]*mockDetectGitFileInfo{
 				"/home/user/repos/git/HEAD":    {IsDirValue: false},
