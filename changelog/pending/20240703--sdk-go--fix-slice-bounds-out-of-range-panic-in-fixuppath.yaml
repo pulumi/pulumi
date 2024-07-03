@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdk/go
-  description: Fix out-of-range panic when sanitizing env vars
+  description: Fix out-of-range panic when sanitizing PATH env var
