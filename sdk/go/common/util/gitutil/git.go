@@ -849,10 +849,27 @@ func (r byShortNameLengthDesc) Less(i, j int) bool {
 	return len(r[j].Short()) < len(r[i].Short())
 }
 
+type detectGitAccessors interface {
+	Stat(name string) (detectGitFileInfo, error)
+}
+type detectGitFileInfo interface {
+	IsDir() bool
+}
+
+type detectGitAccessorsImpl struct{}
+
+func (a *detectGitAccessorsImpl) Stat(name string) (detectGitFileInfo, error) {
+	return os.Stat(name)
+}
+
 // As go-git do not support an analogous to `git rev-parse --show-toplevel`,
 // I am bringing this from a suggestion in an open issue tracking the requirement
 // https://github.com/go-git/go-git/issues/74#issuecomment-647779420
 func DetectGitRootDirectory(path string) (string, error) {
+	return detectGitRootDirectory(path, &detectGitAccessorsImpl{})
+}
+
+func detectGitRootDirectory(path string, accessors detectGitAccessors) (string, error) {
 	// normalize the path
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -860,7 +877,7 @@ func DetectGitRootDirectory(path string) (string, error) {
 	}
 
 	for {
-		fi, err := os.Stat(filepath.Join(path, ".git"))
+		fi, err := accessors.Stat(filepath.Join(path, ".git"))
 		if err == nil {
 			if !fi.IsDir() {
 				return "", errors.New(".git exist but is not a directory")
@@ -873,7 +890,7 @@ func DetectGitRootDirectory(path string) (string, error) {
 		}
 
 		// detect bare repo
-		ok, err := isGitDir(path)
+		ok, err := isGitDir(path, accessors)
 		if err != nil {
 			return "", err
 		}
@@ -890,11 +907,11 @@ func DetectGitRootDirectory(path string) (string, error) {
 	}
 }
 
-func isGitDir(path string) (bool, error) {
+func isGitDir(path string, accessors detectGitAccessors) (bool, error) {
 	markers := []string{"HEAD", "objects", "refs"}
 
 	for _, marker := range markers {
-		_, err := os.Stat(filepath.Join(path, marker))
+		_, err := accessors.Stat(filepath.Join(path, marker))
 		if err == nil {
 			continue
 		}
