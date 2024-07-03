@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Add `dependsOn` to `InvokeOptions` in the NodeJS SDK

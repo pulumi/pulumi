@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
+import { gatherExplicitDependencies } from "./dependsOn";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -99,6 +100,9 @@ export async function streamInvoke(
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
+        // Wait for any explicit dependencies to complete before proceeding.
+        await gatherExplicitDependencies(opts.dependsOn);
+
         const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
         log.debug(
             `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
@@ -142,6 +146,9 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
+        // Wait for any explicit dependencies to complete before proceeding.
+        await gatherExplicitDependencies(opts.dependsOn);
+
         const serialized = await serializeProperties(`invoke:${tok}`, props);
         log.debug(
             `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,

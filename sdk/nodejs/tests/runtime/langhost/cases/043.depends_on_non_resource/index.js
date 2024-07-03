@@ -1,4 +1,4 @@
-// This tests the creation of ten propertyless resources.
+// This tests that resources cannot depend on things which are not resources.
 
 let pulumi = require("../../../../../");
 
