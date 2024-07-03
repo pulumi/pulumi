@@ -911,7 +911,7 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
 			}
 			if strings.Contains(v.Token, "ConstrainedLanguages") {
-				assert.Equalf(t, []string{"go", "typescript", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
+				assert.Equalf(t, []string{"go", "nodejs", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			} else {
 				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			}
@@ -934,7 +934,7 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
 			}
 			if strings.Contains(v.Token, "ConstrainedLanguages") {
-				assert.Equalf(t, []string{"go", "typescript", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
+				assert.Equalf(t, []string{"go", "nodejs", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			} else {
 				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			}
