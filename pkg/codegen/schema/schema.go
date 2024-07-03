@@ -231,7 +231,7 @@ type ObjectType struct {
 	IsOverlay bool
 	// OverlaySupportedLanguages indicates what languages the overlay supports. This only has an effect if
 	// the Resource is an Overlay (IsOverlay == true).
-	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
+	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string
 
 	// InputShape is the input shape for this object. Only valid if IsPlainShape returns true.
@@ -412,7 +412,7 @@ type Resource struct {
 	IsOverlay bool
 	// OverlaySupportedLanguages indicates what languages the overlay supports. This only has an effect if
 	// the Resource is an Overlay (IsOverlay == true).
-	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
+	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string
 }
 
@@ -565,7 +565,7 @@ type Function struct {
 	IsOverlay bool
 	// OverlaySupportedLanguages indicates what languages the overlay supports. This only has an effect if
 	// the Resource is an Overlay (IsOverlay == true).
-	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
+	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string
 }
 
@@ -1552,7 +1552,7 @@ type ObjectTypeSpec struct {
 	IsOverlay bool `json:"isOverlay,omitempty" yaml:"isOverlay,omitempty"`
 	// OverlaySupportedLanguages indicates what languages the overlay supports. This only has an effect if
 	// the Resource is an Overlay (IsOverlay == true).
-	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
+	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string `json:"overlaySupportedLanguages,omitempty" yaml:"overlaySupportedLanguages,omitempty"` //nolint:lll
 }
 
@@ -1731,7 +1731,7 @@ type FunctionSpec struct {
 	IsOverlay bool `json:"isOverlay,omitempty" yaml:"isOverlay,omitempty"`
 	// OverlaySupportedLanguages indicates what languages the overlay supports. This only has an effect if
 	// the Resource is an Overlay (IsOverlay == true).
-	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
+	// Supported values are "nodejs", "python", "go", "csharp", "java", "yaml"
 	OverlaySupportedLanguages []string `json:"overlaySupportedLanguages,omitempty" yaml:"overlaySupportedLanguages,omitempty"` //nolint:lll
 }
 

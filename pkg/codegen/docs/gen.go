@@ -486,22 +486,34 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	return &newctx
 }
 
+func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupportedLanguages []string) []string {
+	// By default, all languages are supported.
+	if !isOverlay || len(overlaySupportedLanguages) == 0 {
+		return dctx.supportedLanguages
+	}
+	var supportedLanguages []string
+	allLanguages := codegen.NewStringSet(dctx.supportedLanguages...)
+	// Ensure that the overlay supported languages are a subset of the supported snippet languages.
+	for _, lang := range overlaySupportedLanguages {
+		if allLanguages.Has(lang) {
+			supportedLanguages = append(supportedLanguages, lang)
+		}
+	}
+
+	return supportedLanguages
+}
+
 // getSupportedSnippetLanguages returns a string containing the supported snippet languages for the given type.
 // If the type is not an overlay or if there are no overlay supported languages, all languages are supported.
 // The returned string contains the supported languages joined by commas.
 func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
 	var supportedLanguages []string
-	// By default, all languages are supported.
-	if !isOverlay || len(overlaySupportedLanguages) == 0 {
-		supportedLanguages = dctx.snippetLanguages
-	} else {
-		supportedSnippetLanguages := codegen.NewStringSet(dctx.snippetLanguages...)
-		// Ensure that the overlay supported languages are a subset of the supported snippet languages.
-		for _, lang := range overlaySupportedLanguages {
-			if supportedSnippetLanguages.Has(lang) {
-				supportedLanguages = append(supportedLanguages, lang)
-			}
+	for _, lang := range dctx.getSupportedLanguages(isOverlay, overlaySupportedLanguages) {
+		// Snippet languages expect "typescript" instead of "nodejs".
+		if lang == "nodejs" {
+			lang = "typescript"
 		}
+		supportedLanguages = append(supportedLanguages, lang)
 	}
 
 	return strings.Join(supportedLanguages, ",")

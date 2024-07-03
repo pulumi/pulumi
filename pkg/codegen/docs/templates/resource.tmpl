@@ -20,7 +20,9 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 
+<div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+</div>
 
 {{/*
     Render the specific snippet to construct the resource, e.g.
@@ -110,7 +112,9 @@ Resources are created with functions called constructors. To learn more about de
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 
+<div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+</div>
 
 {{ range $lang, $code := .CreationExampleSyntax }}
 <div>
@@ -162,7 +166,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using {{ .Title }}
 
 <div>
-<pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+<pulumi-chooser type="language" options="{{ $.LangChooserLanguages }}"></pulumi-chooser>
 </div>
 
 <!-- TS/JS -->
@@ -193,6 +197,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
+<!-- Java -->
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java">Resource methods are currently not supported in YAML.</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<!-- YAML -->
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource methods are not supported in YAML.</code></pre></div>
+</pulumi-choosable>
+</div>
+
 {{ if ne (len .InputProperties) 0 }}
 
 The following arguments are supported:
@@ -213,7 +231,9 @@ The following arguments are supported:
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
+<div>
 <pulumi-chooser type="language" options="{{ .LangChooserLanguages }}"></pulumi-chooser>
+</div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">

@@ -706,24 +706,24 @@ func TestGenOverlayResource(t *testing.T) {
 		{
 			// regular resource, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
 			ResourceName:                 "Resource",
-			ExpectedLangChooserLanguages: "",
+			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
 		},
 		{
 			// Regular overlay resource, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
 			ResourceName:                 "OverlayResource",
-			ExpectedLangChooserLanguages: "",
+			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
 		},
 		{
 			// overlay resource with a constrained list of supported languages
 			// should support only the languages specified in OverlaySupportedLanguages
 			ResourceName:                 "OverlayResourceConstrainedLanguages",
-			ExpectedLangChooserLanguages: "go,python,typescript",
+			ExpectedLangChooserLanguages: "python,go,typescript",
 		},
 		{
 			// overlay resource with a wrong language in OverlaySupportedLanguages
 			// should filter out the wrong language
 			ResourceName:                 "OverlayResourceWrongLanguage",
-			ExpectedLangChooserLanguages: "go,python,typescript",
+			ExpectedLangChooserLanguages: "python,go,typescript",
 		},
 	}
 
@@ -825,26 +825,26 @@ func TestGenOverlayFunction(t *testing.T) {
 		ExpectedLangChooserLanguages string
 	}{
 		{
-			// regular function, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
+			// regular function, should support all languages
 			FunctionName:                 "getModuleResource",
-			ExpectedLangChooserLanguages: "",
+			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
 		},
 		{
-			// Regular overlay function, should support all languages (i.e. ExpectedLangChooserLanguages should be empty)
+			// Regular overlay function, should support all languages
 			FunctionName:                 "overlayFunction",
-			ExpectedLangChooserLanguages: "",
+			ExpectedLangChooserLanguages: "csharp,go,python,typescript,yaml,java",
 		},
 		{
 			// overlay function with a constrained list of supported languages
 			// should support only the languages specified in OverlaySupportedLanguages
 			FunctionName:                 "overlayFunctionConstrainedLanguages",
-			ExpectedLangChooserLanguages: "go,python,typescript",
+			ExpectedLangChooserLanguages: "python,go,typescript",
 		},
 		{
 			// overlay function with a wrong language in OverlaySupportedLanguages
 			// should filter out the wrong language
 			FunctionName:                 "overlayFunctionWrongLanguage",
-			ExpectedLangChooserLanguages: "go,python,typescript",
+			ExpectedLangChooserLanguages: "python,go,typescript",
 		},
 	}
 
