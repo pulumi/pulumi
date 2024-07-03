@@ -1442,7 +1442,10 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.original.Delete = true
 	}
 
-	return rst, complete, err
+	if err != nil {
+		return rst, nil, err
+	}
+	return rst, complete, nil
 }
 
 func (s *ImportStep) Fail() {
