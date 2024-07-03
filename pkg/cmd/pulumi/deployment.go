@@ -189,14 +189,19 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
 	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
 	cmd.AddCommand(newDeploymentSettingsEnvCmd())
-	cmd.AddCommand(newDeploymentSettingsSetCmd())
+	cmd.AddCommand(newDeploymentSettingsConfigureCmd())
 
 	return cmd
 }
 
-func initializeDeploymentSettingsCmd(cmd *cobra.Command, stack string) (context.Context, *display.Options,
-	backend.Stack, *workspace.ProjectStackDeployment, backend.Backend, error,
-) {
+type deploymentSettingsCommandDependencies struct {
+	DisplayOptions *display.Options
+	Stack          backend.Stack
+	Deployment     *workspace.ProjectStackDeployment
+	Backend        backend.Backend
+}
+
+func initializeDeploymentSettingsCmd(cmd *cobra.Command, stack string) (*deploymentSettingsCommandDependencies, error) {
 	ctx := cmd.Context()
 	interactive := cmdutil.Interactive()
 
@@ -207,30 +212,35 @@ func initializeDeploymentSettingsCmd(cmd *cobra.Command, stack string) (context.
 
 	project, _, err := readProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return nil, nil, nil, nil, nil, err
+		return nil, err
 	}
 
 	be, err := currentBackend(ctx, project, displayOpts)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, err
 	}
 
 	if !be.SupportsDeployments() {
-		return nil, nil, nil, nil, nil, fmt.Errorf("backends of this type %q do not support deployments",
+		return nil, fmt.Errorf("backends of this type %q do not support deployments",
 			be.Name())
 	}
 
 	s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, displayOpts)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, err
 	}
 
 	sd, err := loadProjectStackDeployment(s)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, err
 	}
 
-	return ctx, &displayOpts, s, sd, be, nil
+	return &deploymentSettingsCommandDependencies{
+		DisplayOptions: &displayOpts,
+		Stack:          s,
+		Deployment:     sd,
+		Backend:        be,
+	}, nil
 }
 
 func newDeploymentSettingsInitCmd() *cobra.Command {
@@ -244,7 +254,8 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, display, s, _, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx := cmd.Context()
+			d, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
@@ -253,17 +264,17 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				DeploymentSettings: apitype.DeploymentSettings{},
 			}
 
-			err = configureGit(ctx, display, be, s, newStackDeployment, gitSSHPrivateKeyPath)
+			err = configureGit(ctx, d.DisplayOptions, d.Backend, d.Stack, newStackDeployment, gitSSHPrivateKeyPath)
 			if err != nil {
 				return err
 			}
 
-			err = configureImageRepository(ctx, display, be, s, newStackDeployment)
+			err = configureImageRepository(ctx, d.DisplayOptions, d.Backend, d.Stack, newStackDeployment)
 			if err != nil {
 				return err
 			}
 
-			err = configureAdvancedSettings(display, newStackDeployment)
+			err = configureAdvancedSettings(d.DisplayOptions, newStackDeployment)
 			if err != nil {
 				return err
 			}
@@ -278,7 +289,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 					optOidcGcp,
 				},
 				Default: optNo,
-			}, &option, surveyIcons(display.Color)); err != nil {
+			}, &option, surveyIcons(d.DisplayOptions.Color)); err != nil {
 				return errors.New("selection cancelled")
 			}
 
@@ -294,7 +305,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				return err
 			}
 
-			err = saveProjectStackDeployment(newStackDeployment, s)
+			err = saveProjectStackDeployment(newStackDeployment, d.Stack)
 			if err != nil {
 				return err
 			}
@@ -323,12 +334,13 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, _, s, _, currentBe, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx := cmd.Context()
+			d, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			ds, err := currentBe.GetStackDeploymentSettings(ctx, s)
+			ds, err := d.Backend.GetStackDeploymentSettings(ctx, d.Stack)
 			if err != nil {
 				return err
 			}
@@ -337,7 +349,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 				DeploymentSettings: *ds,
 			}
 
-			err = saveProjectStackDeployment(newStackDeployment, s)
+			err = saveProjectStackDeployment(newStackDeployment, d.Stack)
 			if err != nil {
 				return err
 			}
@@ -367,18 +379,19 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, displayOpts, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx := cmd.Context()
+			d, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			if sd == nil {
+			if d.Deployment == nil {
 				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
 			if !yes {
 				confirm, err := askForConfirmation("This action will override the stack's deployment settings, "+
-					"do you want to continue?", displayOpts.Color, false)
+					"do you want to continue?", d.DisplayOptions.Color, false)
 				if err != nil {
 					return err
 				}
@@ -387,7 +400,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 				}
 			}
 
-			err = be.UpdateStackDeploymentSettings(ctx, s, sd.DeploymentSettings)
+			err = d.Backend.UpdateStackDeploymentSettings(ctx, d.Stack, d.Deployment.DeploymentSettings)
 			if err != nil {
 				return err
 			}
@@ -421,14 +434,15 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, displayOpts, s, _, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx := cmd.Context()
+			d, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
 			if !yes {
 				confirm, err := askForConfirmation("This action will clear the stack's deployment settings, "+
-					"do you want to continue?", displayOpts.Color, false)
+					"do you want to continue?", d.DisplayOptions.Color, false)
 				if err != nil {
 					return err
 				}
@@ -437,7 +451,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 				}
 			}
 
-			err = be.DestroyStackDeploymentSettings(ctx, s)
+			err = d.Backend.DestroyStackDeploymentSettings(ctx, d.Stack)
 			if err != nil {
 				return err
 			}
@@ -459,7 +473,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	return cmd
 }
 
-func newDeploymentSettingsSetCmd() *cobra.Command {
+func newDeploymentSettingsConfigureCmd() *cobra.Command {
 	var stack string
 	var gitSSHPrivateKeyPath string
 
@@ -469,12 +483,13 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, displayOpts, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx := cmd.Context()
+			d, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			if sd == nil {
+			if d.Deployment == nil {
 				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
@@ -489,29 +504,31 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 					optOidcAzure,
 					optOidcGcp,
 				},
-			}, &option, surveyIcons(displayOpts.Color)); err != nil {
+			}, &option, surveyIcons(d.DisplayOptions.Color)); err != nil {
 				return errors.New("selection cancelled")
 			}
 
 			switch option {
 			case optGit:
-				err = configureGit(ctx, displayOpts, be, s, sd, gitSSHPrivateKeyPath)
+				err = configureGit(ctx, d.DisplayOptions, d.Backend, d.Stack, d.Deployment, gitSSHPrivateKeyPath)
 			case optExecutorImage:
-				err = configureImageRepository(ctx, displayOpts, be, s, sd)
+				err = configureImageRepository(ctx, d.DisplayOptions, d.Backend, d.Stack, d.Deployment)
 			case optAdvancedSettings:
-				err = configureAdvancedSettings(displayOpts, sd)
+				err = configureAdvancedSettings(d.DisplayOptions, d.Deployment)
 			case optOidcAws:
-				err = configureOidcAws(sd)
+				err = configureOidcAws(d.Deployment)
 			case optOidcAzure:
-				err = configureOidcAzure(sd)
+				err = configureOidcAzure(d.Deployment)
 			case optOidcGcp:
-				err = configureOidcGCP(sd)
+				err = configureOidcGCP(d.Deployment)
+			default:
+				return nil
 			}
 			if err != nil {
 				return err
 			}
 
-			err = saveProjectStackDeployment(sd, s)
+			err = saveProjectStackDeployment(d.Deployment, d.Stack)
 			if err != nil {
 				return err
 			}
@@ -545,12 +562,13 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Short: "Update stack's deployment settings secrets",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx, _, s, sd, be, err := initializeDeploymentSettingsCmd(cmd, stack)
+			ctx := cmd.Context()
+			d, err := initializeDeploymentSettingsCmd(cmd, stack)
 			if err != nil {
 				return err
 			}
 
-			if sd == nil {
+			if d.Deployment == nil {
 				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
@@ -570,20 +588,20 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 				value = args[1]
 			}
 
-			if sd.DeploymentSettings.Operation == nil {
-				sd.DeploymentSettings.Operation = &apitype.OperationContext{}
+			if d.Deployment.DeploymentSettings.Operation == nil {
+				d.Deployment.DeploymentSettings.Operation = &apitype.OperationContext{}
 			}
 
-			if sd.DeploymentSettings.Operation.EnvironmentVariables == nil {
-				sd.DeploymentSettings.Operation.EnvironmentVariables = make(map[string]apitype.SecretValue)
+			if d.Deployment.DeploymentSettings.Operation.EnvironmentVariables == nil {
+				d.Deployment.DeploymentSettings.Operation.EnvironmentVariables = make(map[string]apitype.SecretValue)
 			}
 
 			if remove {
-				delete(sd.DeploymentSettings.Operation.EnvironmentVariables, key)
+				delete(d.Deployment.DeploymentSettings.Operation.EnvironmentVariables, key)
 			} else {
 				var secretValue *apitype.SecretValue
 				if secret {
-					secretValue, err = be.EncryptStackDeploymentSettingsSecret(ctx, s, value)
+					secretValue, err = d.Backend.EncryptStackDeploymentSettingsSecret(ctx, d.Stack, value)
 					if err != nil {
 						return err
 					}
@@ -594,10 +612,10 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 					}
 				}
 
-				sd.DeploymentSettings.Operation.EnvironmentVariables[key] = *secretValue
+				d.Deployment.DeploymentSettings.Operation.EnvironmentVariables[key] = *secretValue
 			}
 
-			err = saveProjectStackDeployment(sd, s)
+			err = saveProjectStackDeployment(d.Deployment, d.Stack)
 			if err != nil {
 				return err
 			}
