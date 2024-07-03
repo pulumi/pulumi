@@ -111,6 +111,10 @@ jobs:
           uses: jaxxstorm/action-install-gh-release@v1.11.0
           with:
             repo: gotesttools/gotestfmt
+        - name: Install pulumictl
+          uses: jaxxstorm/action-install-gh-release@v1.10.0
+          with:
+            repo: pulumi/pulumictl
         - name: Check out source code
           uses: actions/checkout@v4
           with:
