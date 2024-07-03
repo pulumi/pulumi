@@ -702,7 +702,7 @@ Indicates that the implementation of the resource should not be generated from t
 #### `overlaySupportedLanguages`
 
 Indicates what languages the overlay supports. This only has an effect if the Resource is an Overlay (IsOverlay == true).
-Supported values are "typescript", "python", "go", "csharp", "java", "yaml".
+Supported values are "nodejs", "python", "go", "csharp", "java", "yaml".
 
 `array`
 
