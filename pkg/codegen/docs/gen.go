@@ -493,7 +493,7 @@ func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupporte
 	}
 	var supportedLanguages []string
 	allLanguages := codegen.NewStringSet(dctx.supportedLanguages...)
-	// Ensure that the overlay supported languages are a subset of the supported snippet languages.
+	// Ensure that the overlay languages are a subset of the supported languages.
 	for _, lang := range overlaySupportedLanguages {
 		if allLanguages.Has(lang) {
 			supportedLanguages = append(supportedLanguages, lang)
