@@ -210,20 +210,18 @@ type defaultHTTPClient struct {
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
-	if policy.shouldRetry(req) {
-		// Wait 1s before retrying on failure. Then increase by 2x until the
-		// maximum delay is reached. Stop after maxRetryCount requests have
-		// been made.
-		opts := httputil.RetryOpts{
-			Delay:    durationPtr(time.Second),
-			Backoff:  float64Ptr(2.0),
-			MaxDelay: durationPtr(30 * time.Second),
+	// Wait 1s before retrying on failure. Then increase by 2x until the
+	// maximum delay is reached. Stop after maxRetryCount requests have
+	// been made.
+	opts := httputil.RetryOpts{
+		Delay:    durationPtr(time.Second),
+		Backoff:  float64Ptr(2.0),
+		MaxDelay: durationPtr(30 * time.Second),
 
-			MaxRetryCount: intPtr(4),
-		}
-		return httputil.DoWithRetryOpts(req, c.client, opts)
+		MaxRetryCount:         intPtr(4),
+		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
-	return c.client.Do(req)
+	return httputil.DoWithRetryOpts(req, c.client, opts)
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
