@@ -260,13 +260,13 @@ var kubernetesConfigGroupResource = new Kubernetes.Yaml.ConfigGroup("kubernetesC
 
 ```go
 example, err := yaml.NewConfigGroup(ctx, "kubernetesConfigGroupResource", &yaml.ConfigGroupArgs{
-Files: pulumi.Any("string"),
-Objs: nil,
-ResourcePrefix: pulumi.String("string"),
-Transformations: pulumi.Array{
-pulumi.Any("any"),
-},
-Yaml: pulumi.Any("string"),
+	Files:          pulumi.Any("string"),
+	Objs:           nil,
+	ResourcePrefix: pulumi.String("string"),
+	Transformations: pulumi.Array{
+		pulumi.Any("any"),
+	},
+	Yaml: pulumi.Any("string"),
 })
 ```
 
