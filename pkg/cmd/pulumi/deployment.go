@@ -35,6 +35,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	opt_yes                           = "Yes"
+	opt_no                            = "No"
+	opt_oidc_aws                      = "Enable AWS integration"
+	opt_oidc_azure                    = "Enable Azure integration"
+	opt_oidc_gcp                      = "Enable Google Cloud integration"
+	opt_git                           = "Git"
+	opt_executor_image                = "Executor image"
+	opt_advanced_settings             = "Advanced settings"
+	opt_preview_pr                    = "Run previews for pull requests"
+	opt_update_pushes                 = "Run updates for pushed commits"
+	opt_pr_template                   = "Use this stack as a template for pull request stacks"
+	opt_user_pass                     = "Username/Password"
+	opt_ssh                           = "SSH key"
+	opt_skip_deps_install             = "Skip automatic dependency installation step"
+	opt_skip_intermediate_deployments = "Skip intermediate deployments"
+)
+
 var stackDeploymentConfigFile string
 
 func loadProjectStackDeployment(stack backend.Stack) (*workspace.ProjectStackDeployment, error) {
@@ -254,25 +272,24 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			if err := survey.AskOne(&survey.Select{
 				Message: "Do you want to configure an OpenID Connect integration?",
 				Options: []string{
-					"No",
-					"Enable AWS integration",
-					"Enable Azure integration",
-					"Enable Google Cloud integration",
+					opt_no,
+					opt_oidc_aws,
+					opt_oidc_azure,
+					opt_oidc_gcp,
 				},
-				Default: "No",
+				Default: opt_no,
 			}, &option, surveyIcons(display.Color)); err != nil {
 				return errors.New("selection cancelled")
 			}
 
 			switch option {
-			case "Enable AWS integration":
+			case opt_oidc_aws:
 				err = configureOidcAws(newStackDeployment)
-			case "Enable Azure integration":
+			case opt_oidc_azure:
 				err = configureOidcAzure(newStackDeployment)
-			case "Enable Google Cloud integration":
+			case opt_oidc_gcp:
 				err = configureOidcGCP(newStackDeployment)
 			}
-
 			if err != nil {
 				return err
 			}
@@ -465,32 +482,31 @@ func newDeploymentSettingsSetCmd() *cobra.Command {
 			if err := survey.AskOne(&survey.Select{
 				Message: "Configure:",
 				Options: []string{
-					"Git",
-					"Executor image",
-					"Advanced settings",
-					"AWS OpenID Connect integration",
-					"Azure OpenID Connect integration",
-					"GCP OpenID Connect integration",
+					opt_git,
+					opt_executor_image,
+					opt_advanced_settings,
+					opt_oidc_aws,
+					opt_oidc_azure,
+					opt_oidc_gcp,
 				},
 			}, &option, surveyIcons(displayOpts.Color)); err != nil {
 				return errors.New("selection cancelled")
 			}
 
 			switch option {
-			case "Git":
+			case opt_git:
 				err = configureGit(ctx, displayOpts, be, s, sd, gitSSHPrivateKeyPath)
-			case "Executor image":
+			case opt_executor_image:
 				err = configureImageRepository(ctx, displayOpts, be, s, sd)
-			case "Advanced settings":
+			case opt_advanced_settings:
 				err = configureAdvancedSettings(displayOpts, sd)
-			case "AWS OpenID Connect integration":
+			case opt_oidc_aws:
 				err = configureOidcAws(sd)
-			case "Azure OpenID Connect integration":
+			case opt_oidc_azure:
 				err = configureOidcAzure(sd)
-			case "GCP OpenID Connect integration":
+			case opt_oidc_gcp:
 				err = configureOidcGCP(sd)
 			}
-
 			if err != nil {
 				return err
 			}
@@ -594,11 +610,11 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&secret, "secret", false,
-		"Key to update")
+		"whether the value should be treated as a secret and be encrypted")
 
 	cmd.PersistentFlags().BoolVar(
 		&remove, "remove", false,
-		"Key to update")
+		"whether the key should be removed")
 
 	cmd.MarkFlagsMutuallyExclusive("secret", "remove")
 
@@ -709,25 +725,25 @@ func configureGitHubRepo(displayOpts *display.Options,
 
 	var options []string
 	if err := survey.AskOne(&survey.MultiSelect{
-		Message: "What kind of authentication it should use?",
+		Message: "What kind of authentication should it use?",
 		Options: []string{
-			"Run previews for pull requests",
-			"Run updates for pushed commits",
-			"Use this stack as a template for pull request stacks",
+			opt_preview_pr,
+			opt_update_pushes,
+			opt_pr_template,
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
 		return errors.New("selection cancelled")
 	}
 
-	if slices.Contains(options, "Run previews for pull requests") {
+	if slices.Contains(options, opt_preview_pr) {
 		sd.DeploymentSettings.GitHub.PreviewPullRequests = true
 	}
 
-	if slices.Contains(options, "Run updates for pushed commits") {
+	if slices.Contains(options, opt_update_pushes) {
 		sd.DeploymentSettings.GitHub.DeployCommits = true
 	}
 
-	if slices.Contains(options, "Use this stack as a template for pull request stacks") {
+	if slices.Contains(options, opt_pr_template) {
 		sd.DeploymentSettings.GitHub.PullRequestTemplate = true
 	}
 
@@ -742,18 +758,18 @@ func configureBareGitRepo(ctx context.Context, displayOpts *display.Options,
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message: "What kind of authentication it should use?",
+		Message: "What kind of authentication should it use?",
 		Options: []string{
-			"Username/Password",
-			"SSH key",
+			opt_user_pass,
+			opt_ssh,
 		},
 	}, &option, surveyIcons(displayOpts.Color)); err != nil {
 		return errors.New("selection cancelled")
 	}
 	switch option {
-	case "Username/Password":
+	case opt_user_pass:
 		return configureGitPassword(ctx, be, s, sd)
-	case "SSH key":
+	case opt_ssh:
 		return configureGitSSH(ctx, be, s, sd, gitSSHPrivateKeyPath)
 	}
 
@@ -940,6 +956,7 @@ func configureOidcGCP(sd *workspace.ProjectStackDeployment) error {
 	if err != nil {
 		return err
 	}
+
 	if projectID == "" {
 		return errors.New("Project id is required")
 	}
@@ -1058,8 +1075,8 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 	if err := survey.AskOne(&survey.MultiSelect{
 		Message: "Advanced settings",
 		Options: []string{
-			"Skip automatic dependency installation step",
-			"Skip intermediate deployments",
+			opt_skip_deps_install,
+			opt_skip_intermediate_deployments,
 		},
 	}, &options, surveyIcons(displayOpts.Color)); err != nil {
 		return errors.New("selection cancelled")
@@ -1073,11 +1090,11 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 		sd.DeploymentSettings.Operation.Options = &apitype.OperationContextOptions{}
 	}
 
-	if slices.Contains(options, "Skip automatic dependency installation step") {
+	if slices.Contains(options, opt_skip_deps_install) {
 		sd.DeploymentSettings.Operation.Options.SkipInstallDependencies = true
 	}
 
-	if slices.Contains(options, "Skip intermediate deployments") {
+	if slices.Contains(options, opt_skip_intermediate_deployments) {
 		sd.DeploymentSettings.Operation.Options.SkipIntermediateDeployments = true
 	}
 
@@ -1085,19 +1102,16 @@ func configureAdvancedSettings(displayOpts *display.Options, sd *workspace.Proje
 }
 
 func askForConfirmation(prompt string, color colors.Colorization) (bool, error) {
-	yes := "yes"
-	no := "no"
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message: prompt,
-		Options: []string{yes, no},
-		Default: no,
+		Options: []string{opt_yes, opt_no},
+		Default: opt_no,
 	}, &option, surveyIcons(color)); err != nil {
 		return false, errors.New("selection cancelled")
 	}
 
-	return option == yes, nil
+	return option == opt_yes, nil
 }
 
 func configureImageRepository(ctx context.Context, displayOpts *display.Options,
@@ -1136,10 +1150,10 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	} else {
 		imageReference, err = cmdutil.ReadConsole("Enter the image reference")
 	}
-
 	if err != nil {
 		return err
 	}
+
 	if imageReference == "" {
 		return errors.New("Invalid empty image reference")
 	}
@@ -1150,7 +1164,6 @@ func configureImageRepository(ctx context.Context, displayOpts *display.Options,
 	} else {
 		username, err = cmdutil.ReadConsole("(Optional) Enter the image repository username")
 	}
-
 	if err != nil {
 		return err
 	}
