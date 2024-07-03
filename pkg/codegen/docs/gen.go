@@ -507,16 +507,17 @@ func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupporte
 // If the type is not an overlay or if there are no overlay supported languages, all languages are supported.
 // The returned string contains the supported languages joined by commas.
 func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
-	var supportedLanguages []string
-	for _, lang := range dctx.getSupportedLanguages(isOverlay, overlaySupportedLanguages) {
+	supportedLanguages := dctx.getSupportedLanguages(isOverlay, overlaySupportedLanguages)
+	supportedSnippetLanguages := make([]string, 0, len(supportedLanguages))
+	for _, lang := range supportedLanguages {
 		// Snippet languages expect "typescript" instead of "nodejs".
 		if lang == "nodejs" {
 			lang = "typescript"
 		}
-		supportedLanguages = append(supportedLanguages, lang)
+		supportedSnippetLanguages = append(supportedSnippetLanguages, lang)
 	}
 
-	return strings.Join(supportedLanguages, ",")
+	return strings.Join(supportedSnippetLanguages, ",")
 }
 
 func resourceName(r *schema.Resource) string {
