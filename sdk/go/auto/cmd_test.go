@@ -151,7 +151,7 @@ func TestNoGlobalPulumi(t *testing.T) {
 func TestFixupPath(t *testing.T) {
 	t.Parallel()
 
-	env := fixupPath([]string{"FOO=bar"}, "/pulumi-root/bin")
+	env := fixupPath([]string{"FOO=bar", "V=1"}, "/pulumi-root/bin")
 
 	require.Contains(t, env, "PATH=/pulumi-root/bin")
 }
