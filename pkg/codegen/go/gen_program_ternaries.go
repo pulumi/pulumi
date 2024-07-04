@@ -60,7 +60,7 @@ func (g *generator) rewriteTernaries(
 	spiller *tempSpiller,
 ) (model.Expression, []*ternaryTemp, hcl.Diagnostics) {
 	spiller.temps = nil
-	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
+	x, diags := model.VisitExpression(x, nil, spiller.spillExpression)
 
 	return x, spiller.temps, diags
 }
