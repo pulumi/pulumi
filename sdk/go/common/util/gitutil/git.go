@@ -862,6 +862,8 @@ func (a *detectGitAccessorsImpl) Stat(name string) (detectGitFileInfo, error) {
 	return os.Stat(name)
 }
 
+var ErrNoGitRepo = errors.New("Git repo not detected")
+
 // As go-git do not support an analogous to `git rev-parse --show-toplevel`,
 // I am bringing this from a suggestion in an open issue tracking the requirement
 // https://github.com/go-git/go-git/issues/74#issuecomment-647779420
@@ -880,7 +882,7 @@ func detectGitRootDirectory(path string, accessors detectGitAccessors) (string, 
 		fi, err := accessors.Stat(filepath.Join(path, ".git"))
 		if err == nil {
 			if !fi.IsDir() {
-				return "", errors.New(".git exist but is not a directory")
+				return "", fmt.Errorf("%w: .git exist but is not a directory", ErrNoGitRepo)
 			}
 			return path, nil
 		}
@@ -900,7 +902,7 @@ func detectGitRootDirectory(path string, accessors detectGitAccessors) (string, 
 
 		var parent string
 		if parent = filepath.Dir(path); parent == path {
-			return "", errors.New(".git not found")
+			return "", fmt.Errorf("%w: .git not found", ErrNoGitRepo)
 		}
 
 		path = parent
