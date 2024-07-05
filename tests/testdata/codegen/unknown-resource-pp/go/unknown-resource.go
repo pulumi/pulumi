@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-unknown/sdk/v1/go/unknown"
-	"github.com/pulumi/pulumi-unknown/sdk/v1/go/unknown/eks"
+	"github.com/pulumi/pulumi-unknown/sdk/go/unknown"
+	"github.com/pulumi/pulumi-unknown/sdk/go/unknown/eks"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -12,7 +12,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		main, err := index.NewMain(ctx, "main", &index.MainArgs{
+		main, err := unknown.NewMain(ctx, "main", &unknown.MainArgs{
 			First: "hello",
 			Second: map[string]interface{}{
 				"foo": "bar",

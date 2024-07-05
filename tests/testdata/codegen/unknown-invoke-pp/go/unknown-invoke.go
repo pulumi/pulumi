@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-unknown/sdk/v1/go/unknown"
-	"github.com/pulumi/pulumi-unknown/sdk/v1/go/unknown/eks"
+	"github.com/pulumi/pulumi-unknown/sdk/go/unknown"
+	"github.com/pulumi/pulumi-unknown/sdk/go/unknown/eks"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
