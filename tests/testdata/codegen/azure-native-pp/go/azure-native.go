@@ -27,30 +27,30 @@ func main() {
 		_, err = cdn.NewEndpoint(ctx, "endpoint", &cdn.EndpointArgs{
 			Origins: cdn.DeepCreatedOriginArray{},
 			DeliveryPolicy: &cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs{
-				Rules: []cdn.DeliveryRuleArgs{
-					{
+				Rules: cdn.DeliveryRuleArray{
+					&cdn.DeliveryRuleArgs{
 						Actions: pulumi.Array{
-							{
+							cdn.DeliveryRuleCacheExpirationAction{
 								Name: "CacheExpiration",
-								Parameters: {
+								Parameters: cdn.CacheExpirationActionParameters{
 									CacheBehavior: cdn.CacheBehaviorOverride,
 									CacheDuration: "10:10:09",
 									CacheType:     cdn.CacheTypeAll,
 									OdataType:     "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
 								},
 							},
-							{
+							cdn.DeliveryRuleResponseHeaderAction{
 								Name: "ModifyResponseHeader",
-								Parameters: {
+								Parameters: cdn.HeaderActionParameters{
 									HeaderAction: cdn.HeaderActionOverwrite,
 									HeaderName:   "Access-Control-Allow-Origin",
 									OdataType:    "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
 									Value:        "*",
 								},
 							},
-							{
+							cdn.DeliveryRuleRequestHeaderAction{
 								Name: "ModifyRequestHeader",
-								Parameters: {
+								Parameters: cdn.HeaderActionParameters{
 									HeaderAction: cdn.HeaderActionOverwrite,
 									HeaderName:   "Accept-Encoding",
 									OdataType:    "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
@@ -59,9 +59,9 @@ func main() {
 							},
 						},
 						Conditions: pulumi.Array{
-							{
+							cdn.DeliveryRuleRemoteAddressCondition{
 								Name: "RemoteAddress",
-								Parameters: {
+								Parameters: cdn.RemoteAddressMatchConditionParameters{
 									MatchValues: []string{
 										"192.168.1.0/24",
 										"10.0.0.0/24",

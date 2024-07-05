@@ -322,70 +322,70 @@ var configMapListResource = new Kubernetes.Core.V1.ConfigMapList("configMapListR
 
 ```go
 example, err := corev1.NewConfigMapList(ctx, "configMapListResource", &corev1.ConfigMapListArgs{
-Items: corev1.ConfigMapTypeArray{
-interface{}{
-ApiVersion: pulumi.String("v1"),
-BinaryData: pulumi.StringMap{
-"string": pulumi.String("string"),
-},
-Data: pulumi.StringMap{
-"string": pulumi.String("string"),
-},
-Immutable: pulumi.Bool(false),
-Kind: pulumi.String("ConfigMap"),
-Metadata: &metav1.ObjectMetaArgs{
-Annotations: pulumi.StringMap{
-"string": pulumi.String("string"),
-},
-ClusterName: pulumi.String("string"),
-CreationTimestamp: pulumi.String("string"),
-DeletionGracePeriodSeconds: pulumi.Int(0),
-DeletionTimestamp: pulumi.String("string"),
-Finalizers: pulumi.StringArray{
-pulumi.String("string"),
-},
-GenerateName: pulumi.String("string"),
-Generation: pulumi.Int(0),
-Labels: pulumi.StringMap{
-"string": pulumi.String("string"),
-},
-ManagedFields: metav1.ManagedFieldsEntryArray{
-&metav1.ManagedFieldsEntryArgs{
-ApiVersion: pulumi.String("string"),
-FieldsType: pulumi.String("string"),
-FieldsV1: pulumi.Any("{}"),
-Manager: pulumi.String("string"),
-Operation: pulumi.String("string"),
-Subresource: pulumi.String("string"),
-Time: pulumi.String("string"),
-},
-},
-Name: pulumi.String("string"),
-Namespace: pulumi.String("string"),
-OwnerReferences: metav1.OwnerReferenceArray{
-&metav1.OwnerReferenceArgs{
-ApiVersion: pulumi.String("string"),
-Kind: pulumi.String("string"),
-Name: pulumi.String("string"),
-Uid: pulumi.String("string"),
-BlockOwnerDeletion: pulumi.Bool(false),
-Controller: pulumi.Bool(false),
-},
-},
-ResourceVersion: pulumi.String("string"),
-SelfLink: pulumi.String("string"),
-Uid: pulumi.String("string"),
-},
-},
-},
-ApiVersion: pulumi.String("string"),
-Kind: pulumi.String("string"),
-Metadata: &metav1.ListMetaArgs{
-Continue: pulumi.String("string"),
-RemainingItemCount: pulumi.Int(0),
-ResourceVersion: pulumi.String("string"),
-SelfLink: pulumi.String("string"),
-},
+	Items: corev1.ConfigMapTypeArray{
+		&corev1.ConfigMapTypeArgs{
+			ApiVersion: pulumi.String("v1"),
+			BinaryData: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			Data: pulumi.StringMap{
+				"string": pulumi.String("string"),
+			},
+			Immutable: pulumi.Bool(false),
+			Kind:      pulumi.String("ConfigMap"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Annotations: pulumi.StringMap{
+					"string": pulumi.String("string"),
+				},
+				ClusterName:                pulumi.String("string"),
+				CreationTimestamp:          pulumi.String("string"),
+				DeletionGracePeriodSeconds: pulumi.Int(0),
+				DeletionTimestamp:          pulumi.String("string"),
+				Finalizers: pulumi.StringArray{
+					pulumi.String("string"),
+				},
+				GenerateName: pulumi.String("string"),
+				Generation:   pulumi.Int(0),
+				Labels: pulumi.StringMap{
+					"string": pulumi.String("string"),
+				},
+				ManagedFields: metav1.ManagedFieldsEntryArray{
+					&metav1.ManagedFieldsEntryArgs{
+						ApiVersion:  pulumi.String("string"),
+						FieldsType:  pulumi.String("string"),
+						FieldsV1:    pulumi.Any("{}"),
+						Manager:     pulumi.String("string"),
+						Operation:   pulumi.String("string"),
+						Subresource: pulumi.String("string"),
+						Time:        pulumi.String("string"),
+					},
+				},
+				Name:      pulumi.String("string"),
+				Namespace: pulumi.String("string"),
+				OwnerReferences: metav1.OwnerReferenceArray{
+					&metav1.OwnerReferenceArgs{
+						ApiVersion:         pulumi.String("string"),
+						Kind:               pulumi.String("string"),
+						Name:               pulumi.String("string"),
+						Uid:                pulumi.String("string"),
+						BlockOwnerDeletion: pulumi.Bool(false),
+						Controller:         pulumi.Bool(false),
+					},
+				},
+				ResourceVersion: pulumi.String("string"),
+				SelfLink:        pulumi.String("string"),
+				Uid:             pulumi.String("string"),
+			},
+		},
+	},
+	ApiVersion: pulumi.String("string"),
+	Kind:       pulumi.String("string"),
+	Metadata: &metav1.ListMetaArgs{
+		Continue:           pulumi.String("string"),
+		RemainingItemCount: pulumi.Int(0),
+		ResourceVersion:    pulumi.String("string"),
+		SelfLink:           pulumi.String("string"),
+	},
 })
 ```
 

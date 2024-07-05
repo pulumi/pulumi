@@ -255,13 +255,13 @@ var releaseResource = new Kubernetes.Helm.V3.Release("releaseResource", new()
 
 ```go
 example, err := helmv3.NewRelease(ctx, "releaseResource", &helmv3.ReleaseArgs{
-Chart: pulumi.String("string"),
-ValueYamlFiles: pulumi.AssetOrArchiveArray{
-pulumi.NewStringAsset("content"),
-},
-Values: pulumi.Map{
-"string": pulumi.Any("any"),
-},
+	Chart: pulumi.String("string"),
+	ValueYamlFiles: pulumi.AssetOrArchiveArray{
+		pulumi.NewStringAsset("content"),
+	},
+	Values: pulumi.Map{
+		"string": pulumi.Any("any"),
+	},
 })
 ```
 

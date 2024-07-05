@@ -251,10 +251,10 @@ var configGroupResource = new Kubernetes.Yaml.V2.ConfigGroup("configGroupResourc
 
 ```go
 example, err := yamlv2.NewConfigGroup(ctx, "configGroupResource", &yamlv2.ConfigGroupArgs{
-Files: pulumi.Any("string"),
-Objs: nil,
-ResourcePrefix: pulumi.String("string"),
-Yaml: pulumi.Any("string"),
+	Files:          pulumi.Any("string"),
+	Objs:           nil,
+	ResourcePrefix: pulumi.String("string"),
+	Yaml:           pulumi.Any("string"),
 })
 ```
 
