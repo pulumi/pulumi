@@ -461,11 +461,19 @@ func runNew(ctx context.Context, args newArgs) error {
 		return nil
 	}
 
-	d, err := initializeDeploymentSettings(ctx, "", args.yes)
-	if err != nil {
-		return err
+	// If it is an interactive session, we will attemp to initialize deployment settings
+	// even if it is not supported by the backend to generate awareness. If it is not
+	// interactive, we will only run it if --yes was set and the backend supports deployments
+	// to assure the operation wont fail.
+	if args.interactive || (!args.interactive && args.yes && b.SupportsDeployments()) {
+		d, err := initializeDeploymentSettings(ctx, "", args.yes)
+		if err != nil {
+			return err
+		}
+		return initStackDeploymentCmd(d, "")
 	}
-	return initStackDeploymentCmd(d, "")
+
+	return nil
 }
 
 // sanitizeTemplate strips sensitive data such as credentials and query strings from a template URL.
