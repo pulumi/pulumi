@@ -1146,6 +1146,15 @@ func missingNonInteractiveArg(args ...string) error {
 	}
 }
 
+func promptUserSkippable(yes bool, msg string, options []string, defaultOption string,
+	colorization colors.Colorization,
+) string {
+	if yes {
+		return defaultOption
+	}
+	return promptUser(msg, options, defaultOption, colorization)
+}
+
 func promptUser(msg string, options []string, defaultOption string, colorization colors.Colorization) string {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
 	surveycore.DisableColor = true
@@ -1161,6 +1170,34 @@ func promptUser(msg string, options []string, defaultOption string, colorization
 		Default: defaultOption,
 	}, &response, surveyIcons); err != nil {
 		return ""
+	}
+	return response
+}
+
+func promptUserMultiSkippable(yes bool, msg string, options []string, defaultOptions []string,
+	colorization colors.Colorization,
+) []string {
+	if yes {
+		return defaultOptions
+	}
+	return promptUserMulti(msg, options, defaultOptions, colorization)
+}
+
+func promptUserMulti(msg string, options []string, defaultOptions []string, colorization colors.Colorization) []string {
+	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
+	surveycore.DisableColor = true
+	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question = survey.Icon{}
+		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+	})
+
+	var response []string
+	if err := survey.AskOne(&survey.MultiSelect{
+		Message: prompt,
+		Options: options,
+		Default: defaultOptions,
+	}, &response, surveyIcons); err != nil {
+		return []string{}
 	}
 	return response
 }
