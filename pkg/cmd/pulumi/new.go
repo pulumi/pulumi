@@ -454,18 +454,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		fmt.Println(template.Quickstart)
 	}
 
-	configureDeployments := askForConfirmation("Do you want to set up deployments for this stack?",
-		opts.Color, true, args.yes)
-
-	if !configureDeployments {
-		return nil
-	}
-
-	d, err := initializeDeploymentSettings(ctx, "", args.yes)
-	if err != nil {
-		return err
-	}
-	return initStackDeploymentCmd(d, "")
+	return nil
 }
 
 // sanitizeTemplate strips sensitive data such as credentials and query strings from a template URL.
