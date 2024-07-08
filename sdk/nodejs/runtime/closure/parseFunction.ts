@@ -543,6 +543,8 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
             case ts.SyntaxKind.CatchClause:
                 return visitCatchClause(<typescript.CatchClause>node);
             case ts.SyntaxKind.MethodDeclaration:
+            case ts.SyntaxKind.GetAccessor:
+            case ts.SyntaxKind.SetAccessor:
                 return visitMethodDeclaration(<typescript.MethodDeclaration>node);
             case ts.SyntaxKind.MetaProperty:
                 // don't walk down an es6 metaproperty (i.e. "new.target").  It doesn't
