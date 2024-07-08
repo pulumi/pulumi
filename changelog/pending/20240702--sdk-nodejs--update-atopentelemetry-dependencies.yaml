@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Bump `@opentelemetry` packages in the NodeJS SDK
