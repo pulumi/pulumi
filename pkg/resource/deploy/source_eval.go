@@ -842,6 +842,11 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 ) (*pulumirpc.RegisterPackageResponse, error) {
 	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v)", req)
 
+	name := tokens.Package(req.Name)
+	if name == "" {
+		return nil, errors.New("package name is empty")
+	}
+
 	// First parse the request into a ProviderRequest
 	var version *semver.Version
 	if req.Version != "" {
@@ -853,25 +858,30 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	}
 	// Parse the parameterization
 	var parameterization *providers.ProviderParameter
-	if req.Parameter != nil {
-		var version *semver.Version
-		if req.Parameter.Version != "" {
-			v, err := semver.Parse(req.Parameter.Version)
+	if req.Parameterization != nil {
+		var parameterizationVersion *semver.Version
+		if req.Parameterization.Version != "" {
+			v, err := semver.Parse(req.Parameterization.Version)
 			if err != nil {
-				return nil, fmt.Errorf("parse parameter version %s: %w", req.Parameter.Version, err)
+				return nil, fmt.Errorf("parse parameter version %s: %w", req.Parameterization.Version, err)
 			}
-			version = &v
+			parameterizationVersion = &v
 		}
 
+		// RegisterPackageRequest keeps all the plugin information in the root fields "name", "version" etc, while the
+		// information about the parameterized package is in the "parameterization" field. Internally in the engine, and
+		// for resource state we need to flip that around a bit.
 		parameterization = providers.NewProviderParameter(
-			tokens.Package(req.Parameter.Name),
+			name,
 			version,
-			req.Parameter.Value.AsInterface(),
+			req.Parameterization.Value.AsInterface(),
 		)
+		version = parameterizationVersion
+		name = tokens.Package(req.Parameterization.Name)
 	}
 
 	pi := providers.NewProviderRequest(
-		version, tokens.Package(req.Name), req.PluginDownloadUrl, req.PluginChecksums,
+		version, name, req.DownloadUrl, req.Checksums,
 		parameterization)
 
 	rm.packageRefLock.Lock()

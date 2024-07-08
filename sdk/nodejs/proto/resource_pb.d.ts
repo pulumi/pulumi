@@ -720,16 +720,16 @@ export class RegisterPackageRequest extends jspb.Message {
     setName(value: string): RegisterPackageRequest;
     getVersion(): string;
     setVersion(value: string): RegisterPackageRequest;
-    getPluginDownloadUrl(): string;
-    setPluginDownloadUrl(value: string): RegisterPackageRequest;
+    getDownloadUrl(): string;
+    setDownloadUrl(value: string): RegisterPackageRequest;
 
-    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
-    clearPluginChecksumsMap(): void;
+    getChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearChecksumsMap(): void;
 
-    hasParameter(): boolean;
-    clearParameter(): void;
-    getParameter(): PackageParameter | undefined;
-    setParameter(value?: PackageParameter): RegisterPackageRequest;
+    hasParameterization(): boolean;
+    clearParameterization(): void;
+    getParameterization(): Parameterization | undefined;
+    setParameterization(value?: Parameterization): RegisterPackageRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterPackageRequest.AsObject;
@@ -745,10 +745,10 @@ export namespace RegisterPackageRequest {
     export type AsObject = {
         name: string,
         version: string,
-        pluginDownloadUrl: string,
+        downloadUrl: string,
 
-        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
-        parameter?: PackageParameter.AsObject,
+        checksumsMap: Array<[string, Uint8Array | string]>,
+        parameterization?: Parameterization.AsObject,
     }
 }
 
@@ -772,28 +772,28 @@ export namespace RegisterPackageResponse {
     }
 }
 
-export class PackageParameter extends jspb.Message { 
+export class Parameterization extends jspb.Message { 
     getName(): string;
-    setName(value: string): PackageParameter;
+    setName(value: string): Parameterization;
     getVersion(): string;
-    setVersion(value: string): PackageParameter;
+    setVersion(value: string): Parameterization;
 
     hasValue(): boolean;
     clearValue(): void;
     getValue(): google_protobuf_struct_pb.Value | undefined;
-    setValue(value?: google_protobuf_struct_pb.Value): PackageParameter;
+    setValue(value?: google_protobuf_struct_pb.Value): Parameterization;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PackageParameter.AsObject;
-    static toObject(includeInstance: boolean, msg: PackageParameter): PackageParameter.AsObject;
+    toObject(includeInstance?: boolean): Parameterization.AsObject;
+    static toObject(includeInstance: boolean, msg: Parameterization): Parameterization.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PackageParameter, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PackageParameter;
-    static deserializeBinaryFromReader(message: PackageParameter, reader: jspb.BinaryReader): PackageParameter;
+    static serializeBinaryToWriter(message: Parameterization, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Parameterization;
+    static deserializeBinaryFromReader(message: Parameterization, reader: jspb.BinaryReader): Parameterization;
 }
 
-export namespace PackageParameter {
+export namespace Parameterization {
     export type AsObject = {
         name: string,
         version: string,

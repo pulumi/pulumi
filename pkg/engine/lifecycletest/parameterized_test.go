@@ -58,9 +58,9 @@ func TestPackageRef(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkg1Ref, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil)
+		pkg1Ref, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, nil)
 		require.NoError(t, err)
-		pkg2Ref, err := monitor.RegisterProvider("pkgA", "2.0.0", "", nil)
+		pkg2Ref, err := monitor.RegisterProvider("pkgA", "2.0.0", "", nil, nil)
 		require.NoError(t, err)
 
 		// If we register the "same" provider in parallel, we should get the same ref.
@@ -69,7 +69,7 @@ func TestPackageRef(t *testing.T) {
 			var pcs promise.CompletionSource[string]
 			promises = append(promises, pcs.Promise())
 			go func() {
-				ref, err := monitor.RegisterProvider("pkgB", "1.0.0", "downloadUrl", nil)
+				ref, err := monitor.RegisterProvider("pkgB", "1.0.0", "downloadUrl", nil, nil)
 				require.NoError(t, err)
 				pcs.MustFulfill(ref)
 			}()
@@ -151,7 +151,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil)
+		pkgRef, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, nil)
 		require.NoError(t, err)
 
 		// Register a resource using that base provider
@@ -161,9 +161,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		// Now register a replacement provider
-		extRef, err := monitor.RegisterProvider("pkgExt", "0.5.0", "", &pulumirpc.PackageParameter{
-			Name:    "pkgA",
-			Version: "1.0.0",
+		extRef, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
+			Name:    "pkgExt",
+			Version: "0.5.0",
 			Value:   structpb.NewStringValue("replacement"),
 		})
 		require.NoError(t, err)

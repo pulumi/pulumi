@@ -27,7 +27,7 @@ var pulumi_source_pb = require('./source_pb.js');
 goog.object.extend(proto, pulumi_source_pb);
 var pulumi_callback_pb = require('./callback_pb.js');
 goog.object.extend(proto, pulumi_callback_pb);
-goog.exportSymbol('proto.pulumirpc.PackageParameter', null, global);
+goog.exportSymbol('proto.pulumirpc.Parameterization', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterPackageRequest', null, global);
@@ -435,16 +435,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.pulumirpc.PackageParameter = function(opt_data) {
+proto.pulumirpc.Parameterization = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.pulumirpc.PackageParameter, jspb.Message);
+goog.inherits(proto.pulumirpc.Parameterization, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.pulumirpc.PackageParameter.displayName = 'proto.pulumirpc.PackageParameter';
+  proto.pulumirpc.Parameterization.displayName = 'proto.pulumirpc.Parameterization';
 }
 
 
@@ -6038,9 +6038,9 @@ proto.pulumirpc.RegisterPackageRequest.toObject = function(includeInstance, msg)
   var f, obj = {
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    pluginDownloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    pluginChecksumsMap: (f = msg.getPluginChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    parameter: (f = msg.getParameter()) && proto.pulumirpc.PackageParameter.toObject(includeInstance, f)
+    downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+    parameterization: (f = msg.getParameterization()) && proto.pulumirpc.Parameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6087,18 +6087,18 @@ proto.pulumirpc.RegisterPackageRequest.deserializeBinaryFromReader = function(ms
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPluginDownloadUrl(value);
+      msg.setDownloadUrl(value);
       break;
     case 4:
-      var value = msg.getPluginChecksumsMap();
+      var value = msg.getChecksumsMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
       break;
     case 5:
-      var value = new proto.pulumirpc.PackageParameter;
-      reader.readMessage(value,proto.pulumirpc.PackageParameter.deserializeBinaryFromReader);
-      msg.setParameter(value);
+      var value = new proto.pulumirpc.Parameterization;
+      reader.readMessage(value,proto.pulumirpc.Parameterization.deserializeBinaryFromReader);
+      msg.setParameterization(value);
       break;
     default:
       reader.skipField();
@@ -6143,23 +6143,23 @@ proto.pulumirpc.RegisterPackageRequest.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getPluginDownloadUrl();
+  f = message.getDownloadUrl();
   if (f.length > 0) {
     writer.writeString(
       3,
       f
     );
   }
-  f = message.getPluginChecksumsMap(true);
+  f = message.getChecksumsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
-  f = message.getParameter();
+  f = message.getParameterization();
   if (f != null) {
     writer.writeMessage(
       5,
       f,
-      proto.pulumirpc.PackageParameter.serializeBinaryToWriter
+      proto.pulumirpc.Parameterization.serializeBinaryToWriter
     );
   }
 };
@@ -6202,10 +6202,10 @@ proto.pulumirpc.RegisterPackageRequest.prototype.setVersion = function(value) {
 
 
 /**
- * optional string plugin_download_url = 3;
+ * optional string download_url = 3;
  * @return {string}
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.getPluginDownloadUrl = function() {
+proto.pulumirpc.RegisterPackageRequest.prototype.getDownloadUrl = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -6214,18 +6214,18 @@ proto.pulumirpc.RegisterPackageRequest.prototype.getPluginDownloadUrl = function
  * @param {string} value
  * @return {!proto.pulumirpc.RegisterPackageRequest} returns this
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.setPluginDownloadUrl = function(value) {
+proto.pulumirpc.RegisterPackageRequest.prototype.setDownloadUrl = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * map<string, bytes> plugin_checksums = 4;
+ * map<string, bytes> checksums = 4;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,!(string|Uint8Array)>}
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.getPluginChecksumsMap = function(opt_noLazyCreate) {
+proto.pulumirpc.RegisterPackageRequest.prototype.getChecksumsMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
       jspb.Message.getMapField(this, 4, opt_noLazyCreate,
       null));
@@ -6236,26 +6236,26 @@ proto.pulumirpc.RegisterPackageRequest.prototype.getPluginChecksumsMap = functio
  * Clears values from the map. The map will be non-null.
  * @return {!proto.pulumirpc.RegisterPackageRequest} returns this
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.clearPluginChecksumsMap = function() {
-  this.getPluginChecksumsMap().clear();
+proto.pulumirpc.RegisterPackageRequest.prototype.clearChecksumsMap = function() {
+  this.getChecksumsMap().clear();
   return this;};
 
 
 /**
- * optional PackageParameter parameter = 5;
- * @return {?proto.pulumirpc.PackageParameter}
+ * optional Parameterization parameterization = 5;
+ * @return {?proto.pulumirpc.Parameterization}
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.getParameter = function() {
-  return /** @type{?proto.pulumirpc.PackageParameter} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.PackageParameter, 5));
+proto.pulumirpc.RegisterPackageRequest.prototype.getParameterization = function() {
+  return /** @type{?proto.pulumirpc.Parameterization} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.Parameterization, 5));
 };
 
 
 /**
- * @param {?proto.pulumirpc.PackageParameter|undefined} value
+ * @param {?proto.pulumirpc.Parameterization|undefined} value
  * @return {!proto.pulumirpc.RegisterPackageRequest} returns this
 */
-proto.pulumirpc.RegisterPackageRequest.prototype.setParameter = function(value) {
+proto.pulumirpc.RegisterPackageRequest.prototype.setParameterization = function(value) {
   return jspb.Message.setWrapperField(this, 5, value);
 };
 
@@ -6264,8 +6264,8 @@ proto.pulumirpc.RegisterPackageRequest.prototype.setParameter = function(value) 
  * Clears the message field making it undefined.
  * @return {!proto.pulumirpc.RegisterPackageRequest} returns this
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.clearParameter = function() {
-  return this.setParameter(undefined);
+proto.pulumirpc.RegisterPackageRequest.prototype.clearParameterization = function() {
+  return this.setParameterization(undefined);
 };
 
 
@@ -6273,7 +6273,7 @@ proto.pulumirpc.RegisterPackageRequest.prototype.clearParameter = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.pulumirpc.RegisterPackageRequest.prototype.hasParameter = function() {
+proto.pulumirpc.RegisterPackageRequest.prototype.hasParameterization = function() {
   return jspb.Message.getField(this, 5) != null;
 };
 
@@ -6424,8 +6424,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.pulumirpc.PackageParameter.prototype.toObject = function(opt_includeInstance) {
-  return proto.pulumirpc.PackageParameter.toObject(opt_includeInstance, this);
+proto.pulumirpc.Parameterization.prototype.toObject = function(opt_includeInstance) {
+  return proto.pulumirpc.Parameterization.toObject(opt_includeInstance, this);
 };
 
 
@@ -6434,11 +6434,11 @@ proto.pulumirpc.PackageParameter.prototype.toObject = function(opt_includeInstan
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.pulumirpc.PackageParameter} msg The msg instance to transform.
+ * @param {!proto.pulumirpc.Parameterization} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.pulumirpc.PackageParameter.toObject = function(includeInstance, msg) {
+proto.pulumirpc.Parameterization.toObject = function(includeInstance, msg) {
   var f, obj = {
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     version: jspb.Message.getFieldWithDefault(msg, 2, ""),
@@ -6456,23 +6456,23 @@ proto.pulumirpc.PackageParameter.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.pulumirpc.PackageParameter}
+ * @return {!proto.pulumirpc.Parameterization}
  */
-proto.pulumirpc.PackageParameter.deserializeBinary = function(bytes) {
+proto.pulumirpc.Parameterization.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.pulumirpc.PackageParameter;
-  return proto.pulumirpc.PackageParameter.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.pulumirpc.Parameterization;
+  return proto.pulumirpc.Parameterization.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.pulumirpc.PackageParameter} msg The message object to deserialize into.
+ * @param {!proto.pulumirpc.Parameterization} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.pulumirpc.PackageParameter}
+ * @return {!proto.pulumirpc.Parameterization}
  */
-proto.pulumirpc.PackageParameter.deserializeBinaryFromReader = function(msg, reader) {
+proto.pulumirpc.Parameterization.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -6505,9 +6505,9 @@ proto.pulumirpc.PackageParameter.deserializeBinaryFromReader = function(msg, rea
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.pulumirpc.PackageParameter.prototype.serializeBinary = function() {
+proto.pulumirpc.Parameterization.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.pulumirpc.PackageParameter.serializeBinaryToWriter(this, writer);
+  proto.pulumirpc.Parameterization.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -6515,11 +6515,11 @@ proto.pulumirpc.PackageParameter.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.pulumirpc.PackageParameter} message
+ * @param {!proto.pulumirpc.Parameterization} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.pulumirpc.PackageParameter.serializeBinaryToWriter = function(message, writer) {
+proto.pulumirpc.Parameterization.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getName();
   if (f.length > 0) {
@@ -6550,16 +6550,16 @@ proto.pulumirpc.PackageParameter.serializeBinaryToWriter = function(message, wri
  * optional string name = 1;
  * @return {string}
  */
-proto.pulumirpc.PackageParameter.prototype.getName = function() {
+proto.pulumirpc.Parameterization.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.pulumirpc.PackageParameter} returns this
+ * @return {!proto.pulumirpc.Parameterization} returns this
  */
-proto.pulumirpc.PackageParameter.prototype.setName = function(value) {
+proto.pulumirpc.Parameterization.prototype.setName = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
@@ -6568,16 +6568,16 @@ proto.pulumirpc.PackageParameter.prototype.setName = function(value) {
  * optional string version = 2;
  * @return {string}
  */
-proto.pulumirpc.PackageParameter.prototype.getVersion = function() {
+proto.pulumirpc.Parameterization.prototype.getVersion = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.pulumirpc.PackageParameter} returns this
+ * @return {!proto.pulumirpc.Parameterization} returns this
  */
-proto.pulumirpc.PackageParameter.prototype.setVersion = function(value) {
+proto.pulumirpc.Parameterization.prototype.setVersion = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
@@ -6586,7 +6586,7 @@ proto.pulumirpc.PackageParameter.prototype.setVersion = function(value) {
  * optional google.protobuf.Value value = 3;
  * @return {?proto.google.protobuf.Value}
  */
-proto.pulumirpc.PackageParameter.prototype.getValue = function() {
+proto.pulumirpc.Parameterization.prototype.getValue = function() {
   return /** @type{?proto.google.protobuf.Value} */ (
     jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 3));
 };
@@ -6594,18 +6594,18 @@ proto.pulumirpc.PackageParameter.prototype.getValue = function() {
 
 /**
  * @param {?proto.google.protobuf.Value|undefined} value
- * @return {!proto.pulumirpc.PackageParameter} returns this
+ * @return {!proto.pulumirpc.Parameterization} returns this
 */
-proto.pulumirpc.PackageParameter.prototype.setValue = function(value) {
+proto.pulumirpc.Parameterization.prototype.setValue = function(value) {
   return jspb.Message.setWrapperField(this, 3, value);
 };
 
 
 /**
  * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.PackageParameter} returns this
+ * @return {!proto.pulumirpc.Parameterization} returns this
  */
-proto.pulumirpc.PackageParameter.prototype.clearValue = function() {
+proto.pulumirpc.Parameterization.prototype.clearValue = function() {
   return this.setValue(undefined);
 };
 
@@ -6614,7 +6614,7 @@ proto.pulumirpc.PackageParameter.prototype.clearValue = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.pulumirpc.PackageParameter.prototype.hasValue = function() {
+proto.pulumirpc.Parameterization.prototype.hasValue = function() {
   return jspb.Message.getField(this, 3) != null;
 };
 

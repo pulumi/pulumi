@@ -908,7 +908,7 @@ class RegisterPackageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final
-    class PluginChecksumsEntry(google.protobuf.message.Message):
+    class ChecksumsEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         KEY_FIELD_NUMBER: builtins.int
@@ -925,27 +925,32 @@ class RegisterPackageRequest(google.protobuf.message.Message):
 
     NAME_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
-    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
-    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
-    PARAMETER_FIELD_NUMBER: builtins.int
+    DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    CHECKSUMS_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_FIELD_NUMBER: builtins.int
     name: builtins.str
+    """the plugin name."""
     version: builtins.str
-    plugin_download_url: builtins.str
+    """the plugin version."""
+    download_url: builtins.str
+    """the optional plugin download url."""
     @property
-    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    def checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """the optional plugin checksums."""
     @property
-    def parameter(self) -> global___PackageParameter: ...
+    def parameterization(self) -> global___Parameterization:
+        """the optional parameterization for this package."""
     def __init__(
         self,
         *,
         name: builtins.str = ...,
         version: builtins.str = ...,
-        plugin_download_url: builtins.str = ...,
-        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
-        parameter: global___PackageParameter | None = ...,
+        download_url: builtins.str = ...,
+        checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        parameterization: global___Parameterization | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["parameter", b"parameter"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "parameter", b"parameter", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "download_url", b"download_url", "name", b"name", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
 
 global___RegisterPackageRequest = RegisterPackageRequest
 
@@ -966,16 +971,19 @@ class RegisterPackageResponse(google.protobuf.message.Message):
 global___RegisterPackageResponse = RegisterPackageResponse
 
 @typing_extensions.final
-class PackageParameter(google.protobuf.message.Message):
+class Parameterization(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     NAME_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
     name: builtins.str
+    """the parameterized package name."""
     version: builtins.str
+    """the parameterized package version."""
     @property
-    def value(self) -> google.protobuf.struct_pb2.Value: ...
+    def value(self) -> google.protobuf.struct_pb2.Value:
+        """the parameter value for the parameterized package."""
     def __init__(
         self,
         *,
@@ -986,4 +994,4 @@ class PackageParameter(google.protobuf.message.Message):
     def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
-global___PackageParameter = PackageParameter
+global___Parameterization = Parameterization
