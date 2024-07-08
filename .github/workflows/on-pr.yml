@@ -50,6 +50,7 @@ jobs:
   # if they're not necessary.
   inspect:
     name: Inspect changed files
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: dorny/paths-filter@v3
