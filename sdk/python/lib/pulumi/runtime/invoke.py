@@ -17,7 +17,6 @@ import traceback
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Coroutine,
     Dict,
     List,
@@ -34,8 +33,9 @@ from semver import VersionInfo
 
 from .. import _types, log
 from ..invoke import InvokeOptions
-from ..runtime.proto import provider_pb2, resource_pb2
+from ..runtime.proto import resource_pb2
 from . import rpc
+from .depends_on import resolve_depends_on_urns
 from .settings import (
     _get_rpc_manager,
     get_monitor,
@@ -228,6 +228,9 @@ def _invoke(
         )
 
     async def do_rpc():
+        # Await any dependencies before invoking our RPC.
+        await resolve_depends_on_urns(opts._depends_on_list())
+
         resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
         # If there was an RPC level exception, we will raise it. Note that this will also crash the
         # process because it will have been considered "unhandled". For semantic level errors, such

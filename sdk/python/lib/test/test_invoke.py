@@ -89,3 +89,7 @@ def test_invoke_empty_return(tok: str, version: str, empty: bool, expected) -> N
     props = {"empty": True} if empty else {}
     opts = pulumi.InvokeOptions(version=version) if version else None
     assert pulumi.runtime.invoke(tok, props, opts).value == expected
+
+@pulumi.runtime.test
+def test_invoke_depends_on():
+    assert True

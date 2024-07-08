@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add `depends_on` to `InvokeOptions` in the Python SDK

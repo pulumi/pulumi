@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2024, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import Optional, TYPE_CHECKING
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    List,
+    Optional,
+    Sequence,
+    Union,
+    cast,
+)
+
+from .output import _map_input, _map2_input
 
 if TYPE_CHECKING:
+    from .output import Input
     from .resource import Resource, ProviderResource
 
 
@@ -42,6 +53,10 @@ class InvokeOptions:
     An optional URL. If provided, the provider plugin with exactly this download URL will be used to service
     the invocation. This will override the URL sourced from the host package, and should be rarely used.
     """
+    depends_on: Optional["Input[Union[Sequence[Input[Resource]], Resource]]"]
+    """
+    If provided, declares that this invocation depends on the given resources.
+    """
 
     def __init__(
         self,
@@ -49,6 +64,9 @@ class InvokeOptions:
         provider: Optional["ProviderResource"] = None,
         version: Optional[str] = "",
         plugin_download_url: Optional[str] = None,
+        depends_on: Optional[
+            "Input[Union[Sequence[Input[Resource]], Resource]]"
+        ] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: An optional parent to use for default options for this invoke (e.g. the
@@ -60,6 +78,8 @@ class InvokeOptions:
         :param Optional[str] plugin_download_url: An optional URL. If provided, the provider plugin with this download
                URL will be used to service the invocation. This will override the URL sourced from the host package, and
                should be rarely used.
+        :param Optional[Input[Union[List[Input[Resource]],Resource]]] depends_on: If provided, declares that this
+               invocation depends on the given resources.
         """
         # Expose 'merge' again this this object, but this time as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
@@ -70,9 +90,19 @@ class InvokeOptions:
         self.provider = provider
         self.version = version
         self.plugin_download_url = plugin_download_url
+        self.depends_on = depends_on
 
     def _merge_instance(self, opts: "InvokeOptions") -> "InvokeOptions":
         return InvokeOptions.merge(self, opts)
+
+    def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
+        if self.depends_on is None:
+            return []
+
+        return _map_input(
+            self.depends_on,
+            lambda x: list(x) if isinstance(x, Sequence) else [cast(Any, x)],
+        )
 
     # pylint: disable=method-hidden
     @staticmethod
@@ -125,5 +155,9 @@ class InvokeOptions:
             else source.plugin_download_url
         )
         dest.version = dest.version if source.version is None else source.version
+
+        dest.depends_on = _map2_input(
+            dest._depends_on_list(), source._depends_on_list(), lambda xs, ys: xs + ys
+        )
 
         return dest

@@ -69,7 +69,6 @@ def test_depends_on_accepts_outputs(dep_tracker):
 def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
-    dep3 = MockResource(name="dep3")
     known = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: dep2)
     unknown = output_depending_on_resource(dep2, isKnown=False).apply(lambda _: dep2)
     res = MockResource(
@@ -154,7 +153,7 @@ def test_depends_on_typechecks_sync():
         res = MockResource(
             name="res", opts=pulumi.ResourceOptions(depends_on=["hello"])
         )
-        assert False, "should of failed"
+        assert False, "should have failed"
     except TypeError as e:
         assert (
             str(e) == "'depends_on' was passed a value hello that was not a Resource."
@@ -174,7 +173,7 @@ def test_depends_on_typechecks_async():
 
     try:
         test()
-        assert False, "should of failed"
+        assert False, "should have failed"
     except TypeError as e:
         assert (
             str(e) == "'depends_on' was passed a value goodbye that was not a Resource."
@@ -371,6 +370,6 @@ def test_bad_component_super_call():
 
     try:
         test()
-        assert False, "should of failed"
+        assert False, "should have failed"
     except TypeError as e:
         assert str(e) == "Expected resource properties to be a mapping"

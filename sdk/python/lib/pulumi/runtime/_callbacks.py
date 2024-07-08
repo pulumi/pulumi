@@ -274,10 +274,12 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     async def _transformation_resource_options(
         self, opts: ResourceOptions
     ) -> resource_pb2.TransformResourceOptions:
+        from .depends_on import (  # pylint: disable=import-outside-toplevel
+            resolve_depends_on_urns,
+        )
         from .resource import (  # pylint: disable=import-outside-toplevel
             _create_custom_timeouts,
             _create_provider_ref,
-            _resolve_depends_on_urns,
             create_alias_spec,
         )
         from ..resource import (  # pylint: disable=import-outside-toplevel
@@ -303,7 +305,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.custom_timeouts is not None:
             custom_timeouts = _create_custom_timeouts(opts.custom_timeouts)
 
-        depends_on = await _resolve_depends_on_urns(opts)
+        depends_on = await resolve_depends_on_urns(opts._depends_on_list())
 
         ignore_changes = None
         if opts.ignore_changes:
