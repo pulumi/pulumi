@@ -14,15 +14,15 @@ return await Deployment.RunAsync(() =>
         {
             CloudfrontFunctionAssociations = new[]
             {
-                new Aws.Cloudfront.Inputs.DistributionOrderedCacheBehaviorFunctionAssociationArgs
+                new Aws.CloudFront.Inputs.DistributionOrderedCacheBehaviorFunctionAssociationArgs
                 {
                     EventType = "string",
                     FunctionArn = "string",
                 },
             },
-            ForwardedValues = new Aws.Cloudfront.Inputs.DistributionDefaultCacheBehaviorForwardedValuesArgs
+            ForwardedValues = new Aws.CloudFront.Inputs.DistributionDefaultCacheBehaviorForwardedValuesArgs
             {
-                Cookies = new Aws.Cloudfront.Inputs.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs
+                Cookies = new Aws.CloudFront.Inputs.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs
                 {
                     Forward = "string",
                     WhitelistedNames = new[]
@@ -42,7 +42,7 @@ return await Deployment.RunAsync(() =>
             },
             LambdaFunctionAssociations = new[]
             {
-                new Aws.Cloudfront.Inputs.DistributionOrderedCacheBehaviorLambdaFunctionAssociationArgs
+                new Aws.CloudFront.Inputs.DistributionOrderedCacheBehaviorLambdaFunctionAssociationArgs
                 {
                     EventType = "string",
                     LambdaArn = "string",

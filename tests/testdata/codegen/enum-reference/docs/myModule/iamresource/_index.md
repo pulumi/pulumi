@@ -230,17 +230,17 @@ The following reference example uses placeholder values for all [input propertie
 ```csharp
 var iamResourceResource = new Example.MyModule.IamResource("iamResourceResource", new()
 {
-    Config = new GoogleNative.Iam.Inputs.AuditConfigArgs
+    Config = new GoogleNative.IAM.V1.Inputs.AuditConfigArgs
     {
         AuditLogConfigs = new[]
         {
-            new GoogleNative.Iam.Inputs.AuditLogConfigArgs
+            new GoogleNative.IAM.V1.Inputs.AuditLogConfigArgs
             {
                 ExemptedMembers = new[]
                 {
                     "string",
                 },
-                LogType = GoogleNative.Iam.V1.AuditLogConfigLogType.LogTypeUnspecified,
+                LogType = GoogleNative.IAM.V1.AuditLogConfigLogType.LogTypeUnspecified,
             },
         },
         Service = "string",
@@ -263,7 +263,7 @@ example, err := myModule.NewIamResource(ctx, "iamResourceResource", &myModule.Ia
 				ExemptedMembers: pulumi.StringArray{
 					pulumi.String("string"),
 				},
-				LogType: iam / v1.AuditLogConfigLogTypeLogTypeUnspecified,
+				LogType: iam.AuditLogConfigLogTypeLogTypeUnspecified,
 			},
 		},
 		Service: pulumi.String("string"),

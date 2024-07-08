@@ -902,6 +902,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 				return g.argumentTypeName(expr, ut.Type, isInput)
 			case *model.TupleType:
 				return g.argumentTypeName(expr, ut, isInput)
+			case *model.MapType:
+				return g.argumentTypeName(expr, ut, isInput)
 			}
 		}
 		return "interface{}"

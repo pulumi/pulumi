@@ -233,7 +233,7 @@ var componentResource = new Foo.Component("componentResource", new()
 {
     EniConfig = 
     {
-        { "string", new Kubernetes.Crd.k8s.amazonaws.com.Inputs.ENIConfigSpecArgs
+        { "string", new Kubernetes.Types.Inputs.Crd.k8s.amazonaws.com.V1alpha1.ENIConfigSpecArgs
         {
             SecurityGroups = new[]
             {
@@ -242,11 +242,11 @@ var componentResource = new Foo.Component("componentResource", new()
             Subnet = "string",
         } },
     },
-    Pod = new Kubernetes.Core.Inputs.PodArgs
+    Pod = new Kubernetes.Types.Inputs.Core.V1.PodArgs
     {
         ApiVersion = "v1",
         Kind = "Pod",
-        Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -268,7 +268,7 @@ var componentResource = new Foo.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -283,7 +283,7 @@ var componentResource = new Foo.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -297,16 +297,16 @@ var componentResource = new Foo.Component("componentResource", new()
             SelfLink = "string",
             Uid = "string",
         },
-        Spec = new Kubernetes.Core.Inputs.PodSpecArgs
+        Spec = new Kubernetes.Types.Inputs.Core.V1.PodSpecArgs
         {
             Containers = new[]
             {
-                new Kubernetes.Core.Inputs.ContainerArgs
+                new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
                 {
                     Name = "string",
-                    ReadinessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    ReadinessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -314,13 +314,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -332,7 +332,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -341,7 +341,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         TimeoutSeconds = 0,
                     },
                     ImagePullPolicy = "string",
-                    Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                    Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
                     {
                         Limits = 
                         {
@@ -352,9 +352,9 @@ var componentResource = new Foo.Component("componentResource", new()
                             { "string", "string" },
                         },
                     },
-                    StartupProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    StartupProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -362,13 +362,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -380,7 +380,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -388,10 +388,10 @@ var componentResource = new Foo.Component("componentResource", new()
                         TerminationGracePeriodSeconds = 0,
                         TimeoutSeconds = 0,
                     },
-                    SecurityContext = new Kubernetes.Core.Inputs.SecurityContextArgs
+                    SecurityContext = new Kubernetes.Types.Inputs.Core.V1.SecurityContextArgs
                     {
                         AllowPrivilegeEscalation = false,
-                        Capabilities = new Kubernetes.Core.Inputs.CapabilitiesArgs
+                        Capabilities = new Kubernetes.Types.Inputs.Core.V1.CapabilitiesArgs
                         {
                             Add = new[]
                             {
@@ -408,19 +408,19 @@ var componentResource = new Foo.Component("componentResource", new()
                         RunAsGroup = 0,
                         RunAsNonRoot = false,
                         RunAsUser = 0,
-                        SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                        SeLinuxOptions = new Kubernetes.Types.Inputs.Core.V1.SELinuxOptionsArgs
                         {
                             Level = "string",
                             Role = "string",
                             Type = "string",
                             User = "string",
                         },
-                        SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                        SeccompProfile = new Kubernetes.Types.Inputs.Core.V1.SeccompProfileArgs
                         {
                             Type = "string",
                             LocalhostProfile = "string",
                         },
-                        WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                        WindowsOptions = new Kubernetes.Types.Inputs.Core.V1.WindowsSecurityContextOptionsArgs
                         {
                             GmsaCredentialSpec = "string",
                             GmsaCredentialSpecName = "string",
@@ -428,24 +428,24 @@ var componentResource = new Foo.Component("componentResource", new()
                             RunAsUserName = "string",
                         },
                     },
-                    Lifecycle = new Kubernetes.Core.Inputs.LifecycleArgs
+                    Lifecycle = new Kubernetes.Types.Inputs.Core.V1.LifecycleArgs
                     {
-                        PostStart = new Kubernetes.Core.Inputs.HandlerArgs
+                        PostStart = new Kubernetes.Types.Inputs.Core.V1.HandlerArgs
                         {
-                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                             {
                                 Command = new[]
                                 {
                                     "string",
                                 },
                             },
-                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                                 HttpHeaders = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                     {
                                         Name = "string",
                                         Value = "string",
@@ -454,28 +454,28 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Path = "string",
                                 Scheme = "string",
                             },
-                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                             },
                         },
-                        PreStop = new Kubernetes.Core.Inputs.HandlerArgs
+                        PreStop = new Kubernetes.Types.Inputs.Core.V1.HandlerArgs
                         {
-                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                             {
                                 Command = new[]
                                 {
                                     "string",
                                 },
                             },
-                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                                 HttpHeaders = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                     {
                                         Name = "string",
                                         Value = "string",
@@ -484,16 +484,16 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Path = "string",
                                 Scheme = "string",
                             },
-                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                             },
                         },
                     },
-                    LivenessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    LivenessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -501,13 +501,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -519,7 +519,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -533,9 +533,9 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     Ports = new[]
                     {
-                        new Kubernetes.Core.Inputs.ContainerPortArgs
+                        new Kubernetes.Types.Inputs.Core.V1.ContainerPortArgs
                         {
-                            ContainerPort = 0,
+                            ContainerPortValue = 0,
                             HostIP = "string",
                             HostPort = 0,
                             Name = "string",
@@ -548,15 +548,15 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     EnvFrom = new[]
                     {
-                        new Kubernetes.Core.Inputs.EnvFromSourceArgs
+                        new Kubernetes.Types.Inputs.Core.V1.EnvFromSourceArgs
                         {
-                            ConfigMapRef = new Kubernetes.Core.Inputs.ConfigMapEnvSourceArgs
+                            ConfigMapRef = new Kubernetes.Types.Inputs.Core.V1.ConfigMapEnvSourceArgs
                             {
                                 Name = "string",
                                 Optional = false,
                             },
                             Prefix = "string",
-                            SecretRef = new Kubernetes.Core.Inputs.SecretEnvSourceArgs
+                            SecretRef = new Kubernetes.Types.Inputs.Core.V1.SecretEnvSourceArgs
                             {
                                 Name = "string",
                                 Optional = false,
@@ -565,30 +565,30 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     Env = new[]
                     {
-                        new Kubernetes.Core.Inputs.EnvVarArgs
+                        new Kubernetes.Types.Inputs.Core.V1.EnvVarArgs
                         {
                             Name = "string",
                             Value = "string",
-                            ValueFrom = new Kubernetes.Core.Inputs.EnvVarSourceArgs
+                            ValueFrom = new Kubernetes.Types.Inputs.Core.V1.EnvVarSourceArgs
                             {
-                                ConfigMapKeyRef = new Kubernetes.Core.Inputs.ConfigMapKeySelectorArgs
+                                ConfigMapKeyRef = new Kubernetes.Types.Inputs.Core.V1.ConfigMapKeySelectorArgs
                                 {
                                     Key = "string",
                                     Name = "string",
                                     Optional = false,
                                 },
-                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
                                 {
                                     FieldPath = "string",
                                     ApiVersion = "string",
                                 },
-                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                ResourceFieldRef = new Kubernetes.Types.Inputs.Core.V1.ResourceFieldSelectorArgs
                                 {
                                     Resource = "string",
                                     ContainerName = "string",
                                     Divisor = "string",
                                 },
-                                SecretKeyRef = new Kubernetes.Core.Inputs.SecretKeySelectorArgs
+                                SecretKeyRef = new Kubernetes.Types.Inputs.Core.V1.SecretKeySelectorArgs
                                 {
                                     Key = "string",
                                     Name = "string",
@@ -605,7 +605,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     Tty = false,
                     VolumeDevices = new[]
                     {
-                        new Kubernetes.Core.Inputs.VolumeDeviceArgs
+                        new Kubernetes.Types.Inputs.Core.V1.VolumeDeviceArgs
                         {
                             DevicePath = "string",
                             Name = "string",
@@ -613,7 +613,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     VolumeMounts = new[]
                     {
-                        new Kubernetes.Core.Inputs.VolumeMountArgs
+                        new Kubernetes.Types.Inputs.Core.V1.VolumeMountArgs
                         {
                             MountPath = "string",
                             Name = "string",
@@ -632,7 +632,7 @@ var componentResource = new Foo.Component("componentResource", new()
             },
             HostAliases = new[]
             {
-                new Kubernetes.Core.Inputs.HostAliasArgs
+                new Kubernetes.Types.Inputs.Core.V1.HostAliasArgs
                 {
                     Hostnames = new[]
                     {
@@ -641,19 +641,19 @@ var componentResource = new Foo.Component("componentResource", new()
                     Ip = "string",
                 },
             },
-            Affinity = new Kubernetes.Core.Inputs.AffinityArgs
+            Affinity = new Kubernetes.Types.Inputs.Core.V1.AffinityArgs
             {
-                NodeAffinity = new Kubernetes.Core.Inputs.NodeAffinityArgs
+                NodeAffinity = new Kubernetes.Types.Inputs.Core.V1.NodeAffinityArgs
                 {
                     PreferredDuringSchedulingIgnoredDuringExecution = new[]
                     {
-                        new Kubernetes.Core.Inputs.PreferredSchedulingTermArgs
+                        new Kubernetes.Types.Inputs.Core.V1.PreferredSchedulingTermArgs
                         {
-                            Preference = new Kubernetes.Core.Inputs.NodeSelectorTermArgs
+                            Preference = new Kubernetes.Types.Inputs.Core.V1.NodeSelectorTermArgs
                             {
                                 MatchExpressions = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.NodeSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -665,7 +665,7 @@ var componentResource = new Foo.Component("componentResource", new()
                                 },
                                 MatchFields = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.NodeSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -679,15 +679,15 @@ var componentResource = new Foo.Component("componentResource", new()
                             Weight = 0,
                         },
                     },
-                    RequiredDuringSchedulingIgnoredDuringExecution = new Kubernetes.Core.Inputs.NodeSelectorArgs
+                    RequiredDuringSchedulingIgnoredDuringExecution = new Kubernetes.Types.Inputs.Core.V1.NodeSelectorArgs
                     {
                         NodeSelectorTerms = new[]
                         {
-                            new Kubernetes.Core.Inputs.NodeSelectorTermArgs
+                            new Kubernetes.Types.Inputs.Core.V1.NodeSelectorTermArgs
                             {
                                 MatchExpressions = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.NodeSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -699,7 +699,7 @@ var componentResource = new Foo.Component("componentResource", new()
                                 },
                                 MatchFields = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.NodeSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.NodeSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -713,20 +713,20 @@ var componentResource = new Foo.Component("componentResource", new()
                         },
                     },
                 },
-                PodAffinity = new Kubernetes.Core.Inputs.PodAffinityArgs
+                PodAffinity = new Kubernetes.Types.Inputs.Core.V1.PodAffinityArgs
                 {
                     PreferredDuringSchedulingIgnoredDuringExecution = new[]
                     {
-                        new Kubernetes.Core.Inputs.WeightedPodAffinityTermArgs
+                        new Kubernetes.Types.Inputs.Core.V1.WeightedPodAffinityTermArgs
                         {
-                            PodAffinityTerm = new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                            PodAffinityTerm = new Kubernetes.Types.Inputs.Core.V1.PodAffinityTermArgs
                             {
                                 TopologyKey = "string",
-                                LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                LabelSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                                 {
                                     MatchExpressions = new[]
                                     {
-                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                         {
                                             Key = "string",
                                             Operator = "string",
@@ -741,11 +741,11 @@ var componentResource = new Foo.Component("componentResource", new()
                                         { "string", "string" },
                                     },
                                 },
-                                NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                NamespaceSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                                 {
                                     MatchExpressions = new[]
                                     {
-                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                         {
                                             Key = "string",
                                             Operator = "string",
@@ -770,14 +770,14 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     RequiredDuringSchedulingIgnoredDuringExecution = new[]
                     {
-                        new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                        new Kubernetes.Types.Inputs.Core.V1.PodAffinityTermArgs
                         {
                             TopologyKey = "string",
-                            LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            LabelSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                             {
                                 MatchExpressions = new[]
                                 {
-                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -792,11 +792,11 @@ var componentResource = new Foo.Component("componentResource", new()
                                     { "string", "string" },
                                 },
                             },
-                            NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            NamespaceSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                             {
                                 MatchExpressions = new[]
                                 {
-                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -818,20 +818,20 @@ var componentResource = new Foo.Component("componentResource", new()
                         },
                     },
                 },
-                PodAntiAffinity = new Kubernetes.Core.Inputs.PodAntiAffinityArgs
+                PodAntiAffinity = new Kubernetes.Types.Inputs.Core.V1.PodAntiAffinityArgs
                 {
                     PreferredDuringSchedulingIgnoredDuringExecution = new[]
                     {
-                        new Kubernetes.Core.Inputs.WeightedPodAffinityTermArgs
+                        new Kubernetes.Types.Inputs.Core.V1.WeightedPodAffinityTermArgs
                         {
-                            PodAffinityTerm = new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                            PodAffinityTerm = new Kubernetes.Types.Inputs.Core.V1.PodAffinityTermArgs
                             {
                                 TopologyKey = "string",
-                                LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                LabelSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                                 {
                                     MatchExpressions = new[]
                                     {
-                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                         {
                                             Key = "string",
                                             Operator = "string",
@@ -846,11 +846,11 @@ var componentResource = new Foo.Component("componentResource", new()
                                         { "string", "string" },
                                     },
                                 },
-                                NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                NamespaceSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                                 {
                                     MatchExpressions = new[]
                                     {
-                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                         {
                                             Key = "string",
                                             Operator = "string",
@@ -875,14 +875,14 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     RequiredDuringSchedulingIgnoredDuringExecution = new[]
                     {
-                        new Kubernetes.Core.Inputs.PodAffinityTermArgs
+                        new Kubernetes.Types.Inputs.Core.V1.PodAffinityTermArgs
                         {
                             TopologyKey = "string",
-                            LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            LabelSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                             {
                                 MatchExpressions = new[]
                                 {
-                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -897,11 +897,11 @@ var componentResource = new Foo.Component("componentResource", new()
                                     { "string", "string" },
                                 },
                             },
-                            NamespaceSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                            NamespaceSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                             {
                                 MatchExpressions = new[]
                                 {
-                                    new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                    new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                     {
                                         Key = "string",
                                         Operator = "string",
@@ -924,7 +924,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                 },
             },
-            DnsConfig = new Kubernetes.Core.Inputs.PodDNSConfigArgs
+            DnsConfig = new Kubernetes.Types.Inputs.Core.V1.PodDNSConfigArgs
             {
                 Nameservers = new[]
                 {
@@ -932,7 +932,7 @@ var componentResource = new Foo.Component("componentResource", new()
                 },
                 Options = new[]
                 {
-                    new Kubernetes.Core.Inputs.PodDNSConfigOptionArgs
+                    new Kubernetes.Types.Inputs.Core.V1.PodDNSConfigOptionArgs
                     {
                         Name = "string",
                         Value = "string",
@@ -950,12 +950,12 @@ var componentResource = new Foo.Component("componentResource", new()
             EnableServiceLinks = false,
             EphemeralContainers = new[]
             {
-                new Kubernetes.Core.Inputs.EphemeralContainerArgs
+                new Kubernetes.Types.Inputs.Core.V1.EphemeralContainerArgs
                 {
                     Name = "string",
-                    ReadinessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    ReadinessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -963,13 +963,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -981,7 +981,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -991,25 +991,25 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     EnvFrom = new[]
                     {
-                        new Kubernetes.Core.Inputs.EnvFromSourceArgs
+                        new Kubernetes.Types.Inputs.Core.V1.EnvFromSourceArgs
                         {
-                            ConfigMapRef = new Kubernetes.Core.Inputs.ConfigMapEnvSourceArgs
+                            ConfigMapRef = new Kubernetes.Types.Inputs.Core.V1.ConfigMapEnvSourceArgs
                             {
                                 Name = "string",
                                 Optional = false,
                             },
                             Prefix = "string",
-                            SecretRef = new Kubernetes.Core.Inputs.SecretEnvSourceArgs
+                            SecretRef = new Kubernetes.Types.Inputs.Core.V1.SecretEnvSourceArgs
                             {
                                 Name = "string",
                                 Optional = false,
                             },
                         },
                     },
-                    SecurityContext = new Kubernetes.Core.Inputs.SecurityContextArgs
+                    SecurityContext = new Kubernetes.Types.Inputs.Core.V1.SecurityContextArgs
                     {
                         AllowPrivilegeEscalation = false,
-                        Capabilities = new Kubernetes.Core.Inputs.CapabilitiesArgs
+                        Capabilities = new Kubernetes.Types.Inputs.Core.V1.CapabilitiesArgs
                         {
                             Add = new[]
                             {
@@ -1026,19 +1026,19 @@ var componentResource = new Foo.Component("componentResource", new()
                         RunAsGroup = 0,
                         RunAsNonRoot = false,
                         RunAsUser = 0,
-                        SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                        SeLinuxOptions = new Kubernetes.Types.Inputs.Core.V1.SELinuxOptionsArgs
                         {
                             Level = "string",
                             Role = "string",
                             Type = "string",
                             User = "string",
                         },
-                        SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                        SeccompProfile = new Kubernetes.Types.Inputs.Core.V1.SeccompProfileArgs
                         {
                             Type = "string",
                             LocalhostProfile = "string",
                         },
-                        WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                        WindowsOptions = new Kubernetes.Types.Inputs.Core.V1.WindowsSecurityContextOptionsArgs
                         {
                             GmsaCredentialSpec = "string",
                             GmsaCredentialSpecName = "string",
@@ -1048,24 +1048,24 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     Image = "string",
                     ImagePullPolicy = "string",
-                    Lifecycle = new Kubernetes.Core.Inputs.LifecycleArgs
+                    Lifecycle = new Kubernetes.Types.Inputs.Core.V1.LifecycleArgs
                     {
-                        PostStart = new Kubernetes.Core.Inputs.HandlerArgs
+                        PostStart = new Kubernetes.Types.Inputs.Core.V1.HandlerArgs
                         {
-                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                             {
                                 Command = new[]
                                 {
                                     "string",
                                 },
                             },
-                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                                 HttpHeaders = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                     {
                                         Name = "string",
                                         Value = "string",
@@ -1074,28 +1074,28 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Path = "string",
                                 Scheme = "string",
                             },
-                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                             },
                         },
-                        PreStop = new Kubernetes.Core.Inputs.HandlerArgs
+                        PreStop = new Kubernetes.Types.Inputs.Core.V1.HandlerArgs
                         {
-                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                             {
                                 Command = new[]
                                 {
                                     "string",
                                 },
                             },
-                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                                 HttpHeaders = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                     {
                                         Name = "string",
                                         Value = "string",
@@ -1104,16 +1104,16 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Path = "string",
                                 Scheme = "string",
                             },
-                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                             },
                         },
                     },
-                    LivenessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    LivenessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -1121,13 +1121,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -1139,7 +1139,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -1151,9 +1151,9 @@ var componentResource = new Foo.Component("componentResource", new()
                     {
                         "string",
                     },
-                    StartupProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    StartupProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -1161,13 +1161,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -1179,7 +1179,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -1194,30 +1194,30 @@ var componentResource = new Foo.Component("componentResource", new()
                     WorkingDir = "string",
                     Env = new[]
                     {
-                        new Kubernetes.Core.Inputs.EnvVarArgs
+                        new Kubernetes.Types.Inputs.Core.V1.EnvVarArgs
                         {
                             Name = "string",
                             Value = "string",
-                            ValueFrom = new Kubernetes.Core.Inputs.EnvVarSourceArgs
+                            ValueFrom = new Kubernetes.Types.Inputs.Core.V1.EnvVarSourceArgs
                             {
-                                ConfigMapKeyRef = new Kubernetes.Core.Inputs.ConfigMapKeySelectorArgs
+                                ConfigMapKeyRef = new Kubernetes.Types.Inputs.Core.V1.ConfigMapKeySelectorArgs
                                 {
                                     Key = "string",
                                     Name = "string",
                                     Optional = false,
                                 },
-                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
                                 {
                                     FieldPath = "string",
                                     ApiVersion = "string",
                                 },
-                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                ResourceFieldRef = new Kubernetes.Types.Inputs.Core.V1.ResourceFieldSelectorArgs
                                 {
                                     Resource = "string",
                                     ContainerName = "string",
                                     Divisor = "string",
                                 },
-                                SecretKeyRef = new Kubernetes.Core.Inputs.SecretKeySelectorArgs
+                                SecretKeyRef = new Kubernetes.Types.Inputs.Core.V1.SecretKeySelectorArgs
                                 {
                                     Key = "string",
                                     Name = "string",
@@ -1228,9 +1228,9 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     Ports = new[]
                     {
-                        new Kubernetes.Core.Inputs.ContainerPortArgs
+                        new Kubernetes.Types.Inputs.Core.V1.ContainerPortArgs
                         {
-                            ContainerPort = 0,
+                            ContainerPortValue = 0,
                             HostIP = "string",
                             HostPort = 0,
                             Name = "string",
@@ -1245,7 +1245,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     Tty = false,
                     VolumeDevices = new[]
                     {
-                        new Kubernetes.Core.Inputs.VolumeDeviceArgs
+                        new Kubernetes.Types.Inputs.Core.V1.VolumeDeviceArgs
                         {
                             DevicePath = "string",
                             Name = "string",
@@ -1253,7 +1253,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     VolumeMounts = new[]
                     {
-                        new Kubernetes.Core.Inputs.VolumeMountArgs
+                        new Kubernetes.Types.Inputs.Core.V1.VolumeMountArgs
                         {
                             MountPath = "string",
                             Name = "string",
@@ -1263,7 +1263,7 @@ var componentResource = new Foo.Component("componentResource", new()
                             SubPathExpr = "string",
                         },
                     },
-                    Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                    Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
                     {
                         Limits = 
                         {
@@ -1283,19 +1283,19 @@ var componentResource = new Foo.Component("componentResource", new()
             Hostname = "string",
             ImagePullSecrets = new[]
             {
-                new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                 {
                     Name = "string",
                 },
             },
             InitContainers = new[]
             {
-                new Kubernetes.Core.Inputs.ContainerArgs
+                new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
                 {
                     Name = "string",
-                    ReadinessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    ReadinessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -1303,13 +1303,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -1321,7 +1321,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -1330,7 +1330,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         TimeoutSeconds = 0,
                     },
                     ImagePullPolicy = "string",
-                    Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                    Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
                     {
                         Limits = 
                         {
@@ -1341,9 +1341,9 @@ var componentResource = new Foo.Component("componentResource", new()
                             { "string", "string" },
                         },
                     },
-                    StartupProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    StartupProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -1351,13 +1351,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -1369,7 +1369,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -1377,10 +1377,10 @@ var componentResource = new Foo.Component("componentResource", new()
                         TerminationGracePeriodSeconds = 0,
                         TimeoutSeconds = 0,
                     },
-                    SecurityContext = new Kubernetes.Core.Inputs.SecurityContextArgs
+                    SecurityContext = new Kubernetes.Types.Inputs.Core.V1.SecurityContextArgs
                     {
                         AllowPrivilegeEscalation = false,
-                        Capabilities = new Kubernetes.Core.Inputs.CapabilitiesArgs
+                        Capabilities = new Kubernetes.Types.Inputs.Core.V1.CapabilitiesArgs
                         {
                             Add = new[]
                             {
@@ -1397,19 +1397,19 @@ var componentResource = new Foo.Component("componentResource", new()
                         RunAsGroup = 0,
                         RunAsNonRoot = false,
                         RunAsUser = 0,
-                        SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                        SeLinuxOptions = new Kubernetes.Types.Inputs.Core.V1.SELinuxOptionsArgs
                         {
                             Level = "string",
                             Role = "string",
                             Type = "string",
                             User = "string",
                         },
-                        SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                        SeccompProfile = new Kubernetes.Types.Inputs.Core.V1.SeccompProfileArgs
                         {
                             Type = "string",
                             LocalhostProfile = "string",
                         },
-                        WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                        WindowsOptions = new Kubernetes.Types.Inputs.Core.V1.WindowsSecurityContextOptionsArgs
                         {
                             GmsaCredentialSpec = "string",
                             GmsaCredentialSpecName = "string",
@@ -1417,24 +1417,24 @@ var componentResource = new Foo.Component("componentResource", new()
                             RunAsUserName = "string",
                         },
                     },
-                    Lifecycle = new Kubernetes.Core.Inputs.LifecycleArgs
+                    Lifecycle = new Kubernetes.Types.Inputs.Core.V1.LifecycleArgs
                     {
-                        PostStart = new Kubernetes.Core.Inputs.HandlerArgs
+                        PostStart = new Kubernetes.Types.Inputs.Core.V1.HandlerArgs
                         {
-                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                             {
                                 Command = new[]
                                 {
                                     "string",
                                 },
                             },
-                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                                 HttpHeaders = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                     {
                                         Name = "string",
                                         Value = "string",
@@ -1443,28 +1443,28 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Path = "string",
                                 Scheme = "string",
                             },
-                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                             },
                         },
-                        PreStop = new Kubernetes.Core.Inputs.HandlerArgs
+                        PreStop = new Kubernetes.Types.Inputs.Core.V1.HandlerArgs
                         {
-                            Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                            Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                             {
                                 Command = new[]
                                 {
                                     "string",
                                 },
                             },
-                            HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                            HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                                 HttpHeaders = new[]
                                 {
-                                    new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                    new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                     {
                                         Name = "string",
                                         Value = "string",
@@ -1473,16 +1473,16 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Path = "string",
                                 Scheme = "string",
                             },
-                            TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                            TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                             {
                                 Port = 0,
                                 Host = "string",
                             },
                         },
                     },
-                    LivenessProbe = new Kubernetes.Core.Inputs.ProbeArgs
+                    LivenessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
                     {
-                        Exec = new Kubernetes.Core.Inputs.ExecActionArgs
+                        Exec = new Kubernetes.Types.Inputs.Core.V1.ExecActionArgs
                         {
                             Command = new[]
                             {
@@ -1490,13 +1490,13 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                         FailureThreshold = 0,
-                        HttpGet = new Kubernetes.Core.Inputs.HTTPGetActionArgs
+                        HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
                         {
                             Port = 0,
                             Host = "string",
                             HttpHeaders = new[]
                             {
-                                new Kubernetes.Core.Inputs.HTTPHeaderArgs
+                                new Kubernetes.Types.Inputs.Core.V1.HTTPHeaderArgs
                                 {
                                     Name = "string",
                                     Value = "string",
@@ -1508,7 +1508,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         InitialDelaySeconds = 0,
                         PeriodSeconds = 0,
                         SuccessThreshold = 0,
-                        TcpSocket = new Kubernetes.Core.Inputs.TCPSocketActionArgs
+                        TcpSocket = new Kubernetes.Types.Inputs.Core.V1.TCPSocketActionArgs
                         {
                             Port = 0,
                             Host = "string",
@@ -1522,9 +1522,9 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     Ports = new[]
                     {
-                        new Kubernetes.Core.Inputs.ContainerPortArgs
+                        new Kubernetes.Types.Inputs.Core.V1.ContainerPortArgs
                         {
-                            ContainerPort = 0,
+                            ContainerPortValue = 0,
                             HostIP = "string",
                             HostPort = 0,
                             Name = "string",
@@ -1537,15 +1537,15 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     EnvFrom = new[]
                     {
-                        new Kubernetes.Core.Inputs.EnvFromSourceArgs
+                        new Kubernetes.Types.Inputs.Core.V1.EnvFromSourceArgs
                         {
-                            ConfigMapRef = new Kubernetes.Core.Inputs.ConfigMapEnvSourceArgs
+                            ConfigMapRef = new Kubernetes.Types.Inputs.Core.V1.ConfigMapEnvSourceArgs
                             {
                                 Name = "string",
                                 Optional = false,
                             },
                             Prefix = "string",
-                            SecretRef = new Kubernetes.Core.Inputs.SecretEnvSourceArgs
+                            SecretRef = new Kubernetes.Types.Inputs.Core.V1.SecretEnvSourceArgs
                             {
                                 Name = "string",
                                 Optional = false,
@@ -1554,30 +1554,30 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     Env = new[]
                     {
-                        new Kubernetes.Core.Inputs.EnvVarArgs
+                        new Kubernetes.Types.Inputs.Core.V1.EnvVarArgs
                         {
                             Name = "string",
                             Value = "string",
-                            ValueFrom = new Kubernetes.Core.Inputs.EnvVarSourceArgs
+                            ValueFrom = new Kubernetes.Types.Inputs.Core.V1.EnvVarSourceArgs
                             {
-                                ConfigMapKeyRef = new Kubernetes.Core.Inputs.ConfigMapKeySelectorArgs
+                                ConfigMapKeyRef = new Kubernetes.Types.Inputs.Core.V1.ConfigMapKeySelectorArgs
                                 {
                                     Key = "string",
                                     Name = "string",
                                     Optional = false,
                                 },
-                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
                                 {
                                     FieldPath = "string",
                                     ApiVersion = "string",
                                 },
-                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                ResourceFieldRef = new Kubernetes.Types.Inputs.Core.V1.ResourceFieldSelectorArgs
                                 {
                                     Resource = "string",
                                     ContainerName = "string",
                                     Divisor = "string",
                                 },
-                                SecretKeyRef = new Kubernetes.Core.Inputs.SecretKeySelectorArgs
+                                SecretKeyRef = new Kubernetes.Types.Inputs.Core.V1.SecretKeySelectorArgs
                                 {
                                     Key = "string",
                                     Name = "string",
@@ -1594,7 +1594,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     Tty = false,
                     VolumeDevices = new[]
                     {
-                        new Kubernetes.Core.Inputs.VolumeDeviceArgs
+                        new Kubernetes.Types.Inputs.Core.V1.VolumeDeviceArgs
                         {
                             DevicePath = "string",
                             Name = "string",
@@ -1602,7 +1602,7 @@ var componentResource = new Foo.Component("componentResource", new()
                     },
                     VolumeMounts = new[]
                     {
-                        new Kubernetes.Core.Inputs.VolumeMountArgs
+                        new Kubernetes.Types.Inputs.Core.V1.VolumeMountArgs
                         {
                             MountPath = "string",
                             Name = "string",
@@ -1623,7 +1623,7 @@ var componentResource = new Foo.Component("componentResource", new()
             PriorityClassName = "string",
             ReadinessGates = new[]
             {
-                new Kubernetes.Core.Inputs.PodReadinessGateArgs
+                new Kubernetes.Types.Inputs.Core.V1.PodReadinessGateArgs
                 {
                     ConditionType = "string",
                 },
@@ -1631,21 +1631,21 @@ var componentResource = new Foo.Component("componentResource", new()
             RestartPolicy = "string",
             RuntimeClassName = "string",
             SchedulerName = "string",
-            SecurityContext = new Kubernetes.Core.Inputs.PodSecurityContextArgs
+            SecurityContext = new Kubernetes.Types.Inputs.Core.V1.PodSecurityContextArgs
             {
                 FsGroup = 0,
                 FsGroupChangePolicy = "string",
                 RunAsGroup = 0,
                 RunAsNonRoot = false,
                 RunAsUser = 0,
-                SeLinuxOptions = new Kubernetes.Core.Inputs.SELinuxOptionsArgs
+                SeLinuxOptions = new Kubernetes.Types.Inputs.Core.V1.SELinuxOptionsArgs
                 {
                     Level = "string",
                     Role = "string",
                     Type = "string",
                     User = "string",
                 },
-                SeccompProfile = new Kubernetes.Core.Inputs.SeccompProfileArgs
+                SeccompProfile = new Kubernetes.Types.Inputs.Core.V1.SeccompProfileArgs
                 {
                     Type = "string",
                     LocalhostProfile = "string",
@@ -1656,13 +1656,13 @@ var componentResource = new Foo.Component("componentResource", new()
                 },
                 Sysctls = new[]
                 {
-                    new Kubernetes.Core.Inputs.SysctlArgs
+                    new Kubernetes.Types.Inputs.Core.V1.SysctlArgs
                     {
                         Name = "string",
                         Value = "string",
                     },
                 },
-                WindowsOptions = new Kubernetes.Core.Inputs.WindowsSecurityContextOptionsArgs
+                WindowsOptions = new Kubernetes.Types.Inputs.Core.V1.WindowsSecurityContextOptionsArgs
                 {
                     GmsaCredentialSpec = "string",
                     GmsaCredentialSpecName = "string",
@@ -1678,7 +1678,7 @@ var componentResource = new Foo.Component("componentResource", new()
             TerminationGracePeriodSeconds = 0,
             Tolerations = new[]
             {
-                new Kubernetes.Core.Inputs.TolerationArgs
+                new Kubernetes.Types.Inputs.Core.V1.TolerationArgs
                 {
                     Effect = "string",
                     Key = "string",
@@ -1689,16 +1689,16 @@ var componentResource = new Foo.Component("componentResource", new()
             },
             TopologySpreadConstraints = new[]
             {
-                new Kubernetes.Core.Inputs.TopologySpreadConstraintArgs
+                new Kubernetes.Types.Inputs.Core.V1.TopologySpreadConstraintArgs
                 {
                     MaxSkew = 0,
                     TopologyKey = "string",
                     WhenUnsatisfiable = "string",
-                    LabelSelector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                    LabelSelector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                     {
                         MatchExpressions = new[]
                         {
-                            new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                            new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                             {
                                 Key = "string",
                                 Operator = "string",
@@ -1717,21 +1717,21 @@ var componentResource = new Foo.Component("componentResource", new()
             },
             Volumes = new[]
             {
-                new Kubernetes.Core.Inputs.VolumeArgs
+                new Kubernetes.Types.Inputs.Core.V1.VolumeArgs
                 {
                     Name = "string",
-                    GitRepo = new Kubernetes.Core.Inputs.GitRepoVolumeSourceArgs
+                    GitRepo = new Kubernetes.Types.Inputs.Core.V1.GitRepoVolumeSourceArgs
                     {
                         Repository = "string",
                         Directory = "string",
                         Revision = "string",
                     },
-                    ConfigMap = new Kubernetes.Core.Inputs.ConfigMapVolumeSourceArgs
+                    ConfigMap = new Kubernetes.Types.Inputs.Core.V1.ConfigMapVolumeSourceArgs
                     {
                         DefaultMode = 0,
                         Items = new[]
                         {
-                            new Kubernetes.Core.Inputs.KeyToPathArgs
+                            new Kubernetes.Types.Inputs.Core.V1.KeyToPathArgs
                             {
                                 Key = "string",
                                 Path = "string",
@@ -1741,32 +1741,32 @@ var componentResource = new Foo.Component("componentResource", new()
                         Name = "string",
                         Optional = false,
                     },
-                    Glusterfs = new Kubernetes.Core.Inputs.GlusterfsVolumeSourceArgs
+                    Glusterfs = new Kubernetes.Types.Inputs.Core.V1.GlusterfsVolumeSourceArgs
                     {
                         Endpoints = "string",
                         Path = "string",
                         ReadOnly = false,
                     },
-                    Cinder = new Kubernetes.Core.Inputs.CinderVolumeSourceArgs
+                    Cinder = new Kubernetes.Types.Inputs.Core.V1.CinderVolumeSourceArgs
                     {
                         VolumeID = "string",
                         FsType = "string",
                         ReadOnly = false,
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
                     },
-                    HostPath = new Kubernetes.Core.Inputs.HostPathVolumeSourceArgs
+                    HostPath = new Kubernetes.Types.Inputs.Core.V1.HostPathVolumeSourceArgs
                     {
                         Path = "string",
                         Type = "string",
                     },
-                    Csi = new Kubernetes.Core.Inputs.CSIVolumeSourceArgs
+                    Csi = new Kubernetes.Types.Inputs.Core.V1.CSIVolumeSourceArgs
                     {
                         Driver = "string",
                         FsType = "string",
-                        NodePublishSecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        NodePublishSecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
@@ -1776,21 +1776,21 @@ var componentResource = new Foo.Component("componentResource", new()
                             { "string", "string" },
                         },
                     },
-                    DownwardAPI = new Kubernetes.Core.Inputs.DownwardAPIVolumeSourceArgs
+                    DownwardAPI = new Kubernetes.Types.Inputs.Core.V1.DownwardAPIVolumeSourceArgs
                     {
                         DefaultMode = 0,
                         Items = new[]
                         {
-                            new Kubernetes.Core.Inputs.DownwardAPIVolumeFileArgs
+                            new Kubernetes.Types.Inputs.Core.V1.DownwardAPIVolumeFileArgs
                             {
                                 Path = "string",
-                                FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
                                 {
                                     FieldPath = "string",
                                     ApiVersion = "string",
                                 },
                                 Mode = 0,
-                                ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                ResourceFieldRef = new Kubernetes.Types.Inputs.Core.V1.ResourceFieldSelectorArgs
                                 {
                                     Resource = "string",
                                     ContainerName = "string",
@@ -1799,35 +1799,35 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                     },
-                    EmptyDir = new Kubernetes.Core.Inputs.EmptyDirVolumeSourceArgs
+                    EmptyDir = new Kubernetes.Types.Inputs.Core.V1.EmptyDirVolumeSourceArgs
                     {
                         Medium = "string",
                         SizeLimit = "string",
                     },
-                    Ephemeral = new Kubernetes.Core.Inputs.EphemeralVolumeSourceArgs
+                    Ephemeral = new Kubernetes.Types.Inputs.Core.V1.EphemeralVolumeSourceArgs
                     {
                         ReadOnly = false,
-                        VolumeClaimTemplate = new Kubernetes.Core.Inputs.PersistentVolumeClaimTemplateArgs
+                        VolumeClaimTemplate = new Kubernetes.Types.Inputs.Core.V1.PersistentVolumeClaimTemplateArgs
                         {
-                            Spec = new Kubernetes.Core.Inputs.PersistentVolumeClaimSpecArgs
+                            Spec = new Kubernetes.Types.Inputs.Core.V1.PersistentVolumeClaimSpecArgs
                             {
                                 AccessModes = new[]
                                 {
                                     "string",
                                 },
-                                DataSource = new Kubernetes.Core.Inputs.TypedLocalObjectReferenceArgs
+                                DataSource = new Kubernetes.Types.Inputs.Core.V1.TypedLocalObjectReferenceArgs
                                 {
                                     Kind = "string",
                                     Name = "string",
                                     ApiGroup = "string",
                                 },
-                                DataSourceRef = new Kubernetes.Core.Inputs.TypedLocalObjectReferenceArgs
+                                DataSourceRef = new Kubernetes.Types.Inputs.Core.V1.TypedLocalObjectReferenceArgs
                                 {
                                     Kind = "string",
                                     Name = "string",
                                     ApiGroup = "string",
                                 },
-                                Resources = new Kubernetes.Core.Inputs.ResourceRequirementsArgs
+                                Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
                                 {
                                     Limits = 
                                     {
@@ -1838,11 +1838,11 @@ var componentResource = new Foo.Component("componentResource", new()
                                         { "string", "string" },
                                     },
                                 },
-                                Selector = new Kubernetes.Meta.Inputs.LabelSelectorArgs
+                                Selector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
                                 {
                                     MatchExpressions = new[]
                                     {
-                                        new Kubernetes.Meta.Inputs.LabelSelectorRequirementArgs
+                                        new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorRequirementArgs
                                         {
                                             Key = "string",
                                             Operator = "string",
@@ -1861,7 +1861,7 @@ var componentResource = new Foo.Component("componentResource", new()
                                 VolumeMode = "string",
                                 VolumeName = "string",
                             },
-                            Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+                            Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
                             {
                                 Annotations = 
                                 {
@@ -1883,7 +1883,7 @@ var componentResource = new Foo.Component("componentResource", new()
                                 },
                                 ManagedFields = new[]
                                 {
-                                    new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                                    new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                                     {
                                         ApiVersion = "string",
                                         FieldsType = "string",
@@ -1898,7 +1898,7 @@ var componentResource = new Foo.Component("componentResource", new()
                                 Namespace = "string",
                                 OwnerReferences = new[]
                                 {
-                                    new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                                    new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                                     {
                                         ApiVersion = "string",
                                         Kind = "string",
@@ -1914,7 +1914,7 @@ var componentResource = new Foo.Component("componentResource", new()
                             },
                         },
                     },
-                    Fc = new Kubernetes.Core.Inputs.FCVolumeSourceArgs
+                    Fc = new Kubernetes.Types.Inputs.Core.V1.FCVolumeSourceArgs
                     {
                         FsType = "string",
                         Lun = 0,
@@ -1928,7 +1928,7 @@ var componentResource = new Foo.Component("componentResource", new()
                             "string",
                         },
                     },
-                    FlexVolume = new Kubernetes.Core.Inputs.FlexVolumeSourceArgs
+                    FlexVolume = new Kubernetes.Types.Inputs.Core.V1.FlexVolumeSourceArgs
                     {
                         Driver = "string",
                         FsType = "string",
@@ -1937,12 +1937,12 @@ var componentResource = new Foo.Component("componentResource", new()
                             { "string", "string" },
                         },
                         ReadOnly = false,
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
                     },
-                    Iscsi = new Kubernetes.Core.Inputs.ISCSIVolumeSourceArgs
+                    Iscsi = new Kubernetes.Types.Inputs.Core.V1.ISCSIVolumeSourceArgs
                     {
                         Iqn = "string",
                         Lun = 0,
@@ -1957,26 +1957,26 @@ var componentResource = new Foo.Component("componentResource", new()
                             "string",
                         },
                         ReadOnly = false,
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
                     },
-                    GcePersistentDisk = new Kubernetes.Core.Inputs.GCEPersistentDiskVolumeSourceArgs
+                    GcePersistentDisk = new Kubernetes.Types.Inputs.Core.V1.GCEPersistentDiskVolumeSourceArgs
                     {
                         PdName = "string",
                         FsType = "string",
                         Partition = 0,
                         ReadOnly = false,
                     },
-                    AwsElasticBlockStore = new Kubernetes.Core.Inputs.AWSElasticBlockStoreVolumeSourceArgs
+                    AwsElasticBlockStore = new Kubernetes.Types.Inputs.Core.V1.AWSElasticBlockStoreVolumeSourceArgs
                     {
                         VolumeID = "string",
                         FsType = "string",
                         Partition = 0,
                         ReadOnly = false,
                     },
-                    Cephfs = new Kubernetes.Core.Inputs.CephFSVolumeSourceArgs
+                    Cephfs = new Kubernetes.Types.Inputs.Core.V1.CephFSVolumeSourceArgs
                     {
                         Monitors = new[]
                         {
@@ -1985,24 +1985,24 @@ var componentResource = new Foo.Component("componentResource", new()
                         Path = "string",
                         ReadOnly = false,
                         SecretFile = "string",
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
                         User = "string",
                     },
-                    AzureFile = new Kubernetes.Core.Inputs.AzureFileVolumeSourceArgs
+                    AzureFile = new Kubernetes.Types.Inputs.Core.V1.AzureFileVolumeSourceArgs
                     {
                         SecretName = "string",
                         ShareName = "string",
                         ReadOnly = false,
                     },
-                    Flocker = new Kubernetes.Core.Inputs.FlockerVolumeSourceArgs
+                    Flocker = new Kubernetes.Types.Inputs.Core.V1.FlockerVolumeSourceArgs
                     {
                         DatasetName = "string",
                         DatasetUUID = "string",
                     },
-                    AzureDisk = new Kubernetes.Core.Inputs.AzureDiskVolumeSourceArgs
+                    AzureDisk = new Kubernetes.Types.Inputs.Core.V1.AzureDiskVolumeSourceArgs
                     {
                         DiskName = "string",
                         DiskURI = "string",
@@ -2011,39 +2011,39 @@ var componentResource = new Foo.Component("componentResource", new()
                         Kind = "string",
                         ReadOnly = false,
                     },
-                    Nfs = new Kubernetes.Core.Inputs.NFSVolumeSourceArgs
+                    Nfs = new Kubernetes.Types.Inputs.Core.V1.NFSVolumeSourceArgs
                     {
                         Path = "string",
                         Server = "string",
                         ReadOnly = false,
                     },
-                    PersistentVolumeClaim = new Kubernetes.Core.Inputs.PersistentVolumeClaimVolumeSourceArgs
+                    PersistentVolumeClaim = new Kubernetes.Types.Inputs.Core.V1.PersistentVolumeClaimVolumeSourceArgs
                     {
                         ClaimName = "string",
                         ReadOnly = false,
                     },
-                    PhotonPersistentDisk = new Kubernetes.Core.Inputs.PhotonPersistentDiskVolumeSourceArgs
+                    PhotonPersistentDisk = new Kubernetes.Types.Inputs.Core.V1.PhotonPersistentDiskVolumeSourceArgs
                     {
                         PdID = "string",
                         FsType = "string",
                     },
-                    PortworxVolume = new Kubernetes.Core.Inputs.PortworxVolumeSourceArgs
+                    PortworxVolume = new Kubernetes.Types.Inputs.Core.V1.PortworxVolumeSourceArgs
                     {
                         VolumeID = "string",
                         FsType = "string",
                         ReadOnly = false,
                     },
-                    Projected = new Kubernetes.Core.Inputs.ProjectedVolumeSourceArgs
+                    Projected = new Kubernetes.Types.Inputs.Core.V1.ProjectedVolumeSourceArgs
                     {
                         Sources = new[]
                         {
-                            new Kubernetes.Core.Inputs.VolumeProjectionArgs
+                            new Kubernetes.Types.Inputs.Core.V1.VolumeProjectionArgs
                             {
-                                ConfigMap = new Kubernetes.Core.Inputs.ConfigMapProjectionArgs
+                                ConfigMap = new Kubernetes.Types.Inputs.Core.V1.ConfigMapProjectionArgs
                                 {
                                     Items = new[]
                                     {
-                                        new Kubernetes.Core.Inputs.KeyToPathArgs
+                                        new Kubernetes.Types.Inputs.Core.V1.KeyToPathArgs
                                         {
                                             Key = "string",
                                             Path = "string",
@@ -2053,20 +2053,20 @@ var componentResource = new Foo.Component("componentResource", new()
                                     Name = "string",
                                     Optional = false,
                                 },
-                                DownwardAPI = new Kubernetes.Core.Inputs.DownwardAPIProjectionArgs
+                                DownwardAPI = new Kubernetes.Types.Inputs.Core.V1.DownwardAPIProjectionArgs
                                 {
                                     Items = new[]
                                     {
-                                        new Kubernetes.Core.Inputs.DownwardAPIVolumeFileArgs
+                                        new Kubernetes.Types.Inputs.Core.V1.DownwardAPIVolumeFileArgs
                                         {
                                             Path = "string",
-                                            FieldRef = new Kubernetes.Core.Inputs.ObjectFieldSelectorArgs
+                                            FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
                                             {
                                                 FieldPath = "string",
                                                 ApiVersion = "string",
                                             },
                                             Mode = 0,
-                                            ResourceFieldRef = new Kubernetes.Core.Inputs.ResourceFieldSelectorArgs
+                                            ResourceFieldRef = new Kubernetes.Types.Inputs.Core.V1.ResourceFieldSelectorArgs
                                             {
                                                 Resource = "string",
                                                 ContainerName = "string",
@@ -2075,11 +2075,11 @@ var componentResource = new Foo.Component("componentResource", new()
                                         },
                                     },
                                 },
-                                Secret = new Kubernetes.Core.Inputs.SecretProjectionArgs
+                                Secret = new Kubernetes.Types.Inputs.Core.V1.SecretProjectionArgs
                                 {
                                     Items = new[]
                                     {
-                                        new Kubernetes.Core.Inputs.KeyToPathArgs
+                                        new Kubernetes.Types.Inputs.Core.V1.KeyToPathArgs
                                         {
                                             Key = "string",
                                             Path = "string",
@@ -2089,7 +2089,7 @@ var componentResource = new Foo.Component("componentResource", new()
                                     Name = "string",
                                     Optional = false,
                                 },
-                                ServiceAccountToken = new Kubernetes.Core.Inputs.ServiceAccountTokenProjectionArgs
+                                ServiceAccountToken = new Kubernetes.Types.Inputs.Core.V1.ServiceAccountTokenProjectionArgs
                                 {
                                     Path = "string",
                                     Audience = "string",
@@ -2099,7 +2099,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         },
                         DefaultMode = 0,
                     },
-                    Quobyte = new Kubernetes.Core.Inputs.QuobyteVolumeSourceArgs
+                    Quobyte = new Kubernetes.Types.Inputs.Core.V1.QuobyteVolumeSourceArgs
                     {
                         Registry = "string",
                         Volume = "string",
@@ -2108,7 +2108,7 @@ var componentResource = new Foo.Component("componentResource", new()
                         Tenant = "string",
                         User = "string",
                     },
-                    Rbd = new Kubernetes.Core.Inputs.RBDVolumeSourceArgs
+                    Rbd = new Kubernetes.Types.Inputs.Core.V1.RBDVolumeSourceArgs
                     {
                         Image = "string",
                         Monitors = new[]
@@ -2119,16 +2119,16 @@ var componentResource = new Foo.Component("componentResource", new()
                         Keyring = "string",
                         Pool = "string",
                         ReadOnly = false,
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
                         User = "string",
                     },
-                    ScaleIO = new Kubernetes.Core.Inputs.ScaleIOVolumeSourceArgs
+                    ScaleIO = new Kubernetes.Types.Inputs.Core.V1.ScaleIOVolumeSourceArgs
                     {
                         Gateway = "string",
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
@@ -2141,12 +2141,12 @@ var componentResource = new Foo.Component("componentResource", new()
                         StoragePool = "string",
                         VolumeName = "string",
                     },
-                    Secret = new Kubernetes.Core.Inputs.SecretVolumeSourceArgs
+                    Secret = new Kubernetes.Types.Inputs.Core.V1.SecretVolumeSourceArgs
                     {
                         DefaultMode = 0,
                         Items = new[]
                         {
-                            new Kubernetes.Core.Inputs.KeyToPathArgs
+                            new Kubernetes.Types.Inputs.Core.V1.KeyToPathArgs
                             {
                                 Key = "string",
                                 Path = "string",
@@ -2156,18 +2156,18 @@ var componentResource = new Foo.Component("componentResource", new()
                         Optional = false,
                         SecretName = "string",
                     },
-                    Storageos = new Kubernetes.Core.Inputs.StorageOSVolumeSourceArgs
+                    Storageos = new Kubernetes.Types.Inputs.Core.V1.StorageOSVolumeSourceArgs
                     {
                         FsType = "string",
                         ReadOnly = false,
-                        SecretRef = new Kubernetes.Core.Inputs.LocalObjectReferenceArgs
+                        SecretRef = new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "string",
                         },
                         VolumeName = "string",
                         VolumeNamespace = "string",
                     },
-                    VsphereVolume = new Kubernetes.Core.Inputs.VsphereVirtualDiskVolumeSourceArgs
+                    VsphereVolume = new Kubernetes.Types.Inputs.Core.V1.VsphereVirtualDiskVolumeSourceArgs
                     {
                         VolumePath = "string",
                         FsType = "string",
@@ -2177,11 +2177,11 @@ var componentResource = new Foo.Component("componentResource", new()
                 },
             },
         },
-        Status = new Kubernetes.Core.Inputs.PodStatusArgs
+        Status = new Kubernetes.Types.Inputs.Core.V1.PodStatusArgs
         {
             Conditions = new[]
             {
-                new Kubernetes.Core.Inputs.PodConditionArgs
+                new Kubernetes.Types.Inputs.Core.V1.PodConditionArgs
                 {
                     Status = "string",
                     Type = "string",
@@ -2193,7 +2193,7 @@ var componentResource = new Foo.Component("componentResource", new()
             },
             ContainerStatuses = new[]
             {
-                new Kubernetes.Core.Inputs.ContainerStatusArgs
+                new Kubernetes.Types.Inputs.Core.V1.ContainerStatusArgs
                 {
                     Image = "string",
                     ImageID = "string",
@@ -2201,13 +2201,13 @@ var componentResource = new Foo.Component("componentResource", new()
                     Ready = false,
                     RestartCount = 0,
                     ContainerID = "string",
-                    LastState = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    LastState = new Kubernetes.Types.Inputs.Core.V1.ContainerStateArgs
                     {
-                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        Running = new Kubernetes.Types.Inputs.Core.V1.ContainerStateRunningArgs
                         {
                             StartedAt = "string",
                         },
-                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        Terminated = new Kubernetes.Types.Inputs.Core.V1.ContainerStateTerminatedArgs
                         {
                             ExitCode = 0,
                             ContainerID = "string",
@@ -2217,20 +2217,20 @@ var componentResource = new Foo.Component("componentResource", new()
                             Signal = 0,
                             StartedAt = "string",
                         },
-                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        Waiting = new Kubernetes.Types.Inputs.Core.V1.ContainerStateWaitingArgs
                         {
                             Message = "string",
                             Reason = "string",
                         },
                     },
                     Started = false,
-                    State = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    State = new Kubernetes.Types.Inputs.Core.V1.ContainerStateArgs
                     {
-                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        Running = new Kubernetes.Types.Inputs.Core.V1.ContainerStateRunningArgs
                         {
                             StartedAt = "string",
                         },
-                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        Terminated = new Kubernetes.Types.Inputs.Core.V1.ContainerStateTerminatedArgs
                         {
                             ExitCode = 0,
                             ContainerID = "string",
@@ -2240,7 +2240,7 @@ var componentResource = new Foo.Component("componentResource", new()
                             Signal = 0,
                             StartedAt = "string",
                         },
-                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        Waiting = new Kubernetes.Types.Inputs.Core.V1.ContainerStateWaitingArgs
                         {
                             Message = "string",
                             Reason = "string",
@@ -2250,7 +2250,7 @@ var componentResource = new Foo.Component("componentResource", new()
             },
             EphemeralContainerStatuses = new[]
             {
-                new Kubernetes.Core.Inputs.ContainerStatusArgs
+                new Kubernetes.Types.Inputs.Core.V1.ContainerStatusArgs
                 {
                     Image = "string",
                     ImageID = "string",
@@ -2258,13 +2258,13 @@ var componentResource = new Foo.Component("componentResource", new()
                     Ready = false,
                     RestartCount = 0,
                     ContainerID = "string",
-                    LastState = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    LastState = new Kubernetes.Types.Inputs.Core.V1.ContainerStateArgs
                     {
-                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        Running = new Kubernetes.Types.Inputs.Core.V1.ContainerStateRunningArgs
                         {
                             StartedAt = "string",
                         },
-                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        Terminated = new Kubernetes.Types.Inputs.Core.V1.ContainerStateTerminatedArgs
                         {
                             ExitCode = 0,
                             ContainerID = "string",
@@ -2274,20 +2274,20 @@ var componentResource = new Foo.Component("componentResource", new()
                             Signal = 0,
                             StartedAt = "string",
                         },
-                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        Waiting = new Kubernetes.Types.Inputs.Core.V1.ContainerStateWaitingArgs
                         {
                             Message = "string",
                             Reason = "string",
                         },
                     },
                     Started = false,
-                    State = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    State = new Kubernetes.Types.Inputs.Core.V1.ContainerStateArgs
                     {
-                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        Running = new Kubernetes.Types.Inputs.Core.V1.ContainerStateRunningArgs
                         {
                             StartedAt = "string",
                         },
-                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        Terminated = new Kubernetes.Types.Inputs.Core.V1.ContainerStateTerminatedArgs
                         {
                             ExitCode = 0,
                             ContainerID = "string",
@@ -2297,7 +2297,7 @@ var componentResource = new Foo.Component("componentResource", new()
                             Signal = 0,
                             StartedAt = "string",
                         },
-                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        Waiting = new Kubernetes.Types.Inputs.Core.V1.ContainerStateWaitingArgs
                         {
                             Message = "string",
                             Reason = "string",
@@ -2308,7 +2308,7 @@ var componentResource = new Foo.Component("componentResource", new()
             HostIP = "string",
             InitContainerStatuses = new[]
             {
-                new Kubernetes.Core.Inputs.ContainerStatusArgs
+                new Kubernetes.Types.Inputs.Core.V1.ContainerStatusArgs
                 {
                     Image = "string",
                     ImageID = "string",
@@ -2316,13 +2316,13 @@ var componentResource = new Foo.Component("componentResource", new()
                     Ready = false,
                     RestartCount = 0,
                     ContainerID = "string",
-                    LastState = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    LastState = new Kubernetes.Types.Inputs.Core.V1.ContainerStateArgs
                     {
-                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        Running = new Kubernetes.Types.Inputs.Core.V1.ContainerStateRunningArgs
                         {
                             StartedAt = "string",
                         },
-                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        Terminated = new Kubernetes.Types.Inputs.Core.V1.ContainerStateTerminatedArgs
                         {
                             ExitCode = 0,
                             ContainerID = "string",
@@ -2332,20 +2332,20 @@ var componentResource = new Foo.Component("componentResource", new()
                             Signal = 0,
                             StartedAt = "string",
                         },
-                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        Waiting = new Kubernetes.Types.Inputs.Core.V1.ContainerStateWaitingArgs
                         {
                             Message = "string",
                             Reason = "string",
                         },
                     },
                     Started = false,
-                    State = new Kubernetes.Core.Inputs.ContainerStateArgs
+                    State = new Kubernetes.Types.Inputs.Core.V1.ContainerStateArgs
                     {
-                        Running = new Kubernetes.Core.Inputs.ContainerStateRunningArgs
+                        Running = new Kubernetes.Types.Inputs.Core.V1.ContainerStateRunningArgs
                         {
                             StartedAt = "string",
                         },
-                        Terminated = new Kubernetes.Core.Inputs.ContainerStateTerminatedArgs
+                        Terminated = new Kubernetes.Types.Inputs.Core.V1.ContainerStateTerminatedArgs
                         {
                             ExitCode = 0,
                             ContainerID = "string",
@@ -2355,7 +2355,7 @@ var componentResource = new Foo.Component("componentResource", new()
                             Signal = 0,
                             StartedAt = "string",
                         },
-                        Waiting = new Kubernetes.Core.Inputs.ContainerStateWaitingArgs
+                        Waiting = new Kubernetes.Types.Inputs.Core.V1.ContainerStateWaitingArgs
                         {
                             Message = "string",
                             Reason = "string",
@@ -2369,7 +2369,7 @@ var componentResource = new Foo.Component("componentResource", new()
             PodIP = "string",
             PodIPs = new[]
             {
-                new Kubernetes.Core.Inputs.PodIPArgs
+                new Kubernetes.Types.Inputs.Core.V1.PodIPArgs
                 {
                     Ip = "string",
                 },

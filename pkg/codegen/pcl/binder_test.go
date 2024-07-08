@@ -547,3 +547,31 @@ resource randomPet "random:index/randomPet:RandomPet" {
 	assert.Equal(t, 2, len(diags), "There are two diagnostics")
 	assert.Nil(t, strictProgram)
 }
+
+func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *testing.T) {
+	t.Parallel()
+	// when binding a resource from a package that has a transitive dependency
+	// then that transitive dependency is part of the program package references.
+	// for example when binding a resource from AWSX package and that resources uses types from the AWS package
+	// then both AWSX and AWS packages are part of the program package references
+	source := `resource "example" "awsx:ecs:EC2Service" { }`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
+	assert.NotNil(t, program)
+	assert.Equal(t, 2, len(program.PackageReferences()), "There are two package references")
+
+	packageRefExists := func(pkg string) bool {
+		for _, ref := range program.PackageReferences() {
+			if ref.Name() == pkg {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	assert.True(t, packageRefExists("awsx"), "The program has a reference to the awsx package")
+	assert.True(t, packageRefExists("aws"), "The program has a reference to the aws package")
+}

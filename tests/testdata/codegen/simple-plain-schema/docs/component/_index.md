@@ -299,48 +299,48 @@ var componentResource = new Example.Component("componentResource", new()
 
 ```go
 example, err := example.NewComponent(ctx, "componentResource", &example.ComponentArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-Bar: &example.FooArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
-Baz: []example.FooArgs{
-{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
-},
-BazMap: interface{}{
-String: &example.FooArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
-},
-D: 0,
-F: "string",
-Foo: &example.FooArgs{
-A: false,
-C: 0,
-E: "string",
-B: false,
-D: 0,
-F: "string",
-},
+	A: false,
+	C: 0,
+	E: "string",
+	B: false,
+	Bar: &example.FooArgs{
+		A: false,
+		C: 0,
+		E: "string",
+		B: false,
+		D: 0,
+		F: "string",
+	},
+	Baz: []example.FooArgs{
+		{
+			A: false,
+			C: 0,
+			E: "string",
+			B: false,
+			D: 0,
+			F: "string",
+		},
+	},
+	BazMap: map[string]example.FooArgs{
+		"string": &example.FooArgs{
+			A: false,
+			C: 0,
+			E: "string",
+			B: false,
+			D: 0,
+			F: "string",
+		},
+	},
+	D: 0,
+	F: "string",
+	Foo: &example.FooArgs{
+		A: false,
+		C: 0,
+		E: "string",
+		B: false,
+		D: 0,
+		F: "string",
+	},
 })
 ```
 

@@ -362,6 +362,18 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 
 	node.InputType, node.OutputType = inputType, outputType
 
+	findTransitivePackageReferences := func(schemaType schema.Type) {
+		if objectType, ok := schemaType.(*schema.ObjectType); ok && objectType.PackageReference != nil {
+			ref := objectType.PackageReference
+			if _, found := b.referencedPackages[ref.Name()]; !found {
+				b.referencedPackages[ref.Name()] = ref
+			}
+		}
+	}
+
+	codegen.VisitTypeClosure(inputProperties, findTransitivePackageReferences)
+	codegen.VisitTypeClosure(properties, findTransitivePackageReferences)
+
 	return diagnostics
 }
 

@@ -235,7 +235,7 @@ The following reference example uses placeholder values for all [input propertie
 ```csharp
 var componentResource = new Example.Component("componentResource", new()
 {
-    RequiredMetadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+    RequiredMetadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
     {
         Annotations = 
         {
@@ -257,7 +257,7 @@ var componentResource = new Example.Component("componentResource", new()
         },
         ManagedFields = new[]
         {
-            new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+            new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
             {
                 ApiVersion = "string",
                 FieldsType = "string",
@@ -272,7 +272,7 @@ var componentResource = new Example.Component("componentResource", new()
         Namespace = "string",
         OwnerReferences = new[]
         {
-            new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+            new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
             {
                 ApiVersion = "string",
                 Kind = "string",
@@ -288,7 +288,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     RequiredMetadataArray = new[]
     {
-        new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -310,7 +310,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -325,7 +325,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -342,7 +342,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     RequiredMetadataMap = 
     {
-        { "string", new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        { "string", new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -364,7 +364,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -379,7 +379,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -394,7 +394,7 @@ var componentResource = new Example.Component("componentResource", new()
             Uid = "string",
         } },
     },
-    Metadata = new Kubernetes.Meta.Inputs.ObjectMetaArgs
+    Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
     {
         Annotations = 
         {
@@ -416,7 +416,7 @@ var componentResource = new Example.Component("componentResource", new()
         },
         ManagedFields = new[]
         {
-            new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+            new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
             {
                 ApiVersion = "string",
                 FieldsType = "string",
@@ -431,7 +431,7 @@ var componentResource = new Example.Component("componentResource", new()
         Namespace = "string",
         OwnerReferences = new[]
         {
-            new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+            new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
             {
                 ApiVersion = "string",
                 Kind = "string",
@@ -447,7 +447,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     MetadataArray = new[]
     {
-        new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -469,7 +469,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -484,7 +484,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
@@ -501,7 +501,7 @@ var componentResource = new Example.Component("componentResource", new()
     },
     MetadataMap = 
     {
-        { "string", new Kubernetes.Meta.Inputs.ObjectMetaArgs
+        { "string", new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
         {
             Annotations = 
             {
@@ -523,7 +523,7 @@ var componentResource = new Example.Component("componentResource", new()
             },
             ManagedFields = new[]
             {
-                new Kubernetes.Meta.Inputs.ManagedFieldsEntryArgs
+                new Kubernetes.Types.Inputs.Meta.V1.ManagedFieldsEntryArgs
                 {
                     ApiVersion = "string",
                     FieldsType = "string",
@@ -538,7 +538,7 @@ var componentResource = new Example.Component("componentResource", new()
             Namespace = "string",
             OwnerReferences = new[]
             {
-                new Kubernetes.Meta.Inputs.OwnerReferenceArgs
+                new Kubernetes.Types.Inputs.Meta.V1.OwnerReferenceArgs
                 {
                     ApiVersion = "string",
                     Kind = "string",
