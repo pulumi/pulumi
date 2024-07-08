@@ -456,6 +456,30 @@ func TestNewPythonUsesPip(t *testing.T) {
 }
 
 //nolint:paralleltest // Modifies env
+func TestNewPythonUsesPipNonInteractive(t *testing.T) {
+	// Force interactive mode to properly test `--yes`.
+	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stdout, _ := e.RunCommand("pulumi", "new", "python", "--force", "--yes", "--generate-only")
+
+	require.Contains(t, stdout, "pulumi install")
+
+	expected := map[string]interface{}{
+		"toolchain":  "pip",
+		"virtualenv": "venv",
+	}
+	integration.CheckRuntimeOptions(t, e.RootPath, expected)
+}
+
+//nolint:paralleltest // Modifies env
 func TestNewPythonChoosePoetry(t *testing.T) {
 	// The windows acceptance tests are run using git bash, but the survey library does not support this
 	// https://github.com/AlecAivazis/survey/issues/148

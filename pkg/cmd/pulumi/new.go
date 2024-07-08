@@ -889,7 +889,7 @@ func promptRuntimeOptions(ctx *plugin.Context, info *workspace.ProjectRuntimeInf
 
 		surveycore.DisableColor = true
 		for _, optionPrompt := range prompts {
-			if !interactive {
+			if yes {
 				if optionPrompt.Default == nil {
 					return nil, fmt.Errorf("must provide a runtime option for '%s' in non-interactive mode", optionPrompt.Key)
 				}
