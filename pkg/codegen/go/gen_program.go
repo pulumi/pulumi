@@ -758,8 +758,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				if r.Schema != nil {
 					panic(err)
 				}
-				// for unknown resources, make a best guess
-				vPath = "/v1"
+				// for unknown resources, don't create a versioned import
+				vPath = ""
 			}
 
 			g.addPulumiImport(pkg, vPath, mod, name)
@@ -776,8 +776,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					tokenRange := tokenArg.SyntaxNode().Range()
 					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
 					if call.Type() == model.DynamicType {
-						// then this is an unknown function, create a dummy import for it
-						dummyVersionPath := "/v1"
+						// then this is an unknown function, create a dummy import for it without a version
+						dummyVersionPath := ""
 						g.addPulumiImport(pkg, dummyVersionPath, mod, name)
 						return call, nil
 					}
@@ -1048,7 +1048,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		mod = ""
 		typ = "Provider"
 	}
-	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod
 		mod = pkg
 	}

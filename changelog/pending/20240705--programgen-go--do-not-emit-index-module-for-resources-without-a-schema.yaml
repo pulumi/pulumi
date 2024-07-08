@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Do not emit index module for resources without a schema
