@@ -37,6 +37,7 @@ type examplesSection struct {
 	// language chooser shortcode. Use this to customize the languages shown for a
 	// resource. By default, the language chooser will show all languages supported
 	// by Pulumi for all resources.
+	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
 	LangChooserLanguages string
 }
 

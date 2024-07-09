@@ -360,6 +360,7 @@ type resourceDocArgs struct {
 	// language chooser shortcode. Use this to customize the languages shown for a
 	// resource. By default, the language chooser will show all languages supported
 	// by Pulumi for all resources.
+	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
 	LangChooserLanguages string
 
 	// CreationExampleSyntax is a map from language to the rendered HTML for the
@@ -486,14 +487,15 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	return &newctx
 }
 
+// getSupportedLanguages returns the list of supported languages based on the overlay configuration.
+// If `isOverlay` is false or `overlaySupportedLanguages` is empty/nil, it returns the default list of supported languages.
+// Otherwise, it filters the `overlaySupportedLanguages` to ensure that they are a subset of the default supported languages.
 func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupportedLanguages []string) []string {
-	// By default, all languages are supported.
 	if !isOverlay || len(overlaySupportedLanguages) == 0 {
 		return dctx.supportedLanguages
 	}
 	var supportedLanguages []string
 	allLanguages := codegen.NewStringSet(dctx.supportedLanguages...)
-	// Ensure that the overlay languages are a subset of the supported languages.
 	for _, lang := range overlaySupportedLanguages {
 		if allLanguages.Has(lang) {
 			supportedLanguages = append(supportedLanguages, lang)
@@ -503,18 +505,19 @@ func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupporte
 	return supportedLanguages
 }
 
-// getSupportedSnippetLanguages returns a string containing the supported snippet languages for the given type.
+// getSupportedSnippetLanguages returns a comma separated string containing the supported snippet languages for the given type
+// based on the overlay configuration.
 // If the type is not an overlay or if there are no overlay supported languages, all languages are supported.
-// The returned string contains the supported languages joined by commas.
+// Internally this calls the getSupportedLanguages function to retrieve the supported languages and replaces "nodejs"
+// with "typescript" because snippet languages expect "typescript" instead of "nodejs".
 func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
 	supportedLanguages := dctx.getSupportedLanguages(isOverlay, overlaySupportedLanguages)
-	supportedSnippetLanguages := make([]string, 0, len(supportedLanguages))
-	for _, lang := range supportedLanguages {
-		// Snippet languages expect "typescript" instead of "nodejs".
+	supportedSnippetLanguages := make([]string, len(supportedLanguages))
+	for idx, lang := range supportedLanguages {
 		if lang == "nodejs" {
 			lang = "typescript"
 		}
-		supportedSnippetLanguages = append(supportedSnippetLanguages, lang)
+		supportedSnippetLanguages[idx] = lang
 	}
 
 	return strings.Join(supportedSnippetLanguages, ",")
