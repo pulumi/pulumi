@@ -360,6 +360,7 @@ type resourceDocArgs struct {
 	// language chooser shortcode. Use this to customize the languages shown for a
 	// resource. By default, the language chooser will show all languages supported
 	// by Pulumi for all resources.
+	// Supported values are "typescript", "python", "go", "csharp", "java", "yaml"
 	LangChooserLanguages string
 
 	// CreationExampleSyntax is a map from language to the rendered HTML for the
@@ -369,7 +370,7 @@ type resourceDocArgs struct {
 
 	// Comment represents the introductory resource comment.
 	Comment            string
-	ExamplesSection    []exampleSection
+	ExamplesSection    examplesSection
 	DeprecationMessage string
 
 	// Import
@@ -484,6 +485,42 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	}
 	newctx.children = children
 	return &newctx
+}
+
+// getSupportedLanguages returns the list of supported languages based on the overlay configuration.
+// If `isOverlay` is false or `overlaySupportedLanguages` is empty/nil, it returns the default list of supported languages.
+// Otherwise, it filters the `overlaySupportedLanguages` to ensure that they are a subset of the default supported languages.
+func (dctx *docGenContext) getSupportedLanguages(isOverlay bool, overlaySupportedLanguages []string) []string {
+	if !isOverlay || len(overlaySupportedLanguages) == 0 {
+		return dctx.supportedLanguages
+	}
+	var supportedLanguages []string
+	allLanguages := codegen.NewStringSet(dctx.supportedLanguages...)
+	for _, lang := range overlaySupportedLanguages {
+		if allLanguages.Has(lang) {
+			supportedLanguages = append(supportedLanguages, lang)
+		}
+	}
+
+	return supportedLanguages
+}
+
+// getSupportedSnippetLanguages returns a comma separated string containing the supported snippet languages for the given type
+// based on the overlay configuration.
+// If the type is not an overlay or if there are no overlay supported languages, all languages are supported.
+// Internally this calls the getSupportedLanguages function to retrieve the supported languages and replaces "nodejs"
+// with "typescript" because snippet languages expect "typescript" instead of "nodejs".
+func (dctx *docGenContext) getSupportedSnippetLanguages(isOverlay bool, overlaySupportedLanguages []string) string {
+	supportedLanguages := dctx.getSupportedLanguages(isOverlay, overlaySupportedLanguages)
+	supportedSnippetLanguages := make([]string, len(supportedLanguages))
+	for idx, lang := range supportedLanguages {
+		if lang == "nodejs" {
+			lang = "typescript"
+		}
+		supportedSnippetLanguages[idx] = lang
+	}
+
+	return strings.Join(supportedSnippetLanguages, ",")
 }
 
 func resourceName(r *schema.Resource) string {
@@ -1795,15 +1832,19 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		maxNestedTypes = 200
 	}
 
-	docInfo := dctx.decomposeDocstring(r.Comment)
+	supportedSnippetLanguages := mod.docGenContext.getSupportedSnippetLanguages(r.IsOverlay, r.OverlaySupportedLanguages)
+	docInfo := dctx.decomposeDocstring(r.Comment, supportedSnippetLanguages)
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
 		Tool: mod.tool,
 
-		Comment:                docInfo.description,
-		DeprecationMessage:     r.DeprecationMessage,
-		ExamplesSection:        docInfo.examples,
+		Comment:            docInfo.description,
+		DeprecationMessage: r.DeprecationMessage,
+		ExamplesSection: examplesSection{
+			Examples:             docInfo.examples,
+			LangChooserLanguages: supportedSnippetLanguages,
+		},
 		ImportDocs:             docInfo.importDetails,
 		CreationExampleSyntax:  creationExampleSyntax,
 		ConstructorParams:      renderedCtorParams,
@@ -1822,7 +1863,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 		Methods: mod.genMethods(r),
 
-		PackageDetails: packageDetails,
+		PackageDetails:       packageDetails,
+		LangChooserLanguages: supportedSnippetLanguages,
 	}
 
 	return data

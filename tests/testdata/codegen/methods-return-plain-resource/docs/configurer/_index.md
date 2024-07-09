@@ -21,7 +21,7 @@ Resources are created with functions called constructors. To learn more about de
 
 ### Constructor syntax
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -220,7 +220,7 @@ Resources are created with functions called constructors. To learn more about de
 
 The following reference example uses placeholder values for all [input properties](#inputs).
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -448,7 +448,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using MeaningOfLife
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -491,7 +491,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using ObjectMix
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
@@ -669,7 +669,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 #### Using TlsProvider
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 

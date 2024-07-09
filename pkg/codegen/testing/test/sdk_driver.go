@@ -465,6 +465,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "config-variables",
 		Description: "Testing config variables.",
 	},
+	{
+		Directory:   "overlay-supported-languages",
+		Description: "Testing restricting the languages an overlay supports.",
+		Skip:        allLanguages.Except("docs/any"),
+	},
 }
 
 var genSDKOnly bool

@@ -20,7 +20,7 @@ n/a
 ## Using funcWithEmptyOutputs {#using}
 
 <div>
-<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+<pulumi-chooser type="language" options="csharp,go,typescript,python,yaml,java"></pulumi-chooser>
 </div>
 
 
