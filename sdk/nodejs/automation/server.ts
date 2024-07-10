@@ -24,11 +24,16 @@ import * as localState from "../runtime/state";
 import * as langproto from "../proto/language_pb";
 import * as plugproto from "../proto/plugin_pb";
 
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-/** @internal */
+/**
+ * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
+ *
+ * @internal
+ */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
-/** @internal */
+/**
+ * @internal
+ */
 export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
     readonly program: () => Promise<T>;
 
@@ -40,7 +45,8 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
     }
 
     onPulumiExit(hasError: boolean) {
-        // check for leaks once the CLI exits but skip if the program otherwise errored to keep error output clean
+        // Check for leaks once the CLI exits but skip if the program otherwise
+        // errored to keep error output clean
         if (!hasError) {
             const [leaks, leakMessage] = debuggable.leakedPromises();
             if (leaks.size !== 0) {

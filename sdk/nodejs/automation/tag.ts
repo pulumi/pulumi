@@ -13,6 +13,7 @@
 // limitations under the License.
 
 /**
- * TagMap is a key-value map of tag metadata associated with a stack.
+ * A {@link TagMap} is a key-value map of tag metadata associated with a
+ * {@link Stack}.
  */
 export type TagMap = { [key: string]: string };
