@@ -130,7 +130,7 @@ func SetProviderParameter(inputs resource.PropertyMap, value *ProviderParameter)
 		"pkg":     resource.NewStringProperty(string(value.pkg)),
 		"version": resource.NewStringProperty(value.version.String()),
 		"value": resource.NewStringProperty(
-			base64.RawStdEncoding.EncodeToString(value.value)),
+			base64.StdEncoding.EncodeToString(value.value)),
 	})
 }
 
