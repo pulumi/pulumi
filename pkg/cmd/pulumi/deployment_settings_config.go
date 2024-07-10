@@ -404,7 +404,7 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 
 	repoRoot, err := gitutil.DetectGitRootDirectory(wd)
 	if err != nil && !errors.Is(err, gitutil.ErrNoGitRepo) {
-		return fmt.Errorf("Could not determine the git root directory: %w", err)
+		return fmt.Errorf("could not determine the git root directory: %w", err)
 	}
 
 	rl, err := newRepoLookup(repoRoot)
