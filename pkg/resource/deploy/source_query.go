@@ -443,66 +443,6 @@ func (rm *queryResmon) Invoke(
 	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
-func (rm *queryResmon) StreamInvoke(
-	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer,
-) error {
-	tok := tokens.ModuleMember(req.GetTok())
-	label := fmt.Sprintf("QueryResourceMonitor.StreamInvoke(%s)", tok)
-
-	providerReq, err := parseProviderRequest(
-		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
-	if err != nil {
-		return err
-	}
-	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
-	if err != nil {
-		return err
-	}
-
-	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
-	}
-
-	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
-	// streaming operation completes!
-	logging.V(5).Infof("QueryResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
-	resp, err := prov.StreamInvoke(context.TODO(), plugin.StreamInvokeRequest{
-		Tok:  tok,
-		Args: args,
-		OnNext: func(event resource.PropertyMap) error {
-			mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{
-				Label:         label,
-				KeepUnknowns:  true,
-				KeepResources: req.GetAcceptResources(),
-			})
-			if err != nil {
-				return fmt.Errorf("failed to marshal return: %w", err)
-			}
-
-			return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
-	}
-
-	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(resp.Failures))
-	for _, failure := range resp.Failures {
-		chkfails = append(chkfails, &pulumirpc.CheckFailure{
-			Property: string(failure.Property),
-			Reason:   failure.Reason,
-		})
-	}
-
-	if len(chkfails) > 0 {
-		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
-	}
-	return nil
-}
-
 // Call dynamically executes a method in the provider associated with a component resource.
 func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 	tok := tokens.ModuleMember(req.GetTok())

@@ -571,10 +571,6 @@ None.
 
 - TODO
 
-### StreamInvoke
-
-- TODO
-
 ## CLI Scenarios
 
 - TODO:

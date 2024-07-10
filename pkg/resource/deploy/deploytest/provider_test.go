@@ -282,30 +282,6 @@ func TestProvider(t *testing.T) {
 			assert.Equal(t, resource.PropertyMap{}, resp.Properties)
 		})
 	})
-	t.Run("StreamInvoke", func(t *testing.T) {
-		t.Parallel()
-		t.Run("has StreamInvokeF", func(t *testing.T) {
-			t.Parallel()
-			expectedErr := errors.New("expected error")
-			prov := &Provider{
-				StreamInvokeF: func(
-					tok tokens.ModuleMember, args resource.PropertyMap,
-					onNext func(resource.PropertyMap) error,
-				) ([]plugin.CheckFailure, error) {
-					assert.Equal(t, tokens.ModuleMember("expected-tok"), tok)
-					return nil, expectedErr
-				},
-			}
-			_, err := prov.StreamInvoke(context.Background(), plugin.StreamInvokeRequest{Tok: "expected-tok"})
-			assert.ErrorIs(t, err, expectedErr)
-		})
-		t.Run("no StreamInvokeF", func(t *testing.T) {
-			t.Parallel()
-			prov := &Provider{}
-			_, err := prov.StreamInvoke(context.Background(), plugin.StreamInvokeRequest{})
-			assert.ErrorContains(t, err, "StreamInvoke unimplemented")
-		})
-	})
 	t.Run("Call", func(t *testing.T) {
 		t.Parallel()
 		t.Run("has CallF", func(t *testing.T) {

@@ -1988,9 +1988,6 @@ async function createMockEngineAsync(
     server.addService(resrpc.ResourceMonitorService, {
         supportsFeature: supportsFeatureCallback,
         invoke: invokeCallback,
-        streamInvoke: () => {
-            throw new Error("StreamInvoke not implemented in mock engine");
-        },
         readResource: readResourceCallback,
         registerResource: registerResourceCallback,
         registerResourceOutputs: registerResourceOutputsCallback,

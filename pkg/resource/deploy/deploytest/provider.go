@@ -68,8 +68,6 @@ type Provider struct {
 
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	StreamInvokeF func(tok tokens.ModuleMember, args resource.PropertyMap,
-		onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error)
 
 	CallF func(monitor *ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 		options plugin.CallOptions) (plugin.CallResult, error)
@@ -248,16 +246,6 @@ func (prov *Provider) Invoke(_ context.Context, req plugin.InvokeRequest) (plugi
 	}
 	result, failures, err := prov.InvokeF(req.Tok, req.Args)
 	return plugin.InvokeResponse{Properties: result, Failures: failures}, err
-}
-
-func (prov *Provider) StreamInvoke(
-	_ context.Context, req plugin.StreamInvokeRequest,
-) (plugin.StreamInvokeResponse, error) {
-	if prov.StreamInvokeF == nil {
-		return plugin.StreamInvokeResponse{}, errors.New("StreamInvoke unimplemented")
-	}
-	failures, err := prov.StreamInvokeF(req.Tok, req.Args, req.OnNext)
-	return plugin.StreamInvokeResponse{Failures: failures}, err
 }
 
 func (prov *Provider) Call(ctx context.Context, req plugin.CallRequest) (plugin.CallResponse, error) {

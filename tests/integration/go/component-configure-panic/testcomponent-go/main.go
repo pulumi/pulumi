@@ -174,12 +174,6 @@ func (p *Provider) Invoke(ctx context.Context,
 	return nil, fmt.Errorf("unknown Invoke %q", req.GetTok())
 }
 
-func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("unknown StreamInvoke %q", req.GetTok())
-}
-
 func (p *Provider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {

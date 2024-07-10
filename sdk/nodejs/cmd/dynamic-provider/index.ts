@@ -96,13 +96,6 @@ async function invokeRPC(call: any, callback: any): Promise<void> {
     callback(new Error(`unknown function ${req.getTok()}`), undefined);
 }
 
-async function streamInvokeRPC(call: any, callback: any): Promise<void> {
-    const req: any = call.request;
-
-    // TODO[pulumi/pulumi#406]: implement this.
-    callback(new Error(`unknown function ${req.getTok()}`), undefined);
-}
-
 async function checkRPC(call: any, callback: any): Promise<void> {
     try {
         const req: any = call.request;
@@ -384,7 +377,6 @@ export async function main(args: string[]) {
         cancel: cancelRPC,
         configure: configureRPC,
         invoke: invokeRPC,
-        streamInvoke: streamInvokeRPC,
         check: checkRPC,
         checkConfig: checkConfigRPC,
         diff: diffRPC,
