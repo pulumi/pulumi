@@ -862,7 +862,7 @@ func (a *detectGitAccessorsImpl) Stat(name string) (detectGitFileInfo, error) {
 	return os.Stat(name)
 }
 
-var ErrNoGitRepo = errors.New("Git repo not detected")
+var ErrNoGitRepo = errors.New("git repo not detected")
 
 // As go-git do not support an analogous to `git rev-parse --show-toplevel`,
 // I am bringing this from a suggestion in an open issue tracking the requirement
