@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Avoid computing refresh `Diff`s for external resources

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Use default values for language specific prompts when using --yes

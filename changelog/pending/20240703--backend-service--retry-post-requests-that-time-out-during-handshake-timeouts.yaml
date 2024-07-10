@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/service
-  description: Retry POST requests that time out during handshake timeouts
