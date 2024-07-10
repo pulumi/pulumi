@@ -2561,7 +2561,7 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 func upgradeOutputValues(
 	v resource.PropertyMap, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
 ) resource.PropertyMap {
-	// We assume that by the time this is being called we've upgradeqd all Secret/Computed values to outputs. We just
+	// We assume that by the time this is being called we've upgraded all Secret/Computed values to outputs. We just
 	// need to add the dependency information from propertyDependencies.
 
 	result := make(resource.PropertyMap)
