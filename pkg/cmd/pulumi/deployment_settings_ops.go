@@ -16,7 +16,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -51,8 +50,6 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			fmt.Println("Done")
 
 			return nil
 		}),
@@ -98,8 +95,6 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Done")
-
 			return nil
 		}),
 	}
@@ -138,8 +133,6 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			fmt.Println("Done")
 
 			return nil
 		}),
@@ -220,8 +213,6 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			fmt.Println("Done")
 
 			return nil
 		}),

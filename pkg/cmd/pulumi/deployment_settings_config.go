@@ -355,8 +355,6 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Println("Done")
-
 			return nil
 		}),
 	}
