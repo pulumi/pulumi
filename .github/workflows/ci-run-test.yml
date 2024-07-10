@@ -159,6 +159,7 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
           cache: true
           cache-dependency-path: |
             pkg/go.sum

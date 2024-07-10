@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Use latest patch version of Go in CI
