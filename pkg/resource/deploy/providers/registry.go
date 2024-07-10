@@ -16,6 +16,7 @@ package providers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -128,7 +129,8 @@ func SetProviderParameter(inputs resource.PropertyMap, value *ProviderParameter)
 	inputs[parameterKey] = resource.NewObjectProperty(resource.PropertyMap{
 		"pkg":     resource.NewStringProperty(string(value.pkg)),
 		"version": resource.NewStringProperty(value.version.String()),
-		"value":   resource.NewPropertyValue(value.value),
+		"value": resource.NewStringProperty(
+			base64.RawStdEncoding.EncodeToString(value.value)),
 	})
 }
 
@@ -169,11 +171,18 @@ func GetProviderParameter(inputs resource.PropertyMap) (*ProviderParameter, erro
 	if !ok {
 		return nil, fmt.Errorf("'%s' must have a 'value' field", parameterKey)
 	}
+	if value.IsString() {
+		return nil, fmt.Errorf("'%s' must have a 'value' field of type string", parameterKey)
+	}
+	bytes, err := base64.StdEncoding.DecodeString(value.StringValue())
+	if err != nil {
+		return nil, fmt.Errorf("could not decode base64 parameter value: %w", err)
+	}
 
 	return &ProviderParameter{
 		pkg:     tokens.Package(pkg.StringValue()),
 		version: &sv,
-		value:   value.V,
+		value:   bytes,
 	}, nil
 }
 

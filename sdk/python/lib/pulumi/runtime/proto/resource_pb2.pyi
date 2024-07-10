@@ -981,17 +981,15 @@ class Parameterization(google.protobuf.message.Message):
     """the parameterized package name."""
     version: builtins.str
     """the parameterized package version."""
-    @property
-    def value(self) -> google.protobuf.struct_pb2.Value:
-        """the parameter value for the parameterized package."""
+    value: builtins.bytes
+    """the parameter value for the parameterized package."""
     def __init__(
         self,
         *,
         name: builtins.str = ...,
         version: builtins.str = ...,
-        value: google.protobuf.struct_pb2.Value | None = ...,
+        value: builtins.bytes = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
 global___Parameterization = Parameterization

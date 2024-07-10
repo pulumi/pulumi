@@ -777,11 +777,10 @@ export class Parameterization extends jspb.Message {
     setName(value: string): Parameterization;
     getVersion(): string;
     setVersion(value: string): Parameterization;
-
-    hasValue(): boolean;
-    clearValue(): void;
-    getValue(): google_protobuf_struct_pb.Value | undefined;
-    setValue(value?: google_protobuf_struct_pb.Value): Parameterization;
+    getValue(): Uint8Array | string;
+    getValue_asU8(): Uint8Array;
+    getValue_asB64(): string;
+    setValue(value: Uint8Array | string): Parameterization;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Parameterization.AsObject;
@@ -797,7 +796,7 @@ export namespace Parameterization {
     export type AsObject = {
         name: string,
         version: string,
-        value?: google_protobuf_struct_pb.Value.AsObject,
+        value: Uint8Array | string,
     }
 }
 

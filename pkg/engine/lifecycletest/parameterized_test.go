@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,7 +130,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				) (plugin.ParameterizeResponse, error) {
 					value := req.Parameters.(*plugin.ParameterizeValue)
 
-					param = value.Value.(string)
+					param = string(value.Value)
 
 					return plugin.ParameterizeResponse{
 						Name:    value.Name,
@@ -164,7 +163,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		extRef, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
 			Name:    "pkgExt",
 			Version: "0.5.0",
-			Value:   structpb.NewStringValue("replacement"),
+			Value:   []byte("replacement"),
 		})
 		require.NoError(t, err)
 

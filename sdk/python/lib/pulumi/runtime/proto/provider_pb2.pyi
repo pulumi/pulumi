@@ -61,17 +61,15 @@ class ParameterizeRequest(google.protobuf.message.Message):
         """The sub-package name for this sub-schema parameterization."""
         version: builtins.str
         """The sub-package version for this sub-schema parameterization."""
-        @property
-        def value(self) -> google.protobuf.struct_pb2.Value:
-            """The embedded value from the sub-package."""
+        value: builtins.bytes
+        """The embedded value from the sub-package."""
         def __init__(
             self,
             *,
             name: builtins.str = ...,
             version: builtins.str = ...,
-            value: google.protobuf.struct_pb2.Value | None = ...,
+            value: builtins.bytes = ...,
         ) -> None: ...
-        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
         def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
 
     ARGS_FIELD_NUMBER: builtins.int

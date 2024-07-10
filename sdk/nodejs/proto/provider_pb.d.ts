@@ -67,11 +67,10 @@ export namespace ParameterizeRequest {
         setName(value: string): ParametersValue;
         getVersion(): string;
         setVersion(value: string): ParametersValue;
-
-        hasValue(): boolean;
-        clearValue(): void;
-        getValue(): google_protobuf_struct_pb.Value | undefined;
-        setValue(value?: google_protobuf_struct_pb.Value): ParametersValue;
+        getValue(): Uint8Array | string;
+        getValue_asU8(): Uint8Array;
+        getValue_asB64(): string;
+        setValue(value: Uint8Array | string): ParametersValue;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): ParametersValue.AsObject;
@@ -87,7 +86,7 @@ export namespace ParameterizeRequest {
         export type AsObject = {
             name: string,
             version: string,
-            value?: google_protobuf_struct_pb.Value.AsObject,
+            value: Uint8Array | string,
         }
     }
 
