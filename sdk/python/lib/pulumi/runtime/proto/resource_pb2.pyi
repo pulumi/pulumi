@@ -905,6 +905,8 @@ global___TransformResponse = TransformResponse
 
 @typing_extensions.final
 class TransformInvokeRequest(google.protobuf.message.Message):
+    """TransformInvokeRequest is the request object for the TransformInvoke RPC."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     TOKEN_FIELD_NUMBER: builtins.int
@@ -932,6 +934,8 @@ global___TransformInvokeRequest = TransformInvokeRequest
 
 @typing_extensions.final
 class TransformInvokeResponse(google.protobuf.message.Message):
+    """TransformInvokeResponse is the response object for the TransformInvoke RPC."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     ARGS_FIELD_NUMBER: builtins.int
@@ -955,6 +959,8 @@ global___TransformInvokeResponse = TransformInvokeResponse
 
 @typing_extensions.final
 class TransformInvokeOptions(google.protobuf.message.Message):
+    """TransformInvokeOptions is a subset of all invoke options that are relevant to transforms."""
+
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing_extensions.final

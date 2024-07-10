@@ -1361,6 +1361,7 @@ func (x *TransformResponse) GetOptions() *TransformResourceOptions {
 	return nil
 }
 
+// TransformInvokeRequest is the request object for the TransformInvoke RPC.
 type TransformInvokeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1424,6 +1425,7 @@ func (x *TransformInvokeRequest) GetOptions() *TransformInvokeOptions {
 	return nil
 }
 
+// TransformInvokeResponse is the response object for the TransformInvoke RPC.
 type TransformInvokeResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1479,6 +1481,7 @@ func (x *TransformInvokeResponse) GetOptions() *TransformInvokeOptions {
 	return nil
 }
 
+// TransformInvokeOptions is a subset of all invoke options that are relevant to transforms.
 type TransformInvokeOptions struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1487,7 +1490,7 @@ type TransformInvokeOptions struct {
 	Provider          string            `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
 	PluginDownloadUrl string            `protobuf:"bytes,2,opt,name=plugin_download_url,json=pluginDownloadUrl,proto3" json:"plugin_download_url,omitempty"`
 	Version           string            `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
-	PluginChecksums   map[string][]byte `protobuf:"bytes,5,rep,name=plugin_checksums,json=pluginChecksums,proto3" json:"plugin_checksums,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	PluginChecksums   map[string][]byte `protobuf:"bytes,4,rep,name=plugin_checksums,json=pluginChecksums,proto3" json:"plugin_checksums,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *TransformInvokeOptions) Reset() {
@@ -2364,7 +2367,7 @@ var file_pulumi_resource_proto_rawDesc = []byte{
 	0x67, 0x69, 0x6e, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x72, 0x6c, 0x12, 0x18,
 	0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x61, 0x0a, 0x10, 0x70, 0x6c, 0x75, 0x67,
-	0x69, 0x6e, 0x5f, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x73, 0x75, 0x6d, 0x73, 0x18, 0x05, 0x20, 0x03,
+	0x69, 0x6e, 0x5f, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x73, 0x75, 0x6d, 0x73, 0x18, 0x04, 0x20, 0x03,
 	0x28, 0x0b, 0x32, 0x36, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x54,
 	0x72, 0x61, 0x6e, 0x73, 0x66, 0x6f, 0x72, 0x6d, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x4f, 0x70,
 	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x43, 0x68, 0x65, 0x63,

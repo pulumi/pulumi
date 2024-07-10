@@ -6588,7 +6588,7 @@ proto.pulumirpc.TransformInvokeOptions.deserializeBinaryFromReader = function(ms
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
       break;
-    case 5:
+    case 4:
       var value = msg.getPluginChecksumsMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
@@ -6646,7 +6646,7 @@ proto.pulumirpc.TransformInvokeOptions.serializeBinaryToWriter = function(messag
   }
   f = message.getPluginChecksumsMap(true);
   if (f && f.getLength() > 0) {
-    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
+    f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
 };
 
@@ -6706,14 +6706,14 @@ proto.pulumirpc.TransformInvokeOptions.prototype.setVersion = function(value) {
 
 
 /**
- * map<string, bytes> plugin_checksums = 5;
+ * map<string, bytes> plugin_checksums = 4;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,!(string|Uint8Array)>}
  */
 proto.pulumirpc.TransformInvokeOptions.prototype.getPluginChecksumsMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
-      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      jspb.Message.getMapField(this, 4, opt_noLazyCreate,
       null));
 };
 
