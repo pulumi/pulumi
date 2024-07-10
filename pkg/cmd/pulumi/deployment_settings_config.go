@@ -168,20 +168,20 @@ func initializeDeploymentSettings(
 	}
 
 	if !be.SupportsDeployments() {
-		unsuportedBackendMsg := fmt.Sprintf("Backends of type %q do not support managed deployments.\n\n"+
+		unsupportedBackendMsg := fmt.Sprintf("Backends of type %q do not support managed deployments.\n\n"+
 			"Create a Pulumi Cloud account to get started, learn more about pulumi deployments here: "+
 			"https://www.pulumi.com/docs/pulumi-cloud/deployments/",
 			be.Name())
 
-		unsuportedBackendMsg = colors.Highlight(unsuportedBackendMsg,
+		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
 			fmt.Sprintf("Backends of type %q do not support managed deployments", be.Name()),
 			colors.Red+colors.Bold)
-		unsuportedBackendMsg = colors.Highlight(unsuportedBackendMsg, "Pulumi Cloud", colors.BrightCyan+colors.Bold)
-		unsuportedBackendMsg = colors.Highlight(unsuportedBackendMsg, "https://www.pulumi.com/docs/pulumi-cloud/deployments/",
+		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg, "Pulumi Cloud", colors.BrightCyan+colors.Bold)
+		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg, "https://www.pulumi.com/docs/pulumi-cloud/deployments/",
 			colors.BrightBlue+colors.Underline+colors.Bold)
 
 		fmt.Println()
-		fmt.Println(displayOpts.Color.Colorize(unsuportedBackendMsg))
+		fmt.Println(displayOpts.Color.Colorize(unsupportedBackendMsg))
 		fmt.Println()
 
 		return nil, fmt.Errorf("unable to manage stack deployments for backend type: %s",
@@ -228,7 +228,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			if d.Deployment != nil && !force {
 				return fmt.Errorf("Deployment settings already configured for stack %q. Rerun for a "+
 					"different stack by using --stack, update it by using the \"configure\" command or by "+
-					"editing the file manually; or use --force", d.Stack.Ref().FullyQualifiedName())
+					"editing the file manually; or use --force", d.Stack.Ref())
 			}
 
 			return initStackDeploymentCmd(d, gitSSHPrivateKeyPath)
@@ -294,12 +294,7 @@ func initStackDeploymentCmd(d *deploymentSettingsCommandDependencies, gitSSHPriv
 		return err
 	}
 
-	err = saveProjectStackDeployment(d.Deployment, d.Stack)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return saveProjectStackDeployment(d.Deployment, d.Stack)
 }
 
 func newDeploymentSettingsConfigureCmd() *cobra.Command {
@@ -485,7 +480,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		}
 	}
 
-	repoDir, err := promptForValue(d.Yes, "repo directory", defaultRepoDir, false,
+	repoDir, err := promptForValue(d.Yes, "repository directory", defaultRepoDir, false,
 		ValidateRelativeDirectory(rl.GetRepoRoot()), *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -554,7 +549,7 @@ func configureGitHubRepo(d *deploymentSettingsCommandDependencies, vcsInfo *gitu
 
 	options := promptUserMultiSkippable(
 		d.Yes,
-		"What kind of authentication should it use?",
+		"What kind of authentication should Pulumi Deployments use?",
 		[]string{
 			optPreviewPr,
 			optUpdatePushes,
@@ -856,7 +851,7 @@ func configureOidcAzure(d *deploymentSettingsCommandDependencies) error {
 		clientID = sd.DeploymentSettings.Operation.OIDC.Azure.ClientID
 	}
 
-	clientID, err = promptForValue(d.Yes, "Azure client id", clientID, false,
+	clientID, err = promptForValue(d.Yes, "Azure client ID", clientID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -866,7 +861,7 @@ func configureOidcAzure(d *deploymentSettingsCommandDependencies) error {
 		tenantID = sd.DeploymentSettings.Operation.OIDC.Azure.TenantID
 	}
 
-	tenantID, err = promptForValue(d.Yes, "Azure tenant id", tenantID, false,
+	tenantID, err = promptForValue(d.Yes, "Azure tenant ID", tenantID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -876,7 +871,7 @@ func configureOidcAzure(d *deploymentSettingsCommandDependencies) error {
 		subscriptionID = sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID
 	}
 
-	subscriptionID, err = promptForValue(d.Yes, "Azure subscription id", subscriptionID, false,
+	subscriptionID, err = promptForValue(d.Yes, "Azure subscription ID", subscriptionID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
