@@ -244,17 +244,20 @@ message TransformResponse {
     TransformResourceOptions options = 2; // the options for the resource.
 }
 
+// TransformInvokeRequest is the request object for the TransformInvoke RPC.
 message TransformInvokeRequest {
     string token = 1; // the token for the invoke request.
     google.protobuf.Struct args = 2; // the input args of the resource.
     TransformInvokeOptions options = 3; // the options for the resource.
 }
 
+// TransformInvokeResponse is the response object for the TransformInvoke RPC.
 message TransformInvokeResponse {
     google.protobuf.Struct args = 1; // the transformed input args.
     TransformInvokeOptions options = 2; // the options for the resource.
 }
 
+// TransformInvokeOptions is a subset of all invoke options that are relevant to transforms.
 message TransformInvokeOptions {
     string provider = 1;
     string plugin_download_url = 2;

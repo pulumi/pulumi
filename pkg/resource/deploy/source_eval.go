@@ -952,7 +952,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	// Fetch the token and load up the resource provider if necessary.
+	// Fetch the token.
 	tok := tokens.ModuleMember(req.GetTok())
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
@@ -975,7 +975,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		PluginChecksums:   req.GetPluginChecksums(),
 	}
 
-	// Then lock the stack transformations and run all of those
+	// Lock the invoke transforms and run all of those before loading the provider.
 	err = func() error {
 		// Function exists to scope the lock
 		rm.invokeTransformsLock.Lock()
@@ -996,6 +996,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, err
 	}
 
+	// Load up the resource provider if necessary.
 	providerReq, err := parseProviderRequest(
 		tok.Package(), opts.Version, opts.PluginDownloadUrl, opts.PluginChecksums, nil)
 	if err != nil {
@@ -1329,6 +1330,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+// Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
+// wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFunction, error) {
 	client, err := rm.GetCallbacksClient(cb.Target)
 	if err != nil {
@@ -1401,6 +1404,8 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 	}, nil
 }
 
+// Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
+// wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (TransformInvokeFunction, error) {
 	client, err := rm.GetCallbacksClient(cb.Target)
 	if err != nil {
