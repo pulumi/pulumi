@@ -1412,7 +1412,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 		ctx context.Context, invokeToken string,
 		args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
 	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
-		logging.V(5).Infof("Invoke Transform: token=%v props=%v opts=%v",
+		logging.V(5).Infof("Invoke transform: token=%v props=%v opts=%v",
 			invokeToken, args, opts)
 
 		margs := plugin.MarshalOptions{
