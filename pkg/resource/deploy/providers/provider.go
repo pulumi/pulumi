@@ -29,13 +29,13 @@ type ProviderParameter struct {
 	pkg tokens.Package
 	// The version of the parametrized provider plugin.
 	version *semver.Version
-	// The value of the parameter (a JSON like value).
-	value interface{}
+	// The value of the parameter.
+	value []byte
 }
 
 // NewProviderParameter constructs a new provider parameter.
 func NewProviderParameter(
-	pkg tokens.Package, version *semver.Version, value interface{},
+	pkg tokens.Package, version *semver.Version, value []byte,
 ) *ProviderParameter {
 	return &ProviderParameter{
 		pkg:     pkg,

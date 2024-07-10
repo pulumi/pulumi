@@ -259,5 +259,5 @@ message RegisterPackageResponse {
 message Parameterization { 
     string name = 1; // the parameterized package name.
     string version = 2; // the parameterized package version.
-    google.protobuf.Value value = 3; // the parameter value for the parameterized package.
+    bytes value = 3; // the parameter value for the parameterized package.
 }

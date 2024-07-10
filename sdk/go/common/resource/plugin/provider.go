@@ -48,17 +48,7 @@ type (
 	ParameterizeValue struct {
 		Name    string
 		Version *semver.Version
-		// Value must be one of:
-		// - nil
-		// - bool
-		// - int, int32, int64
-		// - uint, uint32, uint64
-		// - float32, float64
-		// - string
-		// - []byte
-		// - map[string]interface{}
-		// - []interface{}
-		Value any
+		Value   []byte
 	}
 )
 

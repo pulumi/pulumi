@@ -319,15 +319,11 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 		if p.Version != nil {
 			version = p.Version.String()
 		}
-		value, err := structpb.NewValue(p.Value)
-		if err != nil {
-			return ParameterizeResponse{}, err
-		}
 		params.Parameters = &pulumirpc.ParameterizeRequest_Value{
 			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
 				Name:    p.Name,
 				Version: version,
-				Value:   value,
+				Value:   p.Value,
 			},
 		}
 	case nil:

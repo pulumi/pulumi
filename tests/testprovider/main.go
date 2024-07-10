@@ -141,7 +141,7 @@ func (k *testproviderProvider) Parameterize(_ context.Context, req *rpc.Paramete
 			Version: version,
 		}, nil
 	case *rpc.ParameterizeRequest_Value:
-		val := params.Value.Value.GetStringValue()
+		val := string(params.Value.Value)
 		if val == "" {
 			return nil, fmt.Errorf("expected a non-empty string value")
 		}

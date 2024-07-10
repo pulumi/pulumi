@@ -6442,7 +6442,7 @@ proto.pulumirpc.Parameterization.toObject = function(includeInstance, msg) {
   var f, obj = {
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    value: (f = msg.getValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
+    value: msg.getValue_asB64()
   };
 
   if (includeInstance) {
@@ -6488,8 +6488,7 @@ proto.pulumirpc.Parameterization.deserializeBinaryFromReader = function(msg, rea
       msg.setVersion(value);
       break;
     case 3:
-      var value = new google_protobuf_struct_pb.Value;
-      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
       msg.setValue(value);
       break;
     default:
@@ -6535,12 +6534,11 @@ proto.pulumirpc.Parameterization.serializeBinaryToWriter = function(message, wri
       f
     );
   }
-  f = message.getValue();
-  if (f != null) {
-    writer.writeMessage(
+  f = message.getValue_asU8();
+  if (f.length > 0) {
+    writer.writeBytes(
       3,
-      f,
-      google_protobuf_struct_pb.Value.serializeBinaryToWriter
+      f
     );
   }
 };
@@ -6583,39 +6581,44 @@ proto.pulumirpc.Parameterization.prototype.setVersion = function(value) {
 
 
 /**
- * optional google.protobuf.Value value = 3;
- * @return {?proto.google.protobuf.Value}
+ * optional bytes value = 3;
+ * @return {!(string|Uint8Array)}
  */
 proto.pulumirpc.Parameterization.prototype.getValue = function() {
-  return /** @type{?proto.google.protobuf.Value} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 3));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /**
- * @param {?proto.google.protobuf.Value|undefined} value
+ * optional bytes value = 3;
+ * This is a type-conversion wrapper around `getValue()`
+ * @return {string}
+ */
+proto.pulumirpc.Parameterization.prototype.getValue_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getValue()));
+};
+
+
+/**
+ * optional bytes value = 3;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getValue()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.Parameterization.prototype.getValue_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getValue()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.pulumirpc.Parameterization} returns this
-*/
+ */
 proto.pulumirpc.Parameterization.prototype.setValue = function(value) {
-  return jspb.Message.setWrapperField(this, 3, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.Parameterization} returns this
- */
-proto.pulumirpc.Parameterization.prototype.clearValue = function() {
-  return this.setValue(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.Parameterization.prototype.hasValue = function() {
-  return jspb.Message.getField(this, 3) != null;
+  return jspb.Message.setProto3BytesField(this, 3, value);
 };
 
 

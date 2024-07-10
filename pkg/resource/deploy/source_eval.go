@@ -874,7 +874,7 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		parameterization = providers.NewProviderParameter(
 			name,
 			version,
-			req.Parameterization.Value.AsInterface(),
+			req.Parameterization.Value,
 		)
 		version = parameterizationVersion
 		name = tokens.Package(req.Parameterization.Name)
