@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: docs
-  description: Add ability to constrain supported languages of resource and function overlays

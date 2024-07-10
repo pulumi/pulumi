@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/python
-  description: Fix Python program generation for remote assets

@@ -1,5 +1,61 @@
 # Changelog
 
+## 3.123.0 (2024-07-10)
+
+
+### Features
+
+- [docs] Add ability to constrain supported languages of resource and function overlays
+  [#16579](https://github.com/pulumi/pulumi/pull/16579)
+
+- [engine] Guess references to properties 'name' and 'arn' between dependant resources during import
+  [#16234](https://github.com/pulumi/pulumi/pull/16234)
+
+- [sdk/nodejs] Add `dependsOn` to `InvokeOptions` in the NodeJS SDK
+  [#16560](https://github.com/pulumi/pulumi/pull/16560)
+
+
+### Bug Fixes
+
+- [cli/new] Use default values for language specific prompts when using --yes
+  [#16595](https://github.com/pulumi/pulumi/pull/16595)
+
+- [docs] Fix generating constructor syntax examples for kubernetes
+  [#16574](https://github.com/pulumi/pulumi/pull/16574)
+
+- [docs] Fix generating constructor syntax examples in Go for package awsx
+  [#16583](https://github.com/pulumi/pulumi/pull/16583)
+
+- [backend/service] Retry POST requests that time out during handshake timeouts
+  [#16576](https://github.com/pulumi/pulumi/pull/16576)
+
+- [engine] Avoid computing refresh `Diff`s for external resources
+  [#16544](https://github.com/pulumi/pulumi/pull/16544)
+
+- [engine] Fix program hanging when the import resource option is used and the inputs don't match
+  [#16572](https://github.com/pulumi/pulumi/pull/16572)
+
+- [programgen/go] Do not emit index module for resources without a schema
+  [#16588](https://github.com/pulumi/pulumi/pull/16588)
+
+- [sdk/go] Fix out-of-range panic when sanitizing PATH env var
+  [#16575](https://github.com/pulumi/pulumi/pull/16575)
+
+- [sdk/nodejs] Fix creating a closure with object getters and setters
+  [#16568](https://github.com/pulumi/pulumi/pull/16568)
+
+- [programgen/python] Fix Python program generation for remote assets
+  [#16556](https://github.com/pulumi/pulumi/pull/16556)
+
+
+### Miscellaneous
+
+- [ci] Use latest patch version of Go in CI
+  [#16609](https://github.com/pulumi/pulumi/pull/16609)
+
+- [sdk/nodejs] Bump `@opentelemetry` packages in the NodeJS SDK
+  [#16558](https://github.com/pulumi/pulumi/pull/16558)
+
 ## 3.122.0 (2024-07-01)
 
 
