@@ -1021,10 +1021,6 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *diyBackend) Query(ctx context.Context, op backend.QueryOperation) error {
-	return b.query(ctx, op, nil /*events*/)
-}
-
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
 ) result.Result {
@@ -1220,13 +1216,6 @@ func (b *diyBackend) apply(
 	}
 
 	return plan, changes, nil
-}
-
-// query executes a query program against the resource outputs of a diy hosted stack.
-func (b *diyBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event,
-) error {
-	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
 func (b *diyBackend) GetHistory(

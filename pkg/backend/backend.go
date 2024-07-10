@@ -197,9 +197,6 @@ type Backend interface {
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) result.Result
 
-	// Query against the resource outputs in a stack's state checkpoint.
-	Query(ctx context.Context, op QueryOperation) error
-
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
@@ -273,17 +270,6 @@ type UpdateOperation struct {
 	Root               string
 	Imports            []deploy.Import
 	M                  *UpdateMetadata
-	Opts               UpdateOptions
-	SecretsManager     secrets.Manager
-	SecretsProvider    secrets.Provider
-	StackConfiguration StackConfiguration
-	Scopes             CancellationScopeSource
-}
-
-// QueryOperation configures a query operation.
-type QueryOperation struct {
-	Proj               *workspace.Project
-	Root               string
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
 	SecretsProvider    secrets.Provider

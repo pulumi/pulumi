@@ -16,7 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import abc
-import collections.abc
 import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
@@ -73,13 +72,6 @@ class ResourceProviderStub:
         pulumi.provider_pb2.InvokeResponse,
     ]
     """Invoke dynamically executes a built-in function in the provider."""
-    StreamInvoke: grpc.UnaryStreamMultiCallable[
-        pulumi.provider_pb2.InvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
-    ]
-    """StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-    of responses.
-    """
     Call: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.CallRequest,
         pulumi.provider_pb2.CallResponse,
@@ -225,15 +217,6 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.InvokeResponse:
         """Invoke dynamically executes a built-in function in the provider."""
-    
-    def StreamInvoke(
-        self,
-        request: pulumi.provider_pb2.InvokeRequest,
-        context: grpc.ServicerContext,
-    ) -> collections.abc.Iterator[pulumi.provider_pb2.InvokeResponse]:
-        """StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-        of responses.
-        """
     
     def Call(
         self,

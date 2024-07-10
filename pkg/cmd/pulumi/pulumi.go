@@ -383,7 +383,6 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				newQueryCmd(),
 				newConvertCmd(),
 				newWatchCmd(),
 				newLogsCmd(),
