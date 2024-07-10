@@ -40,8 +40,11 @@ import {
 import { mapAliasesForRequest } from "./resource";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-/** @internal */
+/**
+ * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+ *
+ * @internal
+ */
 const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;

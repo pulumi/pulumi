@@ -18,78 +18,103 @@ import * as closure from "./createClosure";
 import * as utils from "./utils";
 
 /**
- * SerializeFunctionArgs are arguments used to serialize a JavaScript function
+ * {@link SerializeFunctionArgs} are arguments used to serialize a JavaScript
+ * function.
  */
 export interface SerializeFunctionArgs {
     /**
-     * The name to export from the module defined by the generated module text.  Defaults to 'handler'.
+     * The name to export from the module defined by the generated module text.
+     * Defaults to `handler`.
      */
     exportName?: string;
+
     /**
-     * A function to prevent serialization of certain objects captured during the serialization.  Primarily used to
-     * prevent potential cycles.
+     * A function to prevent serialization of certain objects captured during
+     * the serialization. Primarily used to prevent potential cycles.
      */
     serialize?: (o: any) => boolean;
+
     /**
-     * If this is a function which, when invoked, will produce the actual entrypoint function.
-     * Useful for when serializing a function that has high startup cost that only wants to be
-     * run once. The signature of this function should be:  () => (provider_handler_args...) => provider_result
+     * True if this is a function which, when invoked, will produce the actual
+     * entrypoint function. Useful for when serializing a function that has high
+     * startup cost that we'd ideally only run once. The signature of this
+     * function should be `() => (provider_handler_args...) => provider_result`.
      *
-     * This will then be emitted as: `exports.[exportName] = serialized_func_name();`
+     * This will then be emitted as `exports.[exportName] =
+     * serialized_func_name();`
      *
-     * In other words, the function will be invoked (once) and the resulting inner function will
-     * be what is exported.
+     * In other words, the function will be invoked (once) and the resulting
+     * inner function will be what is exported.
      */
     isFactoryFunction?: boolean;
+
     /**
      * The resource to log any errors we encounter against.
      */
     logResource?: Resource;
+
     /**
-     * If true, allow secrets to be serialized into the function. This should only be set to true if the calling
-     * code will handle this and propoerly wrap the resulting text in a Secret before passing it into any Resources
-     * or serializing it to any other output format. If set, the `containsSecrets` property on the returned
-     * SerializedFunction object will indicate whether secrets were serialized into the function text.
+     * If true, allow secrets to be serialized into the function. This should
+     * only be set to true if the calling code will handle this and propoerly
+     * wrap the resulting text in a secret before passing it into any resources
+     * or serializing it to any other output format. If set, the
+     * `containsSecrets` property on the returned {@link SerializedFunction}
+     * object will indicate whether secrets were serialized into the function
+     * text.
      */
     allowSecrets?: boolean;
 }
 
 /**
- * SerializeFunction is a representation of a serialized JavaScript function.
+ * {@link SerializedFunction} is a representation of a serialized JavaScript
+ * function.
  */
 export interface SerializedFunction {
     /**
-     * The text of a JavaScript module which exports a single name bound to an appropriate value.
-     * In the case of a normal function, this value will just be serialized function.  In the case
-     * of a factory function this value will be the result of invoking the factory function.
+     * The text of a JavaScript module which exports a single name bound to an
+     * appropriate value. In the case of a normal function, this value will just
+     * be serialized function. In the case of a factory function this value
+     * will be the result of invoking the factory function.
      */
     text: string;
+
     /**
      * The name of the exported module member.
      */
     exportName: string;
+
     /**
-     * True if the serialized function text includes serialization of secret
+     * True if the serialized function text includes serialized secrets.
      */
     containsSecrets: boolean;
 }
 
 /**
- * serializeFunction serializes a JavaScript function into a text form that can be loaded in another execution context,
- * for example as part of a function callback associated with an AWS Lambda.  The function serialization captures any
- * variables captured by the function body and serializes those values into the generated text along with the function
- * body.  This process is recursive, so that functions referenced by the body of the serialized function will themselves
- * be serialized as well.  This process also deeply serializes captured object values, including prototype chains and
- * property descriptors, such that the semantics of the function when deserialized should match the original function.
+ * Serializes a JavaScript function into a text form that can be loaded in
+ * another execution context, for example as part of a function callback
+ * associated with an AWS Lambda. The function serialization captures any
+ * variables captured by the function body and serializes those values into the
+ * generated text along with the function body.  This process is recursive, so
+ * that functions referenced by the body of the serialized function will
+ * themselves be serialized as well.  This process also deeply serializes
+ * captured object values, including prototype chains and property descriptors,
+ * such that the semantics of the function when deserialized should match the
+ * original function.
  *
  * There are several known limitations:
- * - If a native function is captured either directly or indirectly, closure serialization will return an error.
- * - Captured values will be serialized based on their values at the time that `serializeFunction` is called.  Mutations
- *   to these values after that (but before the deserialized function is used) will not be observed by the deserialized
- *   function.
  *
- * @param func The JavaScript function to serialize.
- * @param args Arguments to use to control the serialization of the JavaScript function.
+ * - If a native function is captured either directly or indirectly, closure
+ *   serialization will return an error.
+ *
+ * - Captured values will be serialized based on their values at the time that
+ *   `serializeFunction` is called.  Mutations to these values after that (but
+ *   before the deserialized function is used) will not be observed by the
+ *   deserialized function.
+ *
+ * @param func
+ *  The JavaScript function to serialize.
+ * @param args
+ *  Arguments to use to control the serialization of the JavaScript function.
  */
 export async function serializeFunction(func: Function, args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
     const exportName = args.exportName || "handler";
@@ -104,7 +129,8 @@ export async function serializeFunction(func: Function, args: SerializeFunctionA
 }
 
 /**
- * @deprecated Please use 'serializeFunction' instead.
+ * @deprecated
+ *  Please use {@link serializeFunction} instead.
  */
 export async function serializeFunctionAsync(func: Function, serialize?: (o: any) => boolean): Promise<string> {
     log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
@@ -118,10 +144,9 @@ export async function serializeFunctionAsync(func: Function, serialize?: (o: any
 }
 
 /**
- * serializeJavaScriptText converts a FunctionInfo object into a string representation of a Node.js module body which
- * exposes a single function `exports.handler` representing the serialized function.
- *
- * @param c The FunctionInfo to be serialized into a module string.
+ * Converts a {@link FunctionInfo} object into a string representation of a
+ * NodeJS module body which exposes a single function `exports.handler`
+ * representing the serialized function.
  */
 function serializeJavaScriptText(
     outerClosure: closure.ClosureInfo,
@@ -559,12 +584,14 @@ function deepContainsObjOrArrayOrRegExp(env: closure.Entry): boolean {
 }
 
 /**
- * Converts an environment object into a string which can be embedded into a serialized function
- * body.  Note that this is not JSON serialization, as we may have property values which are
- * variable references to other global functions. In other words, there can be free variables in the
- * resulting object literal.
+ * Converts an environment object into a string which can be embedded into a
+ * serialized function body.  Note that this is not JSON serialization, as we
+ * may have property values which are variable references to other global
+ * functions. In other words, there can be free variables in the resulting
+ * object literal.
  *
- * @param envObj The environment object to convert to a string.
+ * @param envObj
+ *  The environment object to convert to a string.
  */
 function envObjToString(envObj: Record<string, string>): string {
     return `{ ${Object.keys(envObj)

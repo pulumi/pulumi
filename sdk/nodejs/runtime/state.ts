@@ -29,8 +29,11 @@ const nodeEnvKeys = {
     monitorAddr: "PULUMI_NODEJS_MONITOR",
     engineAddr: "PULUMI_NODEJS_ENGINE",
     syncDir: "PULUMI_NODEJS_SYNC",
-    // this value is not set by the CLI and is controlled via a user set env var unlike the values above
+
+    // Unlike the values above, this value is not set by the CLI and is
+    // controlled via a user-set environment variable.
     cacheDynamicProviders: "PULUMI_NODEJS_CACHE_DYNAMIC_PROVIDERS",
+
     organization: "PULUMI_NODEJS_ORGANIZATION",
 };
 
@@ -38,30 +41,86 @@ const pulumiEnvKeys = {
     legacyApply: "PULUMI_ENABLE_LEGACY_APPLY",
 };
 
-/** @internal */
+/**
+ * @internal
+ */
 export const asyncLocalStorage = new AsyncLocalStorage<Store>();
 
-/** @internal */
+/**
+ * @internal
+ */
 export interface WriteableOptions {
-    project?: string; // the name of the current project.
-    stack?: string; // the name of the current stack being deployed into.
-    parallel?: number; // the degree of parallelism for resource operations (default is serial).
-    engineAddr?: string; // a connection string to the engine's RPC, in case we need to reestablish.
-    monitorAddr?: string; // a connection string to the monitor's RPC, in case we need to reestablish.
-    dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
-    testModeEnabled?: boolean; // true if we're in testing mode (allows execution without the CLI).
-    queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
-    legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
-    cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
-    organization?: string; // the name of the current organization (if available).
-    maximumProcessListeners: number; // the number of process listeners which can be registered before writing a warning.
     /**
-     * Directory containing the send/receive files for making synchronous invokes to the engine.
+     * The name of the current project.
+     */
+    project?: string;
+
+    /**
+     * The name of the current stack being deployed into.
+     */
+    stack?: string;
+
+    /**
+     * The degree of parallelism for resource operations (default is serial).
+     */
+    parallel?: number;
+
+    /**
+     * A connection string to the engine's RPC, in case we need to reestablish.
+     */
+    engineAddr?: string;
+
+    /**
+     * A connection string to the monitor's RPC, in case we need to reestablish.
+     */
+    monitorAddr?: string;
+
+    /**
+     * Whether we are performing a preview (true) or a real deployment (false).
+     */
+    dryRun?: boolean;
+
+    /**
+     * True if we're in testing mode (allows execution without the CLI).
+     */
+    testModeEnabled?: boolean;
+
+    /**
+     * True if we're in query mode (does not allow resource registration).
+     */
+    queryMode?: boolean;
+
+    /**
+     * True if we will resolve missing outputs to inputs during preview.
+     */
+    legacyApply?: boolean;
+
+    /**
+     * True if we will cache serialized dynamic providers on the program side.
+     */
+    cacheDynamicProviders?: boolean;
+
+    /**
+     * The name of the current organization (if available).
+     */
+    organization?: string;
+
+    /**
+     * The number of process listeners which can be registered before writing a
+     * warning.
+     */
+    maximumProcessListeners: number;
+
+    /**
+     * A directory containing the send/receive files for making synchronous
+     * invokes to the engine.
      */
     syncDir?: string;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export interface Store {
     settings: {
         options: WriteableOptions;
@@ -77,53 +136,56 @@ export interface Store {
     logErrorCount: number;
 
     /**
-     * monitorSupportsSecrets returns a promise that when resolved tells you if the resource monitor we are connected
-     * to is able to support secrets across its RPC interface. When it does, we marshal outputs marked with the secret
-     * bit in a special way.
+     * Tells us if the resource monitor we are connected to is able to support
+     * secrets across its RPC interface. When it does, we marshal outputs marked
+     * with the secret bit in a special way.
      */
     supportsSecrets: boolean;
 
     /**
-     * monitorSupportsResourceReferences returns a promise that when resolved tells you if the resource monitor we are
-     * connected to is able to support resource references across its RPC interface. When it does, we marshal resources
-     * in a special way.
+     * Tells us if the resource monitor we are connected to is able to support
+     * resource references across its RPC interface. When it does, we marshal
+     * resources in a special way.
      */
     supportsResourceReferences: boolean;
 
     /**
-     * monitorSupportsOutputValues returns a promise that when resolved tells you if the resource monitor we are
-     * connected to is able to support output values across its RPC interface. When it does, we marshal outputs
+     * Tells u if the resource monitor we are connected to is able to support
+     * output values across its RPC interface. When it does, we marshal outputs
      * in a special way.
      */
     supportsOutputValues: boolean;
 
     /**
-     * monitorSupportsDeletedWith returns a promise that when resolved tells you if the resource monitor we are
-     * connected to is able to support the deletedWith resource option across its RPC interface.
+     * Tells us if the resource monitor we are connected to is able to support
+     * the `deletedWith` resource option across its RPC interface.
      */
     supportsDeletedWith: boolean;
 
     /**
-     * monitorSupportsAliasSpecs returns a promise that when resolved tells you if the resource monitor we are
-     * connected to is able to support alias specs across its RPC interface. When it does, we marshal aliases
-     * in a special way.
+     * Tells us if the resource monitor we are connected to is able to support
+     * alias specs across its RPC interface. When it does, we marshal aliases in
+     * a special way.
      */
     supportsAliasSpecs: boolean;
 
     /**
-     * supportsTransforms returns a promise that when resolved tells you if the resource monitor we are
-     * connected to is able to support remote transforms across its RPC interface. When it does, we marshal
+     * Tells us if the resource monitor we are connected to is able to support
+     * remote transforms across its RPC interface. When it does, we marshal
      * transforms to the monitor instead of running them locally.
      */
     supportsTransforms: boolean;
 
     /**
-     * callback service running for this deployment. This registers callbacks and forwards them to the engine.
+     * The callback service running for this deployment. This registers
+     * callbacks and forwards them to the engine.
      */
     callbacks?: ICallbackServer;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export class LocalStore implements Store {
     settings = {
         options: {
@@ -149,7 +211,7 @@ export class LocalStore implements Store {
     stackResource = undefined;
 
     /**
-     * leakCandidates tracks the list of potential leak candidates.
+     * Tracks the list of potential leak candidates.
      */
     leakCandidates = new Set<Promise<any>>();
 
@@ -163,7 +225,9 @@ export class LocalStore implements Store {
     supportsTransforms = false;
 }
 
-/** Get the root stack resource for the current stack deployment
+/**
+ * Get the root stack resource for the current stack deployment.
+ *
  * @internal
  */
 export function getStackResource(): Stack | undefined {
@@ -171,7 +235,9 @@ export function getStackResource(): Stack | undefined {
     return stackResource;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function setStackResource(newStackResource?: Stack) {
     const localStore = getStore();
     globalThis.stackResource = newStackResource;
@@ -184,7 +250,9 @@ declare global {
     var stackResource: Stack | undefined;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function getLocalStore(): Store | undefined {
     return asyncLocalStorage.getStore();
 }
@@ -199,7 +267,9 @@ export function getLocalStore(): Store | undefined {
     return returnFunc;
 };
 
-/** @internal */
+/**
+ * @internal
+ */
 export const getStore = () => {
     const localStore = getLocalStore();
     if (localStore === undefined) {

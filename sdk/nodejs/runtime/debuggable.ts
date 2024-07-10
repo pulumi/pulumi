@@ -14,17 +14,23 @@
 
 import * as log from "../log";
 import * as state from "./state";
-/** @internal
+
+/**
  * debugPromiseLeaks can be set to enable promises leaks debugging.
+ *
+ * @internal
  */
 export const debugPromiseLeaks: boolean = !!process.env.PULUMI_DEBUG_PROMISE_LEAKS;
 
 /**
- * leakDetectorScheduled is true when the promise leak detector is scheduled for process exit.
+ * leakDetectorScheduled is true when the promise leak detector is scheduled for
+ * process exit.
  */
 let leakDetectorScheduled: boolean = false;
 
-/** @internal */
+/**
+ * @internal
+ */
 export function leakedPromises(): [Set<Promise<any>>, string] {
     const localStore = state.getStore();
     const leaked = localStore.leakCandidates;
@@ -55,7 +61,9 @@ export function leakedPromises(): [Set<Promise<any>>, string] {
     return [leaked, message];
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function promiseDebugString(p: Promise<any>): string {
     return `CONTEXT(${(<any>p)._debugId}): ${(<any>p)._debugCtx}\n` + `STACK_TRACE:\n` + `${(<any>p)._debugStackTrace}`;
 }
@@ -63,7 +71,9 @@ export function promiseDebugString(p: Promise<any>): string {
 let promiseId = 0;
 
 /**
- * debuggablePromise optionally wraps a promise with some goo to make it easier to debug common problems.
+ * Optionally wraps a promise with some goo to make it easier to debug common
+ * problems.
+ *
  * @internal
  */
 export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
@@ -116,7 +126,9 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
 }
 
 /**
- * errorString produces a string from an error, conditionally including additional diagnostics.
+ * Produces a string from an error, conditionally including additional
+ * diagnostics.
+ *
  * @internal
  */
 export function errorString(err: Error): string {
