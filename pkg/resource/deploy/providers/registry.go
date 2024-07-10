@@ -171,7 +171,7 @@ func GetProviderParameter(inputs resource.PropertyMap) (*ProviderParameter, erro
 	if !ok {
 		return nil, fmt.Errorf("'%s' must have a 'value' field", parameterKey)
 	}
-	if value.IsString() {
+	if !value.IsString() {
 		return nil, fmt.Errorf("'%s' must have a 'value' field of type string", parameterKey)
 	}
 	bytes, err := base64.StdEncoding.DecodeString(value.StringValue())
