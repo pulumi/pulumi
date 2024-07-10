@@ -454,6 +454,25 @@ func runNew(ctx context.Context, args newArgs) error {
 		fmt.Println(template.Quickstart)
 	}
 
+	configureDeployments := askForConfirmation("Do you want to set up deployments for this stack?",
+		opts.Color, true, args.yes)
+
+	if !configureDeployments {
+		return nil
+	}
+
+	// If it is an interactive session, we will attemp to initialize deployment settings
+	// even if it is not supported by the backend to generate awareness. If it is not
+	// interactive, we will only run it if --yes was set and the backend supports deployments
+	// to assure the operation wont fail.
+	if args.interactive || (!args.interactive && args.yes && b.SupportsDeployments()) {
+		d, err := initializeDeploymentSettings(ctx, "", args.yes)
+		if err != nil {
+			return err
+		}
+		return initStackDeploymentCmd(d, "")
+	}
+
 	return nil
 }
 
