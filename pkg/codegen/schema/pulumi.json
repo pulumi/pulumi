@@ -160,9 +160,7 @@
                 },
                 "parameter": {
                     "type": "string",
-                    "media": {
-                        "binaryEncoding": "base64"
-                    }
+                    "contentEncoding": "base64"
                 }
             },
             "additionalProperties": false
