@@ -159,7 +159,8 @@
                     "additionalProperties": false
                 },
                 "parameter": {
-
+                    "type": "string",
+                    "contentEncoding": "base64"
                 }
             },
             "additionalProperties": false

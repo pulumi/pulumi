@@ -592,7 +592,7 @@ type BaseProvider struct {
 type Parameterization struct {
 	BaseProvider BaseProvider
 	// Parameter is the parameter for the provider.
-	Parameter interface{}
+	Parameter []byte
 }
 
 // Package describes a Pulumi package.
@@ -1969,10 +1969,7 @@ type ParameterizationSpec struct {
 	// The base provider to parameterize.
 	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
 	// The parameter to apply to the base provider.
-	//
-	// Parameter can be any type round-tripable through [json.Marshal]/[json.Unmarshal] and
-	// [yaml.Marshal]/[yaml.Unmarshal].
-	Parameter interface{} `json:"parameter" yaml:"parameter"`
+	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
 // PackageSpec is the serializable description of a Pulumi package.
