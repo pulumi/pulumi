@@ -311,33 +311,44 @@ class Config:
         secret: bool,
         use: Optional[Callable] = None,
         instead_of: Optional[Callable] = None,
+        msg: Optional[str] = None,
     ) -> str:
         v = self._get(key, use, instead_of)
         if v is None:
-            raise ConfigMissingError(self.full_key(key), secret)
+            raise ConfigMissingError(self.full_key(key), secret, msg)
         return v
 
-    def require(self, key: str) -> str:
+    def require(
+        self,
+        key: str,
+        msg: Optional[str] = None,
+    ) -> str:
         """
         Returns a configuration value by its given key.  If it doesn't exist, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: str
         :raises ConfigMissingError: The configuration value did not exist.
         """
-        return self._require(key, False, self.require_secret, self.require)
+        return self._require(key, False, self.require_secret, self.require, msg)
 
-    def require_secret(self, key: str) -> Output[str]:
+    def require_secret(
+        self,
+        key: str,
+        msg: Optional[str] = None,
+    ) -> Output[str]:
         """
         Returns a configuration value, marked as a secret by its given key.  If it doesn't exist, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: str
         :raises ConfigMissingError: The configuration value did not exist.
         """
-        return Output.secret(self._require(key, True))
+        return Output.secret(self._require(key, True, msg=msg))
 
     def _require_bool(
         self,
@@ -345,39 +356,54 @@ class Config:
         secret: bool,
         use: Optional[Callable] = None,
         instead_of: Optional[Callable] = None,
+        msg: Optional[str] = None,
     ) -> bool:
         v = self._get_bool(key, use, instead_of)
         if v is None:
-            raise ConfigMissingError(self.full_key(key), secret)
+            raise ConfigMissingError(self.full_key(key), secret, msg)
         return v
 
-    def require_bool(self, key: str) -> bool:
+    def require_bool(
+        self,
+        key: str,
+        msg: Optional[str] = None,
+    ) -> bool:
         """
         Returns a configuration value, as a bool, by its given key.  If it doesn't exist, or the
         configuration value is not a legal bool, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: bool
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
         return self._require_bool(
-            key, False, self.require_secret_bool, self.require_bool
+            key,
+            False,
+            self.require_secret_bool,
+            self.require_bool,
+            msg=msg,
         )
 
-    def require_secret_bool(self, key: str) -> Output[bool]:
+    def require_secret_bool(
+        self,
+        key: str,
+        msg: Optional[str] = None,
+    ) -> Output[bool]:
         """
         Returns a configuration value, as a bool, marked as a secret by its given key.  If it doesn't exist, or the
         configuration value is not a legal bool, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: bool
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        return Output.secret(self._require_bool(key, True))
+        return Output.secret(self._require_bool(key, True, msg=msg))
 
     def _require_int(
         self,
@@ -385,37 +411,46 @@ class Config:
         secret: bool,
         use: Optional[Callable] = None,
         instead_of: Optional[Callable] = None,
+        msg: Optional[str] = None,
     ) -> int:
         v = self._get_int(key, use, instead_of)
         if v is None:
-            raise ConfigMissingError(self.full_key(key), secret)
+            raise ConfigMissingError(self.full_key(key), secret, msg)
         return v
 
-    def require_int(self, key: str) -> int:
+    def require_int(
+        self,
+        key: str,
+        msg: Optional[str] = None,
+    ) -> int:
         """
         Returns a configuration value, as an int, by its given key.  If it doesn't exist, or the
         configuration value is not a legal int, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: int
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        return self._require_int(key, False, self.require_secret_int, self.require_int)
+        return self._require_int(
+            key, False, self.require_secret_int, self.require_int, msg=msg
+        )
 
-    def require_secret_int(self, key: str) -> Output[int]:
+    def require_secret_int(self, key: str, msg: Optional[str] = None) -> Output[int]:
         """
         Returns a configuration value, as an int, marked as a secret by its given key.  If it doesn't exist, or the
         configuration value is not a legal int, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: int
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        return Output.secret(self._require_int(key, True))
+        return Output.secret(self._require_int(key, True, msg=msg))
 
     def _require_float(
         self,
@@ -423,39 +458,44 @@ class Config:
         secret: bool,
         use: Optional[Callable] = None,
         instead_of: Optional[Callable] = None,
+        msg: Optional[str] = None,
     ) -> float:
         v = self._get_float(key, use, instead_of)
         if v is None:
-            raise ConfigMissingError(self.full_key(key), secret)
+            raise ConfigMissingError(self.full_key(key), secret, msg)
         return v
 
-    def require_float(self, key: str) -> float:
+    def require_float(self, key: str, msg: Optional[str] = None) -> float:
         """
         Returns a configuration value, as a float, by its given key.  If it doesn't exist, or the
         configuration value is not a legal number, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: float
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
         return self._require_float(
-            key, False, self.require_secret_float, self.require_float
+            key, False, self.require_secret_float, self.require_float, msg=msg
         )
 
-    def require_secret_float(self, key: str) -> Output[float]:
+    def require_secret_float(
+        self, key: str, msg: Optional[str] = None
+    ) -> Output[float]:
         """
         Returns a configuration value, as a float, marked as a secret by its given key.  If it doesn't exist, or the
         configuration value is not a legal number, an error is thrown.
 
         :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
         :return: The configuration key's value.
         :rtype: float
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        return Output.secret(self._require_float(key, True))
+        return Output.secret(self._require_float(key, True, msg=msg))
 
     def _require_object(
         self,
@@ -463,29 +503,45 @@ class Config:
         secret: bool,
         use: Optional[Callable] = None,
         instead_of: Optional[Callable] = None,
+        msg: Optional[str] = None,
     ) -> Any:
         v = self._get_object(key, use, instead_of)
         if v is None:
-            raise ConfigMissingError(self.full_key(key), secret)
+            raise ConfigMissingError(self.full_key(key), secret, msg)
         return v
 
-    def require_object(self, key: str) -> Any:
+    def require_object(self, key: str, msg: Optional[str] = None) -> Any:
         """
         Returns a configuration value as a JSON string and deserializes the JSON into a Python
         object. If it doesn't exist, or the configuration value is not a legal JSON string, an error
         is thrown.
+
+        :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
+        :return: Returns a configuration value as a JSON string and deserializes the JSON into a Python
+        object.
+        :rtype: object
+        :raises ConfigMissingError: The configuration value did not exist.
+        :raises ConfigTypeError: The configuration value existed but is not a legal JSON string
         """
         return self._require_object(
-            key, False, self.require_secret_object, self.require_object
+            key, False, self.require_secret_object, self.require_object, msg=msg
         )
 
-    def require_secret_object(self, key: str) -> Output[Any]:
+    def require_secret_object(self, key: str, msg: Optional[str] = None) -> Output[Any]:
         """
         Returns a configuration value as a JSON string and deserializes the JSON into a Python
         object, marking it as a secret. If it doesn't exist, or the configuration value is not a
         legal JSON string, an error is thrown.
+        :param str key: The requested configuration key.
+        :param Optional[str] msg: Optional message to be added to ConfigMissingError
+        :return: Returns a configuration value as a JSON string and deserializes the JSON into a Python
+        object.
+        :rtype: object
+        :raises ConfigMissingError: The configuration value did not exist.
+        :raises ConfigTypeError: The configuration value existed but is not a legal JSON string
         """
-        return Output.secret(self._require_object(key, True))
+        return Output.secret(self._require_object(key, True, msg=msg))
 
     def full_key(self, key: str) -> str:
         """
@@ -542,10 +598,16 @@ class ConfigMissingError(errors.RunError):
     If this is a secret configuration key.
     """
 
-    def __init__(self, key: str, secret: bool) -> None:
+    msg: Optional[str]
+    """
+    Optional helpful message for error
+    """
+
+    def __init__(self, key: str, secret: bool, msg: Optional[str] = None) -> None:
         self.key = key
         self.secret = secret
         super().__init__(
             f"Missing required configuration variable '{key}'\n"
-            + f"\tplease set a value using the command `pulumi config set{' --secret ' if secret else ' '}{key} <value>`"
+            + f"\tplease set a value using the command `pulumi config set{' --secret ' if secret else ' '}{key} <value>`\n"
+            + (f"\t{msg}" if msg is not None else "")
         )

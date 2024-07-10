@@ -255,6 +255,41 @@ func TestConfigMissingPython(t *testing.T) {
 	})
 }
 
+// Tests configuration error from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestConfigMissingMsgPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("config_missing_msg", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			text1 := "Missing required configuration variable 'config_missing_py:notFound'"
+			text2 := "\tplease set a value using the command `pulumi config set --secret config_missing_py:notFound <value>`"
+			text3 := "\tsupplemental"
+			var found1, found2, found3 bool
+			for _, event := range stackInfo.Events {
+				if event.DiagnosticEvent != nil && strings.Contains(event.DiagnosticEvent.Message, text1) {
+					found1 = true
+				}
+				if event.DiagnosticEvent != nil && strings.Contains(event.DiagnosticEvent.Message, text2) {
+					found2 = true
+				}
+				if event.DiagnosticEvent != nil && strings.Contains(event.DiagnosticEvent.Message, text3) {
+					found3 = true
+				}
+			}
+			assert.True(t, found1, "expected error %q", text1)
+			assert.True(t, found2, "expected error %q", text2)
+			assert.True(t, found3, "expected error %q", text3)
+		},
+	})
+}
+
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
