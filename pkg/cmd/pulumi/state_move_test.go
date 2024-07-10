@@ -69,7 +69,9 @@ func createStackWithResources(
 	return s
 }
 
-func runMove(t *testing.T, sourceResources []*resource.State, args []string) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
+func runMove(
+	t *testing.T, sourceResources []*resource.State, args []string,
+) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	t.Cleanup(func() {

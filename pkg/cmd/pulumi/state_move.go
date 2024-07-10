@@ -253,7 +253,7 @@ func (cmd *stateMoveCmd) Run(
 	cmd.printBrokenDependencyRelationships(brokenDestDependencies)
 
 	if len(brokenSourceDependencies) > 0 || len(brokenDestDependencies) > 0 {
-		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+		fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(
 			colors.SpecInfo+"\nIf you go ahead with moving these dependencies, it will be necessary to create the "+
 				"appropriate inputs and outputs in the program for the stack the resources are moved to.\n"+
 				colors.Reset))
