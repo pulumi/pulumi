@@ -255,7 +255,7 @@ func (cmd *stateMoveCmd) Run(
 	if len(brokenSourceDependencies) > 0 || len(brokenDestDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
 			colors.SpecInfo+"\nIf you go ahead with moving these dependencies, it will be necessary to create the "+
-				"appropriate inputs and outputs in program for the stack the resources are moved to.\n"+
+				"appropriate inputs and outputs in the program for the stack the resources are moved to.\n"+
 				colors.Reset))
 	}
 
@@ -274,7 +274,7 @@ func (cmd *stateMoveCmd) Run(
 		case yes:
 		// continue
 		case no:
-			fmt.Println("confirmation denied, not proceeding with the state move")
+			fmt.Println("Confirmation denied, not proceeding with the state move")
 			return nil
 		}
 	}
