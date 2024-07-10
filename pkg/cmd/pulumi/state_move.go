@@ -125,7 +125,7 @@ func (cmd *stateMoveCmd) Run(
 		}
 	}
 
-	// We want to move there resources in the order they appear in the source snapshot,
+	// We want to move the resources in the order they appear in the source snapshot,
 	// resources with relationships are in the right order.
 	var resourcesToMoveOrdered []*resource.State
 	for _, res := range sourceSnapshot.Resources {
