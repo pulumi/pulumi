@@ -18,22 +18,25 @@ import { Resource } from "./resource";
 import * as utils from "./utils";
 
 /**
- * RunError can be used for terminating a program abruptly, but resulting in a clean exit rather
- * than the usual verbose unhandled error logic which emits the source program text and complete
- * stack trace.  This type should be rarely used.  Ideally ResourceError should always be used so
- * that as many errors as possible can be associated with a Resource.
+ * {@link RunError} can be used for terminating a program abruptly, but
+ * resulting in a clean exit rather than the usual verbose unhandled error logic
+ * which emits the source program text and complete stack trace. This type
+ * should be rarely used. Ideally {@link ResourceError} should always be used so
+ * that as many errors as possible can be associated with a resource.
  */
 export class RunError extends Error {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
+     *
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiRunError: boolean = true;
 
     /**
-     * Returns true if the given object is an instance of a RunError.  This is designed to work even when
-     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is a {@link RunError}. This is designed
+     * to work even when multiple copies of the Pulumi SDK have been loaded into
+     * the same process.
      */
     public static isInstance(obj: any): obj is RunError {
         return utils.isInstance<RunError>(obj, "__pulumiRunError");
@@ -41,22 +44,25 @@ export class RunError extends Error {
 }
 
 /**
- * ResourceError can be used for terminating a program abruptly, specifically associating the
- * problem with a Resource.  Depending on the nature of the problem, clients can choose whether or
- * not a call stack should be returned as well.  This should be very rare, and would only indicate
- * no usefulness of presenting that stack to the user.
+ * {@link ResourceError} can be used for terminating a program abruptly,
+ * specifically associating the problem with a {@link Resource}. Depending on
+ * the nature of the problem, clients can choose whether or not the call stack
+ * should be hidden as well. This should be very rare, and would only indicate
+ * that presenting the stack to the user would not be useful/be detrimental.
  */
 export class ResourceError extends Error {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
+     *
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention, no-underscore-dangle, id-blacklist, id-match
     public readonly __pulumResourceError: boolean = true;
 
     /**
-     * Returns true if the given object is an instance of a ResourceError.  This is designed to work even when
-     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is a {@link ResourceError}. This is
+     * designed to work even when multiple copies of the Pulumi SDK have been
+     * loaded into the same process.
      */
     public static isInstance(obj: any): obj is ResourceError {
         return utils.isInstance<ResourceError>(obj, "__pulumResourceError");

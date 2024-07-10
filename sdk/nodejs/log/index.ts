@@ -30,14 +30,14 @@ const messageLevels = {
 };
 
 /**
- * hasErrors returns true if any errors have occurred in the program.
+ * Returns true if any errors have occurred in the program.
  */
 export function hasErrors(): boolean {
     return getStore().logErrorCount > 0;
 }
 
 /**
- * debug logs a debug-level message that is generally hidden from end-users.
+ * Logs a debug-level message that is generally hidden from end-users.
  */
 export function debug(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     const engine = getEngine();
@@ -49,7 +49,8 @@ export function debug(msg: string, resource?: resourceTypes.Resource, streamId?:
 }
 
 /**
- * info logs an informational message that is generally printed to stdout during resource operations.
+ * Logs an informational message that is generally printed to standard output
+ * during resource operations.
  */
 export function info(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     const engine = getEngine();
@@ -62,7 +63,8 @@ export function info(msg: string, resource?: resourceTypes.Resource, streamId?: 
 }
 
 /**
- * warn logs a warning to indicate that something went wrong, but not catastrophically so.
+ * Logs a warning to indicate that something went wrong, but not
+ * catastrophically so.
  */
 export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     const engine = getEngine();
@@ -75,7 +77,8 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
 }
 
 /**
- * error logs a fatal condition. Consider raising an exception after calling error to stop the Pulumi program.
+ * Logs a fatal condition. Consider raising an exception after calling error to
+ * stop the Pulumi program.
  */
 export function error(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     getStore().logErrorCount++; // remember the error so we can suppress leaks.

@@ -15,8 +15,9 @@
 import { Input, Output } from "../output";
 
 /**
- * toObject takes an array of T values, and a selector that produces key/value pairs from those inputs,
- * and converts this array into an output object with those keys and values.
+ * {@link toObject} takes an array of T values, and a selector that produces
+ * key/value pairs from those inputs, and converts this array into an output
+ * object with those keys and values.
  *
  * For instance, given an array as follows
  *
@@ -47,9 +48,10 @@ export function toObject<T, V>(
 }
 
 /**
- * groupBy takes an array of T values, and a selector that prduces key/value pairs from those inputs,
- * and converts this array into an output object, with those keys, and where each property is an array of values,
- * in the case that the same key shows up multiple times in the input.
+ * {@link groupBy} takes an array of T values, and a selector that prduces
+ * key/value pairs from those inputs, and converts this array into an output
+ * object, with those keys, and where each property is an array of values, in
+ * the case that the same key shows up multiple times in the input.
  *
  * For instance, given an array as follows
  *

@@ -15,8 +15,9 @@
 import { Input } from "./output";
 import { ProviderResource, Resource } from "./resource";
 
-/*
- * InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.
+/**
+ * {@link InvokeOptions} is a bag of options that control the behavior of a call
+ * to `runtime.invoke`.
  */
 export interface InvokeOptions {
     /**
@@ -31,8 +32,8 @@ export interface InvokeOptions {
     provider?: ProviderResource;
 
     /**
-     * An optional version, corresponding to the version of the provider plugin that should be used when performing this
-     * invoke.
+     * An optional version, corresponding to the version of the provider plugin
+     * that should be used when performing this invoke.
      */
     version?: string;
 
