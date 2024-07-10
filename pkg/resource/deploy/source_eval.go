@@ -1443,7 +1443,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			Request: request,
 		})
 		if err != nil {
-			logging.V(5).Infof("Transform callback error: %v", err)
+			logging.V(5).Infof("Invoke transform callback error: %v", err)
 			return nil, nil, err
 		}
 
