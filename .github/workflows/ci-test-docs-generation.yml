@@ -65,6 +65,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(needs.matrix.outputs.version-set).go }}
+          check-latest: true
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
