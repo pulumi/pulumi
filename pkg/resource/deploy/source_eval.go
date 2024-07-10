@@ -1466,7 +1466,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			}
 		}
 
-		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
+		logging.V(5).Infof("Invoke transform: props=%v opts=%v", newProps, newOpts)
 
 		return newProps, newOpts, nil
 	}, nil
