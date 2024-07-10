@@ -366,10 +366,16 @@ func (r *repoLookupImpl) GetRootDirectory(wd string) (string, error) {
 }
 
 func (r *repoLookupImpl) GetBranchName() string {
+	if r.Head == nil {
+		return ""
+	}
 	return r.Head.Name().String()
 }
 
 func (r *repoLookupImpl) RemoteURL() (string, error) {
+	if r.Repo == nil {
+		return "", nil
+	}
 	return gitutil.GetGitRemoteURL(r.Repo, "origin")
 }
 
