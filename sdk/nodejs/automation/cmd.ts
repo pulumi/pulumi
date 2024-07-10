@@ -25,7 +25,9 @@ import { createCommandError } from "./errors";
 
 const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
-/** @internal */
+/**
+ * @internal
+ */
 export class CommandResult {
     stdout: string;
     stderr: string;
