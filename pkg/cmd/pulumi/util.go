@@ -1146,6 +1146,9 @@ func missingNonInteractiveArg(args ...string) error {
 	}
 }
 
+// promptUserSkippable wraps over promptUser making it skippable through the "yes" parameter
+// commonly being the value of the --yes flag used in each command.
+// If yes is true, defaultValue is returned without prompting.
 func promptUserSkippable(yes bool, msg string, options []string, defaultOption string,
 	colorization colors.Colorization,
 ) string {
@@ -1155,6 +1158,8 @@ func promptUserSkippable(yes bool, msg string, options []string, defaultOption s
 	return promptUser(msg, options, defaultOption, colorization)
 }
 
+// promptUser prompts the user for a value with a list of options. Hitting enter accepts the
+// default.
 func promptUser(msg string, options []string, defaultOption string, colorization colors.Colorization) string {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
 	surveycore.DisableColor = true
@@ -1174,6 +1179,9 @@ func promptUser(msg string, options []string, defaultOption string, colorization
 	return response
 }
 
+// promptUserMultiSkippable wraps over promptUserMulti making it skippable through the "yes" parameter
+// commonly being the value of the --yes flag used in each command.
+// If yes is true, defaultValue is returned without prompting.
 func promptUserMultiSkippable(yes bool, msg string, options []string, defaultOptions []string,
 	colorization colors.Colorization,
 ) []string {
@@ -1183,6 +1191,8 @@ func promptUserMultiSkippable(yes bool, msg string, options []string, defaultOpt
 	return promptUserMulti(msg, options, defaultOptions, colorization)
 }
 
+// promptUserMulti prompts the user for a value with a list of options, allowing to select none or multiple options.
+// defaultOptions is a set of values to be selected by default.
 func promptUserMulti(msg string, options []string, defaultOptions []string, colorization colors.Colorization) []string {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
 	surveycore.DisableColor = true
