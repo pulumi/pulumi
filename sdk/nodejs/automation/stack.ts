@@ -565,6 +565,95 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Import resources into the stack
+     *
+     * @param options Options to specify resources and customize the behavior of the import.
+     */
+    async import(options: ImportOptions): Promise<ImportResult> {
+        const args = ["import", "--yes", "--skip-preview"];
+
+        if (options.message) {
+            args.push("--message", options.message);
+        }
+
+        applyGlobalOpts(options, args);
+
+        let importResult: CommandResult;
+        // for import operations, generate a temporary directory to store the following:
+        //   - the import file when the user specifies resources to import
+        //   - the output file for the generated code
+        // we use the import file as input to the import command
+        // we the output file to read the generated code and return it to the user
+        let tempDir: string = "";
+        try {
+            tempDir = await fs.promises.mkdtemp(pathlib.join(os.tmpdir(), "pulumi-import-"));
+            const tempGeneratedCodeFile = pathlib.join(tempDir, "generated-code.txt");
+            if (options.resources) {
+                // user has specified resources to import, write them to a temp import file
+                const tempImportFile = pathlib.join(tempDir, "import.json");
+                await fs.promises.writeFile(
+                    tempImportFile,
+                    JSON.stringify({
+                        nameTable: options.nameTable,
+                        resources: options.resources,
+                    }),
+                );
+
+                args.push("--file", tempImportFile);
+            }
+
+            if (options.generateCode === false) {
+                // --generate-code is set to true by default
+                // only use --generate-code=false if the user explicitly sets it to false
+                args.push("--generate-code=false");
+            } else {
+                args.push("--out", tempGeneratedCodeFile);
+            }
+
+            if (options.protect === false) {
+                // --protect is set to true by default
+                // only use --protect=false if the user explicitly sets it to false
+                args.push(`--protect=false`);
+            }
+
+            if (options.converter) {
+                // if the user specifies a converter, pass it to `--from <converter>` argument of import
+                args.push("--from", options.converter);
+                if (options.converterArgs) {
+                    // pass any additional arguments to the converter
+                    // for example using {
+                    //   converter: "terraform"
+                    //   converterArgs: "./tfstate.json"
+                    // }
+                    // would be equivalent to `pulumi import --from terraform ./tfstate.json`
+                    args.push(...options.converterArgs);
+                }
+            }
+
+            importResult = await this.runPulumiCmd(args, options.onOutput);
+
+            const summary = await this.info(!this.isRemote && options.showSecrets);
+
+            let generatedCode = "";
+            if (options.generateCode !== false) {
+                generatedCode = await fs.promises.readFile(tempGeneratedCodeFile, "utf8");
+            }
+
+            return {
+                stdout: importResult.stdout,
+                stderr: importResult.stderr,
+                generatedCode: generatedCode,
+                summary: summary!,
+            };
+        } finally {
+            if (tempDir !== "") {
+                // clean up temp directory we used for the import file
+                await fs.promises.rm(tempDir, { recursive: true });
+            }
+        }
+    }
+
+    /**
      * Adds environments to the end of a stack's import list. Imported
      * environments are merged in order per the ESC merge rules. The list of
      * environments behaves as if it were the import list in an anonymous
@@ -1078,8 +1167,15 @@ export interface DestroyResult {
 }
 
 /**
- * Options controlling all Pulumi subcommands and operations.
+ * The output from performing an import operation.
  */
+export interface ImportResult {
+    stdout: string;
+    stderr: string;
+    generatedCode: string;
+    summary: UpdateSummary;
+}
+
 export interface GlobalOpts {
     /**
      * Colorize output.
@@ -1392,6 +1488,71 @@ export interface DestroyOptions extends GlobalOpts {
      * Continue the operation to completion even if errors occur.
      */
     continueOnError?: boolean;
+}
+
+export interface ImportResource {
+    /**
+     * The type of the resource to import
+     */
+    type: string;
+    /**
+     * The name of the resource to import
+     */
+    name: string;
+    /**
+     * The ID of the resource to import. The format of the ID is specific to the resource type.
+     */
+    id?: string;
+    parent?: string;
+    provider?: string;
+    version?: string;
+    pluginDownloadUrl?: string;
+    logicalName?: string;
+    properties?: string[];
+    component?: boolean;
+    remote?: boolean;
+}
+
+/**
+ * Options controlling the behavior of a Stack.import() operation.
+ */
+export interface ImportOptions extends GlobalOpts {
+    /**
+     * The resource definitions to import into the stack
+     */
+    resources?: ImportResource[];
+    /**
+     * The name table maps language names to parent and provider URNs. These names are
+     * used in the generated definitions, and should match the corresponding declarations
+     * in the source program. This table is required if any parents or providers are
+     * specified by the resources to import.
+     */
+    nameTable?: { [key: string]: string };
+    /**
+     * Allow resources to be imported with protection from deletion enabled. Set to true by default.
+     */
+    protect?: boolean;
+    /**
+     * Generate resource declaration code for the imported resources. Set to true by default.
+     */
+    generateCode?: boolean;
+    /**
+     * Specify the name of a converter to import resources from.
+     */
+    converter?: string;
+    /**
+     * Additional arguments to pass to the converter, if the user specified one.
+     */
+    converterArgs?: string[];
+    /**
+     * Optional message to associate with the import operation
+     */
+    message?: string;
+    /**
+     * Include secrets in the import result summary
+     */
+    showSecrets?: boolean;
+    onOutput?: (out: string) => void;
 }
 
 const execKind = {

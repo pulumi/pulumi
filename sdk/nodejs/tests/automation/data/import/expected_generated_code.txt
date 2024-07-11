@@ -1,0 +1,11 @@
+import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+const randomPassword = new random.RandomPassword("randomPassword", {
+    length: 11,
+    lower: true,
+    number: true,
+    numeric: true,
+    special: true,
+    upper: true,
+});

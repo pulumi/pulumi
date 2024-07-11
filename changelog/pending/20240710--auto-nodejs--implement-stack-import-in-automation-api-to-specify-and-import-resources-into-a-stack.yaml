@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs
+  description: Implement Stack.import() in automation API to specify and import resources into a stack
