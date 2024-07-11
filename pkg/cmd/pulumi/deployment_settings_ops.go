@@ -171,9 +171,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 				value string
 			)
 
-			if len(args) > 1 {
-				key = args[0]
-			}
+			key = args[0]
 
 			if len(args) == 2 {
 				if remove {
