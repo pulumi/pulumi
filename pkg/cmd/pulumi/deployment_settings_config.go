@@ -177,8 +177,8 @@ func initializeDeploymentSettings(
 			fmt.Sprintf("Backends of type %q do not support managed deployments", be.Name()),
 			colors.Red+colors.Bold)
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg, "Pulumi Cloud", colors.BrightCyan+colors.Bold)
-		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg, "https://www.pulumi.com/docs/pulumi-cloud/deployments/",
-			colors.BrightBlue+colors.Underline+colors.Bold)
+		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
+			"https://www.pulumi.com/docs/pulumi-cloud/deployments/", colors.BrightBlue+colors.Underline+colors.Bold)
 
 		fmt.Println()
 		fmt.Println(displayOpts.Color.Colorize(unsupportedBackendMsg))
@@ -290,6 +290,7 @@ func initStackDeploymentCmd(d *deploymentSettingsCommandDependencies, gitSSHPriv
 	case optOidcGcp:
 		err = configureOidcGCP(d)
 	}
+
 	if err != nil {
 		return err
 	}
@@ -547,7 +548,7 @@ func configureGitHubRepo(d *deploymentSettingsCommandDependencies, vcsInfo *gitu
 
 	options := promptUserMultiSkippable(
 		d.Yes,
-		"What kind of authentication should Pulumi Deployments use?",
+		"GitHub configuration",
 		[]string{
 			optPreviewPr,
 			optUpdatePushes,
@@ -583,7 +584,7 @@ func configureBareGitRepo(d *deploymentSettingsCommandDependencies,
 
 	option := promptUserSkippable(
 		d.Yes,
-		"What kind of authentication should it use?",
+		"What kind of authentication does the repository use?",
 		[]string{
 			optUserPass,
 			optSSH,
@@ -1060,4 +1061,17 @@ func ValidateGenericInput(s string) error {
 	}
 
 	return nil
+}
+
+func detectGitRootDirectory(wd string) (string, error) {
+	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return "", err
+	}
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return "", err
+	}
+	root := worktree.Filesystem.Root()
+	return root, nil
 }
