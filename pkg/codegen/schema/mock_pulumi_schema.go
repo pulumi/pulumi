@@ -15,7 +15,12 @@ func newPulumiPackage() *Package {
 			"pulumi:pulumi:StackReference": {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
-						"outputs": {TypeSpec: TypeSpec{Type: "object"}},
+						"outputs": {TypeSpec: TypeSpec{
+							Type: "object",
+							AdditionalProperties: &TypeSpec{
+								Ref: "pulumi.json#/Any",
+							},
+						}},
 					},
 					Required: []string{
 						"outputs",
