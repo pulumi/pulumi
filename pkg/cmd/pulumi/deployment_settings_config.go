@@ -408,10 +408,8 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 		return err
 	}
 
-	repoRoot, err := gitutil.DetectGitRootDirectory(wd)
-	if err != nil && !errors.Is(err, gitutil.ErrNoGitRepo) {
-		return fmt.Errorf("could not determine the git root directory: %w", err)
-	}
+	// if we fail to find the root directory, we will move on without it
+	repoRoot, _ := detectGitRootDirectory(wd)
 
 	rl, err := newRepoLookup(repoRoot)
 	if err != nil {
@@ -987,4 +985,17 @@ func askForConfirmation(prompt string, color colors.Colorization, defaultValue b
 	}
 
 	return option == optYes, nil
+}
+
+func detectGitRootDirectory(wd string) (string, error) {
+	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return "", err
+	}
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return "", err
+	}
+	root := worktree.Filesystem.Root()
+	return root, nil
 }
