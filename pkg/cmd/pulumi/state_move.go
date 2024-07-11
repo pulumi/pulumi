@@ -59,8 +59,6 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 EXPERIMENTAL: this feature is currently in development.
 `,
 		Args: cmdutil.MinimumNArgs(1),
-		// TODO: this command should be hidden until it is fully implemented
-		Hidden: true,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
