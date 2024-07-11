@@ -876,7 +876,7 @@ func TestTransformInvoke(t *testing.T) {
 			}))
 		require.NoError(t, err)
 
-		err = monitor.RegisterInvokeTransform(callback)
+		err = monitor.RegisterStackInvokeTransform(callback)
 		require.NoError(t, err)
 
 		input := resource.PropertyMap{
@@ -940,7 +940,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 			}))
 		require.NoError(t, err)
 
-		err = monitor.RegisterInvokeTransform(callback)
+		err = monitor.RegisterStackInvokeTransform(callback)
 		require.NoError(t, err)
 
 		input := resource.PropertyMap{}

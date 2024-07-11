@@ -488,8 +488,8 @@ func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) 
 	return err
 }
 
-func (rm *ResourceMonitor) RegisterInvokeTransform(callback *pulumirpc.Callback) error {
-	_, err := rm.resmon.RegisterInvokeTransform(context.Background(), callback)
+func (rm *ResourceMonitor) RegisterStackInvokeTransform(callback *pulumirpc.Callback) error {
+	_, err := rm.resmon.RegisterStackInvokeTransform(context.Background(), callback)
 	return err
 }
 

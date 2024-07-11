@@ -1494,7 +1494,7 @@ func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Call
 	return &emptypb.Empty{}, nil
 }
 
-func (rm *resmon) RegisterInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
 	rm.stackInvokeTransformsLock.Lock()
 	defer rm.stackInvokeTransformsLock.Unlock()
 
