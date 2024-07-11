@@ -729,24 +729,14 @@ func configureOidcAws(d *deploymentSettingsCommandDependencies) error {
 		sd.DeploymentSettings.Operation.OIDC.AWS = &apitype.OperationContextAWSOIDCConfiguration{}
 	}
 
-	var roleARN string
-	var sessionName string
-	var err error
-
-	if sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN != "" {
-		roleARN = sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN
-	}
-
-	roleARN, err = promptForValue(d.Yes, "AWS role ARN", roleARN, false, ValidateGenericInputNonEmpty, *d.DisplayOptions)
+	roleARN, err := promptForValue(d.Yes, "AWS role ARN", sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN,
+		false, ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Operation.OIDC.AWS.SessionName != "" {
-		sessionName = sd.DeploymentSettings.Operation.OIDC.AWS.SessionName
-	}
-
-	sessionName, err = promptForValue(d.Yes, "AWS session name", sessionName, false,
+	sessionName, err := promptForValue(d.Yes, "AWS session name",
+		sd.DeploymentSettings.Operation.OIDC.AWS.SessionName, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -773,46 +763,27 @@ func configureOidcGCP(d *deploymentSettingsCommandDependencies) error {
 		sd.DeploymentSettings.Operation.OIDC.GCP = &apitype.OperationContextGCPOIDCConfiguration{}
 	}
 
-	var projectID string
-	var providerID string
-	var workloadPoolID string
-	var serviceAccount string
-	var err error
-
-	if sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID != "" {
-		projectID = sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID
-	}
-
-	projectID, err = promptForValue(d.Yes, "GCP project id", projectID, false,
+	projectID, err := promptForValue(d.Yes, "GCP project id", sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID != "" {
-		providerID = sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID
-	}
-
-	providerID, err = promptForValue(d.Yes, "GCP provider id", providerID, false,
+	providerID, err := promptForValue(d.Yes, "GCP provider id", sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID != "" {
-		workloadPoolID = sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID
-	}
-	workloadPoolID, err = promptForValue(d.Yes, "GCP identity provider id", workloadPoolID, false,
+	workloadPoolID, err := promptForValue(d.Yes, "GCP identity provider id",
+		sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount != "" {
-		serviceAccount = sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount
-	}
-
-	serviceAccount, err = promptForValue(d.Yes, "GCP service account email address", serviceAccount, false,
+	serviceAccount, err := promptForValue(d.Yes, "GCP service account email address",
+		sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -841,36 +812,20 @@ func configureOidcAzure(d *deploymentSettingsCommandDependencies) error {
 		sd.DeploymentSettings.Operation.OIDC.Azure = &apitype.OperationContextAzureOIDCConfiguration{}
 	}
 
-	var clientID string
-	var tenantID string
-	var subscriptionID string
-	var err error
-
-	if sd.DeploymentSettings.Operation.OIDC.Azure.ClientID != "" {
-		clientID = sd.DeploymentSettings.Operation.OIDC.Azure.ClientID
-	}
-
-	clientID, err = promptForValue(d.Yes, "Azure client ID", clientID, false,
+	clientID, err := promptForValue(d.Yes, "Azure client ID", sd.DeploymentSettings.Operation.OIDC.Azure.ClientID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Operation.OIDC.Azure.TenantID != "" {
-		tenantID = sd.DeploymentSettings.Operation.OIDC.Azure.TenantID
-	}
-
-	tenantID, err = promptForValue(d.Yes, "Azure tenant ID", tenantID, false,
+	tenantID, err := promptForValue(d.Yes, "Azure tenant ID", sd.DeploymentSettings.Operation.OIDC.Azure.TenantID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID != "" {
-		subscriptionID = sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID
-	}
-
-	subscriptionID, err = promptForValue(d.Yes, "Azure subscription ID", subscriptionID, false,
+	subscriptionID, err := promptForValue(d.Yes, "Azure subscription ID",
+		sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -917,11 +872,6 @@ func configureAdvancedSettings(d *deploymentSettingsCommandDependencies) error {
 }
 
 func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
-	var imageReference string
-	var username string
-	var password string
-	var err error
-
 	sd := d.Deployment
 
 	confirm := askForConfirmation("Do you want to use a custom executor image?", d.DisplayOptions.Color, false, d.Yes)
@@ -943,21 +893,15 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 		sd.DeploymentSettings.Executor.ExecutorImage.Credentials = &apitype.DockerImageCredentials{}
 	}
 
-	if sd.DeploymentSettings.Executor.ExecutorImage.Reference != "" {
-		imageReference = sd.DeploymentSettings.Executor.ExecutorImage.Reference
-	}
-
-	imageReference, err = promptForValue(d.Yes, "image reference", imageReference, false,
+	imageReference, err := promptForValue(d.Yes, "image reference",
+		sd.DeploymentSettings.Executor.ExecutorImage.Reference, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	if sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username != "" {
-		username = sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username
-	}
-
-	username, err = promptForValue(d.Yes, "(optional) image repository username", username, false,
+	username, err := promptForValue(d.Yes, "(optional) image repository username",
+		sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username, false,
 		ValidateGenericInput, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -971,7 +915,7 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 		return nil
 	}
 
-	password, err = promptForValue(d.Yes, "image repository password", "", true,
+	password, err := promptForValue(d.Yes, "image repository password", "", true,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -1061,17 +1005,4 @@ func ValidateGenericInput(s string) error {
 	}
 
 	return nil
-}
-
-func detectGitRootDirectory(wd string) (string, error) {
-	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
-	if err != nil {
-		return "", err
-	}
-	worktree, err := repo.Worktree()
-	if err != nil {
-		return "", err
-	}
-	root := worktree.Filesystem.Root()
-	return root, nil
 }
