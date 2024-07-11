@@ -213,8 +213,6 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
-	// TODO: conflict on resources that are already on the destination stack
-
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
