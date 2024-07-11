@@ -68,7 +68,7 @@ type InvokeTransformResult struct {
 	Opts InvokeOptions
 }
 
-// ResourceTransform is the callback signature for the `transforms` resource option for invokes.  A
+// InvokeTransform is the callback signature for the `transforms` resource option for invokes.  A
 // transform is passed the same set of inputs provided to the `Invoke` constructor, and can
 // optionally return back alternate values for the `args` and/or `opts` prior to the invoke
 // actually being executed.  The effect will be as though those args and opts were passed in place
