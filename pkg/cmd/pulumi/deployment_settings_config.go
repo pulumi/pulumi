@@ -328,26 +328,30 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 	return cmd
 }
 
-func newRepoLookup(repoRoot string) (repoLookup, error) {
-	if repoRoot != "" {
-
-		repo, err := git.PlainOpen(repoRoot)
-		if err != nil {
-			return nil, err
-		}
-
-		h, err := repo.Head()
-		if err != nil {
-			return nil, err
-		}
-
-		return &repoLookupImpl{
-			RepoRoot: repoRoot,
-			Repo:     repo,
-			Head:     h,
-		}, nil
+func newRepoLookup(wd string) (repoLookup, error) {
+	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
+	switch {
+	case errors.Is(err, git.ErrRepositoryNotExists):
+		return &noRepoLookupImpl{}, nil
+	case err != nil:
+		return nil, err
 	}
-	return &noRepoLookupImpl{}, nil
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := repo.Head()
+	if err != nil {
+		return nil, err
+	}
+
+	return &repoLookupImpl{
+		RepoRoot: worktree.Filesystem.Root(),
+		Repo:     repo,
+		Head:     h,
+	}, nil
 }
 
 type repoLookup interface {
@@ -408,10 +412,7 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 		return err
 	}
 
-	// if we fail to find the root directory, we will move on without it
-	repoRoot, _ := detectGitRootDirectory(wd)
-
-	rl, err := newRepoLookup(repoRoot)
+	rl, err := newRepoLookup(wd)
 	if err != nil {
 		return err
 	}
@@ -465,23 +466,23 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 
 	vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL)
 
-	var useGiHub bool
+	var useGitHub bool
 	if err == nil {
-		useGiHub = vcsInfo.Kind == gitutil.GitHubHostName
+		useGitHub = vcsInfo.Kind == gitutil.GitHubHostName
 	} else {
 		// we failed to parse the remote URL, we default to a non-github repo
-		useGiHub = false
+		useGitHub = false
 	}
 
-	if useGiHub {
-		useGiHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
+	if useGitHub {
+		useGitHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
 			displayOpts.Color, true)
 		if err != nil {
 			return err
 		}
 	}
 
-	if useGiHub {
+	if useGitHub {
 		err := configureGitHubRepo(displayOpts, sd, vcsInfo)
 		if err != nil {
 			return err
@@ -985,17 +986,4 @@ func askForConfirmation(prompt string, color colors.Colorization, defaultValue b
 	}
 
 	return option == optYes, nil
-}
-
-func detectGitRootDirectory(wd string) (string, error) {
-	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
-	if err != nil {
-		return "", err
-	}
-	worktree, err := repo.Worktree()
-	if err != nil {
-		return "", err
-	}
-	root := worktree.Filesystem.Root()
-	return root, nil
 }
