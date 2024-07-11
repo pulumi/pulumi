@@ -43,6 +43,8 @@ func TestDependencyGraph(t *testing.T) {
 	d1 := &resource.State{URN: "d1", Provider: providerDRef}
 	d2 := &resource.State{URN: "d2", Parent: d1.URN}
 	d3 := &resource.State{URN: "d3", Provider: providerDRef, DeletedWith: d1.URN}
+	d4 := &resource.State{URN: "d4", Parent: d2.URN}
+	d5 := &resource.State{URN: "d5", Parent: d3.URN}
 
 	e1 := &resource.State{URN: "e1"}
 	e2 := &resource.State{URN: "e2", Dependencies: []resource.URN{e1.URN}}
@@ -67,6 +69,8 @@ func TestDependencyGraph(t *testing.T) {
 		d1,
 		d2,
 		d3,
+		d4,
+		d5,
 		e1,
 		e2,
 		e3,
@@ -228,6 +232,8 @@ func TestDependencyGraph(t *testing.T) {
 					d1, // d1's provider is providerD
 					d2, // d2 is a child of d1
 					d3, // d3's provider is providerD; d3 is deleted with d1
+					d4, // d4 is a child of d2
+					d5, // d5 is a child of d3
 				},
 			},
 			{
@@ -256,6 +262,8 @@ func TestDependencyGraph(t *testing.T) {
 				expected: []*resource.State{
 					d2, // d2 is a child of d1
 					d3, // d3 is deleted with d1
+					d4, // d4 is a child of d2
+					d5, // d5 is a child of d3
 				},
 			},
 			{
@@ -701,6 +709,51 @@ func TestDependencyGraph(t *testing.T) {
 
 				// Act.
 				actual := dgOnly.OnlyDependsOn(c.res)
+
+				// Assert.
+				assert.Equal(t, c.expected, actual)
+			})
+		}
+	})
+
+	t.Run("ParentsOf", func(t *testing.T) {
+		t.Parallel()
+
+		// Arrange.
+		cases := []struct {
+			name     string
+			res      *resource.State
+			expected []*resource.State
+		}{
+			{
+				name:     "e2",
+				res:      e2,
+				expected: []*resource.State{},
+			},
+			{
+				name:     "d2",
+				res:      d2,
+				expected: []*resource.State{d1},
+			},
+			{
+				name:     "d4",
+				res:      d4,
+				expected: []*resource.State{d2, d1},
+			},
+			{
+				name:     "d5",
+				res:      d5,
+				expected: []*resource.State{d3},
+			},
+		}
+
+		for _, c := range cases {
+			c := c
+			t.Run(c.name, func(t *testing.T) {
+				t.Parallel()
+
+				// Act.
+				actual := dg.ParentsOf(c.res)
 
 				// Assert.
 				assert.Equal(t, c.expected, actual)

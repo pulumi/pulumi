@@ -35,16 +35,18 @@ import (
 )
 
 type stateMoveCmd struct {
-	Stdin     io.Reader
-	Stdout    io.Writer
-	Colorizer colors.Colorization
-	Yes       bool
+	Stdin          io.Reader
+	Stdout         io.Writer
+	Colorizer      colors.Colorization
+	Yes            bool
+	IncludeParents bool
 }
 
 func newStateMoveCommand() *cobra.Command {
 	var sourceStackName string
 	var destStackName string
 	var yes bool
+	var includeParents bool
 	stateMove := &stateMoveCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -81,6 +83,7 @@ EXPERIMENTAL: this feature is currently in development.
 			}
 
 			stateMove.Yes = yes
+			stateMove.IncludeParents = includeParents
 
 			return stateMove.Run(ctx, sourceStack, destStack, args, stack.DefaultSecretsProvider)
 		}),
@@ -89,6 +92,8 @@ EXPERIMENTAL: this feature is currently in development.
 	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")
 	cmd.Flags().StringVarP(&destStackName, "dest", "", "", "The name of the stack to move resources to")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the move")
+	cmd.Flags().BoolVarP(&includeParents, "include-parents", "", false,
+		"Include all the parents of the moved resources as well")
 
 	return cmd
 }
@@ -135,6 +140,19 @@ func (cmd *stateMoveCmd) Run(
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)
+
+	if cmd.IncludeParents {
+		for _, res := range resourcesToMove {
+			for _, parent := range sourceDepGraph.ParentsOf(res) {
+				if res.Type == resource.RootStackType && res.Parent == "" {
+					// We don't move the root stack explicitly, the code below will take care of dealing with that correctly.
+					continue
+				}
+				resourcesToMove[string(parent.URN)] = parent
+				providersToCopy[parent.Provider] = true
+			}
+		}
+	}
 
 	// include all children in the list of resources to move
 	for _, res := range resourcesToMove {
