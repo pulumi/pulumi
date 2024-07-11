@@ -58,7 +58,7 @@ type InvokeTransformArgs struct {
 	Opts InvokeOptions
 }
 
-// InvokeTransformResult is the result that must be returned by a invoke transform
+// InvokeTransformResult is the result that must be returned by an invoke transform
 // callback. It includes new values to use for the `args` and `opts` of the `Invoke` in place of
 // the originally provided values.
 type InvokeTransformResult struct {
