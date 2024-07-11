@@ -848,16 +848,3 @@ func (r byShortNameLengthDesc) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
 func (r byShortNameLengthDesc) Less(i, j int) bool {
 	return len(r[j].Short()) < len(r[i].Short())
 }
-
-type detectGitAccessors interface {
-	Stat(name string) (detectGitFileInfo, error)
-}
-type detectGitFileInfo interface {
-	IsDir() bool
-}
-
-type detectGitAccessorsImpl struct{}
-
-func (a *detectGitAccessorsImpl) Stat(name string) (detectGitFileInfo, error) {
-	return os.Stat(name)
-}
