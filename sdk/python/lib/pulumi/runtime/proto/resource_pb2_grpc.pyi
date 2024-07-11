@@ -61,10 +61,12 @@ class ResourceMonitorStub:
         pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
     ]
-    RegisterInvokeTransform: grpc.UnaryUnaryMultiCallable[
+    """Register a resource transform for the stack"""
+    RegisterStackInvokeTransform: grpc.UnaryUnaryMultiCallable[
         pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
     ]
+    """Register an invoke transform for the stack"""
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
@@ -120,13 +122,15 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.callback_pb2.Callback,
         context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty: ...
+    ) -> google.protobuf.empty_pb2.Empty:
+        """Register a resource transform for the stack"""
     
-    def RegisterInvokeTransform(
+    def RegisterStackInvokeTransform(
         self,
         request: pulumi.callback_pb2.Callback,
         context: grpc.ServicerContext,
-    ) -> google.protobuf.empty_pb2.Empty: ...
+    ) -> google.protobuf.empty_pb2.Empty:
+        """Register an invoke transform for the stack"""
     
     def RegisterPackage(
         self,

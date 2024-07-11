@@ -629,14 +629,14 @@ type resmon struct {
 	// the working directory for the resources sent to this monitor.
 	workingDirectory string
 
-	stackTransformsLock    sync.Mutex
-	stackTransforms        []TransformFunction // stack transformation functions
-	invokeTransformsLock   sync.Mutex
-	invokeTransforms       []TransformInvokeFunction // invoke transformation functions
-	resourceTransformsLock sync.Mutex
-	resourceTransforms     map[resource.URN][]TransformFunction // option transformation functions per resource
-	callbacksLock          sync.Mutex
-	callbacks              map[string]*CallbacksClient // callbacks clients per target address
+	stackTransformsLock       sync.Mutex
+	stackTransforms           []TransformFunction // stack transformation functions
+	stackInvokeTransformsLock sync.Mutex
+	stackInvokeTransforms     []TransformInvokeFunction // invoke transformation functions
+	resourceTransformsLock    sync.Mutex
+	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
+	callbacksLock             sync.Mutex
+	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
 
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -978,10 +978,10 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	// Lock the invoke transforms and run all of those before loading the provider.
 	err = func() error {
 		// Function exists to scope the lock
-		rm.invokeTransformsLock.Lock()
-		defer rm.invokeTransformsLock.Unlock()
+		rm.stackInvokeTransformsLock.Lock()
+		defer rm.stackInvokeTransformsLock.Unlock()
 
-		for _, transform := range rm.invokeTransforms {
+		for _, transform := range rm.stackInvokeTransforms {
 			newArgs, newOpts, err := transform(ctx, string(tok), args, opts)
 			if err != nil {
 				return err
@@ -1495,8 +1495,8 @@ func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Call
 }
 
 func (rm *resmon) RegisterInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
-	rm.invokeTransformsLock.Lock()
-	defer rm.invokeTransformsLock.Unlock()
+	rm.stackInvokeTransformsLock.Lock()
+	defer rm.stackInvokeTransformsLock.Unlock()
 
 	if cb.Target == "" {
 		return nil, errors.New("target must be specified")
@@ -1507,7 +1507,7 @@ func (rm *resmon) RegisterInvokeTransform(ctx context.Context, cb *pulumirpc.Cal
 		return nil, err
 	}
 
-	rm.invokeTransforms = append(rm.invokeTransforms, wrapped)
+	rm.stackInvokeTransforms = append(rm.stackInvokeTransforms, wrapped)
 	return &emptypb.Empty{}, nil
 }
 

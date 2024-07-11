@@ -35,8 +35,10 @@ service ResourceMonitor {
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
+    // Register a resource transform for the stack
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
-    rpc RegisterInvokeTransform(Callback) returns (google.protobuf.Empty) {}
+    // Register an invoke transform for the stack
+    rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
 }
