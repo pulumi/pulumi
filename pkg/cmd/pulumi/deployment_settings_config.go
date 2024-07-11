@@ -24,6 +24,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -327,32 +328,103 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 	return cmd
 }
 
+func newRepoLookup(wd string) (repoLookup, error) {
+	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
+	switch {
+	case errors.Is(err, git.ErrRepositoryNotExists):
+		return &noRepoLookupImpl{}, nil
+	case err != nil:
+		return nil, err
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := repo.Head()
+	if err != nil {
+		return nil, err
+	}
+
+	return &repoLookupImpl{
+		RepoRoot: worktree.Filesystem.Root(),
+		Repo:     repo,
+		Head:     h,
+	}, nil
+}
+
+type repoLookup interface {
+	GetRootDirectory(wd string) (string, error)
+	GetBranchName() string
+	RemoteURL() (string, error)
+}
+type repoLookupImpl struct {
+	RepoRoot string
+	Repo     *git.Repository
+	Head     *plumbing.Reference
+}
+
+func (r *repoLookupImpl) GetRootDirectory(wd string) (string, error) {
+	return filepath.Rel(r.RepoRoot, wd)
+}
+
+func (r *repoLookupImpl) GetBranchName() string {
+	if r.Head == nil {
+		return ""
+	}
+	return r.Head.Name().String()
+}
+
+func (r *repoLookupImpl) RemoteURL() (string, error) {
+	if r.Repo == nil {
+		return "", nil
+	}
+	return gitutil.GetGitRemoteURL(r.Repo, "origin")
+}
+
+type noRepoLookupImpl struct{}
+
+func (r *noRepoLookupImpl) GetRootDirectory(wd string) (string, error) {
+	return ".", nil
+}
+
+func (r *noRepoLookupImpl) GetBranchName() string {
+	return ""
+}
+
+func (r *noRepoLookupImpl) RemoteURL() (string, error) {
+	return "", nil
+}
+
 func configureGit(ctx context.Context, displayOpts *display.Options, be backend.Backend,
 	s backend.Stack, sd *workspace.ProjectStackDeployment, gitSSHPrivateKeyPath string,
 ) error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	repoRoot, err := gitutil.DetectGitRootDirectory(wd)
-	if err != nil {
-		return err
-	}
-
-	defaultRepoDir, err := filepath.Rel(repoRoot, wd)
-	if err != nil {
-		return err
-	}
-
 	if sd.DeploymentSettings.SourceContext == nil {
 		sd.DeploymentSettings.SourceContext = &apitype.SourceContext{}
 	}
 	if sd.DeploymentSettings.SourceContext.Git == nil {
 		sd.DeploymentSettings.SourceContext.Git = &apitype.SourceContextGit{}
 	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	rl, err := newRepoLookup(wd)
+	if err != nil {
+		return err
+	}
+
+	var defaultRepoDir string
 	if sd.DeploymentSettings.SourceContext.Git.RepoDir != "" {
 		defaultRepoDir = sd.DeploymentSettings.SourceContext.Git.RepoDir
+	} else {
+		defaultRepoDir, err = rl.GetRootDirectory(wd)
+		if err != nil {
+			return err
+		}
 	}
 
 	repoDir, err := cmdutil.ReadConsoleWithDefault("Enter the repo directory", defaultRepoDir)
@@ -361,58 +433,65 @@ func configureGit(ctx context.Context, displayOpts *display.Options, be backend.
 	}
 	sd.DeploymentSettings.SourceContext.Git.RepoDir = repoDir
 
-	repo, err := git.PlainOpen(repoRoot)
-	if err != nil {
-		return err
-	}
-
-	h, err := repo.Head()
-	if err != nil {
-		return err
-	}
-
-	var branch string
+	var branchName string
 	if sd.DeploymentSettings.SourceContext.Git.Branch != "" {
-		branch, err = cmdutil.ReadConsoleWithDefault("Enter the branch name", sd.DeploymentSettings.SourceContext.Git.Branch)
-	} else if h.Name().IsBranch() {
-		branch, err = cmdutil.ReadConsoleWithDefault("Enter the branch name", h.Name().String())
+		branchName = sd.DeploymentSettings.SourceContext.Git.Branch
 	} else {
-		branch, err = cmdutil.ReadConsole("Enter the branch name")
+		branchName = rl.GetBranchName()
+	}
+
+	if branchName != "" {
+		branchName, err = cmdutil.ReadConsoleWithDefault("Enter the branch name", branchName)
+	} else {
+		branchName, err = cmdutil.ReadConsole("Enter the branch name")
 	}
 	if err != nil {
 		return err
 	}
-	sd.DeploymentSettings.SourceContext.Git.Branch = branch
+	sd.DeploymentSettings.SourceContext.Git.Branch = branchName
 
-	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
+	remoteURL, err := rl.RemoteURL()
 	if err != nil {
 		return err
 	}
 
-	if vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL); err == nil {
-		useGiHub := vcsInfo.Kind == gitutil.GitHubHostName
+	if remoteURL != "" {
+		remoteURL, err = cmdutil.ReadConsoleWithDefault("Enter the repository URL", remoteURL)
+	} else {
+		remoteURL, err = cmdutil.ReadConsole("Enter the repository URL")
+	}
+	if err != nil {
+		return err
+	}
 
-		if useGiHub {
-			useGiHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
-				displayOpts.Color, true)
-			if err != nil {
-				return err
-			}
+	vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL)
+
+	var useGitHub bool
+	if err == nil {
+		useGitHub = vcsInfo.Kind == gitutil.GitHubHostName
+	} else {
+		// we failed to parse the remote URL, we default to a non-github repo
+		useGitHub = false
+	}
+
+	if useGitHub {
+		useGitHub, err = askForConfirmation("A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
+			displayOpts.Color, true)
+		if err != nil {
+			return err
 		}
+	}
 
-		if useGiHub {
-			err := configureGitHubRepo(displayOpts, sd, vcsInfo)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := configureBareGitRepo(ctx, displayOpts, be, s, sd, remoteURL, gitSSHPrivateKeyPath)
-			if err != nil {
-				return err
-			}
+	if useGitHub {
+		err := configureGitHubRepo(displayOpts, sd, vcsInfo)
+		if err != nil {
+			return err
 		}
 	} else {
-		return fmt.Errorf("detecting VCS info from stack tags for remote %v: %w", remoteURL, err)
+		err := configureBareGitRepo(ctx, displayOpts, be, s, sd, remoteURL, gitSSHPrivateKeyPath)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
