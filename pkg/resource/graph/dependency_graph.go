@@ -291,6 +291,9 @@ func (dg *DependencyGraph) ChildrenOf(res *resource.State) []*resource.State {
 // ParentsOf returns a slice containing all resources that are parents of the given resource.
 func (dg *DependencyGraph) ParentsOf(res *resource.State) []*resource.State {
 	parents := make([]*resource.State, 0)
+	// The resources in dg.resources are topologically sorted, so when we walk backwards and we match a parent,
+	// we know we have yet to see that parent's parent (if it exists).  We know it's safe to terminate when we've
+	// traversed the full set in reverse.
 	for i := len(dg.resources) - 1; i >= 0; i-- {
 		if dg.resources[i].URN == res.Parent {
 			parents = append(parents, dg.resources[i])
