@@ -69,8 +69,18 @@ func createStackWithResources(
 	return s
 }
 
+type MoveOptions struct {
+	IncludeParents bool
+}
+
 func runMove(
 	t *testing.T, sourceResources []*resource.State, args []string,
+) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
+	return runMoveWithOptions(t, sourceResources, args, &MoveOptions{})
+}
+
+func runMoveWithOptions(
+	t *testing.T, sourceResources []*resource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
@@ -96,9 +106,10 @@ func runMove(
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
-		Stdout:    &stdout,
-		Colorizer: colors.Never,
+		Yes:            true,
+		Stdout:         &stdout,
+		Colorizer:      colors.Never,
+		IncludeParents: options.IncludeParents,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp)
 	assert.NoError(t, err)
@@ -396,4 +407,50 @@ func TestMoveWithExistingResource(t *testing.T) {
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
 	assert.ErrorContains(t, err, "resource urn:pulumi:destStack::test::d:e:f$a:b:c::name "+
 		"already exists in destination stack")
+}
+
+func TestParentsAreBeingMoved(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+		},
+	}
+
+	sourceSnapshot, destSnapshot, _ := runMoveWithOptions(t, sourceResources, []string{string(sourceResources[2].URN)},
+		&MoveOptions{IncludeParents: true})
+
+	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+
+	assert.Equal(t, 4, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resources
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name2"),
+		destSnapshot.Resources[3].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[3].Parent)
 }

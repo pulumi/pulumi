@@ -288,6 +288,18 @@ func (dg *DependencyGraph) ChildrenOf(res *resource.State) []*resource.State {
 	return children
 }
 
+// ParentsOf returns a slice containing all resources that are parents of the given resource.
+func (dg *DependencyGraph) ParentsOf(res *resource.State) []*resource.State {
+	parents := make([]*resource.State, 0)
+	for i := len(dg.resources) - 1; i >= 0; i-- {
+		if dg.resources[i].URN == res.Parent {
+			parents = append(parents, dg.resources[i])
+			res = dg.resources[i]
+		}
+	}
+	return parents
+}
+
 // Mark a resource and its provider, parent, dependencies, property
 // dependencies, and deletion dependencies, as a dependency. This is a helper
 // function for `TransitiveDependenciesOf`.
