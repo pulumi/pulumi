@@ -306,6 +306,63 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	}, actual)
 }
 
+func TestGetRequiredPluginsNestedPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join(t.TempDir(), "testdir")
+	err := os.Mkdir(dir, 0o755)
+	require.NoError(t, err)
+
+	files := []struct {
+		path    string
+		content string
+	}{
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "foo", "package.json"),
+			`{ "name": "@pulumi/foo", "version": "1.2.3", "pulumi": { "resource": true } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "bar", "package.json"),
+			`{ "name": "@pulumi/bar", "version": "4.5.6", "pulumi": { "resource": true } }`,
+		},
+		{
+			filepath.Join(dir, "policy", "PulumiPolicy.yaml"),
+			`name: my-policy`,
+		},
+		{
+			filepath.Join(dir, "policy", "node_modules", "@pulumi", "baz", "package.json"),
+			`{ "name": "@pulumi/baz", "version": "7.8.9", "pulumi": { "resource": true } }`,
+		},
+	}
+	for _, file := range files {
+		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
+		require.NoError(t, err)
+		err = os.WriteFile(file.path, []byte(file.content), 0o600)
+		require.NoError(t, err)
+	}
+
+	host := &nodeLanguageHost{}
+	resp, err := host.GetRequiredPlugins(context.Background(), &pulumirpc.GetRequiredPluginsRequest{
+		Program: dir,
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    dir,
+			ProgramDirectory: dir,
+			EntryPoint:       ".",
+		},
+	})
+	require.NoError(t, err)
+
+	actual := make(map[string]string)
+	for _, plugin := range resp.GetPlugins() {
+		actual[plugin.Name] = plugin.Version
+	}
+	assert.Equal(t, map[string]string{
+		"foo": "v1.2.3",
+		"bar": "v4.5.6",
+		// baz: v7.8.9 is not included because it is in a nested policy pack
+	}, actual)
+}
+
 func TestParseOptions(t *testing.T) {
 	t.Parallel()
 
