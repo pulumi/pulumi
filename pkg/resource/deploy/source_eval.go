@@ -576,6 +576,12 @@ type TransformFunction func(
 	opts *pulumirpc.TransformResourceOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
 
+// A transformation function that can be applied to an invoke.
+type TransformInvokeFunction func(
+	ctx context.Context, token string, args resource.PropertyMap,
+	opts *pulumirpc.TransformInvokeOptions,
+) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error)
+
 type CallbacksClient struct {
 	pulumirpc.CallbacksClient
 
@@ -623,12 +629,14 @@ type resmon struct {
 	// the working directory for the resources sent to this monitor.
 	workingDirectory string
 
-	stackTransformsLock    sync.Mutex
-	stackTransforms        []TransformFunction // stack transformation functions
-	resourceTransformsLock sync.Mutex
-	resourceTransforms     map[resource.URN][]TransformFunction // option transformation functions per resource
-	callbacksLock          sync.Mutex
-	callbacks              map[string]*CallbacksClient // callbacks clients per target address
+	stackTransformsLock       sync.Mutex
+	stackTransforms           []TransformFunction // stack transformation functions
+	stackInvokeTransformsLock sync.Mutex
+	stackInvokeTransforms     []TransformInvokeFunction // invoke transformation functions
+	resourceTransformsLock    sync.Mutex
+	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
+	callbacksLock             sync.Mutex
+	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
 
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -931,6 +939,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "transforms":
 		hasSupport = true
+	case "invokeTransforms":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -942,21 +952,10 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	// Fetch the token and load up the resource provider if necessary.
+	// Fetch the token.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(
-		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
-	if err != nil {
-		return nil, err
-	}
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
-	if err != nil {
-		return nil, fmt.Errorf("Invoke: %w", err)
-	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
-
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{
 			Label:            label,
@@ -967,6 +966,45 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
+	}
+
+	opts := &pulumirpc.TransformInvokeOptions{
+		Provider:          req.GetProvider(),
+		Version:           req.GetVersion(),
+		PluginDownloadUrl: req.GetPluginDownloadURL(),
+		PluginChecksums:   req.GetPluginChecksums(),
+	}
+
+	// Lock the invoke transforms and run all of those before loading the provider.
+	err = func() error {
+		// Function exists to scope the lock
+		rm.stackInvokeTransformsLock.Lock()
+		defer rm.stackInvokeTransformsLock.Unlock()
+
+		for _, transform := range rm.stackInvokeTransforms {
+			newArgs, newOpts, err := transform(ctx, string(tok), args, opts)
+			if err != nil {
+				return err
+			}
+
+			args = newArgs
+			opts = newOpts
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// Load up the resource provider if necessary.
+	providerReq, err := parseProviderRequest(
+		tok.Package(), opts.Version, opts.PluginDownloadUrl, opts.PluginChecksums, nil)
+	if err != nil {
+		return nil, err
+	}
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, opts.Provider, tok)
+	if err != nil {
+		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
 	// Do the invoke and then return the arguments.
@@ -1292,6 +1330,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+// Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
+// wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFunction, error) {
 	client, err := rm.GetCallbacksClient(cb.Target)
 	if err != nil {
@@ -1364,6 +1404,79 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 	}, nil
 }
 
+// Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
+// wrapper takes care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (TransformInvokeFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(
+		ctx context.Context, invokeToken string,
+		args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
+	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+		logging.V(5).Infof("Invoke transform: token=%v props=%v opts=%v",
+			invokeToken, args, opts)
+
+		margs := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+			WorkingDirectory: rm.workingDirectory,
+		}
+
+		mprops, err := plugin.MarshalProperties(args, margs)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var request []byte
+		request, err = proto.Marshal(&pulumirpc.TransformInvokeRequest{
+			Token:   invokeToken,
+			Args:    mprops,
+			Options: opts,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshaling request: %w", err)
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(5).Infof("Invoke transform callback error: %v", err)
+			return nil, nil, err
+		}
+
+		newOpts := opts
+		var newProps resource.PropertyMap
+		var response pulumirpc.TransformInvokeResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
+		}
+
+		if response.Options != nil {
+			newOpts = response.Options
+		}
+		newProps = args
+		if response.Args != nil {
+			newProps, err = plugin.UnmarshalProperties(response.Args, margs)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+		logging.V(5).Infof("Invoke transform: props=%v opts=%v", newProps, newOpts)
+
+		return newProps, newOpts, nil
+	}, nil
+}
+
 func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
 	rm.stackTransformsLock.Lock()
 	defer rm.stackTransformsLock.Unlock()
@@ -1378,6 +1491,23 @@ func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Call
 	}
 
 	rm.stackTransforms = append(rm.stackTransforms, wrapped)
+	return &emptypb.Empty{}, nil
+}
+
+func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+	rm.stackInvokeTransformsLock.Lock()
+	defer rm.stackInvokeTransformsLock.Unlock()
+
+	if cb.Target == "" {
+		return nil, errors.New("target must be specified")
+	}
+
+	wrapped, err := rm.wrapInvokeTransformCallback(cb)
+	if err != nil {
+		return nil, err
+	}
+
+	rm.stackInvokeTransforms = append(rm.stackInvokeTransforms, wrapped)
 	return &emptypb.Empty{}, nil
 }
 

@@ -258,6 +258,12 @@ func (p *monitorProxy) RegisterStackTransform(
 	return p.target.RegisterStackTransform(ctx, req)
 }
 
+func (p *monitorProxy) RegisterStackInvokeTransform(
+	ctx context.Context, req *pulumirpc.Callback,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterStackInvokeTransform(ctx, req)
+}
+
 func (p *monitorProxy) RegisterPackage(
 	ctx context.Context, req *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {

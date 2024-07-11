@@ -488,6 +488,11 @@ func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) 
 	return err
 }
 
+func (rm *ResourceMonitor) RegisterStackInvokeTransform(callback *pulumirpc.Callback) error {
+	_, err := rm.resmon.RegisterStackInvokeTransform(context.Background(), callback)
+	return err
+}
+
 func (rm *ResourceMonitor) RegisterProvider(pkg, version, downloadURL string, checksums map[string][]byte,
 	parameterization *pulumirpc.Parameterization,
 ) (string, error) {
