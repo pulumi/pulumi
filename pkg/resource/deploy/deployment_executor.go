@@ -434,11 +434,11 @@ func (ex *deploymentExecutor) performDeletes(
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
-	if len(step.Res().Dependencies) > 0 && skipped.Contains(step.Res().Dependencies...) {
+	if len(step.Res().Dependencies) > 0 && skipped.ContainsAny(step.Res().Dependencies...) {
 		return true
 	}
 	for _, deps := range step.Res().PropertyDependencies {
-		if len(deps) > 0 && skipped.Contains(deps...) {
+		if len(deps) > 0 && skipped.ContainsAny(deps...) {
 			return true
 		}
 	}
