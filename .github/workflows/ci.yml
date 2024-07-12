@@ -86,6 +86,8 @@ on:
         required: false
         description: "GCP service account, required to run tests against GCP"
 
+env:
+  TMPDIR: '/dev/shm'
 jobs:
   matrix:
     runs-on: ubuntu-latest
