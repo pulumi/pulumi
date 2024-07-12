@@ -1,0 +1,34 @@
+<{%fg 1%}>- pkgExt:m:typA: (delete)
+<{%fg 1%}>    [id=id]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::47f70af2-d030-404f-967a-be0f34b43427]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=id]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::af4d636a-5132-4ff8-8df6-4894aaf29e91]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgExt: (delete)
+<{%fg 1%}>    [id=47f70af2-d030-404f-967a-be0f34b43427]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
+<{%reset%}><{%fg 1%}>    parameter: <{%reset%}><{%fg 1%}>{
+<{%reset%}><{%fg 1%}>        pkg    : <{%reset%}><{%fg 1%}>"pkgA"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>        value  : <{%reset%}><{%fg 1%}>"cmVwbGFjZW1lbnQ="<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>        version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    version  : <{%reset%}><{%fg 1%}>"0.5.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - parameter: <{%reset%}><{%fg 1%}>{
+<{%reset%}><{%fg 1%}>      - pkg    : <{%reset%}><{%fg 1%}>"pkgA"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>      - value  : <{%reset%}><{%fg 1%}>"cmVwbGFjZW1lbnQ="<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>      - version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>  - version  : <{%reset%}><{%fg 1%}>"0.5.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=af4d636a-5132-4ff8-8df6-4894aaf29e91]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%fg 1%}>    version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - version: <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
