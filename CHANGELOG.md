@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.124.0 (2024-07-12)
+
+
+### Features
+
+- [cli/state] Introduce a state move command that can be used to move resources between stacks/projects
+  [#16630](https://github.com/pulumi/pulumi/pull/16630)
+
+
+### Bug Fixes
+
+- [engine] Fix an issue where `pulumi up --continue-on-error` could result in a snapshot integrity failure
+
+- [yaml] Fixes using StackReference outputs of types other than 'string' in Pulumi YAML
+  [#16636](https://github.com/pulumi/pulumi/pull/16636)
+
+- [cli/new] Install policy or project dependencies based on nearest configuration file
+
+- [sdk/nodejs] Don't count plugins from a nested policy pack in GetRequiredPlugins
+  [#16632](https://github.com/pulumi/pulumi/pull/16632)
+
+- [sdk/nodejs] Revert the implementation of `dependsOn` for invokes in the NodeJS SDK
+
 ## 3.123.0 (2024-07-10)
 
 

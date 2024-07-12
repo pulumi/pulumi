@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Introduce a state move command that can be used to move resources between stacks/projects
