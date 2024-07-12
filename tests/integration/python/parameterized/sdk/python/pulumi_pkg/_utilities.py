@@ -23,8 +23,6 @@ from pulumi.runtime.proto import resource_pb2
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
 
-from google.protobuf import struct_pb2
-
 C = typing.TypeVar("C", bound=typing.Callable)
 
 
@@ -332,6 +330,7 @@ _package_lock = asyncio.Lock()
 _package_ref = ...
 async def get_package():
 	global _package_ref
+	# TODO: This should check a feature flag for if RegisterPackage is supported.
 	if _package_ref is ...:
 		async with _package_lock:
 			if _package_ref is ...:
@@ -341,18 +340,16 @@ async def get_package():
 					version=get_version(),
 					value=base64.b64decode("cGtn"),
 				)
-				try:
-					registerPackageResponse = monitor.RegisterPackage(
-						resource_pb2.RegisterPackageRequest(
-							name="testprovider",
-							version="0.0.1",
-							download_url=get_plugin_download_url(),
-							parameterization=parameterization,
-						))
-					_package_ref = registerPackageResponse.ref
-				except Exception as e:
-					raise e
-					_package_ref = None
+				registerPackageResponse = monitor.RegisterPackage(
+					resource_pb2.RegisterPackageRequest(
+						name="testprovider",
+						version="0.0.1",
+						download_url=get_plugin_download_url(),
+						parameterization=parameterization,
+					))
+				_package_ref = registerPackageResponse.ref
+	# TODO: This check is only needed for paramaterised providers, normal providers can return None for get_package when we start
+	# using package with them.
 	if _package_ref is None:
 		raise Exception("The Pulumi CLI does not support package references. Please update the Pulumi CLI.")
 	return _package_ref
