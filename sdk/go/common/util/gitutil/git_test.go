@@ -538,8 +538,8 @@ func TestParseAuthURL(t *testing.T) {
 	})
 
 	t.Run("Don't cache on error", func(t *testing.T) {
+		t.Parallel()
 		// Regresses https://github.com/pulumi/pulumi/issues/16637
-
 		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
 		originalSocket := os.Getenv("SSH_AUTH_SOCK")
 		defer func() {
