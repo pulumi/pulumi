@@ -433,27 +433,19 @@ func (ex *deploymentExecutor) performDeletes(
 	return nil
 }
 
-func skipStepIfDependenciesAreSkipped(step Step, skipped mapset.Set[urn.URN]) bool {
+func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 	if len(step.Res().Dependencies) > 0 && skipped.Contains(step.Res().Dependencies...) {
-		step.Skip()
-		skipped.Add(step.Res().URN)
 		return true
 	}
 	for _, deps := range step.Res().PropertyDependencies {
 		if len(deps) > 0 && skipped.Contains(deps...) {
-			step.Skip()
-			skipped.Add(step.Res().URN)
 			return true
 		}
 	}
 	if step.Res().Parent != "" && skipped.Contains(step.Res().Parent) {
-		step.Skip()
-		skipped.Add(step.Res().URN)
 		return true
 	}
 	if step.Res().DeletedWith != "" && skipped.Contains(step.Res().DeletedWith) {
-		step.Skip()
-		skipped.Add(step.Res().URN)
 		return true
 	}
 
@@ -490,7 +482,9 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 			ex.skipped.Add(errored.Res().URN)
 		}
 		for _, step := range steps {
-			if skipStepIfDependenciesAreSkipped(step, ex.skipped) {
+			if doesStepDependOn(step, ex.skipped) {
+				step.Skip()
+				ex.skipped.Add(step.Res().URN)
 				skipped = true
 				continue
 			}
