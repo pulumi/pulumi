@@ -175,7 +175,7 @@ func initializeDeploymentSettings(
 
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
 			fmt.Sprintf("Backends of type %q do not support managed deployments", be.Name()),
-			colors.Red+colors.Bold)
+			colors.SpecError+colors.Bold)
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg, "Pulumi Cloud", colors.BrightCyan+colors.Bold)
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
 			"https://www.pulumi.com/docs/pulumi-cloud/deployments/", colors.BrightBlue+colors.Underline+colors.Bold)
@@ -630,12 +630,12 @@ func configureGitPassword(d *deploymentSettingsCommandDependencies) error {
 		username = sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value
 	}
 
-	username, err = promptForValue(d.Yes, "Git username", username, false, ValidateGenericInputNonEmpty, *d.DisplayOptions)
+	username, err = promptForValue(d.Yes, "Git username", username, false, ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	password, err = promptForValue(d.Yes, "Git password", password, true, ValidateGenericInputNonEmpty, *d.DisplayOptions)
+	password, err = promptForValue(d.Yes, "Git password", password, true, ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -659,7 +659,7 @@ func configureGitSSH(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyP
 	if gitSSHPrivateKeyPath == "" {
 		configureMsg := "No SSH private key was provided, run `pulumi deployment settings " +
 			"configure` with the `--git-ssh-private-key` flag set"
-		configureMsg = colors.Highlight(configureMsg, "No SSH private key was provided", colors.Red+colors.Bold)
+		configureMsg = colors.Highlight(configureMsg, "No SSH private key was provided", colors.SpecError+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "pulumi deployment settings configure", colors.BrightBlue+colors.Bold)
 		configureMsg = colors.Highlight(configureMsg, "git-ssh-private-key", colors.BrightBlue+colors.Bold)
 		fmt.Println()
@@ -697,7 +697,7 @@ func configureGitSSH(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyP
 	var password string
 
 	password, err = promptForValue(d.Yes, "(Optional) Private key password", password, true,
-		ValidateGenericInput, *d.DisplayOptions)
+		ValidateShortInput, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -730,14 +730,14 @@ func configureOidcAws(d *deploymentSettingsCommandDependencies) error {
 	}
 
 	roleARN, err := promptForValue(d.Yes, "AWS role ARN", sd.DeploymentSettings.Operation.OIDC.AWS.RoleARN,
-		false, ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		false, ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	sessionName, err := promptForValue(d.Yes, "AWS session name",
 		sd.DeploymentSettings.Operation.OIDC.AWS.SessionName, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -764,27 +764,27 @@ func configureOidcGCP(d *deploymentSettingsCommandDependencies) error {
 	}
 
 	projectID, err := promptForValue(d.Yes, "GCP project id", sd.DeploymentSettings.Operation.OIDC.GCP.ProjectID, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	providerID, err := promptForValue(d.Yes, "GCP provider id", sd.DeploymentSettings.Operation.OIDC.GCP.ProviderID, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	workloadPoolID, err := promptForValue(d.Yes, "GCP identity provider id",
 		sd.DeploymentSettings.Operation.OIDC.GCP.WorkloadPoolID, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	serviceAccount, err := promptForValue(d.Yes, "GCP service account email address",
 		sd.DeploymentSettings.Operation.OIDC.GCP.ServiceAccount, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -813,20 +813,20 @@ func configureOidcAzure(d *deploymentSettingsCommandDependencies) error {
 	}
 
 	clientID, err := promptForValue(d.Yes, "Azure client ID", sd.DeploymentSettings.Operation.OIDC.Azure.ClientID, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	tenantID, err := promptForValue(d.Yes, "Azure tenant ID", sd.DeploymentSettings.Operation.OIDC.Azure.TenantID, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	subscriptionID, err := promptForValue(d.Yes, "Azure subscription ID",
 		sd.DeploymentSettings.Operation.OIDC.Azure.SubscriptionID, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -895,14 +895,14 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 
 	imageReference, err := promptForValue(d.Yes, "Image reference",
 		sd.DeploymentSettings.Executor.ExecutorImage.Reference, false,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
 	username, err := promptForValue(d.Yes, "(Optional) Image repository username",
 		sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username, false,
-		ValidateGenericInput, *d.DisplayOptions)
+		ValidateShortInput, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -916,7 +916,7 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 	}
 
 	password, err := promptForValue(d.Yes, "Image repository password", "", true,
-		ValidateGenericInputNonEmpty, *d.DisplayOptions)
+		ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -989,15 +989,15 @@ func ValidateGitURL(s string) error {
 	return err
 }
 
-func ValidateGenericInputNonEmpty(s string) error {
+func ValidateShortInputNonEmpty(s string) error {
 	if s == "" {
 		return errors.New("should not be empty")
 	}
 
-	return ValidateGenericInput(s)
+	return ValidateShortInput(s)
 }
 
-func ValidateGenericInput(s string) error {
+func ValidateShortInput(s string) error {
 	const maxTagValueLength = 256
 
 	if len(s) > maxTagValueLength {
