@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix an issue where `pulumi up --continue-on-error` could result in a snapshot integrity failure
