@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Revert the implementation of `dependsOn` for invokes in the NodeJS SDK
