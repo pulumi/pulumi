@@ -28,7 +28,7 @@ jobs:
       timeout-minutes: 240
       runs-on: ubuntu-latest
       env:
-        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       strategy:
         matrix:
           provider: ["aws", "gcp", "azure", "azuread", "random"]
@@ -74,7 +74,7 @@ jobs:
         DOTNETVERSION: "6.x"
         JAVAVERSION: "11"
         AWS_REGION: us-west-2
-        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       steps:
         - name: Configure AWS Credentials
           uses: aws-actions/configure-aws-credentials@v4

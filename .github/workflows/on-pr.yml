@@ -56,7 +56,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: changes
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           filters: |
             # If files matching any of these patterns change,
             # we will run codegen tests for pull requests.

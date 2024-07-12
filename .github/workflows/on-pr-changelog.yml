@@ -38,7 +38,7 @@ jobs:
     name: comment
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,7 +60,7 @@ jobs:
         uses: peter-evans/find-comment@v3
         id: fc
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ inputs.pr-number }}
           body-includes: "# Changelog"
       - name: Create or update comment
