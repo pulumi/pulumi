@@ -1,3 +1,5 @@
 name: nested_config
 runtime: go
 description: A minimal Go Pulumi program
+backend:
+  url: file://~

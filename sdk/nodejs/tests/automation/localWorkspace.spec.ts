@@ -27,15 +27,16 @@ import {
     ProjectSettings,
     PulumiCommand,
     Stack,
+    LocalWorkspaceOptions,
 } from "../../automation";
-import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
+import { ComponentResource, ComponentResourceOptions, Config } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
 const userAgent = "pulumi/pulumi/test";
 
 describe("LocalWorkspace", () => {
-    it(`projectSettings from yaml/yml/json`, async () => {
+    it("projectSettings from yaml/yml/json", async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.projectSettings();
@@ -45,7 +46,7 @@ describe("LocalWorkspace", () => {
         }
     });
 
-    it(`stackSettings from yaml/yml/json`, async () => {
+    it("stackSettings from yaml/yml/json", async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", ext) });
             const settings = await ws.stackSettings("dev");
@@ -57,7 +58,7 @@ describe("LocalWorkspace", () => {
         }
     });
 
-    it(`fails gracefully for missing local workspace workDir`, async () => {
+    it("fails gracefully for missing local workspace workDir", async () => {
         try {
             const ws = await LocalWorkspace.create({ workDir: "invalid-missing-workdir" });
             assert.fail("expected create with invalid workDir to throw");
@@ -69,8 +70,8 @@ describe("LocalWorkspace", () => {
         }
     });
 
-    it(`adds/removes/lists plugins successfully`, async () => {
-        const ws = await LocalWorkspace.create({});
+    it("adds/removes/lists plugins successfully", async () => {
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend());
         await ws.installPlugin("aws", "v3.0.0");
         // See https://github.com/pulumi/pulumi/issues/11013 for why this is disabled
         //await ws.installPluginFromServer("scaleway", "v1.2.0", "github://api.github.com/lbrlabs");
@@ -78,27 +79,27 @@ describe("LocalWorkspace", () => {
         await ws.listPlugins();
     });
 
-    it(`create/select/remove LocalWorkspace stack`, async () => {
+    it("create/select/remove LocalWorkspace stack", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         await ws.createStack(stackName);
         await ws.selectStack(stackName);
         await ws.removeStack(stackName);
     });
 
-    it(`create/select/createOrSelect Stack`, async () => {
+    it("create/select/createOrSelect Stack", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         await Stack.create(stackName, ws);
         await Stack.select(stackName, ws);
         await Stack.createOrSelect(stackName, ws);
@@ -114,9 +115,7 @@ describe("LocalWorkspace", () => {
         };
         let workspace: LocalWorkspace;
         beforeEach(async () => {
-            workspace = await LocalWorkspace.create({
-                projectSettings: projectSettings,
-            });
+            workspace = await LocalWorkspace.create({ projectSettings });
             await workspace.createStack(stackName);
         });
         it("lists tag values", async () => {
@@ -157,16 +156,16 @@ describe("LocalWorkspace", () => {
                         "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"
                     }
                 ]`;
-            it(`should handle stacks correctly for listStacks`, async () => {
+            it("should handle stacks correctly for listStacks", async () => {
                 const mockWithReturnedStacks = {
                     command: "pulumi",
                     version: null,
-                    run: async (args: string[], cwd: string, additionalEnv: { [key: string]: string }) => {
-                        return new CommandResult(stackJson, "", 0);
-                    },
+                    run: async () => new CommandResult(stackJson, "", 0),
                 };
 
-                const workspace = await LocalWorkspace.create({ pulumiCommand: mockWithReturnedStacks });
+                const workspace = await LocalWorkspace.create(
+                    withTemporaryFileBackend({ pulumiCommand: mockWithReturnedStacks }),
+                );
                 const stacks = await workspace.listStacks();
 
                 assert.strictEqual(stacks.length, 2);
@@ -178,19 +177,21 @@ describe("LocalWorkspace", () => {
                 assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2");
             });
 
-            it(`should use correct args for listStacks`, async () => {
+            it("should use correct args for listStacks", async () => {
                 let capturedArgs: string[] = [];
                 const mockPulumiCommand = {
                     command: "pulumi",
                     version: null,
-                    run: async (args: string[], cwd: string, additionalEnv: { [key: string]: string }) => {
+                    run: async (args: string[]) => {
                         capturedArgs = args;
                         return new CommandResult(stackJson, "", 0);
                     },
                 };
-                const workspace = await LocalWorkspace.create({
-                    pulumiCommand: mockPulumiCommand,
-                });
+                const workspace = await LocalWorkspace.create(
+                    withTemporaryFileBackend({
+                        pulumiCommand: mockPulumiCommand,
+                    }),
+                );
                 await workspace.listStacks();
                 assert.deepStrictEqual(capturedArgs, ["stack", "ls", "--json"]);
             });
@@ -209,15 +210,17 @@ describe("LocalWorkspace", () => {
                         "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"
                     }
                 ]`;
-            it(`should handle stacks correctly for listStacks when all is set`, async () => {
+            it("should handle stacks correctly for listStacks when all is set", async () => {
                 const mockWithReturnedStacks = {
                     command: "pulumi",
                     version: null,
                     run: async () => new CommandResult(stackJson, "", 0),
                 };
-                const workspace = await LocalWorkspace.create({
-                    pulumiCommand: mockWithReturnedStacks,
-                });
+                const workspace = await LocalWorkspace.create(
+                    withTemporaryFileBackend({
+                        pulumiCommand: mockWithReturnedStacks,
+                    }),
+                );
                 const stacks = await workspace.listStacks({ all: true });
                 assert.strictEqual(stacks.length, 2);
                 assert.strictEqual(stacks[0].name, "testorg1/testproj1/teststack1");
@@ -228,25 +231,27 @@ describe("LocalWorkspace", () => {
                 assert.strictEqual(stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2");
             });
 
-            it(`should use correct args for listStacks when all is set`, async () => {
+            it("should use correct args for listStacks when all is set", async () => {
                 let capturedArgs: string[] = [];
-                const mockPuluiCommand = {
+                const mockPulumiCommand = {
                     command: "pulumi",
                     version: null,
-                    run: async (args: string[], cwd: string, additionalEnv: { [key: string]: string }) => {
+                    run: async (args: string[]) => {
                         capturedArgs = args;
                         return new CommandResult(stackJson, "", 0);
                     },
                 };
-                const workspace = await LocalWorkspace.create({
-                    pulumiCommand: mockPuluiCommand,
-                });
+                const workspace = await LocalWorkspace.create(
+                    withTemporaryFileBackend({
+                        pulumiCommand: mockPulumiCommand,
+                    }),
+                );
                 await workspace.listStacks({ all: true });
                 assert.deepStrictEqual(capturedArgs, ["stack", "ls", "--json", "--all"]);
             });
         });
     });
-    it(`Environment functions`, async function () {
+    it("Environment functions", async function () {
         // Skipping test because the required environments are in the moolumi org.
         if (getTestOrg() !== "moolumi") {
             this.skip();
@@ -293,14 +298,14 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
-    it(`Config`, async () => {
+    it("Config", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
         const config = {
@@ -337,14 +342,14 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
-    it(`config_flag_like`, async () => {
+    it("config_flag_like", async () => {
         const projectName = "config_flag_like";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
         await stack.setConfig("key", { value: "-value" });
         await stack.setConfig("secret-key", { value: "-value", secret: true });
@@ -363,14 +368,14 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
         assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
     });
-    it(`Config path`, async () => {
+    it("Config path", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
         // test backward compatibility
@@ -454,10 +459,10 @@ describe("LocalWorkspace", () => {
     // config from the file. This means we can't remove the stack at the end of the test.
     // We should also not include secrets in this config, because the secret encryption is only valid within
     // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
-    it(`nested_config`, async () => {
-        const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
+    it("nested_config", async () => {
+        const stackName = fullyQualifiedStackName("organization", "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
-        const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
+        const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir }, withTestConfigPassphrase());
 
         const allConfig = await stack.getAllConfig();
         const outerVal = allConfig["nested_config:outer"];
@@ -476,17 +481,17 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(list.secret, false);
         assert.strictEqual(list.value, '["one","two","three"]');
     });
-    it(`can list stacks and currently selected stack`, async () => {
+    it("can list stacks and currently selected stack", async () => {
         const projectName = `node_list_test${getTestSuffix()}`;
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
         const stackNamer = () => `int_test${getTestSuffix()}`;
         const stackNames: string[] = [];
         for (let i = 0; i < 2; i++) {
-            const stackName = fullyQualifiedStackName(getTestOrg(), projectName, stackNamer());
+            const stackName = fullyQualifiedStackName("organization", projectName, stackNamer());
             stackNames[i] = stackName;
             await Stack.create(stackName, ws);
             const stackSummary = await ws.stack();
@@ -499,25 +504,25 @@ describe("LocalWorkspace", () => {
             await ws.removeStack(name);
         }
     });
-    it(`returns valid whoami result`, async () => {
+    it("returns valid whoami result", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
         const whoAmIResult = await ws.whoAmI();
         assert(whoAmIResult.user !== null);
         assert(whoAmIResult.url !== null);
     });
-    it(`stack status methods`, async () => {
+    it("stack status methods", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
         const history = await stack.history();
         assert.strictEqual(history.length, 0);
@@ -525,11 +530,10 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(typeof info, "undefined");
         await ws.removeStack(stackName);
     });
-    // TODO[pulumi/pulumi#8220] understand why this test was flaky
-    xit(`runs through the stack lifecycle with a local program`, async () => {
-        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj", `int_test${getTestSuffix()}`);
+    it("runs through the stack lifecycle with a local program", async () => {
+        const stackName = fullyQualifiedStackName("organization", "testproj", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj");
-        const stack = await LocalWorkspace.createStack({ stackName, workDir });
+        const stack = await LocalWorkspace.createStack({ stackName, workDir }, withTestConfigPassphrase());
 
         const config: ConfigMap = {
             bar: { value: "abc" },
@@ -565,10 +569,10 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`runs through the stack lifecycle with a local dotnet program`, async () => {
-        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
+    it("runs through the stack lifecycle with a local dotnet program", async () => {
+        const stackName = fullyQualifiedStackName("organization", "testproj_dotnet", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");
-        const stack = await LocalWorkspace.createStack({ stackName, workDir });
+        const stack = await LocalWorkspace.createStack({ stackName, workDir }, withTestConfigPassphrase());
 
         // pulumi up
         const upRes = await stack.up({ userAgent });
@@ -594,7 +598,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`runs through the stack lifecycle with an inline program`, async () => {
+    it("runs through the stack lifecycle with an inline program", async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -604,8 +608,16 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         const stackConfig: ConfigMap = {
             bar: { value: "abc" },
@@ -641,7 +653,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`runs through the stack lifecycle with an inline program, testing removing without destroying`, async () => {
+    it("runs through the stack lifecycle with an inline program, testing removing without destroying", async () => {
         const program = async () => {
             class MyResource extends ComponentResource {
                 constructor(name: string, opts?: ComponentResourceOptions) {
@@ -652,8 +664,16 @@ describe("LocalWorkspace", () => {
             return {};
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         await stack.up({ userAgent });
 
@@ -680,7 +700,15 @@ describe("LocalWorkspace", () => {
         };
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stack = await LocalWorkspace.createStack(
+          { stackName, projectName, program },
+          withTemporaryFileBackend({
+            projectSettings: {
+              name: projectName,
+              runtime: "nodejs",
+            },
+          }),
+        );
 
         await stack.up({ userAgent });
 
@@ -690,7 +718,7 @@ describe("LocalWorkspace", () => {
         // Assert.
         await assert.rejects(stack.workspace.selectStack(stackName));
     });
-    it(`refreshes before preview`, async () => {
+    it("refreshes before preview", async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
         const program = async () => {
@@ -699,8 +727,16 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
         // • First, run Up so we can set the initial state.
         await stack.up({ userAgent });
         // • Next, run preview with refresh and check that the refresh was performed.
@@ -709,7 +745,7 @@ describe("LocalWorkspace", () => {
         assert.match(previewRes.stdout, /refreshing/);
         assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
     });
-    it(`destroys an inline program with excludeProtected`, async () => {
+    it("destroys an inline program with excludeProtected", async () => {
         const program = async () => {
             class MyResource extends ComponentResource {
                 constructor(name: string, opts?: ComponentResourceOptions) {
@@ -723,8 +759,16 @@ describe("LocalWorkspace", () => {
             return {};
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         // initial up
         await stack.setConfig("protect", { value: "true" });
@@ -745,7 +789,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`successfully initializes multiple stacks`, async () => {
+    it("successfully initializes multiple stacks", async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -756,14 +800,24 @@ describe("LocalWorkspace", () => {
         };
         const projectName = "inline_node";
         const stackNames = Array.from(Array(10).keys()).map((_) =>
-            fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
+            fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`),
         );
         const stacks = await Promise.all(
-            stackNames.map(async (stackName) => LocalWorkspace.createStack({ stackName, projectName, program })),
+            stackNames.map((stackName) =>
+                LocalWorkspace.createStack(
+                    { stackName, projectName, program },
+                    withTemporaryFileBackend({
+                        projectSettings: {
+                            name: projectName,
+                            runtime: "nodejs",
+                        },
+                    }),
+                ),
+            ),
         );
-        await stacks.map((stack) => stack.workspace.removeStack(stack.name));
+        await Promise.all(stacks.map((stack) => stack.workspace.removeStack(stack.name)));
     });
-    it(`runs through the stack lifecycle with multiple inline programs in parallel`, async () => {
+    it("runs through the stack lifecycle with multiple inline programs in parallel", async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -774,11 +828,19 @@ describe("LocalWorkspace", () => {
         };
         const projectName = "inline_node";
         const stackNames = Array.from(Array(30).keys()).map((_) =>
-            fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
+            fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`),
         );
 
         const testStackLifetime = async (stackName: string) => {
-            const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+            const stack = await LocalWorkspace.createStack(
+                { stackName, projectName, program },
+                withTemporaryFileBackend({
+                    projectSettings: {
+                        name: projectName,
+                        runtime: "nodejs",
+                    },
+                }),
+            );
 
             const stackConfig: ConfigMap = {
                 bar: { value: "abc" },
@@ -819,7 +881,7 @@ describe("LocalWorkspace", () => {
             await Promise.all(chunk.map(async (stackName) => await testStackLifetime(stackName)));
         }
     });
-    it(`handles events`, async () => {
+    it("handles events", async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -829,8 +891,16 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         const stackConfig: ConfigMap = {
             bar: { value: "abc" },
@@ -881,7 +951,7 @@ describe("LocalWorkspace", () => {
     });
     // TODO[pulumi/pulumi#7127]: Re-enabled the warning.
     // Temporarily skipping test until we've re-enabled the warning.
-    it.skip(`has secret config warnings`, async () => {
+    it.skip("has secret config warnings", async () => {
         const program = async () => {
             const config = new Config();
 
@@ -1044,7 +1114,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`imports and exports stacks`, async () => {
+    it("imports and exports stacks", async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -1054,8 +1124,16 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "import_export_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         try {
             await stack.setAllConfig({
@@ -1078,8 +1156,7 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stackName);
         }
     });
-    // TODO[pulumi/pulumi#8061] flaky test
-    xit(`supports stack outputs`, async () => {
+    it("supports stack outputs", async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -1089,8 +1166,16 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "import_export_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         const assertOutputs = (outputs: OutputMap) => {
             assert.strictEqual(Object.keys(outputs).length, 3, "expected to have 3 outputs");
@@ -1130,11 +1215,19 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stackName);
         }
     });
-    it(`runs an inline program that exits gracefully`, async () => {
+    it("runs an inline program that exits gracefully", async () => {
         const program = async () => ({});
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         // pulumi up
         await assert.doesNotReject(stack.up());
@@ -1146,14 +1239,22 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`runs an inline program that rejects a promise and exits gracefully`, async () => {
+    it("runs an inline program that rejects a promise and exits gracefully", async () => {
         const program = async () => {
             Promise.reject(new Error());
             return {};
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         // pulumi up
         await assert.rejects(stack.up());
@@ -1165,7 +1266,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`runs successfully after a previous failure`, async () => {
+    it("runs successfully after a previous failure", async () => {
         let shouldFail = true;
         const program = async () => {
             if (shouldFail) {
@@ -1174,8 +1275,16 @@ describe("LocalWorkspace", () => {
             return {};
         };
         const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTemporaryFileBackend({
+                projectSettings: {
+                    name: projectName,
+                    runtime: "nodejs",
+                },
+            }),
+        );
 
         // pulumi up rejects the first time
         await assert.rejects(stack.up());
@@ -1191,8 +1300,8 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`sets pulumi version`, async () => {
-        const ws = await LocalWorkspace.create({});
+    it("sets pulumi version", async () => {
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({}));
         assert(ws.pulumiVersion);
         assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
     });
@@ -1200,7 +1309,7 @@ describe("LocalWorkspace", () => {
         const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
         try {
             const cmd = await PulumiCommand.get();
-            const ws = await LocalWorkspace.create({ pulumiCommand: cmd });
+            const ws = await LocalWorkspace.create(withTemporaryFileBackend({ pulumiCommand: cmd }));
             assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
         } finally {
             tmpDir.removeCallback();
@@ -1212,12 +1321,14 @@ describe("LocalWorkspace", () => {
             version: null,
             run: async () => new CommandResult("some output", "", 0),
         };
-        const ws = await LocalWorkspace.create({
-            pulumiCommand: mockWithNoVersion,
-            envVars: {
-                PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
-            },
-        });
+        const ws = await LocalWorkspace.create(
+            withTemporaryFileBackend({
+                pulumiCommand: mockWithNoVersion,
+                envVars: {
+                    PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
+                },
+            }),
+        );
         assert.throws(() => ws.pulumiVersion);
     });
     it("fails creation if remote operation is not supported", async () => {
@@ -1229,7 +1340,9 @@ describe("LocalWorkspace", () => {
             // `LocalWorkspace.checkRemoteSupport`.
             run: async () => new CommandResult("some output", "", 0),
         };
-        await assert.rejects(LocalWorkspace.create({ pulumiCommand: mockWithNoRemoteSupport, remote: true }));
+        await assert.rejects(
+            LocalWorkspace.create(withTemporaryFileBackend({ pulumiCommand: mockWithNoRemoteSupport, remote: true })),
+        );
     });
     it("bypasses remote support check", async () => {
         const mockWithNoRemoteSupport = {
@@ -1241,18 +1354,20 @@ describe("LocalWorkspace", () => {
             run: async () => new CommandResult("some output", "", 0),
         };
         await assert.doesNotReject(
-            LocalWorkspace.create({
-                pulumiCommand: mockWithNoRemoteSupport,
-                remote: true,
-                envVars: {
-                    PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
-                },
-            }),
+            LocalWorkspace.create(
+                withTemporaryFileBackend({
+                    pulumiCommand: mockWithNoRemoteSupport,
+                    remote: true,
+                    envVars: {
+                        PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK: "true",
+                    },
+                }),
+            ),
         );
     });
-    it(`respects existing project settings`, async () => {
+    it("respects existing project settings", async () => {
         const projectName = "correct_project";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
             {
                 stackName,
@@ -1261,7 +1376,9 @@ describe("LocalWorkspace", () => {
                     return;
                 },
             },
-            { workDir: upath.joinSafe(__dirname, "data", "correct_project") },
+            withTestConfigPassphrase({
+                workDir: upath.joinSafe(__dirname, "data", "correct_project"),
+            }),
         );
         const projectSettings = await stack.workspace.projectSettings();
         assert.strictEqual(projectSettings.name, "correct_project");
@@ -1269,7 +1386,7 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(projectSettings.description, "This is a description");
         await stack.workspace.removeStack(stackName);
     });
-    it(`correctly sets config on multiple stacks concurrently`, async () => {
+    it("correctly sets config on multiple stacks concurrently", async () => {
         const dones = [];
         const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"];
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
@@ -1311,6 +1428,45 @@ describe("LocalWorkspace", () => {
         }
     });
 });
+
+/**
+ * Augments the provided {@link LocalWorkspaceOptions} so that they reference a
+ * file backend backed by a temporary directory. The temporary directory (and
+ * any contents) will be cleaned up on the test suite's exit.
+ */
+function withTemporaryFileBackend(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
+    const tmpDir = tmp.dirSync({ prefix: "nodejs-tests-automation-", unsafeCleanup: true });
+    const backend = { url: `file://${tmpDir.name}` };
+
+    return withTestConfigPassphrase({
+        ...opts,
+        projectSettings: {
+            // We are obliged to provide a name and runtime if we provide project
+            // settings, so we do so, but we spread in the provided project settings
+            // afterwards so that the caller can override them if need be.
+            name: "node_test",
+            runtime: "nodejs",
+
+            ...opts?.projectSettings,
+            backend,
+        },
+    });
+}
+
+/**
+ * Augments the provided {@link LocalWorkspaceOptions} so that they set up an
+ * environment containing a test `PULUMI_CONFIG_PASSPHRASE` variable suitable
+ * for use with a local file backend.
+ */
+function withTestConfigPassphrase(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
+    return {
+        ...opts,
+        envVars: {
+            ...opts?.envVars,
+            PULUMI_CONFIG_PASSPHRASE: "test",
+        },
+    };
+}
 
 const normalizeConfigKey = (key: string, projectName: string) => {
     const parts = key.split(":");
