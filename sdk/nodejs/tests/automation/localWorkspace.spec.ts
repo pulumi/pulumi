@@ -21,14 +21,15 @@ import {
     CommandResult,
     ConfigMap,
     EngineEvent,
-    fullyQualifiedStackName,
     LocalWorkspace,
+    LocalWorkspaceOptions,
     OutputMap,
     ProjectSettings,
     PulumiCommand,
     Stack,
+    fullyQualifiedStackName,
 } from "../../automation";
-import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
+import { ComponentResource, ComponentResourceOptions, Config } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -78,14 +79,14 @@ describe("LocalWorkspace", () => {
         await ws.listPlugins();
     });
 
-    it(`create/select/remove LocalWorkspace stack`, async () => {
+    it("create/select/remove LocalWorkspace stack", async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime: "nodejs",
         };
-        const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         await ws.createStack(stackName);
         await ws.selectStack(stackName);
         await ws.removeStack(stackName);
@@ -1311,6 +1312,50 @@ describe("LocalWorkspace", () => {
         }
     });
 });
+
+/**
+ * Augments the provided {@link LocalWorkspaceOptions} so that they reference a
+ * file backend backed by a temporary directory. The temporary directory (and
+ * any contents) will be cleaned up on the test suite's exit.
+ */
+function withTemporaryFileBackend(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
+    const tmpDir = tmp.dirSync({
+        tmpdir: "/dev/shm",
+        prefix: "nodejs-tests-automation-",
+        unsafeCleanup: true,
+    });
+
+    const backend = { url: `file://${tmpDir.name}` };
+
+    return withTestConfigPassphrase({
+        ...opts,
+        projectSettings: {
+            // We are obliged to provide a name and runtime if we provide project
+            // settings, so we do so, but we spread in the provided project settings
+            // afterwards so that the caller can override them if need be.
+            name: "node_test",
+            runtime: "nodejs",
+
+            ...opts?.projectSettings,
+            backend,
+        },
+    });
+}
+
+/**
+ * Augments the provided {@link LocalWorkspaceOptions} so that they set up an
+ * environment containing a test `PULUMI_CONFIG_PASSPHRASE` variable suitable
+ * for use with a local file backend.
+ */
+function withTestConfigPassphrase(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
+    return {
+        ...opts,
+        envVars: {
+            ...opts?.envVars,
+            PULUMI_CONFIG_PASSPHRASE: "test",
+        },
+    };
+}
 
 const normalizeConfigKey = (key: string, projectName: string) => {
     const parts = key.split(":");
