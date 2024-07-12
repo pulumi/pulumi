@@ -91,6 +91,18 @@ var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 	"Continue to perform the update/destroy operation despite the occurrence of errors.")
 
+// List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
+// be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
+//
+// For example, when set to "^https://foo=https://bar,^github://=https://buzz", HTTPS plugin URLs that start with
+// "foo" will use https://bar as the download URL and plugins hosted on github will use https://buzz
+//
+// Note that named regular expression groups can be used to capture parts of URLs and then reused for building
+// redirects. For example
+// ^github://api.github.com/(?P<org>[^/]+)/(?P<repo>[^/]=https://foo.com/downloads/${org}/${repo}
+// will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
+var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
+
 // Environment variables that affect the DIY backend.
 var (
 	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
