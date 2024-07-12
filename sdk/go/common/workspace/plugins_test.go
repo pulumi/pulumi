@@ -1148,8 +1148,8 @@ plugins:
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
 }
 
+//nolint:paralleltest // mutates pluginDownloadURLOverridesParsed
 func TestPluginSpec_GetSource(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name               string
 		spec               PluginSpec
@@ -1251,7 +1251,6 @@ func TestPluginSpec_GetSource(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // mutates pluginDownloadURLOverridesParsed
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pluginDownloadURLOverridesParsed = tt.overrides
