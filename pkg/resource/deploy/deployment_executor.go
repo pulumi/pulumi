@@ -433,6 +433,33 @@ func (ex *deploymentExecutor) performDeletes(
 	return nil
 }
 
+func skipStepIfDependenciesAreSkipped(step Step, skipped mapset.Set[urn.URN]) bool {
+	if len(step.Res().Dependencies) > 0 && skipped.Contains(step.Res().Dependencies...) {
+		step.Skip()
+		skipped.Add(step.Res().URN)
+		return true
+	}
+	for _, deps := range step.Res().PropertyDependencies {
+		if len(deps) > 0 && skipped.Contains(deps...) {
+			step.Skip()
+			skipped.Add(step.Res().URN)
+			return true
+		}
+	}
+	if step.Res().Parent != "" && skipped.Contains(step.Res().Parent) {
+		step.Skip()
+		skipped.Add(step.Res().URN)
+		return true
+	}
+	if step.Res().DeletedWith != "" && skipped.Contains(step.Res().DeletedWith) {
+		step.Skip()
+		skipped.Add(step.Res().URN)
+		return true
+	}
+
+	return false
+}
+
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
 func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
@@ -462,15 +489,10 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		for _, errored := range ex.stepExec.GetErroredSteps() {
 			ex.skipped.Add(errored.Res().URN)
 		}
-	outer:
 		for _, step := range steps {
-			for _, dep := range step.Res().Dependencies {
-				if ex.skipped.Contains(dep) {
-					step.Skip()
-					ex.skipped.Add(step.Res().URN)
-					skipped = true
-					continue outer
-				}
+			if skipStepIfDependenciesAreSkipped(step, ex.skipped) {
+				skipped = true
+				continue
 			}
 			newSteps = append(newSteps, step)
 		}
