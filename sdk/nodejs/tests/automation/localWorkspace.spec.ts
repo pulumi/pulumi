@@ -1435,7 +1435,12 @@ describe("LocalWorkspace", () => {
  * any contents) will be cleaned up on the test suite's exit.
  */
 function withTemporaryFileBackend(opts?: LocalWorkspaceOptions): LocalWorkspaceOptions {
-    const tmpDir = tmp.dirSync({ prefix: "nodejs-tests-automation-", unsafeCleanup: true });
+    const tmpDir = tmp.dirSync({
+        tmpdir: "/dev/shm",
+        prefix: "nodejs-tests-automation-",
+        unsafeCleanup: true,
+    });
+
     const backend = { url: `file://${tmpDir.name}` };
 
     return withTestConfigPassphrase({
