@@ -536,4 +536,34 @@ func TestParseAuthURL(t *testing.T) {
 		assert.NotNil(t, auth)
 		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
 	})
+
+	t.Run("Don't cache on error", func(t *testing.T) {
+		// Regresses https://github.com/pulumi/pulumi/issues/16637
+
+		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
+		originalSocket := os.Getenv("SSH_AUTH_SOCK")
+		defer func() {
+			_ = os.Setenv(env.GitSSHPassphrase.Var().Name(), originalPassphrase)
+			_ = os.Setenv("SSH_AUTH_SOCK", originalSocket)
+		}()
+
+		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
+		require.NoError(t, err)
+
+		err = os.Unsetenv("SSH_AUTH_SOCK")
+		require.NoError(t, err)
+
+		parser := urlAuthParser{
+			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
+		}
+
+		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
+		assert.ErrorContains(t, err, "SSH_AUTH_SOCK not-specified")
+		assert.Nil(t, auth)
+
+		// Retry, should still fail.
+		_, auth, err = parser.Parse("git@github.com:pulumi/templates.git")
+		assert.ErrorContains(t, err, "SSH_AUTH_SOCK not-specified")
+		assert.Nil(t, auth)
+	})
 }
