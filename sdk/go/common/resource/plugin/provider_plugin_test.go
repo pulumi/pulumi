@@ -296,6 +296,153 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 	assert.Equal(t, originalRaw, deserializedRaw)
 }
 
+// Tests that Delete requests are correctly marshalled and sent to the engine.
+func TestProvider_DeleteRequests(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	id := resource.ID("foo")
+	urn := resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:aws", "qux")
+
+	tests := []struct {
+		desc string
+		give DeleteRequest
+		want *pulumirpc.DeleteRequest
+	}{
+		{
+			desc: "empty",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:         string(id),
+				Urn:        string(urn),
+				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+			},
+		},
+		{
+			desc: "inputs",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				},
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:  string(id),
+				Urn: string(urn),
+				OldInputs: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
+					},
+				},
+				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+			},
+		},
+		{
+			desc: "outputs",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+				Outputs: resource.PropertyMap{
+					"baz": resource.NewStringProperty("quux"),
+				},
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:        string(id),
+				Urn:       string(urn),
+				OldInputs: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
+					},
+				},
+			},
+		},
+		{
+			desc: "timeout",
+			give: DeleteRequest{
+				ID:      id,
+				URN:     urn,
+				Timeout: 30,
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:         string(id),
+				Urn:        string(urn),
+				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Timeout:    30,
+			},
+		},
+		{
+			desc: "all",
+			give: DeleteRequest{
+				ID:  id,
+				URN: urn,
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				},
+				Outputs: resource.PropertyMap{
+					"baz": resource.NewStringProperty("quux"),
+				},
+				Timeout: 30,
+			},
+			want: &pulumirpc.DeleteRequest{
+				Id:  string(id),
+				Urn: string(urn),
+				OldInputs: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
+					},
+				},
+				Properties: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
+					},
+				},
+				Timeout: 30,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var got *pulumirpc.DeleteRequest
+			client := &stubClient{
+				ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+					return &pulumirpc.ConfigureResponse{
+						AcceptSecrets: true,
+					}, nil
+				},
+				DeleteF: func(req *pulumirpc.DeleteRequest) error {
+					got = req
+					return nil
+				},
+			}
+
+			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+
+			// We have to configure before we can use Delete.
+			_, err := p.Configure(context.Background(), ConfigureRequest{})
+			assert.NoError(t, err, "Configure failed")
+
+			// Act.
+			_, err = p.Delete(context.Background(), tt.give)
+			assert.NoError(t, err)
+
+			// Assert.
+			assert.NotNil(t, got, "Delete was not called")
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestProvider_ConstructOptions(t *testing.T) {
 	t.Parallel()
 
