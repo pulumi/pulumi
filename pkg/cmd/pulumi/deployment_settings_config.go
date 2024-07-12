@@ -479,7 +479,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		}
 	}
 
-	repoDir, err := promptForValue(d.Yes, "repository directory", defaultRepoDir, false,
+	repoDir, err := promptForValue(d.Yes, "Repository directory", defaultRepoDir, false,
 		ValidateRelativeDirectory(rl.GetRepoRoot()), *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -493,7 +493,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		branchName = rl.GetBranchName()
 	}
 
-	branchName, err = promptForValue(d.Yes, "branch name", branchName, false, ValidateBranchName, *d.DisplayOptions)
+	branchName, err = promptForValue(d.Yes, "Branch name", branchName, false, ValidateBranchName, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -504,7 +504,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		return err
 	}
 
-	remoteURL, err = promptForValue(d.Yes, "repository URL", remoteURL, false, ValidateGitURL, *d.DisplayOptions)
+	remoteURL, err = promptForValue(d.Yes, "Repository URL", remoteURL, false, ValidateGitURL, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -630,12 +630,12 @@ func configureGitPassword(d *deploymentSettingsCommandDependencies) error {
 		username = sd.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value
 	}
 
-	username, err = promptForValue(d.Yes, "git username", username, false, ValidateGenericInputNonEmpty, *d.DisplayOptions)
+	username, err = promptForValue(d.Yes, "Git username", username, false, ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	password, err = promptForValue(d.Yes, "git password", password, true, ValidateGenericInputNonEmpty, *d.DisplayOptions)
+	password, err = promptForValue(d.Yes, "Git password", password, true, ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
@@ -696,7 +696,7 @@ func configureGitSSH(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyP
 
 	var password string
 
-	password, err = promptForValue(d.Yes, "(optional) private key password", password, true,
+	password, err = promptForValue(d.Yes, "(Optional) Private key password", password, true,
 		ValidateGenericInput, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -893,14 +893,14 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 		sd.DeploymentSettings.Executor.ExecutorImage.Credentials = &apitype.DockerImageCredentials{}
 	}
 
-	imageReference, err := promptForValue(d.Yes, "image reference",
+	imageReference, err := promptForValue(d.Yes, "Image reference",
 		sd.DeploymentSettings.Executor.ExecutorImage.Reference, false,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
 	}
 
-	username, err := promptForValue(d.Yes, "(optional) image repository username",
+	username, err := promptForValue(d.Yes, "(Optional) Image repository username",
 		sd.DeploymentSettings.Executor.ExecutorImage.Credentials.Username, false,
 		ValidateGenericInput, *d.DisplayOptions)
 	if err != nil {
@@ -915,7 +915,7 @@ func configureImageRepository(d *deploymentSettingsCommandDependencies) error {
 		return nil
 	}
 
-	password, err := promptForValue(d.Yes, "image repository password", "", true,
+	password, err := promptForValue(d.Yes, "Image repository password", "", true,
 		ValidateGenericInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
