@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Install policy or project dependencies based on nearest configuration file
