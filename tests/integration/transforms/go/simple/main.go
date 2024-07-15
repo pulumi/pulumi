@@ -227,6 +227,38 @@ func main() {
 			return err
 		}
 
+		// Scenario #8 - run an invoke and change args
+		err = ctx.RegisterStackInvokeTransform(func(_ context.Context, ita *pulumi.InvokeTransformArgs) *pulumi.InvokeTransformResult {
+			ita.Args["length"] = pulumi.Float64(11)
+			return &pulumi.InvokeTransformResult{
+				Args: ita.Args,
+				Opts: ita.Opts,
+			}
+		})
+		if err != nil {
+			return err
+		}
+		res8, err := NewRandom(ctx, "res8", &RandomArgs{Length: pulumi.Int(10)})
+		if err != nil {
+			return err
+		}
+		args := map[string]interface{}{
+			"length": 10,
+			"prefix": "test",
+		}
+
+		result, err := res8.RandomInvoke(ctx, args)
+		if err != nil {
+			return err
+		}
+		length, _ := result["length"].(float64)
+		if length != 11 {
+			return fmt.Errorf("expected length to be 11, got %v", length)
+		}
+		if result["prefix"] != "test" {
+			return fmt.Errorf("expected prefix to be test, got %v", result["prefix"])
+		}
+
 		return nil
 	})
 }
