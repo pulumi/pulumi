@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2018, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input } from "./output";
 import { ProviderResource, Resource } from "./resource";
 
-/*
- * InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.
+/**
+ * {@link InvokeOptions} is a bag of options that control the behavior of a call
+ * to `runtime.invoke`.
  */
 export interface InvokeOptions {
     /**
@@ -31,8 +31,8 @@ export interface InvokeOptions {
     provider?: ProviderResource;
 
     /**
-     * An optional version, corresponding to the version of the provider plugin that should be used when performing this
-     * invoke.
+     * An optional version, corresponding to the version of the provider plugin
+     * that should be used when performing this invoke.
      */
     version?: string;
 
@@ -52,9 +52,4 @@ export interface InvokeOptions {
      * time.
      */
     async?: boolean;
-
-    /**
-     * An optional set of additional explicit dependencies on other resources.
-     */
-    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
 }

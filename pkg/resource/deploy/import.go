@@ -225,8 +225,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, false, errors.New("incorrect package type specified")
 		}
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, nil)
-		typ, name := providers.MakeProviderType(req.Package()), req.Name()
+		req := providers.NewProviderRequest(imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, nil)
+		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
@@ -255,7 +255,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		typ, name := providers.MakeProviderType(req.Package()), req.Name()
+		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
@@ -386,8 +386,8 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums, nil)
-			typ, name := providers.MakeProviderType(req.Package()), req.Name()
+			req := providers.NewProviderRequest(imp.Type.Package(), imp.Version, imp.PluginDownloadURL, imp.PluginChecksums, nil)
+			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
 

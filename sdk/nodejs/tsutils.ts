@@ -19,7 +19,9 @@ import * as fs from "fs";
 import * as path from "path";
 import * as log from "./log";
 
-/** @internal */
+/**
+ * @internal
+ */
 export function loadTypeScriptCompilerOptions(tsConfigPath: string): object {
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
@@ -35,7 +37,9 @@ export function loadTypeScriptCompilerOptions(tsConfigPath: string): object {
 }
 
 /**
- * @internal Determine the strings used for requiring typescript and ts-node.
+ * Determine the strings used for requiring `typescript` and `ts-node`.
+ *
+ * @internal
  */
 export function typeScriptRequireStrings(): { typescriptRequire: string; tsnodeRequire: string } {
     let typescriptRequire = "typescript";

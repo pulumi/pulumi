@@ -51,14 +51,12 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move",
+		Use:   "move [flags] <urn>...",
 		Short: "Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
 splitting a stack into multiple stacks or when merging multiple stacks into one.
-
-EXPERIMENTAL: this feature is currently in development.
 `,
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

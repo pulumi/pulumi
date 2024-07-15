@@ -85,7 +85,7 @@ jobs:
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
       - uses: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: v${{ inputs.version }}
           tag: v${{ inputs.version }}
           commit: "${{ fromJSON(steps.commit-info.outputs.sha) }}"

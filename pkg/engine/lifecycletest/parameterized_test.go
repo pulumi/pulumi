@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -180,16 +181,36 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		Options: TestUpdateOptions{T: t, HostF: hostF},
 	}
 
-	snap, err := TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	snap, err := TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
 
 	// Check that we loaded the provider twice
 	assert.Equal(t, 2, loadCount)
 
-	snap, err = TestOp(Refresh).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
+	// Check the state of the parameterized provider is what we expect
+	prov := snap.Resources[2]
+	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+		"name":    "pkgA",
+		"version": "1.0.0",
+		"parameterization": map[string]any{
+			"version": "0.5.0",
+			"value":   "cmVwbGFjZW1lbnQ=",
+		},
+	}), prov.Inputs)
+
+	snap, err = TestOp(Refresh).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
+	require.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 4)
+
+	snap, err = TestOp(Destroy).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
 }

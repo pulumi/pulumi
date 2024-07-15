@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: yaml
-  description: Fixes using StackReference outputs of types other than 'string' in Pulumi YAML

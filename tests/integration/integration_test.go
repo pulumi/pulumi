@@ -37,6 +37,7 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
@@ -1248,4 +1249,53 @@ func TestProjectInstallDependencies(t *testing.T) {
 	stdout, _ := e.RunCommand("pulumi", "install")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("node_modules"))
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestInstallDependenciesForPolicyPackWithParentProject(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	// create a directory structure with a pulumi project and a nested policy pack
+	require.NoError(t, fsutil.CopyFile(e.RootPath, "nodejs/esm-ts", nil))
+	policyPackPath := filepath.Join(e.RootPath, "policy")
+	require.NoError(t, os.Mkdir(policyPackPath, 0o700))
+	require.NoError(t, fsutil.CopyFile(policyPackPath, "policy/mandatory_policy_pack", nil))
+
+	// chdir to the policy pack directory and run pulumi install
+	e.CWD = policyPackPath
+	stdout, _ := e.RunCommand("pulumi", "install")
+
+	e.CWD = e.RootPath
+	require.Contains(t, stdout, "Finished installing dependencies")
+	require.False(t, e.PathExists("node_modules"), "node_modules should not exist in the root path")
+	require.True(t, e.PathExists(filepath.Join("policy", "node_modules")), "node_modules should exist in the policy pack")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestInstallDependenciesProjectWithParentPolicyPack(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	// create a directory structure with a policy pack and a nested project
+	require.NoError(t, fsutil.CopyFile(e.RootPath, "policy/mandatory_policy_pack", nil))
+	projectPath := filepath.Join(e.RootPath, "project")
+	require.NoError(t, os.Mkdir(projectPath, 0o700))
+	require.NoError(t, fsutil.CopyFile(projectPath, "nodejs/esm-ts", nil))
+
+	// chdir to the project directory and run pulumi install
+	e.CWD = projectPath
+	stdout, _ := e.RunCommand("pulumi", "install")
+
+	e.CWD = e.RootPath
+	require.Contains(t, stdout, "Finished installing dependencies")
+	require.False(t, e.PathExists("node_modules"), "node_modules should not exist in the root path")
+	require.True(t, e.PathExists(filepath.Join("project", "node_modules")),
+		"node_modules should exist in the project path")
 }

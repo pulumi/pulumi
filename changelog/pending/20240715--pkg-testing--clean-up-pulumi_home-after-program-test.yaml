@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg/testing
+  description: Clean up PULUMI_HOME after program test

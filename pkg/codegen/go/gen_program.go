@@ -17,6 +17,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
+	"golang.org/x/mod/modfile"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -511,14 +512,14 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 	files["Pulumi.yaml"] = projectBytes
 
 	// Build a go.mod based on the packages used by program
-	var gomod bytes.Buffer
-	gomod.WriteString("module " + project.Name.String() + "\n")
-	gomod.WriteString(`
-go 1.20
+	var gomod modfile.File
+	err = gomod.AddModuleStmt(project.Name.String())
+	contract.AssertNoErrorf(err, "could not add module statement to go.mod")
+	err = gomod.AddGoStmt("1.20")
+	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
-require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
-`)
+	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
+	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
@@ -563,7 +564,8 @@ require (
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
-					fmt.Fprintf(&gomod, " %s v%s\n", info.ModulePath, p.Version.String())
+					err = gomod.AddRequire(info.ModulePath, p.Version.String())
+					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
 			continue
@@ -593,13 +595,15 @@ require (
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
-			fmt.Fprintf(&gomod, "	%s %s\n", packageName, version)
+			err = gomod.AddRequire(packageName, version)
+			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}
 	}
 
-	gomod.WriteString(")")
-
-	files["go.mod"] = gomod.Bytes()
+	files["go.mod"], err = gomod.Format()
+	if err != nil {
+		return nil, diagnostics, err
+	}
 
 	return files, diagnostics, nil
 }

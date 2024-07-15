@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ import * as grpc from "@grpc/grpc-js";
 
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
-import { gatherExplicitDependencies } from "./dependsOn";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -39,46 +38,51 @@ import * as resourceproto from "../proto/resource_pb";
 import * as providerproto from "../proto/provider_pb";
 
 /**
- * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
- * behaves differently in the case that options contains `{async:true}` or not.
+ * Dynamically invokes the function `tok`, which is offered by a provider
+ * plugin. `invoke` behaves differently in the case that options contains
+ * `{async:true}` or not.
  *
  * In the case where `{async:true}` is present in the options bag:
  *
- * 1. the result of `invoke` will be a Promise resolved to the result value of the provider plugin.
- * 2. the `props` inputs can be a bag of computed values (including, `T`s, `Promise<T>`s,
- *    `Output<T>`s etc.).
+ * 1. the result of `invoke` will be a Promise resolved to the result value of
+ *    the provider plugin.
  *
+ * 2. the `props` inputs can be a bag of computed values (including, `T`s,
+ *   `Promise<T>`s, `Output<T>`s etc.).
  *
- * In the case where `{async:true}` is not present in the options bag:
+ * In the case where `{ async:true }` is not present in the options bag:
  *
- * 1. the result of `invoke` will be a Promise resolved to the result value of the provider call.
- *    However, that Promise will *also* have the respective values of the Provider result exposed
- *    directly on it as properties.
+ * 1. the result of `invoke` will be a Promise resolved to the result value of
+ *    the provider call. However, that Promise will *also* have the respective
+ *    values of the Provider result exposed directly on it as properties.
  *
- * 2. The inputs must be a bag of simple values, and the result is the result that the Provider
- *    produced.
+ * 2. The inputs must be a bag of simple values, and the result is the result
+ *    that the Provider produced.
  *
  * Simple values are:
+ *
  *  1. `undefined`, `null`, string, number or boolean values.
  *  2. arrays of simple values.
  *  3. objects containing only simple values.
  *
  * Importantly, simple values do *not* include:
+ *
  *  1. `Promise`s
  *  2. `Output`s
  *  3. `Asset`s or `Archive`s
  *  4. `Resource`s.
  *
- * All of these contain async values that would prevent `invoke from being able to operate
- * synchronously.
+ * All of these contain async values that would prevent `invoke from being able
+ * to operate synchronously.
  */
 export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     return invokeAsync(tok, props, opts);
 }
 
 /*
- * `invokeSingle` dynamically invokes the function, `tok`, which is offered by a provider plugin.
- * Similar to `invoke`, but returns a single value instead of an object with a single key.
+ * Dynamically invokes the function `tok`, which is offered by a
+ * provider plugin. Similar to `invoke`, but returns a single value instead of
+ * an object with a single key.
  */
 export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
     return invokeAsync(tok, props, opts).then((outputs) => {
@@ -100,9 +104,6 @@ export async function streamInvoke(
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
-        // Wait for any explicit dependencies to complete before proceeding.
-        await gatherExplicitDependencies(opts.dependsOn);
-
         const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
         log.debug(
             `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
@@ -146,9 +147,6 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
-        // Wait for any explicit dependencies to complete before proceeding.
-        await gatherExplicitDependencies(opts.dependsOn);
-
         const serialized = await serializeProperties(`invoke:${tok}`, props);
         log.debug(
             `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
@@ -192,8 +190,11 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     }
 }
 
-// StreamInvokeResponse represents a (potentially infinite) streaming response to `streamInvoke`,
-// with facilities to gracefully cancel and clean up the stream.
+/**
+ * {@link StreamInvokeResponse} represents a (potentially infinite) streaming
+ * response to `streamInvoke`, with facilities to gracefully cancel and clean up
+ * the stream.
+ */
 export class StreamInvokeResponse<T> implements AsyncIterable<T> {
     constructor(
         private source: AsyncIterable<T>,
@@ -253,7 +254,7 @@ function deserializeResponse(
 }
 
 /**
- * `call` dynamically calls the function, `tok`, which is offered by a provider plugin.
+ * Dynamically calls the function `tok`, which is offered by a provider plugin.
  */
 export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
     const label = `Calling function: tok=${tok}`;
