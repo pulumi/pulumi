@@ -120,7 +120,6 @@ class OutputImpl<T> implements OutputInstance<T> {
      *
      * To get the value of an {@link Output} as an `Output<string>` consider
      * either:
-     *
      * 1. `o.apply(v => ``prefix${v}suffix``)` or
      * 2. `pulumi.interpolate ``prefix${v}suffix`` `
      *
@@ -144,7 +143,6 @@ class OutputImpl<T> implements OutputInstance<T> {
      *
      * To get the value of an {@link Output} as a JSON value or JSON string consider
      * either:
-     *
      * 1. `o.apply(v => v.toJSON())` or
      * 2. `o.apply(v => JSON.stringify(v))`
      *
