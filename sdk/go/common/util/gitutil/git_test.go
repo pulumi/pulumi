@@ -398,9 +398,8 @@ func (c *mockSSHConfig) GetStrict(host, key string) (string, error) {
 	return c.path, c.err
 }
 
+//nolint:paralleltest // modifies environment variables
 func TestParseAuthURL(t *testing.T) {
-	t.Parallel()
-
 	//nolint: gosec
 	generateSSHKey := func(t *testing.T, passphrase string) string {
 		r := rand.New(rand.NewSource(0))
@@ -450,12 +449,8 @@ func TestParseAuthURL(t *testing.T) {
 
 	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and environment variable", func(t *testing.T) {
-		original := os.Getenv(env.GitSSHPassphrase.Var().Name())
-		defer func() { _ = os.Setenv(env.GitSSHPassphrase.Var().Name(), original) }()
-
 		passphrase := "foobar"
-		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), passphrase)
-		require.NoError(t, err)
+		t.Setenv(env.GitSSHPassphrase.Var().Name(), passphrase)
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, passphrase)},
@@ -470,22 +465,12 @@ func TestParseAuthURL(t *testing.T) {
 
 	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and wrong environment variable (agent available)", func(t *testing.T) {
-		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
-		originalSocket := os.Getenv("SSH_AUTH_SOCK")
-		defer func() {
-			_ = os.Setenv(env.GitSSHPassphrase.Var().Name(), originalPassphrase)
-			_ = os.Setenv("SSH_AUTH_SOCK", originalSocket)
-		}()
-
-		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
-		require.NoError(t, err)
-
 		l, err := nettest.NewLocalListener("unix")
 		defer contract.IgnoreClose(l)
 		require.NoError(t, err)
 
-		err = os.Setenv("SSH_AUTH_SOCK", l.Addr().String())
-		require.NoError(t, err)
+		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
+		t.Setenv("SSH_AUTH_SOCK", l.Addr().String())
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
@@ -500,18 +485,9 @@ func TestParseAuthURL(t *testing.T) {
 
 	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
-		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
-		originalSocket := os.Getenv("SSH_AUTH_SOCK")
-		defer func() {
-			_ = os.Setenv(env.GitSSHPassphrase.Var().Name(), originalPassphrase)
-			_ = os.Setenv("SSH_AUTH_SOCK", originalSocket)
-		}()
-
-		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
-		require.NoError(t, err)
-
-		err = os.Unsetenv("SSH_AUTH_SOCK")
-		require.NoError(t, err)
+		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
+		t.Setenv("SSH_AUTH_SOCK", "")
+		os.Unsetenv("SSH_AUTH_SOCK") // t.Setenv above will restore it after the test
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
@@ -537,21 +513,12 @@ func TestParseAuthURL(t *testing.T) {
 		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
 	})
 
+	//nolint:paralleltest // modifies environment variables
 	t.Run("Don't cache on error", func(t *testing.T) {
-		t.Parallel()
 		// Regression test for https://github.com/pulumi/pulumi/issues/16637
-		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
-		originalSocket := os.Getenv("SSH_AUTH_SOCK")
-		defer func() {
-			_ = os.Setenv(env.GitSSHPassphrase.Var().Name(), originalPassphrase)
-			_ = os.Setenv("SSH_AUTH_SOCK", originalSocket)
-		}()
-
-		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
-		require.NoError(t, err)
-
-		err = os.Unsetenv("SSH_AUTH_SOCK")
-		require.NoError(t, err)
+		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
+		t.Setenv("SSH_AUTH_SOCK", "")
+		os.Unsetenv("SSH_AUTH_SOCK") // t.Setenv above will restore it after the test
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
