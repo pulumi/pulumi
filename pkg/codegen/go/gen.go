@@ -21,6 +21,8 @@ package gen
 import (
 	"bytes"
 	_ "embed"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"go/format"
 	"io"
@@ -2328,13 +2330,33 @@ func (pkg *pkgContext) genResource(
 		return err
 	}
 
+	// If this is a parameterized resource we need the package ref.
+	def, err := pkg.pkg.Definition()
+	if err != nil {
+		return err
+	}
+	assignment := ":="
+	packageRef := ""
+	packageArg := ""
+	if def.Parameterization != nil {
+		assignment = "="
+		packageRef = "Package"
+		packageArg = "ref, "
+		err = pkg.GenPkgGetPackageRefCall(w, "nil")
+		if err != nil {
+			return err
+		}
+	}
+
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
+	component := ""
 	if r.IsComponent {
-		fmt.Fprintf(w, "\terr := ctx.RegisterRemoteComponentResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
-	} else {
-		fmt.Fprintf(w, "\terr := ctx.RegisterResource(\"%s\", name, args, &resource, opts...)\n", r.Token)
+		component = "RemoteComponent"
 	}
+
+	fmt.Fprintf(w, "\terr %s ctx.Register%s%sResource(\"%s\", name, args, &resource, %sopts...)\n",
+		assignment, packageRef, component, r.Token, packageArg)
 	fmt.Fprintf(w, "\tif err != nil {\n")
 	fmt.Fprintf(w, "\t\treturn nil, err\n")
 	fmt.Fprintf(w, "\t}\n")
@@ -2348,7 +2370,27 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context,\n", name)
 		fmt.Fprintf(w, "\tname string, id pulumi.IDInput, state *%[1]sState, opts ...pulumi.ResourceOption) (*%[1]s, error) {\n", name)
 		fmt.Fprintf(w, "\tvar resource %s\n", name)
-		fmt.Fprintf(w, "\terr := ctx.ReadResource(\"%s\", name, id, state, &resource, opts...)\n", r.Token)
+
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
+		}
+		assignment := ":="
+		packageRef := ""
+		packageArg := ""
+		if def.Parameterization != nil {
+			assignment = "="
+			packageRef = "Package"
+			packageArg = "ref, "
+			err = pkg.GenPkgGetPackageRefCall(w, "nil")
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Fprintf(w, "\terr %s ctx.Read%sResource(\"%s\", name, id, state, &resource, %sopts...)\n",
+			assignment, packageRef, r.Token, packageArg)
 		fmt.Fprintf(w, "\tif err != nil {\n")
 		fmt.Fprintf(w, "\t\treturn nil, err\n")
 		fmt.Fprintf(w, "\t}\n")
@@ -2501,8 +2543,25 @@ func (pkg *pkgContext) genResource(
 			}
 		}
 
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
+		}
+		packageRef := ""
+		packageArg := ""
+		if def.Parameterization != nil {
+			packageRef = "Package"
+			packageArg = ", ref"
+			err = pkg.GenPkgGetPackageRefCall(w, outputsType+"{}")
+			if err != nil {
+				return err
+			}
+		}
+
 		if !f.ReturnTypePlain {
-			fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
+			fmt.Fprintf(w, "\t%s, err := ctx.Call%s(%q, %s, %s{}, r%s)\n",
+				resultVar, packageRef, f.Token, inputsVar, outputsType, packageArg)
 		}
 
 		if f.ReturnTypePlain {
@@ -2852,8 +2911,27 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		return err
 	}
 
+	// If this is a parameterized resource we need the package ref.
+	def, err := pkg.pkg.Definition()
+	if err != nil {
+		return err
+	}
+	assignment := ":="
+	packageRef := ""
+	packageArg := ""
+	if def.Parameterization != nil {
+		assignment = "="
+		packageRef = "Package"
+		packageArg = "ref, "
+		err = pkg.GenPkgGetPackageRefCall(w, "nil")
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
-	fmt.Fprintf(w, "\terr := ctx.Invoke(\"%s\", %s, &rv, opts...)\n", f.Token, inputsVar)
+	fmt.Fprintf(w, "\terr %s ctx.Invoke%s(\"%s\", %s, &rv, %sopts...)\n",
+		assignment, packageRef, f.Token, inputsVar, packageArg)
 
 	if objectReturnType == nil {
 		fmt.Fprintf(w, "\treturn err\n")
@@ -4588,6 +4666,21 @@ func GeneratePackage(tool string,
 
 	files := codegen.Fs{}
 
+	// If the package is parameterized generate a go.mod for it
+	if pkg.Parameterization != nil {
+		mod := modfile.File{}
+		err = mod.AddModuleStmt(extractImportBasePath(pkg.Reference()))
+		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
+		err = mod.AddGoStmt("1.21")
+		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
+
+		bytes, err := mod.Format()
+		if err != nil {
+			return nil, fmt.Errorf("format go.mod: %w", err)
+		}
+		files.Add(path.Join(pathPrefix, "go.mod"), bytes)
+	}
+
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
@@ -4597,6 +4690,13 @@ func GeneratePackage(tool string,
 	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
 		pulumiPlugin.Version = pkg.Version.String()
 	}
+
+	if pkg.Parameterization != nil {
+		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
+		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
+		pulumiPlugin.Server = pkg.Parameterization.BaseProvider.PluginDownloadURL
+	}
+
 	pulumiPluginJSON, err := pulumiPlugin.JSON()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to format pulumi-plugin.json: %w", err)
@@ -4893,13 +4993,24 @@ func GeneratePackage(tool string,
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 			}
 
-			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases, true /* isUtil */)
+			imports := []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}
+
+			def, err := pkg.pkg.Definition()
+			if err != nil {
+				return nil, err
+			}
+			if def.Parameterization != nil {
+				imports = append(imports, "encoding/base64")
+				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/proto/go"] = "pulumirpc"
+			}
+
+			pkg.genHeader(buffer, imports, importsAndAliases, true /* isUtil */)
 
 			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name())
 			if pkg.rootPackageName != "" {
 				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
 			}
-			err := pkg.GenUtilitiesFile(buffer, packageRegex)
+			err = pkg.GenUtilitiesFile(buffer, packageRegex)
 			if err != nil {
 				return nil, err
 			}
@@ -5105,12 +5216,61 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 			versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 		}
 	}
+	// Parameterized schemas _always_ respect schema version.
+	if p.Parameterization != nil {
+		if p.Version == nil {
+			return errors.New("package version is required")
+		}
+		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
+
+		const packageRefTemplate string = `
+var packageRef *string
+// PkgGetPackageRef returns the package reference for the current package.
+func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
+	if packageRef == nil {	
+		
+		parameter, err := base64.StdEncoding.DecodeString(%q)
+		if err != nil {
+			return "", err
+		}
+
+		resp, err := ctx.RegisterPackage(&pulumirpc.RegisterPackageRequest{
+			Name: %q,
+			Version: %q,
+			DownloadUrl: %q,
+			Parameterization: &pulumirpc.Parameterization{
+				Name: %q,
+				Version: %q,
+				Value: parameter,
+			},
+		})
+		if err != nil {
+			return "", err
+		}
+		packageRef = &resp.Ref
+	}
+
+	return *packageRef, nil
+}
+`
+
+		value := base64.StdEncoding.EncodeToString(p.Parameterization.Parameter)
+		_, err = fmt.Fprintf(w, packageRefTemplate,
+			value,
+			p.Parameterization.BaseProvider.Name, p.Parameterization.BaseProvider.Version.String(), p.PluginDownloadURL,
+			p.Name, p.Version.String(),
+		)
+		if err != nil {
+			return err
+		}
+	}
 	for _, typ := range []string{"Resource", "Invoke"} {
 		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, versionPackageRef)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -5122,6 +5282,28 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 	}
 
 	_, err := fmt.Fprintf(w, "\topts = %s.Pkg%sDefaultOpts(opts)\n", pkg.internalModuleName, typ)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GenPkgGetPackageRefCall generates a call to PkgGetPackageRef.
+func (pkg *pkgContext) GenPkgGetPackageRefCall(w io.Writer, errorResult string) error {
+	_, err := fmt.Fprintf(w, "\tref, err := %s.PkgGetPackageRef(ctx)\n", pkg.internalModuleName)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "\tif err != nil {\n")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "\t\treturn %s, err\n", errorResult)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "\t}\n")
 	if err != nil {
 		return err
 	}

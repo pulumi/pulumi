@@ -652,6 +652,15 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) (err error) {
+	return ctx.InvokePackage(tok, args, result, "" /* packageRef */, opts...)
+}
+
+// InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
+//
+// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
+func (ctx *Context) InvokePackage(
+	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+) (err error) {
 	if tok == "" {
 		return errors.New("invoke token must not be empty")
 	}
@@ -722,6 +731,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		Version:           options.Version,
 		PluginDownloadURL: options.PluginDownloadURL,
 		AcceptResources:   !disableResourceReferences,
+		PackageRef:        packageRef,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -768,6 +778,15 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 //
 // output is used to determine the output type to return; self is optional for methods.
 func (ctx *Context) Call(tok string, args Input, output Output, self Resource, opts ...InvokeOption) (Output, error) {
+	return ctx.CallPackage(tok, args, output, self, "" /* packageRef */, opts...)
+}
+
+// CallPackage will invoke a provider call function, identified by its token tok.
+//
+// output is used to determine the output type to return; self is optional for methods.
+func (ctx *Context) CallPackage(
+	tok string, args Input, output Output, self Resource, packageRef string, opts ...InvokeOption,
+) (Output, error) {
 	if tok == "" {
 		return nil, errors.New("call token must not be empty")
 	}
@@ -873,6 +892,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			Provider:          providerRef,
 			Version:           version,
 			PluginDownloadURL: pluginURL,
+			PackageRef:        packageRef,
 		}, nil
 	}
 
@@ -978,6 +998,41 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 func (ctx *Context) ReadResource(
 	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption,
 ) error {
+	return ctx.readPackageResource(t, name, id, props, resource, "" /* packageRef */, opts...)
+}
+
+// ReadPackageResource reads an existing custom resource's state from the resource monitor. t is the fully qualified
+// type token and name is the "name" part to use in creating a stable and globally unique URN for the object. id is the
+// ID of the resource to read, and props contains any state necessary to perform the read (typically props will be nil).
+// opts contains optional settings that govern the way the resource is managed.
+//
+// The value passed to resource must be a pointer to a struct. The fields of this struct that correspond to output
+// properties of the resource must have types that are assignable from Output, and must have a `pulumi` tag that records
+// the name of the corresponding output property. The struct must embed the CustomResourceState type.
+//
+// For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would define
+// the following CustomResource type:
+//
+//	type MyResource struct {
+//	    pulumi.CustomResourceState
+//
+//	    Foo pulumi.IntOutput    `pulumi:"foo"`
+//	    Bar pulumi.StringOutput `pulumi:"bar"`
+//	}
+//
+// And invoke ReadPackageResource like so:
+//
+//	var resource MyResource
+//	err := ctx.ReadPackageResource(tok, name, id, nil, &resource, opts...)
+func (ctx *Context) ReadPackageResource(
+	t, name string, id IDInput, props Input, resource CustomResource, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.readPackageResource(t, name, id, props, resource, packageRef, opts...)
+}
+
+func (ctx *Context) readPackageResource(
+	t, name string, id IDInput, props Input, resource CustomResource, packageRef string, opts ...ResourceOption,
+) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -1050,7 +1105,7 @@ func (ctx *Context) ReadResource(
 
 	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
 	// between the this function and user code.
-	sourcePosition := ctx.getSourcePosition(2)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -1087,6 +1142,7 @@ func (ctx *Context) ReadResource(
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
+			PackageRef:              packageRef,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -1100,35 +1156,6 @@ func (ctx *Context) ReadResource(
 	}()
 
 	return nil
-}
-
-// RegisterResource creates and registers a new resource object. t is the fully qualified type token and name is
-// the "name" part to use in creating a stable and globally unique URN for the object. props contains the goal state
-// for the resource object and opts contains optional settings that govern the way the resource is created.
-//
-// The value passed to resource must be a pointer to a struct. The fields of this struct that correspond to output
-// properties of the resource must have types that are assignable from Output, and must have a `pulumi` tag that
-// records the name of the corresponding output property. The struct must embed either the ResourceState or the
-// CustomResourceState type.
-//
-// For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would
-// define the following CustomResource type:
-//
-//	type MyResource struct {
-//	    pulumi.CustomResourceState
-//
-//	    Foo pulumi.IntOutput    `pulumi:"foo"`
-//	    Bar pulumi.StringOutput `pulumi:"bar"`
-//	}
-//
-// And invoke RegisterResource like so:
-//
-//	var resource MyResource
-//	err := ctx.RegisterResource(tok, name, props, &resource, opts...)
-func (ctx *Context) RegisterResource(
-	t, name string, props Input, resource Resource, opts ...ResourceOption,
-) error {
-	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
 }
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
@@ -1179,7 +1206,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption,
+	t, name string, props Input, resource Resource, remote bool, packageRef string, opts ...ResourceOption,
 ) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
@@ -1275,7 +1302,7 @@ func (ctx *Context) registerResource(
 
 	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
 	// frames between this function and user code.
-	sourcePosition := ctx.getSourcePosition(3)
+	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -1365,6 +1392,7 @@ func (ctx *Context) registerResource(
 				SourcePosition:          sourcePosition,
 				Transforms:              transforms,
 				SupportsResultReporting: true,
+				PackageRef:              packageRef,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1391,16 +1419,63 @@ func (ctx *Context) registerResource(
 	return nil
 }
 
+// RegisterResource creates and registers a new resource object. t is the fully qualified type token and name is
+// the "name" part to use in creating a stable and globally unique URN for the object. props contains the goal state
+// for the resource object and opts contains optional settings that govern the way the resource is created.
+//
+// The value passed to resource must be a pointer to a struct. The fields of this struct that correspond to output
+// properties of the resource must have types that are assignable from Output, and must have a `pulumi` tag that
+// records the name of the corresponding output property. The struct must embed either the ResourceState or the
+// CustomResourceState type.
+//
+// For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would
+// define the following CustomResource type:
+//
+//	type MyResource struct {
+//	    pulumi.CustomResourceState
+//
+//	    Foo pulumi.IntOutput    `pulumi:"foo"`
+//	    Bar pulumi.StringOutput `pulumi:"bar"`
+//	}
+//
+// And invoke RegisterResource like so:
+//
+//	var resource MyResource
+//	err := ctx.RegisterResource(tok, name, props, &resource, opts...)
+func (ctx *Context) RegisterResource(
+	t, name string, props Input, resource Resource, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
+}
+
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption,
 ) error {
-	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, opts...)
+	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
 	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
 ) error {
-	return ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
+	return ctx.registerResource(t, name, props, resource, true /*remote*/, "" /* packageRef */, opts...)
+}
+
+func (ctx *Context) RegisterPackageResource(
+	t, name string, props Input, resource Resource, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, packageRef, opts...)
+}
+
+func (ctx *Context) RegisterPackageRemoteComponentResource(
+	t, name string, props Input, resource ComponentResource, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, true /*remote*/, packageRef, opts...)
+}
+
+func (ctx *Context) RegisterPackage(
+	in *pulumirpc.RegisterPackageRequest,
+) (*pulumirpc.RegisterPackageResponse, error) {
+	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
 }
 
 // resourceState contains the results of a resource registration operation.
