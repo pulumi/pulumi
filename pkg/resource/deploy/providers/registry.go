@@ -38,10 +38,11 @@ import (
 )
 
 const (
-	parameterKey       resource.PropertyKey = "parameter"
-	versionKey         resource.PropertyKey = "version"
-	pluginDownloadKey  resource.PropertyKey = "pluginDownloadURL"
-	pluginChecksumsKey resource.PropertyKey = "pluginChecksums"
+	parameterizationKey resource.PropertyKey = "parameterization"
+	nameKey             resource.PropertyKey = "name"
+	versionKey          resource.PropertyKey = "version"
+	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
+	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
 )
 
 // SetProviderChecksums sets the provider plugin checksums in the given property map.
@@ -124,43 +125,60 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 	return &sv, nil
 }
 
-// Sets the provider parameter in the given property map.
-func SetProviderParameter(inputs resource.PropertyMap, value *ProviderParameter) {
-	inputs[parameterKey] = resource.NewObjectProperty(resource.PropertyMap{
-		"pkg":     resource.NewStringProperty(string(value.pkg)),
+// Sets the provider name in the given property map.
+func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
+	inputs[nameKey] = resource.NewStringProperty(name.String())
+}
+
+// GetProviderName fetches and parses a provider name from the given property map. If the
+// name property is not present, this function returns the passed in name.
+func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.Package, error) {
+	nameProperty, ok := inputs[nameKey]
+	if !ok {
+		return name, nil
+	}
+
+	if !nameProperty.IsString() {
+		return "", fmt.Errorf("'%s' must be a string", nameKey)
+	}
+
+	nameString := nameProperty.StringValue()
+	if nameString == "" {
+		return "", fmt.Errorf("'%s' must not be empty", nameKey)
+	}
+
+	return tokens.Package(nameString), nil
+}
+
+// Sets the provider parameterization in the given property map.
+func SetProviderParameterization(inputs resource.PropertyMap, value *ProviderParameterization) {
+	inputs[parameterizationKey] = resource.NewObjectProperty(resource.PropertyMap{
+		// We don't write name here because we can reconstruct that from the providers type token
 		"version": resource.NewStringProperty(value.version.String()),
 		"value": resource.NewStringProperty(
 			base64.StdEncoding.EncodeToString(value.value)),
 	})
 }
 
-// GetProviderParameter fetches and parses a provider parameter from the given property map. If the
-// parameter property is not present, this function returns nil.
-func GetProviderParameter(inputs resource.PropertyMap) (*ProviderParameter, error) {
-	parameter, ok := inputs[parameterKey]
+// GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
+// parameterization property is not present, this function returns nil.
+func GetProviderParameterization(name tokens.Package, inputs resource.PropertyMap) (*ProviderParameterization, error) {
+	parameter, ok := inputs[parameterizationKey]
 	if !ok {
 		return nil, nil
 	}
 
 	if !parameter.IsObject() {
-		return nil, fmt.Errorf("'%s' must be an object", parameterKey)
+		return nil, fmt.Errorf("'%s' must be an object", parameterizationKey)
 	}
 	obj := parameter.ObjectValue()
 
-	pkg, ok := obj["pkg"]
-	if !ok {
-		return nil, fmt.Errorf("'%s' must have a 'pkg' field", parameterKey)
-	}
-	if !pkg.IsString() {
-		return nil, fmt.Errorf("'%s' must have a 'pkg' field of type string", parameterKey)
-	}
-
 	version, ok := obj["version"]
 	if !ok {
-		return nil, fmt.Errorf("'%s' must have a 'version' field", parameterKey)
+		return nil, fmt.Errorf("'%s' must have a 'version' field", parameterizationKey)
 	}
 	if !version.IsString() {
-		return nil, fmt.Errorf("'%s' must have a 'version' field of type string", parameterKey)
+		return nil, fmt.Errorf("'%s' must have a 'version' field of type string", parameterizationKey)
 	}
 	sv, err := semver.Parse(version.StringValue())
 	if err != nil {
@@ -169,18 +187,18 @@ func GetProviderParameter(inputs resource.PropertyMap) (*ProviderParameter, erro
 
 	value, ok := obj["value"]
 	if !ok {
-		return nil, fmt.Errorf("'%s' must have a 'value' field", parameterKey)
+		return nil, fmt.Errorf("'%s' must have a 'value' field", parameterizationKey)
 	}
 	if !value.IsString() {
-		return nil, fmt.Errorf("'%s' must have a 'value' field of type string", parameterKey)
+		return nil, fmt.Errorf("'%s' must have a 'value' field of type string", parameterizationKey)
 	}
 	bytes, err := base64.StdEncoding.DecodeString(value.StringValue())
 	if err != nil {
 		return nil, fmt.Errorf("could not decode base64 parameter value: %w", err)
 	}
 
-	return &ProviderParameter{
-		pkg:     tokens.Package(pkg.StringValue()),
+	return &ProviderParameterization{
+		name:    name,
 		version: &sv,
 		value:   bytes,
 	}, nil
@@ -261,18 +279,11 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
 func loadParameterizedProvider(
-	pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	parameter *ProviderParameter,
+	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
+	parameter *ProviderParameterization,
 	host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
-	basePkg := pkg
-	baseVersion := version
-	if parameter != nil {
-		basePkg = parameter.pkg
-		baseVersion = parameter.version
-	}
-
-	provider, err := loadProvider(basePkg, baseVersion, downloadURL, checksums, host, builtins)
+	provider, err := loadProvider(name, version, downloadURL, checksums, host, builtins)
 	if err != nil {
 		return nil, err
 	}
@@ -280,16 +291,16 @@ func loadParameterizedProvider(
 	if parameter != nil {
 		resp, err := provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Name:    string(pkg),
-				Version: version,
+				Name:    string(parameter.name),
+				Version: parameter.version,
 				Value:   parameter.value,
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
-		if resp.Name != string(pkg) {
-			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, pkg)
+		if resp.Name != string(parameter.name) {
+			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, parameter.name)
 		}
 	}
 	return provider, nil
@@ -413,6 +424,13 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
 	// Parse the version from the provider properties and load the provider.
+	providerPkg := GetProviderPackage(req.URN.Type())
+	name, err := GetProviderName(providerPkg, req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "name", Reason: err.Error(),
+		}}}, nil
+	}
 	version, err := GetProviderVersion(req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
@@ -425,7 +443,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			Property: "pluginDownloadURL", Reason: err.Error(),
 		}}}, nil
 	}
-	parameter, err := GetProviderParameter(req.News)
+	parameter, err := GetProviderParameterization(providerPkg, req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "parameter", Reason: err.Error(),
@@ -433,7 +451,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	}
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		GetProviderPackage(req.URN.Type()), version, downloadURL, nil, parameter, r.host, r.builtins)
+		name, version, downloadURL, nil, parameter, r.host, r.builtins)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -553,6 +571,10 @@ func (r *Registry) Same(res *resource.State) error {
 		providerPkg := GetProviderPackage(urn.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
+		name, err := GetProviderName(providerPkg, res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
+		}
 		version, err := GetProviderVersion(res.Inputs)
 		if err != nil {
 			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
@@ -561,12 +583,12 @@ func (r *Registry) Same(res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		parameter, err := GetProviderParameter(res.Inputs)
+		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(providerPkg, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(name, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -609,6 +631,11 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		providerPkg := GetProviderPackage(req.URN.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
+		name, err := GetProviderName(providerPkg, req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
 		version, err := GetProviderVersion(req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
@@ -619,13 +646,13 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		parameter, err := GetProviderParameter(req.Properties)
+		parameter, err := GetProviderParameterization(providerPkg, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(providerPkg, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(name, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)

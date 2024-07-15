@@ -24,21 +24,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type ProviderParameter struct {
-	// The name of the parametrized provider plugin.
-	pkg tokens.Package
-	// The version of the parametrized provider plugin.
+type ProviderParameterization struct {
+	// The name of the parametrized package.
+	name tokens.Package
+	// The version of the parametrized package.
 	version *semver.Version
 	// The value of the parameter.
 	value []byte
 }
 
-// NewProviderParameter constructs a new provider parameter.
-func NewProviderParameter(
-	pkg tokens.Package, version *semver.Version, value []byte,
-) *ProviderParameter {
-	return &ProviderParameter{
-		pkg:     pkg,
+// NewProviderParameterization constructs a new provider parameterization.
+func NewProviderParameterization(name tokens.Package, version *semver.Version, value []byte,
+) *ProviderParameterization {
+	return &ProviderParameterization{
+		name:    name,
 		version: version,
 		value:   value,
 	}
@@ -60,22 +59,22 @@ func NewProviderParameter(
 // not used in the hash.
 type ProviderRequest struct {
 	version           *semver.Version
-	pkg               tokens.Package
+	name              tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
-	parameterization  *ProviderParameter
+	parameterization  *ProviderParameterization
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
 // pluginDownloadURL, optional parameter, and package.
 func NewProviderRequest(
-	version *semver.Version, pkg tokens.Package,
+	name tokens.Package, version *semver.Version,
 	pluginDownloadURL string, checksums map[string][]byte,
-	parameterization *ProviderParameter,
+	parameterization *ProviderParameterization,
 ) ProviderRequest {
 	return ProviderRequest{
 		version:           version,
-		pkg:               pkg,
+		name:              name,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
 		parameterization:  parameterization,
@@ -84,8 +83,13 @@ func NewProviderRequest(
 
 // Parameterization returns the parameterization of this provider request. May be nil if no parameterization was
 // provided.
-func (p ProviderRequest) Parameterization() *ProviderParameter {
+func (p ProviderRequest) Parameterization() *ProviderParameterization {
 	return p.parameterization
+}
+
+// Name returns the this provider plugin name.
+func (p ProviderRequest) Name() tokens.Package {
+	return p.name
 }
 
 // Version returns this provider request's version. May be nil if no version was provided.
@@ -95,7 +99,10 @@ func (p ProviderRequest) Version() *semver.Version {
 
 // Package returns this provider request's package.
 func (p ProviderRequest) Package() tokens.Package {
-	return p.pkg
+	if p.parameterization != nil {
+		return p.parameterization.name
+	}
+	return p.name
 }
 
 // PluginDownloadURL returns this providers server url. May be "" if no pluginDownloadURL was
@@ -109,12 +116,13 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 	return p.pluginChecksums
 }
 
-// Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
-// name is intended to be unique; as such, the name is derived from the version associated with this request.
+// DefaultName returns a QName that is an appropriate name for a default provider constructed from this provider
+// request. The name is intended to be unique; as such, the name is derived from the version associated with this
+// request.
 //
 // If a version is not provided, "default" is returned. Otherwise, Name returns a name starting with "default" and
 // followed by a QName-legal representation of the semantic version of the requested provider.
-func (p ProviderRequest) Name() string {
+func (p ProviderRequest) DefaultName() string {
 	base := "default"
 	if v := p.version; v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
@@ -148,5 +156,5 @@ func (p ProviderRequest) String() string {
 	if p.pluginDownloadURL != "" {
 		url = "-" + p.pluginDownloadURL
 	}
-	return p.pkg.String() + version + url
+	return p.Package().String() + version + url
 }
