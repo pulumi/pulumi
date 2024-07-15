@@ -20,90 +20,139 @@ import * as utils from "./utils";
 
 const ts: typeof typescript = require("../../typescript-shim");
 
-/** @internal */
+/**
+ * @internal
+ */
 export interface ParsedFunctionCode {
-    // The serialized code for the function, usable as an expression. Valid for all functions forms
-    // (functions, lambdas, methods, etc.).
+    /**
+     * The serialized code for the function, usable as an expression. Valid for
+     * all functions forms (functions, lambdas, methods, etc.).
+     */
     funcExprWithoutName: string;
 
-    // The serialized code for the function, usable as an function-declaration. Valid only for
-    // non-lambda function forms.
+    /**
+     * The serialized code for the function, usable as an function declaration.
+     * Valid only for non-lambda function forms.
+     */
     funcExprWithName?: string;
 
-    // the name of the function if it was a function-declaration.  This is needed so
-    // that we can include an entry in the environment mapping this function name to
-    // the actual function we generate for it.  This is needed so that nested recursive calls
-    // to the function see the function we're generating.
+    /**
+     * The name of the function if it was a function declaration.  This is
+     * needed so that we can include an entry in the environment mapping this
+     * function name to the actual function we generate for it. This is needed
+     * so that nested recursive calls to the function see the function we're
+     * generating.
+     */
     functionDeclarationName?: string;
 
-    // Whether or not this was an arrow function.
+    /**
+     * True if the parsed code was an arrow function.
+     */
     isArrowFunction: boolean;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export interface ParsedFunction extends ParsedFunctionCode {
-    // The set of variables the function attempts to capture.
+    /**
+     * The set of variables the function attempts to capture.
+     */
     capturedVariables: CapturedVariables;
 
-    // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
+    /**
+     * Whether or not the real `this` (i.e. not a lexically-captured `this`) is
+     * used in the function.
+     */
     usesNonLexicalThis: boolean;
 }
 
-// Information about a captured property.  Both the name and whether or not the property was
-// invoked.
-/** @internal */
+/**
+ * Information about a captured property.
+ *
+ * @internal
+ */
 export interface CapturedPropertyInfo {
+    /**
+     * The name of the captured property.
+     */
     name: string;
+
+    /**
+     * True if the captured property was invoked.
+     */
     invoked: boolean;
 }
 
-// Information about a chain of captured properties.  i.e. if you have "foo.bar.baz.quux()", we'll
-// say that 'foo' was captured, but that "[bar, baz, quux]" was accessed off of it.  We'll also note
-// that 'quux' was invoked.
-/** @internal */
+/**
+ * Information about a chain of captured properties. For example, if you have
+ * `foo.bar.baz.quux()`, we'll say that `foo` was captured, but that `bar`,
+ * `baz` and `quux` were accessed through it. We'll also note that `quux` was
+ * invoked.
+ *
+ * @internal
+ */
 export interface CapturedPropertyChain {
     infos: CapturedPropertyInfo[];
 }
 
-// A mapping from the names of variables we captured, to information about how those variables were
-// used.  For example, if we see "a.b.c()" (and 'a' is not declared in the function), we'll record a
-// mapping of { "a": ['b', 'c' (invoked)] }.  i.e. we captured 'a', accessed the properties 'b.c'
-// off of it, and we invoked that property access.  With this information we can decide the totality
-// of what we need to capture for 'a'.
-//
-// Note: if we want to capture everything, we just use an empty array for 'CapturedPropertyChain[]'.
-// Otherwise, we'll use the chains to determine what portions of the object to serialize.
-/** @internal */
+/**
+ * A mapping from the names of variables we captured, to information about how
+ * those variables were used.  For example, if we see `a.b.c()` and `a` is not
+ * declared in the function, we'll record a mapping of `{ "a": ['b', 'c'
+ * (invoked)] }`. That is, we captured `a`, accessed the properties `b.c` off of
+ * it, and we invoked that property access.  With this information we can decide
+ * the totality of what we need to capture for `a`.
+ *
+ * Note: if we want to capture everything, we just use an empty array for
+ * `CapturedPropertyChain[]`. Otherwise, we'll use the chains to determine what
+ * portions of the object to serialize.
+ *
+ * @internal
+ */
 export type CapturedVariableMap = Map<string, CapturedPropertyChain[]>;
 
-// The set of variables the function attempts to capture.  There is a required set an an optional
-// set. The optional set will not block closure-serialization if we cannot find them, while the
-// required set will.  For each variable that is captured we also specify the list of properties of
-// that variable we need to serialize.  An empty-list means 'serialize all properties'.
-/** @internal */
+/**
+ * The set of variables the function attempts to capture. There is a required
+ * set an an optional set. The optional set will not block closure-serialization
+ * if we cannot find them, while the required set will.  For each variable that
+ * is captured we also specify the list of properties of that variable we need
+ * to serialize.  An empty-list means "serialize all properties".
+ *
+ * @internal
+ */
 export interface CapturedVariables {
     required: CapturedVariableMap;
     optional: CapturedVariableMap;
 }
 
-// These are the special globals we've marked as ones we do not want to capture by value.
-// These values have a dual meaning.  They mean one thing at deployment time and one thing
-// at cloud-execution time.  By **not** capturing-by-value we take the view that the user
-// wants the cloud-execution time view of things.
+/**
+ * These are the special globals we've marked as ones we do not want to capture
+ * by value. These values have a dual meaning.  They mean one thing at
+ * deployment time and one thing at cloud-execution time.  By **not**
+ * capturing-by-value we take the view that the user wants the cloud-execution
+ * time view of things.
+ */
 const nodeModuleGlobals: { [key: string]: boolean } = {
     __dirname: true,
     __filename: true,
-    // We definitely should not try to capture/serialize 'require'.  Not only will it bottom
-    // out as a native function, but it is definitely something the user intends to run
-    // against the right module environment at cloud-execution time and not deployment time.
+
+    // We definitely should not try to capture/serialize `require`.  Not only
+    // will it bottom out as a native function, but it is definitely something
+    // the user intends to run against the right module environment at
+    // cloud-execution time and not deployment time.
     require: true,
 };
 
-// Gets the text of the provided function (using .toString()) and massages it so that it is a legal
-// function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
-// particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
-// are represented.  If these change, this will likely break us.
-/** @internal */
+/**
+ * Gets the text of the provided function (using `.toString()`) and massages it
+ * so that it is a legal function declaration.  Note: this ties us heavily to V8
+ * and its representation for functions.  In particular, it has expectations
+ * around how functions/lambdas/methods/generators/constructors etc. are
+ * represented.  If these change, this will likely break us.
+ *
+ * @internal
+ */
 export function parseFunction(funcString: string): [string, ParsedFunction] {
     const [error, functionCode] = parseFunctionCode(funcString);
     if (error) {
@@ -137,7 +186,10 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
 
     return ["", result];
 }
-/** @internal */
+
+/**
+ * @internal
+ */
 export function isNativeFunction(funcString: string): boolean {
     // Split this constant out so that if this function *itself* is closure serialized,
     // it will not be thought to be native code itself.
@@ -427,8 +479,9 @@ function computeUsesNonLexicalThis(file: typescript.SourceFile): boolean {
 }
 
 /**
- * computeCapturedVariableNames computes the set of free variables in a given function string.  Note that this string is
- * expected to be the usual V8-serialized function expression text.
+ * Computes the set of free variables in a given function string. Note that
+ * this string is expected to be the usual V8-serialized function expression
+ * text.
  */
 function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVariables {
     // Now that we've parsed the file, compute the free variables, and return them.

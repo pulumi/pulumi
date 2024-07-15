@@ -31,16 +31,18 @@ export type OutputResolvers = Record<
 >;
 
 /**
- * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
- * the 'props' input/output props.  *Importantly* all these promises are completely unresolved. This
- * is because we don't want anyone to observe the values of these properties until the rpc call to
- * registerResource actually returns.  This is because the registerResource call may actually
- * override input values, and we only want people to see the final value.
+ * Mutates the `onto` resource so that it has Promise-valued properties for all
+ * the `props` input/output props. *Importantly* all these promises are
+ * completely unresolved. This is because we don't want anyone to observe the
+ * values of these properties until the rpc call to registerResource actually
+ * returns. This is because the registerResource call may actually override
+ * input values, and we only want people to see the final value.
  *
- * The result of this call (beyond the stateful changes to 'onto') is the set of Promise resolvers
- * that will be called post-RPC call.  When the registerResource RPC call comes back, the values
- * that the engine actualy produced will be used to resolve all the unresolved promised placed on
- * 'onto'.
+ * The result of this call (beyond the stateful changes to `onto`) is the set of
+ * {@link Promise} resolvers that will be called post-RPC call.  When the
+ * {@link registerResource} RPC call comes back, the values that the engine
+ * actualy produced will be used to resolve all the unresolved promised placed
+ * on `onto`.
  */
 export function transferProperties(onto: Resource, label: string, props: Inputs): OutputResolvers {
     const resolvers: OutputResolvers = {};
@@ -126,16 +128,16 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  */
 export interface SerializationOptions {
     /**
-     * true if we are keeping output values.
-     * If the monitor does not support output values, they will not be kept, even when this is set to true.
+     * True if we are keeping output values. If the monitor does not support
+     * output values, they will not be kept, even when this is set to true.
      */
     keepOutputValues?: boolean;
 }
 
 /**
- * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for
- * properties with keys that match the provided filter, creating a reasonable POJO object that can
- * be remoted over to registerResource.
+ * Walks the props object passed in, awaiting all interior promises for
+ * properties with keys that match the provided filter, creating a reasonable
+ * POJO object that can be remoted over to {@link registerResource}.
  */
 async function serializeFilteredProperties(
     label: string,
@@ -162,29 +164,32 @@ async function serializeFilteredProperties(
 }
 
 /**
- * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
- * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
+ * Walks the props object passed in, awaiting all interior promises besides
+ * those for `id` and `urn`, creating a reasonable POJO object that can be
+ * remoted over to {@link registerResource}.
  */
 export async function serializeResourceProperties(label: string, props: Inputs, opts?: SerializationOptions) {
     return serializeFilteredProperties(label, props, (key) => key !== "id" && key !== "urn", opts);
 }
 
 /**
- * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
- * POJO object that can be remoted over to registerResource.
+ * Walks the props object passed in, awaiting all interior promises, creating a
+ * reasonable POJO object that can be remoted over to {@link registerResource}.
  */
 export async function serializeProperties(label: string, props: Inputs, opts?: SerializationOptions) {
     const [result] = await serializeFilteredProperties(label, props, (_) => true, opts);
     return result;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export async function serializePropertiesReturnDeps(label: string, props: Inputs, opts?: SerializationOptions) {
     return serializeFilteredProperties(label, props, (_) => true, opts);
 }
 
 /**
- * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
+ * Fetches the raw outputs and deserializes them from a gRPC call result.
  */
 export function deserializeProperties(outputsStruct: gstruct.Struct, keepUnknowns?: boolean): Inputs {
     const props: Inputs = {};
@@ -199,12 +204,14 @@ export function deserializeProperties(outputsStruct: gstruct.Struct, keepUnknown
 }
 
 /**
- * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all
- * of the resource's matching properties to the values inside.
+ * Takes as input a gRPC serialized `proto.google.protobuf.Struct` and resolves
+ * all of the resource's matching properties to the values inside.
  *
- * NOTE: it is imperative that the properties in `allProps` were produced by `deserializeProperties` in order for
- * output properties to work correctly w.r.t. knowns/unknowns: this function assumes that any undefined value in
- * `allProps`represents an unknown value that was returned by an engine operation.
+ * NOTE: it is imperative that the properties in `allProps` were produced by
+ * `deserializeProperties` in order for output properties to work correctly
+ * w.r.t. knowns/unknowns: this function assumes that any undefined value in
+ * `allProps`represents an unknown value that was returned by an engine
+ * operation.
  */
 export function resolveProperties(
     res: Resource,
@@ -289,37 +296,59 @@ export function resolveProperties(
  * Unknown values are encoded as a distinguished string value.
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+
 /**
- * specialSigKey is sometimes used to encode type identity inside of a map. See sdk/go/common/resource/properties.go.
+ * {@link specialSigKey} is sometimes used to encode type identity inside of a
+ * map.
+ *
+ * @see sdk/go/common/resource/properties.go.
  */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
+
 /**
- * specialAssetSig is a randomly assigned hash used to identify assets in maps. See sdk/go/common/resource/asset.go.
+ * {@link specialAssetSig} is a randomly assigned hash used to identify assets
+ * in maps.
+ *
+ * @see sdk/go/common/resource/asset.go.
  */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
+
 /**
- * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See sdk/go/common/resource/asset.go.
+ * {@link specialArchiveSig} is a randomly assigned hash used to identify
+ * archives in maps.
+ *
+ * @see sdk/go/common/resource/asset.go.
  */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
+
 /**
- * specialSecretSig is a randomly assigned hash used to identify secrets in maps.
- * See sdk/go/common/resource/properties.go.
+ * {@link specialSecretSig} is a randomly assigned hash used to identify secrets
+ * in maps.
+ *
+ * @see sdk/go/common/resource/properties.go.
  */
 export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
+
 /**
- * specialResourceSig is a randomly assigned hash used to identify resources in maps.
- * See sdk/go/common/resource/properties.go.
+ * {@link specialResourceSig} is a randomly assigned hash used to identify
+ * resources in maps.
+ *
+ * @see sdk/go/common/resource/properties.go.
  */
 export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
+
 /**
- * specialOutputValueSig is a randomly assigned hash used to identify outputs in maps.
- * See sdk/go/common/resource/properties.go.
+ * {@link specialOutputValueSig} is a randomly assigned hash used to identify
+ * outputs in maps.
+ *
+ * @see sdk/go/common/resource/properties.go.
  */
 export const specialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
 
 /**
- * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
- * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
+ * Serializes properties deeply.  This understands how to wait on any unresolved
+ * promises, as appropriate, in addition to translating certain "special" values
+ * so that they are ready to go on the wire.
  */
 export async function serializeProperty(
     ctx: string,
@@ -542,14 +571,16 @@ export async function serializeProperty(
 }
 
 /**
- * isRpcSecret returns true if obj is a wrapped secret value (i.e. it's an object with the special key set).
+ * Returns true if the given object is a wrapped secret value (i.e. it's an
+ * object with the special key set).
  */
 export function isRpcSecret(obj: any): boolean {
     return obj && obj[specialSigKey] === specialSecretSig;
 }
 
 /**
- * unwrapRpcSecret returns the underlying value for a secret, or the value itself if it was not a secret.
+ * Returns the underlying value for a secret, or the value itself if it was not
+ * a secret.
  */
 export function unwrapRpcSecret(obj: any): any {
     if (!isRpcSecret(obj)) {
@@ -559,7 +590,8 @@ export function unwrapRpcSecret(obj: any): any {
 }
 
 /**
- * deserializeProperty unpacks some special types, reversing the above process.
+ * Unpacks some special types, reversing the process undertaken by
+ * {@link serializeProperty}.
  */
 export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
     if (prop === undefined) {
@@ -713,8 +745,8 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
 }
 
 /**
- * suppressUnhandledGrpcRejections silences any unhandled promise rejections that occur due to gRPC errors. The input
- * promise may still be rejected.
+ * Silences any unhandled promise rejections that occur due to gRPC errors. The
+ * input promise may still be rejected.
  */
 export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
     p.catch((err) => {
@@ -737,7 +769,9 @@ function checkVersion(want?: semver.SemVer, have?: semver.SemVer): boolean {
     return have.major === want.major && have.minor >= want.minor && have.patch >= want.patch;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function register<T extends { readonly version?: string }>(
     source: Map<string, T[]>,
     registrationType: string,
@@ -770,7 +804,9 @@ export function register<T extends { readonly version?: string }>(
     return true;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function getRegistration<T extends { readonly version?: string }>(
     source: Map<string, T[]>,
     key: string,
@@ -794,7 +830,8 @@ export function getRegistration<T extends { readonly version?: string }>(
 }
 
 /**
- * A ResourcePackage is a type that understands how to construct resource providers given a name, type, args, and URN.
+ * A {@link ResourcePackage} is a type that understands how to construct
+ * resource providers given a name, type, args, and URN.
  */
 export interface ResourcePackage {
     readonly version?: string;
@@ -803,14 +840,18 @@ export interface ResourcePackage {
 
 const resourcePackages = new Map<string, ResourcePackage[]>();
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _resetResourcePackages() {
     resourcePackages.clear();
 }
 
 /**
- * registerResourcePackage registers a resource package that will be used to construct providers for any URNs matching
- * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ * Registers a resource package that will be used to construct providers for any
+ * URNs matching the package name and version that are deserialized by the
+ * current instance of the Pulumi JavaScript SDK.
  */
 export function registerResourcePackage(pkg: string, resourcePackage: ResourcePackage) {
     register(resourcePackages, "package", pkg, resourcePackage);
@@ -821,7 +862,8 @@ export function getResourcePackage(pkg: string, version: string | undefined): Re
 }
 
 /**
- * A ResourceModule is a type that understands how to construct resources given a name, type, args, and URN.
+ * A {@link ResourceModule} is a type that understands how to construct
+ * resources given a name, type, args, and URN.
  */
 export interface ResourceModule {
     readonly version?: string;
@@ -834,14 +876,18 @@ function moduleKey(pkg: string, mod: string): string {
     return `${pkg}:${mod}`;
 }
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _resetResourceModules() {
     resourceModules.clear();
 }
 
 /**
- * registerResourceModule registers a resource module that will be used to construct resources for any URNs matching
- * the module name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ * Registers a resource module that will be used to construct resources for any
+ * URNs matching the module name and version that are deserialized by the
+ * current instance of the Pulumi JavaScript SDK.
  */
 export function registerResourceModule(pkg: string, mod: string, module: ResourceModule) {
     const key = moduleKey(pkg, mod);
