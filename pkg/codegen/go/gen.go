@@ -3652,10 +3652,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 }
 
 func extractImportBasePath(extPkg schema.PackageReference) string {
-	version := extPkg.Version().Major
 	var vPath string
-	if version > 1 {
-		vPath = fmt.Sprintf("/v%d", version)
+	version := extPkg.Version()
+	if version != nil && version.Major > 1 {
+		vPath = fmt.Sprintf("/v%d", version.Major)
 	}
 	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", extPkg.Name(), vPath, extPkg.Name())
 }
@@ -3974,10 +3974,17 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			if goInfo.InternalModuleName != "" {
 				internalModuleName = goInfo.InternalModuleName
 			}
+
+			importBasePath := goInfo.ImportBasePath
+			if importBasePath == "" {
+				// Default to a path based on the package name.
+				importBasePath = extractImportBasePath(pkg)
+			}
+
 			pack = &pkgContext{
 				pkg:                           pkg,
 				mod:                           mod,
-				importBasePath:                goInfo.ImportBasePath,
+				importBasePath:                importBasePath,
 				rootPackageName:               goInfo.RootPackageName,
 				typeDetails:                   map[schema.Type]*typeDetails{},
 				names:                         codegen.NewStringSet(),
