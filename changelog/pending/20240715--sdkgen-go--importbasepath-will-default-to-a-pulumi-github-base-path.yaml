@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdkgen/go
-  description: importBasePath will default to a pulumi github base path.
+  description: Default importBasePath to a pulumi github base path
