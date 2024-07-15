@@ -519,7 +519,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
 	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
-	contract.AssertNoErrorf(err, "could not add require statement to go.mod")
+	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
@@ -565,7 +565,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
 					err = gomod.AddRequire(info.ModulePath, p.Version.String())
-					contract.AssertNoErrorf(err, "could not add require statement to go.mod")
+					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
 			continue
@@ -596,7 +596,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 		}
 		if packageName != "" {
 			err = gomod.AddRequire(packageName, version)
-			contract.AssertNoErrorf(err, "could not add require statement to go.mod")
+			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}
 	}
 
