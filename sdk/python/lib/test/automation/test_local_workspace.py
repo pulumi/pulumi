@@ -382,6 +382,31 @@ class TestLocalWorkspace(unittest.TestCase):
 
         ws.remove_stack(stack_name)
 
+    def test_import_resources(self):
+        ws = LocalWorkspace(work_dir=get_test_path("data", "import"))
+        stack_name = stack_namer("import")
+        stack = Stack.create(stack_name, ws)
+        result = stack.import_resources(
+            protect=False,
+            resources=[
+                {
+                    "type": "random:index/randomPassword:RandomPassword",
+                    "name": "randomPassword",
+                    "id": "supersecret",
+                }
+            ])
+
+        self.assertEqual(result.summary.result, "succeeded")
+        expected_generated_code_path = get_test_path(
+            "data", "import", "expected_generated_code.yaml"
+        )
+        expected_generated_code = ""
+        with open(expected_generated_code_path, "r") as codeFile:
+            expected_generated_code = codeFile.read()
+        self.assertEqual(result.generated_code, expected_generated_code)
+        stack.destroy()
+        ws.remove_stack(stack_name)
+
     def test_config_all_functions_path(self):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
