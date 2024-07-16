@@ -178,6 +178,10 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 					return errors.New("value not supported when removing keys")
 				}
 				value = args[1]
+			} else {
+				if !remove {
+					return errors.New("value cannot be empty")
+				}
 			}
 
 			if d.Deployment.DeploymentSettings.Operation == nil {
