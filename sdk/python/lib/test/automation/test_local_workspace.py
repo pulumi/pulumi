@@ -394,7 +394,8 @@ class TestLocalWorkspace(unittest.TestCase):
                     "name": "randomPassword",
                     "id": "supersecret",
                 }
-            ])
+            ],
+        )
 
         self.assertEqual(result.summary.result, "succeeded")
         expected_generated_code_path = get_test_path(
