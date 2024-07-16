@@ -284,17 +284,19 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 
 	if endpoint.Protocol == "ssh" {
 		var auth transport.AuthMethod
+		cacheAuthMethod := false
 
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		defer func() {
 			// Memoize the key when we're done, if there was one.
-			if auth == nil {
+			if !cacheAuthMethod {
 				return
 			}
 			if p.sshKeys == nil {
 				p.sshKeys = make(map[string]transport.AuthMethod)
 			}
+			logging.V(10).Infof("caching auth for %s", endpoint.Host)
 			p.sshKeys[endpoint.Host] = auth
 		}()
 
@@ -305,6 +307,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 
 		auth, err = getSSHPublicKeys(endpoint.User, endpoint.Host, p.sshConfig)
 		if err == nil {
+			cacheAuthMethod = true
 			return remoteURL, auth, nil
 		}
 
@@ -313,6 +316,10 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 		// and attempt to use the SSH agent for auth.
 		logging.V(10).Infof("%s: using agent auth instead", err)
 		auth, err = gitssh.DefaultAuthBuilder(endpoint.User)
+		if err != nil {
+			return "", nil, err
+		}
+		cacheAuthMethod = true
 		return remoteURL, auth, err
 
 	}
