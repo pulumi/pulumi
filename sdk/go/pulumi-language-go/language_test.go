@@ -170,6 +170,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
+// TODO: These tests are not working yet because of issues in sdkgen and programgen
 var expectedFailures = map[string]string{
 	"l1-empty":                           "dependency pulumi has unexpected version",
 	"l1-main":                            "error in compiling Go",
@@ -223,12 +224,7 @@ func TestLanguage(t *testing.T) {
 		SnapshotDirectory:    snapshotDir,
 		CoreSdkDirectory:     "../..",
 		CoreSdkVersion:       sdk.Version.String(),
-		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{ /*
-				{
-					Path:        "go\\.mod",
-					Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
-					Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
-				},*/
+		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 			{
 				Path:        "go\\.mod",
 				Pattern:     rootDir + "/artifacts",
