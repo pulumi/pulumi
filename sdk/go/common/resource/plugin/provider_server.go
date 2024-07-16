@@ -136,7 +136,7 @@ func (p *providerServer) Parameterize(
 	var params ParameterizeParameters
 	switch p := req.Parameters.(type) {
 	case *pulumirpc.ParameterizeRequest_Args:
-		params = ParameterizeArgs{Args: p.Args.GetArgs()}
+		params = &ParameterizeArgs{Args: p.Args.GetArgs()}
 	case *pulumirpc.ParameterizeRequest_Value:
 		var version *semver.Version
 		if v := p.Value.GetVersion(); v != "" {
@@ -146,7 +146,7 @@ func (p *providerServer) Parameterize(
 			}
 			version = &pV
 		}
-		params = ParameterizeValue{
+		params = &ParameterizeValue{
 			Name:    p.Value.GetName(),
 			Version: version,
 			Value:   nil,

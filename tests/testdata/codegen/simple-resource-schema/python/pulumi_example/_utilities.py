@@ -13,10 +13,12 @@ import os
 import sys
 import typing
 import warnings
+import base64
 
 import pulumi
 import pulumi.runtime
 from pulumi.runtime.sync_await import _sync_await
+from pulumi.runtime.proto import resource_pb2
 
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
