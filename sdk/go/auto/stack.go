@@ -746,6 +746,16 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		summary = history[0]
 	}
 
+	// If `remove` was set, remove the stack now. We take this approach rather
+	// than passing `--remove` to `pulumi destroy` because the latter would make
+	// it impossible for us to retrieve a summary of the operation above for
+	// returning to the caller.
+	if destroyOpts.Remove {
+		if err := s.Workspace().RemoveStack(ctx, s.Name()); err != nil {
+			return res, fmt.Errorf("failed to remove stack: %w", err)
+		}
+	}
+
 	res = DestroyResult{
 		Summary: summary,
 		StdOut:  stdout,
