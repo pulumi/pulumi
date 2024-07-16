@@ -386,6 +386,8 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(work_dir=get_test_path("data", "import"))
         stack_name = stack_namer("import")
         stack = Stack.create(stack_name, ws)
+        random_plugin_version = "v4.16.3"
+        ws.install_plugin("random", random_plugin_version)
         result = stack.import_resources(
             protect=False,
             resources=[
@@ -407,6 +409,7 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(result.generated_code, expected_generated_code)
         stack.destroy()
         ws.remove_stack(stack_name)
+        ws.remove_plugin("random", random_plugin_version)
 
     def test_config_all_functions_path(self):
         project_name = "python_test"
