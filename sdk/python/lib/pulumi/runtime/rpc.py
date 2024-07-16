@@ -274,44 +274,46 @@ async def _add_dependency(
     """
     from ..resource import Resource  # pylint: disable=import-outside-toplevel
 
-    if not isinstance(res, Resource):
-        raise TypeError(
-            f"'depends_on' was passed a value {res} that was not a Resource."
-        )
+    res_list = [(res, from_resource)]
+    while len(res_list) > 0:
+        res, from_resource = res_list.pop(0)
+        if not isinstance(res, Resource):
+            raise TypeError(
+                f"'depends_on' was passed a value {res} that was not a Resource."
+            )
 
-    # Exit early if there are cycles to avoid hangs.
-    no_cycles = declare_dependency(from_resource, res) if from_resource else True
-    if not no_cycles:
-        error_on_cycles = (
-            os.getenv(ERROR_ON_DEPENDENCY_CYCLES_VAR, "true").lower() == "true"
-        )
-        if not error_on_cycles:
-            return
-        raise RuntimeError(
-            "We have detected a circular dependency involving a resource of type"
-            + f" {res._type} named {res._name}.\n"
-            + "Please review any `depends_on`, `parent` or other dependency relationships between your resources to ensure "
-            + "no cycles have been introduced in your program."
-        )
+        # Exit early if there are cycles to avoid hangs.
+        no_cycles = declare_dependency(from_resource, res) if from_resource else True
+        if not no_cycles:
+            error_on_cycles = (
+                os.getenv(ERROR_ON_DEPENDENCY_CYCLES_VAR, "true").lower() == "true"
+            )
+            if not error_on_cycles:
+                return
+            raise RuntimeError(
+                "We have detected a circular dependency involving a resource of type"
+                + f" {res._type} named {res._name}.\n"
+                + "Please review any `depends_on`, `parent` or other dependency relationships between your resources to ensure "
+                + "no cycles have been introduced in your program."
+            )
 
-    from .. import ComponentResource  # pylint: disable=import-outside-toplevel
+        from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 
-    # Local component resources act as aggregations of their descendents.
-    # Rather than adding the component resource itself, each child resource
-    # is added as a dependency.
-    if isinstance(res, ComponentResource) and not res._remote:
-        # Copy the set before iterating so that any concurrent child additions during
-        # the dependency computation (which is async, so can be interleaved with other
-        # operations including child resource construction which adds children to this
-        # resource) do not trigger modification during iteration errors.
-        child_resources = res._childResources.copy()
-        for child in child_resources:
-            await _add_dependency(deps, child, from_resource)
-        return
-
-    urn = await res.urn.future()
-    if urn:
-        deps.add(urn)
+        # Local component resources act as aggregations of their descendents.
+        # Rather than adding the component resource itself, each child resource
+        # is added as a dependency.
+        if isinstance(res, ComponentResource) and not res._remote:
+            # Copy the set before iterating so that any concurrent child additions during
+            # the dependency computation (which is async, so can be interleaved with other
+            # operations including child resource construction which adds children to this
+            # resource) do not trigger modification during iteration errors.
+            child_resources = res._childResources.copy()
+            for child in child_resources:
+                res_list.append((child, from_resource))
+        else:
+            urn = await res.urn.future()
+            if urn:
+                deps.add(urn)
 
 
 async def _expand_dependencies(
