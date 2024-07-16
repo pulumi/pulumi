@@ -274,6 +274,8 @@ async def _add_dependency(
     """
     from ..resource import Resource  # pylint: disable=import-outside-toplevel
 
+    # Note that a recursive algorithm here would be cleaner, but that results in a
+    # RecursionError with deeply nested hierarchies of ComponentResources.
     res_list = [(res, from_resource)]
     while len(res_list) > 0:
         res, from_resource = res_list.pop(0)
