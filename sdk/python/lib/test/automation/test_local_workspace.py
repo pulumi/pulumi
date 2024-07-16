@@ -777,6 +777,23 @@ class TestLocalWorkspace(unittest.TestCase):
         with self.assertRaises(StackNotFoundError):
             stack.workspace.select_stack(stack_name)
 
+    def test_stack_lifecycle_inline_program_destroy_with_remove(self):
+        # Arrange.
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program_with_resource, project_name=project_name
+        )
+
+        stack.up()
+
+        # Act.
+        stack.destroy(remove=True)
+
+        # Assert.
+        with self.assertRaises(StackNotFoundError):
+            stack.workspace.select_stack(stack_name)
+
     def test_stack_lifecycle_async_inline_program(self):
         project_name = "async_inline_python"
         stack_name = stack_namer(project_name)
