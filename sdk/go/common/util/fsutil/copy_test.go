@@ -30,7 +30,7 @@ func TestCopyFile(t *testing.T) {
 		src := t.TempDir()
 		dst := t.TempDir()
 
-		err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("hello, world"), 0o644)
+		err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("hello, world"), 0o600)
 		require.NoError(t, err)
 
 		err = CopyFile(dst, src, nil)
@@ -49,7 +49,7 @@ func TestCopyFile(t *testing.T) {
 		err := os.MkdirAll(filepath.Join(src, "folder"), 0o755)
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(src, "folder", "file.txt"), []byte("hello, world"), 0o644)
+		err = os.WriteFile(filepath.Join(src, "folder", "file.txt"), []byte("hello, world"), 0o600)
 		require.NoError(t, err)
 
 		err = CopyFile(dst, src, nil)
@@ -65,7 +65,7 @@ func TestCopyFile(t *testing.T) {
 		src := t.TempDir()
 		dst := t.TempDir()
 
-		err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("hello, world"), 0o644)
+		err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("hello, world"), 0o600)
 		require.NoError(t, err)
 
 		err = os.Symlink(filepath.Join(src, "file.txt"), filepath.Join(src, "new.txt"))
@@ -90,7 +90,7 @@ func TestCopyFile(t *testing.T) {
 		err = os.Symlink(filepath.Join(src, "folder"), filepath.Join(src, "new"))
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(src, "folder", "file.txt"), []byte("hello, world"), 0o644)
+		err = os.WriteFile(filepath.Join(src, "folder", "file.txt"), []byte("hello, world"), 0o600)
 		require.NoError(t, err)
 
 		err = CopyFile(dst, src, nil)
