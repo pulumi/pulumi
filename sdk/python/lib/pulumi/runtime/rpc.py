@@ -291,7 +291,7 @@ async def _add_dependency(
                 os.getenv(ERROR_ON_DEPENDENCY_CYCLES_VAR, "true").lower() == "true"
             )
             if not error_on_cycles:
-                return
+                continue
             raise RuntimeError(
                 "We have detected a circular dependency involving a resource of type"
                 + f" {res._type} named {res._name}.\n"
