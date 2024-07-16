@@ -626,6 +626,7 @@ Event: ${line}\n${e.toString()}`);
                     //   converterArgs: "./tfstate.json"
                     // }
                     // would be equivalent to `pulumi import --from terraform ./tfstate.json`
+                    args.push("--");
                     args.push(...options.converterArgs);
                 }
             }
