@@ -14,6 +14,7 @@
 
 import json
 import os
+import shutil
 import tempfile
 import time
 import threading
@@ -715,7 +716,7 @@ class Stack:
 
         finally:
             if tempDir != "":
-                os.rmdir(tempDir)
+                shutil.rmtree(tempDir)
 
     def add_environments(self, *environment_names: str) -> None:
         """
