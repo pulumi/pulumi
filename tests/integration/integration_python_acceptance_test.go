@@ -565,4 +565,18 @@ in-project = true`
 
 	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
 	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
+
+	b, err := os.ReadFile(filepath.Join(e.RootPath, "pyproject.toml"))
+	require.NoError(t, err)
+	require.Equal(t, `[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool]
+[tool.poetry]
+package-mode = false
+[tool.poetry.dependencies]
+pulumi = ">=3.0.0,<4.0.0"
+python = "^3.8"
+`, string(b))
 }
