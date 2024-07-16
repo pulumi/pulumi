@@ -227,6 +227,16 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
+	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
+		source.Ref().Name(), dest.Ref().Name())
+
+	for _, res := range resourcesToMoveOrdered {
+		fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
+	}
+
+	fmt.Fprintf(cmd.Stdout, "\n")
+
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
@@ -249,18 +259,6 @@ func (cmd *stateMoveCmd) Run(
 
 		destSnapshot.Resources = append(destSnapshot.Resources, res)
 	}
-
-	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
-		source.Ref().Name(), dest.Ref().Name())
-
-	for _, res := range sourceSnapshot.Resources {
-		if _, ok := resourcesToMove[string(res.URN)]; ok {
-			fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
-		}
-	}
-
-	fmt.Fprintf(cmd.Stdout, "\n")
 
 	if len(brokenSourceDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
