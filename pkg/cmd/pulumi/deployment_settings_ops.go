@@ -111,7 +111,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        "destroy",
-		Aliases:    []string{"down", "dn"},
+		Aliases:    []string{"down", "dn", "clear"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Delete all the stack's deployment settings",
