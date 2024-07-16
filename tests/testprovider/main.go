@@ -300,7 +300,7 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 					Parameter: []byte(k.parameter),
 				},
 				Resources: map[string]pschema.ResourceSpec{
-					"pkg:index:Random": providerSchema.Resources["testprovider:index:Random"],
+					k.parameter + ":index:Random": providerSchema.Resources["testprovider:index:Random"],
 				},
 			}
 		} else {
