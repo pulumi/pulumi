@@ -15,6 +15,7 @@
 package fsutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -34,7 +35,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 		// Recursively copy all files in a directory.
 		files, err := os.ReadDir(src)
 		if err != nil {
-			return err
+			return fmt.Errorf("read dir: %w", err)
 		}
 		for _, file := range files {
 			name := file.Name()
@@ -47,7 +48,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 		// Copy files by reading and rewriting their contents.  Skip other special files.
 		data, err := os.ReadFile(src)
 		if err != nil {
-			return err
+			return fmt.Errorf("read file: %w", err)
 		}
 		dstdir := filepath.Dir(dst)
 		if err = os.MkdirAll(dstdir, 0o700); err != nil {
