@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -123,6 +124,13 @@ func (cmd *stateMoveCmd) Run(
 	err = sourceSnapshot.VerifyIntegrity()
 	if err != nil {
 		return fmt.Errorf("failed to verify integrity of source snapshot: %w", err)
+	}
+
+	if sourceSnapshot == nil {
+		return errors.New("source stack has no resources")
+	}
+	if destSnapshot == nil {
+		destSnapshot = &deploy.Snapshot{}
 	}
 
 	resourcesToMove := make(map[string]*resource.State)
