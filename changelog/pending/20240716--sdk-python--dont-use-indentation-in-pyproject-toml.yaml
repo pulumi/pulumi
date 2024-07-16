@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/python
+  description: Don't use indentation in pyproject.toml
