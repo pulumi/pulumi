@@ -456,6 +456,8 @@ func TestParentsAreBeingMoved(t *testing.T) {
 }
 
 func TestEmptySourceStack(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	t.Cleanup(func() {
@@ -473,6 +475,8 @@ func TestEmptySourceStack(t *testing.T) {
 
 	destStackName := "organization/test/destStack"
 	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
 	destStack, err := b.CreateStack(ctx, destRef, "", nil)
 	require.NoError(t, err)
 
@@ -490,6 +494,8 @@ func TestEmptySourceStack(t *testing.T) {
 }
 
 func TestEmptyDestStack(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	t.Cleanup(func() {
@@ -518,6 +524,8 @@ func TestEmptyDestStack(t *testing.T) {
 
 	destStackName := "organization/test/destStack"
 	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
 	destStack, err := b.CreateStack(ctx, destRef, "", nil)
 	require.NoError(t, err)
 
@@ -537,6 +545,8 @@ func TestEmptyDestStack(t *testing.T) {
 	assert.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
+	require.NoError(t, err)
+
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
 	assert.NoError(t, err)
 
