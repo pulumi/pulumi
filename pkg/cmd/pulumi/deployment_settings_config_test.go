@@ -495,9 +495,12 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		err := configureImageRepository(d)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "image_name", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
-		assert.Equal(t, "user", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
-		assert.Equal(t, "encrypted", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Ciphertext)
+		assert.Equal(t, "image_name",
+			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
+		assert.Equal(t, "user",
+			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
+		assert.Equal(t, "encrypted",
+			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Ciphertext)
 
 		prompts.AssertComplete()
 	})
@@ -551,9 +554,12 @@ func TestDSConfigureImageRepository(t *testing.T) {
 		err := configureImageRepository(d)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "image_name_new", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
-		assert.Equal(t, "user_new", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
-		assert.Equal(t, "encrypted_new", d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Ciphertext)
+		assert.Equal(t, "image_name_new",
+			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Reference)
+		assert.Equal(t, "user_new",
+			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Username)
+		assert.Equal(t, "encrypted_new",
+			d.Deployment.DeploymentSettings.Executor.ExecutorImage.Credentials.Password.Ciphertext)
 
 		prompts.AssertComplete()
 	})

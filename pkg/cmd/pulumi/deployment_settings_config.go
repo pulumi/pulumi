@@ -826,8 +826,10 @@ func configureAdvancedSettings(d *deploymentSettingsCommandDependencies) error {
 		defaults,
 		d.DisplayOptions.Color)
 
-	sd.DeploymentSettings.Operation.Options.SkipInstallDependencies = slices.Contains(options, optSkipDepsInstall)
-	sd.DeploymentSettings.Operation.Options.SkipIntermediateDeployments = slices.Contains(options, optSkipIntermediateDeployments)
+	sd.DeploymentSettings.Operation.Options.
+		SkipInstallDependencies = slices.Contains(options, optSkipDepsInstall)
+	sd.DeploymentSettings.Operation.Options.
+		SkipIntermediateDeployments = slices.Contains(options, optSkipIntermediateDeployments)
 
 	return nil
 }
