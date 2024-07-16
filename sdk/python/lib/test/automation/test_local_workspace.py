@@ -386,7 +386,7 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(work_dir=get_test_path("data", "import"))
         stack_name = stack_namer("import")
         stack = Stack.create(stack_name, ws)
-        random_plugin_version = "v4.16.3"
+        random_plugin_version = "4.16.3"
         ws.install_plugin("random", random_plugin_version)
         result = stack.import_resources(
             protect=False,
