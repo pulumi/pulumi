@@ -981,12 +981,22 @@ func (host *goLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
 
+	// If a module is locally replaced it doesn't really have a version anymore.
+	replaced := make(map[string]bool)
+	for _, r := range gomod.Replace {
+		replaced[strings.TrimRight(r.Old.Path, "/")] = true
+	}
+
 	result := slice.Prealloc[*pulumirpc.DependencyInfo](len(gomod.Require))
 	for _, d := range gomod.Require {
 		if !d.Indirect || req.TransitiveDependencies {
+			version := d.Mod.Version
+			if replaced[strings.TrimRight(d.Mod.Path, "/")] {
+				version = ""
+			}
 			datum := pulumirpc.DependencyInfo{
 				Name:    d.Mod.Path,
-				Version: d.Mod.Version,
+				Version: version,
 			}
 			result = append(result, &datum)
 		}

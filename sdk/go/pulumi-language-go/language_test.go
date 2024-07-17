@@ -172,7 +172,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // TODO: These tests are not working yet because of issues in sdkgen and programgen
 var expectedFailures = map[string]string{
-	"l1-empty":                           "dependency pulumi has unexpected version",
 	"l1-main":                            "error in compiling Go",
 	"l1-output-array":                    "error in compiling Go",
 	"l1-output-bool":                     "error in compiling Go",
