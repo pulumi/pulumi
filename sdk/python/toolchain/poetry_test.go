@@ -59,3 +59,13 @@ setuptools = "*"
 spaces-before = "1.2.3"
 `, s)
 }
+
+func TestCheckVersion(t *testing.T) {
+	require.NoError(t, validateVersion("Poetry (version 1.8.3)"))
+	require.NoError(t, validateVersion("Poetry (version 2.1.2)"))
+	require.NoError(t, validateVersion("Poetry (version 3.0)"))
+	require.NoError(t, validateVersion("Poetry (version 1.9.0.dev0)"))
+	require.ErrorContains(t, validateVersion("Poetry (version 1.7.0)"), "is less than the minimum required version")
+	require.ErrorContains(t, validateVersion("invalid version string"), "unexpected output from poetry --version")
+	require.ErrorContains(t, validateVersion(""), "unexpected output from poetry --version")
+}
