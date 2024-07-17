@@ -42,7 +42,18 @@ import (
 const etagHeader = "ETag"
 const revisionHeader = "Pulumi-ESC-Revision"
 
+type CheckYAMLOption struct {
+	ShowSecrets bool
+}
+
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
+//
+// NOTE: this is not considered a public API, and we reserve the right to make breaking changes, including adding
+// parameters, removing methods, changing types, etc.
+//
+// However, there is currently a cyclic dependency between the Pulumi CLI and the ESC CLI that causes breaking changes
+// to any part of the client API to break the ESC CLI build. So we're limited to non-breaking changes, including adding
+// variadic args or adding additional methods.
 type Client interface {
 	// Insecure returns true if this client is insecure (i.e. has TLS disabled).
 	Insecure() bool
@@ -133,6 +144,7 @@ type Client interface {
 		ctx context.Context,
 		orgName string,
 		yaml []byte,
+		opts ...CheckYAMLOption,
 	) (*esc.Environment, []EnvironmentDiagnostic, error)
 
 	// OpenYAMLEnvironment evaluates the given environment YAML within the context of org orgName and
@@ -502,11 +514,27 @@ func (pc *client) CheckYAMLEnvironment(
 	ctx context.Context,
 	orgName string,
 	yaml []byte,
+	opts ...CheckYAMLOption,
 ) (*esc.Environment, []EnvironmentDiagnostic, error) {
+
+	// NOTE: ideally this method would take a plain old bool as its last parameter: it's not really a public API, so we
+	// reserve the right to make breaking changes, including adding parameters.
+	//
+	// However, there is currently a cyclic dependency between the Pulumi CLI and the ESC CLI that causes breaking changes
+	// to any part of the client API to break the ESC CLI build. So we're limited to non-breaking changes, including adding
+	// variadic args or adding additional methods.
+
+	path := fmt.Sprintf("/api/preview/environments/%v/yaml/check", orgName)
+
+	queryObj := struct {
+		ShowSecrets bool `url:"showSecrets"`
+	}{
+		ShowSecrets: firstOrDefault(opts).ShowSecrets,
+	}
+
 	var resp esc.Environment
 	var errResp EnvironmentErrorResponse
-	path := fmt.Sprintf("/api/preview/environments/%v/yaml/check", orgName)
-	err := pc.restCallWithOptions(ctx, http.MethodPost, path, nil, json.RawMessage(yaml), &resp, httpCallOptions{
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, json.RawMessage(yaml), &resp, httpCallOptions{
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
@@ -933,4 +961,11 @@ func cleanPath(p string) string {
 func IsNotFound(err error) bool {
 	resp, ok := err.(*apitype.ErrorResponse)
 	return ok && resp.Code == http.StatusNotFound
+}
+
+func firstOrDefault[T any](ts []T) (t T) {
+	if len(ts) > 0 {
+		return ts[0]
+	}
+	return t
 }

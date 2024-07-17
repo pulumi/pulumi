@@ -375,7 +375,7 @@ func (c *testPulumiClient) getEnvironment(orgName, envName, version string) (*te
 	return env, env.revisions[revision-1], nil
 }
 
-func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envName string, yaml []byte) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
+func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envName string, yaml []byte, opts []client.CheckYAMLOption) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
 	environment, diags, err := eval.LoadYAMLBytes(envName, yaml)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading environment: %w", err)
@@ -392,7 +392,12 @@ func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envNam
 		return nil, nil, fmt.Errorf("initializing the ESC exec context: %w", err)
 	}
 
-	checked, checkDiags := eval.CheckEnvironment(ctx, envName, environment, nil, providers, envLoader, execContext, false)
+	showSecrets := false
+	if len(opts) > 0 {
+		showSecrets = opts[0].ShowSecrets
+	}
+
+	checked, checkDiags := eval.CheckEnvironment(ctx, envName, environment, rot128{}, providers, envLoader, execContext, showSecrets)
 	diags.Extend(checkDiags...)
 	return checked, mapDiags(diags), nil
 }
@@ -551,7 +556,7 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 		return nil, 0, errors.New("tag mismatch")
 	}
 
-	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml)
+	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml, nil)
 	if err == nil && len(diags) == 0 {
 		h := fnv.New32()
 		h.Write(yaml)
@@ -601,8 +606,9 @@ func (c *testPulumiClient) CheckYAMLEnvironment(
 	ctx context.Context,
 	orgName string,
 	yaml []byte,
+	opts ...client.CheckYAMLOption,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
-	return c.checkEnvironment(ctx, orgName, "<yaml>", yaml)
+	return c.checkEnvironment(ctx, orgName, "<yaml>", yaml, opts)
 }
 
 func (c *testPulumiClient) OpenYAMLEnvironment(

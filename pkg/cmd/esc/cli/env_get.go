@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/cmd/esc/cli/style"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -147,7 +148,7 @@ func (get *envGetCommand) writeValue(
 	if err != nil {
 		return fmt.Errorf("getting environment definition: %w", err)
 	}
-	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, ref.orgName, def)
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, ref.orgName, def, client.CheckYAMLOption{ShowSecrets: showSecrets})
 	if err != nil {
 		return fmt.Errorf("getting environment: %w", err)
 	}
@@ -239,7 +240,7 @@ func (get *envGetCommand) getEntireEnvironment(
 		return &envGetTemplateData{Definition: string(def)}, nil
 	}
 
-	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def, client.CheckYAMLOption{ShowSecrets: showSecrets})
 	if err != nil {
 		return nil, fmt.Errorf("getting environment metadata: %w", err)
 	}
@@ -291,7 +292,7 @@ func (get *envGetCommand) getEnvironmentMember(
 		return &envGetTemplateData{Definition: def}, nil
 	}
 
-	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def)
+	env, _, err := get.env.esc.client.CheckYAMLEnvironment(ctx, orgName, def, client.CheckYAMLOption{ShowSecrets: showSecrets})
 	if err != nil {
 		return nil, fmt.Errorf("getting environment metadata: %w", err)
 	}

@@ -5,9 +5,14 @@ run: |
   esc env get test@1
   esc env get test@2
   esc env get test@3
+  esc env get test@latest --show-secrets
 environments:
   test-user/a: {}
-  test-user/b: {}
+  test-user/b:
+    values:
+      baseSecret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
   test-user/test:
     revisions:
       - yaml:
@@ -40,6 +45,7 @@ stdout: |+
       "hello",
       "world"
     ],
+    "baseSecret": "[secret]",
     "boolean": true,
     "null": null,
     "number": 42,
@@ -80,6 +86,7 @@ stdout: |+
       "hello",
       "world"
     ],
+    "baseSecret": "[secret]",
     "boolean": true,
     "null": null,
     "number": 42,
@@ -150,6 +157,7 @@ stdout: |+
       "hello",
       "world"
     ],
+    "baseSecret": "[secret]",
     "boolean": true,
     "null": null,
     "number": 42,
@@ -179,6 +187,46 @@ stdout: |+
     secret:
       fn::secret:
         ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+
+  ```
+
+  > esc env get test@latest --show-secrets
+  # Value
+  ```json
+  {
+    "array": [
+      "hello",
+      "world"
+    ],
+    "baseSecret": "secretAccessKey",
+    "boolean": true,
+    "null": null,
+    "number": 42,
+    "object": {
+      "hello": "world"
+    },
+    "open": "[unknown]",
+    "secret": "secretAccessKey",
+    "string": "esc"
+  }
+  ```
+  # Definition
+  ```yaml
+  imports:
+    - a
+    - b
+  values:
+    # comment
+    "null": null
+    boolean: true
+    number: 42
+    string: esc
+    array: [hello, world]
+    object: {hello: world}
+    open:
+      fn::open::test: echo
+    secret:
+      fn::secret: secretAccessKey
 
   ```
 
@@ -189,3 +237,4 @@ stderr: |
   > esc env get test@1
   > esc env get test@2
   > esc env get test@3
+  > esc env get test@latest --show-secrets
