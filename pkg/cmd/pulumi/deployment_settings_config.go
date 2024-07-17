@@ -61,7 +61,7 @@ func newDeploymentCmd() *cobra.Command {
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return nil
+			return cmd.Help()
 		}),
 	}
 
@@ -86,7 +86,7 @@ func newDeploymentSettingsCmd() *cobra.Command {
 			"generating the deployment file, updating secrets or pushing the\n" +
 			"updated settings to Pulumi Cloud.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return nil
+			return cmd.Help()
 		}),
 	}
 
