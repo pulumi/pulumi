@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -136,13 +137,25 @@ func (cmd *stateMoveCmd) Run(
 	resourcesToMove := make(map[string]*resource.State)
 	providersToCopy := make(map[string]bool)
 	remainingResources := make(map[string]*resource.State)
+	unmatchedArgs := mapset.NewSet(args...)
 	for _, res := range sourceSnapshot.Resources {
-		if resourceMatches(res, args) {
+		matchedArg := resourceMatches(res, args)
+		if matchedArg != "" {
 			resourcesToMove[string(res.URN)] = res
 			providersToCopy[res.Provider] = true
+			unmatchedArgs.Remove(matchedArg)
 		} else {
 			remainingResources[string(res.URN)] = res
 		}
+	}
+
+	for _, arg := range unmatchedArgs.ToSlice() {
+		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(colors.SpecWarning+"warning:"+
+			colors.Reset+" Resource %s not found in source stack\n"), arg)
+	}
+
+	if len(resourcesToMove) == 0 {
+		return errors.New("no resources found to move")
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)
@@ -350,13 +363,13 @@ source stack.  Please remove the resources from the source stack manually using 
 	return nil
 }
 
-func resourceMatches(res *resource.State, args []string) bool {
+func resourceMatches(res *resource.State, args []string) string {
 	for _, arg := range args {
 		if string(res.URN) == arg {
-			return true
+			return arg
 		}
 	}
-	return false
+	return ""
 }
 
 type dependencyType int
