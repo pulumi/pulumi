@@ -870,7 +870,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	}
 
 	gcpKmsKey := os.Getenv("PULUMI_TEST_GCP_KEY")
-	if azureKeyVault == "" {
+	if gcpKmsKey == "" {
 		t.Skipf("Skipping: PULUMI_TEST_GCP_KEY is not set")
 	}
 

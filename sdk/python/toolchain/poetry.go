@@ -229,7 +229,9 @@ func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, 
 	}
 
 	w := &bytes.Buffer{}
-	if err := toml.NewEncoder(w).Encode(pp); err != nil {
+	encoder := toml.NewEncoder(w)
+	encoder.Indent = "" // Disable indentation
+	if err := encoder.Encode(pp); err != nil {
 		return "", err
 	}
 	return w.String(), nil

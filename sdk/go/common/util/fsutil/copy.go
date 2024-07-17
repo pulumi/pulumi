@@ -24,7 +24,7 @@ import (
 // it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
 // and it makes no attempt to preserve file permissions.  It is what we need for this utility package, no more, no less.
 func CopyFile(dst string, src string, excl map[string]bool) error {
-	info, err := os.Lstat(src)
+	info, err := os.Stat(src)
 	if err != nil {
 		return err
 	} else if excl[info.Name()] {
@@ -44,7 +44,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 				return copyerr
 			}
 		}
-	} else if info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+	} else if info.Mode().IsRegular() {
 		// Copy files by reading and rewriting their contents.  Skip other special files.
 		data, err := os.ReadFile(src)
 		if err != nil {

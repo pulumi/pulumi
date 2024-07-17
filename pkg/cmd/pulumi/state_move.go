@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -123,6 +124,13 @@ func (cmd *stateMoveCmd) Run(
 	err = sourceSnapshot.VerifyIntegrity()
 	if err != nil {
 		return fmt.Errorf("failed to verify integrity of source snapshot: %w", err)
+	}
+
+	if sourceSnapshot == nil {
+		return errors.New("source stack has no resources")
+	}
+	if destSnapshot == nil {
+		destSnapshot = &deploy.Snapshot{}
 	}
 
 	resourcesToMove := make(map[string]*resource.State)
@@ -227,6 +235,16 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
+	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
+		source.Ref().Name(), dest.Ref().Name())
+
+	for _, res := range resourcesToMoveOrdered {
+		fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
+	}
+
+	fmt.Fprintf(cmd.Stdout, "\n")
+
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
@@ -249,18 +267,6 @@ func (cmd *stateMoveCmd) Run(
 
 		destSnapshot.Resources = append(destSnapshot.Resources, res)
 	}
-
-	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
-		source.Ref().Name(), dest.Ref().Name())
-
-	for _, res := range sourceSnapshot.Resources {
-		if _, ok := resourcesToMove[string(res.URN)]; ok {
-			fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
-		}
-	}
-
-	fmt.Fprintf(cmd.Stdout, "\n")
 
 	if len(brokenSourceDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(

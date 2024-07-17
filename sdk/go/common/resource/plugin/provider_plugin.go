@@ -308,13 +308,13 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
 	var params pulumirpc.ParameterizeRequest
 	switch p := request.Parameters.(type) {
-	case ParameterizeArgs:
+	case *ParameterizeArgs:
 		params.Parameters = &pulumirpc.ParameterizeRequest_Args{
 			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 				Args: p.Args,
 			},
 		}
-	case ParameterizeValue:
+	case *ParameterizeValue:
 		var version string
 		if p.Version != nil {
 			version = p.Version.String()
