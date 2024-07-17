@@ -958,6 +958,70 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	assert.NoError(t, err, "up failed")
+
+	// Act.
+	err = s.Workspace().RemoveStack(ctx, s.Name())
+
+	// Assert.
+	assert.ErrorContains(t, err, "still has resources; removal rejected")
+}
+
+func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		_, err := NewMyResource(ctx, "res")
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
+	assert.NoError(t, err, "up failed")
+
+	// Act.
+	_, err = s.Destroy(ctx, optdestroy.Remove())
+	assert.NoError(t, err, "destroy failed")
+	err = s.Workspace().SelectStack(ctx, s.Name())
+
+	// Assert.
+	assert.ErrorContains(t, err, "no stack named")
+}
+
 // If not run with "-race", this test has little value over the prior test.
 func TestUpsertStackInlineSourceParallel(t *testing.T) {
 	t.Parallel()
@@ -3082,4 +3146,18 @@ func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.Engi
 		wg.Done()
 	})()
 	return &wg
+}
+
+type MyResource struct {
+	pulumi.ResourceState
+}
+
+func NewMyResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*MyResource, error) {
+	myResource := &MyResource{}
+	err := ctx.RegisterComponentResource("my:module:MyResource", name, myResource, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return myResource, nil
 }
