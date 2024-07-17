@@ -412,7 +412,7 @@ export class CallbackServer implements ICallbackServer {
 
             let opts = request.getOptions() || new resproto.TransformInvokeOptions();
 
-            let ropts: InvokeOptions = {};
+            const ropts: InvokeOptions = {};
             ropts.pluginDownloadURL = opts.getPluginDownloadUrl() !== "" ? opts.getPluginDownloadUrl() : undefined;
             ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
             ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
@@ -452,9 +452,9 @@ export class CallbackServer implements ICallbackServer {
                     }
 
                     response.setOptions(opts);
-		}
-	    }
-	    return response;
+                }
+            }
+            return response;
         };
         const tryCb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             try {

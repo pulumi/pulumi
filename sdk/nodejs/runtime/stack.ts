@@ -256,7 +256,7 @@ export function registerStackTransform(t: ResourceTransform) {
  */
 export function registerStackInvokeTransform(t: InvokeTransform): void {
     if (!getStore().supportsInvokeTransforms) {
-	throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
+        throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
     }
     const callbacks = getCallbacks();
     if (!callbacks) {
