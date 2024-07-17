@@ -228,7 +228,7 @@ func main() {
 		}
 
 		// Scenario #8 - run an invoke and change args
-		err = ctx.RegisterStackInvokeTransform(func(_ context.Context, ita *pulumi.InvokeTransformArgs) *pulumi.InvokeTransformResult {
+		err = ctx.RegisterInvokeTransform(func(_ context.Context, ita *pulumi.InvokeTransformArgs) *pulumi.InvokeTransformResult {
 			ita.Args["length"] = pulumi.Float64(11)
 			return &pulumi.InvokeTransformResult{
 				Args: ita.Args,
