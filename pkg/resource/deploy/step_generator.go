@@ -2188,8 +2188,12 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 func (sg *stepGenerator) AnalyzeResources() error {
 	var resources []plugin.AnalyzerStackResource
 	sg.deployment.news.Range(func(urn resource.URN, v *resource.State) bool {
-		goal, ok := sg.deployment.goals.Load(urn)
-		contract.Assertf(ok, "failed to load goal for %s", urn)
+		var ignoreChanges []string
+		var deleteBeforeReplace *bool
+		if goal, ok := sg.deployment.goals.Load(urn); ok {
+			ignoreChanges = goal.IgnoreChanges
+			deleteBeforeReplace = goal.DeleteBeforeReplace
+		}
 		resource := plugin.AnalyzerStackResource{
 			AnalyzerResource: plugin.AnalyzerResource{
 				URN:  v.URN,
@@ -2200,8 +2204,8 @@ func (sg *stepGenerator) AnalyzeResources() error {
 				Properties: v.Outputs,
 				Options: plugin.AnalyzerResourceOptions{
 					Protect:                 v.Protect,
-					IgnoreChanges:           goal.IgnoreChanges,
-					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+					IgnoreChanges:           ignoreChanges,
+					DeleteBeforeReplace:     deleteBeforeReplace,
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
 					Aliases:                 v.GetAliases(),
 					CustomTimeouts:          v.CustomTimeouts,
@@ -2230,6 +2234,20 @@ func (sg *stepGenerator) AnalyzeResources() error {
 		if err != nil {
 			return err
 		}
+
+		// Run analyzers on each resource's outputs
+		// TODO1: This should be limited to only External resources, since other
+		// resources already ran policies on inputs during step generation.
+		// TODO2: This likely should be done during step execution, so that it can happen immediately after
+		// reading state from teh cloud for the given resource.
+		for _, res := range resources {
+			diags, err := analyzer.Analyze(res.AnalyzerResource)
+			if err != nil {
+				return err
+			}
+			diagnostics = append(diagnostics, diags...)
+		}
+
 		for _, d := range diagnostics {
 			if d.EnforcementLevel == apitype.Remediate {
 				// Stack policies cannot be remediated, so treat the level as mandatory.

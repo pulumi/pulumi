@@ -474,10 +474,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 		newState.Lock.Unlock()
 
-		// If this is not a resource that is managed by Pulumi, then we can ignore it.
-		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
-			se.deployment.news.Store(newState.URN, newState)
-		}
+		se.deployment.news.Store(newState.URN, newState)
 
 		// If we're generating plans update the resource's outputs in the generated plan.
 		if se.deployment.opts.GeneratePlan {

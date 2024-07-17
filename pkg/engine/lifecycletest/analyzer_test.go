@@ -81,6 +81,70 @@ func TestSimpleAnalyzer(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSimpleAnalyzerRead(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					foo := "foo"
+					if id == "pkgA:m:typA_resA" {
+						foo = "bar"
+					}
+					return plugin.ReadResult{
+						ID:      id,
+						Inputs:  resource.NewPropertyMapFromMap(map[string]interface{}{"foo": foo}),
+						Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": foo}),
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				AnalyzeF: func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
+					if r.Type == "pkgA:m:typA" {
+						if r.Properties["foo"].StringValue() != "bar" {
+							return []plugin.AnalyzeDiagnostic{{
+								PolicyName:       "foo-is-bar",
+								PolicyPackName:   "analyzerA",
+								Description:      "a policy that checks if foo is bar",
+								Message:          "foo is not bar",
+								EnforcementLevel: apitype.Advisory,
+								URN:              r.URN,
+							}}, nil
+						}
+					}
+					return nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "pkgA:m:typA_resA", "", resource.PropertyMap{}, "", "", "")
+		assert.NoError(t, err)
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resB", "pkgA:m:typA_resB", "", resource.PropertyMap{}, "", "", "")
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+}
+
 func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 	t.Parallel()
 

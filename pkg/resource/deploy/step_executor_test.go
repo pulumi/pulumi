@@ -207,6 +207,7 @@ func TestStepExecutor(t *testing.T) {
 						},
 					},
 					goals: &gsync.Map[resource.URN, *resource.Goal]{},
+					news:  &gsync.Map[resource.URN, *resource.State]{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
