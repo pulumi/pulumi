@@ -17,6 +17,7 @@ import { warn } from "../log";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransform, ResourceTransformation } from "../resource";
+import { InvokeTransform } from "../invoke";
 import { getCallbacks, isDryRun, isQueryMode, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 
@@ -248,6 +249,20 @@ export function registerResourceTransform(t: ResourceTransform): void {
  */
 export function registerStackTransform(t: ResourceTransform) {
     registerResourceTransform(t);
+}
+
+/**
+ * Add a transformation to all future invoke calls in this Pulumi stack.
+ */
+export function registerStackInvokeTransform(t: InvokeTransform): void {
+    if (!getStore().supportsInvokeTransforms) {
+	throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
+    }
+    const callbacks = getCallbacks();
+    if (!callbacks) {
+        throw new Error("No callback server registered.");
+    }
+    callbacks.registerStackInvokeTransform(t);
 }
 
 export function getStackResource(): Stack | undefined {
