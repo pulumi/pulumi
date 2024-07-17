@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/ccojocar/zxcvbn-go"
 	"github.com/spf13/cobra"
@@ -71,6 +72,14 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("value looks like a secret; rerun with --secret to mark it as such, or --plaintext if you meant to leave it as plaintext")
 			}
 			if secret {
+				if yamlValue.Kind == yaml.ScalarNode && yamlValue.Tag != "!!str" {
+					err = yaml.Unmarshal([]byte(strconv.Quote(args[1])), &yamlValue)
+					if err != nil {
+						return fmt.Errorf("internal error decoding value; try surrounding the argument in both single and double quotes (e.g. '\"foo\"') (%w)", err)
+					}
+					yamlValue = *yamlValue.Content[0]
+				}
+
 				bytes, err := yaml.Marshal(map[string]yaml.Node{"fn::secret": yamlValue})
 				if err != nil {
 					return fmt.Errorf("internal error: marshaling secret: %w", err)
