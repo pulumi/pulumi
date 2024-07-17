@@ -461,9 +461,9 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		}
 
 		assert.Equal(t, map[string]string{
-			"example.com/plugin":          "v1.2.3",
-			"example.com/dep":             "v1.5.0",
-			"example.com/indirect-dep/v2": "v2.1.0",
+			"github.com/pulumi/go-dependency-testdata/plugin":          "v1.2.3",
+			"github.com/pulumi/go-dependency-testdata/dep":             "v1.6.0",
+			"github.com/pulumi/go-dependency-testdata/indirect-dep/v2": "v2.1.0",
 		}, gotDeps)
 	})
 }

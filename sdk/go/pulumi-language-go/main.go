@@ -638,7 +638,7 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 		return "", nil, err
 	}
 
-	f, err := modfile.ParseLax(modPath, body, nil)
+	f, err := modfile.Parse(modPath, body, nil)
 	if err != nil {
 		return "", nil, fmt.Errorf("parse: %w", err)
 	}
