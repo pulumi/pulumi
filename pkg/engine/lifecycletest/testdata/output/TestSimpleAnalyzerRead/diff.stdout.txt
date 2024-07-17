@@ -1,0 +1,18 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 14%}>> pkgA:m:typA: (read)
+<{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 14%}>    --outputs:--<{%reset%}>
+<{%fg 14%}>    foo: <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%fg 14%}>> pkgA:m:typA: (read)
+<{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%reset%}><{%fg 14%}>    --outputs:--<{%reset%}>
+<{%fg 14%}>    foo: <{%reset%}><{%fg 14%}>"foo"<{%reset%}><{%fg 14%}>
+<{%reset%}>    <{%fg 5%}>analyzerA@v <{%reset%}><{%fg 3%}>[advisory]  foo-is-bar<{%reset%}>  (pkgA:m:typA: resB)<{%reset%}>foo is not bar<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>       <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    analyzerA  
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
