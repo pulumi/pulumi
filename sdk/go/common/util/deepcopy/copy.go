@@ -14,12 +14,19 @@
 
 package deepcopy
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+)
 
 // Copy returns a deep copy of the provided value.
 //
 // If there are multiple references to the same value inside the provided value, the multiply-referenced value will be
 // copied multiple times.
+//
+// NOTE: Unexported members of structs will *not* be copied.
 func Copy(i interface{}) interface{} {
 	if i == nil {
 		return nil
@@ -31,6 +38,9 @@ func deepCopy(v reflect.Value) reflect.Value {
 	if !v.IsValid() {
 		return v
 	}
+
+	_, ok := v.Interface().(internal.OutputState)
+	contract.Assertf(!ok, "Outputs cannot be deep copied")
 
 	typ := v.Type()
 	switch typ.Kind() {
