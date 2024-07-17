@@ -494,7 +494,9 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	return files, g.diagnostics, nil
 }
 
-func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
+	localDependencies map[string]string,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return files, diagnostics, err
@@ -518,6 +520,8 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 	err = gomod.AddGoStmt("1.20")
 	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
+	packagePaths := map[string]string{}
+	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3/"
 	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
 	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
@@ -564,6 +568,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
+					packagePaths[p.Name] = info.ModulePath
 					err = gomod.AddRequire(info.ModulePath, p.Version.String())
 					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
@@ -595,8 +600,19 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
+			packagePaths[p.Name] = packageName
 			err = gomod.AddRequire(packageName, version)
 			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
+		}
+	}
+
+	// For any local dependencies, add a replace statement
+	for pkg, path := range localDependencies {
+		// pkg is the package name, we transformed these into Go paths above so use the map generated there
+		goPath, ok := packagePaths[pkg]
+		if ok {
+			err = gomod.AddReplace(goPath, "", path, "")
+			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
 		}
 	}
 
@@ -612,7 +628,7 @@ func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
 ) error {
-	files, diagnostics, err := GenerateProjectFiles(project, program)
+	files, diagnostics, err := GenerateProjectFiles(project, program, localDependencies)
 	if err != nil {
 		return err
 	}
