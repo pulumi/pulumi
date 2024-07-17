@@ -88,11 +88,16 @@ func CheckEnvironment(
 	ctx context.Context,
 	name string,
 	env *ast.EnvironmentDecl,
+	decrypter Decrypter,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
+	showSecrets bool,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, true, name, env, nil, providers, environments, execContext)
+	if !showSecrets {
+		decrypter = nil
+	}
+	return evalEnvironment(ctx, true, name, env, decrypter, providers, environments, execContext)
 }
 
 // evalEnvironment evaluates an environment and exports the result of evaluation.
@@ -182,6 +187,11 @@ func newEvalContext(
 		imports:      imports,
 		execContext:  execContext.CopyForEnv(name),
 	}
+}
+
+// decryptSecrets returns true if static secrets should be decrypted.
+func (e *evalContext) decryptSecrets() bool {
+	return !e.validating || e.decrypter != nil
 }
 
 // error records an evaluation error associated with an expression.
@@ -854,7 +864,7 @@ func (e *evalContext) evaluateBuiltinSecret(x *expr, repr *secretExpr) *value {
 		v.unknown = true
 		return v
 	}
-	if e.validating {
+	if !e.decryptSecrets() {
 		v.unknown = true
 		return v
 	}

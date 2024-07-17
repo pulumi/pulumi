@@ -181,6 +181,7 @@ func normalize[T any](t *testing.T, v T) T {
 
 func TestEval(t *testing.T) {
 	type testOverrides struct {
+		ShowSecrets     bool   `json:"showSecrets,omitempty"`
 		RootEnvironment string `json:"rootEnvironment,omitempty"`
 	}
 
@@ -218,26 +219,24 @@ func TestEval(t *testing.T) {
 			assert.NoError(t, err)
 
 			environmentName := e.Name()
-			overridesBytes, err := os.ReadFile(overridesPath)
-			require.True(t, err == nil || errors.Is(err, os.ErrNotExist))
-
-			if err == nil {
-				var overrides testOverrides
+			var overrides testOverrides
+			if overridesBytes, err := os.ReadFile(overridesPath); err == nil {
 				err = json.Unmarshal(overridesBytes, &overrides)
 				require.NoError(t, err)
-
-				if overrides.RootEnvironment != "" {
-					environmentName = overrides.RootEnvironment
-				}
 			}
+
+			if overrides.RootEnvironment != "" {
+				environmentName = overrides.RootEnvironment
+			}
+			showSecrets := overrides.ShowSecrets
 
 			if accept() {
 				env, loadDiags, err := LoadYAMLBytes(environmentName, envBytes)
 				require.NoError(t, err)
 				sortEnvironmentDiagnostics(loadDiags)
 
-				check, checkDiags := CheckEnvironment(context.Background(), environmentName, env, testProviders{},
-					&testEnvironments{basePath}, execContext)
+				check, checkDiags := CheckEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+					&testEnvironments{basePath}, execContext, showSecrets)
 				sortEnvironmentDiagnostics(checkDiags)
 
 				actual, evalDiags := EvalEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
@@ -289,8 +288,8 @@ func TestEval(t *testing.T) {
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.LoadDiags, diags)
 
-			check, diags := CheckEnvironment(context.Background(), environmentName, env, testProviders{},
-				&testEnvironments{basePath}, execContext)
+			check, diags := CheckEnvironment(context.Background(), environmentName, env, rot128{}, testProviders{},
+				&testEnvironments{basePath}, execContext, showSecrets)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 

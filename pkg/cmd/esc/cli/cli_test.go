@@ -392,8 +392,7 @@ func (c *testPulumiClient) checkEnvironment(ctx context.Context, orgName, envNam
 		return nil, nil, fmt.Errorf("initializing the ESC exec context: %w", err)
 	}
 
-	checked, checkDiags := eval.CheckEnvironment(ctx, envName, environment,
-		providers, envLoader, execContext)
+	checked, checkDiags := eval.CheckEnvironment(ctx, envName, environment, nil, providers, envLoader, execContext, false)
 	diags.Extend(checkDiags...)
 	return checked, mapDiags(diags), nil
 }
