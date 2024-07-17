@@ -23,6 +23,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func verifyInteractiveMode(yes bool) error {
+	interactive := cmdutil.Interactive()
+
+	if !interactive && !yes {
+		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+	}
+
+	return nil
+}
+
 func newDeploymentSettingsPullCmd() *cobra.Command {
 	var stack string
 
@@ -32,7 +42,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
 			}
@@ -64,6 +74,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 
 func newDeploymentSettingsUpdateCmd() *cobra.Command {
 	var stack string
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:        "up",
@@ -74,7 +85,12 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			d, err := initializeDeploymentSettingsCmd(cmd, stack)
+
+			if err := verifyInteractiveMode(yes); err != nil {
+				return err
+			}
+
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
 			}
@@ -84,7 +100,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 			}
 
 			confirm := askForConfirmation("This action will override the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, false, d.Yes)
+				"do you want to continue?", d.DisplayOptions.Color, false, yes)
 
 			if !confirm {
 				return nil
@@ -99,6 +115,10 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
+		"Automatically confirm every confirmation prompt")
+
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -108,6 +128,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 
 func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	var stack string
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:        "destroy",
@@ -118,13 +139,18 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			d, err := initializeDeploymentSettingsCmd(cmd, stack)
+
+			if err := verifyInteractiveMode(yes); err != nil {
+				return err
+			}
+
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
 			}
 
 			confirm := askForConfirmation("This action will clear the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, false, d.Yes)
+				"do you want to continue?", d.DisplayOptions.Color, false, yes)
 			if !confirm {
 				return nil
 			}
@@ -137,6 +163,10 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
+		"Automatically confirm every confirmation prompt")
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
@@ -157,7 +187,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			d, err := initializeDeploymentSettingsCmd(cmd, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
 			}

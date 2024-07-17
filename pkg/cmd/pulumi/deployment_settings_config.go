@@ -50,8 +50,6 @@ const (
 )
 
 func newDeploymentCmd() *cobra.Command {
-	var yes bool
-
 	cmd := &cobra.Command{
 		// This is temporarily hidden while we iterate over the new set of commands,
 		// we will remove before releasing these new set of features.
@@ -70,10 +68,6 @@ func newDeploymentCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&stackDeploymentConfigFile, "config-file", "",
 		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
-
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Automatically confirm every confirmation prompt")
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
 	cmd.AddCommand(newDeploymentRunCmd())
@@ -111,29 +105,16 @@ type deploymentSettingsCommandDependencies struct {
 	Stack          backend.Stack
 	Deployment     *workspace.ProjectStackDeployment
 	Backend        backend.Backend
-	Yes            bool
 	Interactive    bool
 	Ctx            context.Context
 	Prompts        prompts
 	WorkDir        string
 }
 
-func initializeDeploymentSettingsCmd(cmd *cobra.Command, stack string) (*deploymentSettingsCommandDependencies, error) {
-	yes := false
-	if cmd.Flag("yes") != nil {
-		yes = cmd.Flag("yes").Value.String() == "true"
-	}
-	return initializeDeploymentSettings(cmd.Context(), stack, yes)
-}
-
-func initializeDeploymentSettings(
-	ctx context.Context, stack string, yes bool,
+func initializeDeploymentSettingsCmd(
+	ctx context.Context, stack string,
 ) (*deploymentSettingsCommandDependencies, error) {
 	interactive := cmdutil.Interactive()
-
-	if !interactive && !yes {
-		return nil, errors.New("--yes must be passed in to proceed when running in non-interactive mode")
-	}
 
 	displayOpts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
@@ -191,7 +172,6 @@ func initializeDeploymentSettings(
 		Stack:          s,
 		Deployment:     sd,
 		Backend:        be,
-		Yes:            yes,
 		Interactive:    interactive,
 		Ctx:            ctx,
 		Prompts:        promptHandlers{},
@@ -212,7 +192,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
 			}
@@ -312,7 +292,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return errors.New("configure command is only supported in interactive mode")
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
 			}
@@ -321,8 +301,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
 			}
 
-			option := d.Prompts.PromptUserSkippable(
-				false,
+			option := d.Prompts.PromptUser(
 				"Configure",
 				[]string{
 					optGit,
@@ -404,7 +383,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		}
 	}
 
-	repoDir, err := d.Prompts.PromptForValue(d.Yes, "Repository directory",
+	repoDir, err := d.Prompts.PromptForValue(!d.Interactive, "Repository directory",
 		defaultRepoDir, false, ValidateRelativeDirectory(rl.GetRepoRoot()), *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -418,7 +397,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		branchName = rl.GetBranchName()
 	}
 
-	branchName, err = d.Prompts.PromptForValue(d.Yes, "Branch name",
+	branchName, err = d.Prompts.PromptForValue(!d.Interactive, "Branch name",
 		branchName, false, ValidateShortInputNonEmpty, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -430,7 +409,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 		return err
 	}
 
-	remoteURL, err = d.Prompts.PromptForValue(d.Yes, "Repository URL",
+	remoteURL, err = d.Prompts.PromptForValue(!d.Interactive, "Repository URL",
 		remoteURL, false, ValidateGitURL, *d.DisplayOptions)
 	if err != nil {
 		return err
@@ -449,7 +428,7 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 	if useGitHub {
 		useGitHub = d.Prompts.AskForConfirmation(
 			"A GitHub repository was detected, do you want to use the Pulumi GitHub App?",
-			d.DisplayOptions.Color, true, d.Yes)
+			d.DisplayOptions.Color, true, !d.Interactive)
 	}
 
 	if useGitHub {
@@ -523,8 +502,7 @@ func configureBareGitRepo(d *deploymentSettingsCommandDependencies,
 
 	sd.DeploymentSettings.SourceContext.Git.RepoURL = remoteURL
 
-	option := d.Prompts.PromptUserSkippable(
-		false,
+	option := d.Prompts.PromptUser(
 		"What kind of authentication does the repository use?",
 		[]string{
 			optUserPass,

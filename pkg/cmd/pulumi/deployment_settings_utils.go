@@ -47,6 +47,9 @@ func saveProjectStackDeployment(psd *workspace.ProjectStackDeployment, stack bac
 }
 
 type prompts interface {
+	PromptUser(msg string, options []string, defaultOption string,
+		colorization colors.Colorization,
+	) string
 	PromptUserSkippable(yes bool, msg string, options []string, defaultOption string,
 		colorization colors.Colorization,
 	) string
@@ -64,6 +67,12 @@ type promptHandlers struct{}
 
 func (promptHandlers) AskForConfirmation(prompt string, color colors.Colorization, defaultValue bool, yes bool) bool {
 	return askForConfirmation(prompt, color, defaultValue, yes)
+}
+
+func (promptHandlers) PromptUser(msg string, options []string, defaultOption string,
+	colorization colors.Colorization,
+) string {
+	return promptUser(msg, options, defaultOption, colorization)
 }
 
 func (promptHandlers) PromptUserSkippable(yes bool, msg string, options []string, defaultOption string,

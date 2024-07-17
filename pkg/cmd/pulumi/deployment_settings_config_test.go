@@ -75,6 +75,18 @@ func (p *promptHandlersMock) PromptUserSkippable(
 	return value.Return
 }
 
+func (p *promptHandlersMock) PromptUser(
+	msg string, options []string, defaultOption string, colorization colors.Colorization,
+) string {
+	if len(p.PromptUserResponses) == 0 {
+		panic(fmt.Sprintf("PromptUser prompt for %q not found", msg))
+	}
+	value := p.PromptUserResponses[0]
+	p.PromptUserResponses = p.PromptUserResponses[1:]
+	assert.Equal(p.T, value.ExpectedDefault, defaultOption)
+	return value.Return
+}
+
 func (p *promptHandlersMock) PromptUserMultiSkippable(
 	yes bool, msg string, options []string, defaultOptions []string, colorization colors.Colorization,
 ) []string {
