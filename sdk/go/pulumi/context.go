@@ -2268,7 +2268,7 @@ func (ctx *Context) RegisterInvokeTransform(t InvokeTransform) error {
 		return err
 	}
 
-	_, err = ctx.state.monitor.RegisterInvokeTransform(ctx.ctx, cb)
+	_, err = ctx.state.monitor.RegisterStackInvokeTransform(ctx.ctx, cb)
 	return err
 }
 
