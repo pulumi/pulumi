@@ -46,16 +46,16 @@ func TestGeneratePyProjectTOML(t *testing.T) {
 	s, err := p.generatePyProjectTOML(deps)
 	require.NoError(t, err)
 	require.Equal(t, `[build-system]
-  requires = ["poetry-core"]
-  build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool]
-  [tool.poetry]
-    package-mode = false
-    [tool.poetry.dependencies]
-      pulumi = ">=3.0.0,<4.0.0"
-      requests = ">1"
-      setuptools = "*"
-      spaces-before = "1.2.3"
+[tool.poetry]
+package-mode = false
+[tool.poetry.dependencies]
+pulumi = ">=3.0.0,<4.0.0"
+requests = ">1"
+setuptools = "*"
+spaces-before = "1.2.3"
 `, s)
 }
