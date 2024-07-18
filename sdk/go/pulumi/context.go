@@ -2261,8 +2261,8 @@ func (ctx *Context) RegisterStackTransform(t ResourceTransform) error {
 	return ctx.RegisterResourceTransform(t)
 }
 
-// RegisterStackInvokeTransform adds a transform to all future invokes in this Pulumi stack.
-func (ctx *Context) RegisterStackInvokeTransform(t InvokeTransform) error {
+// RegisterInvokeTransform adds a transform to all future invokes in this Pulumi stack.
+func (ctx *Context) RegisterInvokeTransform(t InvokeTransform) error {
 	cb, err := ctx.registerInvokeTransform(t)
 	if err != nil {
 		return err
