@@ -176,7 +176,7 @@ class InvokeTransformResult:
 
     args: "Inputs"
     """
-    The new args to use in place of the original `args`.
+    The new arguments to use in place of the original `args`.
     """
 
     opts: "InvokeOptions"
