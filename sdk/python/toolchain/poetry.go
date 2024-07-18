@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -29,17 +30,55 @@ type poetry struct {
 
 var _ Toolchain = &poetry{}
 
+var minPoetryVersion = semver.Version{Major: 1, Minor: 8, Patch: 0}
+
 func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
 	if err != nil {
 		return nil, errors.New("Could not find `poetry` executable.\n" +
 			"Install poetry and make sure is is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
 	}
+	versionOut, err := poetryVersionOutput(poetryPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateVersion(versionOut); err != nil {
+		return nil, err
+	}
 	logging.V(9).Infof("Python toolchain: using poetry at %s in %s", poetryPath, directory)
 	return &poetry{
 		poetryExecutable: poetryPath,
 		directory:        directory,
 	}, nil
+}
+
+func poetryVersionOutput(poetryPath string) (string, error) {
+	cmd := exec.Command(poetryPath, "--version", "--no-ansi") //nolint:gosec
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to run poetry --version: %w", err)
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func validateVersion(versionOut string) error {
+	re := regexp.MustCompile(`Poetry \(version (?P<version>\d+\.\d+(.\d+)?).*\)`)
+	matches := re.FindStringSubmatch(versionOut)
+	i := re.SubexpIndex("version")
+	if i < 0 || len(matches) < i {
+		return fmt.Errorf("unexpected output from poetry --version: %q", versionOut)
+	}
+	version := matches[i]
+	sem, err := semver.ParseTolerant(version)
+	if err != nil {
+		return fmt.Errorf("failed to parse poetry version %q: %w", version, err)
+	}
+	if sem.LT(minPoetryVersion) {
+		return fmt.Errorf("poetry version %s is less than the minimum required version %s", version, minPoetryVersion)
+	}
+	logging.V(9).Infof("Python toolchain: using poetry version %s", sem)
+	return nil
 }
 
 func (p *poetry) InstallDependencies(ctx context.Context,
