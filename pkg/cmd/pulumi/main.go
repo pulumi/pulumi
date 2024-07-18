@@ -21,7 +21,6 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // panicHandler displays an emergency error message to the user and a stack trace to
@@ -54,8 +53,6 @@ func main() {
 	defer panicHandler(finished)
 
 	if err := NewPulumiCmd().Execute(); err != nil {
-		_, err = fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
-		contract.IgnoreError(err)
 		os.Exit(1)
 	}
 	*finished = true
