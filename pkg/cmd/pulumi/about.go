@@ -344,7 +344,7 @@ func (b backendAbout) String() string {
 			tokenType = "unknown"
 		}
 		rows = append(rows, []string{"Token type", tokenType})
-		rows = append(rows, []string{"Token type", b.TokenInformation.Name})
+		rows = append(rows, []string{"Token name", b.TokenInformation.Name})
 	} else {
 		rows = append(rows, []string{"Token type", "personal"})
 	}
