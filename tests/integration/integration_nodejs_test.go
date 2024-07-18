@@ -2043,3 +2043,19 @@ func TestNodeJSReservedIdentifierShadowing(t *testing.T) {
 		},
 	})
 }
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodeOOM(t *testing.T) {
+	stderr := &bytes.Buffer{}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("nodejs", "oom"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Logf("stdout: %s", stderr.String())
+			assert.Contains(t, stderr.String(), "Detected a possible out of memory error")
+		},
+	})
+}

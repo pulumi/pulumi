@@ -28,6 +28,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -720,9 +721,25 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.Command(nodeBin, nodeargs...)
-	if err := copyOutput(cmd); err != nil {
-		return &pulumirpc.RunResponse{Error: fmt.Errorf("copy node output: %w", err).Error()}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: fmt.Errorf("failed to get stdout pipe: %w", err).Error()}
 	}
+	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
+	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See `copyOutput`.
+	go func() {
+		_, err := io.Copy(os.Stdout, stdout)
+		contract.IgnoreError(err)
+	}()
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: fmt.Errorf("failed to get stderr pipe: %w", err).Error()}
+	}
+	// Get a duplicate reader of stderr so that we can both scan it and write it to os.Stderr.
+	stderrDup := io.TeeReader(stderr, os.Stderr)
+	sniffer := &oomSniffer{}
+	sniffer.Scan(stderrDup)
+
 	cmd.Env = env
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -757,6 +774,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 				return &pulumirpc.RunResponse{Error: "", Bail: true}
 			default:
 				err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
+				if sniffer.Detected() {
+					err = fmt.Errorf("Program exited with non-zero exit code: %d. %s", code, sniffer.Message())
+				}
 			}
 		} else {
 			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
@@ -1504,4 +1524,35 @@ func copyOutput(cmd *exec.Cmd) error {
 		contract.IgnoreError(err)
 	}()
 	return nil
+}
+
+// oomSniffer is a scanner that detects OOM errors in the output of a nodejs process.
+type oomSniffer struct {
+	detected bool
+}
+
+func (o *oomSniffer) Detected() bool {
+	return o.detected
+}
+
+func (o *oomSniffer) Message() string {
+	return "Detected a possible out of memory error. Consider increasing the memory available to the nodejs process " +
+		"by setting the `nodeargs` runtime option to `nodeargs: --max-old-space-size=<size>` where `<size>` is the " +
+		"maximum memory in megabytes that can be allocated to nodejs."
+}
+
+func (o *oomSniffer) Scan(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
+				// Because we hook into the debugger API, the OOM error message can be obscured by
+				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
+				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_") {
+				o.detected = true
+			}
+		}
+		contract.IgnoreError(scanner.Err())
+	}()
 }
