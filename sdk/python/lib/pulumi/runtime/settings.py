@@ -333,6 +333,12 @@ def _sync_monitor_supports_transforms() -> bool:
     return SETTINGS.feature_support["transforms"]
 
 
+def _sync_monitor_supports_invoke_transforms() -> bool:
+    if "invokeTransforms" not in SETTINGS.feature_support:
+        return False
+    return SETTINGS.feature_support["invokeTransforms"]
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
@@ -385,4 +391,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("deletedWith"),
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
+        monitor_supports_feature("invokeTransforms"),
     )
