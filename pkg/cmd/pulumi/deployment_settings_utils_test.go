@@ -25,10 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // creates local workspace
 func TestRepoLookup(t *testing.T) {
-	//nolint:paralleltest // creates local workspace
+	t.Parallel()
 	t.Run("should handle directories that are not a git repo", func(t *testing.T) {
+		t.Parallel()
 		wd := "/"
 
 		rl, err := newRepoLookup(wd)
@@ -50,8 +50,8 @@ func TestRepoLookup(t *testing.T) {
 		assert.Equal(t, "", root)
 	})
 
-	//nolint:paralleltest // creates local workspace
 	t.Run("should handle directories that are a git repo", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 
 		repo := auto.GitRepo{
@@ -83,8 +83,8 @@ func TestRepoLookup(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // creates local workspace
 func TestValidateRelativeDirectory(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	repo := auto.GitRepo{

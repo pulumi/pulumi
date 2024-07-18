@@ -114,10 +114,10 @@ func (p *promptHandlersMock) PromptForValue(
 	return value.Return, nil
 }
 
-//nolint:paralleltest // creates local workspace
 func TestDSConfigureGit(t *testing.T) {
-	//nolint:paralleltest // creates local workspace
+	t.Parallel()
 	t.Run("using the GH app", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 
 		repo := auto.GitRepo{
@@ -180,8 +180,8 @@ func TestDSConfigureGit(t *testing.T) {
 		prompts.AssertComplete()
 	})
 
-	//nolint:paralleltest // creates local workspace
 	t.Run("using the GH app already configured", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 
 		repo := auto.GitRepo{
@@ -256,8 +256,8 @@ func TestDSConfigureGit(t *testing.T) {
 		prompts.AssertComplete()
 	})
 
-	//nolint:paralleltest // creates local workspace
 	t.Run("using credentials", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 
 		repo := auto.GitRepo{
@@ -320,8 +320,8 @@ func TestDSConfigureGit(t *testing.T) {
 		prompts.AssertComplete()
 	})
 
-	//nolint:paralleltest // creates local workspace
 	t.Run("using ssh", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 
 		repo := auto.GitRepo{
