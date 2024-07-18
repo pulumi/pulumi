@@ -39,7 +39,7 @@ func deepCopy(v reflect.Value) reflect.Value {
 		return v
 	}
 
-	if v.Type() == reflect.TypeFor[internal.OutputState]() {
+	if v.Type() == reflect.TypeOf(internal.OutputState{}) {
 		contract.Failf("Outputs cannot be deep copied")
 	}
 
