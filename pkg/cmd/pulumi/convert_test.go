@@ -35,7 +35,7 @@ func TestYamlConvert(t *testing.T) {
 
 	result := runConvert(
 		env.Global(), []string{}, "convert_testdata", []string{},
-		"yaml", "go", "convert_testdata/go", true, true)
+		"yaml", "go", "convert_testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -47,7 +47,7 @@ func TestPclConvert(t *testing.T) {
 
 	result := runConvert(
 		env.Global(), []string{}, "pcl_convert_testdata",
-		[]string{}, "pcl", "pcl", tmp, true, true)
+		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
 	// Check that we made one file
@@ -65,4 +65,61 @@ output result {
     value = key
 }`
 	assert.Equal(t, expectedPclCode, pclCode)
+}
+
+// Tests that project names default to the directory of the source project.
+func TestProjectNameDefaults(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	outDir := t.TempDir()
+
+	// Act.
+	err := runConvert(
+		env.Global(),
+		[]string{},             /*args*/
+		"pcl_convert_testdata", /*cwd*/
+		[]string{},             /*mappings*/
+		"pcl",                  /*from*/
+		"yaml",                 /*language*/
+		outDir,
+		true, /*generateOnly*/
+		true, /*strict*/
+		"",   /*name*/
+	)
+	assert.NoError(t, err)
+
+	// Assert.
+	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(yamlBytes), "name: pcl_convert_testdata")
+}
+
+// Tests that project names can be overridden by the user.
+func TestProjectNameOverrides(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	outDir := t.TempDir()
+	name := "test-project-name"
+
+	// Act.
+	err := runConvert(
+		env.Global(),
+		[]string{},             /*args*/
+		"pcl_convert_testdata", /*cwd*/
+		[]string{},             /*mappings*/
+		"pcl",                  /*from*/
+		"yaml",                 /*language*/
+		outDir,
+		true, /*generateOnly*/
+		true, /*strict*/
+		name,
+	)
+	assert.NoError(t, err)
+
+	// Assert.
+	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(yamlBytes), "name: "+name)
 }

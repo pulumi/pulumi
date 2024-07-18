@@ -98,6 +98,7 @@ func newConvertCmd() *cobra.Command {
 	var generateOnly bool
 	var mappings []string
 	var strict bool
+	var name string
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -119,13 +120,24 @@ func newConvertCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			return runConvert(env.Global(), args, cwd, mappings, from, language, outDir, generateOnly, strict)
+			return runConvert(
+				env.Global(),
+				args,
+				cwd,
+				mappings,
+				from,
+				language,
+				outDir,
+				generateOnly,
+				strict,
+				name,
+			)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
-		&language, "language", "", "Which language plugin to use to generate the pulumi project")
+		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
@@ -148,6 +160,9 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&strict, "strict", false, "If strict is set the conversion will fail on errors such as missing variables")
+
+	cmd.PersistentFlags().StringVar(
+		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
 
 	return cmd
 }
@@ -227,9 +242,26 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 func runConvert(
 	e env.Env,
 	args []string,
-	cwd string, mappings []string, from string, language string,
-	outDir string, generateOnly bool, strict bool,
+	cwd string,
+	mappings []string,
+	from string,
+	language string,
+	outDir string,
+	generateOnly bool,
+	strict bool,
+	name string,
 ) error {
+	// Validate the supplied name if one was specified. If one was not supplied,
+	// default to the directory of the source project.
+	if name != "" {
+		err := pkgWorkspace.ValidateProjectName(name)
+		if err != nil {
+			return fmt.Errorf("'%s' is not a valid project name: %w", name, err)
+		}
+	} else {
+		name = filepath.Base(cwd)
+	}
+
 	pCtx, err := newPluginContext(cwd)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
@@ -409,7 +441,7 @@ func runConvert(
 
 	// Load the project from the pcl directory if there is one. We default to a project with just
 	// the name of the original directory.
-	proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
+	proj := &workspace.Project{Name: tokens.PackageName(name)}
 	path, _ := workspace.DetectProjectPathFrom(pclDirectory)
 	if path != "" {
 		proj, err = workspace.LoadProject(path)
