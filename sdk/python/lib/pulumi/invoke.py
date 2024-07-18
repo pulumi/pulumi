@@ -138,7 +138,7 @@ class InvokeOptions:
 
 class InvokeTransformArgs:
     """
-    InvokeTransformArgs is the argument bag passed to a resource transform.
+    InvokeTransformArgs is the argument bag passed to an invoke transform.
     """
 
     token: str
