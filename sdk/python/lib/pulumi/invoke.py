@@ -153,7 +153,7 @@ class InvokeTransformArgs:
 
     opts: "InvokeOptions"
     """
-    The original invoke options passed to the Invoke call.
+    The original invoke options passed to the invocation.
     """
 
     def __init__(
