@@ -148,7 +148,7 @@ class InvokeTransformArgs:
 
     args: "Inputs"
     """
-    The original args passed to the Invoke call.
+    The original arguments passed to the invocation.
     """
 
     opts: "InvokeOptions"
