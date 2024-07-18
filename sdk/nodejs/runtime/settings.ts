@@ -25,34 +25,83 @@ import * as engproto from "../proto/engine_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
 
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-/** @internal */
+/**
+ * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
+ *
+ * @internal
+ */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
 /**
- * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
+ * excessiveDebugOutput enables, well, pretty excessive debug output pertaining
+ * to resources and properties.
  */
 export const excessiveDebugOutput: boolean = false;
 
 /**
- * Options is a bag of settings that controls the behavior of previews and deployments
+ * {@link Options} is a bag of settings that controls the behavior of previews
+ * and deployments.
  */
 export interface Options {
-    readonly project?: string; // the name of the current project.
-    readonly stack?: string; // the name of the current stack being deployed into.
-    readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
-    readonly engineAddr?: string; // a connection string to the engine's RPC, in case we need to reestablish.
-    readonly monitorAddr?: string; // a connection string to the monitor's RPC, in case we need to reestablish.
-    readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
-    readonly testModeEnabled?: boolean; // true if we're in testing mode (allows execution without the CLI).
-    readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
-    readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
-    readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
-    readonly organization?: string; // the name of the current organization.
+    /**
+     * The name of the current project.
+     */
+    readonly project?: string;
 
     /**
-     * Directory containing the send/receive files for making synchronous invokes to the engine.
+     * The name of the current stack being deployed into.
+     */
+    readonly stack?: string;
+
+    /**
+     * The degree of parallelism for resource operations (default is serial).
+     */
+    readonly parallel?: number;
+
+    /**
+     * A connection string to the engine's RPC, in case we need to reestablish.
+     */
+    readonly engineAddr?: string;
+
+    /**
+     * A connection string to the monitor's RPC, in case we need to reestablish.
+     */
+    readonly monitorAddr?: string;
+
+    /**
+     * Whether we are performing a preview (true) or a real deployment (false).
+     */
+    readonly dryRun?: boolean;
+
+    /**
+     * True if we're in testing mode (allows execution without the CLI).
+     */
+    readonly testModeEnabled?: boolean;
+
+    /**
+     * True if we're in query mode (does not allow resource registration).
+     */
+    readonly queryMode?: boolean;
+
+    /**
+     * True if we will resolve missing outputs to inputs during preview.
+     */
+    readonly legacyApply?: boolean;
+
+    /**
+     * True if we will cache serialized dynamic providers on the program side.
+     */
+    readonly cacheDynamicProviders?: boolean;
+
+    /**
+     * The name of the current organization.
+     */
+    readonly organization?: string;
+
+    /**
+     * A directory containing the send/receive files for making synchronous
+     * invokes to the engine.
      */
     readonly syncDir?: string;
 }
@@ -60,8 +109,10 @@ export interface Options {
 let monitor: resrpc.ResourceMonitorClient | undefined;
 let engine: engrpc.EngineClient | undefined;
 
-// reset options resets nodejs runtime global state (such as rpc clients),
-// and sets nodejs runtime option env vars to the specified values.
+/**
+ * Resets NodeJS runtime global state (such as RPC clients), and sets NodeJS
+ * runtime option environment variables to the specified values.
+ */
 export function resetOptions(
     project: string,
     stack: string,
@@ -100,6 +151,7 @@ export function resetOptions(
     store.supportsDeletedWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
+    store.supportsInvokeTransforms = false;
     store.callbacks = undefined;
 }
 
@@ -124,24 +176,28 @@ export function setMockOptions(
     monitor = mockMonitor;
 }
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _setIsDryRun(val: boolean) {
     const { settings } = getStore();
     settings.options.dryRun = val;
 }
 
 /**
- * Returns whether or not we are currently doing a preview.
+ * Returns true if we are currently doing a preview.
  *
- * When writing unit tests, you can set this flag via either `setMocks` or `_setIsDryRun`.
+ * When writing unit tests, you can set this flag via either `setMocks` or
+ * `_setIsDryRun`.
  */
 export function isDryRun(): boolean {
     return options().dryRun === true;
 }
 
 /**
- * monitorSupportsFeature returns a promise that when resolved tells you if the resource monitor we are connected
- * to is able to support a particular feature.
+ * Returns a promise that when resolved tells you if the resource monitor we are
+ * connected to is able to support a particular feature.
  *
  * @internal
  */
@@ -176,7 +232,8 @@ async function monitorSupportsFeature(monitorClient: resrpc.IResourceMonitorClie
 }
 
 /**
- * Queries the resource monitor for its capabilities and sets the appropriate flags in the store.
+ * Queries the resource monitor for its capabilities and sets the appropriate
+ * flags in the store.
  *
  * @internal
  **/
@@ -190,16 +247,23 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
         store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
+        store.supportsInvokeTransforms = await monitorSupportsFeature(monitorRef, "invokeTransforms");
     }
 }
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _setQueryMode(val: boolean) {
     const { settings } = getStore();
     settings.options.queryMode = val;
 }
 
-/** @internal Used only for testing purposes */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _reset(): void {
     resetOptions("", "", -1, "", "", false, "");
 }
@@ -212,14 +276,16 @@ export function isQueryMode(): boolean {
 }
 
 /**
- * Returns true if we will resolve missing outputs to inputs during preview (PULUMI_ENABLE_LEGACY_APPLY).
+ * Returns true if we will resolve missing outputs to inputs during preview
+ * (`PULUMI_ENABLE_LEGACY_APPLY`).
  */
 export function isLegacyApplyEnabled(): boolean {
     return options().legacyApply === true;
 }
 
 /**
- * Returns true (default) if we will cache serialized dynamic providers on the program side
+ * Returns true if we will cache serialized dynamic providers on the program
+ * side (the default is true).
  */
 export function cacheDynamicProviders(): boolean {
     return options().cacheDynamicProviders === true;
@@ -239,7 +305,10 @@ export function getOrganization(): string {
     throw new Error("Missing organization name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _setOrganization(val: string | undefined) {
     const { settings } = getStore();
     settings.options.organization = val;
@@ -254,7 +323,10 @@ export function getProject(): string {
     return project || "";
 }
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _setProject(val: string | undefined) {
     const { settings } = getStore();
     settings.options.project = val;
@@ -269,7 +341,10 @@ export function getStack(): string {
     return stack || "";
 }
 
-/** @internal Used only for testing purposes. */
+/**
+ * @internal
+ *  Used only for testing purposes.
+ */
 export function _setStack(val: string | undefined) {
     const { settings } = getStore();
     settings.options.stack = val;
@@ -277,14 +352,15 @@ export function _setStack(val: string | undefined) {
 }
 
 /**
- * hasMonitor returns true if we are currently connected to a resource monitoring service.
+ * Returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
     return !!monitor && !!options().monitorAddr;
 }
 
 /**
- * getMonitor returns the current resource monitoring service client for RPC communications.
+ * Returns the current resource monitoring service client for RPC
+ * communications.
  */
 export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
     const { settings } = getStore();
@@ -327,7 +403,7 @@ export async function awaitStackRegistrations(): Promise<void> {
 }
 
 /**
- * getCallbacks returns the current callbacks for RPC communications.
+ * Returns the current callbacks for RPC communications.
  */
 export function getCallbacks(): ICallbackServer | undefined {
     const store = getStore();
@@ -346,7 +422,9 @@ export function getCallbacks(): ICallbackServer | undefined {
     return callbackServer;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export interface SyncInvokes {
     requests: number;
     responses: number;
@@ -354,7 +432,9 @@ export interface SyncInvokes {
 
 let syncInvokes: SyncInvokes | undefined;
 
-/** @internal */
+/**
+ * @internal
+ */
 export function tryGetSyncInvokes(): SyncInvokes | undefined {
     const syncDir = options().syncDir;
     if (syncInvokes === undefined && syncDir) {
@@ -367,14 +447,15 @@ export function tryGetSyncInvokes(): SyncInvokes | undefined {
 }
 
 /**
- * hasEngine returns true if we are currently connected to an engine.
+ * Returns true if we are currently connected to an engine.
  */
 export function hasEngine(): boolean {
     return !!engine && !!options().engineAddr;
 }
 
 /**
- * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
+ * Returns the current engine, if any, for RPC communications back to the
+ * resource engine.
  */
 export function getEngine(): engrpc.IEngineClient | undefined {
     const { settings } = getStore();
@@ -404,22 +485,25 @@ export function terminateRpcs() {
 }
 
 /**
- * serialize returns true if resource operations should be serialized.
+ * Returns true if resource operations should be serialized.
  */
 export function serialize(): boolean {
     return options().parallel === 1;
 }
 
 /**
- * options returns the options from the environment, which is the source of truth. Options are global per process.
- * For CLI driven programs, pulumi-language-nodejs sets environment variables prior to the user program loading,
- * meaning that options could be loaded up front and cached.
- * Automation API and multi-language components introduced more complex lifecycles for runtime options().
- * These language hosts manage the lifecycle of options manually throughout the lifetime of the nodejs process.
- * In addition, node module resolution can lead to duplicate copies of @pulumi/pulumi and thus duplicate options
- *  objects that may not be synced if options are cached upfront. Mutating options must write to the environment
+ * Returns the options from the environment, which is the source of truth.
+ * Options are global per process.
+ *
+ * For CLI driven programs, `pulumi-language-nodejs` sets environment variables
+ * prior to the user program loading, meaning that options could be loaded up
+ * front and cached. Automation API and multi-language components introduced
+ * more complex lifecycles for runtime `options()`. These language hosts manage
+ * the lifecycle of options manually throughout the lifetime of the NodeJS
+ * process. In addition, NodeJS module resolution can lead to duplicate copies
+ * of `@pulumi/pulumi` and thus duplicate options objects that may not be synced
+ * if options are cached upfront. Mutating options must write to the environment
  * and reading options must always read directly from the environment.
-
  */
 function options(): Options {
     const { settings } = getStore();
@@ -428,14 +512,17 @@ function options(): Options {
 }
 
 /**
- * disconnect permanently disconnects from the server, closing the connections.  It waits for the existing RPC
- * queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
+ * Permanently disconnects from the server, closing the connections. It waits
+ * for the existing RPC queue to drain.  If any RPCs come in afterwards,
+ * however, they will crash the process.
  */
 export function disconnect(): Promise<void> {
     return waitForRPCs(/*disconnectFromServers*/ true);
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export function waitForRPCs(disconnectFromServers = false): Promise<void> {
     const localStore = getStore();
     let done: Promise<any> | undefined;
@@ -454,7 +541,7 @@ export function waitForRPCs(disconnectFromServers = false): Promise<void> {
 }
 
 /**
- * getMaximumListeners returns the configured number of process listeners available
+ * Returns the configured number of process listeners available.
  */
 export function getMaximumListeners(): number {
     const { settings } = getStore();
@@ -462,8 +549,9 @@ export function getMaximumListeners(): number {
 }
 
 /**
- * disconnectSync permanently disconnects from the server, closing the connections. Unlike `disconnect`. it does not
- * wait for the existing RPC queue to drain. Any RPCs that come in after this call will crash the process.
+ * Permanently disconnects from the server, closing the connections. Unlike
+ * `disconnect`. it does not wait for the existing RPC queue to drain. Any RPCs
+ * that come in after this call will crash the process.
  */
 export function disconnectSync(): void {
     // Otherwise, actually perform the close activities (ignoring errors and crashes).
@@ -492,8 +580,9 @@ export function disconnectSync(): void {
 }
 
 /**
- * rpcKeepAlive registers a pending call to ensure that we don't prematurely disconnect from the server.  It returns
- * a function that, when invoked, signals that the RPC has completed.
+ * Registers a pending call to ensure that we don't prematurely disconnect from
+ * the server.  It returns a function that, when invoked, signals that the RPC
+ * has completed.
  */
 export function rpcKeepAlive(): () => void {
     const localStore = getStore();
@@ -510,7 +599,8 @@ export function rpcKeepAlive(): () => void {
 }
 
 /**
- * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
+ * Registers a resource that will become the default parent for all resources
+ * without explicit parents.
  */
 export async function setRootResource(res: ComponentResource): Promise<void> {
     // This is the first async point of program startup where we can query the resource monitor for its capabilities.

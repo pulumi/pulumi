@@ -336,7 +336,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default version hit on version %s", req, version)
 			req = providers.NewProviderRequest(
-				version, req.Package(), req.PluginDownloadURL(), req.PluginChecksums(), req.Parameterization())
+				req.Package(), version, req.PluginDownloadURL(), req.PluginChecksums(), req.Parameterization())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default provider miss, sending nil version to engine", req)
@@ -351,7 +351,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginDownloadURL hit on %s",
 				req, pluginDownloadURL)
 			req = providers.NewProviderRequest(
-				req.Version(), req.Package(), pluginDownloadURL, req.PluginChecksums(), req.Parameterization())
+				req.Package(), req.Version(), pluginDownloadURL, req.PluginChecksums(), req.Parameterization())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default pluginDownloadURL miss, sending empty string to engine", req)
@@ -366,7 +366,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginChecksums hit on %v",
 				req, pluginChecksums)
 			req = providers.NewProviderRequest(
-				req.Version(), req.Package(), req.PluginDownloadURL(), pluginChecksums, req.Parameterization())
+				req.Package(), req.Version(), req.PluginDownloadURL(), pluginChecksums, req.Parameterization())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default pluginChecksums miss, sending empty map to engine", req)
@@ -414,7 +414,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		providers.SetProviderChecksums(inputs, req.PluginChecksums())
 	}
 	if req.Parameterization() != nil {
-		providers.SetProviderParameter(inputs, req.Parameterization())
+		providers.SetProviderName(inputs, req.Name())
+		providers.SetProviderParameterization(inputs, req.Parameterization())
 	}
 
 	// Create the result channel and the event.
@@ -422,7 +423,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
+			req.DefaultName(), true, inputs, "", false, nil, "", nil, nil, nil,
 			nil, nil, nil, "", nil, nil, false, "", ""),
 		done: done,
 	}
@@ -827,11 +828,11 @@ func (rm *resmon) getProviderFromSource(
 func parseProviderRequest(
 	pkg tokens.Package, version,
 	pluginDownloadURL string, pluginChecksums map[string][]byte,
-	parameterization *providers.ProviderParameter,
+	parameterization *providers.ProviderParameterization,
 ) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL, pluginChecksums, parameterization), nil
+		return providers.NewProviderRequest(pkg, nil, pluginDownloadURL, pluginChecksums, parameterization), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -842,7 +843,7 @@ func parseProviderRequest(
 
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
-	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums, parameterization), nil
+	return providers.NewProviderRequest(pkg, &parsedVersion, url, pluginChecksums, parameterization), nil
 }
 
 func (rm *resmon) RegisterPackage(ctx context.Context,
@@ -865,7 +866,7 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		version = &v
 	}
 	// Parse the parameterization
-	var parameterization *providers.ProviderParameter
+	var parameterization *providers.ProviderParameterization
 	if req.Parameterization != nil {
 		var parameterizationVersion *semver.Version
 		if req.Parameterization.Version != "" {
@@ -879,17 +880,15 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		// RegisterPackageRequest keeps all the plugin information in the root fields "name", "version" etc, while the
 		// information about the parameterized package is in the "parameterization" field. Internally in the engine, and
 		// for resource state we need to flip that around a bit.
-		parameterization = providers.NewProviderParameter(
-			name,
-			version,
+		parameterization = providers.NewProviderParameterization(
+			tokens.Package(req.Parameterization.Name),
+			parameterizationVersion,
 			req.Parameterization.Value,
 		)
-		version = parameterizationVersion
-		name = tokens.Package(req.Parameterization.Name)
 	}
 
 	pi := providers.NewProviderRequest(
-		version, name, req.DownloadUrl, req.Checksums,
+		tokens.Package(req.Name), version, req.DownloadUrl, req.Checksums,
 		parameterization)
 
 	rm.packageRefLock.Lock()

@@ -113,7 +113,7 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
-		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: plugin.ParameterizeArgs{Args: args}})
+		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: &plugin.ParameterizeArgs{Args: args}})
 		if err != nil {
 			return nil, fmt.Errorf("parameterize: %w", err)
 		}
@@ -184,35 +184,32 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			}
 
 			// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-			if env.DisableAutomaticPluginAcquisition.Value() {
+			var missingError *workspace.MissingError
+			if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
 				return nil, err
 			}
 
-			var missingError *workspace.MissingError
-			if errors.As(err, &missingError) {
-				spec := workspace.PluginSpec{
-					Kind:    apitype.ResourcePlugin,
-					Name:    pkg,
-					Version: version,
-				}
-
-				log := func(sev diag.Severity, msg string) {
-					host.Log(sev, "", msg, 0)
-				}
-
-				_, err = pkgWorkspace.InstallPlugin(spec, log)
-				if err != nil {
-					return nil, err
-				}
-
-				p, err := host.Provider(tokens.Package(pkg), version)
-				if err != nil {
-					return nil, err
-				}
-
-				return p, nil
+			spec := workspace.PluginSpec{
+				Kind:    apitype.ResourcePlugin,
+				Name:    pkg,
+				Version: version,
 			}
-			return nil, err
+
+			log := func(sev diag.Severity, msg string) {
+				host.Log(sev, "", msg, 0)
+			}
+
+			_, err = pkgWorkspace.InstallPlugin(spec, log)
+			if err != nil {
+				return nil, err
+			}
+
+			p, err := host.Provider(tokens.Package(pkg), version)
+			if err != nil {
+				return nil, err
+			}
+
+			return p, nil
 		}
 		return provider, nil
 	}

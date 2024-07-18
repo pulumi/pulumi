@@ -493,8 +493,9 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
-     * Deletes all resources in a stack, leaving all history and configuration
-     * intact.
+     * Deletes all resources in a stack. By default, this method will leave all
+     * history and configuration intact. If `opts.remove` is set, the entire
+     * stack and its configuration will also be deleted.
      *
      * @param opts
      *  Options to customize the behavior of the destroy.
@@ -557,6 +558,15 @@ Event: ${line}\n${e.toString()}`);
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
         const summary = await this.info(!this.isRemote && opts?.showSecrets);
+
+        // If `opts.remove` was set, remove the stack now. We take this approach
+        // rather than passing `--remove` to `pulumi destroy` because the latter
+        // would make it impossible for us to retrieve a summary of the
+        // operation above for returning to the caller.
+        if (opts?.remove) {
+            await this.workspace.removeStack(this.name);
+        }
+
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
@@ -1196,6 +1206,9 @@ export interface UpOptions extends GlobalOpts {
      */
     onEvent?: (event: EngineEvent) => void;
 
+    /**
+     * An inline (in-process) Pulumi program to execute the operation against.
+     */
     program?: PulumiFn;
 
     /**
@@ -1392,6 +1405,11 @@ export interface DestroyOptions extends GlobalOpts {
      * Continue the operation to completion even if errors occur.
      */
     continueOnError?: boolean;
+
+    /**
+     * Remove the stack and its configuration after all resources in the stack have been deleted.
+     */
+    remove?: boolean;
 }
 
 const execKind = {

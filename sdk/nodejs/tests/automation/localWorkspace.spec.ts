@@ -667,6 +667,29 @@ describe("LocalWorkspace", () => {
         // we expect this error
         assert.rejects(stack.workspace.selectStack(stackName));
     });
+    it("runs through the stack lifecycle with an inline program, testing destroy with --remove", async () => {
+        // Arrange.
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        await stack.up({ userAgent });
+
+        // Act.
+        await stack.destroy({ userAgent, remove: true });
+
+        // Assert.
+        await assert.rejects(stack.workspace.selectStack(stackName));
+    });
     it(`refreshes before preview`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.

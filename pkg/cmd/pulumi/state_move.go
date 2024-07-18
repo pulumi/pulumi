@@ -21,8 +21,10 @@ import (
 	"io"
 	"os"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -51,14 +53,12 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move",
+		Use:   "move [flags] <urn>...",
 		Short: "Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
 splitting a stack into multiple stacks or when merging multiple stacks into one.
-
-EXPERIMENTAL: this feature is currently in development.
 `,
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -127,16 +127,35 @@ func (cmd *stateMoveCmd) Run(
 		return fmt.Errorf("failed to verify integrity of source snapshot: %w", err)
 	}
 
+	if sourceSnapshot == nil {
+		return errors.New("source stack has no resources")
+	}
+	if destSnapshot == nil {
+		destSnapshot = &deploy.Snapshot{}
+	}
+
 	resourcesToMove := make(map[string]*resource.State)
 	providersToCopy := make(map[string]bool)
 	remainingResources := make(map[string]*resource.State)
+	unmatchedArgs := mapset.NewSet(args...)
 	for _, res := range sourceSnapshot.Resources {
-		if resourceMatches(res, args) {
+		matchedArg := resourceMatches(res, args)
+		if matchedArg != "" {
 			resourcesToMove[string(res.URN)] = res
 			providersToCopy[res.Provider] = true
+			unmatchedArgs.Remove(matchedArg)
 		} else {
 			remainingResources[string(res.URN)] = res
 		}
+	}
+
+	for _, arg := range unmatchedArgs.ToSlice() {
+		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(colors.SpecWarning+"warning:"+
+			colors.Reset+" Resource %s not found in source stack\n"), arg)
+	}
+
+	if len(resourcesToMove) == 0 {
+		return errors.New("no resources found to move")
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)
@@ -229,6 +248,16 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
+	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
+		source.Ref().Name(), dest.Ref().Name())
+
+	for _, res := range resourcesToMoveOrdered {
+		fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
+	}
+
+	fmt.Fprintf(cmd.Stdout, "\n")
+
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		if _, ok := resourcesToMove[string(res.Parent)]; !ok {
@@ -251,18 +280,6 @@ func (cmd *stateMoveCmd) Run(
 
 		destSnapshot.Resources = append(destSnapshot.Resources, res)
 	}
-
-	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
-		source.Ref().Name(), dest.Ref().Name())
-
-	for _, res := range sourceSnapshot.Resources {
-		if _, ok := resourcesToMove[string(res.URN)]; ok {
-			fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
-		}
-	}
-
-	fmt.Fprintf(cmd.Stdout, "\n")
 
 	if len(brokenSourceDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
@@ -346,13 +363,13 @@ source stack.  Please remove the resources from the source stack manually using 
 	return nil
 }
 
-func resourceMatches(res *resource.State, args []string) bool {
+func resourceMatches(res *resource.State, args []string) string {
 	for _, arg := range args {
 		if string(res.URN) == arg {
-			return true
+			return arg
 		}
 	}
-	return false
+	return ""
 }
 
 type dependencyType int

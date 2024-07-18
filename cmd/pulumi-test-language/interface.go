@@ -880,6 +880,12 @@ func (eng *languageTestServer) RunLanguageTest(
 				if expected == actual {
 					return true
 				}
+				// Actual might be the empty string, some languages can't always return versions especially for local
+				// dependencies. In this case we treat it as matching as this is just supposed to be a best effort check.
+				if actual == "" {
+					return true
+				}
+
 				// Expected _will_ be a semver (because we got it from the provider version), but actual could be
 				// _anything_. We assume it will at least have the major.minor.patch part from the expected semver.
 				expectedSV := semver.MustParse(expected)

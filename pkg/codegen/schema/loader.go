@@ -237,33 +237,29 @@ func (l *pluginLoader) loadSchemaBytes(
 	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-		if env.DisableAutomaticPluginAcquisition.Value() {
+		var missingError *workspace.MissingError
+		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
 			return nil, nil, err
 		}
 
-		var missingError *workspace.MissingError
-		if errors.As(err, &missingError) {
-			spec := workspace.PluginSpec{
-				Kind:    apitype.ResourcePlugin,
-				Name:    pkg,
-				Version: version,
-			}
+		spec := workspace.PluginSpec{
+			Kind:    apitype.ResourcePlugin,
+			Name:    pkg,
+			Version: version,
+		}
 
-			log := func(sev diag.Severity, msg string) {
-				l.host.Log(sev, "", msg, 0)
-			}
+		log := func(sev diag.Severity, msg string) {
+			l.host.Log(sev, "", msg, 0)
+		}
 
-			_, err = pkgWorkspace.InstallPlugin(spec, log)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
-			if err != nil {
-				return nil, version, err
-			}
-		} else {
+		_, err = pkgWorkspace.InstallPlugin(spec, log)
+		if err != nil {
 			return nil, nil, err
+		}
+
+		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
+		if err != nil {
+			return nil, version, err
 		}
 	}
 	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", pkg)

@@ -50,6 +50,10 @@ type generator struct {
 	configCreated bool
 	quotes        map[model.Expression]string
 	isComponent   bool
+
+	// insideTypedDict is used to track if the generator is currently inside a TypedDict so that
+	// nested TypedDicts can be handled correctly.
+	insideTypedDict bool
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -650,6 +654,32 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	return tokenToQualifiedName(pkg, module, member), diagnostics
 }
 
+func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool {
+	schemaType, ok := pcl.GetSchemaForType(typ)
+	if !ok {
+		return false
+	}
+
+	schemaType = codegen.UnwrapType(schemaType)
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+
+	pkg, err := objType.PackageReference.Definition()
+	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
+	if lang, ok := pkg.Language["python"]; ok {
+		if pkgInfo, ok := lang.(PackageInfo); ok {
+			if typedDictEnabled(pkgInfo.InputTypes) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // argumentTypeName computes the Python argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
 	schemaType, ok := pcl.GetSchemaForType(destType)
@@ -680,11 +710,6 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		if pkgInfo, ok := lang.(PackageInfo); ok {
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 				modName = m
-			}
-			if typedDictEnabled(pkgInfo.InputTypes) {
-				// Package supports TypedDicts, return an empty string so we
-				// use a dict instead of the Args class in genObjectConsExpression.
-				return ""
 			}
 		}
 	}

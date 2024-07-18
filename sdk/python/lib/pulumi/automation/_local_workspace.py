@@ -164,11 +164,7 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
-        writable_settings = {
-            key: settings.__dict__[key]
-            for key in settings.__dict__
-            if settings.__dict__[key] is not None
-        }
+        writable_settings = settings.to_dict()
         with open(path, "w", encoding="utf-8") as file:
             if found_ext == ".json":
                 json.dump(writable_settings, file, indent=4)
@@ -854,7 +850,7 @@ def _load_project_settings(work_dir: str) -> ProjectSettings:
             continue
         with open(project_path, "r", encoding="utf-8") as file:
             settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
-            return ProjectSettings(**settings)
+            return ProjectSettings.from_dict(settings)
     raise FileNotFoundError(
         f"failed to find project settings file in workdir: {work_dir}"
     )

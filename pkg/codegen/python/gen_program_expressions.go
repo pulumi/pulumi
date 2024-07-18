@@ -557,8 +557,10 @@ func objectKey(item model.ObjectConsItem) string {
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
-	if typeName != "" {
-		// If a typeName exists, treat this as an Input Class e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
+	td := g.typedDictEnabled(expr, destType) || g.insideTypedDict
+	if typeName != "" && !td {
+		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class
+		// e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
 		if len(expr.Items) == 0 {
 			g.Fgenf(w, "%s()", typeName)
 		} else {
@@ -574,14 +576,25 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			g.Fgenf(w, "%s)", g.Indent)
 		}
 	} else {
-		// Otherwise treat this as an untyped dictionary e.g. {"key": "value", "foo": "bar", ...}
+		// Otherwise treat this as a typed or untyped dictionary e.g. {"key": "value", "foo": "bar", ...}
 		if len(expr.Items) == 0 {
 			g.Fgen(w, "{}")
 		} else {
 			g.Fgen(w, "{")
 			g.Indented(func() {
 				for _, item := range expr.Items {
-					g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
+					if td {
+						// If we're inside a typedDict, use the PyName of the key and keep track of
+						// the fact that we're inside a typedDict for the recursive calls when
+						// printing the value.
+						g.insideTypedDict = true
+						propertyKey := objectKey(item)
+						key := PyName(propertyKey)
+						g.Fgenf(w, "\n%s%q: %.v,", g.Indent, key, item.Value)
+						g.insideTypedDict = false
+					} else {
+						g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
+					}
 				}
 			})
 			g.Fgenf(w, "\n%s}", g.Indent)

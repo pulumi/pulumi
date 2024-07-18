@@ -182,7 +182,11 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 		},
 	}
 
-	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
+	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
+
+	assert.Contains(t, stdout.String(), "Planning to move the following resources from sourceStack to destStack:\n"+
+		"  urn:pulumi:sourceStack::test::d:e:f$a:b:c::name\n"+
+		"  urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2\n")
 
 	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
 
@@ -453,4 +457,176 @@ func TestParentsAreBeingMoved(t *testing.T) {
 		destSnapshot.Resources[3].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
 		destSnapshot.Resources[3].Parent)
+}
+
+func TestEmptySourceStack(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+	sourceRef, err := b.ParseStackReference(sourceStackName)
+	require.NoError(t, err)
+
+	sourceStack, err := b.CreateStack(ctx, sourceRef, "", nil)
+	require.NoError(t, err)
+
+	destStackName := "organization/test/destStack"
+	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
+	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	require.NoError(t, err)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-there"}, mp)
+	assert.ErrorContains(t, err, "source stack has no resources")
+}
+
+func TestEmptyDestStack(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+	}
+
+	sourceStackName := "organization/test/sourceStack"
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/test/destStack"
+	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
+	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	require.NoError(t, err)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	assert.NoError(t, err)
+
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	destStack, err = b.GetStack(ctx, destRef)
+	require.NoError(t, err)
+
+	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+
+	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
+}
+
+func TestMoveUnknownResource(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destResources := []*resource.State{}
+	destStackName := "organization/test/destStack"
+	destStack := createStackWithResources(t, b, destStackName, destResources)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-a-urn"}, mp)
+	assert.ErrorContains(t, err, "no resources found to move")
+
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	assert.Contains(t, stdout.String(), "warning: Resource not-a-urn not found in source stack")
+	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
 }

@@ -13,6 +13,10 @@ export class Random extends pulumi.CustomResource {
     constructor(name: string, args: RandomArgs, opts?: pulumi.CustomResourceOptions) {
         super("testprovider:index:Random", name, args, opts);
     }
+
+    randomInvoke(args) {
+	return pulumi.runtime.invoke("testprovider:index:returnArgs", args);
+    }
 }
 
 

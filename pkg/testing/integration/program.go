@@ -1249,6 +1249,10 @@ func (pt *ProgramTester) TestCleanUp() {
 			contract.IgnoreError(os.RemoveAll(filepath.Join(pt.projdir, commandOutputFolderName)))
 		}
 	}
+
+	// Clean up the temporary PULUMI_HOME directory we created. This is necessary to reclaim the disk space
+	// of the plugins that were downloaded during the test.
+	contract.IgnoreError(os.RemoveAll(pt.pulumiHome))
 }
 
 // TestLifeCycleInitAndDestroy executes the test and cleans up

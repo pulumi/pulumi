@@ -17,6 +17,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
+	"golang.org/x/mod/modfile"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -493,7 +494,9 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	return files, g.diagnostics, nil
 }
 
-func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
+	localDependencies map[string]string,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return files, diagnostics, err
@@ -511,14 +514,16 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 	files["Pulumi.yaml"] = projectBytes
 
 	// Build a go.mod based on the packages used by program
-	var gomod bytes.Buffer
-	gomod.WriteString("module " + project.Name.String() + "\n")
-	gomod.WriteString(`
-go 1.20
+	var gomod modfile.File
+	err = gomod.AddModuleStmt(project.Name.String())
+	contract.AssertNoErrorf(err, "could not add module statement to go.mod")
+	err = gomod.AddGoStmt("1.20")
+	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
-require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
-`)
+	packagePaths := map[string]string{}
+	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3/"
+	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
+	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
@@ -563,7 +568,9 @@ require (
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
-					fmt.Fprintf(&gomod, " %s v%s\n", info.ModulePath, p.Version.String())
+					packagePaths[p.Name] = info.ModulePath
+					err = gomod.AddRequire(info.ModulePath, p.Version.String())
+					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
 			continue
@@ -593,13 +600,26 @@ require (
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
-			fmt.Fprintf(&gomod, "	%s %s\n", packageName, version)
+			packagePaths[p.Name] = packageName
+			err = gomod.AddRequire(packageName, version)
+			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}
 	}
 
-	gomod.WriteString(")")
+	// For any local dependencies, add a replace statement
+	for pkg, path := range localDependencies {
+		// pkg is the package name, we transformed these into Go paths above so use the map generated there
+		goPath, ok := packagePaths[pkg]
+		if ok {
+			err = gomod.AddReplace(goPath, "", path, "")
+			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
+		}
+	}
 
-	files["go.mod"] = gomod.Bytes()
+	files["go.mod"], err = gomod.Format()
+	if err != nil {
+		return nil, diagnostics, err
+	}
 
 	return files, diagnostics, nil
 }
@@ -608,7 +628,7 @@ func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
 ) error {
-	files, diagnostics, err := GenerateProjectFiles(project, program)
+	files, diagnostics, err := GenerateProjectFiles(project, program, localDependencies)
 	if err != nil {
 		return err
 	}

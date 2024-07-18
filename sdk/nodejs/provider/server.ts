@@ -490,7 +490,8 @@ async function configureRuntime(req: any, engineAddr: string | undefined) {
 }
 
 /**
- * deserializeInputs deserializes the inputs struct and applies appropriate dependencies.
+ * Deserializes the inputs struct and applies appropriate dependencies.
+ *
  * @internal
  */
 export async function deserializeInputs(inputsStruct: gstruct.Struct, inputDependencies: any): Promise<Inputs> {
@@ -536,7 +537,9 @@ async function isResourceReference(input: any, deps: string[]): Promise<boolean>
 }
 
 /**
- * Returns true if the deserialized input contains Outputs (deeply), excluding properties of Resources.
+ * Returns true if the deserialized input contains outputs (deeply), excluding
+ * properties of resources.
+ *
  * @internal
  */
 export function containsOutputs(input: any): boolean {
@@ -565,11 +568,14 @@ export function containsOutputs(input: any): boolean {
     return false;
 }
 
-// grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
-// resource. This is typically either a creation error, in which the API server has (virtually)
-// rejected the resource, or an initialization error, where the API server has accepted the
-// resource, but it failed to initialize (e.g., the app code is continually crashing and the
-// resource has failed to become alive).
+/**
+ * Creates a gRPC response representing an error from a dynamic provider's
+ * resource. This is typically either a creation error, in which the API server
+ * has (virtually) rejected the resource, or an initialization error, where the
+ * API server has accepted the resource, but it failed to initialize (e.g., the
+ * app code is continually crashing and the resource has failed to become
+ * alive).
+ */
 function grpcResponseFromError(e: { id: string; properties: any; message: string; reasons?: string[] }) {
     // Create response object.
     const resp = new statusproto.Status();

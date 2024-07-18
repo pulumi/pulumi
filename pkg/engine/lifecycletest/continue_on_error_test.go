@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -781,4 +782,107 @@ func TestContinueOnErrorImport(t *testing.T) {
 	require.ErrorContains(t, err, "inputs to import do not match the existing resource")
 	require.NotNil(t, snap)
 	assert.Equal(t, 1, len(snap.Resources)) // 1 provider
+}
+
+func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "", nil, resource.StatusOK, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgB:m:typB", "parent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, parent.Result)
+
+		child, err := monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Parent:                  parent.URN,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SKIP, child.Result)
+
+		deletedWith, err := monitor.RegisterResource("pkgB:m:typB", "deletedWith", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, deletedWith.Result)
+
+		deletedWithDep, err := monitor.RegisterResource("pkgA:m:typA", "deletedWithDep", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			DeletedWith:             deletedWith.URN,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SKIP, deletedWithDep.Result)
+
+		propDep, err := monitor.RegisterResource("pkgB:m:typB", "propDep", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, propDep.Result)
+
+		propDepChild, err := monitor.RegisterResource("pkgA:m:typA", "propDepChild", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			PropertyDeps:            map[resource.PropertyKey][]urn.URN{resource.PropertyKey("foo"): {propDep.URN}},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SKIP, propDepChild.Result)
+
+		independent, err := monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, independent.Result)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+	require.NotNil(t, snap)
+
+	expectedURNs := []string{
+		"urn:pulumi:test::test::pulumi:providers:pkgB::default",
+		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
+		"urn:pulumi:test::test::pkgA:m:typA::independent",
+	}
+
+	assert.Equal(t, len(expectedURNs), len(snap.Resources))
+
+	for _, urn := range expectedURNs {
+		// Ensure that the expected URN is present in the snapshot.
+		found := slices.ContainsFunc(snap.Resources, func(rs *resource.State) bool {
+			return rs.URN == resource.URN(urn)
+		})
+		assert.True(t, found, "Expected URN %s not found in snapshot", urn)
+	}
 }

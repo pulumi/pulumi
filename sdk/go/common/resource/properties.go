@@ -32,9 +32,6 @@ import (
 // PropertyKey is the name of a property.
 type PropertyKey tokens.Name
 
-// PropertySet is a simple set keyed by property name.
-type PropertySet map[PropertyKey]bool
-
 // PropertyMap is a simple map keyed by property name with "JSON-like" values.
 type PropertyMap map[PropertyKey]PropertyValue
 

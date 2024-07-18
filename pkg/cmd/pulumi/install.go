@@ -15,9 +15,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -50,8 +53,11 @@ func newInstallCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			projectPath, err := workspace.DetectProjectPath()
-			if err != nil || projectPath == "" {
+			installPolicyPackDeps, err := shouldInstallPolicyPackDependencies()
+			if err != nil {
+				return err
+			}
+			if installPolicyPackDeps {
 				// No project found, check if we are in a policy pack project and install the policy
 				// pack dependencies if so.
 				cwd, err := os.Getwd()
@@ -177,4 +183,35 @@ func newInstallCmd() *cobra.Command {
 		"no-dependencies", false, "Skip installing dependencies")
 
 	return cmd
+}
+
+func shouldInstallPolicyPackDependencies() (bool, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, fmt.Errorf("getting the working directory: %w", err)
+	}
+	policyPackPath, err := workspace.DetectPolicyPackPathFrom(cwd)
+	if err != nil {
+		return false, fmt.Errorf("detecting policy pack path: %w", err)
+	}
+	if policyPackPath != "" {
+		// There's a PulumiPolicy.yaml in cwd or a parent folder. The policy pack might be nested
+		// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
+		// folder.
+		projectPath, err := workspace.DetectProjectPath()
+		if err != nil {
+			if errors.Is(err, workspace.ErrProjectNotFound) {
+				// No project found, we should install the dependencies for the policy pack.
+				return true, nil
+			}
+			return false, fmt.Errorf("detecting project path: %w", err)
+		}
+		// We have both a project and a policy pack. If the project path is a parent of the policy
+		// pack path, we should install dependencies for the policy pack, otherwise we should
+		// install dependencies for the project.
+		baseProjectPath := filepath.Dir(projectPath)
+		basePolicyPackPath := filepath.Dir(policyPackPath)
+		return strings.Contains(basePolicyPackPath, baseProjectPath), nil
+	}
+	return false, nil
 }

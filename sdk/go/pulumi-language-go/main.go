@@ -35,8 +35,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/buildutil"
@@ -47,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -639,7 +638,7 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 		return "", nil, err
 	}
 
-	f, err := modfile.ParseLax(modPath, body, nil)
+	f, err := modfile.Parse(modPath, body, nil)
 	if err != nil {
 		return "", nil, fmt.Errorf("parse: %w", err)
 	}
@@ -982,12 +981,22 @@ func (host *goLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
 
+	// If a module is locally replaced it doesn't really have a version anymore.
+	replaced := make(map[string]bool)
+	for _, r := range gomod.Replace {
+		replaced[strings.TrimRight(r.Old.Path, "/")] = true
+	}
+
 	result := slice.Prealloc[*pulumirpc.DependencyInfo](len(gomod.Require))
 	for _, d := range gomod.Require {
 		if !d.Indirect || req.TransitiveDependencies {
+			version := d.Mod.Version
+			if replaced[strings.TrimRight(d.Mod.Path, "/")] {
+				version = ""
+			}
 			datum := pulumirpc.DependencyInfo{
 				Name:    d.Mod.Path,
-				Version: d.Mod.Version,
+				Version: version,
 			}
 			result = append(result, &datum)
 		}
@@ -1185,5 +1194,28 @@ func (host *goLanguageHost) GeneratePackage(
 }
 
 func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
+	// Go is very simple, there's nothing it can do to pack so it just copies the source to the target.
+
+	// First read the modfile in the package directory to decide the folder name.
+	data, err := os.ReadFile(filepath.Join(req.PackageDirectory, "go.mod"))
+	if err != nil {
+		return nil, fmt.Errorf("read go.mod: %w", err)
+	}
+	mod, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("parse go.mod: %w", err)
+	}
+
+	// The folder name is the module name, made into a valid directory name.
+	folderName := strings.ReplaceAll(mod.Module.Mod.Path, "/", "_")
+	artifactPath := filepath.Join(req.DestinationDirectory, folderName)
+
+	err = fsutil.CopyFile(artifactPath, req.PackageDirectory, nil)
+	if err != nil {
+		return nil, fmt.Errorf("copy package: %w", err)
+	}
+
+	return &pulumirpc.PackResponse{
+		ArtifactPath: artifactPath,
+	}, nil
 }

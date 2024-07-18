@@ -16,6 +16,7 @@ import os
 import pathlib
 import traceback
 from typing import (
+    Awaitable,
     TYPE_CHECKING,
     Any,
     Callable,
@@ -853,6 +854,7 @@ def register_resource(
     props: "Inputs",
     opts: Optional["ResourceOptions"],
     typ: Optional[type] = None,
+    package: Optional[Awaitable[Optional[str]]] = None,
 ) -> None:
     """
     Registers a new resource object with a given type t and name.  It returns the
@@ -906,6 +908,15 @@ def register_resource(
 
             nonlocal opts
             opts = opts if opts is not None else ResourceOptions()
+
+            # If we have a package reference, we need to wait for it to resolve.
+            packageRef = None
+            if package is not None:
+                packageRef = await package
+                # If we have a package reference we can clear some of the resource options
+                if packageRef is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
 
             resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
@@ -992,6 +1003,7 @@ def register_resource(
                 sourcePosition=source_position,
                 transforms=callbacks,
                 supportsResultReporting=True,
+                package=packageRef or "",
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

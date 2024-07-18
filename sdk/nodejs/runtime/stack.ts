@@ -17,19 +17,21 @@ import { warn } from "../log";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransform, ResourceTransformation } from "../resource";
+import { InvokeTransform } from "../invoke";
 import { getCallbacks, isDryRun, isQueryMode, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 
 /**
- * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
- * resources allocated by a deployment.  This must be kept up to date with
- * `github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType`.
+ * The type name that should be used to construct the root component in the tree
+ * of Pulumi resources allocated by a deployment. This must be kept up to date
+ * with `github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType`.
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
 /**
- * runInPulumiStack creates a new Pulumi stack resource and executes the callback inside of it.  Any outputs
- * returned by the callback will be stored as output properties on this resulting Stack object.
+ * Creates a new Pulumi stack resource and executes the callback inside of it.
+ * Any outputs returned by the callback will be stored as output properties on
+ * this resulting Stack object.
  */
 export function runInPulumiStack(init: () => Promise<any>): Promise<Inputs | undefined> {
     if (!isQueryMode()) {
@@ -41,8 +43,9 @@ export function runInPulumiStack(init: () => Promise<any>): Promise<Inputs | und
 }
 
 /**
- * Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it registers itself as the root
- * resource with the Pulumi engine.
+ * {@link Stack} is the root resource for a Pulumi stack. Before invoking the
+ * `init` callback, it registers itself as the root resource with the Pulumi
+ * engine.
  */
 export class Stack extends ComponentResource<Inputs> {
     /**
@@ -61,10 +64,12 @@ export class Stack extends ComponentResource<Inputs> {
     }
 
     /**
-     * runInit invokes the given init callback with this resource set as the root resource. The return value of init is
-     * used as the stack's output properties.
+     * Invokes the given `init` callback with this resource set as the root
+     * resource. The return value of init is used as the stack's output
+     * properties.
      *
-     * @param args.init The callback to run in the context of this Pulumi stack
+     * @param args.init
+     *  The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
         await setRootResource(this);
@@ -209,7 +214,8 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
 }
 
 /**
- * Add a transformation to all future resources constructed in this Pulumi stack.
+ * Add a transformation to all future resources constructed in this Pulumi
+ * stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
     const stackResource = getStackResource();
@@ -220,7 +226,8 @@ export function registerStackTransformation(t: ResourceTransformation) {
 }
 
 /**
- * Add a transformation to all future resources constructed in this Pulumi stack.
+ * Add a transformation to all future resources constructed in this Pulumi
+ * stack.
  */
 export function registerResourceTransform(t: ResourceTransform): void {
     if (!getStore().supportsTransforms) {
@@ -234,12 +241,28 @@ export function registerResourceTransform(t: ResourceTransform): void {
 }
 
 /**
- * Add a transformation to all future resources constructed in this Pulumi stack.
+ * Add a transformation to all future resources constructed in this Pulumi
+ * stack.
  *
- * @deprecated Use `registerResourceTransform` instead.
+ * @deprecated
+ *  Use `registerResourceTransform` instead.
  */
 export function registerStackTransform(t: ResourceTransform) {
     registerResourceTransform(t);
+}
+
+/**
+ * Add a transformation to all future invoke calls in this Pulumi stack.
+ */
+export function registerInvokeTransform(t: InvokeTransform): void {
+    if (!getStore().supportsInvokeTransforms) {
+        throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
+    }
+    const callbacks = getCallbacks();
+    if (!callbacks) {
+        throw new Error("No callback server registered.");
+    }
+    callbacks.registerStackInvokeTransform(t);
 }
 
 export function getStackResource(): Stack | undefined {

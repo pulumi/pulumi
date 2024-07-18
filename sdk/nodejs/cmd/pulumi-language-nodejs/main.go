@@ -153,7 +153,7 @@ func main() {
 
 // locateModule resolves a node module name to a file path that can be loaded
 func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
-	args := []string{"-e", fmt.Sprintf(`try {
+	script := fmt.Sprintf(`try {
 		console.log(require.resolve('%s'));
 	} catch (error) {
 		if (error.code === 'MODULE_NOT_FOUND') {
@@ -162,7 +162,13 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string,
 			console.error(error.message);
 		}
 		process.exit(1);
-	}`, mod)}
+	}`, mod)
+	// The Volta package manager installs shim executables that route to the user's chosen nodejs
+	// version. On Windows this does not properly handle arguments with newlines, so we need to
+	// ensure that the script is a single line.
+	// https://github.com/pulumi/pulumi/issues/16393
+	script = strings.Replace(script, "\n", "", -1)
+	args := []string{"-e", script}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		"locateModule",

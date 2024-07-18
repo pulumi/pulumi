@@ -548,6 +548,7 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         continue_on_error: Optional[bool] = None,
+        remove: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -570,6 +571,7 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
+        :param remove: Remove the stack and its configuration after all resources in the stack have been deleted.
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -602,6 +604,14 @@ class Stack:
         # load the project file.
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
+
+        # If `remove` was set, remove the stack now. We take this approach
+        # rather than passing `--remove` to `pulumi destroy` because the latter
+        # would make it impossible for us to retrieve a summary of the operation
+        # above for returning to the caller.
+        if remove:
+            self.workspace.remove_stack(self.name)
+
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
