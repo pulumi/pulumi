@@ -2,6 +2,7 @@ package lifecycletest
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -12,6 +13,186 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
+
+// Tests that a delete-before-replace operation:
+//
+// * that is interrupted during the deletion (e.g. with a failed operation)
+// * when there are resources that depend on the resource being replaced
+// * and then retried, with the same original program
+//
+// will:
+//
+// * successfully replace the resource and not violate any dependencies
+func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	diffsCalled := make(map[string]bool)
+	deletesCalled := make(map[string]bool)
+	createsCalled := make(map[string]bool)
+
+	replacingADiff := func(
+		urn resource.URN,
+		id resource.ID,
+		oldInputs, oldOutputs, newInputs resource.PropertyMap,
+		ignoreChanges []string,
+	) (plugin.DiffResult, error) {
+		diffsCalled[urn.Name()] = true
+		if urn.Name() == "resA" {
+			return plugin.DiffResult{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"key"},
+				DeleteBeforeReplace: true,
+			}, nil
+		} else if urn.Name() == "resB" {
+			return plugin.DiffResult{
+				Changes: plugin.DiffSome,
+			}, nil
+		}
+
+		return plugin.DiffResult{}, nil
+	}
+
+	throwingDelete := func(
+		urn resource.URN,
+		id resource.ID,
+		oldInputs, oldOutputs resource.PropertyMap,
+		timeout float64,
+	) (resource.Status, error) {
+		deletesCalled[urn.Name()] = true
+		if urn.Name() == "resA" {
+			return resource.StatusUnknown, errors.New("interrupt replace")
+		}
+
+		return resource.StatusOK, nil
+	}
+
+	trackingDelete := func(
+		urn resource.URN,
+		id resource.ID,
+		oldInputs, oldOutputs resource.PropertyMap,
+		timeout float64,
+	) (resource.Status, error) {
+		deletesCalled[urn.Name()] = true
+		return resource.StatusOK, nil
+	}
+
+	trackingCreateIDSuffix := "created-id"
+	trackingCreate := func(
+		urn resource.URN,
+		news resource.PropertyMap,
+		timeout float64,
+		preview bool,
+	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		createsCalled[urn.Name()] = true
+		return resource.ID(
+			fmt.Sprintf("%s-%s", urn.Name(), trackingCreateIDSuffix),
+		), news, resource.StatusOK, nil
+	}
+
+	// Act.
+
+	// Operation 1 -- initialise the state with two resources, one with a
+	// dependency on the other.
+	upLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{resA.URN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upOptions := TestUpdateOptions{T: t, HostF: upHostF}
+
+	upSnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	assert.Len(t, upSnap.Resources, 3)
+	assert.Equal(t, "default", upSnap.Resources[0].URN.Name())
+	assert.Equal(t, "resA", upSnap.Resources[1].URN.Name())
+	assert.Equal(t, "resB", upSnap.Resources[2].URN.Name())
+
+	// Operation 2 -- return a replacing diff and interrupt it with a failing
+	// delete.
+	replaceLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF:   replacingADiff,
+				DeleteF: throwingDelete,
+			}, nil
+		}),
+	}
+
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceOptions := TestUpdateOptions{T: t, HostF: replaceHostF}
+
+	replaceSnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "interrupt replace")
+
+	assert.Len(t, replaceSnap.Resources, 3)
+	assert.Equal(t, "default", replaceSnap.Resources[0].URN.Name())
+
+	assert.Equal(t, "resA", replaceSnap.Resources[1].URN.Name())
+	assert.True(t, diffsCalled["resA"], "Diff should be called on resA")
+	assert.True(t, deletesCalled["resA"], "Delete should be called on resA as part of replacement of resA")
+	assert.False(
+		t, replaceSnap.Resources[1].PendingReplacement,
+		"resA should not be pending replacement following a failed deletion",
+	)
+
+	assert.Equal(t, "resB", replaceSnap.Resources[2].URN.Name())
+
+	// Operation 3 -- attempt the same update again, with the delete not failing
+	// this time. We still end up with 3 resources, but A has been replaced.
+	diffsCalled = make(map[string]bool)
+	deletesCalled = make(map[string]bool)
+	createsCalled = make(map[string]bool)
+	trackingCreateIDSuffix = "replaced-id"
+
+	retryLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF:   replacingADiff,
+				DeleteF: trackingDelete,
+				CreateF: trackingCreate,
+			}, nil
+		}),
+	}
+
+	retryHostF := deploytest.NewPluginHostF(nil, nil, programF, retryLoaders...)
+	retryOptions := TestUpdateOptions{T: t, HostF: retryHostF}
+
+	retrySnap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, replaceSnap), retryOptions, false, p.BackendClient, nil, "2")
+	assert.NoError(t, err)
+
+	assert.Len(t, retrySnap.Resources, 3)
+	assert.Equal(t, "default", retrySnap.Resources[0].URN.Name())
+
+	assert.True(t, diffsCalled["resA"], "Diff should be called on resA")
+	assert.True(t, deletesCalled["resA"], "Delete should be called as part of replacement of resA")
+	assert.True(t, createsCalled["resA"], "Create should be called as part of replacement of resA")
+	assert.Equal(t, resource.ID("resA-replaced-id"), retrySnap.Resources[1].ID)
+
+	assert.Equal(t, "resB", retrySnap.Resources[2].URN.Name())
+	assert.True(t, diffsCalled["resB"], "Diff should be called on resB")
+}
 
 // Tests that a delete-before-replace operation:
 //
