@@ -143,7 +143,7 @@ class InvokeTransformArgs:
 
     token: str
     """
-    The token of the Invoke.
+    The token of the invoke.
     """
 
     args: "Inputs"
@@ -181,7 +181,7 @@ class InvokeTransformResult:
 
     opts: "InvokeOptions"
     """
-    The new invoke options to use in place of the original `opts`
+    The new invoke options to use in place of the original `opts`.
     """
 
     def __init__(self, args: "Inputs", opts: "InvokeOptions") -> None:
