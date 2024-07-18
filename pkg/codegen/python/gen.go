@@ -52,7 +52,7 @@ const (
 )
 
 func typedDictEnabled(setting string) bool {
-	return setting == InputTypesSettingClassesAndDicts
+	return setting != InputTypesSettingClasses
 }
 
 type typeDetails struct {

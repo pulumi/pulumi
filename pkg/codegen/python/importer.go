@@ -62,9 +62,8 @@ type PackageInfo struct {
 
 	// Specifies what types are used for inputs.
 	// Allowed values are the following:
-	// TODO[pulumi/pulumi/16375]: Flip default to classes-and-dicts
-	// - "classes" (default): Args classes only
-	// - "classes-and-dicts": TypedDicts side-by-side with Args classes.
+	// - "classes": Args classes only
+	// - "classes-and-dicts" (default): TypedDicts side-by-side with Args classes.
 	InputTypes string `json:"inputTypes,omitempty"`
 }
 
