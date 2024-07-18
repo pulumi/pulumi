@@ -457,6 +457,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
+		Directory:   "python-typed-dict-disabled-setuppy",
+		Description: "Do not generated TypedDict types for inputs.",
+		Skip:        allLanguages.Except("python/any"),
+	},
+	{
 		Directory:   "python-typed-dict-pyproject",
 		Description: "Testing TypedDict generation for inputs.",
 		Skip:        allLanguages.Except("python/any"),
