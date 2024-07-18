@@ -30,7 +30,7 @@ type poetry struct {
 
 var _ Toolchain = &poetry{}
 
-const minPoetryVersion = "1.8.0"
+var minPoetryVersion = semver.Version{Major: 1, Minor: 8, Patch: 0}
 
 func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
@@ -74,8 +74,7 @@ func validateVersion(versionOut string) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse poetry version %q: %w", version, err)
 	}
-	min := semver.MustParse(minPoetryVersion)
-	if sem.LT(min) {
+	if sem.LT(minPoetryVersion) {
 		return fmt.Errorf("poetry version %s is less than the minimum required version %s", version, minPoetryVersion)
 	}
 	logging.V(9).Infof("Python toolchain: using poetry version %s", sem)
