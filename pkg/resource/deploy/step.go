@@ -358,11 +358,12 @@ func (s *CreateStep) Skip() {
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
-	deployment     *Deployment           // the current deployment.
-	old            *resource.State       // the state of the existing resource.
-	replacing      bool                  // true if part of a replacement.
-	otherDeletions map[resource.URN]bool // other resources that are planned to delete
-	provider       plugin.Provider       // the optional provider to use.
+	deployment         *Deployment           // the current deployment.
+	old                *resource.State       // the state of the existing resource.
+	pendingReplacement bool                  // true if this resource is pending replacement.
+	replacing          bool                  // true if part of a replacement.
+	otherDeletions     map[resource.URN]bool // other resources that are planned to delete
+	provider           plugin.Provider       // the optional provider to use.
 }
 
 var _ Step = (*DeleteStep)(nil)
@@ -394,29 +395,14 @@ func NewDeleteReplacementStep(
 		"old", "must have or be a provider if it is a custom resource")
 
 	contract.Requiref(otherDeletions != nil, "otherDeletions", "must not be nil")
-
-	// There are two cases in which we create a delete-replacment step:
-	//
-	//   1. When creating the delete steps that occur due to a delete-before-replace
-	//   2. When creating the delete step that occurs due to a delete-after-replace
-	//
-	// In the former case, the persistence layer may require that the resource remain in the
-	// checkpoint file for purposes of checkpoint integrity. We communicate this case by means
-	// of the `PendingReplacement` field on `resource.State`, which we set here.
-	//
-	// In the latter case, the resource must be deleted, but the deletion may not occur if an earlier step fails.
-	// The engine requires that the fact that the old resource must be deleted is persisted in the checkpoint so
-	// that it can issue a deletion of this resource on the next update to this stack.
 	contract.Assertf(pendingReplace != old.Delete,
 		"resource %v cannot be pending replacement and deletion at the same time", old.URN)
-	old.Lock.Lock()
-	old.PendingReplacement = pendingReplace
-	old.Lock.Unlock()
 	return &DeleteStep{
-		deployment:     deployment,
-		otherDeletions: otherDeletions,
-		old:            old,
-		replacing:      true,
+		deployment:         deployment,
+		otherDeletions:     otherDeletions,
+		old:                old,
+		pendingReplacement: pendingReplace,
+		replacing:          true,
 	}
 }
 
@@ -498,6 +484,32 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}); err != nil {
 			return rst.Status, nil, err
 		}
+	}
+
+	// Delete steps may occur as part of a replacement chain (where a
+	// replacement is effectively implemented as a combination of a create and a
+	// delete). The two combinations (create first, or create last) give us the
+	// two kinds of replacements Pulumi currently supports:
+	// delete-before-replace and delete-after-replace.
+	//
+	// In the case of a delete-before-replace, we want the resource to remain in
+	// the persistence layer throughout the replace operation, even at the point
+	// where the delete has occurred but the create has not (yet). This is the
+	// purpose of `resource.State`'s `PendingReplacement` field, which we set
+	// here.
+	//
+	// Note: we _don't_ want to set this before the provider delete call (if we
+	// need to perform one). The call could fail, and having `PendingReplacement`
+	// set in that case would be problematic. `PendingReplacement`'s purpose is to
+	// indicate that a delete has already been performed and that an appropriate
+	// create needs to be carried out to complete the operation. If an operation
+	// is interrupted but `PendingReplacement` is set, the delete will not be
+	// retried on the next operation. If the delete failed, we _do_ want to retry
+	// it, so only set `PendingReplacement` after we know it's succeeded.
+	if s.pendingReplacement {
+		s.old.Lock.Lock()
+		s.old.PendingReplacement = true
+		s.old.Lock.Unlock()
 	}
 
 	return resource.StatusOK, func() {}, nil
