@@ -133,7 +133,7 @@ const res7 = new Component("res7", { length: 10 }, {
     ],
 });
 
-pulumi.runtime.registerStackInvokeTransform(async ({ token, args, opts }) => {
+pulumi.runtime.registerInvokeTransform(async ({ token, args, opts }) => {
     return {
 	args: { ...args, length: 11 },
 	opts: opts,
