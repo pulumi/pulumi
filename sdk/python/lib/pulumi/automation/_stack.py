@@ -110,9 +110,31 @@ class UpdateSummary:
 
 
 class ImportResource(TypedDict, total=False):
+    """
+    ImportResource represents a resource to import into a stack.
+
+      - id: The import ID of the resource. The format is specific to resource type.
+      - type: The type token of the Pulumi resource
+      - name: The name of the resource
+      - logicalName: The logical name of the resource in the generated program
+      - parent: The name of an optional parent resource
+      - provider: The name of the provider resource
+      - version: The version of the provider plugin, if any is specified
+      - pluginDownloadUrl: The URL to download the provider plugin from
+      - properties: Specified which input properties to import with
+      - component: Whether the resource is a component resource
+      - remote: Whether the resource is a remote resource
+
+    If a resource does not specify any properties the default behaviour is to
+    import using all required properties.
+
+    If the resource is declared as a "component" (and optionally as "remote"). These resources
+    don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.
+    """
     id: str
     type: str
     name: str
+    logicalName: str
     parent: str
     provider: str
     version: str
@@ -643,13 +665,13 @@ class Stack:
         self,
         message: Optional[str] = None,
         resources: Optional[List[ImportResource]] = None,
-        nameTable: Optional[Dict[str, str]] = None,
+        name_table: Optional[Dict[str, str]] = None,
         protect: Optional[bool] = None,
         generate_code: Optional[bool] = None,
         converter: Optional[str] = None,
         converter_args: Optional[List[str]] = None,
         on_output: Optional[OnOutput] = None,
-        show_secrets: Optional[bool] = True,
+        show_secrets: bool = True,
     ) -> ImportResult:
         """
         Imports resources into the stack.
@@ -673,21 +695,19 @@ class Stack:
         if message is not None:
             args.extend(["--message", message])
 
-        tempDir = ""
-        try:
-            tempDir = tempfile.mkdtemp(prefix="pulumi-import-")
+        with tempfile.TemporaryDirectory(prefix="pulumi-import-") as temp_dir:
             if resources is not None:
-                importFilePath = os.path.join(tempDir, "import.json")
-                with open(importFilePath, mode="w", encoding="utf-8") as importFile:
-                    contents = {"resources": resources, "nameTable": nameTable}
-                    json.dump(contents, importFile)
-                    args.extend(["--file", importFilePath])
+                import_file_path = os.path.join(temp_dir, "import.json")
+                with open(import_file_path, mode="w", encoding="utf-8") as import_file:
+                    contents = {"resources": resources, "nameTable": name_table}
+                    json.dump(contents, import_file)
+                    args.extend(["--file", import_file_path])
 
             if protect is not None:
                 value = "true" if protect else "false"
                 args.append(f"--protect={value}")
 
-            generated_code_path = os.path.join(tempDir, "generated_code.txt")
+            generated_code_path = os.path.join(temp_dir, "generated_code.txt")
             if generate_code is False:
                 args.append("--generate-code=false")
             else:
@@ -713,10 +733,6 @@ class Stack:
                 generated_code=generated_code,
                 summary=summary,
             )
-
-        finally:
-            if tempDir != "":
-                shutil.rmtree(tempDir)
 
     def add_environments(self, *environment_names: str) -> None:
         """
