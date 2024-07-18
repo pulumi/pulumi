@@ -89,7 +89,7 @@ func TestDeepCopyDoesntCopyOutputState(t *testing.T) {
 	t.Parallel()
 
 	state := internal.OutputState{}
-	assert.PanicsWithValue(t, "fatal: An assertion has failed: Outputs cannot be deep copied", func() {
+	assert.PanicsWithValue(t, "fatal: A failure has occurred: Outputs cannot be deep copied", func() {
 		Copy(state)
 	})
 }

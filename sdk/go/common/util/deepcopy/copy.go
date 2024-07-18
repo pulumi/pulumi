@@ -39,8 +39,9 @@ func deepCopy(v reflect.Value) reflect.Value {
 		return v
 	}
 
-	_, ok := v.Interface().(internal.OutputState)
-	contract.Assertf(!ok, "Outputs cannot be deep copied")
+	if v.Type() == reflect.TypeFor[internal.OutputState]() {
+		contract.Failf("Outputs cannot be deep copied")
+	}
 
 	typ := v.Type()
 	switch typ.Kind() {
