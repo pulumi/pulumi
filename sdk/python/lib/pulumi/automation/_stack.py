@@ -131,6 +131,7 @@ class ImportResource(TypedDict, total=False):
     If the resource is declared as a "component" (and optionally as "remote"). These resources
     don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.
     """
+
     id: str
     type: str
     name: str
