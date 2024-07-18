@@ -27,7 +27,7 @@ import {
     serializePropertiesReturnDeps,
     unwrapRpcSecret,
 } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
+import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
 
 import { DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
@@ -143,6 +143,8 @@ export async function streamInvoke(
 async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
+    await awaitStackRegistrations();
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
