@@ -2,17 +2,17 @@ import pulumi
 import pulumi_aws as aws
 
 # Create a new security group for port 80.
-security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[aws.ec2.SecurityGroupIngressArgs(
-    protocol="tcp",
-    from_port=0,
-    to_port=0,
-    cidr_blocks=["0.0.0.0/0"],
-)])
+security_group = aws.ec2.SecurityGroup("securityGroup", ingress=[{
+    "protocol": "tcp",
+    "from_port": 0,
+    "to_port": 0,
+    "cidr_blocks": ["0.0.0.0/0"],
+}])
 # Get the ID for the latest Amazon Linux AMI.
-ami = aws.get_ami(filters=[aws.GetAmiFilterArgs(
-        name="name",
-        values=["amzn-ami-hvm-*-x86_64-ebs"],
-    )],
+ami = aws.get_ami(filters=[{
+        "name": "name",
+        "values": ["amzn-ami-hvm-*-x86_64-ebs"],
+    }],
     owners=["137112412989"],
     most_recent=True)
 # Create a simple web server using the startup script for the instance.

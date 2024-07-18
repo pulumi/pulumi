@@ -9,6 +9,6 @@ main = typeddict.ExampleComponent("main",
             "nested_number_prop": "123",
         },
     },
-    external_input=aws.s3.BucketWebsiteArgs(
-        index_document="index.html",
-    ))
+    external_input={
+        "index_document": "index.html",
+    })

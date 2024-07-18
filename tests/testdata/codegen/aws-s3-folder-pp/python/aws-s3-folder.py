@@ -4,9 +4,9 @@ import os
 import pulumi_aws as aws
 
 # Create a bucket and expose a website index document
-site_bucket = aws.s3.Bucket("siteBucket", website=aws.s3.BucketWebsiteArgs(
-    index_document="index.html",
-))
+site_bucket = aws.s3.Bucket("siteBucket", website={
+    "index_document": "index.html",
+})
 site_dir = "www"
 # For each file in the directory, create an S3 object stored in `siteBucket`
 files = []

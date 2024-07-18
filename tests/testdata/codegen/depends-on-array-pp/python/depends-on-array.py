@@ -1,14 +1,14 @@
 import pulumi
 import pulumi_aws as aws
 
-my_bucket = aws.s3.Bucket("myBucket", website=aws.s3.BucketWebsiteArgs(
-    index_document="index.html",
-))
+my_bucket = aws.s3.Bucket("myBucket", website={
+    "index_document": "index.html",
+})
 ownership_controls = aws.s3.BucketOwnershipControls("ownershipControls",
     bucket=my_bucket.id,
-    rule=aws.s3.BucketOwnershipControlsRuleArgs(
-        object_ownership="ObjectWriter",
-    ))
+    rule={
+        "object_ownership": "ObjectWriter",
+    })
 public_access_block = aws.s3.BucketPublicAccessBlock("publicAccessBlock",
     bucket=my_bucket.id,
     block_public_acls=False)

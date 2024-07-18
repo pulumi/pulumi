@@ -14,7 +14,7 @@ __all__ = [
     'do_foo',
 ]
 
-def do_foo(foo: Optional[pulumi.InputType['Foo']] = None,
+def do_foo(foo: Optional[Union['Foo', 'FooDict']] = None,
            opts: Optional[pulumi.InvokeOptions] = None) -> Awaitable[None]:
     """
     Use this data source to access information about an existing resource.

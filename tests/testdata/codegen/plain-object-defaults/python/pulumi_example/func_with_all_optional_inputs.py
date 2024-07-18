@@ -39,14 +39,14 @@ class AwaitableFuncWithAllOptionalInputsResult(FuncWithAllOptionalInputsResult):
             r=self.r)
 
 
-def func_with_all_optional_inputs(a: Optional[pulumi.InputType['HelmReleaseSettings']] = None,
+def func_with_all_optional_inputs(a: Optional[Union['HelmReleaseSettings', 'HelmReleaseSettingsDict']] = None,
                                   b: Optional[str] = None,
                                   opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableFuncWithAllOptionalInputsResult:
     """
     Check codegen of functions with all optional inputs.
 
 
-    :param pulumi.InputType['HelmReleaseSettings'] a: Property A
+    :param Union['HelmReleaseSettings', 'HelmReleaseSettingsDict'] a: Property A
     :param str b: Property B
     """
     __args__ = dict()
@@ -60,14 +60,14 @@ def func_with_all_optional_inputs(a: Optional[pulumi.InputType['HelmReleaseSetti
 
 
 @_utilities.lift_output_func(func_with_all_optional_inputs)
-def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[pulumi.InputType['HelmReleaseSettings']]]] = None,
+def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[Union['HelmReleaseSettings', 'HelmReleaseSettingsDict']]]] = None,
                                          b: Optional[pulumi.Input[Optional[str]]] = None,
                                          opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
     """
     Check codegen of functions with all optional inputs.
 
 
-    :param pulumi.InputType['HelmReleaseSettings'] a: Property A
+    :param Union['HelmReleaseSettings', 'HelmReleaseSettingsDict'] a: Property A
     :param str b: Property B
     """
     ...
