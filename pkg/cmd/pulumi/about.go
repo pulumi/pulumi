@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -339,9 +338,10 @@ func (b backendAbout) String() string {
 		var tokenType string
 		if b.TokenInformation.Team != "" {
 			tokenType = "team: " + b.TokenInformation.Team
-		} else {
-			contract.Assertf(b.TokenInformation.Organization != "", "token must have an organization or team")
+		} else if b.TokenInformation.Organization != "" {
 			tokenType = "organization: " + b.TokenInformation.Organization
+		} else {
+			tokenType = "unknown"
 		}
 		rows = append(rows, []string{"Token type", tokenType})
 		rows = append(rows, []string{"Token type", b.TokenInformation.Name})
