@@ -291,7 +291,7 @@ func newRefreshCmd() *cobra.Command {
 			case res != nil:
 				return PrintEngineResult(res)
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return result.FromError(errors.New("error: no changes were expected but changes occurred"))
+				return result.FromError(errors.New("no changes were expected but changes occurred"))
 			default:
 				return nil
 			}
