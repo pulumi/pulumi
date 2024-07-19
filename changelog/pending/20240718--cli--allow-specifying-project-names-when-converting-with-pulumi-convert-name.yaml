@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Allow specifying project names when converting with `pulumi convert --name`
