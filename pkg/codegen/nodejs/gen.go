@@ -2869,7 +2869,8 @@ export async function getPackage() : Promise<string | undefined> {
 		_packageLock.release();
 	}
 	return _packageRef as string;
-}`,
+}
+`,
 			def.Name, def.Version, parameterValue,
 			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.Parameterization.BaseProvider.PluginDownloadURL)
 	}

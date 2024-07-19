@@ -67,7 +67,7 @@ export class Random extends pulumi.CustomResource {
             resourceInputs["result"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(Random.__pulumiType, name, resourceInputs, opts, false /*remote*/, utilities.getPackage());
+        super(Random.__pulumiType, name, resourceInputs, opts, false /*dependency*/, utilities.getPackage());
     }
 }
 
