@@ -85,13 +85,13 @@ func TestPackageRef(t *testing.T) {
 
 		// Now register some resources using the UUID for the provider, instead of a normal provider ref.
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Package: pkg1Ref,
+			PackageRef: pkg1Ref,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, resource.ID("0"), resp.ID)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Package: pkg2Ref,
+			PackageRef: pkg2Ref,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, resource.ID("1"), resp.ID)
@@ -156,7 +156,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 		// Register a resource using that base provider
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Package: pkgRef,
+			PackageRef: pkgRef,
 		})
 		require.NoError(t, err)
 
@@ -169,7 +169,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
-			Package: extRef,
+			PackageRef: extRef,
 		})
 		require.NoError(t, err)
 

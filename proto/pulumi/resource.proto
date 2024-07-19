@@ -146,7 +146,7 @@ message RegisterResourceRequest {
     repeated Callback transforms = 31; // a list of transforms to apply to the resource before registering it.
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 
-    string package = 33; // a reference from RegisterProviderRequest.
+    string packageRef = 33; // a reference from RegisterProviderRequest.
 }
 
 enum Result {

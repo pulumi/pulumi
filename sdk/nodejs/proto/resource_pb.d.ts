@@ -240,8 +240,8 @@ export class RegisterResourceRequest extends jspb.Message {
     addTransforms(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
     getSupportsresultreporting(): boolean;
     setSupportsresultreporting(value: boolean): RegisterResourceRequest;
-    getPackage(): string;
-    setPackage(value: string): RegisterResourceRequest;
+    getPackageref(): string;
+    setPackageref(value: string): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -290,7 +290,7 @@ export namespace RegisterResourceRequest {
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
-        pb_package: string,
+        packageref: string,
     }
 
 
