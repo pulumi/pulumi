@@ -149,7 +149,7 @@ func (p *PrimitiveProvider) Check(
 		}
 		if !assertType(v) {
 			return &plugin.CheckResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("value is not a %s", typ)),
+				Failures: makeCheckFailure(key, "value is not a "+typ),
 			}
 		}
 
