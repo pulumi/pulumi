@@ -263,7 +263,7 @@ message DiffRequest {
 
     // the new input values of resource to diff.
     //
-    // Note that in case ignoreChanges is specified, news will be pre-processed similarly to CheckRequest.news.
+    // Pre-processed to accommodate ignoreChanges, see the note on CheckRequest.news.
     google.protobuf.Struct news = 4;
 
     repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
@@ -364,7 +364,12 @@ message UpdateRequest {
     string id = 1;                     // the ID of the resource to update.
     string urn = 2;                    // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
-    google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
+
+    // the new values of provider inputs for the resource to update.
+    //
+    // Pre-processed to accommodate ignoreChanges, see the note on CheckRequest.news.
+    google.protobuf.Struct news = 4;
+
     double timeout = 5;                // the update request timeout represented in seconds.
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
