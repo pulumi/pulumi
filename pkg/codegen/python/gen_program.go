@@ -775,6 +775,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.IgnoreChanges != nil {
 		appendOption("ignore_changes", opts.IgnoreChanges)
 	}
+	if opts.DeletedWith != nil {
+		appendOption("deleted_with", opts.DeletedWith)
+	}
 
 	return block, temps
 }

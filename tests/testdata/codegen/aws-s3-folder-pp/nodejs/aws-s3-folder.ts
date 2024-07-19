@@ -15,7 +15,9 @@ for (const range of fs.readdirSync(siteDir).map((v, k) => ({key: k, value: v})))
         key: range.value,
         source: new pulumi.asset.FileAsset(`${siteDir}/${range.value}`),
         contentType: range.value,
-    }));
+    }, {
+    deletedWith: siteBucket,
+}));
 }
 // set the MIME type of the file
 // Set the access policy for the bucket so all objects are readable

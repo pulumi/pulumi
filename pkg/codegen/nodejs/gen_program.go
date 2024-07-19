@@ -851,6 +851,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
 	}
+	if opts.DeletedWith != nil {
+		appendOption("deletedWith", opts.DeletedWith)
+	}
 
 	if object == nil {
 		return ""

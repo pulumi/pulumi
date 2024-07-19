@@ -1216,6 +1216,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges)
 	}
+	if opts.DeletedWith != nil {
+		appendOption("DeletedWith", opts.DeletedWith)
+	}
 
 	if result.Len() != 0 {
 		g.Indent = g.Indent[:len(g.Indent)-4]
