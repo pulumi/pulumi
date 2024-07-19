@@ -909,17 +909,21 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, replaceOnChanges);\n")
 	}
 
-	// If it's a ComponentResource, set the remote option.
-	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
-	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, false /*dependency*/", name)
-	}
-
 	pkg, err := r.PackageReference.Definition()
 	if err != nil {
 		return resourceFileInfo{}, err
 	}
+
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
+	} else {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", false /*dependency*/")
+		}
+	}
+
 	if pkg.Parameterization != nil {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
@@ -2808,6 +2812,13 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+
+	if def.Parameterization != nil {
+		fmt.Fprintf(w, `import * as resproto from "@pulumi/pulumi/proto/resource_pb";
+import * as mutex from "async-mutex";
+`)
+	}
+
 	code := utilitiesFile
 
 	if url := def.PluginDownloadURL; url != "" {
