@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
@@ -113,6 +114,36 @@ func TestProviderVersions(t *testing.T) {
 
 			assert.Equal(t, version.String(), schemaJSON.Version,
 				"provider %s reports different versions in schema %s and plugin info %s", pkg, version, schemaJSON.Version)
+		}
+	}
+}
+
+// Ensure all providers have valid schemas.
+func TestProviderSchemas(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range languageTests {
+		// Internal tests are allowed to have invalid schemas.
+		if strings.HasPrefix(name, "internal-") {
+			continue
+		}
+
+		loader := &providerLoader{providers: test.providers}
+
+		for _, provider := range test.providers {
+			resp, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+			require.NoError(t, err)
+
+			var pkg schema.PackageSpec
+			err = json.Unmarshal(resp.Schema, &pkg)
+			require.NoError(t, err)
+
+			_, diags, err := schema.BindSpec(pkg, loader)
+			for _, diag := range diags {
+				t.Logf("%s: %v", pkg.Name, diag)
+			}
+			require.NoError(t, err, "bind schema for provider %s: %v", pkg.Name, err)
+			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", pkg.Name, diags)
 		}
 	}
 }
