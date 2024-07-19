@@ -1,8 +1,6 @@
 
-import * as resproto from "@pulumi/pulumi/proto/resource_pb";
 import * as runtime from "@pulumi/pulumi/runtime";
 import * as pulumi from "@pulumi/pulumi";
-import * as mutex from "async-mutex";
 
 export function getEnv(...vars: string[]): string | undefined {
     for (const v of vars) {
