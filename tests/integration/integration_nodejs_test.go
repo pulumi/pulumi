@@ -2108,7 +2108,7 @@ func TestParamaterizedNode(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			err = os.WriteFile(packageJSON, data, 0o644)
+			err = os.WriteFile(packageJSON, data, 0o600)
 			if err != nil {
 				return err
 			}
