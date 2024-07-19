@@ -1559,8 +1559,8 @@ func (o *oomSniffer) Wait() {
 
 func (o *oomSniffer) Message() string {
 	return "Detected a possible out of memory error. Consider increasing the memory available to the nodejs process " +
-		"by setting the `nodeargs` runtime option in Pulumi.yaml to `nodeargs: --max-old-space-size=<size>` where `<size>` is the " +
-		"maximum memory in megabytes that can be allocated to nodejs. " +
+		"by setting the `nodeargs` runtime option in Pulumi.yaml to `nodeargs: --max-old-space-size=<size>` where " +
+		"`<size>` is the maximum memory in megabytes that can be allocated to nodejs. " +
 		"See https://www.pulumi.com/docs/concepts/projects/project-file/#runtime-options"
 }
 
