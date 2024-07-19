@@ -46,6 +46,9 @@ from .errors import (
 
 from .invoke import (
     InvokeOptions,
+    InvokeTransform,
+    InvokeTransformArgs,
+    InvokeTransformResult,
 )
 
 from .metadata import (
@@ -127,6 +130,9 @@ __all__ = [
     "RunError",
     # invoke
     "InvokeOptions",
+    "InvokeTransform",
+    "InvokeTransformArgs",
+    "InvokeTransformResult",
     # metadata
     "get_organization",
     "get_project",

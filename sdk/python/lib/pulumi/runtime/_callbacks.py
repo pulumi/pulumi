@@ -41,6 +41,7 @@ from .proto import (
     resource_pb2_grpc,
 )
 from .rpc import deserialize_properties, serialize_properties
+from ..invoke import InvokeOptions, InvokeTransform
 
 if TYPE_CHECKING:
     from ..resource import Alias, ResourceOptions, ResourceTransform
@@ -62,7 +63,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     _server: aio.Server
     _target: str
 
-    _transforms: Dict[ResourceTransform, str]
+    _transforms: Dict[Union[ResourceTransform, InvokeTransform], str]
 
     def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
         log.debug("Creating CallbackServicer")
@@ -163,6 +164,74 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         callback = self.register_transform(transform)
         try:
             self._monitor.RegisterStackTransform(callback)
+        except:
+            # Remove the transform since we didn't manage to actually register it.
+            self._transforms.pop(transform)
+            self._callbacks.pop(callback.token)
+            raise
+
+    def do_register_invoke_transform(
+        self, transform: InvokeTransform
+    ) -> callback_pb2.Callback:
+        # If this transform function has already been registered, return it.
+        token = self._transforms.get(transform)
+        if token is not None:
+            return callback_pb2.Callback(token=token, target=self._target)
+
+        from ..invoke import (  # pylint: disable=import-outside-toplevel
+            InvokeTransformArgs,
+            InvokeTransformResult,
+        )
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.TransformInvokeRequest = (
+                resource_pb2.TransformInvokeRequest.FromString(s)
+            )
+
+            args = InvokeTransformArgs(
+                token=request.token,
+                args=deserialize_properties(request.args),
+                opts=self._invoke_options(request),
+            )
+
+            maybeAwaitable = transform(args)
+            result: Optional[InvokeTransformResult] = None
+            if isinstance(maybeAwaitable, Awaitable):
+                result = await maybeAwaitable
+            else:
+                result = maybeAwaitable
+
+            if result is None:
+                return resource_pb2.TransformInvokeResponse(
+                    args=request.args,
+                    options=request.options,
+                )
+
+            result_args = await serialize_properties(result.args, {})
+
+            result_opts = (
+                await self._transformation_invoke_options(result.opts)
+                if result.opts is not None
+                else None
+            )
+
+            return resource_pb2.TransformInvokeResponse(
+                args=result_args,
+                options=result_opts,
+            )
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        self._transforms[transform] = token
+        return callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+
+    def register_invoke_transform(self, transform: InvokeTransform):
+        callback = self.do_register_invoke_transform(transform)
+        try:
+            self._monitor.RegisterStackInvokeTransform(callback)
         except:
             # Remove the transform since we didn't manage to actually register it.
             self._transforms.pop(transform)
@@ -346,5 +415,49 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result.providers.update(
                 {k: await _create_provider_ref(v) for k, v in providers.items()}
             )
+
+        return result
+
+    def _invoke_options(
+        self, request: resource_pb2.TransformInvokeRequest
+    ) -> InvokeOptions:
+        from ..resource import (  # pylint: disable=import-outside-toplevel
+            DependencyProviderResource,
+        )
+
+        opts = (
+            request.options
+            if request.HasField("options")
+            else resource_pb2.TransformInvokeOptions()
+        )
+
+        ropts = InvokeOptions()
+
+        if opts.plugin_download_url:
+            ropts.plugin_download_url = opts.plugin_download_url
+
+        if opts.provider:
+            ropts.provider = DependencyProviderResource(opts.provider)
+
+        if opts.version:
+            ropts.version = opts.version
+
+        return ropts
+
+    async def _transformation_invoke_options(
+        self, opts: InvokeOptions
+    ) -> resource_pb2.TransformInvokeOptions:
+        from .resource import (  # pylint: disable=import-outside-toplevel
+            _create_provider_ref,
+        )
+
+        result = resource_pb2.TransformInvokeOptions()
+
+        if opts.plugin_download_url:
+            result.plugin_download_url = opts.plugin_download_url
+        if opts.version:
+            result.version = opts.version
+        if opts.provider is not None:
+            result.provider = await _create_provider_ref(opts.provider)
 
         return result

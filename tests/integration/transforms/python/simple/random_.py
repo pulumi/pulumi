@@ -26,7 +26,10 @@ class Random(pulumi.CustomResource):
     @pulumi.getter
     def result(self) -> pulumi.Output[str]:
         return pulumi.get(self, "result")
-    
+
+    def invoke(self, args):
+        return pulumi.runtime.invoke("testprovider:index:returnArgs", args)
+
 
 class Component(pulumi.ComponentResource):
     def __init__(self,

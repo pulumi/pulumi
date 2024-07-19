@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import Optional, TYPE_CHECKING
+from typing import (
+    Awaitable,
+    Callable,
+    Optional,
+    Union,
+    TYPE_CHECKING,
+)
 
 if TYPE_CHECKING:
+    from .output import Inputs
     from .resource import Resource, ProviderResource
 
 
@@ -127,3 +134,70 @@ class InvokeOptions:
         dest.version = dest.version if source.version is None else source.version
 
         return dest
+
+
+class InvokeTransformArgs:
+    """
+    InvokeTransformArgs is the argument bag passed to an invoke transform.
+    """
+
+    token: str
+    """
+    The token of the invoke.
+    """
+
+    args: "Inputs"
+    """
+    The original arguments passed to the invocation.
+    """
+
+    opts: "InvokeOptions"
+    """
+    The original invoke options passed to the invocation.
+    """
+
+    def __init__(
+        self,
+        token: str,
+        args: "Inputs",
+        opts: "InvokeOptions",
+    ) -> None:
+        self.token = token
+        self.args = args
+        self.opts = opts
+
+
+class InvokeTransformResult:
+    """
+    InvokeTransformResult is the result that must be returned by an invoke transform callback.
+    It includes new values to use for the `args` and `opts` of the `Invoke` in place of the
+    originally provided values.
+    """
+
+    args: "Inputs"
+    """
+    The new arguments to use in place of the original `args`.
+    """
+
+    opts: "InvokeOptions"
+    """
+    The new invoke options to use in place of the original `opts`.
+    """
+
+    def __init__(self, args: "Inputs", opts: "InvokeOptions") -> None:
+        self.args = args
+        self.opts = opts
+
+
+InvokeTransform = Callable[
+    [InvokeTransformArgs],
+    Optional[Union[Awaitable[Optional[InvokeTransformResult]], InvokeTransformResult]],
+]
+"""
+InvokeTransform is the callback signature for the `transforms` invoke option.  A
+transform is passed the same set of inputs provided to the `Invoke` constructor, and can
+optionally return back alternate values for the `args` and/or `opts` prior to the invoke
+actually being called.  The effect will be as though those args and opts were passed in place
+of the original call to the `Invoke` call.  If the transform returns None,
+this indicates that the invoke will not be transformed.
+"""
