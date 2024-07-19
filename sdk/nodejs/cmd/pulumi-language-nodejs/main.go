@@ -726,7 +726,8 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		return &pulumirpc.RunResponse{Error: fmt.Errorf("failed to get stdout pipe: %w", err).Error()}
 	}
 	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
-	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See `copyOutput`.
+	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of `copyOutput`
+	// for more details.
 	go func() {
 		_, err := io.Copy(os.Stdout, stdout)
 		contract.IgnoreError(err)
