@@ -458,62 +458,62 @@ var configMapListResource = new ConfigMapList("configMapListResource", ConfigMap
 
 ```python
 config_map_list_resource = kubernetes.core.v1.ConfigMapList("configMapListResource",
-    items=[kubernetes.core.v1.ConfigMapArgs(
-        api_version="v1",
-        binary_data={
+    items=[{
+        "api_version": "v1",
+        "binary_data": {
             "string": "string",
         },
-        data={
+        "data": {
             "string": "string",
         },
-        immutable=False,
-        kind="ConfigMap",
-        metadata=kubernetes.meta.v1.ObjectMetaArgs(
-            annotations={
+        "immutable": False,
+        "kind": "ConfigMap",
+        "metadata": {
+            "annotations": {
                 "string": "string",
             },
-            cluster_name="string",
-            creation_timestamp="string",
-            deletion_grace_period_seconds=0,
-            deletion_timestamp="string",
-            finalizers=["string"],
-            generate_name="string",
-            generation=0,
-            labels={
+            "cluster_name": "string",
+            "creation_timestamp": "string",
+            "deletion_grace_period_seconds": 0,
+            "deletion_timestamp": "string",
+            "finalizers": ["string"],
+            "generate_name": "string",
+            "generation": 0,
+            "labels": {
                 "string": "string",
             },
-            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-                api_version="string",
-                fields_type="string",
-                fields_v1="{}",
-                manager="string",
-                operation="string",
-                subresource="string",
-                time="string",
-            )],
-            name="string",
-            namespace="string",
-            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-                api_version="string",
-                kind="string",
-                name="string",
-                uid="string",
-                block_owner_deletion=False,
-                controller=False,
-            )],
-            resource_version="string",
-            self_link="string",
-            uid="string",
-        ),
-    )],
+            "managed_fields": [{
+                "api_version": "string",
+                "fields_type": "string",
+                "fields_v1": "{}",
+                "manager": "string",
+                "operation": "string",
+                "subresource": "string",
+                "time": "string",
+            }],
+            "name": "string",
+            "namespace": "string",
+            "owner_references": [{
+                "api_version": "string",
+                "kind": "string",
+                "name": "string",
+                "uid": "string",
+                "block_owner_deletion": False,
+                "controller": False,
+            }],
+            "resource_version": "string",
+            "self_link": "string",
+            "uid": "string",
+        },
+    }],
     api_version="string",
     kind="string",
-    metadata=kubernetes.meta.v1.ListMetaArgs(
-        continue_="string",
-        remaining_item_count=0,
-        resource_version="string",
-        self_link="string",
-    ))
+    metadata={
+        "continue_": "string",
+        "remaining_item_count": 0,
+        "resource_version": "string",
+        "self_link": "string",
+    })
 ```
 
 </pulumi-choosable>

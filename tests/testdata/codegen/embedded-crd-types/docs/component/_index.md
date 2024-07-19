@@ -5500,1439 +5500,1439 @@ var componentResource = new Component("componentResource", ComponentArgs.builder
 ```python
 component_resource = foo.Component("componentResource",
     eni_config={
-        "string": kubernetes.crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs(
-            security_groups=["string"],
-            subnet="string",
-        ),
+        "string": {
+            "security_groups": ["string"],
+            "subnet": "string",
+        },
     },
-    pod=kubernetes.core.v1.PodArgs(
-        api_version="v1",
-        kind="Pod",
-        metadata=kubernetes.meta.v1.ObjectMetaArgs(
-            annotations={
+    pod={
+        "api_version": "v1",
+        "kind": "Pod",
+        "metadata": {
+            "annotations": {
                 "string": "string",
             },
-            cluster_name="string",
-            creation_timestamp="string",
-            deletion_grace_period_seconds=0,
-            deletion_timestamp="string",
-            finalizers=["string"],
-            generate_name="string",
-            generation=0,
-            labels={
+            "cluster_name": "string",
+            "creation_timestamp": "string",
+            "deletion_grace_period_seconds": 0,
+            "deletion_timestamp": "string",
+            "finalizers": ["string"],
+            "generate_name": "string",
+            "generation": 0,
+            "labels": {
                 "string": "string",
             },
-            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-                api_version="string",
-                fields_type="string",
-                fields_v1="{}",
-                manager="string",
-                operation="string",
-                subresource="string",
-                time="string",
-            )],
-            name="string",
-            namespace="string",
-            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-                api_version="string",
-                kind="string",
-                name="string",
-                uid="string",
-                block_owner_deletion=False,
-                controller=False,
-            )],
-            resource_version="string",
-            self_link="string",
-            uid="string",
-        ),
-        spec=kubernetes.core.v1.PodSpecArgs(
-            containers=[kubernetes.core.v1.ContainerArgs(
-                name="string",
-                readiness_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                image_pull_policy="string",
-                resources=kubernetes.core.v1.ResourceRequirementsArgs(
-                    limits={
+            "managed_fields": [{
+                "api_version": "string",
+                "fields_type": "string",
+                "fields_v1": "{}",
+                "manager": "string",
+                "operation": "string",
+                "subresource": "string",
+                "time": "string",
+            }],
+            "name": "string",
+            "namespace": "string",
+            "owner_references": [{
+                "api_version": "string",
+                "kind": "string",
+                "name": "string",
+                "uid": "string",
+                "block_owner_deletion": False,
+                "controller": False,
+            }],
+            "resource_version": "string",
+            "self_link": "string",
+            "uid": "string",
+        },
+        "spec": {
+            "containers": [{
+                "name": "string",
+                "readiness_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "image_pull_policy": "string",
+                "resources": {
+                    "limits": {
                         "string": "string",
                     },
-                    requests={
+                    "requests": {
                         "string": "string",
                     },
-                ),
-                startup_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                security_context=kubernetes.core.v1.SecurityContextArgs(
-                    allow_privilege_escalation=False,
-                    capabilities=kubernetes.core.v1.CapabilitiesArgs(
-                        add=["string"],
-                        drop=["string"],
-                    ),
-                    privileged=False,
-                    proc_mount="string",
-                    read_only_root_filesystem=False,
-                    run_as_group=0,
-                    run_as_non_root=False,
-                    run_as_user=0,
-                    se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
-                        level="string",
-                        role="string",
-                        type="string",
-                        user="string",
-                    ),
-                    seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
-                        type="string",
-                        localhost_profile="string",
-                    ),
-                    windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
-                        gmsa_credential_spec="string",
-                        gmsa_credential_spec_name="string",
-                        host_process=False,
-                        run_as_user_name="string",
-                    ),
-                ),
-                lifecycle=kubernetes.core.v1.LifecycleArgs(
-                    post_start=kubernetes.core.v1.HandlerArgs(
-                        exec_=kubernetes.core.v1.ExecActionArgs(
-                            command=["string"],
-                        ),
-                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                            port=0,
-                            host="string",
-                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                                name="string",
-                                value="string",
-                            )],
-                            path="string",
-                            scheme="string",
-                        ),
-                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                            port=0,
-                            host="string",
-                        ),
-                    ),
-                    pre_stop=kubernetes.core.v1.HandlerArgs(
-                        exec_=kubernetes.core.v1.ExecActionArgs(
-                            command=["string"],
-                        ),
-                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                            port=0,
-                            host="string",
-                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                                name="string",
-                                value="string",
-                            )],
-                            path="string",
-                            scheme="string",
-                        ),
-                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                            port=0,
-                            host="string",
-                        ),
-                    ),
-                ),
-                liveness_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                command=["string"],
-                ports=[kubernetes.core.v1.ContainerPortArgs(
-                    container_port=0,
-                    host_ip="string",
-                    host_port=0,
-                    name="string",
-                    protocol="string",
-                )],
-                args=["string"],
-                env_from=[kubernetes.core.v1.EnvFromSourceArgs(
-                    config_map_ref=kubernetes.core.v1.ConfigMapEnvSourceArgs(
-                        name="string",
-                        optional=False,
-                    ),
-                    prefix="string",
-                    secret_ref=kubernetes.core.v1.SecretEnvSourceArgs(
-                        name="string",
-                        optional=False,
-                    ),
-                )],
-                env=[kubernetes.core.v1.EnvVarArgs(
-                    name="string",
-                    value="string",
-                    value_from=kubernetes.core.v1.EnvVarSourceArgs(
-                        config_map_key_ref=kubernetes.core.v1.ConfigMapKeySelectorArgs(
-                            key="string",
-                            name="string",
-                            optional=False,
-                        ),
-                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                            field_path="string",
-                            api_version="string",
-                        ),
-                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
-                            resource="string",
-                            container_name="string",
-                            divisor="string",
-                        ),
-                        secret_key_ref=kubernetes.core.v1.SecretKeySelectorArgs(
-                            key="string",
-                            name="string",
-                            optional=False,
-                        ),
-                    ),
-                )],
-                image="string",
-                stdin=False,
-                stdin_once=False,
-                termination_message_path="string",
-                termination_message_policy="string",
-                tty=False,
-                volume_devices=[kubernetes.core.v1.VolumeDeviceArgs(
-                    device_path="string",
-                    name="string",
-                )],
-                volume_mounts=[kubernetes.core.v1.VolumeMountArgs(
-                    mount_path="string",
-                    name="string",
-                    mount_propagation="string",
-                    read_only=False,
-                    sub_path="string",
-                    sub_path_expr="string",
-                )],
-                working_dir="string",
-            )],
-            node_selector={
+                },
+                "startup_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "security_context": {
+                    "allow_privilege_escalation": False,
+                    "capabilities": {
+                        "add": ["string"],
+                        "drop": ["string"],
+                    },
+                    "privileged": False,
+                    "proc_mount": "string",
+                    "read_only_root_filesystem": False,
+                    "run_as_group": 0,
+                    "run_as_non_root": False,
+                    "run_as_user": 0,
+                    "se_linux_options": {
+                        "level": "string",
+                        "role": "string",
+                        "type": "string",
+                        "user": "string",
+                    },
+                    "seccomp_profile": {
+                        "type": "string",
+                        "localhost_profile": "string",
+                    },
+                    "windows_options": {
+                        "gmsa_credential_spec": "string",
+                        "gmsa_credential_spec_name": "string",
+                        "host_process": False,
+                        "run_as_user_name": "string",
+                    },
+                },
+                "lifecycle": {
+                    "post_start": {
+                        "exec_": {
+                            "command": ["string"],
+                        },
+                        "http_get": {
+                            "port": 0,
+                            "host": "string",
+                            "http_headers": [{
+                                "name": "string",
+                                "value": "string",
+                            }],
+                            "path": "string",
+                            "scheme": "string",
+                        },
+                        "tcp_socket": {
+                            "port": 0,
+                            "host": "string",
+                        },
+                    },
+                    "pre_stop": {
+                        "exec_": {
+                            "command": ["string"],
+                        },
+                        "http_get": {
+                            "port": 0,
+                            "host": "string",
+                            "http_headers": [{
+                                "name": "string",
+                                "value": "string",
+                            }],
+                            "path": "string",
+                            "scheme": "string",
+                        },
+                        "tcp_socket": {
+                            "port": 0,
+                            "host": "string",
+                        },
+                    },
+                },
+                "liveness_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "command": ["string"],
+                "ports": [{
+                    "container_port": 0,
+                    "host_ip": "string",
+                    "host_port": 0,
+                    "name": "string",
+                    "protocol": "string",
+                }],
+                "args": ["string"],
+                "env_from": [{
+                    "config_map_ref": {
+                        "name": "string",
+                        "optional": False,
+                    },
+                    "prefix": "string",
+                    "secret_ref": {
+                        "name": "string",
+                        "optional": False,
+                    },
+                }],
+                "env": [{
+                    "name": "string",
+                    "value": "string",
+                    "value_from": {
+                        "config_map_key_ref": {
+                            "key": "string",
+                            "name": "string",
+                            "optional": False,
+                        },
+                        "field_ref": {
+                            "field_path": "string",
+                            "api_version": "string",
+                        },
+                        "resource_field_ref": {
+                            "resource": "string",
+                            "container_name": "string",
+                            "divisor": "string",
+                        },
+                        "secret_key_ref": {
+                            "key": "string",
+                            "name": "string",
+                            "optional": False,
+                        },
+                    },
+                }],
+                "image": "string",
+                "stdin": False,
+                "stdin_once": False,
+                "termination_message_path": "string",
+                "termination_message_policy": "string",
+                "tty": False,
+                "volume_devices": [{
+                    "device_path": "string",
+                    "name": "string",
+                }],
+                "volume_mounts": [{
+                    "mount_path": "string",
+                    "name": "string",
+                    "mount_propagation": "string",
+                    "read_only": False,
+                    "sub_path": "string",
+                    "sub_path_expr": "string",
+                }],
+                "working_dir": "string",
+            }],
+            "node_selector": {
                 "string": "string",
             },
-            host_aliases=[kubernetes.core.v1.HostAliasArgs(
-                hostnames=["string"],
-                ip="string",
-            )],
-            affinity=kubernetes.core.v1.AffinityArgs(
-                node_affinity=kubernetes.core.v1.NodeAffinityArgs(
-                    preferred_during_scheduling_ignored_during_execution=[kubernetes.core.v1.PreferredSchedulingTermArgs(
-                        preference=kubernetes.core.v1.NodeSelectorTermArgs(
-                            match_expressions=[kubernetes.core.v1.NodeSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                            match_fields=[kubernetes.core.v1.NodeSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                        ),
-                        weight=0,
-                    )],
-                    required_during_scheduling_ignored_during_execution=kubernetes.core.v1.NodeSelectorArgs(
-                        node_selector_terms=[kubernetes.core.v1.NodeSelectorTermArgs(
-                            match_expressions=[kubernetes.core.v1.NodeSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                            match_fields=[kubernetes.core.v1.NodeSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                        )],
-                    ),
-                ),
-                pod_affinity=kubernetes.core.v1.PodAffinityArgs(
-                    preferred_during_scheduling_ignored_during_execution=[kubernetes.core.v1.WeightedPodAffinityTermArgs(
-                        pod_affinity_term=kubernetes.core.v1.PodAffinityTermArgs(
-                            topology_key="string",
-                            label_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                    key="string",
-                                    operator="string",
-                                    values=["string"],
-                                )],
-                                match_labels={
+            "host_aliases": [{
+                "hostnames": ["string"],
+                "ip": "string",
+            }],
+            "affinity": {
+                "node_affinity": {
+                    "preferred_during_scheduling_ignored_during_execution": [{
+                        "preference": {
+                            "match_expressions": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                            "match_fields": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                        },
+                        "weight": 0,
+                    }],
+                    "required_during_scheduling_ignored_during_execution": {
+                        "node_selector_terms": [{
+                            "match_expressions": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                            "match_fields": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                        }],
+                    },
+                },
+                "pod_affinity": {
+                    "preferred_during_scheduling_ignored_during_execution": [{
+                        "pod_affinity_term": {
+                            "topology_key": "string",
+                            "label_selector": {
+                                "match_expressions": [{
+                                    "key": "string",
+                                    "operator": "string",
+                                    "values": ["string"],
+                                }],
+                                "match_labels": {
                                     "string": "string",
                                 },
-                            ),
-                            namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                    key="string",
-                                    operator="string",
-                                    values=["string"],
-                                )],
-                                match_labels={
+                            },
+                            "namespace_selector": {
+                                "match_expressions": [{
+                                    "key": "string",
+                                    "operator": "string",
+                                    "values": ["string"],
+                                }],
+                                "match_labels": {
                                     "string": "string",
                                 },
-                            ),
-                            namespaces=["string"],
-                        ),
-                        weight=0,
-                    )],
-                    required_during_scheduling_ignored_during_execution=[kubernetes.core.v1.PodAffinityTermArgs(
-                        topology_key="string",
-                        label_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                            match_labels={
+                            },
+                            "namespaces": ["string"],
+                        },
+                        "weight": 0,
+                    }],
+                    "required_during_scheduling_ignored_during_execution": [{
+                        "topology_key": "string",
+                        "label_selector": {
+                            "match_expressions": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                            "match_labels": {
                                 "string": "string",
                             },
-                        ),
-                        namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                            match_labels={
+                        },
+                        "namespace_selector": {
+                            "match_expressions": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                            "match_labels": {
                                 "string": "string",
                             },
-                        ),
-                        namespaces=["string"],
-                    )],
-                ),
-                pod_anti_affinity=kubernetes.core.v1.PodAntiAffinityArgs(
-                    preferred_during_scheduling_ignored_during_execution=[kubernetes.core.v1.WeightedPodAffinityTermArgs(
-                        pod_affinity_term=kubernetes.core.v1.PodAffinityTermArgs(
-                            topology_key="string",
-                            label_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                    key="string",
-                                    operator="string",
-                                    values=["string"],
-                                )],
-                                match_labels={
+                        },
+                        "namespaces": ["string"],
+                    }],
+                },
+                "pod_anti_affinity": {
+                    "preferred_during_scheduling_ignored_during_execution": [{
+                        "pod_affinity_term": {
+                            "topology_key": "string",
+                            "label_selector": {
+                                "match_expressions": [{
+                                    "key": "string",
+                                    "operator": "string",
+                                    "values": ["string"],
+                                }],
+                                "match_labels": {
                                     "string": "string",
                                 },
-                            ),
-                            namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                    key="string",
-                                    operator="string",
-                                    values=["string"],
-                                )],
-                                match_labels={
+                            },
+                            "namespace_selector": {
+                                "match_expressions": [{
+                                    "key": "string",
+                                    "operator": "string",
+                                    "values": ["string"],
+                                }],
+                                "match_labels": {
                                     "string": "string",
                                 },
-                            ),
-                            namespaces=["string"],
-                        ),
-                        weight=0,
-                    )],
-                    required_during_scheduling_ignored_during_execution=[kubernetes.core.v1.PodAffinityTermArgs(
-                        topology_key="string",
-                        label_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                            match_labels={
+                            },
+                            "namespaces": ["string"],
+                        },
+                        "weight": 0,
+                    }],
+                    "required_during_scheduling_ignored_during_execution": [{
+                        "topology_key": "string",
+                        "label_selector": {
+                            "match_expressions": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                            "match_labels": {
                                 "string": "string",
                             },
-                        ),
-                        namespace_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                            match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                key="string",
-                                operator="string",
-                                values=["string"],
-                            )],
-                            match_labels={
+                        },
+                        "namespace_selector": {
+                            "match_expressions": [{
+                                "key": "string",
+                                "operator": "string",
+                                "values": ["string"],
+                            }],
+                            "match_labels": {
                                 "string": "string",
                             },
-                        ),
-                        namespaces=["string"],
-                    )],
-                ),
-            ),
-            dns_config=kubernetes.core.v1.PodDNSConfigArgs(
-                nameservers=["string"],
-                options=[kubernetes.core.v1.PodDNSConfigOptionArgs(
-                    name="string",
-                    value="string",
-                )],
-                searches=["string"],
-            ),
-            overhead={
+                        },
+                        "namespaces": ["string"],
+                    }],
+                },
+            },
+            "dns_config": {
+                "nameservers": ["string"],
+                "options": [{
+                    "name": "string",
+                    "value": "string",
+                }],
+                "searches": ["string"],
+            },
+            "overhead": {
                 "string": "string",
             },
-            enable_service_links=False,
-            ephemeral_containers=[kubernetes.core.v1.EphemeralContainerArgs(
-                name="string",
-                readiness_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                env_from=[kubernetes.core.v1.EnvFromSourceArgs(
-                    config_map_ref=kubernetes.core.v1.ConfigMapEnvSourceArgs(
-                        name="string",
-                        optional=False,
-                    ),
-                    prefix="string",
-                    secret_ref=kubernetes.core.v1.SecretEnvSourceArgs(
-                        name="string",
-                        optional=False,
-                    ),
-                )],
-                security_context=kubernetes.core.v1.SecurityContextArgs(
-                    allow_privilege_escalation=False,
-                    capabilities=kubernetes.core.v1.CapabilitiesArgs(
-                        add=["string"],
-                        drop=["string"],
-                    ),
-                    privileged=False,
-                    proc_mount="string",
-                    read_only_root_filesystem=False,
-                    run_as_group=0,
-                    run_as_non_root=False,
-                    run_as_user=0,
-                    se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
-                        level="string",
-                        role="string",
-                        type="string",
-                        user="string",
-                    ),
-                    seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
-                        type="string",
-                        localhost_profile="string",
-                    ),
-                    windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
-                        gmsa_credential_spec="string",
-                        gmsa_credential_spec_name="string",
-                        host_process=False,
-                        run_as_user_name="string",
-                    ),
-                ),
-                image="string",
-                image_pull_policy="string",
-                lifecycle=kubernetes.core.v1.LifecycleArgs(
-                    post_start=kubernetes.core.v1.HandlerArgs(
-                        exec_=kubernetes.core.v1.ExecActionArgs(
-                            command=["string"],
-                        ),
-                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                            port=0,
-                            host="string",
-                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                                name="string",
-                                value="string",
-                            )],
-                            path="string",
-                            scheme="string",
-                        ),
-                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                            port=0,
-                            host="string",
-                        ),
-                    ),
-                    pre_stop=kubernetes.core.v1.HandlerArgs(
-                        exec_=kubernetes.core.v1.ExecActionArgs(
-                            command=["string"],
-                        ),
-                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                            port=0,
-                            host="string",
-                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                                name="string",
-                                value="string",
-                            )],
-                            path="string",
-                            scheme="string",
-                        ),
-                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                            port=0,
-                            host="string",
-                        ),
-                    ),
-                ),
-                liveness_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                command=["string"],
-                startup_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                args=["string"],
-                working_dir="string",
-                env=[kubernetes.core.v1.EnvVarArgs(
-                    name="string",
-                    value="string",
-                    value_from=kubernetes.core.v1.EnvVarSourceArgs(
-                        config_map_key_ref=kubernetes.core.v1.ConfigMapKeySelectorArgs(
-                            key="string",
-                            name="string",
-                            optional=False,
-                        ),
-                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                            field_path="string",
-                            api_version="string",
-                        ),
-                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
-                            resource="string",
-                            container_name="string",
-                            divisor="string",
-                        ),
-                        secret_key_ref=kubernetes.core.v1.SecretKeySelectorArgs(
-                            key="string",
-                            name="string",
-                            optional=False,
-                        ),
-                    ),
-                )],
-                ports=[kubernetes.core.v1.ContainerPortArgs(
-                    container_port=0,
-                    host_ip="string",
-                    host_port=0,
-                    name="string",
-                    protocol="string",
-                )],
-                stdin=False,
-                stdin_once=False,
-                target_container_name="string",
-                termination_message_path="string",
-                termination_message_policy="string",
-                tty=False,
-                volume_devices=[kubernetes.core.v1.VolumeDeviceArgs(
-                    device_path="string",
-                    name="string",
-                )],
-                volume_mounts=[kubernetes.core.v1.VolumeMountArgs(
-                    mount_path="string",
-                    name="string",
-                    mount_propagation="string",
-                    read_only=False,
-                    sub_path="string",
-                    sub_path_expr="string",
-                )],
-                resources=kubernetes.core.v1.ResourceRequirementsArgs(
-                    limits={
+            "enable_service_links": False,
+            "ephemeral_containers": [{
+                "name": "string",
+                "readiness_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "env_from": [{
+                    "config_map_ref": {
+                        "name": "string",
+                        "optional": False,
+                    },
+                    "prefix": "string",
+                    "secret_ref": {
+                        "name": "string",
+                        "optional": False,
+                    },
+                }],
+                "security_context": {
+                    "allow_privilege_escalation": False,
+                    "capabilities": {
+                        "add": ["string"],
+                        "drop": ["string"],
+                    },
+                    "privileged": False,
+                    "proc_mount": "string",
+                    "read_only_root_filesystem": False,
+                    "run_as_group": 0,
+                    "run_as_non_root": False,
+                    "run_as_user": 0,
+                    "se_linux_options": {
+                        "level": "string",
+                        "role": "string",
+                        "type": "string",
+                        "user": "string",
+                    },
+                    "seccomp_profile": {
+                        "type": "string",
+                        "localhost_profile": "string",
+                    },
+                    "windows_options": {
+                        "gmsa_credential_spec": "string",
+                        "gmsa_credential_spec_name": "string",
+                        "host_process": False,
+                        "run_as_user_name": "string",
+                    },
+                },
+                "image": "string",
+                "image_pull_policy": "string",
+                "lifecycle": {
+                    "post_start": {
+                        "exec_": {
+                            "command": ["string"],
+                        },
+                        "http_get": {
+                            "port": 0,
+                            "host": "string",
+                            "http_headers": [{
+                                "name": "string",
+                                "value": "string",
+                            }],
+                            "path": "string",
+                            "scheme": "string",
+                        },
+                        "tcp_socket": {
+                            "port": 0,
+                            "host": "string",
+                        },
+                    },
+                    "pre_stop": {
+                        "exec_": {
+                            "command": ["string"],
+                        },
+                        "http_get": {
+                            "port": 0,
+                            "host": "string",
+                            "http_headers": [{
+                                "name": "string",
+                                "value": "string",
+                            }],
+                            "path": "string",
+                            "scheme": "string",
+                        },
+                        "tcp_socket": {
+                            "port": 0,
+                            "host": "string",
+                        },
+                    },
+                },
+                "liveness_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "command": ["string"],
+                "startup_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "args": ["string"],
+                "working_dir": "string",
+                "env": [{
+                    "name": "string",
+                    "value": "string",
+                    "value_from": {
+                        "config_map_key_ref": {
+                            "key": "string",
+                            "name": "string",
+                            "optional": False,
+                        },
+                        "field_ref": {
+                            "field_path": "string",
+                            "api_version": "string",
+                        },
+                        "resource_field_ref": {
+                            "resource": "string",
+                            "container_name": "string",
+                            "divisor": "string",
+                        },
+                        "secret_key_ref": {
+                            "key": "string",
+                            "name": "string",
+                            "optional": False,
+                        },
+                    },
+                }],
+                "ports": [{
+                    "container_port": 0,
+                    "host_ip": "string",
+                    "host_port": 0,
+                    "name": "string",
+                    "protocol": "string",
+                }],
+                "stdin": False,
+                "stdin_once": False,
+                "target_container_name": "string",
+                "termination_message_path": "string",
+                "termination_message_policy": "string",
+                "tty": False,
+                "volume_devices": [{
+                    "device_path": "string",
+                    "name": "string",
+                }],
+                "volume_mounts": [{
+                    "mount_path": "string",
+                    "name": "string",
+                    "mount_propagation": "string",
+                    "read_only": False,
+                    "sub_path": "string",
+                    "sub_path_expr": "string",
+                }],
+                "resources": {
+                    "limits": {
                         "string": "string",
                     },
-                    requests={
+                    "requests": {
                         "string": "string",
                     },
-                ),
-            )],
-            preemption_policy="string",
-            host_ipc=False,
-            priority=0,
-            host_pid=False,
-            hostname="string",
-            image_pull_secrets=[kubernetes.core.v1.LocalObjectReferenceArgs(
-                name="string",
-            )],
-            init_containers=[kubernetes.core.v1.ContainerArgs(
-                name="string",
-                readiness_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                image_pull_policy="string",
-                resources=kubernetes.core.v1.ResourceRequirementsArgs(
-                    limits={
+                },
+            }],
+            "preemption_policy": "string",
+            "host_ipc": False,
+            "priority": 0,
+            "host_pid": False,
+            "hostname": "string",
+            "image_pull_secrets": [{
+                "name": "string",
+            }],
+            "init_containers": [{
+                "name": "string",
+                "readiness_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "image_pull_policy": "string",
+                "resources": {
+                    "limits": {
                         "string": "string",
                     },
-                    requests={
+                    "requests": {
                         "string": "string",
                     },
-                ),
-                startup_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                security_context=kubernetes.core.v1.SecurityContextArgs(
-                    allow_privilege_escalation=False,
-                    capabilities=kubernetes.core.v1.CapabilitiesArgs(
-                        add=["string"],
-                        drop=["string"],
-                    ),
-                    privileged=False,
-                    proc_mount="string",
-                    read_only_root_filesystem=False,
-                    run_as_group=0,
-                    run_as_non_root=False,
-                    run_as_user=0,
-                    se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
-                        level="string",
-                        role="string",
-                        type="string",
-                        user="string",
-                    ),
-                    seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
-                        type="string",
-                        localhost_profile="string",
-                    ),
-                    windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
-                        gmsa_credential_spec="string",
-                        gmsa_credential_spec_name="string",
-                        host_process=False,
-                        run_as_user_name="string",
-                    ),
-                ),
-                lifecycle=kubernetes.core.v1.LifecycleArgs(
-                    post_start=kubernetes.core.v1.HandlerArgs(
-                        exec_=kubernetes.core.v1.ExecActionArgs(
-                            command=["string"],
-                        ),
-                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                            port=0,
-                            host="string",
-                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                                name="string",
-                                value="string",
-                            )],
-                            path="string",
-                            scheme="string",
-                        ),
-                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                            port=0,
-                            host="string",
-                        ),
-                    ),
-                    pre_stop=kubernetes.core.v1.HandlerArgs(
-                        exec_=kubernetes.core.v1.ExecActionArgs(
-                            command=["string"],
-                        ),
-                        http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                            port=0,
-                            host="string",
-                            http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                                name="string",
-                                value="string",
-                            )],
-                            path="string",
-                            scheme="string",
-                        ),
-                        tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                            port=0,
-                            host="string",
-                        ),
-                    ),
-                ),
-                liveness_probe=kubernetes.core.v1.ProbeArgs(
-                    exec_=kubernetes.core.v1.ExecActionArgs(
-                        command=["string"],
-                    ),
-                    failure_threshold=0,
-                    http_get=kubernetes.core.v1.HTTPGetActionArgs(
-                        port=0,
-                        host="string",
-                        http_headers=[kubernetes.core.v1.HTTPHeaderArgs(
-                            name="string",
-                            value="string",
-                        )],
-                        path="string",
-                        scheme="string",
-                    ),
-                    initial_delay_seconds=0,
-                    period_seconds=0,
-                    success_threshold=0,
-                    tcp_socket=kubernetes.core.v1.TCPSocketActionArgs(
-                        port=0,
-                        host="string",
-                    ),
-                    termination_grace_period_seconds=0,
-                    timeout_seconds=0,
-                ),
-                command=["string"],
-                ports=[kubernetes.core.v1.ContainerPortArgs(
-                    container_port=0,
-                    host_ip="string",
-                    host_port=0,
-                    name="string",
-                    protocol="string",
-                )],
-                args=["string"],
-                env_from=[kubernetes.core.v1.EnvFromSourceArgs(
-                    config_map_ref=kubernetes.core.v1.ConfigMapEnvSourceArgs(
-                        name="string",
-                        optional=False,
-                    ),
-                    prefix="string",
-                    secret_ref=kubernetes.core.v1.SecretEnvSourceArgs(
-                        name="string",
-                        optional=False,
-                    ),
-                )],
-                env=[kubernetes.core.v1.EnvVarArgs(
-                    name="string",
-                    value="string",
-                    value_from=kubernetes.core.v1.EnvVarSourceArgs(
-                        config_map_key_ref=kubernetes.core.v1.ConfigMapKeySelectorArgs(
-                            key="string",
-                            name="string",
-                            optional=False,
-                        ),
-                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                            field_path="string",
-                            api_version="string",
-                        ),
-                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
-                            resource="string",
-                            container_name="string",
-                            divisor="string",
-                        ),
-                        secret_key_ref=kubernetes.core.v1.SecretKeySelectorArgs(
-                            key="string",
-                            name="string",
-                            optional=False,
-                        ),
-                    ),
-                )],
-                image="string",
-                stdin=False,
-                stdin_once=False,
-                termination_message_path="string",
-                termination_message_policy="string",
-                tty=False,
-                volume_devices=[kubernetes.core.v1.VolumeDeviceArgs(
-                    device_path="string",
-                    name="string",
-                )],
-                volume_mounts=[kubernetes.core.v1.VolumeMountArgs(
-                    mount_path="string",
-                    name="string",
-                    mount_propagation="string",
-                    read_only=False,
-                    sub_path="string",
-                    sub_path_expr="string",
-                )],
-                working_dir="string",
-            )],
-            node_name="string",
-            active_deadline_seconds=0,
-            dns_policy="string",
-            automount_service_account_token=False,
-            host_network=False,
-            priority_class_name="string",
-            readiness_gates=[kubernetes.core.v1.PodReadinessGateArgs(
-                condition_type="string",
-            )],
-            restart_policy="string",
-            runtime_class_name="string",
-            scheduler_name="string",
-            security_context=kubernetes.core.v1.PodSecurityContextArgs(
-                fs_group=0,
-                fs_group_change_policy="string",
-                run_as_group=0,
-                run_as_non_root=False,
-                run_as_user=0,
-                se_linux_options=kubernetes.core.v1.SELinuxOptionsArgs(
-                    level="string",
-                    role="string",
-                    type="string",
-                    user="string",
-                ),
-                seccomp_profile=kubernetes.core.v1.SeccompProfileArgs(
-                    type="string",
-                    localhost_profile="string",
-                ),
-                supplemental_groups=[0],
-                sysctls=[kubernetes.core.v1.SysctlArgs(
-                    name="string",
-                    value="string",
-                )],
-                windows_options=kubernetes.core.v1.WindowsSecurityContextOptionsArgs(
-                    gmsa_credential_spec="string",
-                    gmsa_credential_spec_name="string",
-                    host_process=False,
-                    run_as_user_name="string",
-                ),
-            ),
-            service_account="string",
-            service_account_name="string",
-            set_hostname_as_fqdn=False,
-            share_process_namespace=False,
-            subdomain="string",
-            termination_grace_period_seconds=0,
-            tolerations=[kubernetes.core.v1.TolerationArgs(
-                effect="string",
-                key="string",
-                operator="string",
-                toleration_seconds=0,
-                value="string",
-            )],
-            topology_spread_constraints=[kubernetes.core.v1.TopologySpreadConstraintArgs(
-                max_skew=0,
-                topology_key="string",
-                when_unsatisfiable="string",
-                label_selector=kubernetes.meta.v1.LabelSelectorArgs(
-                    match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                        key="string",
-                        operator="string",
-                        values=["string"],
-                    )],
-                    match_labels={
+                },
+                "startup_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "security_context": {
+                    "allow_privilege_escalation": False,
+                    "capabilities": {
+                        "add": ["string"],
+                        "drop": ["string"],
+                    },
+                    "privileged": False,
+                    "proc_mount": "string",
+                    "read_only_root_filesystem": False,
+                    "run_as_group": 0,
+                    "run_as_non_root": False,
+                    "run_as_user": 0,
+                    "se_linux_options": {
+                        "level": "string",
+                        "role": "string",
+                        "type": "string",
+                        "user": "string",
+                    },
+                    "seccomp_profile": {
+                        "type": "string",
+                        "localhost_profile": "string",
+                    },
+                    "windows_options": {
+                        "gmsa_credential_spec": "string",
+                        "gmsa_credential_spec_name": "string",
+                        "host_process": False,
+                        "run_as_user_name": "string",
+                    },
+                },
+                "lifecycle": {
+                    "post_start": {
+                        "exec_": {
+                            "command": ["string"],
+                        },
+                        "http_get": {
+                            "port": 0,
+                            "host": "string",
+                            "http_headers": [{
+                                "name": "string",
+                                "value": "string",
+                            }],
+                            "path": "string",
+                            "scheme": "string",
+                        },
+                        "tcp_socket": {
+                            "port": 0,
+                            "host": "string",
+                        },
+                    },
+                    "pre_stop": {
+                        "exec_": {
+                            "command": ["string"],
+                        },
+                        "http_get": {
+                            "port": 0,
+                            "host": "string",
+                            "http_headers": [{
+                                "name": "string",
+                                "value": "string",
+                            }],
+                            "path": "string",
+                            "scheme": "string",
+                        },
+                        "tcp_socket": {
+                            "port": 0,
+                            "host": "string",
+                        },
+                    },
+                },
+                "liveness_probe": {
+                    "exec_": {
+                        "command": ["string"],
+                    },
+                    "failure_threshold": 0,
+                    "http_get": {
+                        "port": 0,
+                        "host": "string",
+                        "http_headers": [{
+                            "name": "string",
+                            "value": "string",
+                        }],
+                        "path": "string",
+                        "scheme": "string",
+                    },
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 0,
+                    "success_threshold": 0,
+                    "tcp_socket": {
+                        "port": 0,
+                        "host": "string",
+                    },
+                    "termination_grace_period_seconds": 0,
+                    "timeout_seconds": 0,
+                },
+                "command": ["string"],
+                "ports": [{
+                    "container_port": 0,
+                    "host_ip": "string",
+                    "host_port": 0,
+                    "name": "string",
+                    "protocol": "string",
+                }],
+                "args": ["string"],
+                "env_from": [{
+                    "config_map_ref": {
+                        "name": "string",
+                        "optional": False,
+                    },
+                    "prefix": "string",
+                    "secret_ref": {
+                        "name": "string",
+                        "optional": False,
+                    },
+                }],
+                "env": [{
+                    "name": "string",
+                    "value": "string",
+                    "value_from": {
+                        "config_map_key_ref": {
+                            "key": "string",
+                            "name": "string",
+                            "optional": False,
+                        },
+                        "field_ref": {
+                            "field_path": "string",
+                            "api_version": "string",
+                        },
+                        "resource_field_ref": {
+                            "resource": "string",
+                            "container_name": "string",
+                            "divisor": "string",
+                        },
+                        "secret_key_ref": {
+                            "key": "string",
+                            "name": "string",
+                            "optional": False,
+                        },
+                    },
+                }],
+                "image": "string",
+                "stdin": False,
+                "stdin_once": False,
+                "termination_message_path": "string",
+                "termination_message_policy": "string",
+                "tty": False,
+                "volume_devices": [{
+                    "device_path": "string",
+                    "name": "string",
+                }],
+                "volume_mounts": [{
+                    "mount_path": "string",
+                    "name": "string",
+                    "mount_propagation": "string",
+                    "read_only": False,
+                    "sub_path": "string",
+                    "sub_path_expr": "string",
+                }],
+                "working_dir": "string",
+            }],
+            "node_name": "string",
+            "active_deadline_seconds": 0,
+            "dns_policy": "string",
+            "automount_service_account_token": False,
+            "host_network": False,
+            "priority_class_name": "string",
+            "readiness_gates": [{
+                "condition_type": "string",
+            }],
+            "restart_policy": "string",
+            "runtime_class_name": "string",
+            "scheduler_name": "string",
+            "security_context": {
+                "fs_group": 0,
+                "fs_group_change_policy": "string",
+                "run_as_group": 0,
+                "run_as_non_root": False,
+                "run_as_user": 0,
+                "se_linux_options": {
+                    "level": "string",
+                    "role": "string",
+                    "type": "string",
+                    "user": "string",
+                },
+                "seccomp_profile": {
+                    "type": "string",
+                    "localhost_profile": "string",
+                },
+                "supplemental_groups": [0],
+                "sysctls": [{
+                    "name": "string",
+                    "value": "string",
+                }],
+                "windows_options": {
+                    "gmsa_credential_spec": "string",
+                    "gmsa_credential_spec_name": "string",
+                    "host_process": False,
+                    "run_as_user_name": "string",
+                },
+            },
+            "service_account": "string",
+            "service_account_name": "string",
+            "set_hostname_as_fqdn": False,
+            "share_process_namespace": False,
+            "subdomain": "string",
+            "termination_grace_period_seconds": 0,
+            "tolerations": [{
+                "effect": "string",
+                "key": "string",
+                "operator": "string",
+                "toleration_seconds": 0,
+                "value": "string",
+            }],
+            "topology_spread_constraints": [{
+                "max_skew": 0,
+                "topology_key": "string",
+                "when_unsatisfiable": "string",
+                "label_selector": {
+                    "match_expressions": [{
+                        "key": "string",
+                        "operator": "string",
+                        "values": ["string"],
+                    }],
+                    "match_labels": {
                         "string": "string",
                     },
-                ),
-            )],
-            volumes=[kubernetes.core.v1.VolumeArgs(
-                name="string",
-                git_repo=kubernetes.core.v1.GitRepoVolumeSourceArgs(
-                    repository="string",
-                    directory="string",
-                    revision="string",
-                ),
-                config_map=kubernetes.core.v1.ConfigMapVolumeSourceArgs(
-                    default_mode=0,
-                    items=[kubernetes.core.v1.KeyToPathArgs(
-                        key="string",
-                        path="string",
-                        mode=0,
-                    )],
-                    name="string",
-                    optional=False,
-                ),
-                glusterfs=kubernetes.core.v1.GlusterfsVolumeSourceArgs(
-                    endpoints="string",
-                    path="string",
-                    read_only=False,
-                ),
-                cinder=kubernetes.core.v1.CinderVolumeSourceArgs(
-                    volume_id="string",
-                    fs_type="string",
-                    read_only=False,
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                ),
-                host_path=kubernetes.core.v1.HostPathVolumeSourceArgs(
-                    path="string",
-                    type="string",
-                ),
-                csi=kubernetes.core.v1.CSIVolumeSourceArgs(
-                    driver="string",
-                    fs_type="string",
-                    node_publish_secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                    read_only=False,
-                    volume_attributes={
+                },
+            }],
+            "volumes": [{
+                "name": "string",
+                "git_repo": {
+                    "repository": "string",
+                    "directory": "string",
+                    "revision": "string",
+                },
+                "config_map": {
+                    "default_mode": 0,
+                    "items": [{
+                        "key": "string",
+                        "path": "string",
+                        "mode": 0,
+                    }],
+                    "name": "string",
+                    "optional": False,
+                },
+                "glusterfs": {
+                    "endpoints": "string",
+                    "path": "string",
+                    "read_only": False,
+                },
+                "cinder": {
+                    "volume_id": "string",
+                    "fs_type": "string",
+                    "read_only": False,
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                },
+                "host_path": {
+                    "path": "string",
+                    "type": "string",
+                },
+                "csi": {
+                    "driver": "string",
+                    "fs_type": "string",
+                    "node_publish_secret_ref": {
+                        "name": "string",
+                    },
+                    "read_only": False,
+                    "volume_attributes": {
                         "string": "string",
                     },
-                ),
-                downward_api=kubernetes.core.v1.DownwardAPIVolumeSourceArgs(
-                    default_mode=0,
-                    items=[kubernetes.core.v1.DownwardAPIVolumeFileArgs(
-                        path="string",
-                        field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                            field_path="string",
-                            api_version="string",
-                        ),
-                        mode=0,
-                        resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
-                            resource="string",
-                            container_name="string",
-                            divisor="string",
-                        ),
-                    )],
-                ),
-                empty_dir=kubernetes.core.v1.EmptyDirVolumeSourceArgs(
-                    medium="string",
-                    size_limit="string",
-                ),
-                ephemeral=kubernetes.core.v1.EphemeralVolumeSourceArgs(
-                    read_only=False,
-                    volume_claim_template=kubernetes.core.v1.PersistentVolumeClaimTemplateArgs(
-                        spec=kubernetes.core.v1.PersistentVolumeClaimSpecArgs(
-                            access_modes=["string"],
-                            data_source=kubernetes.core.v1.TypedLocalObjectReferenceArgs(
-                                kind="string",
-                                name="string",
-                                api_group="string",
-                            ),
-                            data_source_ref=kubernetes.core.v1.TypedLocalObjectReferenceArgs(
-                                kind="string",
-                                name="string",
-                                api_group="string",
-                            ),
-                            resources=kubernetes.core.v1.ResourceRequirementsArgs(
-                                limits={
+                },
+                "downward_api": {
+                    "default_mode": 0,
+                    "items": [{
+                        "path": "string",
+                        "field_ref": {
+                            "field_path": "string",
+                            "api_version": "string",
+                        },
+                        "mode": 0,
+                        "resource_field_ref": {
+                            "resource": "string",
+                            "container_name": "string",
+                            "divisor": "string",
+                        },
+                    }],
+                },
+                "empty_dir": {
+                    "medium": "string",
+                    "size_limit": "string",
+                },
+                "ephemeral": {
+                    "read_only": False,
+                    "volume_claim_template": {
+                        "spec": {
+                            "access_modes": ["string"],
+                            "data_source": {
+                                "kind": "string",
+                                "name": "string",
+                                "api_group": "string",
+                            },
+                            "data_source_ref": {
+                                "kind": "string",
+                                "name": "string",
+                                "api_group": "string",
+                            },
+                            "resources": {
+                                "limits": {
                                     "string": "string",
                                 },
-                                requests={
+                                "requests": {
                                     "string": "string",
                                 },
-                            ),
-                            selector=kubernetes.meta.v1.LabelSelectorArgs(
-                                match_expressions=[kubernetes.meta.v1.LabelSelectorRequirementArgs(
-                                    key="string",
-                                    operator="string",
-                                    values=["string"],
-                                )],
-                                match_labels={
+                            },
+                            "selector": {
+                                "match_expressions": [{
+                                    "key": "string",
+                                    "operator": "string",
+                                    "values": ["string"],
+                                }],
+                                "match_labels": {
                                     "string": "string",
                                 },
-                            ),
-                            storage_class_name="string",
-                            volume_mode="string",
-                            volume_name="string",
-                        ),
-                        metadata=kubernetes.meta.v1.ObjectMetaArgs(
-                            annotations={
+                            },
+                            "storage_class_name": "string",
+                            "volume_mode": "string",
+                            "volume_name": "string",
+                        },
+                        "metadata": {
+                            "annotations": {
                                 "string": "string",
                             },
-                            cluster_name="string",
-                            creation_timestamp="string",
-                            deletion_grace_period_seconds=0,
-                            deletion_timestamp="string",
-                            finalizers=["string"],
-                            generate_name="string",
-                            generation=0,
-                            labels={
+                            "cluster_name": "string",
+                            "creation_timestamp": "string",
+                            "deletion_grace_period_seconds": 0,
+                            "deletion_timestamp": "string",
+                            "finalizers": ["string"],
+                            "generate_name": "string",
+                            "generation": 0,
+                            "labels": {
                                 "string": "string",
                             },
-                            managed_fields=[kubernetes.meta.v1.ManagedFieldsEntryArgs(
-                                api_version="string",
-                                fields_type="string",
-                                fields_v1="{}",
-                                manager="string",
-                                operation="string",
-                                subresource="string",
-                                time="string",
-                            )],
-                            name="string",
-                            namespace="string",
-                            owner_references=[kubernetes.meta.v1.OwnerReferenceArgs(
-                                api_version="string",
-                                kind="string",
-                                name="string",
-                                uid="string",
-                                block_owner_deletion=False,
-                                controller=False,
-                            )],
-                            resource_version="string",
-                            self_link="string",
-                            uid="string",
-                        ),
-                    ),
-                ),
-                fc=kubernetes.core.v1.FCVolumeSourceArgs(
-                    fs_type="string",
-                    lun=0,
-                    read_only=False,
-                    target_wwns=["string"],
-                    wwids=["string"],
-                ),
-                flex_volume=kubernetes.core.v1.FlexVolumeSourceArgs(
-                    driver="string",
-                    fs_type="string",
-                    options={
+                            "managed_fields": [{
+                                "api_version": "string",
+                                "fields_type": "string",
+                                "fields_v1": "{}",
+                                "manager": "string",
+                                "operation": "string",
+                                "subresource": "string",
+                                "time": "string",
+                            }],
+                            "name": "string",
+                            "namespace": "string",
+                            "owner_references": [{
+                                "api_version": "string",
+                                "kind": "string",
+                                "name": "string",
+                                "uid": "string",
+                                "block_owner_deletion": False,
+                                "controller": False,
+                            }],
+                            "resource_version": "string",
+                            "self_link": "string",
+                            "uid": "string",
+                        },
+                    },
+                },
+                "fc": {
+                    "fs_type": "string",
+                    "lun": 0,
+                    "read_only": False,
+                    "target_wwns": ["string"],
+                    "wwids": ["string"],
+                },
+                "flex_volume": {
+                    "driver": "string",
+                    "fs_type": "string",
+                    "options": {
                         "string": "string",
                     },
-                    read_only=False,
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                ),
-                iscsi=kubernetes.core.v1.ISCSIVolumeSourceArgs(
-                    iqn="string",
-                    lun=0,
-                    target_portal="string",
-                    chap_auth_discovery=False,
-                    chap_auth_session=False,
-                    fs_type="string",
-                    initiator_name="string",
-                    iscsi_interface="string",
-                    portals=["string"],
-                    read_only=False,
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                ),
-                gce_persistent_disk=kubernetes.core.v1.GCEPersistentDiskVolumeSourceArgs(
-                    pd_name="string",
-                    fs_type="string",
-                    partition=0,
-                    read_only=False,
-                ),
-                aws_elastic_block_store=kubernetes.core.v1.AWSElasticBlockStoreVolumeSourceArgs(
-                    volume_id="string",
-                    fs_type="string",
-                    partition=0,
-                    read_only=False,
-                ),
-                cephfs=kubernetes.core.v1.CephFSVolumeSourceArgs(
-                    monitors=["string"],
-                    path="string",
-                    read_only=False,
-                    secret_file="string",
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                    user="string",
-                ),
-                azure_file=kubernetes.core.v1.AzureFileVolumeSourceArgs(
-                    secret_name="string",
-                    share_name="string",
-                    read_only=False,
-                ),
-                flocker=kubernetes.core.v1.FlockerVolumeSourceArgs(
-                    dataset_name="string",
-                    dataset_uuid="string",
-                ),
-                azure_disk=kubernetes.core.v1.AzureDiskVolumeSourceArgs(
-                    disk_name="string",
-                    disk_uri="string",
-                    caching_mode="string",
-                    fs_type="string",
-                    kind="string",
-                    read_only=False,
-                ),
-                nfs=kubernetes.core.v1.NFSVolumeSourceArgs(
-                    path="string",
-                    server="string",
-                    read_only=False,
-                ),
-                persistent_volume_claim=kubernetes.core.v1.PersistentVolumeClaimVolumeSourceArgs(
-                    claim_name="string",
-                    read_only=False,
-                ),
-                photon_persistent_disk=kubernetes.core.v1.PhotonPersistentDiskVolumeSourceArgs(
-                    pd_id="string",
-                    fs_type="string",
-                ),
-                portworx_volume=kubernetes.core.v1.PortworxVolumeSourceArgs(
-                    volume_id="string",
-                    fs_type="string",
-                    read_only=False,
-                ),
-                projected=kubernetes.core.v1.ProjectedVolumeSourceArgs(
-                    sources=[kubernetes.core.v1.VolumeProjectionArgs(
-                        config_map=kubernetes.core.v1.ConfigMapProjectionArgs(
-                            items=[kubernetes.core.v1.KeyToPathArgs(
-                                key="string",
-                                path="string",
-                                mode=0,
-                            )],
-                            name="string",
-                            optional=False,
-                        ),
-                        downward_api=kubernetes.core.v1.DownwardAPIProjectionArgs(
-                            items=[kubernetes.core.v1.DownwardAPIVolumeFileArgs(
-                                path="string",
-                                field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                                    field_path="string",
-                                    api_version="string",
-                                ),
-                                mode=0,
-                                resource_field_ref=kubernetes.core.v1.ResourceFieldSelectorArgs(
-                                    resource="string",
-                                    container_name="string",
-                                    divisor="string",
-                                ),
-                            )],
-                        ),
-                        secret=kubernetes.core.v1.SecretProjectionArgs(
-                            items=[kubernetes.core.v1.KeyToPathArgs(
-                                key="string",
-                                path="string",
-                                mode=0,
-                            )],
-                            name="string",
-                            optional=False,
-                        ),
-                        service_account_token=kubernetes.core.v1.ServiceAccountTokenProjectionArgs(
-                            path="string",
-                            audience="string",
-                            expiration_seconds=0,
-                        ),
-                    )],
-                    default_mode=0,
-                ),
-                quobyte=kubernetes.core.v1.QuobyteVolumeSourceArgs(
-                    registry="string",
-                    volume="string",
-                    group="string",
-                    read_only=False,
-                    tenant="string",
-                    user="string",
-                ),
-                rbd=kubernetes.core.v1.RBDVolumeSourceArgs(
-                    image="string",
-                    monitors=["string"],
-                    fs_type="string",
-                    keyring="string",
-                    pool="string",
-                    read_only=False,
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                    user="string",
-                ),
-                scale_io=kubernetes.core.v1.ScaleIOVolumeSourceArgs(
-                    gateway="string",
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                    system="string",
-                    fs_type="string",
-                    protection_domain="string",
-                    read_only=False,
-                    ssl_enabled=False,
-                    storage_mode="string",
-                    storage_pool="string",
-                    volume_name="string",
-                ),
-                secret=kubernetes.core.v1.SecretVolumeSourceArgs(
-                    default_mode=0,
-                    items=[kubernetes.core.v1.KeyToPathArgs(
-                        key="string",
-                        path="string",
-                        mode=0,
-                    )],
-                    optional=False,
-                    secret_name="string",
-                ),
-                storageos=kubernetes.core.v1.StorageOSVolumeSourceArgs(
-                    fs_type="string",
-                    read_only=False,
-                    secret_ref=kubernetes.core.v1.LocalObjectReferenceArgs(
-                        name="string",
-                    ),
-                    volume_name="string",
-                    volume_namespace="string",
-                ),
-                vsphere_volume=kubernetes.core.v1.VsphereVirtualDiskVolumeSourceArgs(
-                    volume_path="string",
-                    fs_type="string",
-                    storage_policy_id="string",
-                    storage_policy_name="string",
-                ),
-            )],
-        ),
-        status=kubernetes.core.v1.PodStatusArgs(
-            conditions=[kubernetes.core.v1.PodConditionArgs(
-                status="string",
-                type="string",
-                last_probe_time="string",
-                last_transition_time="string",
-                message="string",
-                reason="string",
-            )],
-            container_statuses=[kubernetes.core.v1.ContainerStatusArgs(
-                image="string",
-                image_id="string",
-                name="string",
-                ready=False,
-                restart_count=0,
-                container_id="string",
-                last_state=kubernetes.core.v1.ContainerStateArgs(
-                    running=kubernetes.core.v1.ContainerStateRunningArgs(
-                        started_at="string",
-                    ),
-                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
-                        exit_code=0,
-                        container_id="string",
-                        finished_at="string",
-                        message="string",
-                        reason="string",
-                        signal=0,
-                        started_at="string",
-                    ),
-                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
-                        message="string",
-                        reason="string",
-                    ),
-                ),
-                started=False,
-                state=kubernetes.core.v1.ContainerStateArgs(
-                    running=kubernetes.core.v1.ContainerStateRunningArgs(
-                        started_at="string",
-                    ),
-                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
-                        exit_code=0,
-                        container_id="string",
-                        finished_at="string",
-                        message="string",
-                        reason="string",
-                        signal=0,
-                        started_at="string",
-                    ),
-                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
-                        message="string",
-                        reason="string",
-                    ),
-                ),
-            )],
-            ephemeral_container_statuses=[kubernetes.core.v1.ContainerStatusArgs(
-                image="string",
-                image_id="string",
-                name="string",
-                ready=False,
-                restart_count=0,
-                container_id="string",
-                last_state=kubernetes.core.v1.ContainerStateArgs(
-                    running=kubernetes.core.v1.ContainerStateRunningArgs(
-                        started_at="string",
-                    ),
-                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
-                        exit_code=0,
-                        container_id="string",
-                        finished_at="string",
-                        message="string",
-                        reason="string",
-                        signal=0,
-                        started_at="string",
-                    ),
-                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
-                        message="string",
-                        reason="string",
-                    ),
-                ),
-                started=False,
-                state=kubernetes.core.v1.ContainerStateArgs(
-                    running=kubernetes.core.v1.ContainerStateRunningArgs(
-                        started_at="string",
-                    ),
-                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
-                        exit_code=0,
-                        container_id="string",
-                        finished_at="string",
-                        message="string",
-                        reason="string",
-                        signal=0,
-                        started_at="string",
-                    ),
-                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
-                        message="string",
-                        reason="string",
-                    ),
-                ),
-            )],
-            host_ip="string",
-            init_container_statuses=[kubernetes.core.v1.ContainerStatusArgs(
-                image="string",
-                image_id="string",
-                name="string",
-                ready=False,
-                restart_count=0,
-                container_id="string",
-                last_state=kubernetes.core.v1.ContainerStateArgs(
-                    running=kubernetes.core.v1.ContainerStateRunningArgs(
-                        started_at="string",
-                    ),
-                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
-                        exit_code=0,
-                        container_id="string",
-                        finished_at="string",
-                        message="string",
-                        reason="string",
-                        signal=0,
-                        started_at="string",
-                    ),
-                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
-                        message="string",
-                        reason="string",
-                    ),
-                ),
-                started=False,
-                state=kubernetes.core.v1.ContainerStateArgs(
-                    running=kubernetes.core.v1.ContainerStateRunningArgs(
-                        started_at="string",
-                    ),
-                    terminated=kubernetes.core.v1.ContainerStateTerminatedArgs(
-                        exit_code=0,
-                        container_id="string",
-                        finished_at="string",
-                        message="string",
-                        reason="string",
-                        signal=0,
-                        started_at="string",
-                    ),
-                    waiting=kubernetes.core.v1.ContainerStateWaitingArgs(
-                        message="string",
-                        reason="string",
-                    ),
-                ),
-            )],
-            message="string",
-            nominated_node_name="string",
-            phase="string",
-            pod_ip="string",
-            pod_ips=[kubernetes.core.v1.PodIPArgs(
-                ip="string",
-            )],
-            qos_class="string",
-            reason="string",
-            start_time="string",
-        ),
-    ))
+                    "read_only": False,
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                },
+                "iscsi": {
+                    "iqn": "string",
+                    "lun": 0,
+                    "target_portal": "string",
+                    "chap_auth_discovery": False,
+                    "chap_auth_session": False,
+                    "fs_type": "string",
+                    "initiator_name": "string",
+                    "iscsi_interface": "string",
+                    "portals": ["string"],
+                    "read_only": False,
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                },
+                "gce_persistent_disk": {
+                    "pd_name": "string",
+                    "fs_type": "string",
+                    "partition": 0,
+                    "read_only": False,
+                },
+                "aws_elastic_block_store": {
+                    "volume_id": "string",
+                    "fs_type": "string",
+                    "partition": 0,
+                    "read_only": False,
+                },
+                "cephfs": {
+                    "monitors": ["string"],
+                    "path": "string",
+                    "read_only": False,
+                    "secret_file": "string",
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                    "user": "string",
+                },
+                "azure_file": {
+                    "secret_name": "string",
+                    "share_name": "string",
+                    "read_only": False,
+                },
+                "flocker": {
+                    "dataset_name": "string",
+                    "dataset_uuid": "string",
+                },
+                "azure_disk": {
+                    "disk_name": "string",
+                    "disk_uri": "string",
+                    "caching_mode": "string",
+                    "fs_type": "string",
+                    "kind": "string",
+                    "read_only": False,
+                },
+                "nfs": {
+                    "path": "string",
+                    "server": "string",
+                    "read_only": False,
+                },
+                "persistent_volume_claim": {
+                    "claim_name": "string",
+                    "read_only": False,
+                },
+                "photon_persistent_disk": {
+                    "pd_id": "string",
+                    "fs_type": "string",
+                },
+                "portworx_volume": {
+                    "volume_id": "string",
+                    "fs_type": "string",
+                    "read_only": False,
+                },
+                "projected": {
+                    "sources": [{
+                        "config_map": {
+                            "items": [{
+                                "key": "string",
+                                "path": "string",
+                                "mode": 0,
+                            }],
+                            "name": "string",
+                            "optional": False,
+                        },
+                        "downward_api": {
+                            "items": [{
+                                "path": "string",
+                                "field_ref": {
+                                    "field_path": "string",
+                                    "api_version": "string",
+                                },
+                                "mode": 0,
+                                "resource_field_ref": {
+                                    "resource": "string",
+                                    "container_name": "string",
+                                    "divisor": "string",
+                                },
+                            }],
+                        },
+                        "secret": {
+                            "items": [{
+                                "key": "string",
+                                "path": "string",
+                                "mode": 0,
+                            }],
+                            "name": "string",
+                            "optional": False,
+                        },
+                        "service_account_token": {
+                            "path": "string",
+                            "audience": "string",
+                            "expiration_seconds": 0,
+                        },
+                    }],
+                    "default_mode": 0,
+                },
+                "quobyte": {
+                    "registry": "string",
+                    "volume": "string",
+                    "group": "string",
+                    "read_only": False,
+                    "tenant": "string",
+                    "user": "string",
+                },
+                "rbd": {
+                    "image": "string",
+                    "monitors": ["string"],
+                    "fs_type": "string",
+                    "keyring": "string",
+                    "pool": "string",
+                    "read_only": False,
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                    "user": "string",
+                },
+                "scale_io": {
+                    "gateway": "string",
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                    "system": "string",
+                    "fs_type": "string",
+                    "protection_domain": "string",
+                    "read_only": False,
+                    "ssl_enabled": False,
+                    "storage_mode": "string",
+                    "storage_pool": "string",
+                    "volume_name": "string",
+                },
+                "secret": {
+                    "default_mode": 0,
+                    "items": [{
+                        "key": "string",
+                        "path": "string",
+                        "mode": 0,
+                    }],
+                    "optional": False,
+                    "secret_name": "string",
+                },
+                "storageos": {
+                    "fs_type": "string",
+                    "read_only": False,
+                    "secret_ref": {
+                        "name": "string",
+                    },
+                    "volume_name": "string",
+                    "volume_namespace": "string",
+                },
+                "vsphere_volume": {
+                    "volume_path": "string",
+                    "fs_type": "string",
+                    "storage_policy_id": "string",
+                    "storage_policy_name": "string",
+                },
+            }],
+        },
+        "status": {
+            "conditions": [{
+                "status": "string",
+                "type": "string",
+                "last_probe_time": "string",
+                "last_transition_time": "string",
+                "message": "string",
+                "reason": "string",
+            }],
+            "container_statuses": [{
+                "image": "string",
+                "image_id": "string",
+                "name": "string",
+                "ready": False,
+                "restart_count": 0,
+                "container_id": "string",
+                "last_state": {
+                    "running": {
+                        "started_at": "string",
+                    },
+                    "terminated": {
+                        "exit_code": 0,
+                        "container_id": "string",
+                        "finished_at": "string",
+                        "message": "string",
+                        "reason": "string",
+                        "signal": 0,
+                        "started_at": "string",
+                    },
+                    "waiting": {
+                        "message": "string",
+                        "reason": "string",
+                    },
+                },
+                "started": False,
+                "state": {
+                    "running": {
+                        "started_at": "string",
+                    },
+                    "terminated": {
+                        "exit_code": 0,
+                        "container_id": "string",
+                        "finished_at": "string",
+                        "message": "string",
+                        "reason": "string",
+                        "signal": 0,
+                        "started_at": "string",
+                    },
+                    "waiting": {
+                        "message": "string",
+                        "reason": "string",
+                    },
+                },
+            }],
+            "ephemeral_container_statuses": [{
+                "image": "string",
+                "image_id": "string",
+                "name": "string",
+                "ready": False,
+                "restart_count": 0,
+                "container_id": "string",
+                "last_state": {
+                    "running": {
+                        "started_at": "string",
+                    },
+                    "terminated": {
+                        "exit_code": 0,
+                        "container_id": "string",
+                        "finished_at": "string",
+                        "message": "string",
+                        "reason": "string",
+                        "signal": 0,
+                        "started_at": "string",
+                    },
+                    "waiting": {
+                        "message": "string",
+                        "reason": "string",
+                    },
+                },
+                "started": False,
+                "state": {
+                    "running": {
+                        "started_at": "string",
+                    },
+                    "terminated": {
+                        "exit_code": 0,
+                        "container_id": "string",
+                        "finished_at": "string",
+                        "message": "string",
+                        "reason": "string",
+                        "signal": 0,
+                        "started_at": "string",
+                    },
+                    "waiting": {
+                        "message": "string",
+                        "reason": "string",
+                    },
+                },
+            }],
+            "host_ip": "string",
+            "init_container_statuses": [{
+                "image": "string",
+                "image_id": "string",
+                "name": "string",
+                "ready": False,
+                "restart_count": 0,
+                "container_id": "string",
+                "last_state": {
+                    "running": {
+                        "started_at": "string",
+                    },
+                    "terminated": {
+                        "exit_code": 0,
+                        "container_id": "string",
+                        "finished_at": "string",
+                        "message": "string",
+                        "reason": "string",
+                        "signal": 0,
+                        "started_at": "string",
+                    },
+                    "waiting": {
+                        "message": "string",
+                        "reason": "string",
+                    },
+                },
+                "started": False,
+                "state": {
+                    "running": {
+                        "started_at": "string",
+                    },
+                    "terminated": {
+                        "exit_code": 0,
+                        "container_id": "string",
+                        "finished_at": "string",
+                        "message": "string",
+                        "reason": "string",
+                        "signal": 0,
+                        "started_at": "string",
+                    },
+                    "waiting": {
+                        "message": "string",
+                        "reason": "string",
+                    },
+                },
+            }],
+            "message": "string",
+            "nominated_node_name": "string",
+            "phase": "string",
+            "pod_ip": "string",
+            "pod_ips": [{
+                "ip": "string",
+            }],
+            "qos_class": "string",
+            "reason": "string",
+            "start_time": "string",
+        },
+    })
 ```
 
 </pulumi-choosable>

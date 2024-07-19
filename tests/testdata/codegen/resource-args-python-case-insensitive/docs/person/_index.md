@@ -286,9 +286,9 @@ var personResource = new Person("personResource", PersonArgs.builder()
 ```python
 person_resource = example.Person("personResource",
     name="string",
-    pets=[example.PetArgs(
-        name="string",
-    )])
+    pets=[{
+        "name": "string",
+    }])
 ```
 
 </pulumi-choosable>

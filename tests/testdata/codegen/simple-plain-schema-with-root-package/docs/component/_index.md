@@ -376,32 +376,32 @@ component_resource = example.Component("componentResource",
     c=0,
     e="string",
     b=False,
-    bar=example.FooArgs(
-        a=False,
-        c=0,
-        e="string",
-        b=False,
-        d=0,
-        f="string",
-    ),
-    baz=[example.FooArgs(
-        a=False,
-        c=0,
-        e="string",
-        b=False,
-        d=0,
-        f="string",
-    )],
+    bar={
+        "a": False,
+        "c": 0,
+        "e": "string",
+        "b": False,
+        "d": 0,
+        "f": "string",
+    },
+    baz=[{
+        "a": False,
+        "c": 0,
+        "e": "string",
+        "b": False,
+        "d": 0,
+        "f": "string",
+    }],
     d=0,
     f="string",
-    foo=example.FooArgs(
-        a=False,
-        c=0,
-        e="string",
-        b=False,
-        d=0,
-        f="string",
-    ))
+    foo={
+        "a": False,
+        "c": 0,
+        "e": "string",
+        "b": False,
+        "d": 0,
+        "f": "string",
+    })
 ```
 
 </pulumi-choosable>

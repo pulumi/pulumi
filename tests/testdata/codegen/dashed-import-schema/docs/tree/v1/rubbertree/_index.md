@@ -303,12 +303,12 @@ var rubberTreeResource = new RubberTree("rubberTreeResource", RubberTreeArgs.bui
 rubber_tree_resource = plant.tree.v1.RubberTree("rubberTreeResource",
     diameter=plant.tree.v1.Diameter.SIXINCH,
     type=plant.tree.v1.RubberTreeVariety.BURGUNDY,
-    container=plant.ContainerArgs(
-        size=plant.ContainerSize.FOUR_INCH,
-        brightness=plant.ContainerBrightness.ZERO_POINT_ONE,
-        color=plant.ContainerColor.RED,
-        material="string",
-    ),
+    container={
+        "size": plant.ContainerSize.FOUR_INCH,
+        "brightness": plant.ContainerBrightness.ZERO_POINT_ONE,
+        "color": plant.ContainerColor.RED,
+        "material": "string",
+    },
     farm=plant.tree.v1.Farm.PULUMI_PLANTERS_INC_,
     size=plant.tree.v1.TreeSize.SMALL)
 ```

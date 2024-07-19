@@ -281,9 +281,9 @@ var staticPageResource = new StaticPage("staticPageResource", StaticPageArgs.bui
 ```python
 static_page_resource = xyz.StaticPage("staticPageResource",
     index_content="string",
-    foo=xyz.FooArgs(
-        a=False,
-    ))
+    foo={
+        "a": False,
+    })
 ```
 
 </pulumi-choosable>

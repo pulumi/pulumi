@@ -319,19 +319,19 @@ var catResource = new Cat("catResource", CatArgs.builder()
 ```python
 cat_resource = example.Cat("catResource",
     age=0,
-    pet=example.PetArgs(
-        required_name=random_pet,
-        required_name_array=[random_pet],
-        required_name_map={
+    pet={
+        "required_name": random_pet,
+        "required_name_array": [random_pet],
+        "required_name_map": {
             "string": random_pet,
         },
-        age=0,
-        name=random_pet,
-        name_array=[random_pet],
-        name_map={
+        "age": 0,
+        "name": random_pet,
+        "name_array": [random_pet],
+        "name_map": {
             "string": random_pet,
         },
-    ))
+    })
 ```
 
 </pulumi-choosable>

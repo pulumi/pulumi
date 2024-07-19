@@ -328,16 +328,16 @@ var resourceResource = new Resource("resourceResource", ResourceArgs.builder()
 
 ```python
 resource_resource = mypkg.Resource("resourceResource",
-    config=mypkg.ConfigArgs(
-        foo="string",
-    ),
-    config_array=[mypkg.ConfigArgs(
-        foo="string",
-    )],
+    config={
+        "foo": "string",
+    },
+    config_array=[{
+        "foo": "string",
+    }],
     config_map={
-        "string": mypkg.ConfigArgs(
-            foo="string",
-        ),
+        "string": {
+            "foo": "string",
+        },
     },
     foo="string",
     foo_array=["string"],

@@ -344,29 +344,29 @@ var fooResource = new Foo("fooResource", FooArgs.builder()
 
 ```python
 foo_resource = example.Foo("fooResource",
-    backup_kube_client_settings=example.KubeClientSettingsArgs(
-        burst=0,
-        qps=0,
-        rec_test=kube_client_settings,
-    ),
+    backup_kube_client_settings={
+        "burst": 0,
+        "qps": 0,
+        "rec_test": kube_client_settings,
+    },
     argument="string",
     kube_client_settings=kube_client_settings,
-    settings=example.LayeredTypeArgs(
-        other=example.HelmReleaseSettingsArgs(
-            required_arg="string",
-            driver="string",
-            plugins_path="string",
-        ),
-        thinker="string",
-        answer=0,
-        plain_other={
-            "requiredArg": "string",
+    settings={
+        "other": {
+            "required_arg": "string",
             "driver": "string",
-            "pluginsPath": "string",
+            "plugins_path": "string",
         },
-        question="string",
-        recursive=layered_type,
-    ))
+        "thinker": "string",
+        "answer": 0,
+        "plain_other": {
+            "required_arg": "string",
+            "driver": "string",
+            "plugins_path": "string",
+        },
+        "question": "string",
+        "recursive": layered_type,
+    })
 ```
 
 </pulumi-choosable>
