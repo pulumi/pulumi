@@ -33,7 +33,7 @@ export class Provider extends pulumi.ProviderResource {
         {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(Provider.__pulumiType, name, resourceInputs, opts, false /*remote*/, utilities.getPackage());
+        super(Provider.__pulumiType, name, resourceInputs, opts, false /*dependency*/, utilities.getPackage());
     }
 }
 
