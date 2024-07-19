@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Fix lookup for pulumi run script when using Volta to manage nodejs

@@ -1,5 +1,70 @@
 # Changelog
 
+## 3.125.0 (2024-07-18)
+
+
+### Features
+
+- [sdk/go] Add support for invoke stack transforms
+  [#16617](https://github.com/pulumi/pulumi/pull/16617)
+
+- [sdk/{go,nodejs,python}] Support `--remove` for `destroy` in the Go, NodeJS and Python Automation API SDKs
+  [#16674](https://github.com/pulumi/pulumi/pull/16674)
+
+- [sdk/nodejs] Add support for invoke stack transforms
+  [#16688](https://github.com/pulumi/pulumi/pull/16688)
+
+- [sdkgen/go] Default importBasePath to a pulumi github base path
+  [#16664](https://github.com/pulumi/pulumi/pull/16664)
+
+
+### Bug Fixes
+
+- [engine] Fix snapshot integrity problems when `Delete`s fail in delete-before-replace chains
+  [#16699](https://github.com/pulumi/pulumi/pull/16699)
+
+- [cli/about] Fix a panic for some token types returned from the service.
+  [#16710](https://github.com/pulumi/pulumi/pull/16710)
+
+- [sdk/go] Disallow OutputState from being deepcopied
+  [#16690](https://github.com/pulumi/pulumi/pull/16690)
+
+- [cli/new] Fix incorrect caching of git auth method in error cases
+  [#16652](https://github.com/pulumi/pulumi/pull/16652)
+
+- [cli/state] Fix panic in state move when either the source or destination stack are empty
+  [#16676](https://github.com/pulumi/pulumi/pull/16676)
+
+- [cli/state] Fix resources to be moved not being shown in `pulumi state move`
+  [#16672](https://github.com/pulumi/pulumi/pull/16672)
+
+- [cli/state] Warn when an argument matches no URN in the source snapshot and error out when no resources are being moved in `pulumi state move`
+  [#16673](https://github.com/pulumi/pulumi/pull/16673)
+
+- [pkg/testing] Clean up PULUMI_HOME after program test
+  [#16663](https://github.com/pulumi/pulumi/pull/16663)
+
+- [sdk/nodejs] Fix lookup for pulumi run script when using Volta to manage nodejs
+  [#16649](https://github.com/pulumi/pulumi/pull/16649)
+
+- [sdk/nodejs] Pin node to 22.4.x to workaround breakage
+  [#16709](https://github.com/pulumi/pulumi/pull/16709)
+
+- [sdk/python] Fix YAML serialization of project settings in the Python Automation API
+  [#16660](https://github.com/pulumi/pulumi/pull/16660)
+
+- [sdk/python] Use python names for dictionary literals when inside a typed dictionary input
+  [#16658](https://github.com/pulumi/pulumi/pull/16658)
+
+- [sdk/python] Don't use indentation in converted pyproject.toml files
+  [#16678](https://github.com/pulumi/pulumi/pull/16678)
+
+- [sdk/python] Fix a RecursionError with deeply nested ComponentResources
+  [#16669](https://github.com/pulumi/pulumi/pull/16669)
+
+- [sdk/python] Validate that we have Poetry >= 1.8.0
+  [#16683](https://github.com/pulumi/pulumi/pull/16683)
+
 ## 3.124.0 (2024-07-12)
 
 

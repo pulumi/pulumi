@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go,nodejs,python
-  description: Support `--remove` for `destroy` in the Go, NodeJS and Python Automation API SDKs
