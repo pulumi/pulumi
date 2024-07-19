@@ -887,10 +887,9 @@ export interface ResourceTransformArgs {
      */
     opts: ResourceOptions;
 }
-
 /**
  * {@link ResourceTransformResult} is the result that must be returned by a
- * resource transformation callback.  It includes new values to use for the
+ * resource transform callback.  It includes new values to use for the
  * `props` and `opts` of the {@link Resource} in place of the originally
  * provided values.
  */

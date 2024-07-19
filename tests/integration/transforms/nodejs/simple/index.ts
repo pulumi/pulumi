@@ -132,3 +132,26 @@ const res7 = new Component("res7", { length: 10 }, {
         },
     ],
 });
+
+pulumi.runtime.registerInvokeTransform(async ({ token, args, opts }) => {
+    return {
+	args: { ...args, length: 11 },
+	opts: opts,
+    };
+});
+
+const res8 = new Random("res8", { length: pulumi.secret(5) });
+const args = {
+    length: 10,
+    prefix: "test",
+};
+
+async () => {
+    const result = await res8.randomInvoke(args);
+    if (result.length !== 11) {
+	throw new Error(`expected length to be 11, got ${result.length}`);
+    }
+    if (result.prefix !== "test") {
+	throw new Error(`expected prefix to be test, got ${result.prefix}`);
+    }
+ };

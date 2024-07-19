@@ -129,7 +129,10 @@ CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "8",
     "go": "1.22.x",
-    "nodejs": "22.x",
+    # TODO https://github.com/pulumi/pulumi/issues/16707
+    # Node 22.5.0 breaks yarn, the installation stops half way through with a succesfull exit code.
+    # Pin to 22.4.x for now to work around this.
+    "nodejs": "22.4.x",
     "python": "3.12.x",
 }
 

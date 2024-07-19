@@ -1,9 +1,10 @@
 # Copyright 2016-2024, Pulumi Corporation.  All rights reserved.
 
 import asyncio
-from pulumi import Output, ComponentResource, ResourceOptions, ResourceTransformArgs, ResourceTransformResult
-from pulumi.runtime import register_stack_transform
+from pulumi import Output, ComponentResource, ResourceOptions, ResourceTransformArgs, ResourceTransformResult, InvokeTransformArgs, InvokeTransformResult
+from pulumi.runtime import register_stack_transform, register_invoke_transform
 from random_ import Component, Random, Provider
+from pulumi.runtime.sync_await import _sync_await
 
 class MyComponent(ComponentResource):
     child: Random
@@ -128,3 +129,22 @@ res7 = Component(
         provider=provider1,
         transforms=[provider_transform],
     ))
+
+def res8_transform(args: InvokeTransformArgs):
+    return InvokeTransformResult(
+        args={ **args.args, 'length': 11 },
+        opts=args.opts)
+
+register_invoke_transform(res8_transform)
+
+res8 = Random("res8", length=10)
+args = {
+    'length': 10,
+    'prefix': "test",
+}
+
+result = _sync_await(res8.invoke(args))
+if result["length"] != 11:
+    raise Exception(f"expected length to be 11, got {result['length']}")
+if result["prefix"] != "test":
+    raise Exception(f"expected prefix to be test, got {result['prefix']}")

@@ -69,15 +69,11 @@ func (cmd *pluginRunCmd) run(args []string) error {
 
 	path, err := workspace.GetPluginPath(d, kind, name, version, nil)
 	if err != nil {
+		// Try to install the plugin, unless auto plugin installs are turned off.
 		var me *workspace.MissingError
-		if !errors.As(err, &me) {
+		if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
 			// Not a MissingError, return the original error.
 			return fmt.Errorf("could not get plugin path: %w", err)
-		}
-
-		// Try to install the plugin, unless auto plugin installs are turned off.
-		if env.DisableAutomaticPluginAcquisition.Value() {
-			return err
 		}
 
 		pluginSpec := workspace.PluginSpec{

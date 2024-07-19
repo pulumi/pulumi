@@ -177,6 +177,13 @@ export interface Store {
     supportsTransforms: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * remote invoke transforms across its RPC interface. When it does, we marshal
+     * transforms to the monitor instead of running them locally.
+     */
+    supportsInvokeTransforms: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -223,6 +230,7 @@ export class LocalStore implements Store {
     supportsDeletedWith = false;
     supportsAliasSpecs = false;
     supportsTransforms = false;
+    supportsInvokeTransforms = false;
 }
 
 /**

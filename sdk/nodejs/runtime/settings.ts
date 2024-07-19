@@ -151,6 +151,7 @@ export function resetOptions(
     store.supportsDeletedWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
+    store.supportsInvokeTransforms = false;
     store.callbacks = undefined;
 }
 
@@ -246,6 +247,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
         store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
         store.supportsTransforms = await monitorSupportsFeature(monitorRef, "transforms");
+        store.supportsInvokeTransforms = await monitorSupportsFeature(monitorRef, "invokeTransforms");
     }
 }
 
