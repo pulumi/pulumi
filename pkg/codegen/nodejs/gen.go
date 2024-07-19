@@ -2434,6 +2434,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		}
 	}
 
+	dependencies := map[string]string{}
+	if pkg.Parameterization != nil {
+		dependencies["async-mutex"] = "^0.5.0"
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
@@ -2447,10 +2452,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
-		Dependencies: map[string]string{
-			"async-mutex": "^0.5.0",
-		},
-		Pulumi: pulumiPlugin,
+		Dependencies:    dependencies,
+		Pulumi:          pulumiPlugin,
 	}
 
 	// Copy the overlay dependencies, if any.
