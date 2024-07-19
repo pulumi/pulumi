@@ -737,7 +737,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	}
 	// Get a duplicate reader of stderr so that we can both scan it and write it to os.Stderr.
 	stderrDup := io.TeeReader(stderr, os.Stderr)
-	sniffer := &oomSniffer{}
+	sniffer := newOOMSniffer()
 	sniffer.Scan(stderrDup)
 
 	cmd.Env = env
@@ -774,6 +774,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 				return &pulumirpc.RunResponse{Error: "", Bail: true}
 			default:
 				err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
+				sniffer.Wait()
 				if sniffer.Detected() {
 					err = fmt.Errorf("Program exited with non-zero exit code: %d. %s", code, sniffer.Message())
 				}
@@ -1529,10 +1530,30 @@ func copyOutput(cmd *exec.Cmd) error {
 // oomSniffer is a scanner that detects OOM errors in the output of a nodejs process.
 type oomSniffer struct {
 	detected bool
+	timeout  time.Duration
+	waitChan chan struct{}
+}
+
+func newOOMSniffer() *oomSniffer {
+	return &oomSniffer{
+		timeout:  15 * time.Second,
+		waitChan: make(chan struct{}),
+	}
 }
 
 func (o *oomSniffer) Detected() bool {
 	return o.detected
+}
+
+// Wait waits for the OOM sniffer to either
+//   - detect an OOM error
+//   - the timeout to expire
+//   - the reader to be closed
+func (o *oomSniffer) Wait() {
+	select {
+	case <-o.waitChan:
+	case <-time.After(o.timeout):
+	}
 }
 
 func (o *oomSniffer) Message() string {
@@ -1551,8 +1572,12 @@ func (o *oomSniffer) Scan(r io.Reader) {
 				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
 				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_") {
 				o.detected = true
+				close(o.waitChan)
 			}
 		}
 		contract.IgnoreError(scanner.Err())
+		if !o.detected {
+			close(o.waitChan)
+		}
 	}()
 }
