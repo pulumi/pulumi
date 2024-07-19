@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -141,6 +142,9 @@ func (cmd *stateMoveCmd) Run(
 	for _, res := range sourceSnapshot.Resources {
 		matchedArg := resourceMatches(res, args)
 		if matchedArg != "" {
+			if strings.HasPrefix(string(res.Type), "pulumi:providers:") {
+				return errors.New("cannot move providers")
+			}
 			resourcesToMove[string(res.URN)] = res
 			providersToCopy[res.Provider] = true
 			unmatchedArgs.Remove(matchedArg)
