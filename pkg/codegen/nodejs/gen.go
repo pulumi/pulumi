@@ -913,7 +913,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if r.IsComponent {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, false /*remote*/", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, false /*dependency*/", name)
 	}
 
 	pkg, err := r.PackageReference.Definition()
