@@ -1,4 +1,4 @@
-// Copyright 2023, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -293,6 +293,7 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 		xv := reflect.ValueOf(x)
 		if !xv.Type().AssignableTo(dest.Type()) {
 			diags.Extend(exprFieldTypeMismatchError(name, dest.Interface(), x))
+			v = reflect.New(dest.Type().Elem())
 		} else {
 			v = xv
 		}
