@@ -252,10 +252,10 @@ func (cmd *stateMoveCmd) Run(
 		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
 		source.Ref().Name(), dest.Ref().Name())
 
+	fmt.Fprintf(cmd.Stdout, "\n")
 	for _, res := range resourcesToMoveOrdered {
-		fmt.Fprintf(cmd.Stdout, "  %s\n", res.URN)
+		fmt.Fprintf(cmd.Stdout, "  - %s\n", res.URN)
 	}
-
 	fmt.Fprintf(cmd.Stdout, "\n")
 
 	var brokenDestDependencies []brokenDependency
