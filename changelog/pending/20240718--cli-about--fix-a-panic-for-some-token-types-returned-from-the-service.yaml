@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/about
-  description: Fix a panic for some token types returned from the service.

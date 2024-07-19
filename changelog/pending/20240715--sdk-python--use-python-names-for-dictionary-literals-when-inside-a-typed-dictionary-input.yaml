@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description:  Use python names for dictionary literals when inside a typed dictionary input

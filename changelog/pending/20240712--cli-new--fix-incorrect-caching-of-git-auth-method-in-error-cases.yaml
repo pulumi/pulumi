@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Fix incorrect caching of git auth method in error cases
