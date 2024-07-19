@@ -679,10 +679,10 @@ class Stack:
         
         :param message: Message to associate with the import operation.
         :param resources: The resources to import.
-        :param nameTable: \
-            The name table maps language names to parent and provider URNs. \
-            These names are used in the generated definitions, \
-            and should match the corresponding declarations \
+        :param nameTable: 
+            The name table maps language names to parent and provider URNs.
+            These names are used in the generated definitions, 
+            and should match the corresponding declarations
             in the source program. This table is required if any parents or providers are \
             specified by the resources to import.
         :param protect: Whether to protect the imported resources so that they are not deleted
