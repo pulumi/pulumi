@@ -149,7 +149,7 @@ func (p *providerServer) Parameterize(
 		params = &ParameterizeValue{
 			Name:    p.Value.GetName(),
 			Version: version,
-			Value:   nil,
+			Value:   p.Value.Value,
 		}
 	}
 	resp, err := p.provider.Parameterize(ctx, ParameterizeRequest{Parameters: params})
