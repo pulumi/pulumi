@@ -153,7 +153,7 @@ type ResourceOptions struct {
 	Transforms []*pulumirpc.Callback
 
 	SupportsResultReporting bool
-	Package                 string
+	PackageRef              string
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -284,7 +284,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SourcePosition:             sourcePosition,
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
-		Package:                    opts.Package,
+		PackageRef:                 opts.PackageRef,
 	}
 
 	ctx := context.Background()

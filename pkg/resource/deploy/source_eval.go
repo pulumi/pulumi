@@ -1929,12 +1929,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		reqPackage := req.GetPackage()
-		if reqPackage != "" {
+		packageRef := req.GetPackageRef()
+		if packageRef != "" {
 			var has bool
-			providerReq, has = rm.packageRefMap[reqPackage]
+			providerReq, has = rm.packageRefMap[packageRef]
 			if !has {
-				return nil, fmt.Errorf("unknown provider package '%v'", reqPackage)
+				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
 		}
 
