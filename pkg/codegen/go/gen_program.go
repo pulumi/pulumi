@@ -1360,7 +1360,16 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
-	expr, temps := g.lowerExpression(v.Value, v.Type())
+	value := v.Value
+	destType := v.Value.Type()
+	if !model.ContainsOutputs(destType) {
+		// if the value is a plain type T, then lift it to Output[T]
+		// because ctx.Export expects an output value
+		destType = model.NewOutputType(destType)
+		value = pcl.NewConvertCall(value, destType)
+	}
+
+	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }

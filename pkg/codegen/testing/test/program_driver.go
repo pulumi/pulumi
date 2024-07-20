@@ -341,7 +341,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "output-literals",
 		Description: "Tests that we can return various literal values via stack outputs",
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "dynamic-entries",
