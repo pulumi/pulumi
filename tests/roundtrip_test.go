@@ -32,11 +32,7 @@ func TestProjectRoundtripComments(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	pulumiProject := `
 # 🔴 header comment
@@ -115,11 +111,7 @@ func TestConfigRoundtripComments(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	pulumiProject := `
 name: foo

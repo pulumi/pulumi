@@ -226,11 +226,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
 		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
@@ -303,11 +299,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		dir := filepath.Join("python", "venv")
 		e.ImportDirectory(dir)
@@ -330,11 +322,7 @@ func TestAutomaticVenvCreationPoetry(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry"))
 
@@ -437,11 +425,7 @@ func TestNewPythonUsesPip(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	stdout, _ := e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only")
@@ -461,11 +445,7 @@ func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	stdout, _ := e.RunCommand("pulumi", "new", "python", "--force", "--yes", "--generate-only")
@@ -490,11 +470,7 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
@@ -515,11 +491,7 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "new", "python", "--force", "--non-interactive", "--yes", "--generate-only",
@@ -540,11 +512,7 @@ func TestNewPythonConvertRequirementsTxt(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	// Add a poetry.toml to make poetry create the virtualenv inside the temp
 	// directory. That way it gets cleaned up with the test.

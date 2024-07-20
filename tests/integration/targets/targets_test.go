@@ -27,11 +27,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	stackName, err := resource.NewUniqueHex("test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
@@ -63,11 +59,7 @@ func TestDeleteManyTargets(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	// First just spin up the project.
 	projName := "delete_targets_many_deps"

@@ -29,11 +29,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/single_resource")
@@ -73,11 +69,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/single_resource")
@@ -117,11 +109,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())

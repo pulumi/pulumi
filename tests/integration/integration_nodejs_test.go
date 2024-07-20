@@ -118,11 +118,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 		e.ImportDirectory("project_main_abs")
 
 		// write a new Pulumi.yaml using the absolute path of the environment as "main"
@@ -148,11 +144,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
+		defer e.DeleteIfNotFailed()
 		e.ImportDirectory("project_main_parent")
 
 		// yarn link first
@@ -187,11 +179,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
@@ -326,11 +314,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 func TestStackOutputsJSON(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -1622,11 +1606,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 
 	dir := filepath.Join("empty", "nodejs")
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -1652,11 +1632,7 @@ func TestAboutNodeJS(t *testing.T) {
 
 	dir := filepath.Join("about", "nodejs")
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -1683,11 +1659,7 @@ func TestTSConfigOption(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
