@@ -1546,10 +1546,12 @@ func (o *oomSniffer) Detected() bool {
 	return o.detected
 }
 
-// Wait waits for the OOM sniffer to either
+// Wait waits for the OOM sniffer to either:
 //   - detect an OOM error
 //   - the timeout to expire
 //   - the reader to be closed
+//
+// Call Wait to ensure we've read all the output from the scanned process after it exits.
 func (o *oomSniffer) Wait() {
 	select {
 	case <-o.waitChan:
@@ -1575,6 +1577,7 @@ func (o *oomSniffer) Scan(r io.Reader) {
 				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_") {
 				o.detected = true
 				close(o.waitChan)
+				break
 			}
 		}
 		contract.IgnoreError(scanner.Err())
