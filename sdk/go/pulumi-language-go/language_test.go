@@ -174,7 +174,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-main":                            "error in compiling Go",
 	"l1-output-array":                    "error in compiling Go",
-	"l1-output-bool":                     "error in compiling Go",
 	"l1-output-string":                   "error in compiling Go",
 	"l1-output-number":                   "error in compiling Go",
 	"l1-stack-reference":                 "error in compiling Go",
