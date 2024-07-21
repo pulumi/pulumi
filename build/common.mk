@@ -246,6 +246,8 @@ endif
 format::
 	$(call STEP_MESSAGE)
 	find . -iname "*.go" -not \( \
+		-path "./.git/*" -or \
+		-path "./sdk/proto/go/*" -or \
 		-path "./vendor/*" -or \
 		-path "./*/compilation_error/*" -or \
 		-path "./*/testdata/*" \
