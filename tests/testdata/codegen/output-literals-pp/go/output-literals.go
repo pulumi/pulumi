@@ -6,10 +6,10 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		ctx.Export("output_true", true)
-		ctx.Export("output_false", false)
-		ctx.Export("output_number", 4)
-		ctx.Export("output_string", "hello")
+		ctx.Export("output_true", pulumi.Bool(true))
+		ctx.Export("output_false", pulumi.Bool(false))
+		ctx.Export("output_number", pulumi.Float64(4))
+		ctx.Export("output_string", pulumi.String("hello"))
 		return nil
 	})
 }
