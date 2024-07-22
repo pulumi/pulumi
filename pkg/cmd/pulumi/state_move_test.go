@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -84,9 +83,7 @@ func runMoveWithOptions(
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
+
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -318,9 +315,6 @@ func TestMoveWithExistingProvider(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -383,9 +377,6 @@ func TestMoveWithExistingResource(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -464,9 +455,6 @@ func TestEmptySourceStack(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -502,9 +490,6 @@ func TestEmptyDestStack(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -595,9 +580,6 @@ func TestMoveUnknownResource(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -677,4 +659,62 @@ func TestProviderIsReparented(t *testing.T) {
 		destSnapshot.Resources[2].Provider)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[2].Parent)
+}
+
+func TestMoveProvider(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destResources := []*resource.State{}
+	destStackName := "organization/test/destStack"
+	destStack := createStackWithResources(t, b, destStackName, destResources)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(providerURN)}, mp)
+	assert.ErrorContains(t, err, "cannot move provider")
+
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
 }
