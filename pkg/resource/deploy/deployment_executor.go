@@ -413,8 +413,10 @@ func (ex *deploymentExecutor) performDeletes(
 					continue
 				}
 				for _, r := range []*resource.State{step.Res(), step.Old()} {
-					deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
-					erroredDeps = erroredDeps.Union(deps)
+					if r != nil {
+						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
+						erroredDeps = erroredDeps.Union(deps)
+					}
 				}
 			}
 			seenErrors.Append(erroredSteps...)
