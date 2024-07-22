@@ -97,8 +97,12 @@ func (overrides pluginDownloadOverrideArray) get(url string) (string, bool) {
 		if match := override.reg.FindStringSubmatch(url); match != nil {
 			result := override.url
 			for i, name := range override.reg.SubexpNames() {
+				// Replace placeholders that match a group index like $1
+				placeholder := fmt.Sprintf("$%d", i)
+				result = strings.ReplaceAll(result, placeholder, match[i])
+				// Replace placeholders that match a group name like ${org}
 				if i != 0 && name != "" {
-					placeholder := "${" + name + "}"
+					placeholder := fmt.Sprintf("${%s}", name)
 					result = strings.ReplaceAll(result, placeholder, match[i])
 				}
 			}

@@ -1022,7 +1022,7 @@ func TestPluginDownloadOverrideArray_Get(t *testing.T) {
 			expectedMatch: true,
 		},
 		{
-			name: "Match with placeholders",
+			name: "Match with name placeholders",
 			overrides: pluginDownloadOverrideArray{
 				{
 					reg: regexp.MustCompile(`^(?P<org>[\w-]+)-v(?P<repo>\d+\.\d+\.\d+)$`),
@@ -1031,6 +1031,27 @@ func TestPluginDownloadOverrideArray_Get(t *testing.T) {
 			},
 			input:         "my-plugin-v1.2.3",
 			expectedURL:   "https://example.com/my-plugin/1.2.3/plugin.zip",
+			expectedMatch: true,
+		},
+		{
+			name: "Match with index placeholders",
+			overrides: pluginDownloadOverrideArray{
+				{
+					reg: regexp.MustCompile(`^(?P<org>[\w-]+)-v(?P<repo>\d+\.\d+\.\d+)$`),
+					url: "https://example.com/$1/$2/plugin.zip",
+				},
+			},
+			input:         "my-plugin-v1.2.3",
+			expectedURL:   "https://example.com/my-plugin/1.2.3/plugin.zip",
+			expectedMatch: true,
+		},
+		{
+			name: "Match with $0 placeholder",
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`^.+$`), url: "https://example.com/downloads?source=$0"},
+			},
+			input:         "test-plugin",
+			expectedURL:   "https://example.com/downloads?source=test-plugin",
 			expectedMatch: true,
 		},
 		{
