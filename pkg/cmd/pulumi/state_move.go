@@ -232,9 +232,9 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append([]*resource.State{rootStack}, destSnapshot.Resources...)
 	}
 
-	destResMap := make(map[urn.URN]bool)
+	destResMap := make(map[urn.URN]*resource.State)
 	for _, res := range destSnapshot.Resources {
-		destResMap[res.URN] = true
+		destResMap[res.URN] = res
 	}
 
 	for _, res := range providers {
@@ -253,7 +253,10 @@ func (cmd *stateMoveCmd) Run(
 			return err
 		}
 
-		if _, ok := destResMap[r.URN]; ok {
+		if destRes, ok := destResMap[r.URN]; ok {
+			if destRes.ID == r.ID {
+				continue
+			}
 			return fmt.Errorf("provider %s already exists in destination stack", r.URN)
 		}
 
