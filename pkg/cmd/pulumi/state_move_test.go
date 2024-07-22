@@ -82,8 +82,9 @@ func runMoveWithOptions(
 	t *testing.T, sourceResources []*resource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
-	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	tmpDir := t.TempDir()
+
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
