@@ -99,7 +99,7 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 //
 // Note that named regular expression groups can be used to capture parts of URLs and then reused for building
 // redirects. For example
-// ^github://api.github.com/(?P<org>[^/]+)/(?P<repo>[^/]=https://foo.com/downloads/${org}/${repo}
+// ^github://api.github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)=https://foo.com/downloads/${org}/${repo}
 // will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
 var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 
