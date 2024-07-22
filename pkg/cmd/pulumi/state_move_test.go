@@ -184,9 +184,9 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
 
-	assert.Contains(t, stdout.String(), "Planning to move the following resources from sourceStack to destStack:\n"+
+	assert.Contains(t, stdout.String(), "Planning to move the following resources from sourceStack to destStack:\n\n"+
 		"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name\n"+
-		"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2\n")
+		"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2")
 
 	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
 
