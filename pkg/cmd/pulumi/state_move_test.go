@@ -657,9 +657,12 @@ func TestProviderIsReparented(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[2].URN)})
 
-	assert.Equal(t, 2, len(sourceSnapshot.Resources)) // Only the provider and the root stack should remain in the source stack
-	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"), sourceSnapshot.Resources[0].URN)
-	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"), sourceSnapshot.Resources[1].URN)
+	// Only the provider and the root stack should remain in the source stack
+	assert.Equal(t, 2, len(sourceSnapshot.Resources))
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),
+		sourceSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
+		sourceSnapshot.Resources[1].URN)
 
 	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
