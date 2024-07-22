@@ -245,13 +245,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				typeName := g.argumentTypeName(from, to, isOutput)
 				// IDOutput has a special case where it can be converted to a string
 				var isID bool
-				if expr, ok := from.(*model.ScopeTraversalExpression); ok {
+				switch expr := from.(type) {
+				case *model.ScopeTraversalExpression:
 					last := expr.Traversal[len(expr.Traversal)-1]
 					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
 						isID = true
 					}
-				}
-				if expr, ok := from.(*model.RelativeTraversalExpression); ok {
+				case *model.RelativeTraversalExpression:
 					last := expr.Traversal[len(expr.Traversal)-1]
 					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
 						isID = true
