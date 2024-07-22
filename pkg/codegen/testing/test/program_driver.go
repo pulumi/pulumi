@@ -351,10 +351,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "single-or-none",
 		Description: "Tests using the singleOrNone function",
-		// TODO[pulumi/pulumi#4899]: Skip compiling for Go because it is trying to pass a value of type float64
-		// as an argument to ctx.Export but float64 does not implement pulumi.Input. The value needs to be
-		// wrapped as a pulumi.Float64.
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "simple-splat",

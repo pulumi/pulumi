@@ -15,9 +15,9 @@ func singleOrNone[T any](elements []T) T {
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		ctx.Export("result", singleOrNone([]float64{
+		ctx.Export("result", pulumi.Float64(singleOrNone([]float64{
 			1,
-		}))
+		})))
 		return nil
 	})
 }
