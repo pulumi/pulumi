@@ -184,6 +184,7 @@ var expectedFailures = map[string]string{
 	"l2-resource-asset-archive":          "missing go.mod",
 	"l2-failed-create-continue-on-error": "missing go.mod",
 	"l2-engine-update-options":           "missing go.mod",
+	"l2-resource-primitives":             "missing go.mod",
 }
 
 func TestLanguage(t *testing.T) {

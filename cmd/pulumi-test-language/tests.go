@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -291,6 +291,39 @@ var languageTests = map[string]languageTest{
 
 					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
 					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+				},
+			},
+		},
+	},
+	"l2-resource-primitives": {
+		providers: []plugin.Provider{&providers.PrimitiveProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					// Check we have the one simple resource in the snapshot, its provider and the stack.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:primitive", provider.Type.String(), "expected primitive provider")
+
+					simple := snap.Resources[2]
+					assert.Equal(l, "primitive:index:Resource", simple.Type.String(), "expected primitive resource")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"boolean":     true,
+						"float":       3.14,
+						"integer":     42,
+						"string":      "hello",
+						"numberArray": []interface{}{-1.0, 0.0, 1.0},
+						"booleanMap":  map[string]interface{}{"t": true, "f": false},
+					})
+					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 				},
 			},
