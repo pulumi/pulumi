@@ -161,25 +161,25 @@ func TestPropertyPath(t *testing.T) {
 			value := makeValue()
 
 			v, ok := parsed.Get(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, value)
 			assert.False(t, v.IsNull())
 
 			ok = parsed.Delete(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to delete %v from %v", parsed, value)
 
 			ok = parsed.Set(value, v)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to set %v in %v", v, parsed)
 
 			u, ok := parsed.Get(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, value)
 			assert.Equal(t, v, u)
 
 			vv := PropertyValue{}
 			vv, ok = parsed.Add(vv, v)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to add %v at %v", v, parsed)
 
 			u, ok = parsed.Get(vv)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, vv)
 			assert.Equal(t, v, u)
 		})
 	}
@@ -724,7 +724,7 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
-			"Nested object wildcard reset fails",
+			"Nested object wildcard index reset fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty(PropertyMap{
 				"passes": NewProperty(1.0),
@@ -737,7 +737,20 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
-			"Nested array wildcard reset fails",
+			"Nested array wildcard, new array is shorter fails",
+			PropertyPath{"root", "array", "*"},
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"array": NewProperty([]PropertyValue{
+					NewProperty(1.0),
+				}),
+			})},
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"array": NewProperty([]PropertyValue{}),
+			})},
+			nil,
+		},
+		{
+			"Nested array wildcard index reset fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty([]PropertyValue{
 				NewProperty(1.0),
@@ -750,7 +763,7 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
-			"Nested wildcard, old array is longer fails",
+			"Nested array wildcard index, old array is longer fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty([]PropertyValue{
 				NewProperty(1.0),
@@ -762,7 +775,7 @@ func TestReset(t *testing.T) {
 			nil,
 		},
 		{
-			"Nested wildcard, new array is longer fails",
+			"Nested array wildcard index, new array is longer fails",
 			PropertyPath{"root", "*", 0},
 			PropertyMap{"root": NewProperty([]PropertyValue{
 				NewProperty(1.0),
