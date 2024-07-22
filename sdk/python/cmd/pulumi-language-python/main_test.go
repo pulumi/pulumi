@@ -197,7 +197,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
 		err = os.WriteFile(path, bytes, 0o600)
 		require.NoError(t, err)
-		t.Logf("Wrote pulumipluing.json file: %s", path)
+		t.Logf("Wrote pulumi-plugin.json file: %s", path)
 		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Root:       cwd,
@@ -216,6 +216,45 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.Equal(t, "vthing2", plugin.Version)
 		assert.Equal(t, "thing3", plugin.Server)
 		assert.Equal(t, "resource", plugin.Kind)
+	})
+	t.Run("pulumiplugin-resource-false", func(t *testing.T) {
+		t.Parallel()
+
+		cwd := t.TempDir()
+		_, err := runPythonModuleCommand(t, "", cwd, "venv", "venv")
+		assert.NoError(t, err)
+
+		_, err = runPythonModuleCommand(t,
+			"venv", cwd, "pip", "install", "--upgrade", "pip", "setuptools")
+		assert.NoError(t, err)
+
+		// Install the local Pulumi SDK into the virtual environment.
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
+		assert.NoError(t, err)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "-e", sdkDir)
+		assert.NoError(t, err)
+
+		// Install a local pulumi SDK that has a pulumi-plugin.json file with `{ "resource": false }`.
+		fooSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "foo-1.0.0"))
+		assert.NoError(t, err)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", fooSdkDir)
+		assert.NoError(t, err)
+
+		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
+		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
+			Toolchain:  toolchain.Pip,
+			Root:       cwd,
+			Virtualenv: "venv",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(packages))
+		assert.Equal(t, "pulumi_foo", packages[0].Name)
+		assert.NotEmpty(t, packages[0].Location)
+
+		// There should be no associated plugin since its `resource` field is set to `false`.
+		plugin, err := determinePluginDependency(packages[0])
+		assert.NoError(t, err)
+		assert.Nil(t, plugin)
 	})
 	t.Run("no-pulumiplugin.json-file", func(t *testing.T) {
 		t.Parallel()
@@ -237,7 +276,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		// Install a local old provider SDK that does not have a pulumi-plugin.json file.
 		oldSdkDir, err := filepath.Abs(filepath.Join("testdata", "sdks", "old-1.0.0"))
 		assert.NoError(t, err)
-		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "-e", oldSdkDir)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", oldSdkDir)
 		assert.NoError(t, err)
 
 		// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
@@ -252,6 +291,38 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		old := packages[0]
 		assert.Equal(t, "pulumi_old", old.Name)
 		assert.NotEmpty(t, old.Location)
+	})
+	t.Run("pulumi-policy", func(t *testing.T) {
+		t.Parallel()
+
+		cwd := t.TempDir()
+		_, err := runPythonModuleCommand(t, "", cwd, "venv", "venv")
+		assert.NoError(t, err)
+
+		_, err = runPythonModuleCommand(t,
+			"venv", cwd, "pip", "install", "--upgrade", "pip", "setuptools")
+		assert.NoError(t, err)
+
+		// Install the local Pulumi SDK into the virtual environment.
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "env", "src"))
+		assert.NoError(t, err)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "-e", sdkDir)
+		assert.NoError(t, err)
+
+		// Install pulumi-policy.
+		assert.NoError(t, err)
+		_, err = runPythonModuleCommand(t, "venv", cwd, "pip", "install", "pulumi-policy")
+		assert.NoError(t, err)
+
+		// The package should not be considered a Pulumi package since it is hardcoded not to be,
+		// since it does not have an associated plugin.
+		packages, err := determinePulumiPackages(context.Background(), toolchain.PythonOptions{
+			Toolchain:  toolchain.Pip,
+			Root:       cwd,
+			Virtualenv: "venv",
+		})
+		assert.NoError(t, err)
+		assert.Empty(t, packages)
 	})
 }
 

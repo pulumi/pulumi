@@ -191,9 +191,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
 		output, isOutput := to.(*model.OutputType)
+		originalTo := to
 		if isOutput {
 			to = output.ElementType
 		}
+		_, isFromOutput := from.Type().(*model.OutputType)
+
 		switch to := to.(type) {
 		case *model.EnumType:
 			var underlyingType string
@@ -235,7 +238,34 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.ScopeTraversalExpression:
 			g.genScopeTraversalExpression(w, arg, expr.Type())
 		default:
-			g.Fgenf(w, "%.v", expr.Args[0])
+			// Add a cast to the type we expect if needed
+			if originalTo.AssignableFrom(from.Type()) && (isOutput == isFromOutput) {
+				g.Fgenf(w, "%.v", from)
+			} else {
+				typeName := g.argumentTypeName(to, isOutput)
+				// IDOutput has a special case where it can be converted to a string
+				var isID bool
+				switch expr := from.(type) {
+				case *model.ScopeTraversalExpression:
+					last := expr.Traversal[len(expr.Traversal)-1]
+					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
+						isID = true
+					}
+				case *model.RelativeTraversalExpression:
+					last := expr.Traversal[len(expr.Traversal)-1]
+					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
+						isID = true
+					}
+				}
+
+				if typeName == "" {
+					g.Fgenf(w, "%.v", from)
+				} else if typeName == "pulumi.String" && isID {
+					g.Fgenf(w, "%.v", from)
+				} else {
+					g.Fgenf(w, "%s(%.v)", typeName, from)
+				}
+			}
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
