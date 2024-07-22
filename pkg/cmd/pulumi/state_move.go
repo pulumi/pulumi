@@ -236,6 +236,13 @@ func (cmd *stateMoveCmd) Run(
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
 		r := res.Copy()
+		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
+			rootStack, err := stack.GetRootStackResource(destSnapshot)
+			if err != nil {
+				return err
+			}
+			r.Parent = rootStack.URN
+		}
 		err = rewriteURNs(r, dest)
 		if err != nil {
 			return err
