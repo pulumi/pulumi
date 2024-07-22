@@ -409,11 +409,15 @@ func (ex *deploymentExecutor) performDeletes(
 				// This can happen if an earlier create failed, thus the resource wouldn't have been added
 				// to the graph.  Since the resource was just tried to be  created it couldn't have any dependencies
 				// that should be deleted either.
-				if seenErrors.Contains(step) || !ex.deployment.depGraph.Contains(step.Res()) {
+				if seenErrors.Contains(step) {
 					continue
 				}
-				deps := ex.deployment.depGraph.TransitiveDependenciesOf(step.Res())
-				erroredDeps = erroredDeps.Union(deps)
+				for _, r := range []*resource.State{step.Res(), step.Old()} {
+					if r != nil && ex.deployment.depGraph.Contains(r) {
+						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
+						erroredDeps = erroredDeps.Union(deps)
+					}
+				}
 			}
 			seenErrors.Append(erroredSteps...)
 			newChain := make([]Step, 0, len(antichain))

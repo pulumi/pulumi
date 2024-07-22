@@ -22,6 +22,7 @@ import (
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -885,4 +886,107 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 		})
 		assert.True(t, found, "Expected URN %s not found in snapshot", urn)
 	}
+}
+
+func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+	project := p.GetProject()
+
+	upLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.1.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+		assert.NoError(t, err)
+		provID := resp.ID
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(resp.URN, provID)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upOptions := TestUpdateOptions{
+		T: t, HostF: upHostF, UpdateOptions: UpdateOptions{
+			ContinueOnError: true,
+		},
+	}
+
+	snap, err := TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	assert.Len(t, snap.Resources, 2)
+
+	assert.Equal(t, "provA", snap.Resources[0].URN.Name())
+	assert.Equal(t, "resA", snap.Resources[1].URN.Name())
+
+	replaceLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(
+					urn resource.URN,
+					news resource.PropertyMap,
+					timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "an id", news, resource.StatusOK, errors.New("interrupt replace")
+				},
+			}, nil
+		}),
+	}
+
+	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provB", true, deploytest.ResourceOptions{
+			Version: "2.0.0",
+		})
+		assert.NoError(t, err)
+		provID := resp.ID
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(resp.URN, provID)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			Version:  "2.0.0",
+		})
+		assert.ErrorContains(t, err, "resource registration failed")
+
+		return nil
+	})
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceOptions := TestUpdateOptions{
+		T: t, HostF: replaceHostF,
+		UpdateOptions: UpdateOptions{
+			ContinueOnError: true,
+		},
+	}
+
+	snap, err = TestOp(Update).
+		RunStep(project, p.GetTarget(t, snap), replaceOptions, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "interrupt replace")
+
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "provB")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "provA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resA")
 }
