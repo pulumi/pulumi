@@ -1186,7 +1186,7 @@ func promptForConfig(
 		// Prepare the prompt.
 		promptText := prettyKey(k)
 		if templateConfigValue.Description != "" {
-			promptText = promptText + ": " + templateConfigValue.Description
+			promptText = templateConfigValue.Description + " (" + promptText + ")"
 		}
 
 		// Prompt.
