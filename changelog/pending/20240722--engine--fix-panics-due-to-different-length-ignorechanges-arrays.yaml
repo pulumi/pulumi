@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix panics due to different length `ignoreChanges` arrays
