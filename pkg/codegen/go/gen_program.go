@@ -637,8 +637,25 @@ func GenerateProject(
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
 	for filename, data := range files {
-		outPath := path.Join(directory, filename)
+		dir := directory
+		// Pulumi.yaml needs to be written to root, everything else goes to the main directory.
+		if filename == "Pulumi.yaml" {
+			dir = rootDirectory
+		}
+
+		outPath := path.Join(dir, filename)
 		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
