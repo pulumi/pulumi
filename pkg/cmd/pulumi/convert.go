@@ -136,30 +136,25 @@ func newConvertCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(
-		//nolint:lll
 		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
 
 	cmd.PersistentFlags().StringVar(
-		//nolint:lll
 		&from, "from", "yaml", "Which converter plugin to use to read the source program")
 
 	cmd.PersistentFlags().StringVar(
-		//nolint:lll
 		&outDir, "out", ".", "The output directory to write the converted project to")
 
 	cmd.PersistentFlags().BoolVar(
-		//nolint:lll
 		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
 
 	cmd.PersistentFlags().StringSliceVar(
-		//nolint:lll
 		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
 
 	cmd.PersistentFlags().BoolVar(
-		&strict, "strict", false, "If strict is set the conversion will fail on errors such as missing variables")
+		&strict, "strict", false, "Fail the conversion on errors such as missing variables")
 
 	cmd.PersistentFlags().StringVar(
 		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
