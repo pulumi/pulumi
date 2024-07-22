@@ -14,75 +14,75 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 a: pulumi.Input[Sequence[pulumi.Input[float]]],
-                 b: pulumi.Input[bool],
-                 f: pulumi.Input[float],
-                 i: pulumi.Input[int],
-                 m: pulumi.Input[Mapping[str, pulumi.Input[bool]]],
-                 s: pulumi.Input[str]):
+                 boolean: pulumi.Input[bool],
+                 boolean_map: pulumi.Input[Mapping[str, pulumi.Input[bool]]],
+                 float: pulumi.Input[float],
+                 integer: pulumi.Input[int],
+                 number_array: pulumi.Input[Sequence[pulumi.Input[float]]],
+                 string: pulumi.Input[str]):
         """
         The set of arguments for constructing a Resource resource.
         """
-        pulumi.set(__self__, "a", a)
-        pulumi.set(__self__, "b", b)
-        pulumi.set(__self__, "f", f)
-        pulumi.set(__self__, "i", i)
-        pulumi.set(__self__, "m", m)
-        pulumi.set(__self__, "s", s)
+        pulumi.set(__self__, "boolean", boolean)
+        pulumi.set(__self__, "boolean_map", boolean_map)
+        pulumi.set(__self__, "float", float)
+        pulumi.set(__self__, "integer", integer)
+        pulumi.set(__self__, "number_array", number_array)
+        pulumi.set(__self__, "string", string)
 
     @property
     @pulumi.getter
-    def a(self) -> pulumi.Input[Sequence[pulumi.Input[float]]]:
-        return pulumi.get(self, "a")
+    def boolean(self) -> pulumi.Input[bool]:
+        return pulumi.get(self, "boolean")
 
-    @a.setter
-    def a(self, value: pulumi.Input[Sequence[pulumi.Input[float]]]):
-        pulumi.set(self, "a", value)
+    @boolean.setter
+    def boolean(self, value: pulumi.Input[bool]):
+        pulumi.set(self, "boolean", value)
+
+    @property
+    @pulumi.getter(name="booleanMap")
+    def boolean_map(self) -> pulumi.Input[Mapping[str, pulumi.Input[bool]]]:
+        return pulumi.get(self, "boolean_map")
+
+    @boolean_map.setter
+    def boolean_map(self, value: pulumi.Input[Mapping[str, pulumi.Input[bool]]]):
+        pulumi.set(self, "boolean_map", value)
 
     @property
     @pulumi.getter
-    def b(self) -> pulumi.Input[bool]:
-        return pulumi.get(self, "b")
+    def float(self) -> pulumi.Input[float]:
+        return pulumi.get(self, "float")
 
-    @b.setter
-    def b(self, value: pulumi.Input[bool]):
-        pulumi.set(self, "b", value)
-
-    @property
-    @pulumi.getter
-    def f(self) -> pulumi.Input[float]:
-        return pulumi.get(self, "f")
-
-    @f.setter
-    def f(self, value: pulumi.Input[float]):
-        pulumi.set(self, "f", value)
+    @float.setter
+    def float(self, value: pulumi.Input[float]):
+        pulumi.set(self, "float", value)
 
     @property
     @pulumi.getter
-    def i(self) -> pulumi.Input[int]:
-        return pulumi.get(self, "i")
+    def integer(self) -> pulumi.Input[int]:
+        return pulumi.get(self, "integer")
 
-    @i.setter
-    def i(self, value: pulumi.Input[int]):
-        pulumi.set(self, "i", value)
+    @integer.setter
+    def integer(self, value: pulumi.Input[int]):
+        pulumi.set(self, "integer", value)
+
+    @property
+    @pulumi.getter(name="numberArray")
+    def number_array(self) -> pulumi.Input[Sequence[pulumi.Input[float]]]:
+        return pulumi.get(self, "number_array")
+
+    @number_array.setter
+    def number_array(self, value: pulumi.Input[Sequence[pulumi.Input[float]]]):
+        pulumi.set(self, "number_array", value)
 
     @property
     @pulumi.getter
-    def m(self) -> pulumi.Input[Mapping[str, pulumi.Input[bool]]]:
-        return pulumi.get(self, "m")
+    def string(self) -> pulumi.Input[str]:
+        return pulumi.get(self, "string")
 
-    @m.setter
-    def m(self, value: pulumi.Input[Mapping[str, pulumi.Input[bool]]]):
-        pulumi.set(self, "m", value)
-
-    @property
-    @pulumi.getter
-    def s(self) -> pulumi.Input[str]:
-        return pulumi.get(self, "s")
-
-    @s.setter
-    def s(self, value: pulumi.Input[str]):
-        pulumi.set(self, "s", value)
+    @string.setter
+    def string(self, value: pulumi.Input[str]):
+        pulumi.set(self, "string", value)
 
 
 class Resource(pulumi.CustomResource):
@@ -90,12 +90,12 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 a: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
-                 b: Optional[pulumi.Input[bool]] = None,
-                 f: Optional[pulumi.Input[float]] = None,
-                 i: Optional[pulumi.Input[int]] = None,
-                 m: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
-                 s: Optional[pulumi.Input[str]] = None,
+                 boolean: Optional[pulumi.Input[bool]] = None,
+                 boolean_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 float: Optional[pulumi.Input[float]] = None,
+                 integer: Optional[pulumi.Input[int]] = None,
+                 number_array: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 string: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -125,12 +125,12 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 a: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
-                 b: Optional[pulumi.Input[bool]] = None,
-                 f: Optional[pulumi.Input[float]] = None,
-                 i: Optional[pulumi.Input[int]] = None,
-                 m: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
-                 s: Optional[pulumi.Input[str]] = None,
+                 boolean: Optional[pulumi.Input[bool]] = None,
+                 boolean_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[bool]]]] = None,
+                 float: Optional[pulumi.Input[float]] = None,
+                 integer: Optional[pulumi.Input[int]] = None,
+                 number_array: Optional[pulumi.Input[Sequence[pulumi.Input[float]]]] = None,
+                 string: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -140,24 +140,24 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
-            if a is None and not opts.urn:
-                raise TypeError("Missing required property 'a'")
-            __props__.__dict__["a"] = a
-            if b is None and not opts.urn:
-                raise TypeError("Missing required property 'b'")
-            __props__.__dict__["b"] = b
-            if f is None and not opts.urn:
-                raise TypeError("Missing required property 'f'")
-            __props__.__dict__["f"] = f
-            if i is None and not opts.urn:
-                raise TypeError("Missing required property 'i'")
-            __props__.__dict__["i"] = i
-            if m is None and not opts.urn:
-                raise TypeError("Missing required property 'm'")
-            __props__.__dict__["m"] = m
-            if s is None and not opts.urn:
-                raise TypeError("Missing required property 's'")
-            __props__.__dict__["s"] = s
+            if boolean is None and not opts.urn:
+                raise TypeError("Missing required property 'boolean'")
+            __props__.__dict__["boolean"] = boolean
+            if boolean_map is None and not opts.urn:
+                raise TypeError("Missing required property 'boolean_map'")
+            __props__.__dict__["boolean_map"] = boolean_map
+            if float is None and not opts.urn:
+                raise TypeError("Missing required property 'float'")
+            __props__.__dict__["float"] = float
+            if integer is None and not opts.urn:
+                raise TypeError("Missing required property 'integer'")
+            __props__.__dict__["integer"] = integer
+            if number_array is None and not opts.urn:
+                raise TypeError("Missing required property 'number_array'")
+            __props__.__dict__["number_array"] = number_array
+            if string is None and not opts.urn:
+                raise TypeError("Missing required property 'string'")
+            __props__.__dict__["string"] = string
         super(Resource, __self__).__init__(
             'primitive:index:Resource',
             resource_name,
@@ -180,41 +180,41 @@ class Resource(pulumi.CustomResource):
 
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
-        __props__.__dict__["a"] = None
-        __props__.__dict__["b"] = None
-        __props__.__dict__["f"] = None
-        __props__.__dict__["i"] = None
-        __props__.__dict__["m"] = None
-        __props__.__dict__["s"] = None
+        __props__.__dict__["boolean"] = None
+        __props__.__dict__["boolean_map"] = None
+        __props__.__dict__["float"] = None
+        __props__.__dict__["integer"] = None
+        __props__.__dict__["number_array"] = None
+        __props__.__dict__["string"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @property
     @pulumi.getter
-    def a(self) -> pulumi.Output[Sequence[float]]:
-        return pulumi.get(self, "a")
+    def boolean(self) -> pulumi.Output[bool]:
+        return pulumi.get(self, "boolean")
+
+    @property
+    @pulumi.getter(name="booleanMap")
+    def boolean_map(self) -> pulumi.Output[Mapping[str, bool]]:
+        return pulumi.get(self, "boolean_map")
 
     @property
     @pulumi.getter
-    def b(self) -> pulumi.Output[bool]:
-        return pulumi.get(self, "b")
+    def float(self) -> pulumi.Output[float]:
+        return pulumi.get(self, "float")
 
     @property
     @pulumi.getter
-    def f(self) -> pulumi.Output[float]:
-        return pulumi.get(self, "f")
+    def integer(self) -> pulumi.Output[int]:
+        return pulumi.get(self, "integer")
+
+    @property
+    @pulumi.getter(name="numberArray")
+    def number_array(self) -> pulumi.Output[Sequence[float]]:
+        return pulumi.get(self, "number_array")
 
     @property
     @pulumi.getter
-    def i(self) -> pulumi.Output[int]:
-        return pulumi.get(self, "i")
-
-    @property
-    @pulumi.getter
-    def m(self) -> pulumi.Output[Mapping[str, bool]]:
-        return pulumi.get(self, "m")
-
-    @property
-    @pulumi.getter
-    def s(self) -> pulumi.Output[str]:
-        return pulumi.get(self, "s")
+    def string(self) -> pulumi.Output[str]:
+        return pulumi.get(self, "string")
 

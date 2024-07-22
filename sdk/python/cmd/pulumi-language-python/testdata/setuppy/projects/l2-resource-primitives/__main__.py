@@ -2,16 +2,16 @@ import pulumi
 import pulumi_primitive as primitive
 
 res = primitive.Resource("res",
-    b=True,
-    f=3.14,
-    i=42,
-    s="hello",
-    a=[
+    boolean=True,
+    float=3.14,
+    integer=42,
+    string="hello",
+    number_array=[
         -1,
         0,
         1,
     ],
-    m={
+    boolean_map={
         "t": True,
         "f": False,
     })

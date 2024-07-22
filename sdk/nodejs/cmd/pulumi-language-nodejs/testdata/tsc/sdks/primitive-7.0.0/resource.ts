@@ -31,12 +31,12 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly a!: pulumi.Output<number[]>;
-    public readonly b!: pulumi.Output<boolean>;
-    public readonly f!: pulumi.Output<number>;
-    public readonly i!: pulumi.Output<number>;
-    public readonly m!: pulumi.Output<{[key: string]: boolean}>;
-    public readonly s!: pulumi.Output<string>;
+    public readonly boolean!: pulumi.Output<boolean>;
+    public readonly booleanMap!: pulumi.Output<{[key: string]: boolean}>;
+    public readonly float!: pulumi.Output<number>;
+    public readonly integer!: pulumi.Output<number>;
+    public readonly numberArray!: pulumi.Output<number[]>;
+    public readonly string!: pulumi.Output<string>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.
@@ -49,37 +49,37 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.a === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'a'");
+            if ((!args || args.boolean === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'boolean'");
             }
-            if ((!args || args.b === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'b'");
+            if ((!args || args.booleanMap === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'booleanMap'");
             }
-            if ((!args || args.f === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'f'");
+            if ((!args || args.float === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'float'");
             }
-            if ((!args || args.i === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'i'");
+            if ((!args || args.integer === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'integer'");
             }
-            if ((!args || args.m === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'm'");
+            if ((!args || args.numberArray === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'numberArray'");
             }
-            if ((!args || args.s === undefined) && !opts.urn) {
-                throw new Error("Missing required property 's'");
+            if ((!args || args.string === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'string'");
             }
-            resourceInputs["a"] = args ? args.a : undefined;
-            resourceInputs["b"] = args ? args.b : undefined;
-            resourceInputs["f"] = args ? args.f : undefined;
-            resourceInputs["i"] = args ? args.i : undefined;
-            resourceInputs["m"] = args ? args.m : undefined;
-            resourceInputs["s"] = args ? args.s : undefined;
+            resourceInputs["boolean"] = args ? args.boolean : undefined;
+            resourceInputs["booleanMap"] = args ? args.booleanMap : undefined;
+            resourceInputs["float"] = args ? args.float : undefined;
+            resourceInputs["integer"] = args ? args.integer : undefined;
+            resourceInputs["numberArray"] = args ? args.numberArray : undefined;
+            resourceInputs["string"] = args ? args.string : undefined;
         } else {
-            resourceInputs["a"] = undefined /*out*/;
-            resourceInputs["b"] = undefined /*out*/;
-            resourceInputs["f"] = undefined /*out*/;
-            resourceInputs["i"] = undefined /*out*/;
-            resourceInputs["m"] = undefined /*out*/;
-            resourceInputs["s"] = undefined /*out*/;
+            resourceInputs["boolean"] = undefined /*out*/;
+            resourceInputs["booleanMap"] = undefined /*out*/;
+            resourceInputs["float"] = undefined /*out*/;
+            resourceInputs["integer"] = undefined /*out*/;
+            resourceInputs["numberArray"] = undefined /*out*/;
+            resourceInputs["string"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Resource.__pulumiType, name, resourceInputs, opts);
@@ -90,10 +90,10 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    a: pulumi.Input<pulumi.Input<number>[]>;
-    b: pulumi.Input<boolean>;
-    f: pulumi.Input<number>;
-    i: pulumi.Input<number>;
-    m: pulumi.Input<{[key: string]: pulumi.Input<boolean>}>;
-    s: pulumi.Input<string>;
+    boolean: pulumi.Input<boolean>;
+    booleanMap: pulumi.Input<{[key: string]: pulumi.Input<boolean>}>;
+    float: pulumi.Input<number>;
+    integer: pulumi.Input<number>;
+    numberArray: pulumi.Input<pulumi.Input<number>[]>;
+    string: pulumi.Input<string>;
 }

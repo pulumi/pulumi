@@ -2,16 +2,16 @@ import * as pulumi from "@pulumi/pulumi";
 import * as primitive from "@pulumi/primitive";
 
 const res = new primitive.Resource("res", {
-    b: true,
-    f: 3.14,
-    i: 42,
-    s: "hello",
-    a: [
+    boolean: true,
+    float: 3.14,
+    integer: 42,
+    string: "hello",
+    numberArray: [
         -1,
         0,
         1,
     ],
-    m: {
+    booleanMap: {
         t: true,
         f: false,
     },

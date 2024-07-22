@@ -61,24 +61,24 @@ func (p *PrimitiveProvider) GetSchema(
 		}
 	}
 	resourceProperties := map[string]schema.PropertySpec{
-		"b": makePrimitive("boolean"),
-		"f": makePrimitive("number"),
-		"i": makePrimitive("integer"),
-		"s": makePrimitive("string"),
-		"a": {
+		"boolean": makePrimitive("boolean"),
+		"float":   makePrimitive("number"),
+		"integer": makePrimitive("integer"),
+		"string":  makePrimitive("string"),
+		"numberArray": {
 			TypeSpec: schema.TypeSpec{
 				Type:  "array",
 				Items: &schema.TypeSpec{Type: "number"},
 			},
 		},
-		"m": {
+		"booleanMap": {
 			TypeSpec: schema.TypeSpec{
 				Type:                 "object",
 				AdditionalProperties: &schema.TypeSpec{Type: "boolean"},
 			},
 		},
 	}
-	resourceRequired := []string{"b", "f", "i", "s", "a", "m"}
+	resourceRequired := []string{"boolean", "float", "integer", "string", "numberArray", "booleanMap"}
 
 	pkg := schema.PackageSpec{
 		Name:    "primitive",
@@ -159,43 +159,43 @@ func (p *PrimitiveProvider) Check(
 	}
 
 	// Expect all required properties
-	check := assertField("b", "boolean", resource.PropertyValue.IsBool)
+	check := assertField("boolean", "boolean", resource.PropertyValue.IsBool)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField("i", "number", resource.PropertyValue.IsNumber)
+	check = assertField("integer", "number", resource.PropertyValue.IsNumber)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField("f", "number", resource.PropertyValue.IsNumber)
+	check = assertField("float", "number", resource.PropertyValue.IsNumber)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField("s", "string", resource.PropertyValue.IsString)
+	check = assertField("string", "string", resource.PropertyValue.IsString)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField("a", "array", resource.PropertyValue.IsArray)
+	check = assertField("numberArray", "array", resource.PropertyValue.IsArray)
 	if check != nil {
 		return *check, nil
 	}
 	// Check the array is numbers
-	for _, v := range req.News["a"].ArrayValue() {
+	for _, v := range req.News["numberArray"].ArrayValue() {
 		if !v.IsNumber() {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("a", "array element is not a number"),
+				Failures: makeCheckFailure("numberArray", "array element is not a number"),
 			}, nil
 		}
 	}
-	check = assertField("m", "map", resource.PropertyValue.IsObject)
+	check = assertField("booleanMap", "map", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
 	// Check the map values are booleans
-	for _, v := range req.News["m"].ObjectValue() {
+	for _, v := range req.News["booleanMap"].ObjectValue() {
 		if !v.IsBool() {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("m", "map value is not a boolean"),
+				Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
 			}, nil
 		}
 	}

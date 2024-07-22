@@ -316,12 +316,12 @@ var languageTests = map[string]languageTest{
 					assert.Equal(l, "primitive:index:Resource", simple.Type.String(), "expected primitive resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
-						"b": true,
-						"f": 3.14,
-						"i": 42,
-						"s": "hello",
-						"a": []interface{}{-1.0, 0.0, 1.0},
-						"m": map[string]interface{}{"t": true, "f": false},
+						"boolean":     true,
+						"float":       3.14,
+						"integer":     42,
+						"string":      "hello",
+						"numberArray": []interface{}{-1.0, 0.0, 1.0},
+						"booleanMap":  map[string]interface{}{"t": true, "f": false},
 					})
 					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
