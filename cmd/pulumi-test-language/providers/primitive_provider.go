@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// A small provider with a single resource "Resource" that has a boolean, number, string, array, and map property.
+// This is for testing that simple "primitive" values can be sent to and from the engine.
 type PrimitiveProvider struct {
 	plugin.UnimplementedProvider
 }
