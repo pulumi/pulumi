@@ -143,7 +143,7 @@ func (cmd *stateMoveCmd) Run(
 		matchedArg := resourceMatches(res, args)
 		if matchedArg != "" {
 			if strings.HasPrefix(string(res.Type), "pulumi:providers:") {
-				return errors.New("cannot move providers")
+				return errors.New("cannot move providers. Only resources can be moved, and providers will be included automatically")
 			}
 			resourcesToMove[string(res.URN)] = res
 			providersToCopy[res.Provider] = true

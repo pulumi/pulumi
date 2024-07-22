@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -83,11 +82,8 @@ func runMoveWithOptions(
 	t *testing.T, sourceResources []*resource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := context.Background()
-	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	tmpDir := t.TempDir()
 	assert.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
@@ -318,9 +314,6 @@ func TestMoveWithExistingProvider(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -383,9 +376,6 @@ func TestMoveWithExistingResource(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -464,9 +454,6 @@ func TestEmptySourceStack(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -502,9 +489,6 @@ func TestEmptyDestStack(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -595,9 +579,6 @@ func TestMoveUnknownResource(t *testing.T) {
 
 	ctx := context.Background()
 	tmpDir := t.TempDir()
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 
@@ -629,54 +610,6 @@ func TestMoveUnknownResource(t *testing.T) {
 
 	assert.Contains(t, stdout.String(), "warning: Resource not-a-urn not found in source stack")
 	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
-}
-
-func TestProviderIsReparented(t *testing.T) {
-	t.Parallel()
-
-	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
-		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
-		},
-		{
-			URN:    providerURN,
-			Type:   "pulumi:providers:a::default_1_0_0",
-			ID:     "provider_id",
-			Custom: true,
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
-		},
-		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
-			Type:     "a:b:c",
-			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-		},
-	}
-
-	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[2].URN)})
-
-	// Only the provider and the root stack should remain in the source stack
-	assert.Equal(t, 2, len(sourceSnapshot.Resources))
-	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),
-		sourceSnapshot.Resources[0].URN)
-	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
-		sourceSnapshot.Resources[1].URN)
-
-	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
-	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
-		destSnapshot.Resources[0].URN)
-	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
-		destSnapshot.Resources[1].URN)
-	assert.Equal(t, resource.DefaultRootStackURN("destStack", "test"),
-		destSnapshot.Resources[1].Parent)
-	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
-		destSnapshot.Resources[2].URN)
-	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
-		destSnapshot.Resources[2].Provider)
-	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
-		destSnapshot.Resources[2].Parent)
 }
 
 func TestProviderIsReparented(t *testing.T) {
