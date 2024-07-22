@@ -413,7 +413,7 @@ func (ex *deploymentExecutor) performDeletes(
 					continue
 				}
 				for _, r := range []*resource.State{step.Res(), step.Old()} {
-					if r != nil {
+					if r != nil && ex.deployment.depGraph.Contains(r) {
 						deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
 						erroredDeps = erroredDeps.Union(deps)
 					}
