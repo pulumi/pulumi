@@ -412,13 +412,9 @@ func (ex *deploymentExecutor) performDeletes(
 				if seenErrors.Contains(step) {
 					continue
 				}
-				if ex.deployment.depGraph.Contains(step.Res()) {
-					deps := ex.deployment.depGraph.TransitiveDependenciesOf(step.Res())
+				for _, r := range []*resource.State{step.Res(), step.Old()} {
+					deps := ex.deployment.depGraph.TransitiveDependenciesOf(r)
 					erroredDeps = erroredDeps.Union(deps)
-				}
-				if ex.deployment.depGraph.Contains(step.Old()) {
-					oldDeps := ex.deployment.depGraph.TransitiveDependenciesOf(step.Old())
-					erroredDeps = erroredDeps.Union(oldDeps)
 				}
 			}
 			seenErrors.Append(erroredSteps...)
