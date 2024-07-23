@@ -213,6 +213,8 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	depsURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "deps")
 	deletedWithURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "deletedWith")
 	propDepsURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "propDeps")
+	movedChildURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "movedChildURN")
+	dependsOnMovedChildURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "dependsOnMovedChildURN")
 	sourceResources := []*resource.State{
 		{
 			URN:    providerURN,
@@ -230,6 +232,19 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 			Type:         "a:b:c",
 			Provider:     string(providerURN) + "::provider_id",
 			Dependencies: []resource.URN{remainingDepURN},
+		},
+		{
+			URN:      movedChildURN,
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resToMoveURN,
+		},
+		{
+			URN:          dependsOnMovedChildURN,
+			Type:         "a:b:c",
+			Provider:     string(providerURN) + "::provider_id",
+			Parent:       resToMoveURN,
+			Dependencies: []resource.URN{movedChildURN},
 		},
 		{
 			URN:          depsURN,
@@ -259,6 +274,8 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	expectedStdout := `Planning to move the following resources from sourceStack to destStack:
 
   - urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::movedChildURN
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::dependsOnMovedChildURN
 
 The following resources remaining in sourceStack have dependencies on resources moved to destStack:
   urn:pulumi:sourceStack::test::d:e:f$a:b:c::deps has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
@@ -294,7 +311,7 @@ Successfully moved resources from sourceStack to destStack
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep"),
 		sourceSnapshot.Resources[4].PropertyDependencies["key"][0])
 
-	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	assert.Equal(t, 5, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -302,6 +319,12 @@ Successfully moved resources from sourceStack to destStack
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::resToMove"),
 		destSnapshot.Resources[2].URN)
 	assert.Equal(t, 0, len(destSnapshot.Resources[2].Dependencies))
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::movedChildURN"),
+		destSnapshot.Resources[3].URN)
+	assert.Equal(t, 0, len(destSnapshot.Resources[3].Dependencies))
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::dependsOnMovedChildURN"),
+		destSnapshot.Resources[4].URN)
+	assert.Equal(t, 1, len(destSnapshot.Resources[4].Dependencies))
 }
 
 func TestMoveWithExistingProvider(t *testing.T) {
