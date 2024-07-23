@@ -265,7 +265,7 @@ func (cmd *stateMoveCmd) Run(
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
 		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
-		source.Ref().Name(), dest.Ref().Name())
+		source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
 
 	fmt.Fprintf(cmd.Stdout, "\n")
 	for _, res := range resourcesToMoveOrdered {
@@ -299,7 +299,7 @@ func (cmd *stateMoveCmd) Run(
 	if len(brokenSourceDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
 			colors.SpecWarning+"The following resources remaining in %s have dependencies on resources moved to %s:\n"+
-				colors.Reset), source.Ref().Name(), dest.Ref().Name())
+				colors.Reset), source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
 	}
 
 	cmd.printBrokenDependencyRelationships(brokenSourceDependencies)
@@ -307,7 +307,7 @@ func (cmd *stateMoveCmd) Run(
 	if len(brokenDestDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
 			colors.SpecWarning+"The following resources being moved to %s have dependencies on resources in %s:\n"+
-				colors.Reset), dest.Ref().Name(), source.Ref().Name())
+				colors.Reset), dest.Ref().FullyQualifiedName(), source.Ref().FullyQualifiedName())
 	}
 
 	cmd.printBrokenDependencyRelationships(brokenDestDependencies)
@@ -373,7 +373,7 @@ source stack.  Please remove the resources from the source stack manually using 
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
 		colors.SpecHeadline+"Successfully moved resources from %s to %s\n"+colors.Reset),
-		source.Ref().Name(), dest.Ref().Name())
+		source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
 
 	return nil
 }
