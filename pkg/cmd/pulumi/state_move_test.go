@@ -210,6 +210,9 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	resToMoveURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "resToMove")
 	remainingDepURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "remainingDep")
+	depsURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "deps")
+	deletedWithURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "deletedWith")
+	propDepsURN := resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "propDeps")
 	sourceResources := []*resource.State{
 		{
 			URN:    providerURN,
@@ -229,19 +232,19 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 			Dependencies: []resource.URN{remainingDepURN},
 		},
 		{
-			URN:          resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "deps"),
+			URN:          depsURN,
 			Type:         "a:b:c",
 			Provider:     string(providerURN) + "::provider_id",
 			Dependencies: []resource.URN{resToMoveURN, remainingDepURN},
 		},
 		{
-			URN:         resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "deletedWith"),
+			URN:         deletedWithURN,
 			Type:        "a:b:c",
 			Provider:    string(providerURN) + "::provider_id",
 			DeletedWith: resToMoveURN,
 		},
 		{
-			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "propDeps"),
+			URN:      propDepsURN,
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
@@ -252,8 +255,23 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(resToMoveURN)})
 
-	assert.Contains(t, stdout.String(), "Planning to move the following resources from sourceStack to destStack:")
-	assert.Contains(t, stdout.String(), string(resToMoveURN))
+	//nolint:lll
+	expectedStdout := `Planning to move the following resources from sourceStack to destStack:
+
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+
+The following resources remaining in sourceStack have dependencies on resources moved to destStack:
+  urn:pulumi:sourceStack::test::d:e:f$a:b:c::deps has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+  urn:pulumi:sourceStack::test::d:e:f$a:b:c::deletedWith is marked as deleted with urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+  urn:pulumi:sourceStack::test::d:e:f$a:b:c::propDeps (key) has a property dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+The following resources being moved to destStack have dependencies on resources in sourceStack:
+  urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep
+
+If you go ahead with moving these dependencies, it will be necessary to create the appropriate inputs and outputs in the program for the stack the resources are moved to.
+
+Successfully moved resources from sourceStack to destStack
+`
+	assert.Equal(t, expectedStdout, stdout.String())
 
 	// Only the provider and the resources that are not moved should remain in the source stack
 	assert.Equal(t, 5, len(sourceSnapshot.Resources))
