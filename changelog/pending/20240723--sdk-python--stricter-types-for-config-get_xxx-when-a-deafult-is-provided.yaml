@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Provide stricter types for config.get_XXX when a default is provided
