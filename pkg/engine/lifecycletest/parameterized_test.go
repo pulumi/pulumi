@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -217,6 +219,127 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		"parameterization": map[string]any{
 			"version": "0.5.0",
 			"value":   "cmVwbGFjZW1lbnQ=",
+		},
+	}), prov.Inputs)
+
+	snap, err = TestOp(Refresh).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+
+	snap, err = TestOp(Destroy).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
+}
+
+// TestReplacementParameterizedProviderConfig tests that we can register a parameterized provider that uses config keys
+// like "name" without clashing against the internal state the engine tracks for parameterization. c.f.
+// https://github.com/pulumi/pulumi/issues/16757.
+func TestReplacementParameterizedProviderConfig(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			var param string
+			return &deploytest.Provider{
+				ConfigureF: func(news resource.PropertyMap) error {
+					// Ensure that the provider configuration is what we expect.
+					var expected resource.PropertyMap
+					if param == "replacement" {
+						expected = resource.NewPropertyMapFromMap(map[string]any{
+							"version": "0.5.0",
+							"name":    "testingExt",
+						})
+					} else {
+						expected = resource.NewPropertyMapFromMap(map[string]any{
+							"version": "1.0.0",
+							"name":    "testingBase",
+						})
+					}
+
+					if !news.DeepEquals(expected) {
+						return fmt.Errorf("expected provider configuration to be %v, got %v", expected, news)
+					}
+					return nil
+				},
+				ParameterizeF: func(
+					ctx context.Context, req plugin.ParameterizeRequest,
+				) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+
+					param = string(value.Value)
+
+					return plugin.ParameterizeResponse{
+						Name:    value.Name,
+						Version: value.Version,
+					}, nil
+				},
+				CreateF: func(urn urn.URN, inputs resource.PropertyMap, timeout float64, preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					if urn.Type() == "pkgExt:m:typA" {
+						assert.Equal(t, "replacement", param)
+					}
+
+					return "id", inputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "http://example.com", nil, nil)
+		require.NoError(t, err)
+
+		// Register a resource using that base provider
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			PackageRef: pkgRef,
+		})
+		require.NoError(t, err)
+
+		// Now register a replacement provider
+		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
+			Name:    "pkgExt",
+			Version: "0.5.0",
+			Value:   []byte("replacement"),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
+			PackageRef: extRef,
+		})
+		require.NoError(t, err)
+
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+		Config: config.Map{
+			config.MustParseKey("pkgA:name"):   config.NewValue("testingBase"),
+			config.MustParseKey("pkgExt:name"): config.NewValue("testingExt"),
+		},
+	}
+
+	snap, err := TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
+	require.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+
+	// Check the state of the parameterized provider is what we expect
+	prov := snap.Resources[2]
+	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+		"version": "0.5.0",
+		"name":    "testingExt",
+		"__internal": map[string]any{
+			"name":             "pkgA",
+			"version":          "1.0.0",
+			"parameterization": "cmVwbGFjZW1lbnQ=",
 		},
 	}), prov.Inputs)
 

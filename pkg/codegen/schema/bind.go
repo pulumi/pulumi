@@ -1366,6 +1366,14 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, error) {
 	properties, _, diags, err := types.bindProperties("#/config/variables", spec.Variables,
 		"#/config/defaults", spec.Required, false)
+
+	// If any property is called "version" error out that it's reserved.
+	for _, property := range properties {
+		if property.Name == "version" {
+			diags = diags.Append(errorf("#/config/variables/version", "version is a reserved configuration key"))
+		}
+	}
+
 	return properties, diags, err
 }
 
@@ -1494,6 +1502,13 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 		return diags, err
 	}
 	decl.IsProvider = true
+
+	// If any input property is called "version" error that it's reserved.
+	for _, property := range decl.InputProperties {
+		if property.Name == "version" {
+			diags = diags.Append(errorf("#/provider/properties/version", "version is a reserved property name"))
+		}
+	}
 
 	// Since non-primitive provider configuration is currently JSON serialized, we can't handle it without
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which

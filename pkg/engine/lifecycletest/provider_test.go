@@ -1233,7 +1233,7 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 	) error {
 		for _, e := range entries {
 			r := e.Step.New()
-			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
+			if r.Type == pkgAType && r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
 				return fmt.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
 			}
 		}
@@ -1421,7 +1421,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			validate: func(t *testing.T, r *resource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
-					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/default")
+					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/default")
 				}
 			},
 			prog: prog(),
@@ -1438,7 +1438,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					_, hasVersion := r.Inputs["version"]
 					assert.False(t, hasVersion)
-					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/download")
+					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/download")
 				}
 			},
 			prog: prog(deploytest.ResourceOptions{PluginDownloadURL: "example.com/download"}),
