@@ -235,11 +235,11 @@ func promptMock(name string, stackName string) promptForValueFunc {
 	return func(yes bool, valueType string, defaultValue string, secret bool,
 		isValidFn func(value string) error, opts display.Options,
 	) (string, error) {
-		if valueType == "project name" {
+		if valueType == "Project name" {
 			err := isValidFn(name)
 			return name, err
 		}
-		if valueType == "stack name" {
+		if valueType == "Stack name" {
 			err := isValidFn(stackName)
 			return stackName, err
 		}
