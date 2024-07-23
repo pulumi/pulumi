@@ -1420,7 +1420,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 		case *ternaryTemp:
 			// TODO derive from ambient context
 			isInput := false
-			g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Value.TrueResult, t.Type(), isInput))
+			g.Fgenf(w, "var %s %s\n", t.Name, g.argumentTypeName(t.Type(), isInput))
 			g.Fgenf(w, "if %.v {\n", t.Value.Condition)
 			g.Fgenf(w, "%s = %.v\n", t.Name, t.Value.TrueResult)
 			g.Fgenf(w, "} else {\n")
@@ -1459,7 +1459,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 			g.isErrAssigned = true
 		case *splatTemp:
-			argTyp := g.argumentTypeName(t.Value.Each, t.Value.Each.Type(), false)
+			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
