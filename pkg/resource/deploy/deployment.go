@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -395,7 +395,14 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
 			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
-				res.Outputs = res.Inputs
+				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
+				res.Outputs = make(resource.PropertyMap)
+				for k, v := range res.Inputs {
+					if k == "__internal" {
+						continue
+					}
+					res.Outputs[k] = v
+				}
 			}
 		}
 	}

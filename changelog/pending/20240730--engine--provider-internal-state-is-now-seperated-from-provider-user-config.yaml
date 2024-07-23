@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Provider internal state is now separated from provider user config. This allows providers to use a config key like "pluginDownloadURL" which previously would have conflicted with the engines internal state. It also allows the engine to add new internal state fields without concern for clashing with existing or future provider config keys. 

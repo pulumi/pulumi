@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -687,6 +688,54 @@ var languageTests = map[string]languageTest{
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
+				},
+			},
+		},
+	},
+	"l2-resource-config": {
+		providers: []plugin.Provider{&providers.ConfigProvider{}},
+		runs: []testRun{
+			{
+				updateOptions: engine.UpdateOptions{
+					ContinueOnError: true,
+				},
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+
+					explicitProvider := snap.Resources[1]
+					require.Equal(l, "pulumi:providers:config", explicitProvider.Type.String(), "expected explicit provider resource")
+					expectedOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+						"name":              "my config",
+						"pluginDownloadURL": "not the same as the pulumi resource option",
+						"version":           "9.0.0",
+					})
+					expectedInputs := deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
+					// inputs should also have the __internal key
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+						resource.NewPropertyMapFromMap(map[string]interface{}{
+							"pluginDownloadURL": "http://example.com",
+						}))
+					require.Equal(l, expectedInputs, explicitProvider.Inputs)
+					require.Equal(l, expectedOutputs, explicitProvider.Outputs)
+
+					defaultProvider := snap.Resources[2]
+					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
+					require.Equal(l, "default_9_0_0_http_/example.com", defaultProvider.URN.Name())
+					expectedOutputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+						"version": "9.0.0",
+					})
+					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
+					// inputs should also have the __internal key
+					expectedInputs[resource.PropertyKey("__internal")] = resource.NewObjectProperty(
+						resource.NewPropertyMapFromMap(map[string]interface{}{
+							"pluginDownloadURL": "http://example.com",
+						}))
+					require.Equal(l, expectedInputs, defaultProvider.Inputs)
+					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
 				},
 			},
 		},
