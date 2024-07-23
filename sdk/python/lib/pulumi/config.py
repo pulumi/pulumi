@@ -16,14 +16,12 @@
 The config module contains all configuration management functionality.
 """
 import json
-from typing import Any, Callable, Optional, overload, TypeVar
+from typing import Any, Callable, Optional, overload
 
 from . import errors, log
 from .metadata import get_project
 from .output import Output
 from .runtime.config import get_config, is_config_secret
-
-T = TypeVar("T")
 
 
 class Config:
@@ -317,7 +315,7 @@ class Config:
             raise ConfigTypeError(self.full_key(key), v, "JSON object") from e
 
     @overload
-    def get_object(self, key: str, default: T) -> T:
+    def get_object(self, key: str, default: Any) -> Any:
         ...
     @overload
     def get_object(self, key: str) -> Optional[Any]:
@@ -341,7 +339,7 @@ class Config:
         return config_candidate if config_candidate is not None else default
 
     @overload
-    def get_secret_object(self, key: str, default: T) -> Output[T]:
+    def get_secret_object(self, key: str, default: Any) -> Output[Any]:
         ...
     @overload
     def get_secret_object(self, key: str) -> Optional[Output[Any]]:
