@@ -17,9 +17,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -145,5 +147,26 @@ func TestProviderSchemas(t *testing.T) {
 			require.NoError(t, err, "bind schema for provider %s: %v", pkg.Name, err)
 			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", pkg.Name, diags)
 		}
+	}
+}
+
+// Ensure all tests have valid programs that can be bound.
+func TestBindPrograms(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range languageTests {
+		// Internal tests are allowed to have invalid programs.
+		if strings.HasPrefix(name, "internal-") {
+			continue
+		}
+
+		src := filepath.Join("testdata", name)
+		loader := &providerLoader{providers: test.providers}
+		_, diags, err := pcl.BindDirectory(src, loader)
+		for _, diag := range diags {
+			t.Logf("%s: %v", name, diag)
+		}
+		require.NoError(t, err, "bind program for test %s: %v", name, err)
+		require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 	}
 }
