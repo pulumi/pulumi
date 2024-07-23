@@ -1,0 +1,2618 @@
+{
+  "name": "std",
+  "displayName": "StandardLibrary",
+  "version": "1.7.3",
+  "description": "Standard library functions",
+  "homepage": "https://github.com/pulumi/pulumi-std",
+  "repository": "https://github.com/pulumi/pulumi-std",
+  "publisher": "Pulumi",
+  "meta": {
+    "moduleFormat": "(.*)"
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.*"
+      }
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi-std/sdk/go/std"
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+      }
+    }
+  },
+  "config": {},
+  "provider": {
+    "type": "object"
+  },
+  "functions": {
+    "std:index:abs": {
+      "description": "Returns the absolute value of a given float.\nExample: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:abspath": {
+      "description": "Returns an absolute representation of the specified path.\nIf the path is not absolute it will be joined with the current working directory to turn it into an absolute path.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:alltrue": {
+      "description": "Returns true if all elements in a given collection are true or \\\"true\\\".\nIt also returns true if the collection is empty.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:anytrue": {
+      "description": "Returns true if any of the elements in a given collection are true or \\\"true\\\".\nIt also returns false if the collection is empty.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:base64decode": {
+      "description": "Given a base64-encoded string, decodes it and returns the original string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:base64encode": {
+      "description": "Returns a base64-encoded representation of the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:base64gzip": {
+      "description": "Compresses the given string with gzip and then encodes the result to base64.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:base64sha256": {
+      "description": "Returns a base64-encoded representation of raw SHA-256 sum of the given string.\nThis is not equivalent of base64encode(sha256(string)) since sha256() returns hexadecimal representation.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:base64sha512": {
+      "description": "Returns a base64-encoded representation of raw SHA-512 sum of the given string.\nThis is not equivalent of base64encode(sha512(string)) since sha512() returns hexadecimal representation.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:basename": {
+      "description": "Returns the last element of the input path.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:bcrypt": {
+      "description": "Returns the Blowfish encrypted hash of the string at the given cost.\nA default cost of 10 will be used if not provided.",
+      "inputs": {
+        "properties": {
+          "cost": {
+            "type": "integer"
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:ceil": {
+      "description": "Returns the least integer value greater than or equal to the argument.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:chomp": {
+      "description": "Removes one or more newline characters from the end of the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:chunklist": {
+      "description": "Splits a single list into multiple lists where each has at most the given number of elements.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "size"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:cidrhost": {
+      "description": "Takes an IP address range in CIDR notation as input\nand creates an IP address with the given host number.\nIf given host number is negative, the count starts from the end of the range.\nFor example, cidrhost(\"10.0.0.0/8\", 2) returns 10.0.0.2 and cidrhost(\"10.0.0.0/8\", -2) returns 10.255.255.254.",
+      "inputs": {
+        "properties": {
+          "host": {
+            "type": "integer"
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "host",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:cidrnetmask": {
+      "description": "Takes an IP address range in CIDR notation and returns the address-formatted subnet mask format\nthat some systems expect for IPv4 interfaces.\nFor example, cidrnetmask(\"10.0.0.0/8\") returns 255.0.0.0.\nNot applicable to IPv6 networks since CIDR notation is the only valid notation for IPv6.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:cidrsubnet": {
+      "description": "Takes an IP address range in CIDR notation (like 10.0.0.0/8) and extends its prefix\nto include an additional subnet number. For example, cidrsubnet(\"10.0.0.0/8\", netnum: 2, newbits: 8)\nreturns 10.2.0.0/16; cidrsubnet(\"2607:f298:6051:516c::/64\", netnum: 2, newbits: 8) returns\n2607:f298:6051:516c:200::/72.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "netnum": {
+            "type": "integer"
+          },
+          "newbits": {
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "netnum",
+          "newbits"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:coalesce": {
+      "description": "Returns the first non-empty value from the given arguments.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:coalescelist": {
+      "description": "Returns the first non-empty list from the given list of lists.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "pulumi.json#/Any"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:compact": {
+      "description": "Removes empty string elements from a list.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:concat": {
+      "description": "Combines two or more lists into a single list.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "pulumi.json#/Any"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:contains": {
+      "description": "Returns true if a list contains the given element and returns false otherwise.",
+      "inputs": {
+        "properties": {
+          "element": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "element",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:csvdecode": {
+      "description": "Decodes a string containing CSV-formatted data and produces a list of maps representing that data.\n\tThe first line of the CSV data is interpreted as a \"header\" row: the values given\n\tare used as the keys in the resulting maps.\n\tEach subsequent line becomes a single map in the resulting list,\n\tmatching the keys from the header row with the given values by index.\n\tAll lines in the file must contain the same number of fields,\n\tor this function will produce an error.\n\tFollows the format defined in RFC 4180.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:dirname": {
+      "description": "Returns all but the last element of path, typically the path's directory.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:distinct": {
+      "description": "Removes duplicate items from a list.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:element": {
+      "description": "Returns the element at the specified index.",
+      "inputs": {
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:endswith": {
+      "description": "Determines if the input string ends with the suffix.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "suffix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "suffix"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:file": {
+      "description": "Reads the contents of a file into the string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filebase64": {
+      "description": "Reads the contents of a file and returns them as a base64-encoded string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filebase64sha256": {
+      "description": "Reads the contents of a file into a string and returns the base64-encoded SHA256 hash of it.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filebase64sha512": {
+      "description": "Reads the contents of a file into a string and returns the base64-encoded SHA512 hash of it.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:fileexists": {
+      "description": "Determines whether a file exists at a given path.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filemd5": {
+      "description": "Reads the contents of a file into a string and returns the MD5 hash of it.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filesha1": {
+      "description": "Reads the contents of a file into a string and returns the SHA1 hash of it.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filesha256": {
+      "description": "Reads the contents of a file into a string and returns the SHA256 hash of it.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:filesha512": {
+      "description": "Reads the contents of a file into a string and returns the SHA512 hash of it.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:flatten": {
+      "description": "Flattens lists of lists down to a flat list of primitive values,\neliminating any nested lists recursively.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:floor": {
+      "description": "Returns the greatest integer value less than or equal to the argument.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:format": {
+      "description": "Formats a string according to the given format. The syntax for the format is standard sprintf syntax.",
+      "inputs": {
+        "properties": {
+          "args": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "args",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:indent": {
+      "description": "Adds a given number of spaces after each newline character in the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "spaces": {
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "spaces"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:index": {
+      "description": "Finds the index of a given element in a list.",
+      "inputs": {
+        "properties": {
+          "element": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "element",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:join": {
+      "description": "Joins the list with the delimiter for a resultant string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "separator": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "separator"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:jsondecode": {
+      "description": "Interprets a given string as JSON and returns a represetation\n\tof the result of decoding that string.\n\tIf input is not valid JSON, the result will be the input unchanged.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:jsonencode": {
+      "description": "Returns a JSON-encoded representation of the given value,\nwhich can contain arbitrarily-nested lists and maps.\nNote that if the value is a string then its value will be placed in quotes.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:keys": {
+      "description": "Returns a lexically sorted list of the map keys.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:length": {
+      "description": "Determines the length of a given list, map, or string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:log": {
+      "description": "Returns the greatest integer value less than or equal to the argument.",
+      "inputs": {
+        "properties": {
+          "base": {
+            "type": "number"
+          },
+          "input": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:lookup": {
+      "description": "Performs a dynamic lookup into a map variable.",
+      "inputs": {
+        "properties": {
+          "default": {
+            "$ref": "pulumi.json#/Any"
+          },
+          "key": {
+            "type": "string"
+          },
+          "map": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "map"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:lower": {
+      "description": "Returns a copy of the string with all Unicode letters mapped to their lower case.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:map": {
+      "description": "Returns a map consisting of the key/value pairs specified as arguments.",
+      "inputs": {
+        "properties": {
+          "args": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "args"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:matchkeys": {
+      "description": "For two lists values and keys of equal length,\nreturns all elements from values where the corresponding element from keys exists in the searchset list.",
+      "inputs": {
+        "properties": {
+          "searchList": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "searchList",
+          "values"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:max": {
+      "description": "Returns the largest of the floats.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:md5": {
+      "description": "Returns a (conventional) hexadecimal representation of the MD5 hash of the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:merge": {
+      "description": "Returns the union of 2 or more maps. The maps are consumed in the order provided,\nand duplicate keys overwrite previous entries.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "pulumi.json#/Any"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:min": {
+      "description": "Returns the smallest of the floats.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:parseint": {
+      "description": "Parses the given string as a representation of an integer in the specified base\nand returns the resulting number. The base must be between 2 and 62 inclusive.\n\t.",
+      "inputs": {
+        "properties": {
+          "base": {
+            "type": "integer"
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:pathexpand": {
+      "description": "Returns a filepath string with ~ expanded to the home directory.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:pow": {
+      "description": "Returns the base input raised to the power of the exponent.",
+      "inputs": {
+        "properties": {
+          "base": {
+            "type": "number"
+          },
+          "exponent": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base",
+          "exponent"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:range": {
+      "description": "Generates a list of numbers using a start value, a limit value, and a step value.\nStart and step may be omitted, in which case start defaults to zero and step defaults to either one or negative one\ndepending on whether limit is greater than or less than start.",
+      "inputs": {
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "step": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "limit"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:replace": {
+      "description": "Does a search and replace on the given string.\nAll instances of search are replaced with the value of replace.\nIf search is wrapped in forward slashes, it is treated as a regular expression.\nIf using a regular expression, replace can reference subcaptures in the regular expression by\nusing $n where n is the index or name of the subcapture. If using a regular expression,\nthe syntax conforms to the re2 regular expression syntax.",
+      "inputs": {
+        "properties": {
+          "replace": {
+            "type": "string"
+          },
+          "search": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "replace",
+          "search",
+          "text"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:reverse": {
+      "description": "Returns a sequence with the same elements but in reverse order.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:rsadecrypt": {
+      "description": "Decrypts an RSA-encrypted ciphertext.\nThe cipher text must be base64-encoded and the key must be in PEM format.",
+      "inputs": {
+        "properties": {
+          "cipherText": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cipherText",
+          "key"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:sha1": {
+      "description": "Returns a hexadecimal representation of the SHA-1 hash of the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:sha256": {
+      "description": "Returns a hexadecimal representation of the SHA-256 hash of the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:sha512": {
+      "description": "Returns a hexadecimal representation of the SHA-512 hash of the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:signum": {
+      "description": "Returns the greatest integer value less than or equal to the argument.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:slice": {
+      "description": "Returns the portion of list between from (inclusive) and to (exclusive).",
+      "inputs": {
+        "properties": {
+          "from": {
+            "type": "integer"
+          },
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          },
+          "to": {
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "list"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:sort": {
+      "description": "Returns a list of strings sorted lexicographically.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:split": {
+      "description": "Produces a list by dividing a given string at all occurrences of a given separator",
+      "inputs": {
+        "properties": {
+          "separator": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "separator",
+          "text"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:startswith": {
+      "description": "Determines if the input string starts with the suffix.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "prefix"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:strrev": {
+      "description": "Returns the given string with all of its Unicode characters in reverse order.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:substr": {
+      "description": "Extracts a substring from the given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "length": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "length",
+          "offset"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:sum": {
+      "description": "Returns the total sum of the elements of the input list.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:timeadd": {
+      "description": "Adds a duration to a timestamp, returning a new timestamp.\n\tTimestamps are represented as strings using RFC 3339 \"Date and time format\" syntax.\n\t'timestamp' must be a string adhering this syntax, i.e. \"2017-11-22T00:00:00Z\".\n\t'duration' is a string representation of a time difference, comprised of sequences of\n\tnumbers and unit pairs, i.e. \"3.5h\" or \"2h15m\".\n\tAccepted units are \"ns\", \"us\" or \"µs\", \"ms\", \"s\", \"m\", and \"h\". The first number may be negative\n\tto provide a negative duration, i.e. \"-2h15m\".",
+      "inputs": {
+        "properties": {
+          "duration": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "duration",
+          "timestamp"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:timecmp": {
+      "description": "Compares two timestamps and returns a number that represents the ordering\n\tof the instants those timestamps represent.\n\tTimestamps are represented as strings using RFC 3339 \"Date and time format\" syntax.\n\tBoth timestamps must be strings adhering this syntax, i.e. \"2017-11-22T00:00:00Z\".\n\tIf 'timestamp_a' is before 'timestamp_b', -1 is returned.\n\tIf 'timestamp_a' is equal to 'timestamp_b', 0 is returned.\n\tIf 'timestamp_a' is after 'timestamp_b', 1 is returned.",
+      "inputs": {
+        "properties": {
+          "timestampa": {
+            "type": "string"
+          },
+          "timestampb": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestampa",
+          "timestampb"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:timestamp": {
+      "description": "Returns a UTC timestamp string of the current time in RFC 3339 format",
+      "inputs": {
+        "type": "object"
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:title": {
+      "description": "Converts the first letter of each word in the given string to uppercase.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:tobool": {
+      "description": "Converts its argument to a boolean value. Only boolean values, null, and the exact strings\n\t\"true\" and \"false\" can be converted to boolean. All other values will result in an error.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "std:index:tolist": {
+      "description": "Converts its argument to a list value.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:tonumber": {
+      "description": "Converts its argument to a number value. Only number values, null, and strings\n\tcontaining decimal representations of numbers can be converted to number. All other values will result in an error",
+      "inputs": {
+        "properties": {
+          "input": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "std:index:toset": {
+      "description": "Converts its argument to a set value.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:tostring": {
+      "description": "Converts its argument to a string value. Only primitive types (string, number, bool)\n\tand null can be converted to string. All other values will result in an error.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "std:index:transpose": {
+      "description": "Takes a map of lists of strings and swaps the keys and values to return a new map of lists of strings.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:trim": {
+      "description": "Removes the specified set of characters from the start and end of the given string.",
+      "inputs": {
+        "properties": {
+          "cutset": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cutset",
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:trimprefix": {
+      "description": "Removes the specified prefix from the start of the given string, if present.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "prefix"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:trimspace": {
+      "description": "Removes any space characters from the start and end of the given string,\n\tfollowing the Unicode definition of \\\"space\\\" (i.e. spaces, tabs, newline, etc.).",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:trimsuffix": {
+      "description": "Removes the specified suffix from the end of the given string, if present.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "suffix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "suffix"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:upper": {
+      "description": "Converts all cased letters in the given string to uppercase.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:urlencode": {
+      "description": "Applies URL encoding to a given string.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:uuid": {
+      "description": "Returns a unique identifier string, generated and formatted as required by RFC 4122.",
+      "inputs": {
+        "type": "object"
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:values": {
+      "description": "Returns a list of the values of the map.",
+      "inputs": {
+        "properties": {
+          "input": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
+    "std:index:zipmap": {
+      "description": "Constructs a map from a list of keys and a corresponding list of values.",
+      "inputs": {
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys",
+          "values"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    }
+  }
+}

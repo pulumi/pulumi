@@ -375,6 +375,7 @@ const (
 	EksSchema              SchemaVersion = "0.37.1"
 	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
 	AwsNativeSchema        SchemaVersion = "0.99.0"
+	StdSchema              SchemaVersion = "1.7.3"
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests

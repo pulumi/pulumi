@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/blang/semver"
@@ -214,6 +216,17 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "functions",
 		Description: "Functions",
+	},
+	{
+		Directory:   "nested-invokes",
+		Description: "Testing generate programs that use nested invokes",
+		PluginHost:  utils.NewHostWithProviders(testdataPath, utils.NewSchemaProvider("std", "1.7.3")),
+	},
+	{
+		Directory:   "nested-invokes-output-versioned",
+		Description: "Testing generate programs that use nested invokes",
+		PluginHost:  utils.NewHostWithProviders(testdataPath, utils.NewSchemaProvider("std", "1.7.3")),
+		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
 	{
 		Directory:   "output-funcs-aws",
@@ -738,6 +751,26 @@ func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codege
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != "pulumi" {
 				extraPulumiPackages.Add(pkg)
+			}
+		}
+
+		if variable, isVariable := n.(*pcl.LocalVariable); isVariable {
+			if variable.Definition != nil && variable.Definition.Value != nil {
+				if functionCallExpression, ok := variable.Definition.Value.(*model.FunctionCallExpression); ok {
+					if functionCallExpression.Name == "invoke" {
+						if token, ok := functionCallExpression.Args[0].(*model.TemplateExpression); ok {
+							if len(token.Parts) > 0 {
+								if literalExpr, ok := token.Parts[0].(*model.LiteralValueExpression); ok {
+									token := literalExpr.Value.AsString()
+									parts := strings.Split(token, ":")
+									if len(parts) > 1 && parts[0] != "pulumi" {
+										extraPulumiPackages.Add(parts[0])
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 

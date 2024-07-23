@@ -100,6 +100,8 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			set(test.AwsStaticWebsiteSchema)
 		case "aws-native":
 			set(test.AwsNativeSchema)
+		case "std":
+			set(test.StdSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}
