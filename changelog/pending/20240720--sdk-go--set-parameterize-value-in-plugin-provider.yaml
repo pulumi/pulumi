@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Set Parameterize.Value in plugin.Provider

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix integrity issues in `up --continue-on-error` with changed dependencies

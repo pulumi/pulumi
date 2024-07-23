@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.126.0 (2024-07-22)
+
+
+### Features
+
+- [cli] Add support for `DeletedWith` to `pulumi convert`
+  [#12011](https://github.com/pulumi/pulumi/pull/12011)
+
+- [cli] Allow specifying project names when converting with `pulumi convert --name`
+  [#16708](https://github.com/pulumi/pulumi/pull/16708)
+
+- [sdk/python] Add support for invoke stack transforms
+  [#16701](https://github.com/pulumi/pulumi/pull/16701)
+
+
+### Bug Fixes
+
+- [cli] Avoid duplicate error output in some cases
+  [#16706](https://github.com/pulumi/pulumi/pull/16706)
+
+- [cli] Avoid duplicate error: prefix with `--expect-no-changes`
+  [#16705](https://github.com/pulumi/pulumi/pull/16705)
+
+- [engine] Fix integrity issues in `up --continue-on-error` with changed dependencies
+  [#16733](https://github.com/pulumi/pulumi/pull/16733)
+
+- [engine] Fix panics due to different length `ignoreChanges` arrays
+  [#16742](https://github.com/pulumi/pulumi/pull/16742)
+
+- [cli/state] Disallow provider moves in the `state move` command
+  [#16722](https://github.com/pulumi/pulumi/pull/16722)
+
+- [cli/state] Improve readability of the resources to be moved output of the state move command
+  [#16723](https://github.com/pulumi/pulumi/pull/16723)
+
+- [cli/state] Allow a provider with the same URN and ID to already be in the snapshot
+  [#16737](https://github.com/pulumi/pulumi/pull/16737)
+
+- [cli/state] Reparent providers correctly in state move
+  [#16735](https://github.com/pulumi/pulumi/pull/16735)
+
+- [programgen/go] Fix emiting literal values as stack outputs
+  [#16728](https://github.com/pulumi/pulumi/pull/16728)
+
+- [sdk/go] Set Parameterize.Value in plugin.Provider
+  [#16726](https://github.com/pulumi/pulumi/pull/16726)
+
+- [sdk/python] Exclude `pulumi_policy` from plugin determination
+  [#16727](https://github.com/pulumi/pulumi/pull/16727)
+
 ## 3.125.0 (2024-07-18)
 
 
