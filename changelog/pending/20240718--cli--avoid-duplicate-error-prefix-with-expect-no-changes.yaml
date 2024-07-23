@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: "Avoid duplicate error: prefix with `--expect-no-changes`"

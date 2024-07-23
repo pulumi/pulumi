@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go
-  description: Fix emiting literal values as stack outputs
