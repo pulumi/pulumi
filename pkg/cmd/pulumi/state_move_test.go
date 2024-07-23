@@ -255,6 +255,7 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(resToMoveURN)})
 
+	//nolint:lll
 	expectedStdout := `Planning to move the following resources from sourceStack to destStack:
 
   - urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
