@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Ensure no output is lost for nodejs commands when stdout is slow
