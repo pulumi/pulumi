@@ -393,9 +393,10 @@ const (
 )
 
 type brokenDependency struct {
-	urn            urn.URN
+	dependencyURN  urn.URN
 	dependencyType dependencyType
 	propdepKey     resource.PropertyKey
+	resourceURN    urn.URN
 }
 
 func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) []brokenDependency {
@@ -406,7 +407,11 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			res.Dependencies[j] = dep
 			j++
 		} else {
-			brokenDeps = append(brokenDeps, brokenDependency{urn: dep, dependencyType: dependency})
+			brokenDeps = append(brokenDeps, brokenDependency{
+				dependencyURN:  dep,
+				dependencyType: dependency,
+				resourceURN:    res.URN,
+			})
 		}
 	}
 	res.Dependencies = res.Dependencies[:j]
@@ -417,14 +422,23 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 				propDeps[j] = propDep
 				j++
 			} else {
-				brokenDeps = append(brokenDeps, brokenDependency{urn: propDep, dependencyType: propertyDependency, propdepKey: k})
+				brokenDeps = append(brokenDeps, brokenDependency{
+					dependencyURN:  propDep,
+					dependencyType: propertyDependency,
+					propdepKey:     k,
+					resourceURN:    res.URN,
+				})
 			}
 		}
 		res.PropertyDependencies[k] = propDeps[:j]
 	}
 	if _, ok := resourcesToMove[string(res.DeletedWith)]; ok {
+		brokenDeps = append(brokenDeps, brokenDependency{
+			dependencyURN:  res.DeletedWith,
+			dependencyType: deletedWith,
+			resourceURN:    res.URN,
+		})
 		res.DeletedWith = ""
-		brokenDeps = append(brokenDeps, brokenDependency{urn: res.DeletedWith, dependencyType: deletedWith})
 	}
 	return brokenDeps
 }
@@ -490,11 +504,12 @@ func (cmd *stateMoveCmd) printBrokenDependencyRelationships(brokenDeps []brokenD
 	for _, res := range brokenDeps {
 		switch res.dependencyType {
 		case dependency:
-			fmt.Fprintf(cmd.Stdout, "  %s has a dependency on %s\n", res.urn, res.urn)
+			fmt.Fprintf(cmd.Stdout, "  %s has a dependency on %s\n", res.resourceURN, res.dependencyURN)
 		case propertyDependency:
-			fmt.Fprintf(cmd.Stdout, "  %s (%s) has a property dependency on %s\n", res.urn, res.propdepKey, res.urn)
+			fmt.Fprintf(cmd.Stdout, "  %s (%s) has a property dependency on %s\n",
+				res.resourceURN, res.propdepKey, res.dependencyURN)
 		case deletedWith:
-			fmt.Fprintf(cmd.Stdout, "  %s is marked as deleted with %s\n", res.urn, res.urn)
+			fmt.Fprintf(cmd.Stdout, "  %s is marked as deleted with %s\n", res.resourceURN, res.dependencyURN)
 		}
 	}
 }
