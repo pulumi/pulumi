@@ -298,13 +298,13 @@ var iamResourceResource = new IamResource("iamResourceResource", IamResourceArgs
 <pulumi-choosable type="language" values="python">
 
 ```python
-iam_resource_resource = example.my_module.IamResource("iamResourceResource", config=google_native.iam.v1.AuditConfigArgs(
-    audit_log_configs=[google_native.iam.v1.AuditLogConfigArgs(
-        exempted_members=["string"],
-        log_type=google_native.iam.v1.AuditLogConfigLogType.LOG_TYPE_UNSPECIFIED,
-    )],
-    service="string",
-))
+iam_resource_resource = example.my_module.IamResource("iamResourceResource", config={
+    "audit_log_configs": [{
+        "exempted_members": ["string"],
+        "log_type": google_native.iam.v1.AuditLogConfigLogType.LOG_TYPE_UNSPECIFIED,
+    }],
+    "service": "string",
+})
 ```
 
 </pulumi-choosable>

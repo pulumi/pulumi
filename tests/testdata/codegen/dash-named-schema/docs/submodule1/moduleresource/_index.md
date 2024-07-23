@@ -275,9 +275,9 @@ var moduleResourceResource = new ModuleResource("moduleResourceResource", Module
 <pulumi-choosable type="language" values="python">
 
 ```python
-module_resource_resource = foo_bar.submodule1.ModuleResource("moduleResourceResource", thing=foo_bar.TopLevelArgs(
-    buzz="string",
-))
+module_resource_resource = foo_bar.submodule1.ModuleResource("moduleResourceResource", thing={
+    "buzz": "string",
+})
 ```
 
 </pulumi-choosable>

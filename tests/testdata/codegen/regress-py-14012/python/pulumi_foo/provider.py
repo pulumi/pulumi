@@ -37,7 +37,7 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArgs']]] = None,
+                 certmanager: Optional[pulumi.Input[Union['ProviderCertmanagerArgs', 'ProviderCertmanagerArgsDict']]] = None,
                  __props__=None):
         """
         Create a Foo resource with the given unique name, props, and options.
@@ -67,7 +67,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 certmanager: Optional[pulumi.Input[pulumi.InputType['ProviderCertmanagerArgs']]] = None,
+                 certmanager: Optional[pulumi.Input[Union['ProviderCertmanagerArgs', 'ProviderCertmanagerArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

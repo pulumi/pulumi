@@ -361,28 +361,28 @@ var typeUsesResource = new TypeUses("typeUsesResource", TypeUsesArgs.builder()
 
 ```python
 type_uses_resource = example.TypeUses("typeUsesResource",
-    bar=example.SomeOtherObjectArgs(
-        baz="string",
-    ),
-    baz=example.ObjectWithNodeOptionalInputsArgs(
-        foo="string",
-        bar=0,
-    ),
-    foo=example.ObjectArgs(
-        bar="string",
-        configs=[example.ConfigMapArgs(
-            config="string",
-        )],
-        foo=resource,
-        others=[[example.SomeOtherObjectArgs(
-            baz="string",
-        )]],
-        still_others={
-            "string": [example.SomeOtherObjectArgs(
-                baz="string",
-            )],
+    bar={
+        "baz": "string",
+    },
+    baz={
+        "foo": "string",
+        "bar": 0,
+    },
+    foo={
+        "bar": "string",
+        "configs": [{
+            "config": "string",
+        }],
+        "foo": resource,
+        "others": [[{
+            "baz": "string",
+        }]],
+        "still_others": {
+            "string": [{
+                "baz": "string",
+            }],
         },
-    ),
+    },
     qux=example.RubberTreeVariety.BURGUNDY)
 ```
 

@@ -317,21 +317,21 @@ var moduleTestResource = new ModuleTest("moduleTestResource", ModuleTestArgs.bui
 
 ```python
 module_test_resource = example.ModuleTest("moduleTestResource",
-    mod1=example.mod1.TypArgs(
-        val="string",
-    ),
-    val=example.TypArgs(
-        mod1=example.mod1.TypArgs(
-            val="string",
-        ),
-        mod2=example.mod2.TypArgs(
-            mod1=example.mod1.TypArgs(
-                val="string",
-            ),
-            val="string",
-        ),
-        val="string",
-    ))
+    mod1={
+        "val": "string",
+    },
+    val={
+        "mod1": {
+            "val": "string",
+        },
+        "mod2": {
+            "mod1": {
+                "val": "string",
+            },
+            "val": "string",
+        },
+        "val": "string",
+    })
 ```
 
 </pulumi-choosable>

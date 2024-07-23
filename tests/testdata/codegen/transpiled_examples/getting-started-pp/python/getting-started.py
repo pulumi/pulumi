@@ -1,9 +1,9 @@
 import pulumi
 import pulumi_aws as aws
 
-mybucket = aws.s3.Bucket("mybucket", website=aws.s3.BucketWebsiteArgs(
-    index_document="index.html",
-))
+mybucket = aws.s3.Bucket("mybucket", website={
+    "index_document": "index.html",
+})
 indexhtml = aws.s3.BucketObject("indexhtml",
     bucket=mybucket.id,
     source=pulumi.StringAsset("<h1>Hello, world!</h1>"),

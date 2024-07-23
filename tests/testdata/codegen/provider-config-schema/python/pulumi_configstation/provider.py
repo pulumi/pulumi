@@ -61,14 +61,14 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
-                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict']]]]] = None,
                  __props__=None):
         """
         Create a Configstation resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
-        :param pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]] secret_sandwiches: Super duper secret sandwiches.
+        :param pulumi.Input[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict']]]] secret_sandwiches: Super duper secret sandwiches.
         """
         ...
     @overload
@@ -94,7 +94,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
-                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

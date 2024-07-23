@@ -52,7 +52,7 @@ const (
 )
 
 func typedDictEnabled(setting string) bool {
-	return setting == InputTypesSettingClassesAndDicts
+	return setting != InputTypesSettingClasses
 }
 
 type typeDetails struct {
@@ -242,6 +242,18 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 
 	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
 		modName, name := mod.modNameAndName(t.PackageReference, t, input)
+		if forDict {
+			pkg, err := t.PackageReference.Definition()
+			contract.AssertNoErrorf(err, "error loading definition for package %q", t.PackageReference.Name())
+			info, ok := pkg.Language["python"].(PackageInfo)
+			// TODO[https://github.com/pulumi/pulumi/issues/16702]
+			// We don't yet assume that external packages support TypedDicts by default.
+			// Remove empty string check to enable TypedDicts for external packages by default.
+			typedDicts := ok && typedDictEnabled(info.InputTypes) && info.InputTypes != ""
+			if typedDicts {
+				name = name + "Dict"
+			}
+		}
 		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.PackageReference.Name()), modName, prefix, name)
 	}
 
@@ -2495,7 +2507,11 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 		pkg, err := t.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "error loading definition for package %q", t.PackageReference.Name())
 		info, ok := pkg.Language["python"].(PackageInfo)
-		typedDicts := ok && typedDictEnabled(info.InputTypes)
+		// TODO[https://github.com/pulumi/pulumi/issues/16702]
+		// We don't yet assume that external packages support TypedDicts by default.
+		// Remove samePackage condition to enable TypedDicts for external packages by default.
+		samePackage := codegen.PkgEquals(t.PackageReference, mod.pkg)
+		typedDicts := ok && typedDictEnabled(info.InputTypes) && samePackage
 		if typedDicts && input {
 			return fmt.Sprintf("Union[%s, %s]", typ, mod.objectType(t, input, true /*dictType*/))
 		}

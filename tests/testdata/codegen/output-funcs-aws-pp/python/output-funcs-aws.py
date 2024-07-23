@@ -22,7 +22,7 @@ private_s3_network_acl_rule = aws.ec2.NetworkAclRule("privateS3NetworkAclRule",
 # below) generate correctly when using output-versioned function
 # invoke forms.
 amis = aws.ec2.get_ami_ids_output(owners=[bar.id],
-    filters=[aws.ec2.GetAmiIdsFilterArgs(
-        name=bar.id,
-        values=["pulumi*"],
-    )])
+    filters=[{
+        "name": bar.id,
+        "values": ["pulumi*"],
+    }])

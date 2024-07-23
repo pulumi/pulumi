@@ -51,8 +51,8 @@ class ModuleTest(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 mod1: Optional[pulumi.Input[pulumi.InputType['_mod1.TypArgs']]] = None,
-                 val: Optional[pulumi.Input[pulumi.InputType['TypArgs']]] = None,
+                 mod1: Optional[pulumi.Input[Union['_mod1.TypArgs', '_mod1.TypArgsDict']]] = None,
+                 val: Optional[pulumi.Input[Union['TypArgs', 'TypArgsDict']]] = None,
                  __props__=None):
         """
         Create a ModuleTest resource with the given unique name, props, and options.
@@ -82,8 +82,8 @@ class ModuleTest(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 mod1: Optional[pulumi.Input[pulumi.InputType['_mod1.TypArgs']]] = None,
-                 val: Optional[pulumi.Input[pulumi.InputType['TypArgs']]] = None,
+                 mod1: Optional[pulumi.Input[Union['_mod1.TypArgs', '_mod1.TypArgsDict']]] = None,
+                 val: Optional[pulumi.Input[Union['TypArgs', 'TypArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

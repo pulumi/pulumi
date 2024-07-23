@@ -57,7 +57,7 @@ class AwaitableGetPolicyDocumentResult(GetPolicyDocumentResult):
             statements=self.statements)
 
 
-def get_policy_document(statements: Optional[Sequence[pulumi.InputType['_x.GetPolicyDocumentStatementArgs']]] = None,
+def get_policy_document(statements: Optional[Sequence[Union['_x.GetPolicyDocumentStatementArgs', '_x.GetPolicyDocumentStatementArgsDict']]] = None,
                         opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableGetPolicyDocumentResult:
     """
     Use this data source to access information about an existing resource.
@@ -74,7 +74,7 @@ def get_policy_document(statements: Optional[Sequence[pulumi.InputType['_x.GetPo
 
 
 @_utilities.lift_output_func(get_policy_document)
-def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[pulumi.InputType['_x.GetPolicyDocumentStatementArgs']]]]] = None,
+def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[Union['_x.GetPolicyDocumentStatementArgs', '_x.GetPolicyDocumentStatementArgsDict']]]]] = None,
                                opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetPolicyDocumentResult]:
     """
     Use this data source to access information about an existing resource.
