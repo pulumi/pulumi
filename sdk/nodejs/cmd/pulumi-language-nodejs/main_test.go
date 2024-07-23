@@ -16,10 +16,13 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
@@ -395,4 +398,68 @@ func TestParseOptions(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tt.expected, opts.packagemanager)
 	}
+}
+
+func TestNonblockingStdout(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/16503
+	t.Parallel()
+
+	script := `import os, time
+os.set_blocking(1, False) # set stdout to non-blocking
+time.sleep(3)
+`
+	cmd := exec.Command("python3", "-c", script)
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		for {
+			s := "....................\n"
+			n, err := os.Stdout.Write([]byte(s))
+			require.NoError(t, err)
+			require.Equal(t, n, len(s))
+		}
+	}()
+
+	require.NoError(t, runWithOutput(cmd, os.Stdout, os.Stderr))
+}
+
+type slowWriter struct {
+	w       io.Writer
+	nWrites *int
+}
+
+func (s slowWriter) Write(b []byte) (int, error) {
+	time.Sleep(100 * time.Millisecond)
+	n, err := s.w.Write(b)
+	*s.nWrites += n
+	return n, err
+}
+
+func TestRunWithOutputDoesNotMissData(t *testing.T) {
+	// This test ensures that runWithOutput writes all the data from the command and does not miss
+	// any data that might be buffered when the command exits.
+	t.Parallel()
+
+	// Write `o` to stdout 100 times at 10 ms interval, followed by `x\n`
+	// Write `e` to stderr 100 times at 10 ms interval, followed by `x\n`
+	script := `let i = 0;
+	let interval = setInterval(() => {
+		process.stdout.write("o");
+		process.stderr.write("e");
+		i++;
+		if (i == 100) {
+			process.stdout.write("x\n");
+			process.stderr.write("x\n");
+			clearInterval(interval);
+		}
+	}, 10)
+	`
+	cmd := exec.Command("node", "-e", script)
+	stdout := slowWriter{w: os.Stdout, nWrites: new(int)}
+	stderr := slowWriter{w: os.Stderr, nWrites: new(int)}
+
+	require.NoError(t, runWithOutput(cmd, stdout, stderr))
+
+	require.Equal(t, 100+2 /* "x\n" */, *stdout.nWrites)
+	require.Equal(t, 100+2 /* "x\n" */, *stderr.nWrites)
 }

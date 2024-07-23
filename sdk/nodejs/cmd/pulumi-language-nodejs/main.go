@@ -28,6 +28,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -720,9 +721,17 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	var errResult string
 	// #nosec G204
 	cmd := exec.Command(nodeBin, nodeargs...)
-	if err := copyOutput(cmd); err != nil {
-		return &pulumirpc.RunResponse{Error: fmt.Errorf("copy node output: %w", err).Error()}
-	}
+	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
+	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
+	// `runWithOutput` for more details.
+	cmd.Stdout = struct{ io.Writer }{os.Stdout}
+	r, w := io.Pipe()
+	cmd.Stderr = w
+	// Get a duplicate reader of stderr so that we can both scan it and write it to os.Stderr.
+	stderrDup := io.TeeReader(r, os.Stderr)
+	sniffer := newOOMSniffer()
+	sniffer.Scan(stderrDup)
+
 	cmd.Env = env
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -757,6 +766,10 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 				return &pulumirpc.RunResponse{Error: "", Bail: true}
 			default:
 				err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
+				sniffer.Wait()
+				if sniffer.Detected() {
+					err = fmt.Errorf("Program exited with non-zero exit code: %d. %s", code, sniffer.Message())
+				}
 			}
 		} else {
 			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
@@ -904,10 +917,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// in here works well enough for conformance testing.
 		tscCmd := exec.Command("npx", "tsc")
 		tscCmd.Dir = req.Info.ProgramDirectory
-		if err := copyOutput(tscCmd); err != nil {
-			return fmt.Errorf("copy tsc output: %w", err)
-		}
-		if err := tscCmd.Run(); err != nil {
+		if err := runWithOutput(tscCmd, os.Stdout, os.Stderr); err != nil {
 			return fmt.Errorf("failed to run tsc: %w", err)
 		}
 	}
@@ -1371,11 +1381,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
 		yarnInstallCmd.Dir = req.PackageDirectory
-		if err := copyOutput(yarnInstallCmd); err != nil {
-			return nil, fmt.Errorf("copy yarn install output: %w", err)
-		}
-		err = yarnInstallCmd.Run()
-		if err != nil {
+		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn install: %w", err)
 		}
 
@@ -1385,11 +1391,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		yarnTscCmd := exec.Command(yarn, "run", "tsc")
 		yarnTscCmd.Dir = req.PackageDirectory
-		if err := copyOutput(yarnTscCmd); err != nil {
-			return nil, fmt.Errorf("copy tsc output: %w", err)
-		}
-		err = yarnTscCmd.Run()
-		if err != nil {
+		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
 		}
 
@@ -1417,11 +1419,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		npmInstallCmd := exec.Command(npm, "install")
 		npmInstallCmd.Dir = req.PackageDirectory
-		if err := copyOutput(npmInstallCmd); err != nil {
-			return nil, fmt.Errorf("copy npm install output: %w", err)
-		}
-		err = npmInstallCmd.Run()
-		if err != nil {
+		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("npm install: %w", err)
 		}
 
@@ -1433,11 +1431,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		}
 		npmBuildCmd := exec.Command(npm, "run", "build")
 		npmBuildCmd.Dir = req.PackageDirectory
-		if err := copyOutput(npmBuildCmd); err != nil {
-			return nil, fmt.Errorf("copy npm build output: %w", err)
-		}
-		err = npmBuildCmd.Run()
-		if err != nil {
+		if err := runWithOutput(npmBuildCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("npm run build: %w", err)
 		}
 
@@ -1461,14 +1455,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		filepath.Join(req.PackageDirectory, "bin"),
 		"--pack-destination", req.DestinationDirectory)
 	npmPackCmd.Stdout = &stdoutBuffer
-	stderr, err := npmPackCmd.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("npm pack output: %w", err)
-	}
-	go func() {
-		_, err := io.Copy(os.Stderr, stderr)
-		contract.IgnoreError(err)
-	}()
+	npmPackCmd.Stderr = struct{ io.Writer }{os.Stderr}
 	err = npmPackCmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("npm pack: %w", err)
@@ -1481,27 +1468,87 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	}, nil
 }
 
-// Node will sometimes set stdout or stderr into non-blocking mode, but go will not notice this.
-// When go attempts to write, we get an error: `write /dev/stdout: resource temporarily unavailable`.
-// To avoid this issue, we copy the output of the command to the stdout and stderr of the go process.
-// https://github.com/golang/go/issues/58408#issuecomment-1423621323
-func copyOutput(cmd *exec.Cmd) error {
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	go func() {
-		_, err := io.Copy(os.Stderr, stderr)
-		contract.IgnoreError(err)
-	}()
+// Nodejs sometimes sets stdout/stderr to non-blocking mode. When a nodejs subprocess is directly
+// handed the go process's stdout/stderr file descriptors, nodejs's non-blocking configuration goes
+// unnoticed by go, and a write from go can result in an error `write /dev/stdout: resource
+// temporarily unavailable`.
+//
+// The solution to this is to not provide nodejs with the go process's stdout/stderr file
+// descriptors, and instead proxy the writes through something else.
+// In https://github.com/pulumi/pulumi/pull/16504 we used Cmd.StdoutPipe/StderrPipe for this.
+// However this introduced a potential bug, as it is not safe to use these specific pipes along
+// with Cmd.Run. The issue is that these pipes will be closed as soon as the process exits, which
+// can lead to missing data when stdout/stderr are slow, or worse an error due to an attempted read
+// from a closed pipe. (Creating and closing our own os.Pipes for this would be fine.)
+//
+// A simpler workaround is to wrap stdout/stderr in an io.Writer. As with the pipes, this makes
+// exec.Cmd use a copying goroutine to shuffle the data from the subprocess to stdout/stderr.
+//
+// Cmd.Run will wait for all the data to be copied before returning, ensuring we do not miss any data.
+//
+// Non-blocking issue: https://github.com/golang/go/issues/58408#issuecomment-1423621323
+// StdoutPipe/StderrPipe issues: https://pkg.go.dev/os/exec#Cmd.StdoutPipe
+// Waiting for data: https://cs.opensource.google/go/go/+/refs/tags/go1.22.5:src/os/exec/exec.go;l=201
+func runWithOutput(cmd *exec.Cmd, stdout, stderr io.Writer) error {
+	cmd.Stdout = struct{ io.Writer }{stdout}
+	cmd.Stderr = struct{ io.Writer }{stderr}
+	return cmd.Run()
+}
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
+// oomSniffer is a scanner that detects OOM errors in the output of a nodejs process.
+type oomSniffer struct {
+	detected bool
+	timeout  time.Duration
+	waitChan chan struct{}
+}
+
+func newOOMSniffer() *oomSniffer {
+	return &oomSniffer{
+		timeout:  15 * time.Second,
+		waitChan: make(chan struct{}),
 	}
+}
+
+func (o *oomSniffer) Detected() bool {
+	return o.detected
+}
+
+// Wait waits for the OOM sniffer to either:
+//   - detect an OOM error
+//   - the timeout to expire
+//   - the reader to be closed
+//
+// Call Wait to ensure we've read all the output from the scanned process after it exits.
+func (o *oomSniffer) Wait() {
+	select {
+	case <-o.waitChan:
+	case <-time.After(o.timeout):
+	}
+}
+
+func (o *oomSniffer) Message() string {
+	return "Detected a possible out of memory error. Consider increasing the memory available to the nodejs process " +
+		"by setting the `nodeargs` runtime option in Pulumi.yaml to `nodeargs: --max-old-space-size=<size>` where " +
+		"`<size>` is the maximum memory in megabytes that can be allocated to nodejs. " +
+		"See https://www.pulumi.com/docs/concepts/projects/project-file/#runtime-options"
+}
+
+func (o *oomSniffer) Scan(r io.Reader) {
+	scanner := bufio.NewScanner(r)
 	go func() {
-		_, err := io.Copy(os.Stdout, stdout)
-		contract.IgnoreError(err)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if !o.detected && strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
+				// Because we hook into the debugger API, the OOM error message can be obscured by
+				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
+				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_") {
+				o.detected = true
+				close(o.waitChan)
+			}
+		}
+		contract.IgnoreError(scanner.Err())
+		if !o.detected {
+			close(o.waitChan)
+		}
 	}()
-	return nil
 }

@@ -1,0 +1,5 @@
+name: nodejs-oom
+runtime:
+  name: nodejs
+  options:
+    nodeargs: --max-old-space-size=2048
