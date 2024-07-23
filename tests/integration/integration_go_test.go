@@ -43,11 +43,7 @@ func TestBuildTarget(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "go-build-target"))
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -912,11 +908,7 @@ func TestAboutGo(t *testing.T) {
 	dir := filepath.Join("about", "go")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -1021,11 +1013,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	t.Cleanup(cancel)
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
 
 	// Rename go.mod.bad to go.mod so that the Go toolchain uses it.

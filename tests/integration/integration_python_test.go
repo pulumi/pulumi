@@ -1219,11 +1219,7 @@ func TestAboutPython(t *testing.T) {
 	dir := filepath.Join("about", "python")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
 	stdout, _ := e.RunCommand("pulumi", "about", "--json")
@@ -1335,9 +1331,8 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestParamaterizedPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
-	// work.
+	// work. This also means we don't delete the directory after the test runs.
 	var err error
 	e.CWD, err = filepath.Abs("python/parameterized")
 	require.NoError(t, err)
