@@ -862,3 +862,48 @@ func TestMoveProvider(t *testing.T) {
 
 	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
 }
+
+func TestMoveRootStack(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+		},
+	}
+
+	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[0].URN)})
+
+	// Expect only the root stack to remain
+	assert.Equal(t, 1, len(sourceSnapshot.Resources))
+	// All other resources are moved to the destination
+	assert.Equal(t, 3, len(destSnapshot.Resources))
+
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, resource.DefaultRootStackURN("destStack", "test"),
+		destSnapshot.Resources[1].Parent)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
+}
