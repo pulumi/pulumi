@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Implement Stack.import_resources() for batch importing resources into a stack

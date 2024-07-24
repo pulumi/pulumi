@@ -14,13 +14,24 @@
 
 import json
 import os
+import shutil
 import tempfile
 import time
 import threading
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
+from typing import (
+    Dict,
+    List,
+    Any,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Callable,
+    Tuple,
+    TypedDict,
+)
 import grpc
 
 from ._cmd import CommandResult, OnOutput
@@ -98,6 +109,42 @@ class UpdateSummary:
         )
 
 
+class ImportResource(TypedDict, total=False):
+    """
+    ImportResource represents a resource to import into a stack.
+
+      - id: The import ID of the resource. The format is specific to resource type.
+      - type: The type token of the Pulumi resource
+      - name: The name of the resource
+      - logicalName: The logical name of the resource in the generated program
+      - parent: The name of an optional parent resource
+      - provider: The name of the provider resource
+      - version: The version of the provider plugin, if any is specified
+      - pluginDownloadUrl: The URL to download the provider plugin from
+      - properties: Specified which input properties to import with
+      - component: Whether the resource is a component resource
+      - remote: Whether the resource is a remote resource
+
+    If a resource does not specify any properties the default behaviour is to
+    import using all required properties.
+
+    If the resource is declared as a "component" (and optionally as "remote"). These resources
+    don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.
+    """
+
+    id: str
+    type: str
+    name: str
+    logicalName: str
+    parent: str
+    provider: str
+    version: str
+    pluginDownloadUrl: str
+    properties: str
+    component: bool
+    remote: bool
+
+
 class BaseResult(_Representable):
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
@@ -117,6 +164,15 @@ class UpResult(BaseResult):
         super().__init__(stdout, stderr)
         self.outputs = outputs
         self.summary = summary
+
+
+class ImportResult(BaseResult):
+    def __init__(
+        self, stdout: str, stderr: str, summary: UpdateSummary, generated_code: str
+    ):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+        self.generated_code = generated_code
 
 
 class RefreshResult(BaseResult):
@@ -615,6 +671,79 @@ class Stack:
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
+
+    def import_resources(
+        self,
+        message: Optional[str] = None,
+        resources: Optional[List[ImportResource]] = None,
+        name_table: Optional[Dict[str, str]] = None,
+        protect: Optional[bool] = None,
+        generate_code: Optional[bool] = None,
+        converter: Optional[str] = None,
+        converter_args: Optional[List[str]] = None,
+        on_output: Optional[OnOutput] = None,
+        show_secrets: bool = True,
+    ) -> ImportResult:
+        """
+        Imports resources into the stack.
+        
+        :param message: Message to associate with the import operation.
+        :param resources: The resources to import.
+        :param nameTable: 
+            The name table maps language names to parent and provider URNs.
+            These names are used in the generated definitions, 
+            and should match the corresponding declarations
+            in the source program. This table is required if any parents or providers are \
+            specified by the resources to import.
+        :param protect: Whether to protect the imported resources so that they are not deleted
+        :param generate_code: Whether to generate code for the imported resources
+        :param converter: The converter plugin to use for the import operation
+        :param converter_args: Additional arguments to pass to the converter plugin
+        :param on_output: A function to process the stdout stream.
+        :param show_secrets: Include config secrets in the ImportResult summary.
+        """
+        args = ["import", "--yes", "--skip-preview"]
+        if message is not None:
+            args.extend(["--message", message])
+
+        with tempfile.TemporaryDirectory(prefix="pulumi-import-") as temp_dir:
+            if resources is not None:
+                import_file_path = os.path.join(temp_dir, "import.json")
+                with open(import_file_path, mode="w", encoding="utf-8") as import_file:
+                    contents = {"resources": resources, "nameTable": name_table}
+                    json.dump(contents, import_file)
+                    args.extend(["--file", import_file_path])
+
+            if protect is not None:
+                value = "true" if protect else "false"
+                args.append(f"--protect={value}")
+
+            generated_code_path = os.path.join(temp_dir, "generated_code.txt")
+            if generate_code is False:
+                args.append("--generate-code=false")
+            else:
+                args.append(f"--out={generated_code_path}")
+
+            if converter is not None:
+                args.extend(["--from", converter])
+                if converter_args is not None:
+                    args.append("--")
+                    args.extend(converter_args)
+
+            import_result = self._run_pulumi_cmd_sync(args, on_output)
+            summary = self.info(show_secrets and not self._remote)
+            generated_code = ""
+            if generate_code is not False:
+                with open(generated_code_path, mode="r", encoding="utf-8") as codeFile:
+                    generated_code = codeFile.read()
+
+            assert summary is not None
+            return ImportResult(
+                stdout=import_result.stdout,
+                stderr=import_result.stderr,
+                generated_code=generated_code,
+                summary=summary,
+            )
 
     def add_environments(self, *environment_names: str) -> None:
         """
