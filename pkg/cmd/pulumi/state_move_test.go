@@ -138,7 +138,16 @@ func TestMoveLeafResource(t *testing.T) {
 		},
 	}
 
-	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
+	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
+
+	//nolint:lll
+	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
+
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name
+
+Successfully moved resources from organization/test/sourceStack to organization/test/destStack
+`
+	assert.Equal(t, expectedStdout, stdout.String())
 
 	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
 
@@ -279,11 +288,14 @@ func TestMoveResourceWithDependencies(t *testing.T) {
   - urn:pulumi:sourceStack::test::d:e:f$a:b:c::dependsOnMovedChildURN
 
 The following resources remaining in organization/test/sourceStack have dependencies on resources moved to organization/test/destStack:
-  urn:pulumi:sourceStack::test::d:e:f$a:b:c::deps has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
-  urn:pulumi:sourceStack::test::d:e:f$a:b:c::deletedWith is marked as deleted with urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
-  urn:pulumi:sourceStack::test::d:e:f$a:b:c::propDeps (key) has a property dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::deps has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::deletedWith is marked as deleted with urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::propDeps (key) has a property dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove
+
 The following resources being moved to organization/test/destStack have dependencies on resources in organization/test/sourceStack:
-  urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep
+
+  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::resToMove has a dependency on urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep
 
 If you go ahead with moving these dependencies, it will be necessary to create the appropriate inputs and outputs in the program for the stack the resources are moved to.
 

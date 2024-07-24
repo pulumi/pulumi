@@ -308,15 +308,18 @@ func (cmd *stateMoveCmd) Run(
 
 	if len(brokenSourceDependencies) > 0 {
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-			colors.SpecWarning+"The following resources remaining in %s have dependencies on resources moved to %s:\n"+
+			colors.SpecWarning+"The following resources remaining in %s have dependencies on resources moved to %s:\n\n"+
 				colors.Reset), source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
 	}
 
 	cmd.printBrokenDependencyRelationships(brokenSourceDependencies)
 
 	if len(brokenDestDependencies) > 0 {
+		if len(brokenSourceDependencies) > 0 {
+			fmt.Fprintln(cmd.Stdout)
+		}
 		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-			colors.SpecWarning+"The following resources being moved to %s have dependencies on resources in %s:\n"+
+			colors.SpecWarning+"The following resources being moved to %s have dependencies on resources in %s:\n\n"+
 				colors.Reset), dest.Ref().FullyQualifiedName(), source.Ref().FullyQualifiedName())
 	}
 
@@ -325,11 +328,9 @@ func (cmd *stateMoveCmd) Run(
 	if len(brokenSourceDependencies) > 0 || len(brokenDestDependencies) > 0 {
 		fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(
 			colors.SpecInfo+"\nIf you go ahead with moving these dependencies, it will be necessary to create the "+
-				"appropriate inputs and outputs in the program for the stack the resources are moved to.\n"+
+				"appropriate inputs and outputs in the program for the stack the resources are moved to.\n\n"+
 				colors.Reset))
 	}
-
-	fmt.Fprintf(cmd.Stdout, "\n")
 
 	if !cmd.Yes {
 		yes := "yes"
@@ -517,12 +518,12 @@ func (cmd *stateMoveCmd) printBrokenDependencyRelationships(brokenDeps []brokenD
 	for _, res := range brokenDeps {
 		switch res.dependencyType {
 		case dependency:
-			fmt.Fprintf(cmd.Stdout, "  %s has a dependency on %s\n", res.resourceURN, res.dependencyURN)
+			fmt.Fprintf(cmd.Stdout, "  - %s has a dependency on %s\n", res.resourceURN, res.dependencyURN)
 		case propertyDependency:
-			fmt.Fprintf(cmd.Stdout, "  %s (%s) has a property dependency on %s\n",
+			fmt.Fprintf(cmd.Stdout, "  - %s (%s) has a property dependency on %s\n",
 				res.resourceURN, res.propdepKey, res.dependencyURN)
 		case deletedWith:
-			fmt.Fprintf(cmd.Stdout, "  %s is marked as deleted with %s\n", res.resourceURN, res.dependencyURN)
+			fmt.Fprintf(cmd.Stdout, "  - %s is marked as deleted with %s\n", res.resourceURN, res.dependencyURN)
 		}
 	}
 }
