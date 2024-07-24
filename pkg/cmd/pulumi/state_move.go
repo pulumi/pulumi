@@ -137,7 +137,6 @@ func (cmd *stateMoveCmd) Run(
 
 	resourcesToMove := make(map[string]*resource.State)
 	providersToCopy := make(map[string]bool)
-	remainingResources := make(map[string]*resource.State)
 	unmatchedArgs := mapset.NewSet(args...)
 	for _, res := range sourceSnapshot.Resources {
 		matchedArg := resourceMatches(res, args)
@@ -149,8 +148,6 @@ func (cmd *stateMoveCmd) Run(
 			resourcesToMove[string(res.URN)] = res
 			providersToCopy[res.Provider] = true
 			unmatchedArgs.Remove(matchedArg)
-		} else {
-			remainingResources[string(res.URN)] = res
 		}
 	}
 
@@ -187,11 +184,16 @@ func (cmd *stateMoveCmd) Run(
 	}
 
 	// We want to move the resources in the order they appear in the source snapshot,
-	// so that resources with relationships are in the right order.
+	// so that resources with relationships are in the right order.  Also check which
+	// resources are remaining in the source stack, now that we know all resources
+	// that are going to be moved.
+	remainingResources := make(map[string]*resource.State)
 	var resourcesToMoveOrdered []*resource.State
 	for _, res := range sourceSnapshot.Resources {
 		if _, ok := resourcesToMove[string(res.URN)]; ok {
 			resourcesToMoveOrdered = append(resourcesToMoveOrdered, res)
+		} else {
+			remainingResources[string(res.URN)] = res
 		}
 	}
 
