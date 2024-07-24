@@ -131,6 +131,7 @@ class ReadResourceRequest(google.protobuf.message.Message):
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to read."""
     type: builtins.str
@@ -164,6 +165,8 @@ class ReadResourceRequest(google.protobuf.message.Message):
     @property
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the read."""
+    packageRef: builtins.str
+    """a reference from RegisterProviderRequest."""
     def __init__(
         self,
         *,
@@ -181,9 +184,10 @@ class ReadResourceRequest(google.protobuf.message.Message):
         pluginDownloadURL: builtins.str = ...,
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ReadResourceRequest = ReadResourceRequest
 

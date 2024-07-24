@@ -1,14 +1,14 @@
 <{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=8e05a29f-ea37-4c7a-84c7-7e0ee3f6b9a0]
+<{%reset%}>    [id=20b07572-90da-4282-b651-0ccf88063aa7]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::8e05a29f-ea37-4c7a-84c7-7e0ee3f6b9a0]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::20b07572-90da-4282-b651-0ccf88063aa7]
 <{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
-<{%reset%}>    [id=8dc9d3ef-8955-42a9-be9a-4fad815ceee2]
+<{%reset%}>    [id=74211a06-5800-4117-b0fc-7afa8669f45e]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    name            : <{%reset%}><{%reset%}>"pkgA"<{%reset%}><{%reset%}>
@@ -20,8 +20,12 @@
 <{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
 <{%reset%}>    [id=id]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
-<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::8dc9d3ef-8955-42a9-be9a-4fad815ceee2]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::74211a06-5800-4117-b0fc-7afa8669f45e]
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resC]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::74211a06-5800-4117-b0fc-7afa8669f45e]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    2 unchanged
+    3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

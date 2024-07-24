@@ -340,7 +340,7 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 }
 
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider, version, sourcePosition string,
+	inputs resource.PropertyMap, provider, version, sourcePosition string, packageRef string,
 ) (resource.URN, resource.PropertyMap, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
@@ -369,6 +369,7 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 		Properties:     ins,
 		Version:        version,
 		SourcePosition: sourcePos,
+		PackageRef:     packageRef,
 	})
 	if err != nil {
 		return "", nil, err

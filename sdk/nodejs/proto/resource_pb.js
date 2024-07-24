@@ -824,7 +824,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
     pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+    packageref: jspb.Message.getFieldWithDefault(msg, 16, "")
   };
 
   if (includeInstance) {
@@ -920,6 +921,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 16:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPackageref(value);
       break;
     default:
       reader.skipField();
@@ -1045,6 +1050,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
       14,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getPackageref();
+  if (f.length > 0) {
+    writer.writeString(
+      16,
+      f
     );
   }
 };
@@ -1379,6 +1391,24 @@ proto.pulumirpc.ReadResourceRequest.prototype.clearSourceposition = function() {
  */
 proto.pulumirpc.ReadResourceRequest.prototype.hasSourceposition = function() {
   return jspb.Message.getField(this, 14) != null;
+};
+
+
+/**
+ * optional string packageRef = 16;
+ * @return {string}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getPackageref = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 16, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.setPackageref = function(value) {
+  return jspb.Message.setProto3StringField(this, 16, value);
 };
 
 

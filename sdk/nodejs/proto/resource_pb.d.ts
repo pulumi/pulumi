@@ -92,6 +92,8 @@ export class ReadResourceRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ReadResourceRequest;
+    getPackageref(): string;
+    setPackageref(value: string): ReadResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceRequest.AsObject;
@@ -120,6 +122,7 @@ export namespace ReadResourceRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        packageref: string,
     }
 }
 

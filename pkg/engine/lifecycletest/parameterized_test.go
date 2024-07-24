@@ -155,6 +155,20 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						"output": resource.NewStringProperty("in " + param),
 					}, nil, nil
 				},
+				ReadF: func(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					if param == "" {
+						assert.Equal(t, tokens.Type("pkgA:m:typA"), urn.Type())
+					} else {
+						assert.Equal(t, tokens.Type("pkgExt:m:typA"), urn.Type())
+					}
+
+					return plugin.ReadResult{
+						ID:      id,
+						Inputs:  inputs,
+						Outputs: state,
+					}, resource.StatusOK, nil
+				},
 			}, nil
 		}),
 	}
@@ -177,11 +191,13 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		// Test registering a resource with the replacement provider
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
 			PackageRef: extRef,
 		})
 		require.NoError(t, err)
 
+		// Test invoking a function on the replacement provider
 		result, _, err := monitor.Invoke("pkgExt:index:func", resource.PropertyMap{
 			"input": resource.NewStringProperty("in"),
 		}, "", "", extRef)
@@ -189,6 +205,10 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		assert.Equal(t, resource.PropertyMap{
 			"output": resource.NewStringProperty("in replacement"),
 		}, result)
+
+		// Test reading a resource on the replacement provider
+		_, _, err = monitor.ReadResource("pkgExt:m:typA", "resC", "id", "", resource.PropertyMap{}, "", "", "", extRef)
+		require.NoError(t, err)
 
 		return err
 	})
@@ -202,7 +222,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	assert.Len(t, snap.Resources, 5)
 
 	// Check that we loaded the provider twice
 	assert.Equal(t, 2, loadCount)
@@ -224,7 +244,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	assert.Len(t, snap.Resources, 5)
 
 	snap, err = TestOp(Destroy).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
