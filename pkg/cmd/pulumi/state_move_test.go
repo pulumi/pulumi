@@ -145,7 +145,7 @@ func TestMoveLeafResource(t *testing.T) {
 
   - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name
 
-Successfully moved resources from sourceStack to destStack
+Successfully moved resources from organization/test/sourceStack to organization/test/destStack
 `
 	assert.Equal(t, expectedStdout, stdout.String())
 
