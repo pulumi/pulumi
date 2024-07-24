@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -358,12 +358,13 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(
-					monitor *deploytest.ResourceMonitor, typ string, name string, parent resource.URN,
-					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
-				) (plugin.ConstructResult, error) {
-					assert.Equal(t, "pkgA:m:typC", typ)
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					assert.Equal(t, "pkgA:m:typC", string(req.Type))
 
-					resp, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -374,7 +375,7 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ConstructResult{
+					return plugin.ConstructResponse{
 						URN: resp.URN,
 					}, nil
 				},
@@ -557,10 +558,12 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(
-					urn resource.URN, props resource.PropertyMap, timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "some-id", props, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "some-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -661,12 +664,13 @@ func TestRemoteComponentTransforms(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(
-					monitor *deploytest.ResourceMonitor, typ string, name string, parent resource.URN,
-					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
-				) (plugin.ConstructResult, error) {
-					assert.Equal(t, "pkgA:m:typC", typ)
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					assert.Equal(t, "pkgA:m:typC", string(req.Type))
 
-					resp, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{})
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -677,7 +681,7 @@ func TestRemoteComponentTransforms(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ConstructResult{
+					return plugin.ConstructResponse{
 						URN: resp.URN,
 					}, nil
 				},
@@ -740,10 +744,12 @@ func TestTransformsProviderOpt(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				Package: "pkgA",
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "some-id", nil, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "some-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -849,10 +855,8 @@ func TestTransformInvoke(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				Package: "pkgA",
-				InvokeF: func(
-					tok tokens.ModuleMember, inputs resource.PropertyMap,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					return inputs, nil, nil
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{Properties: req.Args}, nil
 				},
 			}, nil
 		}),
@@ -911,10 +915,8 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				Package: "pkgA",
-				InvokeF: func(
-					tok tokens.ModuleMember, inputs resource.PropertyMap,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					return inputs, nil, nil
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{Properties: req.Args}, nil
 				},
 			}, nil
 		}),

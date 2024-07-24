@@ -16,7 +16,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -51,15 +50,21 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -113,21 +118,28 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				DiffF: func(
+					_ context.Context,
+					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
 					// just verify that the IgnoreChanges prop made it through
-					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
+					assert.Equal(t, expectedIgnoreChanges, req.IgnoreChanges)
 					return plugin.DiffResult{}, nil
 				},
 			}, nil
@@ -194,10 +206,11 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
 							DeleteBeforeReplace: true,
@@ -205,10 +218,11 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				DiffF: func(
+					_ context.Context,
+					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -312,11 +326,15 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					assert.Equal(t, resource.ID("someId"), id)
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					assert.Equal(t, resource.ID("someId"), req.ID)
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -387,43 +405,51 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}
-			v.InvokeF = func(tok tokens.ModuleMember,
-				inputs resource.PropertyMap,
-			) (resource.PropertyMap, []plugin.CheckFailure, error) {
-				assert.True(t, v.Config.DeepEquals(inputs))
-				return nil, nil, nil
+			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+				assert.True(t, v.Config.DeepEquals(req.Args))
+				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
 		}),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}
-			v.InvokeF = func(tok tokens.ModuleMember,
-				inputs resource.PropertyMap,
-			) (resource.PropertyMap, []plugin.CheckFailure, error) {
-				assert.True(t, v.Config.DeepEquals(inputs))
-				return nil, nil, nil
+			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+				assert.True(t, v.Config.DeepEquals(req.Args))
+				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
 		}),
@@ -559,10 +585,12 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -661,19 +689,23 @@ func TestRemoteComponentGolang(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResult, error) {
-					_, ok := inputs["bar"]
+					_, ok := req.Inputs["bar"]
 					assert.False(t, ok)
 
 					resp, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
@@ -684,7 +716,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
 
-					return plugin.ConstructResult{
+					return plugin.ConstructResponse{
 						URN:     resp.URN,
 						Outputs: outs,
 					}, nil

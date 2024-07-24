@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -21,13 +22,8 @@ func TestRetainOnDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(
-					urn resource.URN,
-					id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -36,18 +32,18 @@ func TestRetainOnDelete(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
-					return resourceID, news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         resourceID,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					assert.Fail(t, "Delete was called")
-					return resource.StatusOK, nil
+					return plugin.DeleteResponse{}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),

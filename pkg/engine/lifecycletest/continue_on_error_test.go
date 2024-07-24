@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"testing"
@@ -39,10 +40,8 @@ func TestDestroyContinueOnError(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusOK, errors.New("intentionally failed delete")
+				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{}, errors.New("intentionally failed delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -113,21 +112,24 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 	// createFGenerator generates a create function that returns a different parameters on each call.
 	// This generator supports creating up to 3 resources and allows us to test all the different code paths within
 	// the create step's Apply method, which was overlooked and caused https://github.com/pulumi/pulumi/issues/16373.
-	createFGenerator := func() func() (resource.ID, resource.PropertyMap, resource.Status, error) {
+	createFGenerator := func() func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
 		counter := 0
-		return func() (resource.ID, resource.PropertyMap, resource.Status, error) {
+		return func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
 			counter++
 
 			switch counter {
 			case 1:
 				// Return a non-StatusPartialFailure status.
-				return "", nil, resource.StatusOK, errors.New("intentionally failed create")
+				return plugin.CreateResponse{}, errors.New("intentionally failed create")
 			case 2:
 				// Return a StatusPartialFailure status with an empty ID.
-				return "", nil, resource.StatusPartialFailure, errors.New("intentionally failed create")
+				return plugin.CreateResponse{Status: resource.StatusPartialFailure}, errors.New("intentionally failed create")
 			default:
 				// Return a StatusPartialFailure status with a non-empty ID.
-				return "fakeid", nil, resource.StatusPartialFailure, errors.New("intentionally failed create")
+				return plugin.CreateResponse{
+					ID:     "fakeid",
+					Status: resource.StatusPartialFailure,
+				}, errors.New("intentionally failed create")
 			}
 		}
 	}
@@ -139,11 +141,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return createF()
-				},
+				CreateF: createF,
 			}, nil
 		}, deploytest.WithoutGrpc),
 	}
@@ -264,11 +262,8 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return nil, status(), errors.New("intentionally failed update")
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: status()}, errors.New("intentionally failed update")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -396,11 +391,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return nil, resource.StatusOK, errors.New("intentionally failed update")
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -502,10 +494,8 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusOK, errors.New("intentionally failed create")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -575,11 +565,8 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return nil, resource.StatusOK, errors.New("intentionally failed update")
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -674,10 +661,8 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusOK, errors.New("intentionally failed create")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -736,9 +721,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(_ resource.URN, _ resource.ID,
-					_, oldOutputs, newInputs resource.PropertyMap, _ []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 						DetailedDiff: map[string]plugin.PropertyDiff{
@@ -746,10 +729,12 @@ func TestContinueOnErrorImport(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(_ resource.URN, news resource.PropertyMap, _ float64,
-					_ bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -794,10 +779,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusOK, errors.New("intentionally failed create")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -939,13 +922,8 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(
-					urn resource.URN,
-					news resource.PropertyMap,
-					timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "an id", news, resource.StatusOK, errors.New("interrupt replace")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("interrupt replace")
 				},
 			}, nil
 		}),

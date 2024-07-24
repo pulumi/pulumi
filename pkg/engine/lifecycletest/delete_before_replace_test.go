@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blang/semver"
@@ -146,10 +147,11 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -157,10 +159,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -283,10 +283,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: dbrDiff,
@@ -500,26 +498,26 @@ func TestDependencyChangeDBR(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !oldOutputs["B"].DeepEquals(newInputs["B"]) {
+					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -611,26 +609,26 @@ func TestDBRProtect(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !oldOutputs["B"].DeepEquals(newInputs["B"]) {
+					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),

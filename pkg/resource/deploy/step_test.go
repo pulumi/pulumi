@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -172,12 +173,9 @@ func TestCreateStep(t *testing.T) {
 						},
 					},
 					provider: &deploytest.Provider{
-						CreateF: func(
-							urn resource.URN, inputs resource.PropertyMap,
-							timeout float64, preview bool,
-						) (resource.ID, resource.PropertyMap, resource.Status, error) {
+						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
 							createCalled = true
-							return "", nil, resource.StatusOK, expectedErr
+							return plugin.CreateResponse{}, expectedErr
 						},
 					},
 				}
@@ -198,15 +196,14 @@ func TestCreateStep(t *testing.T) {
 						},
 					},
 					provider: &deploytest.Provider{
-						CreateF: func(
-							urn resource.URN, inputs resource.PropertyMap,
-							timeout float64, preview bool,
-						) (resource.ID, resource.PropertyMap, resource.Status, error) {
-							return "", nil, resource.StatusPartialFailure, &plugin.InitError{
-								Reasons: []string{
-									"intentional error",
-								},
-							}
+						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{
+									Status: resource.StatusPartialFailure,
+								}, &plugin.InitError{
+									Reasons: []string{
+										"intentional error",
+									},
+								}
 						},
 					},
 				}
@@ -225,11 +222,8 @@ func TestCreateStep(t *testing.T) {
 						opts: &Options{},
 					},
 					provider: &deploytest.Provider{
-						CreateF: func(
-							urn resource.URN, inputs resource.PropertyMap,
-							timeout float64, preview bool,
-						) (resource.ID, resource.PropertyMap, resource.Status, error) {
-							return "", nil, resource.StatusOK, nil
+						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{}, nil
 						},
 					},
 				}
@@ -426,12 +420,8 @@ func TestUpdateStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					UpdateF: func(
-						urn resource.URN, id resource.ID,
-						oldInputs, oldOutputs, newInputs resource.PropertyMap,
-						timeout float64, ignoreChanges []string, preview bool,
-					) (resource.PropertyMap, resource.Status, error) {
-						return nil, resource.StatusOK, expectedErr
+					UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+						return plugin.UpdateResponse{}, expectedErr
 					},
 				},
 			}
@@ -454,14 +444,13 @@ func TestUpdateStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					UpdateF: func(
-						urn resource.URN, id resource.ID,
-						oldInputs, oldOutputs, newInputs resource.PropertyMap,
-						timeout float64, ignoreChanges []string, preview bool,
-					) (resource.PropertyMap, resource.Status, error) {
-						return resource.PropertyMap{
-								"key": resource.NewStringProperty("expected-value"),
-							}, resource.StatusPartialFailure, &plugin.InitError{
+					UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+						return plugin.UpdateResponse{
+								Properties: resource.PropertyMap{
+									"key": resource.NewStringProperty("expected-value"),
+								},
+								Status: resource.StatusPartialFailure,
+							}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
 								},
@@ -533,10 +522,8 @@ func TestReadStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(
-						urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{}, resource.StatusOK, expectedErr
+					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{}, expectedErr
 					},
 				},
 			}
@@ -561,18 +548,19 @@ func TestReadStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(
-						urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{
-								ID: "new-id",
-								Inputs: resource.PropertyMap{
-									"inputs-key": resource.NewStringProperty("expected-value"),
+					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{
+								ReadResult: plugin.ReadResult{
+									ID: "new-id",
+									Inputs: resource.PropertyMap{
+										"inputs-key": resource.NewStringProperty("expected-value"),
+									},
+									Outputs: resource.PropertyMap{
+										"outputs-key": resource.NewStringProperty("expected-value"),
+									},
 								},
-								Outputs: resource.PropertyMap{
-									"outputs-key": resource.NewStringProperty("expected-value"),
-								},
-							}, resource.StatusPartialFailure, &plugin.InitError{
+								Status: resource.StatusPartialFailure,
+							}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
 								},
@@ -604,9 +592,7 @@ func TestReadStep(t *testing.T) {
 					ID: plugin.UnknownStringValue,
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(
-						urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
+					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 						panic("should not be called")
 					},
 				},
@@ -829,18 +815,17 @@ func TestRefreshStepPatterns(t *testing.T) {
 				},
 			},
 			provider: &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						ID:      id,
-						Inputs:  tc.readInputs,
-						Outputs: tc.readOutputs,
-					}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  tc.readInputs,
+							Outputs: tc.readOutputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
-				DiffF: func(
-					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
 					return tc.diffResult, nil
 				},
 			},
@@ -891,10 +876,8 @@ func TestRefreshStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(
-						urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{}, resource.StatusOK, expectedErr
+					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{}, expectedErr
 					},
 				},
 			}
@@ -920,18 +903,19 @@ func TestRefreshStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(
-						urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{
-								ID: "new-id",
-								Inputs: resource.PropertyMap{
-									"inputs-key": resource.NewStringProperty("expected-value"),
+					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{
+								ReadResult: plugin.ReadResult{
+									ID: "new-id",
+									Inputs: resource.PropertyMap{
+										"inputs-key": resource.NewStringProperty("expected-value"),
+									},
+									Outputs: resource.PropertyMap{
+										"outputs-key": resource.NewStringProperty("expected-value"),
+									},
 								},
-								Outputs: resource.PropertyMap{
-									"outputs-key": resource.NewStringProperty("expected-value"),
-								},
-							}, resource.StatusPartialFailure, &plugin.InitError{
+								Status: resource.StatusPartialFailure,
+							}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
 								},
@@ -1015,10 +999,8 @@ func TestImportStep(t *testing.T) {
 						Custom: true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
-							return plugin.ReadResult{}, resource.StatusOK, expectedErr
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+							return plugin.ReadResponse{}, expectedErr
 						},
 					},
 				}
@@ -1042,10 +1024,8 @@ func TestImportStep(t *testing.T) {
 						Custom: true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
-							return plugin.ReadResult{}, resource.StatusOK, &plugin.InitError{
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+							return plugin.ReadResponse{}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
 								},
@@ -1074,10 +1054,8 @@ func TestImportStep(t *testing.T) {
 						Custom: true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
-							return plugin.ReadResult{}, resource.StatusOK, nil
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+							return plugin.ReadResponse{}, nil
 						},
 					},
 				}
@@ -1101,12 +1079,13 @@ func TestImportStep(t *testing.T) {
 						Custom: true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
-							return plugin.ReadResult{
-								Outputs: resource.PropertyMap{},
-							}, resource.StatusOK, nil
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+							return plugin.ReadResponse{
+								ReadResult: plugin.ReadResult{
+									Outputs: resource.PropertyMap{},
+								},
+								Status: resource.StatusOK,
+							}, nil
 						},
 					},
 				}
@@ -1138,20 +1117,19 @@ func TestImportStep(t *testing.T) {
 					},
 					randomSeed: []byte{},
 					provider: &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 							readCalled = true
-							return plugin.ReadResult{
-								Outputs: resource.PropertyMap{},
-								Inputs:  resource.PropertyMap{},
-							}, resource.StatusOK, nil
+							return plugin.ReadResponse{
+								ReadResult: plugin.ReadResult{
+									Outputs: resource.PropertyMap{},
+									Inputs:  resource.PropertyMap{},
+								},
+								Status: resource.StatusOK,
+							}, nil
 						},
-						CheckF: func(
-							urn resource.URN, olds, news resource.PropertyMap, randomSeed []byte,
-						) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
 							checkCalled = true
-							return resource.PropertyMap{}, nil, expectedErr
+							return plugin.CheckResponse{}, expectedErr
 						},
 					},
 				}
@@ -1186,22 +1164,24 @@ func TestImportStep(t *testing.T) {
 					planned:    true,
 					randomSeed: []byte{},
 					provider: &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 							readCalled = true
-							return plugin.ReadResult{
-								Outputs: resource.PropertyMap{},
-								Inputs:  resource.PropertyMap{},
-							}, resource.StatusOK, nil
+							return plugin.ReadResponse{
+								ReadResult: plugin.ReadResult{
+									Outputs: resource.PropertyMap{},
+									Inputs:  resource.PropertyMap{},
+								},
+								Status: resource.StatusOK,
+							}, nil
 						},
-						CheckF: func(
-							urn resource.URN, olds, news resource.PropertyMap, randomSeed []byte,
-						) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
 							checkCalled = true
-							return resource.PropertyMap{}, []plugin.CheckFailure{
-								{
-									Reason: "intentional failure",
+							return plugin.CheckResponse{
+								Properties: resource.PropertyMap{},
+								Failures: []plugin.CheckFailure{
+									{
+										Reason: "intentional failure",
+									},
 								},
 							}, nil
 						},

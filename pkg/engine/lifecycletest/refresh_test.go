@@ -141,28 +141,19 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN,
-					id resource.ID,
-					inputs resource.PropertyMap,
-					state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					readCall++
-					return plugin.ReadResult{
-						Outputs: resource.PropertyMap{
-							"o1": resource.NewNumberProperty(float64(readCall)),
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Outputs: resource.PropertyMap{
+								"o1": resource.NewNumberProperty(float64(readCall)),
+							},
 						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 
-				DiffF: func(
-					urn resource.URN,
-					id resource.ID,
-					oldInputs resource.PropertyMap,
-					oldOutputs resource.PropertyMap,
-					newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					diffCalled = true
 					return plugin.DiffResult{}, nil
 				},
@@ -221,18 +212,31 @@ func TestRefreshInitFailure(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					if refreshShouldFail && urn == resURN {
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if refreshShouldFail && req.URN == resURN {
 						err := &plugin.InitError{
 							Reasons: []string{"Refresh reports continued to fail to initialize"},
 						}
-						return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusPartialFailure, err
-					} else if urn == res2URN {
-						return plugin.ReadResult{Outputs: res2Outputs}, resource.StatusOK, nil
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								Outputs: resource.PropertyMap{},
+							},
+							Status: resource.StatusPartialFailure,
+						}, err
+					} else if req.URN == res2URN {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								Outputs: res2Outputs,
+							},
+							Status: resource.StatusOK,
+						}, nil
 					}
-					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -326,12 +330,10 @@ func TestRefreshWithDelete(t *testing.T) {
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
-						ReadF: func(
-							urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-						) (plugin.ReadResult, resource.Status, error) {
+						ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 							// This thing doesn't exist. Returning nil from Read should trigger
 							// the engine to delete it from the snapshot.
-							return plugin.ReadResult{}, resource.StatusOK, nil
+							return plugin.ReadResponse{}, nil
 						},
 					}, nil
 				}),
@@ -393,14 +395,14 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					if urn.Name() == "resA" {
-						return plugin.ReadResult{}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.URN.Name() == "resA" {
+						return plugin.ReadResponse{}, nil
 					}
 
-					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+					}, nil
 				},
 			}, nil
 		}),
@@ -454,14 +456,15 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					if urn.Name() == "resA" {
-						return plugin.ReadResult{}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.URN.Name() == "resA" {
+						return plugin.ReadResponse{}, nil
 					}
 
-					return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -569,15 +572,19 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					switch id {
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					switch req.ID {
 					case "0", "4":
 						// We want to delete resources A::0 and A::4.
-						return plugin.ReadResult{}, resource.StatusOK, nil
+						return plugin.ReadResponse{}, nil
 					default:
-						return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								Inputs:  req.Inputs,
+								Outputs: req.State,
+							},
+							Status: resource.StatusOK,
+						}, nil
 					}
 				},
 			}, nil
@@ -756,12 +763,13 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					new, hasNewState := newStates[id]
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
-					return new, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: new,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -932,15 +940,16 @@ func TestCanceledRefresh(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					refreshes <- id
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					refreshes <- req.ID
 					<-cancelled
 
-					new, hasNewState := newStates[id]
+					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
-					return new, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: new,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 				CancelF: func() error {
 					close(cancelled)
@@ -1064,10 +1073,15 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{ID: idAfter, Outputs: outputs, Inputs: resource.PropertyMap{}}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      idAfter,
+							Inputs:  resource.PropertyMap{},
+							Outputs: outputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1126,10 +1140,8 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{}, resource.StatusOK, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{}, nil
 				},
 			}, nil
 		}),

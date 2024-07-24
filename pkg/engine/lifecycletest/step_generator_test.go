@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blang/semver"
@@ -100,13 +101,15 @@ func TestSecretMasked(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					// Return the secret value as an unmasked output. This should get masked by the engine.
-					return "id", resource.PropertyMap{
-						"shouldBeSecret": resource.NewStringProperty("bar"),
-					}, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID: "id",
+						Properties: resource.PropertyMap{
+							"shouldBeSecret": resource.NewStringProperty("bar"),
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -146,9 +149,12 @@ func TestReadReplaceStep(t *testing.T) {
 	// Create resource.
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool,
-			) (resource.ID, resource.PropertyMap, resource.Status, error) {
-				return "created-id", news, resource.StatusOK, nil
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "created-id",
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -168,9 +174,11 @@ func TestReadReplaceStep(t *testing.T) {
 			// ReadReplace resource.
 			newTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					ReadF: func(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{Outputs: resource.PropertyMap{}}, resource.StatusOK, nil
+					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							Status:     resource.StatusOK,
+						}, nil
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -196,11 +204,13 @@ func TestRelinquishStep(t *testing.T) {
 	const resourceID = "my-resource-id"
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-				preview bool,
-			) (resource.ID, resource.PropertyMap, resource.Status, error) {
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				// Should match the ReadResource resource ID.
-				return resourceID, news, resource.StatusOK, nil
+				return plugin.CreateResponse{
+					ID:         resourceID,
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -217,12 +227,11 @@ func TestRelinquishStep(t *testing.T) {
 
 			newTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					ReadF: func(urn resource.URN, id resource.ID,
-						inputs, state resource.PropertyMap,
-					) (plugin.ReadResult, resource.Status, error) {
-						return plugin.ReadResult{
-							Outputs: resource.PropertyMap{},
-						}, resource.StatusOK, nil
+					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							Status:     resource.StatusOK,
+						}, nil
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -247,12 +256,11 @@ func TestTakeOwnershipStep(t *testing.T) {
 
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(urn resource.URN, id resource.ID,
-				inputs, state resource.PropertyMap,
-			) (plugin.ReadResult, resource.Status, error) {
-				return plugin.ReadResult{
-					Outputs: resource.PropertyMap{},
-				}, resource.StatusOK, nil
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -272,11 +280,13 @@ func TestTakeOwnershipStep(t *testing.T) {
 			// Create new resource for this snapshot.
 			newTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-						preview bool,
-					) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						// Should match the ReadF resource ID.
-						return "my-resource-id", news, resource.StatusOK, nil
+						return plugin.CreateResponse{
+							ID:         "my-resource-id",
+							Properties: req.Properties,
+							Status:     resource.StatusOK,
+						}, nil
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -322,10 +332,12 @@ func TestInitErrorsStep(t *testing.T) {
 		},
 	}).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-				preview bool,
-			) (resource.ID, resource.PropertyMap, resource.Status, error) {
-				return "my-resource-id", news, resource.StatusOK, nil
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "my-resource-id",
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -350,10 +362,8 @@ func TestReadNilOutputs(t *testing.T) {
 	const resourceID = "my-resource-id"
 	newTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(urn resource.URN, id resource.ID,
-				inputs, state resource.PropertyMap,
-			) (plugin.ReadResult, resource.Status, error) {
-				return plugin.ReadResult{}, resource.StatusOK, nil
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
