@@ -884,7 +884,7 @@ func TestTransformInvoke(t *testing.T) {
 			"bar": resource.NewStringProperty("qux"),
 		}
 
-		result, _, err := monitor.Invoke("pkgA:m:typA", input, implicitProvider, "0.0.0")
+		result, _, err := monitor.Invoke("pkgA:m:typA", input, implicitProvider, "", "0.0.0")
 		require.NoError(t, err)
 
 		assert.Equal(t, "bar", result["foo"].StringValue())
@@ -945,7 +945,7 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 
 		input := resource.PropertyMap{}
 
-		_, _, err = monitor.Invoke("pkgA:m:typA", input, "", "")
+		_, _, err = monitor.Invoke("pkgA:m:typA", input, "", "", "")
 		require.NoError(t, err)
 
 		return nil

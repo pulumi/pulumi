@@ -188,6 +188,8 @@ message ResourceInvokeRequest {
     map<string, bytes> pluginChecksums = 8; // a map of checksums expected for the provider plugin.
 
     SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
+
+    string packageRef = 9; // a reference from RegisterProviderRequest.
 }
 
 message ResourceCallRequest {

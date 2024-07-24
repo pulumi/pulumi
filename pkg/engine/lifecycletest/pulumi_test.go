@@ -2417,11 +2417,11 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		if preview {
 			outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
 				"name": resource.PropertyValue{},
-			}, provRef.String(), "")
+			}, provRef.String(), "", "")
 		} else {
 			outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
 				"name": respC.Outputs["foo"],
-			}, provRef.String(), "")
+			}, provRef.String(), "", "")
 		}
 		assert.NoError(t, err)
 		if preview {
@@ -2708,7 +2708,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 
 		result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
 			"urn": resource.NewStringProperty(string(urnB)),
-		}, "", "")
+		}, "", "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"urn": resource.NewStringProperty(string(urnB)),
@@ -2843,7 +2843,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 				result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
 					"urn": resource.NewStringProperty(string(urn)),
-				}, "", "")
+				}, "", "", "")
 				assert.NoError(t, err)
 				state := result["state"]
 				foo := state.ObjectValue()["foo"].StringValue()

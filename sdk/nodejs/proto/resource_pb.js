@@ -3955,7 +3955,8 @@ proto.pulumirpc.ResourceInvokeRequest.toObject = function(includeInstance, msg) 
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, ""),
     pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
+    packageref: jspb.Message.getFieldWithDefault(msg, 9, "")
   };
 
   if (includeInstance) {
@@ -4027,6 +4028,10 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
       var value = new pulumi_source_pb.SourcePosition;
       reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
       msg.setSourceposition(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPackageref(value);
       break;
     default:
       reader.skipField();
@@ -4110,6 +4115,13 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
       7,
       f,
       pulumi_source_pb.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getPackageref();
+  if (f.length > 0) {
+    writer.writeString(
+      9,
+      f
     );
   }
 };
@@ -4298,6 +4310,24 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.clearSourceposition = function()
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.hasSourceposition = function() {
   return jspb.Message.getField(this, 7) != null;
+};
+
+
+/**
+ * optional string packageRef = 9;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getPackageref = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setPackageref = function(value) {
+  return jspb.Message.setProto3StringField(this, 9, value);
 };
 
 
