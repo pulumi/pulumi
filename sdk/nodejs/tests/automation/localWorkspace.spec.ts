@@ -16,6 +16,7 @@ import assert from "assert";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as upath from "upath";
+import * as fs from "fs";
 
 import {
     CommandResult,
@@ -1191,6 +1192,58 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+
+    it("can import resources into a stack using resource definitions", async () => {
+        const workDir = upath.joinSafe(__dirname, "data", "import");
+        const stackName = `int_test${getTestSuffix()}`;
+        const stack = await LocalWorkspace.createStack({ workDir, stackName });
+        const pulumiRandomVersion = "4.16.3";
+        await stack.workspace.installPlugin("random", pulumiRandomVersion);
+        const result = await stack.import({
+            protect: false,
+            resources: [
+                {
+                    type: "random:index/randomPassword:RandomPassword",
+                    name: "randomPassword",
+                    id: "supersecret",
+                },
+            ],
+        });
+        assert.strictEqual(result.summary.kind, "update");
+        assert.strictEqual(result.summary.result, "succeeded");
+
+        const expectedGeneratedCode = fs.readFileSync(upath.joinSafe(workDir, "expected_generated_code.txt"), "utf8");
+        assert.strictEqual(result.generatedCode, expectedGeneratedCode);
+        await stack.destroy();
+        await stack.workspace.removeStack(stackName);
+        await stack.workspace.removePlugin("random", pulumiRandomVersion);
+    });
+
+    it("can import resources into a stack without generating code", async () => {
+        const workDir = upath.joinSafe(__dirname, "data", "import");
+        const stackName = `int_test${getTestSuffix()}`;
+        const stack = await LocalWorkspace.createStack({ workDir, stackName });
+        const pulumiRandomVersion = "4.16.3";
+        await stack.workspace.installPlugin("random", pulumiRandomVersion);
+        const result = await stack.import({
+            protect: false,
+            generateCode: false,
+            resources: [
+                {
+                    type: "random:index/randomPassword:RandomPassword",
+                    name: "randomPassword",
+                    id: "supersecret",
+                },
+            ],
+        });
+        assert.strictEqual(result.summary.kind, "update");
+        assert.strictEqual(result.summary.result, "succeeded");
+        assert.strictEqual(result.generatedCode, "");
+        await stack.destroy();
+        await stack.workspace.removeStack(stackName);
+        await stack.workspace.removePlugin("random", pulumiRandomVersion);
+    });
+
     it(`sets pulumi version`, async () => {
         const ws = await LocalWorkspace.create({});
         assert(ws.pulumiVersion);
