@@ -140,6 +140,7 @@ func TestMoveLeafResource(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(sourceResources[1].URN)})
 
+	//nolint:lll
 	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
 
   - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name
