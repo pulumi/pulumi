@@ -195,7 +195,10 @@ type ChangeSecretsProviderOptions struct {
 	NewPassphrase *string
 }
 
+// InstallOptions are the options that can be passed for the Install command.
 type InstallOptions struct {
+	// Stdout is the optional writer to use for the output during installation.
 	Stdout io.Writer
+	// Stderr is the optional writer to use for the error output during installation.
 	Stderr io.Writer
 }
