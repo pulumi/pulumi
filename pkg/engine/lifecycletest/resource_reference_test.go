@@ -289,7 +289,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		// as a resource reference.
 		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
 			"urn": resource.NewStringProperty(string(resp.URN)),
-		}, "", "")
+		}, "", "", "")
 		assert.NoError(t, err)
 		assert.Empty(t, failures)
 		assert.Equal(t, resource.NewStringProperty(string(resp.URN)), result["urn"])

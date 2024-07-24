@@ -58,9 +58,9 @@ func TestPackageRef(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkg1Ref, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, nil)
+		pkg1Ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
 		require.NoError(t, err)
-		pkg2Ref, err := monitor.RegisterProvider("pkgA", "2.0.0", "", nil, nil)
+		pkg2Ref, err := monitor.RegisterPackage("pkgA", "2.0.0", "", nil, nil)
 		require.NoError(t, err)
 
 		// If we register the "same" provider in parallel, we should get the same ref.
@@ -69,7 +69,7 @@ func TestPackageRef(t *testing.T) {
 			var pcs promise.CompletionSource[string]
 			promises = append(promises, pcs.Promise())
 			go func() {
-				ref, err := monitor.RegisterProvider("pkgB", "1.0.0", "downloadUrl", nil, nil)
+				ref, err := monitor.RegisterPackage("pkgB", "1.0.0", "downloadUrl", nil, nil)
 				require.NoError(t, err)
 				pcs.MustFulfill(ref)
 			}()
@@ -146,12 +146,21 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 					return "id", inputs, resource.StatusOK, nil
 				},
+				InvokeF: func(tok tokens.ModuleMember, inputs resource.PropertyMap,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					assert.Equal(t, "pkgExt:index:func", tok.String())
+					assert.Equal(t, resource.NewStringProperty("in"), inputs["input"])
+
+					return resource.PropertyMap{
+						"output": resource.NewStringProperty("in " + param),
+					}, nil, nil
+				},
 			}, nil
 		}),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
 		require.NoError(t, err)
 
 		// Register a resource using that base provider
@@ -161,7 +170,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		// Now register a replacement provider
-		extRef, err := monitor.RegisterProvider("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
+		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
@@ -172,6 +181,14 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			PackageRef: extRef,
 		})
 		require.NoError(t, err)
+
+		result, _, err := monitor.Invoke("pkgExt:index:func", resource.PropertyMap{
+			"input": resource.NewStringProperty("in"),
+		}, "", "", extRef)
+		require.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"output": resource.NewStringProperty("in replacement"),
+		}, result)
 
 		return err
 	})

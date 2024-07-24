@@ -604,6 +604,7 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
     PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     @property
@@ -623,6 +624,8 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     @property
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the invoke."""
+    packageRef: builtins.str
+    """a reference from RegisterProviderRequest."""
     def __init__(
         self,
         *,
@@ -634,9 +637,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         pluginDownloadURL: builtins.str = ...,
         pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "args", b"args", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 

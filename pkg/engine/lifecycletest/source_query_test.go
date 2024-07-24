@@ -124,7 +124,7 @@ func TestRunQuery_call_invoke(t *testing.T) {
 
 		outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
 			"name": resource.NewStringProperty("bar"),
-		}, "", "")
+		}, "", "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, (resource.PropertyMap{
 			"message": resource.NewStringProperty("Hello, bar!"),

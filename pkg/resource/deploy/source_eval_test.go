@@ -409,11 +409,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "")
 		assert.NoError(t, perr)
 
-		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "")
+		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "", "")
 		assert.NoError(t, perr)
 
 		return nil
@@ -485,11 +485,11 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "")
 		assert.NoError(t, err)
 
-		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "")
+		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
 		assert.NoError(t, err)
 
 		return nil
@@ -667,11 +667,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "")
 				assert.NoError(t, perr)
 
-				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "")
+				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "")
+				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "", "")
 				assert.NoError(t, perr)
-				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "")
+				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
 				assert.NoError(t, perr)
 
 				return nil

@@ -463,6 +463,8 @@ export class ResourceInvokeRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceInvokeRequest;
+    getPackageref(): string;
+    setPackageref(value: string): ResourceInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceInvokeRequest.AsObject;
@@ -485,6 +487,7 @@ export namespace ResourceInvokeRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        packageref: string,
     }
 }
 
