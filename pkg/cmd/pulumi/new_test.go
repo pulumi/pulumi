@@ -335,7 +335,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	prompt := func(yes bool, valueType string, defaultValue string, secret bool,
 		isValidFn func(value string) error, opts display.Options,
 	) (string, error) {
-		if strings.HasPrefix(valueType, "aws:region:") {
+		if strings.Contains(valueType, "(aws:region)") {
 			return "", nil
 		}
 		return defaultValue, nil

@@ -290,7 +290,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		validate := func(s string) error {
 			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
 		}
-		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
+		args.name, err = args.prompt(args.yes, "Project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
 		}
@@ -301,7 +301,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 			args.description, template.ProjectDescription, template.Description)
 		args.description, err = args.prompt(
-			args.yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
+			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
 		if err != nil {
 			return err
 		}
@@ -807,7 +807,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 	}
 
 	for {
-		stackName, err := prompt(yes, "stack name", "dev", false, b.ValidateStackName, opts)
+		stackName, err := prompt(yes, "Stack name", "dev", false, b.ValidateStackName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1186,7 +1186,7 @@ func promptForConfig(
 		// Prepare the prompt.
 		promptText := prettyKey(k)
 		if templateConfigValue.Description != "" {
-			promptText = promptText + ": " + templateConfigValue.Description
+			promptText = templateConfigValue.Description + " (" + promptText + ")"
 		}
 
 		// Prompt.
