@@ -1447,6 +1447,30 @@ describe("LocalWorkspace", () => {
 
         assert.rejects(() => ws.install());
     });
+
+    it("sends SIGINT when aborted", async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const program = async () => {
+            await new Promise((f) => setTimeout(f, 60000));
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        try {
+            // pulumi preview
+            const previewRes = await stack.preview({
+                signal: controller.signal,
+            });
+            assert.fail("expected canceled preview to throw");
+        } catch (err) {
+            assert.strictEqual(err.toString(), "Error: ...");
+        }
+
+        await stack.workspace.removeStack(stackName);
+    });
 });
 
 const normalizeConfigKey = (key: string, projectName: string) => {

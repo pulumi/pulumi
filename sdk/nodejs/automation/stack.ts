@@ -269,7 +269,7 @@ Event: ${line}\n${e.toString()}`);
 
         let upResult: CommandResult;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -409,7 +409,7 @@ Event: ${line}\n${e.toString()}`);
 
         let previewResult: CommandResult;
         try {
-            previewResult = await this.runPulumiCmd(args, opts?.onOutput);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -483,7 +483,7 @@ Event: ${line}\n${e.toString()}`);
 
         let refResult: CommandResult;
         try {
-            refResult = await this.runPulumiCmd(args, opts?.onOutput);
+            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } finally {
             await cleanUp(logFile, await logPromise);
         }
@@ -556,7 +556,7 @@ Event: ${line}\n${e.toString()}`);
 
         let desResult: CommandResult;
         try {
-            desResult = await this.runPulumiCmd(args, opts?.onOutput);
+            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } finally {
             await cleanUp(logFile, await logPromise);
         }
@@ -887,7 +887,11 @@ Event: ${line}\n${e.toString()}`);
         return this.workspace.importStack(this.name, state);
     }
 
-    private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
+    private async runPulumiCmd(
+        args: string[],
+        onOutput?: (out: string) => void,
+        signal?: AbortSignal,
+    ): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
             PULUMI_DEBUG_COMMANDS: "true",
         };
@@ -901,7 +905,7 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput);
+        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, signal);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -1333,6 +1337,11 @@ export interface UpOptions extends GlobalOpts {
      * Run the process under a debugger, and pause until a debugger is attached.
      */
     attachDebugger?: boolean;
+
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -1418,6 +1427,11 @@ export interface PreviewOptions extends GlobalOpts {
      * Run the process under a debugger, and pause until a debugger is attached.
      */
     attachDebugger?: boolean;
+
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -1463,6 +1477,10 @@ export interface RefreshOptions extends GlobalOpts {
      * Include secrets in the operation summary.
      */
     showSecrets?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
@@ -1523,6 +1541,10 @@ export interface DestroyOptions extends GlobalOpts {
      * Remove the stack and its configuration after all resources in the stack have been deleted.
      */
     remove?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 export interface ImportResource {
