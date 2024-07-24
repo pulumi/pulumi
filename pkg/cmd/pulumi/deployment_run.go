@@ -38,7 +38,7 @@ func newDeploymentRunCmd() *cobra.Command {
 		Short: "Launch a deployment job on Pulumi Cloud",
 		Long: "Launch a deployment job on Pulumi Cloud\n" +
 			"\n" +
-			"This command queues a new deployment job for a any supported operation or type \n" +
+			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
