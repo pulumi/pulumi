@@ -139,12 +139,16 @@ func (cmd *stateMoveCmd) Run(
 	providersToCopy := make(map[string]bool)
 	remainingResources := make(map[string]*resource.State)
 	unmatchedArgs := mapset.NewSet(args...)
+	rootStackURN := ""
 	for _, res := range sourceSnapshot.Resources {
 		matchedArg := resourceMatches(res, args)
 		if matchedArg != "" {
 			if strings.HasPrefix(string(res.Type), "pulumi:providers:") {
 				//nolint:lll
 				return errors.New("cannot move providers. Only resources can be moved, and providers will be included automatically")
+			}
+			if res.Type == resource.RootStackType && res.Parent == "" {
+				rootStackURN = string(res.URN)
 			}
 			resourcesToMove[string(res.URN)] = res
 			providersToCopy[res.Provider] = true
@@ -185,6 +189,10 @@ func (cmd *stateMoveCmd) Run(
 			providersToCopy[dep.Provider] = true
 		}
 	}
+
+	// We don't want to include the root stack in the list of resources to move.  The root stack
+	// either already exists in the destination stack or will be created when we move the resources.
+	delete(resourcesToMove, rootStackURN)
 
 	// We want to move the resources in the order they appear in the source snapshot,
 	// so that resources with relationships are in the right order.
