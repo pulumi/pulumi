@@ -210,6 +210,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	// Check the state of the parameterized provider is what we expect
 	prov := snap.Resources[2]
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
+	assert.Equal(t, "default_0_5_0", prov.URN.Name())
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"name":    "pkgA",
 		"version": "1.0.0",
