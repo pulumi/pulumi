@@ -16,6 +16,7 @@ package auto
 
 import (
 	"context"
+	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
@@ -151,6 +152,8 @@ type Workspace interface {
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
 	// StackOutputs gets the current set of Stack outputs from the last Stack.Up().
 	StackOutputs(context.Context, string) (OutputMap, error)
+	// Install installs the workspace's dependencies.
+	Install(context.Context, *InstallOptions) error
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.
@@ -190,4 +193,9 @@ type WhoAmIResult struct {
 type ChangeSecretsProviderOptions struct {
 	// NewPassphrase is the new passphrase when changing to a `passphrase` provider
 	NewPassphrase *string
+}
+
+type InstallOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
 }

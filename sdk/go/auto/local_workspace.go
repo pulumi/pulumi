@@ -532,7 +532,7 @@ func (l *LocalWorkspace) ChangeStackSecretsProvider(
 		}
 		reader = strings.NewReader(*opts.NewPassphrase)
 	}
-	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, args...)
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, nil, nil, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("failed to change secrets provider: %w", err), stdout, stderr, errCode)
 	}
@@ -769,9 +769,27 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 	return res, nil
 }
 
+func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) error {
+	stdoutWriters := []io.Writer{}
+	if opts != nil && opts.Stdout != nil {
+		stdoutWriters = append(stdoutWriters, opts.Stdout)
+	}
+	stderrWriters := []io.Writer{}
+	if opts != nil && opts.Stderr != nil {
+		stderrWriters = append(stderrWriters, opts.Stderr)
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, "install")
+	if err != nil {
+		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 func (l *LocalWorkspace) runPulumiInputCmdSync(
 	ctx context.Context,
 	stdin io.Reader,
+	additionalOutputs []io.Writer,
+	additionalErrorOutputs []io.Writer,
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
@@ -788,8 +806,8 @@ func (l *LocalWorkspace) runPulumiInputCmdSync(
 	return l.PulumiCommand().Run(ctx,
 		l.WorkDir(),
 		stdin,
-		nil, /* additionalOutputs */
-		nil, /* additionalErrorOutputs */
+		additionalOutputs,
+		additionalErrorOutputs,
 		env,
 		args...,
 	)
@@ -799,7 +817,7 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 	ctx context.Context,
 	args ...string,
 ) (string, string, int, error) {
-	return l.runPulumiInputCmdSync(ctx, nil, args...)
+	return l.runPulumiInputCmdSync(ctx, nil, nil, nil, args...)
 }
 
 // supportsPulumiCmdFlag runs a command with `--help` to see if the specified flag is found within the resulting
