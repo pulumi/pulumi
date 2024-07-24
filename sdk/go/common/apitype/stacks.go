@@ -29,8 +29,12 @@ type StackSummary struct {
 	// ResourceCount is the number of resources associated with this stack, as applicable.
 	ResourceCount *int `json:"resourceCount,omitempty"`
 
-	// Url to the stack in the Pulumi Console
-	Url string `json:"url,omitempty"`
+	// Links to the stack in the Pulumi Console
+	Links StackLinks `json:"links,omitempty"`
+}
+
+type StackLinks struct {
+	Self string `json:"self"`
 }
 
 // ListStacksResponse returns a set of stack summaries. This call is designed to be inexpensive.
