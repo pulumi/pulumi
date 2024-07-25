@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Fix undefined variable errors in code generation when imported resources use a parent or provider

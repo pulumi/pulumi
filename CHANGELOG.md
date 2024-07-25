@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.127.0 (2024-07-25)
+
+
+### Features
+
+- [auto/go] Implement Stack.ImportResources() for batch importing resources into a stack via the automation API
+  [#16721](https://github.com/pulumi/pulumi/pull/16721)
+
+- [cli/new] Make prompt capitalization consistent
+  [#16747](https://github.com/pulumi/pulumi/pull/16747)
+
+- [auto/nodejs] Implement Stack.import() in automation API to specify and import resources into a stack
+  [#16615](https://github.com/pulumi/pulumi/pull/16615)
+
+- [auto/python] Implement Stack.import_resources() for batch importing resources into a stack
+  [#16668](https://github.com/pulumi/pulumi/pull/16668)
+
+- [sdk/python] Provide stricter types for config.get_XXX when a default is provided
+  [#16768](https://github.com/pulumi/pulumi/pull/16768)
+
+- [sdkgen/python] Generate TypedDict input types by default
+  [#16704](https://github.com/pulumi/pulumi/pull/16704)
+
+
+### Bug Fixes
+
+- [cli/import] Fix undefined variable errors in code generation when imported resources use a parent or provider
+  [#16786](https://github.com/pulumi/pulumi/pull/16786)
+
+- [cli/state] Always show the fully qualified stack name when moving resources
+  [#16767](https://github.com/pulumi/pulumi/pull/16767)
+
+- [cli/state] Fix calculation of the resources that are remaining in the source stack
+  [#16774](https://github.com/pulumi/pulumi/pull/16774)
+
+- [cli/state] Fix the dependency information in the state move command
+  [#16765](https://github.com/pulumi/pulumi/pull/16765)
+
+- [cli/state] Improve how moving the root stack is handled in `pulumi state move`
+  [#16779](https://github.com/pulumi/pulumi/pull/16779)
+
+- [sdk/nodejs] Detect possible OOM errors when nodejs crashes
+  [#16700](https://github.com/pulumi/pulumi/pull/16700)
+
+- [sdk/nodejs] Ensure no output is lost for nodejs commands when stdout is slow
+  [#16700](https://github.com/pulumi/pulumi/pull/16700)
+
 ## 3.126.0 (2024-07-22)
 
 
