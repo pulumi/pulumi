@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description:  Detect possible OOM errors when nodejs crashes
