@@ -339,6 +339,8 @@ config:
 }
 
 func TestConfigCommandsUsingEnvironments(t *testing.T) {
+	t.Skip("Skipping due to https://github.com/pulumi/pulumi/issues/16791")
+
 	if getTestOrg() != pulumiTestOrg {
 		t.Skip("Skipping test because the required environment is in the moolumi org.")
 	}
