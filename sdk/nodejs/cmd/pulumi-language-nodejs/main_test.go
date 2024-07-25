@@ -400,6 +400,10 @@ func TestParseOptions(t *testing.T) {
 	}
 }
 
+// Nodejs sometimes sets stdout/stderr to non-blocking mode. When a nodejs subprocess is directly
+// handed the go process's stdout/stderr file descriptors, nodejs's non-blocking configuration goes
+// unnoticed by go, and a write from go can result in an error `write /dev/stdout: resource
+// temporarily unavailable`. See runWithOutput for more details.
 func TestNonblockingStdout(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/16503
 	t.Parallel()
