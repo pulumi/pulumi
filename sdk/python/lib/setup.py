@@ -17,7 +17,7 @@
 import os
 from setuptools import find_packages, setup
 
-VERSION = "3.126.1"
+VERSION = "3.127.0"
 
 def readme():
     try:
