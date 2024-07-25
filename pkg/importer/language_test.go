@@ -152,3 +152,59 @@ resource second "aws:s3/bucketObject:BucketObject" {
 `
 	assert.Equal(t, expectedCode, generatedProgram)
 }
+
+func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T) {
+	t.Parallel()
+
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	generatedProgram := ""
+	generator := func(_ io.Writer, p *pcl.Program) error {
+		for _, content := range p.Source() {
+			generatedProgram += content
+		}
+		return nil
+	}
+
+	componentURN := resource.NewURN("dev", "project", "", "example:index:MyComponent", "example")
+	childURN := resource.NewURN(
+		"dev",
+		"project",
+		"example:index:MyComponent",
+		"random:index/randomPet:RandomPet",
+		"randomPet")
+
+	nameTable := NameTable{
+		componentURN: "parentComponent",
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:    childURN,
+			Custom: true,
+			Type:   "random:index/randomPet:RandomPet",
+			Parent: componentURN,
+		},
+	}
+
+	states := make([]*resource.State, 0)
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter, config.NopEncrypter)
+		if !assert.NoError(t, err) {
+			t.Fatal()
+		}
+		states = append(states, state)
+	}
+
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, nameTable)
+	assert.NoError(t, err)
+	expectedCode := `resource randomPet "random:index/randomPet:RandomPet" {
+options {
+parent = parentComponent
+
+}
+
+}
+`
+	assert.Equal(t, expectedCode, generatedProgram)
+}

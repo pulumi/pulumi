@@ -873,7 +873,7 @@ func (rt *mockLanguageRuntime) GeneratePackage(
 }
 
 func (rt *mockLanguageRuntime) GenerateProgram(
-	program map[string]string, loaderTarget string,
+	program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	if rt.GenerateProgramF != nil {
 		return rt.GenerateProgramF(program, loaderTarget)

@@ -1248,9 +1248,17 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files,
+	bindOptions := []pcl.BindOption{
 		pcl.Loader(loader),
-		pcl.PreferOutputVersionedInvokes)
+		// for nodejs, prefer output-versioned invokes
+		pcl.PreferOutputVersionedInvokes,
+	}
+
+	if !req.Strict {
+		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
+	}
+
+	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
 	if err != nil {
 		return nil, err
 	}

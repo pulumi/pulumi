@@ -575,3 +575,16 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 	assert.True(t, packageRefExists("awsx"), "The program has a reference to the awsx package")
 	assert.True(t, packageRefExists("aws"), "The program has a reference to the aws package")
 }
+
+func TestAllowMissingVariablesShouldNotErrorOnUnboundVariableReferences(t *testing.T) {
+	t.Parallel()
+	source := `
+resource randomPet "random:index/randomPet:RandomPet" {
+	options { parent = parentComponentVariable }
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.AllowMissingVariables)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
+	assert.NotNil(t, program)
+}

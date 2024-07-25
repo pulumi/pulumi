@@ -590,6 +590,8 @@ export class GenerateProgramRequest extends jspb.Message {
     clearSourceMap(): void;
     getLoaderTarget(): string;
     setLoaderTarget(value: string): GenerateProgramRequest;
+    getStrict(): boolean;
+    setStrict(value: boolean): GenerateProgramRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateProgramRequest.AsObject;
@@ -606,6 +608,7 @@ export namespace GenerateProgramRequest {
 
         sourceMap: Array<[string, string]>,
         loaderTarget: string,
+        strict: boolean,
     }
 }
 

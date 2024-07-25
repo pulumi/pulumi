@@ -136,7 +136,7 @@ func (p *languageRuntime) GeneratePackage(
 	return nil, errors.New("GeneratePackage is not supported")
 }
 
-func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string][]byte, hcl.Diagnostics, error) {
+func (p *languageRuntime) GenerateProgram(map[string]string, string, bool) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, errors.New("GenerateProgram is not supported")
 }
 
