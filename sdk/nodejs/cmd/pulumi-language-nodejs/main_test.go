@@ -426,9 +426,10 @@ time.sleep(3)
 
 	cmd := exec.Command("python3", "-c", script)
 
+	var done bool
 	go func() {
 		time.Sleep(2 * time.Second)
-		for {
+		for !done {
 			s := "....................\n"
 			n, err := fakeStdout.Write([]byte(s))
 			require.NoError(t, err)
@@ -437,6 +438,7 @@ time.sleep(3)
 	}()
 
 	require.NoError(t, runWithOutput(cmd, fakeStdout, os.Stderr))
+	done = true
 }
 
 type slowWriter struct {
