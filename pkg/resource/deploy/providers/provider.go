@@ -124,7 +124,15 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 // followed by a QName-legal representation of the semantic version of the requested provider.
 func (p ProviderRequest) DefaultName() string {
 	base := "default"
-	if v := p.version; v != nil {
+
+	var v *semver.Version
+	if p.parameterization != nil {
+		v = p.parameterization.version
+	} else {
+		v = p.version
+	}
+
+	if v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
 		// version's component parts.
 		base += fmt.Sprintf("_%d_%d_%d", v.Major, v.Minor, v.Patch)
@@ -149,7 +157,9 @@ func (p ProviderRequest) DefaultName() string {
 // String returns a string representation of this request. This string is suitable for use as a hash key.
 func (p ProviderRequest) String() string {
 	var version string
-	if p.version != nil {
+	if p.parameterization != nil {
+		version = "-" + p.parameterization.version.String()
+	} else if p.version != nil {
 		version = "-" + p.version.String()
 	}
 	var url string
