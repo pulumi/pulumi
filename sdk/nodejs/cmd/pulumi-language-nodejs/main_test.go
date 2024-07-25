@@ -16,11 +16,11 @@ package main
 
 import (
 	"context"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -400,6 +400,10 @@ func TestParseOptions(t *testing.T) {
 	}
 }
 
+// Nodejs sometimes sets stdout/stderr to non-blocking mode. When a nodejs subprocess is directly
+// handed the go process's stdout/stderr file descriptors, nodejs's non-blocking configuration goes
+// unnoticed by go, and a write from go can result in an error `write /dev/stdout: resource
+// temporarily unavailable`. See runWithOutput for more details.
 func TestNonblockingStdout(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/16503
 	t.Parallel()
@@ -408,31 +412,48 @@ func TestNonblockingStdout(t *testing.T) {
 os.set_blocking(1, False) # set stdout to non-blocking
 time.sleep(3)
 `
+
+	// Create a named pipe to use as stdout
+	tmp := os.TempDir()
+	p := filepath.Join(tmp, "fake-stdout")
+	err := syscall.Mkfifo(p, 0o644)
+	defer os.Remove(p)
+	require.NoError(t, err)
+	// Open fd without O_NONBLOCK, ensuring that os.NewFile does not return a pollable file.
+	// When our python script changes the file to non-blocking, Go does not notice and continues to
+	// expect the file to be blocking, and we can trigger the bug.
+	fd, err := syscall.Open(p, syscall.O_CREAT|syscall.O_RDWR, 0o644)
+	require.NoError(t, err)
+	fakeStdout := os.NewFile(uintptr(fd), p)
+	defer fakeStdout.Close()
+	require.NotNil(t, fakeStdout)
+
 	cmd := exec.Command("python3", "-c", script)
 
+	var done bool
 	go func() {
 		time.Sleep(2 * time.Second)
-		for {
+		for !done {
 			s := "....................\n"
-			n, err := os.Stdout.Write([]byte(s))
+			n, err := fakeStdout.Write([]byte(s))
 			require.NoError(t, err)
 			require.Equal(t, n, len(s))
 		}
 	}()
 
-	require.NoError(t, runWithOutput(cmd, os.Stdout, os.Stderr))
+	require.NoError(t, runWithOutput(cmd, fakeStdout, os.Stderr))
+	done = true
 }
 
 type slowWriter struct {
-	w       io.Writer
 	nWrites *int
 }
 
 func (s slowWriter) Write(b []byte) (int, error) {
 	time.Sleep(100 * time.Millisecond)
-	n, err := s.w.Write(b)
-	*s.nWrites += n
-	return n, err
+	l := len(b)
+	*s.nWrites += l
+	return l, nil
 }
 
 func TestRunWithOutputDoesNotMissData(t *testing.T) {
@@ -454,9 +475,10 @@ func TestRunWithOutputDoesNotMissData(t *testing.T) {
 		}
 	}, 10)
 	`
+
 	cmd := exec.Command("node", "-e", script)
-	stdout := slowWriter{w: os.Stdout, nWrites: new(int)}
-	stderr := slowWriter{w: os.Stderr, nWrites: new(int)}
+	stdout := slowWriter{nWrites: new(int)}
+	stderr := slowWriter{nWrites: new(int)}
 
 	require.NoError(t, runWithOutput(cmd, stdout, stderr))
 
