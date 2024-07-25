@@ -600,18 +600,22 @@ class GenerateProgramRequest(google.protobuf.message.Message):
 
     SOURCE_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    STRICT_FIELD_NUMBER: builtins.int
     @property
     def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """the PCL source of the project."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    strict: builtins.bool
+    """if PCL binding should be strict or not."""
     def __init__(
         self,
         *,
         source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         loader_target: builtins.str = ...,
+        strict: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["loader_target", b"loader_target", "source", b"source", "strict", b"strict"]) -> None: ...
 
 global___GenerateProgramRequest = GenerateProgramRequest
 

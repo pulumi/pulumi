@@ -4871,7 +4871,8 @@ proto.pulumirpc.GenerateProgramRequest.prototype.toObject = function(opt_include
 proto.pulumirpc.GenerateProgramRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : [],
-    loaderTarget: jspb.Message.getFieldWithDefault(msg, 2, "")
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    strict: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -4918,6 +4919,10 @@ proto.pulumirpc.GenerateProgramRequest.deserializeBinaryFromReader = function(ms
       var value = /** @type {string} */ (reader.readString());
       msg.setLoaderTarget(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setStrict(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -4955,6 +4960,13 @@ proto.pulumirpc.GenerateProgramRequest.serializeBinaryToWriter = function(messag
   if (f.length > 0) {
     writer.writeString(
       2,
+      f
+    );
+  }
+  f = message.getStrict();
+  if (f) {
+    writer.writeBool(
+      3,
       f
     );
   }
@@ -4998,6 +5010,24 @@ proto.pulumirpc.GenerateProgramRequest.prototype.getLoaderTarget = function() {
  */
 proto.pulumirpc.GenerateProgramRequest.prototype.setLoaderTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional bool strict = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.GenerateProgramRequest.prototype.getStrict = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.GenerateProgramRequest} returns this
+ */
+proto.pulumirpc.GenerateProgramRequest.prototype.setStrict = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

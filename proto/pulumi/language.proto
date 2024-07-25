@@ -206,6 +206,8 @@ message GenerateProgramRequest {
     map<string, string> source = 1;
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 2;
+    // if PCL binding should be strict or not.
+    bool strict = 3;
 }
 
 message GenerateProgramResponse {

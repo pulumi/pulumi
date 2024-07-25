@@ -545,12 +545,13 @@ func (h *langhost) GeneratePackage(
 	return diags, nil
 }
 
-func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string,
+func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
 	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
 		Source:       program,
 		LoaderTarget: loaderTarget,
+		Strict:       strict,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -142,7 +142,7 @@ func TestLanguageRuntime(t *testing.T) {
 		})
 		t.Run("GenerateProgram", func(t *testing.T) {
 			t.Parallel()
-			_, _, err := p.GenerateProgram(nil, "")
+			_, _, err := p.GenerateProgram(nil, "", false)
 			assert.ErrorContains(t, err, "is not supported")
 		})
 		t.Run("Pack", func(t *testing.T) {
