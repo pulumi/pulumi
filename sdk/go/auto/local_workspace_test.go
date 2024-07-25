@@ -28,6 +28,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
+
 	"github.com/blang/semver"
 	"github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
@@ -2010,6 +2012,47 @@ func TestStructuredOutput(t *testing.T) {
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 	assert.True(t, containsSummary(destroyEvents))
+}
+
+func TestStackImportResources(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, "import", sName)
+	pDir := filepath.Join(".", "test", "import")
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	randomPluginVersion := "4.16.3"
+	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
+	assert.NoError(t, err, "failed to install plugin")
+	resourcesToImport := []*optimport.ImportResource{
+		{
+			Type: "random:index/randomPassword:RandomPassword",
+			ID:   "supersecret",
+			Name: "randomPassword",
+		},
+	}
+
+	importResult, err := stack.ImportResources(ctx,
+		optimport.Resources(resourcesToImport),
+		optimport.Protect(false))
+
+	assert.NoError(t, err, "failed to import resources")
+	assert.Equal(t, "succeeded", importResult.Summary.Result)
+	expectedGeneratedCode, err := os.ReadFile(filepath.Join(pDir, "expected_generated_code.yaml"))
+	assert.NoError(t, err, "failed to read expected generated code")
+	normalize := func(s string) string {
+		return strings.ReplaceAll(s, "\r\n", "\n")
+	}
+
+	assert.Equal(t, normalize(string(expectedGeneratedCode)), normalize(importResult.GeneratedCode))
+	_, err = stack.Destroy(ctx)
+	assert.NoError(t, err, "failed to destroy stack")
 }
 
 func TestSupportsStackOutputs(t *testing.T) {

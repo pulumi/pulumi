@@ -1,0 +1,10 @@
+resources:
+  randomPassword:
+    type: random:RandomPassword
+    properties:
+      length: 11
+      lower: true
+      number: true
+      numeric: true
+      special: true
+      upper: true
