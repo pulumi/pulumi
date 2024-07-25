@@ -2053,8 +2053,6 @@ func TestStackImportResources(t *testing.T) {
 	assert.Equal(t, normalize(string(expectedGeneratedCode)), normalize(importResult.GeneratedCode))
 	_, err = stack.Destroy(ctx)
 	assert.NoError(t, err, "failed to destroy stack")
-	err = stack.Workspace().RemovePlugin(ctx, "random", randomPluginVersion)
-	assert.NoError(t, err, "failed to remove plugin")
 }
 
 func TestSupportsStackOutputs(t *testing.T) {
