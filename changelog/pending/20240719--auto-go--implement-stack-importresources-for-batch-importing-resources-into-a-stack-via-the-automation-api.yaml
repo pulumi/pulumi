@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Implement Stack.ImportResources() for batch importing resources into a stack via the automation API

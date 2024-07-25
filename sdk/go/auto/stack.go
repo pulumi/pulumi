@@ -110,6 +110,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
+
 	"github.com/blang/semver"
 	"github.com/nxadm/tail"
 	"google.golang.org/grpc"
@@ -471,6 +473,103 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 	if len(history) > 0 {
 		res.Summary = history[0]
+	}
+
+	return res, nil
+}
+
+// ImportResources imports resources into a stack using the given resources and options.
+func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (ImportResult, error) {
+	var res ImportResult
+
+	importOpts := &optimport.Options{}
+	for _, o := range opts {
+		o.ApplyOption(importOpts)
+	}
+
+	tempDir, err := os.MkdirTemp("", "pulumi-import-")
+	if err != nil {
+		return res, fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	// clean-up the temp directory after we are done
+	defer os.RemoveAll(tempDir)
+
+	args := []string{"import", "--yes", "--skip-preview"}
+
+	if importOpts.Resources != nil {
+		importFilePath := filepath.Join(tempDir, "import.json")
+		importContent := map[string]interface{}{
+			"resources": importOpts.Resources,
+		}
+
+		if importOpts.NameTable != nil {
+			importContent["nameTable"] = importOpts.NameTable
+		}
+
+		importContentBytes, err := json.Marshal(importContent)
+		if err != nil {
+			return res, fmt.Errorf("failed to marshal import content: %w", err)
+		}
+
+		if err := os.WriteFile(importFilePath, importContentBytes, 0o600); err != nil {
+			return res, fmt.Errorf("failed to write import file: %w", err)
+		}
+
+		args = append(args, "--file", importFilePath)
+	}
+
+	if importOpts.Protect != nil && !*importOpts.Protect {
+		// the protect flag is true by default so only add the flag if it's explicitly set to false
+		args = append(args, "--protect=false")
+	}
+
+	generatedCodePath := filepath.Join(tempDir, "generated_code.txt")
+	if importOpts.GenerateCode != nil && !*importOpts.GenerateCode {
+		// the generate code flag is true by default so only add the flag if it's explicitly set to false
+		args = append(args, "--generate-code=false")
+	} else {
+		args = append(args, "--out", generatedCodePath)
+	}
+
+	if importOpts.Converter != nil {
+		args = append(args, "--from", *importOpts.Converter)
+		if importOpts.ConverterArgs != nil {
+			args = append(args, "--")
+			args = append(args, importOpts.ConverterArgs...)
+		}
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		importOpts.ProgressStreams,      /* additionalOutputs */
+		importOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to import resources: %w", err), stdout, stderr, code)
+	}
+
+	history, err := s.History(ctx, 1 /*pageSize*/, 1, /*page*/
+		opthistory.ShowSecrets(importOpts.ShowSecrets && !s.isRemote()))
+	if err != nil {
+		return res, fmt.Errorf("failed to import resources: %w", err)
+	}
+
+	generatedCode, err := os.ReadFile(generatedCodePath)
+	if err != nil {
+		return res, fmt.Errorf("failed to read generated code: %w", err)
+	}
+
+	var summary UpdateSummary
+	if len(history) > 0 {
+		summary = history[0]
+	}
+
+	res = ImportResult{
+		Summary:       summary,
+		StdOut:        stdout,
+		StdErr:        stderr,
+		GeneratedCode: string(generatedCode),
 	}
 
 	return res, nil
@@ -988,6 +1087,14 @@ type UpResult struct {
 	StdErr  string
 	Outputs OutputMap
 	Summary UpdateSummary
+}
+
+// ImportResult contains information about a Stack.Import operation,
+type ImportResult struct {
+	StdOut        string
+	StdErr        string
+	GeneratedCode string
+	Summary       UpdateSummary
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the update operation.
