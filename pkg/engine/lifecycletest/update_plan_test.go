@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"regexp"
 	"strings"
 	"testing"
@@ -38,10 +39,12 @@ func TestPlannedUpdate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -150,10 +153,12 @@ func TestUnplannedCreate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -210,18 +215,15 @@ func TestUnplannedDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(
-					urn resource.URN,
-					id resource.ID,
-					oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusOK, nil
+				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{}, nil
 				},
 			}, nil
 		}),
@@ -288,18 +290,15 @@ func TestExpectedDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(
-					urn resource.URN,
-					id resource.ID,
-					oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusOK, nil
+				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{}, nil
 				},
 			}, nil
 		}),
@@ -370,10 +369,12 @@ func TestExpectedCreate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -444,10 +445,12 @@ func TestPropertySetChange(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -501,10 +504,12 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -561,18 +566,15 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(
-					urn resource.URN,
-					id resource.ID,
-					oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusOK, nil
+				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{}, nil
 				},
 			}, nil
 		}),
@@ -640,10 +642,12 @@ func TestResoucesWithSames(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -745,10 +749,12 @@ func TestPlannedPreviews(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -831,10 +837,12 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -914,10 +922,12 @@ func TestPlannedOutputChanges(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -984,16 +994,18 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), createOutputs, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: createOutputs,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return updateOutputs, resource.StatusOK, nil
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: updateOutputs,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1076,10 +1088,12 @@ func TestAliasWithPlans(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1141,10 +1155,12 @@ func TestComputedCanBeDropped(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1274,30 +1290,33 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, _ []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				CheckF: func(
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
 					// If we have name use it, else use olds name, else make one up
-					if _, has := news["name"]; has {
-						return news, nil, nil
+					if _, has := req.News["name"]; has {
+						return plugin.CheckResponse{Properties: req.News}, nil
 					}
-					if _, has := olds["name"]; has {
-						result := news.Copy()
-						result["name"] = olds["name"]
-						return result, nil, nil
+					if _, has := req.Olds["name"]; has {
+						result := req.News.Copy()
+						result["name"] = req.Olds["name"]
+						return plugin.CheckResponse{Properties: result}, nil
 					}
 
-					name, err := resource.NewUniqueHex(urn.Name(), 8, 512)
+					name, err := resource.NewUniqueHex(req.URN.Name(), 8, 512)
 					assert.NoError(t, err)
 
-					result := news.Copy()
+					result := req.News.Copy()
 					result["name"] = resource.NewStringProperty(name)
-					return result, nil, nil
+					return plugin.CheckResponse{Properties: result}, nil
 				},
 			}, nil
 		}),
@@ -1369,20 +1388,26 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				CheckF: func(urn resource.URN, olds, news resource.PropertyMap,
-					randomSeed []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					if news["foo"].StringValue() == "bad" {
-						return nil, []plugin.CheckFailure{
-							{Property: resource.PropertyKey("foo"), Reason: "Bad foo"},
+				CheckF: func(
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
+					if req.News["foo"].StringValue() == "bad" {
+						return plugin.CheckResponse{
+							Failures: []plugin.CheckFailure{{
+								Property: resource.PropertyKey("foo"),
+								Reason:   "Bad foo",
+							}},
 						}, nil
 					}
-					return news, nil, nil
+					return plugin.CheckResponse{Properties: req.News}, nil
 				},
 			}, nil
 		}),
@@ -1487,31 +1512,25 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(
-					urn resource.URN,
-					olds, news resource.PropertyMap,
-					randomSeed []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
 					// make a deterministic autoname
-					if _, has := news["name"]; !has {
-						if name, has := olds["name"]; has {
-							news["name"] = name
+					if _, has := req.News["name"]; !has {
+						if name, has := req.Olds["name"]; has {
+							req.News["name"] = name
 						} else {
-							name, err := resource.NewUniqueName(randomSeed, urn.Name(), -1, -1, nil)
+							name, err := resource.NewUniqueName(req.RandomSeed, req.URN.Name(), -1, -1, nil)
 							assert.NoError(t, err)
 							generatedName = resource.NewStringProperty(name)
-							news["name"] = generatedName
+							req.News["name"] = generatedName
 						}
 					}
 
-					return news, nil, nil
+					return plugin.CheckResponse{Properties: req.News}, nil
 				},
-				DiffF: func(
-					urn resource.URN,
-					id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						// If foo changes do a replace, we use this to check we get a new name
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -1520,10 +1539,12 @@ func TestProviderDeterministicPreview(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1590,20 +1611,21 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("created-id-" + req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, _ []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					return news, nil, nil
+				CheckF: func(
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{Properties: req.News}, nil
 				},
-				DiffF: func(urn resource.URN,
-					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if strings.Contains(string(urn), "resA") || strings.Contains(string(urn), "resB") {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if strings.Contains(string(req.URN), "resA") || strings.Contains(string(req.URN), "resB") {
 						assert.NotNil(t, diffResult, "Diff was called but diffResult wasn't set")
 						return *diffResult, nil
 					}

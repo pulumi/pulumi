@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -41,17 +40,23 @@ func TestPackageRef(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn urn.URN, inputs resource.PropertyMap, timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "0", inputs, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "0",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn urn.URN, inputs resource.PropertyMap, timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "1", inputs, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "1",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -138,36 +143,42 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						Version: value.Version,
 					}, nil
 				},
-				CreateF: func(urn urn.URN, inputs resource.PropertyMap, timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					if urn.Type() == "pkgExt:m:typA" {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.URN.Type() == "pkgExt:m:typA" {
 						assert.Equal(t, "replacement", param)
 					}
 
-					return "id", inputs, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         "id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				InvokeF: func(tok tokens.ModuleMember, inputs resource.PropertyMap,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					assert.Equal(t, "pkgExt:index:func", tok.String())
-					assert.Equal(t, resource.NewStringProperty("in"), inputs["input"])
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "pkgExt:index:func", req.Tok.String())
+					assert.Equal(t, resource.NewStringProperty("in"), req.Args["input"])
 
-					return resource.PropertyMap{
-						"output": resource.NewStringProperty("in " + param),
-					}, nil, nil
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{
+							"output": resource.NewStringProperty("in " + param),
+						},
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					if param == "" {
-						assert.Equal(t, tokens.Type("pkgA:m:typA"), urn.Type())
+						assert.Equal(t, tokens.Type("pkgA:m:typA"), req.URN.Type())
 					} else {
-						assert.Equal(t, tokens.Type("pkgExt:m:typA"), urn.Type())
+						assert.Equal(t, tokens.Type("pkgExt:m:typA"), req.URN.Type())
 					}
 
-					return plugin.ReadResult{
-						ID:      id,
-						Inputs:  inputs,
-						Outputs: state,
-					}, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),

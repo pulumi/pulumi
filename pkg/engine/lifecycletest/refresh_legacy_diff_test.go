@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 	"testing"
@@ -111,12 +112,13 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					new, hasNewState := newStates[id]
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
-					return new, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: new,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),

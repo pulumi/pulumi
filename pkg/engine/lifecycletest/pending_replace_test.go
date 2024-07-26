@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -35,19 +36,17 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	createsCalled := make(map[string]bool)
 
 	replacingADiff := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs, newInputs resource.PropertyMap,
-		ignoreChanges []string,
+		_ context.Context,
+		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		diffsCalled[urn.Name()] = true
-		if urn.Name() == "resA" {
+		diffsCalled[req.URN.Name()] = true
+		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
 				Changes:             plugin.DiffSome,
 				ReplaceKeys:         []resource.PropertyKey{"key"},
 				DeleteBeforeReplace: true,
 			}, nil
-		} else if urn.Name() == "resB" {
+		} else if req.URN.Name() == "resB" {
 			return plugin.DiffResult{
 				Changes: plugin.DiffSome,
 			}, nil
@@ -57,40 +56,36 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 	}
 
 	throwingDelete := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs resource.PropertyMap,
-		timeout float64,
-	) (resource.Status, error) {
-		deletesCalled[urn.Name()] = true
-		if urn.Name() == "resA" {
-			return resource.StatusUnknown, errors.New("interrupt replace")
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
+		deletesCalled[req.URN.Name()] = true
+		if req.URN.Name() == "resA" {
+			return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("interrupt replace")
 		}
 
-		return resource.StatusOK, nil
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
 
 	trackingDelete := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs resource.PropertyMap,
-		timeout float64,
-	) (resource.Status, error) {
-		deletesCalled[urn.Name()] = true
-		return resource.StatusOK, nil
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
+		deletesCalled[req.URN.Name()] = true
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
 
 	trackingCreateIDSuffix := "created-id"
 	trackingCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
-		createsCalled[urn.Name()] = true
-		return resource.ID(
-			fmt.Sprintf("%s-%s", urn.Name(), trackingCreateIDSuffix),
-		), news, resource.StatusOK, nil
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
+		createsCalled[req.URN.Name()] = true
+		return plugin.CreateResponse{
+			ID:         resource.ID(fmt.Sprintf("%s-%s", req.URN.Name(), trackingCreateIDSuffix)),
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
 	}
 
 	// Act.
@@ -213,12 +208,10 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	project := p.GetProject()
 
 	returnReplaceDiff := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs, newInputs resource.PropertyMap,
-		ignoreChanges []string,
+		_ context.Context,
+		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		if urn.Name() == "resA" {
+		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
 				Changes:             plugin.DiffSome,
 				ReplaceKeys:         []resource.PropertyKey{"key"},
@@ -231,34 +224,35 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 
 	deleteCalled := false
 	trackedDelete := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs resource.PropertyMap,
-		timeout float64,
-	) (resource.Status, error) {
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
 		deleteCalled = true
-		return resource.StatusOK, nil
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
 
 	createCalled := false
 	throwingCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
 		createCalled = true
-		return "", news, resource.StatusUnknown, errors.New("interrupt replace")
+		return plugin.CreateResponse{
+			Properties: req.Properties,
+			Status:     resource.StatusUnknown,
+		}, errors.New("interrupt replace")
 	}
 
 	trackedCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
 		createCalled = true
-		return "created-id", news, resource.StatusOK, nil
+		return plugin.CreateResponse{
+			ID:         "created-id",
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
 	}
 
 	// Act.
@@ -360,12 +354,10 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	project := p.GetProject()
 
 	returnReplaceDiff := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs, newInputs resource.PropertyMap,
-		ignoreChanges []string,
+		_ context.Context,
+		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		if urn.Name() == "resA" {
+		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
 				Changes:             plugin.DiffSome,
 				ReplaceKeys:         []resource.PropertyKey{"key"},
@@ -378,34 +370,35 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	deleteCalled := false
 	trackedDelete := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs resource.PropertyMap,
-		timeout float64,
-	) (resource.Status, error) {
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
 		deleteCalled = true
-		return resource.StatusOK, nil
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
 
 	createCalled := false
 	throwingCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
 		createCalled = true
-		return "", news, resource.StatusUnknown, errors.New("interrupt replace")
+		return plugin.CreateResponse{
+			Properties: req.Properties,
+			Status:     resource.StatusUnknown,
+		}, errors.New("interrupt replace")
 	}
 
 	trackedCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
 		createCalled = true
-		return "created-id", news, resource.StatusOK, nil
+		return plugin.CreateResponse{
+			ID:         "created-id",
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
 	}
 
 	// Act.
@@ -517,12 +510,10 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	project := p.GetProject()
 
 	returnReplaceDiff := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs, newInputs resource.PropertyMap,
-		ignoreChanges []string,
+		_ context.Context,
+		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		if urn.Name() == "resA" {
+		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
 				Changes:             plugin.DiffSome,
 				ReplaceKeys:         []resource.PropertyKey{"key"},
@@ -534,12 +525,10 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	}
 
 	returnNonReplaceDiff := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs, newInputs resource.PropertyMap,
-		ignoreChanges []string,
+		_ context.Context,
+		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		if urn.Name() == "resA" {
+		if req.URN.Name() == "resA" {
 			return plugin.DiffResult{
 				Changes:             plugin.DiffSome,
 				DeleteBeforeReplace: true,
@@ -551,34 +540,35 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 
 	deleteCalled := false
 	trackedDelete := func(
-		urn resource.URN,
-		id resource.ID,
-		oldInputs, oldOutputs resource.PropertyMap,
-		timeout float64,
-	) (resource.Status, error) {
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
 		deleteCalled = true
-		return resource.StatusOK, nil
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
 
 	createCalled := false
 	throwingCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
 		createCalled = true
-		return "", news, resource.StatusUnknown, errors.New("interrupt replace")
+		return plugin.CreateResponse{
+			Properties: req.Properties,
+			Status:     resource.StatusUnknown,
+		}, errors.New("interrupt replace")
 	}
 
 	trackedCreate := func(
-		urn resource.URN,
-		news resource.PropertyMap,
-		timeout float64,
-		preview bool,
-	) (resource.ID, resource.PropertyMap, resource.Status, error) {
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
 		createCalled = true
-		return "created-id", news, resource.StatusOK, nil
+		return plugin.CreateResponse{
+			ID:         "created-id",
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
 	}
 
 	// Act.

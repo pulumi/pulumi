@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -34,15 +35,13 @@ func TestImportOption(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(_ resource.URN, _ resource.ID,
-					_, oldOutputs, newInputs resource.PropertyMap, _ []string,
-				) (plugin.DiffResult, error) {
-					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
 					diffKind := plugin.DiffUpdate
-					if newInputs["foo"].IsString() && newInputs["foo"].StringValue() == "replace" {
+					if req.NewInputs["foo"].IsString() && req.NewInputs["foo"].StringValue() == "replace" {
 						diffKind = plugin.DiffUpdateReplace
 					}
 
@@ -53,21 +52,24 @@ func TestImportOption(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(_ resource.URN, news resource.PropertyMap, _ float64,
-					_ bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(_ resource.URN, _ resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					assert.Equal(t, expectedInputs, inputs)
-					assert.Equal(t, expectedState, state)
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					assert.Equal(t, expectedInputs, req.Inputs)
+					assert.Equal(t, expectedState, req.State)
 
-					return plugin.ReadResult{
-						Inputs:  readInputs,
-						Outputs: readOutputs,
-					}, resource.StatusOK, nil
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs:  readInputs,
+							Outputs: readOutputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -306,10 +308,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
@@ -320,24 +320,27 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 						},
 					}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						// This ID is deliberately not the same as the ID used to import.
-						ID: "id",
-						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							// This ID is deliberately not the same as the ID used to import.
+							ID: "id",
+							Inputs: resource.PropertyMap{
+								"foo": resource.NewStringProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"foo": resource.NewStringProperty("bar"),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -410,14 +413,15 @@ func TestImportUpdatedID(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(
-					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						ID:      actualID,
-						Outputs: resource.PropertyMap{},
-						Inputs:  resource.PropertyMap{},
-					}, resource.StatusOK, nil
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      actualID,
+							Outputs: resource.PropertyMap{},
+							Inputs:  resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -492,18 +496,19 @@ const importSchema = `{
   }
 }`
 
-func diffImportResource(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+func diffImportResource(
+	_ context.Context,
+	req plugin.DiffRequest,
 ) (plugin.DiffResult, error) {
-	if oldOutputs["foo"].DeepEquals(newInputs["foo"]) && oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
+	if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) && req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
 	detailedDiff := make(map[string]plugin.PropertyDiff)
-	if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
+	if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 		detailedDiff["foo"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
-	if !oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
+	if !req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
 		detailedDiff["frob"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 
@@ -527,23 +532,26 @@ func TestImportPlan(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						ID:      "actual-id",
-						Inputs:  readInputs,
-						Outputs: readOutputs,
-					}, resource.StatusOK, nil
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      "actual-id",
+							Inputs:  readInputs,
+							Outputs: readOutputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -594,24 +602,27 @@ func TestImportIgnoreChanges(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -649,28 +660,31 @@ func TestImportPlanExistingImport(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -736,28 +750,31 @@ func TestImportPlanEmptyState(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -787,28 +804,31 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -847,46 +867,49 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-							"baz":  resource.NewNumberProperty(2),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+								"baz":  resource.NewNumberProperty(2),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+								"baz":  resource.NewNumberProperty(2),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-							"baz":  resource.NewNumberProperty(2),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 				CheckF: func(
-					urn resource.URN, olds, news resource.PropertyMap,
-					randomSeed []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
 					// Error unless "foo" and "frob" are in news
 
-					if _, has := news["foo"]; !has {
-						return nil, nil, errors.New("Need foo")
+					if _, has := req.News["foo"]; !has {
+						return plugin.CheckResponse{}, errors.New("Need foo")
 					}
 
-					if _, has := news["frob"]; !has {
-						return nil, nil, errors.New("Need frob")
+					if _, has := req.News["frob"]; !has {
+						return plugin.CheckResponse{}, errors.New("Need frob")
 					}
 
-					return news, nil, nil
+					return plugin.CheckResponse{Properties: req.News}, nil
 				},
 			}, nil
 		}),
@@ -932,28 +955,30 @@ func TestImportIntoParent(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", news, resource.StatusUnknown, errors.New("not implemented")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						Properties: req.Properties,
+						Status:     resource.StatusUnknown,
+					}, errors.New("not implemented")
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -991,28 +1016,27 @@ func TestImportComponent(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusUnknown, errors.New("not implemented")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1065,28 +1089,27 @@ func TestImportRemoteComponent(t *testing.T) {
 		}),
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "", nil, resource.StatusUnknown, errors.New("not implemented")
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						Inputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewStringProperty("bar"),
+								"frob": resource.NewNumberProperty(1),
+							},
 						},
-						Outputs: resource.PropertyMap{
-							"foo":  resource.NewStringProperty("bar"),
-							"frob": resource.NewNumberProperty(1),
-						},
-					}, resource.StatusOK, nil
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -1150,13 +1173,10 @@ func TestImportInputDiff(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				GetSchemaF: func(plugin.GetSchemaRequest) ([]byte, error) {
-					return []byte(importSchema), nil
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				DiffF: func(
-					urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffNone,
 						StableKeys: []resource.PropertyKey{
@@ -1164,14 +1184,15 @@ func TestImportInputDiff(t *testing.T) {
 						},
 					}, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap,
-				) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{
-						ID:      "actual-id",
-						Inputs:  readInputs,
-						Outputs: readOutputs,
-					}, resource.StatusOK, nil
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      "actual-id",
+							Inputs:  readInputs,
+							Outputs: readOutputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),

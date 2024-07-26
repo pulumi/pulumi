@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -92,10 +93,11 @@ func destroySpecificTargets(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -103,10 +105,11 @@ func destroySpecificTargets(
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				DiffF: func(
+					_ context.Context,
+					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -205,23 +208,21 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					// all resources will change.
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					outputs := oldOutputs.Copy()
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					outputs := req.OldOutputs.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
-					return outputs, resource.StatusOK, nil
+					return plugin.UpdateResponse{
+						Properties: outputs,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -315,23 +316,21 @@ func updateInvalidTarget(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					// all resources will change.
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
 				},
 
-				UpdateF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					timeout float64, ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					outputs := oldOutputs.Copy()
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					outputs := req.OldOutputs.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
-					return outputs, resource.StatusOK, nil
+					return plugin.UpdateResponse{
+						Properties: outputs,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -650,17 +649,17 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					// No resources will change.
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 				},
 
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -882,10 +881,11 @@ func destroySpecificTargetsWithChildren(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -893,10 +893,8 @@ func destroySpecificTargetsWithChildren(
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -1036,12 +1034,13 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, _ []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				CheckF: func(
+					_ context.Context,
+					req plugin.CheckRequest,
+				) (plugin.CheckResponse, error) {
 					// Pulumi GCP provider alters inputs during Check.
-					news["__defaults"] = resource.NewStringProperty("exists")
-					return news, nil, nil
+					req.News["__defaults"] = resource.NewStringProperty("exists")
+					return plugin.CheckResponse{Properties: req.News}, nil
 				},
 			}, nil
 		}),
@@ -1633,10 +1632,12 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1694,10 +1695,12 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1755,15 +1758,15 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusUnknown, errors.New("can't delete")
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1817,16 +1820,16 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA::resB", string(urn))
-					return resource.StatusUnknown, errors.New("can't delete")
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA::resB", string(req.URN))
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1905,16 +1908,16 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
-					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB", string(urn))
-					return resource.StatusUnknown, errors.New("can't delete")
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB", string(req.URN))
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),

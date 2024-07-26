@@ -385,9 +385,9 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 
 	invokes := int32(0)
 	noopProvider := &deploytest.Provider{
-		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+		InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 			atomic.AddInt32(&invokes, 1)
-			return resource.PropertyMap{}, nil, nil
+			return plugin.InvokeResponse{}, nil
 		},
 	}
 
@@ -469,9 +469,9 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	invokes := int32(0)
 	noopProvider := &deploytest.Provider{
-		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+		InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 			atomic.AddInt32(&invokes, 1)
-			return resource.PropertyMap{}, nil, nil
+			return plugin.InvokeResponse{}, nil
 		},
 	}
 
@@ -636,9 +636,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			noopProvider := &deploytest.Provider{
-				InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					atomic.AddInt32(&invokes, 1)
-					return resource.PropertyMap{}, nil, nil
+					return plugin.InvokeResponse{}, nil
 				},
 			}
 
@@ -889,23 +889,20 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			var got plugin.ConstructOptions
 			provider := &deploytest.Provider{
 				ConstructF: func(
-					mon *deploytest.ResourceMonitor,
-					typ, name string,
-					parent resource.URN,
-					inputs resource.PropertyMap,
-					info plugin.ConstructInfo,
-					options plugin.ConstructOptions,
-				) (plugin.ConstructResult, error) {
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
 					// To keep test cases above simple,
 					// nil out properties that are empty when unset.
-					nilIfEmpty(&options.Aliases)
-					nilIfEmpty(&options.Dependencies)
-					nilIfEmpty(&options.PropertyDependencies)
-					nilIfEmpty(&options.Providers)
+					nilIfEmpty(&req.Options.Aliases)
+					nilIfEmpty(&req.Options.Dependencies)
+					nilIfEmpty(&req.Options.PropertyDependencies)
+					nilIfEmpty(&req.Options.Providers)
 
-					got = options
-					return plugin.ConstructResult{
-						URN: newURN(tokens.Type(typ), name, parent),
+					got = req.Options
+					return plugin.ConstructResponse{
+						URN: newURN(req.Type, req.Name, req.Parent),
 					}, nil
 				},
 			}
@@ -1414,11 +1411,12 @@ func TestStreamInvoke(t *testing.T) {
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
 				StreamInvokeF: func(
-					tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
-				) ([]plugin.CheckFailure, error) {
+					_ context.Context,
+					req plugin.StreamInvokeRequest,
+				) (plugin.StreamInvokeResponse, error) {
 					called = true
-					require.NoError(t, onNext(resource.PropertyMap{}))
-					return nil, nil
+					require.NoError(t, req.OnNext(resource.PropertyMap{}))
+					return plugin.StreamInvokeResponse{}, nil
 				},
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -1476,11 +1474,12 @@ func TestStreamInvoke(t *testing.T) {
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
 				StreamInvokeF: func(
-					tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
-				) ([]plugin.CheckFailure, error) {
+					_ context.Context,
+					req plugin.StreamInvokeRequest,
+				) (plugin.StreamInvokeResponse, error) {
 					called = true
-					require.NoError(t, onNext(resource.PropertyMap{}))
-					return nil, expectedErr
+					require.NoError(t, req.OnNext(resource.PropertyMap{}))
+					return plugin.StreamInvokeResponse{}, expectedErr
 				},
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -1537,14 +1536,17 @@ func TestStreamInvoke(t *testing.T) {
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
 				StreamInvokeF: func(
-					tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
-				) ([]plugin.CheckFailure, error) {
+					_ context.Context,
+					req plugin.StreamInvokeRequest,
+				) (plugin.StreamInvokeResponse, error) {
 					called = true
-					require.NoError(t, onNext(resource.PropertyMap{}))
-					return []plugin.CheckFailure{
-						{
-							Property: "some-property",
-							Reason:   "expect failure",
+					require.NoError(t, req.OnNext(resource.PropertyMap{}))
+					return plugin.StreamInvokeResponse{
+						Failures: []plugin.CheckFailure{
+							{
+								Property: "some-property",
+								Reason:   "expect failure",
+							},
 						},
 					}, nil
 				},
@@ -1650,14 +1652,17 @@ func TestStreamInvokeQuery(t *testing.T) {
 			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 				return &deploytest.Provider{
 					StreamInvokeF: func(
-						tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
-					) ([]plugin.CheckFailure, error) {
+						_ context.Context,
+						req plugin.StreamInvokeRequest,
+					) (plugin.StreamInvokeResponse, error) {
 						called = true
-						require.NoError(t, onNext(resource.PropertyMap{}))
-						return []plugin.CheckFailure{
-							{
-								Property: resource.PropertyKey("fake-key"),
-								Reason:   "I said so",
+						require.NoError(t, req.OnNext(resource.PropertyMap{}))
+						return plugin.StreamInvokeResponse{
+							Failures: []plugin.CheckFailure{
+								{
+									Property: resource.PropertyKey("fake-key"),
+									Reason:   "I said so",
+								},
 							},
 						}, nil
 					},
@@ -1718,11 +1723,12 @@ func TestStreamInvokeQuery(t *testing.T) {
 			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 				return &deploytest.Provider{
 					StreamInvokeF: func(
-						tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error,
-					) ([]plugin.CheckFailure, error) {
+						_ context.Context,
+						req plugin.StreamInvokeRequest,
+					) (plugin.StreamInvokeResponse, error) {
 						called = true
-						require.NoError(t, onNext(resource.PropertyMap{}))
-						return nil, nil
+						require.NoError(t, req.OnNext(resource.PropertyMap{}))
+						return plugin.StreamInvokeResponse{}, nil
 					},
 				}, nil
 			}),
@@ -2334,11 +2340,9 @@ func TestInvoke(t *testing.T) {
 			plugctx: plugctx,
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
-				InvokeF: func(
-					tok tokens.ModuleMember, inputs resource.PropertyMap,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					called = true
-					return nil, nil, expectedErr
+					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -2392,14 +2396,14 @@ func TestInvoke(t *testing.T) {
 			plugctx: plugctx,
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
-				InvokeF: func(
-					tok tokens.ModuleMember, inputs resource.PropertyMap,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					called = true
-					return nil, []plugin.CheckFailure{
-						{
-							Property: "some-property",
-							Reason:   "expect failure",
+					return plugin.InvokeResponse{
+						Failures: []plugin.CheckFailure{
+							{
+								Property: "some-property",
+								Reason:   "expect failure",
+							},
 						},
 					}, nil
 				},
@@ -2471,13 +2475,9 @@ func TestCall(t *testing.T) {
 			plugctx: plugctx,
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
-				CallF: func(
-					monitor *deploytest.ResourceMonitor,
-					tok tokens.ModuleMember, args resource.PropertyMap,
-					info plugin.CallInfo, options plugin.CallOptions,
-				) (plugin.CallResult, error) {
+				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					called = true
-					return plugin.CallResult{}, expectedErr
+					return plugin.CallResponse{}, expectedErr
 				},
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -2547,25 +2547,25 @@ func TestCall(t *testing.T) {
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
 				CallF: func(
-					monitor *deploytest.ResourceMonitor,
-					tok tokens.ModuleMember, args resource.PropertyMap,
-					info plugin.CallInfo, options plugin.CallOptions,
-				) (plugin.CallResult, error) {
+					_ context.Context,
+					req plugin.CallRequest,
+					_ *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
 					assert.Equal(t,
 						resource.PropertyMap{
 							"test": resource.NewStringProperty("test-value"),
 						},
-						args)
-					require.Equal(t, 1, len(options.ArgDependencies))
+						req.Args)
+					require.Equal(t, 1, len(req.Options.ArgDependencies))
 					assert.ElementsMatch(t,
 						[]resource.URN{
 							"urn:pulumi:stack::project::type::dep1",
 							"urn:pulumi:stack::project::type::dep2",
 							"urn:pulumi:stack::project::type::dep3",
 						},
-						options.ArgDependencies["test"])
+						req.Options.ArgDependencies["test"])
 					called = true
-					return plugin.CallResult{}, expectedErr
+					return plugin.CallResponse{}, expectedErr
 				},
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -2632,13 +2632,9 @@ func TestCall(t *testing.T) {
 			plugctx: plugctx,
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
-				CallF: func(
-					monitor *deploytest.ResourceMonitor,
-					tok tokens.ModuleMember, args resource.PropertyMap,
-					info plugin.CallInfo, options plugin.CallOptions,
-				) (plugin.CallResult, error) {
+				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					assert.Fail(t, "Call should not be called")
-					return plugin.CallResult{}, nil
+					return plugin.CallResponse{}, nil
 				},
 			},
 		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
@@ -2701,12 +2697,8 @@ func TestCall(t *testing.T) {
 			plugctx: plugctx,
 		}, &providerSourceMock{
 			Provider: &deploytest.Provider{
-				CallF: func(
-					monitor *deploytest.ResourceMonitor,
-					tok tokens.ModuleMember, args resource.PropertyMap,
-					info plugin.CallInfo, options plugin.CallOptions,
-				) (plugin.CallResult, error) {
-					return plugin.CallResult{
+				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
+					return plugin.CallResponse{
 						Return: resource.PropertyMap{
 							"result": resource.NewNumberProperty(100),
 						},
@@ -3194,11 +3186,12 @@ func TestRegisterResource(t *testing.T) {
 					) (*deploytest.ResourceMonitor, error) {
 						return nil, nil
 					},
-					ConstructF: func(monitor *deploytest.ResourceMonitor,
-						typ, name string, parent resource.URN, inputs resource.PropertyMap,
-						info plugin.ConstructInfo, options plugin.ConstructOptions,
-					) (plugin.ConstructResult, error) {
-						return plugin.ConstructResult{
+					ConstructF: func(
+						context.Context,
+						plugin.ConstructRequest,
+						*deploytest.ResourceMonitor,
+					) (plugin.ConstructResponse, error) {
+						return plugin.ConstructResponse{
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"expected-key-1": {
 									"untrusted-urn-1",

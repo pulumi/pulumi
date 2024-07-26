@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -232,13 +233,10 @@ func TestAliases(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := oldOutputs["forcesReplacement"]
-					new, hasNew := newInputs["forcesReplacement"]
+					old, hasOld := req.OldOutputs["forcesReplacement"]
+					new, hasNew := req.NewInputs["forcesReplacement"]
 					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
 						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}
@@ -775,12 +773,10 @@ func TestAliasURNs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := oldOutputs["forcesReplacement"]
-					new, hasNew := newInputs["forcesReplacement"]
+					old, hasOld := req.OldOutputs["forcesReplacement"]
+					new, hasNew := req.NewInputs["forcesReplacement"]
 					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
 						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}
@@ -1229,10 +1225,12 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1337,10 +1335,12 @@ func TestCorrectResourceChosen(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1435,23 +1435,21 @@ func TestComponentToCustomUpdate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
-					if !preview {
+					if !req.Preview {
 						id = resource.ID("1")
 					}
-					return id, news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN,
-					id resource.ID, oldInputs, oldOutputs resource.PropertyMap, timeout float64,
-				) (resource.Status, error) {
-					return resource.StatusOK, nil
+				DeleteF: func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{}, nil
 				},
-				DiffF: func(urn resource.URN,
-					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
 			}, nil
@@ -1536,14 +1534,16 @@ func TestParentAlias(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
-					if !preview {
+					if !req.Preview {
 						id = resource.ID("1")
 					}
-					return id, news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1621,14 +1621,16 @@ func TestEmptyParentAlias(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
-					if !preview {
+					if !req.Preview {
 						id = resource.ID("1")
 					}
-					return id, news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1696,13 +1698,15 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					// We should only create things in the first pass
-					assert.Equal(t, 0, mode, "%s tried to create but should be aliased", urn)
+					assert.Equal(t, 0, mode, "%s tried to create but should be aliased", req.URN)
 
-					return "created-id", news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1858,23 +1862,23 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					// We should only create things in the first and last pass
 					ok := mode == 0 || mode == 2
-					assert.True(t, ok, "%s tried to create but should be aliased", urn)
+					assert.True(t, ok, "%s tried to create but should be aliased", req.URN)
 
-					return "created-id", news, resource.StatusOK, nil
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, oldInputs, oldOutputs resource.PropertyMap,
-					timeout float64,
-				) (resource.Status, error) {
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					// We should only delete things in the last pass
 					ok := mode == 2
-					assert.True(t, ok, "%s tried to delete but should be aliased", urn)
+					assert.True(t, ok, "%s tried to delete but should be aliased", req.URN)
 
-					return resource.StatusUnknown, errors.New("can't delete")
+					return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("can't delete")
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
