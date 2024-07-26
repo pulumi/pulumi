@@ -16,7 +16,7 @@ package main
 
 import (
 	"context"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -67,8 +67,10 @@ func TestRepoLookup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &repoLookupImpl{}, rl)
 
-		dir, err := rl.GetRootDirectory(path.Join(ws.WorkDir(), "something"))
+		dir, err := rl.GetRootDirectory(filepath.Join(ws.WorkDir(), "something"))
 		assert.NoError(t, err)
+		// should assure the directory is using linux path separator as deployments are
+		// currently run only on linux images.
 		assert.Equal(t, "goproj/something", dir)
 
 		branch := rl.GetBranchName()
@@ -78,9 +80,13 @@ func TestRepoLookup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
 
-		root := rl.GetRepoRoot()
-		assert.Equal(t, path.Join(ws.WorkDir(), ".."), root)
+		assert.Equal(t, filepath.Dir(ws.WorkDir()), rl.GetRepoRoot())
 	})
+}
+
+type relativeDirectoryValidationCase struct {
+	Valid bool
+	Path  string
 }
 
 func TestValidateRelativeDirectory(t *testing.T) {
@@ -96,14 +102,21 @@ func TestValidateRelativeDirectory(t *testing.T) {
 	ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
 	require.NoError(t, err)
 
-	err = ValidateRelativeDirectory(path.Join(ws.WorkDir(), ".."))("./goproj")
-	require.NoError(t, err)
+	// relative directory values are always linux type paths
+	pathsToTest := []relativeDirectoryValidationCase{
+		{true, "./goproj"},
+		{false, "./goproj/child"},
+		{false, "./goproj/Pulumi.yaml"},
+	}
 
-	err = ValidateRelativeDirectory(path.Join(ws.WorkDir(), ".."))("./goproj/child")
-	require.Error(t, err, "invalid relative path %s", "./goproj/child")
-
-	err = ValidateRelativeDirectory(path.Join(ws.WorkDir(), ".."))("./goproj/Pulumi.yaml")
-	require.Error(t, err, "invalid relative path %s, is not a directory", "./goproj/Pulumi.yaml")
+	for _, c := range pathsToTest {
+		err = ValidateRelativeDirectory(filepath.Dir(ws.WorkDir()))(c.Path)
+		if c.Valid {
+			require.NoError(t, err)
+		} else {
+			require.Error(t, err, "invalid relative path %s", c.Path)
+		}
+	}
 }
 
 func TestValidateGitURL(t *testing.T) {
