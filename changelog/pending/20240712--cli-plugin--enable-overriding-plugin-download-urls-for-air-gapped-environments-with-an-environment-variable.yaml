@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Enable overriding plugin download URLs for air-gapped environments with an environment variable

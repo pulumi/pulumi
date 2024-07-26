@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -993,6 +994,94 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}
 }
 
+func TestPluginDownloadOverrideArray_Get(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		overrides     pluginDownloadOverrideArray
+		input         string
+		expectedURL   string
+		expectedMatch bool
+	}{
+		{
+			name: "No match",
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`^test-plugin$`), url: "https://example.com/test-plugin"},
+			},
+			input:         "another-plugin",
+			expectedURL:   "",
+			expectedMatch: false,
+		},
+		{
+			name: "Simple match",
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`^test-plugin$`), url: "https://example.com/test-plugin"},
+			},
+			input:         "test-plugin",
+			expectedURL:   "https://example.com/test-plugin",
+			expectedMatch: true,
+		},
+		{
+			name: "Match with name placeholders",
+			overrides: pluginDownloadOverrideArray{
+				{
+					reg: regexp.MustCompile(`^(?P<org>[\w-]+)-v(?P<repo>\d+\.\d+\.\d+)$`),
+					url: "https://example.com/${org}/${repo}/plugin.zip",
+				},
+			},
+			input:         "my-plugin-v1.2.3",
+			expectedURL:   "https://example.com/my-plugin/1.2.3/plugin.zip",
+			expectedMatch: true,
+		},
+		{
+			name: "Match with index placeholders",
+			overrides: pluginDownloadOverrideArray{
+				{
+					reg: regexp.MustCompile(`^(?P<org>[\w-]+)-v(?P<repo>\d+\.\d+\.\d+)$`),
+					url: "https://example.com/$1/$2/plugin.zip",
+				},
+			},
+			input:         "my-plugin-v1.2.3",
+			expectedURL:   "https://example.com/my-plugin/1.2.3/plugin.zip",
+			expectedMatch: true,
+		},
+		{
+			name: "Match with $0 placeholder",
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`^.+$`), url: "https://example.com/downloads?source=$0"},
+			},
+			input:         "test-plugin",
+			expectedURL:   "https://example.com/downloads?source=test-plugin",
+			expectedMatch: true,
+		},
+		{
+			name: "Multiple overrides, second matches",
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`^test-plugin$`), url: "https://example.com/test-plugin"},
+				{reg: regexp.MustCompile(`^another-plugin$`), url: "https://example.com/another-plugin"},
+			},
+			input:         "another-plugin",
+			expectedURL:   "https://example.com/another-plugin",
+			expectedMatch: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			actualURL, actualMatch := tt.overrides.get(tt.input)
+			if actualURL != tt.expectedURL {
+				assert.Equal(t, tt.expectedURL, actualURL)
+			}
+			if actualMatch != tt.expectedMatch {
+				assert.Equal(t, tt.expectedMatch, actualMatch)
+			}
+		})
+	}
+}
+
 func TestDownloadToFile_retries(t *testing.T) {
 	t.Parallel()
 
@@ -1080,19 +1169,124 @@ plugins:
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
 }
 
-func TestPluginBadSource(t *testing.T) {
-	t.Parallel()
-
-	version := semver.MustParse("4.30.0")
-	spec := PluginSpec{
-		PluginDownloadURL: "strange-scheme://what.is.this?oh-no",
-		Name:              "mockdl",
-		Version:           &version,
-		Kind:              apitype.PluginKind("resource"),
+//nolint:paralleltest // mutates pluginDownloadURLOverridesParsed
+func TestPluginSpec_GetSource(t *testing.T) {
+	tests := []struct {
+		name               string
+		spec               PluginSpec
+		overrides          pluginDownloadOverrideArray
+		expectedSourceType string
+		expectedURL        string
+		expectedErrMsg     string
+	}{
+		{
+			name: "Use PluginDownloadURL (HTTP)",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "https://example.com/test-plugin",
+			},
+			expectedSourceType: "*workspace.httpSource",
+			expectedURL:        "https://example.com/test-plugin",
+		},
+		{
+			name: "Use PluginDownloadURL (GitHub)",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "github://api.github.com/owner/repo",
+			},
+			expectedSourceType: "*workspace.githubSource",
+			expectedURL:        "github://api.github.com/owner/repo",
+		},
+		{
+			name: "Use PluginDownloadURL (GitLab)",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "gitlab://mygitlab.example.com/proj1",
+			},
+			expectedSourceType: "*workspace.gitlabSource",
+			expectedURL:        "gitlab://mygitlab.example.com/proj1",
+		},
+		{
+			name: "Use fallback source",
+			spec: PluginSpec{
+				Name: "test-plugin",
+				Kind: apitype.PluginKind("resource"),
+			},
+			expectedSourceType: "*workspace.fallbackSource",
+			expectedURL:        "github://api.github.com/pulumi/pulumi-test-plugin",
+		},
+		{
+			name: "Apply override (HTTP)",
+			spec: PluginSpec{
+				Name: "test-plugin",
+				Kind: apitype.PluginKind("resource"),
+			},
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`test-plugin`), url: "https://example.com/test-plugin"},
+			},
+			expectedSourceType: "*workspace.httpSource",
+			expectedURL:        "https://example.com/test-plugin",
+		},
+		{
+			name: "Apply override (GitHub)",
+			spec: PluginSpec{
+				Name: "test-plugin",
+				Kind: apitype.PluginKind("resource"),
+			},
+			overrides: pluginDownloadOverrideArray{
+				{reg: regexp.MustCompile(`test-plugin`), url: "github://api.github.com/test-org/test-plugin"},
+			},
+			expectedSourceType: "*workspace.githubSource",
+			expectedURL:        "github://api.github.com/test-org/test-plugin",
+		},
+		{
+			name: "Apply checksums",
+			spec: PluginSpec{
+				Name:      "test-plugin",
+				Kind:      apitype.PluginKind("resource"),
+				Checksums: map[string][]byte{"checksum1": []byte("checksum2")},
+			},
+			expectedSourceType: "*workspace.checksumSource",
+			expectedURL:        "github://api.github.com/pulumi/pulumi-test-plugin",
+		},
+		{
+			name: "Invalid URL",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "://invalid-url",
+			},
+			expectedErrMsg: "parse \"://invalid-url\": missing protocol scheme",
+		},
+		{
+			name: "Unknown scheme",
+			spec: PluginSpec{
+				Name:              "test-plugin",
+				Kind:              apitype.PluginKind("resource"),
+				PluginDownloadURL: "unknown://example.com/plugin",
+			},
+			expectedErrMsg: "unknown plugin source scheme: unknown",
+		},
 	}
-	source, err := spec.GetSource()
-	assert.ErrorContains(t, err, "unknown plugin source scheme: strange-scheme")
-	assert.Nil(t, source)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pluginDownloadURLOverridesParsed = tt.overrides
+
+			source, err := tt.spec.GetSource()
+			assert.Equal(t, tt.expectedErrMsg != "", err != nil)
+			if err != nil {
+				assert.Equal(t, tt.expectedErrMsg, err.Error())
+				return
+			}
+			actualSourceType := reflect.TypeOf(source).String()
+			assert.Equal(t, tt.expectedSourceType, actualSourceType)
+			assert.Equal(t, tt.expectedURL, source.URL())
+		})
+	}
 }
 
 func TestMissingErrorText(t *testing.T) {
