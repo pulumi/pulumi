@@ -138,7 +138,7 @@ func TestRetrieveZIPTemplates_FailsOnInvalidURLs(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Act.
-		_, err = retrieveZIPTemplates(templateURL)
+		_, err = RetrieveZIPTemplates(templateURL)
 
 		// Assert.
 		assert.ErrorContains(t, err, "invalid template URL: "+parsed.String())
@@ -157,7 +157,7 @@ func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
 
 	for path := range cases {
 		// Act.
-		_, err := retrieveZIPTemplates(server.URL + "/" + path)
+		_, err := RetrieveZIPTemplates(server.URL + "/" + path)
 
 		// Assert.
 		assert.ErrorContains(t, err, "template does not contain a Pulumi.yaml file")
@@ -179,7 +179,7 @@ func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
 
 	for path := range cases {
 		// Act.
-		_, err := retrieveZIPTemplates(server.URL + "/" + path)
+		_, err := RetrieveZIPTemplates(server.URL + "/" + path)
 
 		// Assert.
 		assert.NoError(t, err)
@@ -195,7 +195,7 @@ func TestRetrieveZIPTemplates_ReturnsMeaningfulErrorOn5xx(t *testing.T) {
 		require.NoError(t, err)
 	}))
 
-	_, err := retrieveZIPTemplates(server.URL)
+	_, err := RetrieveZIPTemplates(server.URL)
 
 	assert.ErrorContains(t, err, "failed to download template: 500 Internal Server Error\n"+
 		"Missing , or : between flow sequence items at line 30, column 20")

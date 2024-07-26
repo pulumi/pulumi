@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -197,11 +199,23 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(
+	var repo workspace.TemplateRepository
+	repo, err = workspace.RetrieveTemplates(
 		ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
-		return err
+		// Bail on all errors unless its a 401 from a Pulumi Cloud backend...
+		if !errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
+			return err
+		}
+
+		// ...If the request has 401'd AND we've identified the backend as being a Pulumi Cloud instance, we can
+		// attempt to retrieve the template using the user's Pulumi Cloud credentials.
+		repo, err = retrievePrivatePulumiCloudTemplate(args.templateNameOrURL)
+		if err != nil {
+			return fmt.Errorf("retrieving private pulumi cloud template: %w", err)
+		}
 	}
+
 	defer func() {
 		contract.IgnoreError(repo.Delete())
 	}()
@@ -476,6 +490,56 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	return nil
+}
+
+// Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
+//
+// If we cannot find current credentials for the given Pulumi Cloud URL we ask the user to login to that
+// URL using `pulumi login <cloud-url> --set-current=false`. We do this an extra safey measure to ensure
+// the user is aware of host they are trying to retrieve the template from and will be sending some kind
+// of crendetials to.
+func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateRepository, error) {
+	u, err := url.Parse(templateURL)
+	if err != nil {
+		return workspace.TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
+	}
+	// Docs convention is to store the cloud URL with the protocol.
+	// e.g. `pulumi login https://api.pulumi.com` or pulumi login `https://api.acme.org`
+	templatePulumiCloudHost := "https://" + u.Host
+
+	account, err := workspace.GetAccount(templatePulumiCloudHost)
+	if err != nil {
+		return workspace.TemplateRepository{}, fmt.Errorf(
+			"looking up pulumi cloud backend %s: %w\n\n%s",
+			templatePulumiCloudHost, err, howToLoginMessage(templatePulumiCloudHost))
+	}
+
+	if account.AccessToken == "" {
+		return workspace.TemplateRepository{}, fmt.Errorf(
+			"no access token found for %s\n\n%s",
+			templatePulumiCloudHost, howToLoginMessage(templatePulumiCloudHost))
+	}
+
+	templateRepository, err := workspace.RetrieveZIPTemplates(templateURL, func(req *http.Request) {
+		req.Header.Set("Authorization", "token "+account.AccessToken)
+	})
+
+	if errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
+		return workspace.TemplateRepository{}, fmt.Errorf(
+			"unauthorized to access template at %s. You may not have access to this template or token may have expired.\n\n%s",
+			templatePulumiCloudHost, howToLoginMessage(templatePulumiCloudHost))
+	}
+
+	// Caller can handle other errors
+	return templateRepository, err
+}
+
+func howToLoginMessage(cloudURL string) string {
+	messageTemplate := `Please login to the %s pulumi cloud backend to retrieve this template:
+
+pulumi login %s --set-current=false
+`
+	return fmt.Sprintf(messageTemplate, cloudURL, cloudURL)
 }
 
 // isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
