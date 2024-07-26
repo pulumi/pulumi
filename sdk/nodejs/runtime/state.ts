@@ -190,7 +190,14 @@ export interface Store {
      */
     callbacks?: ICallbackServer;
 
+    /**
+     * Tracks the list of resource packages that have been registered.
+     */
     resourcePackages: Map<string, ResourcePackage[]>;
+
+    /**
+     * Tracks the list of resource modules that have been registered.
+     */
     resourceModules: Map<string, ResourceModule[]>;
 }
 
