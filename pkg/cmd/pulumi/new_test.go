@@ -1185,3 +1185,31 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	require.Equal(t, 1, len(proj.Runtime.Options()))
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
+
+func TestIsCopilotTemplateURL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"https://app.pulumi.com/ai/api/bundle/org/conversation/program.zip", true},
+		// non-ai endpoints
+		{"https://app.pulumi.com/ai-marketing/foo.zip", false},
+		// missing zip
+		{"https://app.pulumi.com/ai/api/bundle/org/conversation/program", false},
+		// only app.pulumi.com is supported
+		{"https://app.acme.com/ai/api/bundle/org/conversation/program.zip", false},
+		// not a real URL
+		{"hi there", false},
+		// not quite
+		{"https://localhost:3000/ecs", false},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+			result := isCopilotTemplateURL(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

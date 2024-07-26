@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -188,11 +189,21 @@ func runNew(ctx context.Context, args newArgs) error {
 			args.templateNameOrURL = conversationURL
 		}
 	}
-	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
-	if err != nil {
-		return err
+
+	var repo workspace.TemplateRepository
+	if isCopilotTemplateURL(args.templateNameOrURL) {
+		repo, err = retrieveCopilotTemplate(ctx, args.templateNameOrURL, opts)
+		if err != nil {
+			return fmt.Errorf("retrieving copilot template: %w", err)
+		}
+	} else {
+		// Retrieve the template repo.
+		repo, err = workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
+		if err != nil {
+			return err
+		}
 	}
+
 	defer func() {
 		contract.IgnoreError(repo.Delete())
 	}()
@@ -455,6 +466,55 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	return nil
+}
+
+// Retrieve a Copilot template from the given URL **including an auth token for Pulumi Cloud**
+// We only want to send this token to the app.pulumi.com domain.
+func retrieveCopilotTemplate(
+	ctx context.Context,
+	unsafeTemplateURL string,
+	opts display.Options,
+) (workspace.TemplateRepository, error) {
+	// Get a token for the copilot template cloud (only https://api.pulumi.com is supported for now).
+	lm := httpstate.NewLoginManager()
+	account, err := lm.Login(ctx, "https://api.pulumi.com", false /* insecure */, "pulumi",
+		"Copilot templates", httpstate.WelcomeUser, false /* setCurrent */, opts)
+	if err != nil {
+		return workspace.TemplateRepository{}, fmt.Errorf("logging in: %w", err)
+	}
+
+	u, err := url.Parse(unsafeTemplateURL)
+	if err != nil {
+		return workspace.TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
+	}
+
+	templateURL := url.URL{
+		Scheme: "https",
+		Host:   "app.pulumi.com",
+		Path:   u.Path,
+	}
+
+	return workspace.RetrieveZIPTemplates(templateURL.String(), func(req *http.Request) {
+		req.Header.Set("Authorization", "token "+account.AccessToken)
+	})
+}
+
+// Test whether we should try and retrieve a template from a Copilot URL.
+// They require an auth token and so are handled a bit differently they look like this:
+// https://app.pulumi.com/ai/api/bundle/{org}/{conversation}/{program}.zip
+func isCopilotTemplateURL(templateNamePathOrURL string) bool {
+	u, err := url.Parse(templateNamePathOrURL)
+	if err != nil {
+		return false
+	}
+
+	// That that the host is app.pulumi.com
+	// We don't want to sent an auth token anywhere else.
+	if u.Host != "app.pulumi.com" {
+		return false
+	}
+
+	return strings.HasPrefix(u.Path, "/ai/") && strings.HasSuffix(u.Path, ".zip")
 }
 
 // sanitizeTemplate strips sensitive data such as credentials and query strings from a template URL.

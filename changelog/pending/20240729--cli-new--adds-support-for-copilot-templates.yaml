@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Adds support for Copilot templates
