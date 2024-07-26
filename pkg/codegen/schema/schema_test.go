@@ -151,9 +151,10 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
 
-		assert.Equal(t, 2, len(exampleObjectType.Properties))
+		assert.Equal(t, 3, len(exampleObjectType.Properties))
 		var exampleProperty *Property
 		var nonPlainProperty *Property
+		var nestedProperty *Property
 		for _, p := range exampleObjectType.Properties {
 			if p.Name == "exampleProperty" {
 				exampleProperty = p
@@ -162,13 +163,27 @@ func TestRoundtripPlainProperties(t *testing.T) {
 			if p.Name == "nonPlainProperty" {
 				nonPlainProperty = p
 			}
+
+			if p.Name == "nestedProperty" {
+				nestedProperty = p
+			}
 		}
 
 		assert.NotNil(t, exampleProperty)
 		assert.NotNil(t, nonPlainProperty)
+		assert.NotNil(t, nestedProperty)
 
 		assert.True(t, exampleProperty.Plain)
 		assert.False(t, nonPlainProperty.Plain)
+		assert.True(t, nestedProperty.Plain)
+
+		opt, ok := nestedProperty.Type.(*OptionalType)
+		assert.True(t, ok)
+		arr, ok := opt.ElementType.(*ArrayType)
+		assert.True(t, ok)
+		str, ok := arr.ElementType.(primitiveType)
+		assert.True(t, ok)
+		assert.Equal(t, stringType, str)
 	}
 
 	assertPlainnessFromResource := func(t *testing.T, pkg *Package) {
@@ -176,9 +191,12 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		assert.True(t, ok)
 
 		check := func(properties []*Property) {
+			assert.Equal(t, 3, len(properties))
+
 			var exampleProperty *Property
 			var nonPlainProperty *Property
-			for _, p := range exampleResource.InputProperties {
+			var nestedProperty *Property
+			for _, p := range properties {
 				if p.Name == "exampleProperty" {
 					exampleProperty = p
 				}
@@ -186,15 +204,27 @@ func TestRoundtripPlainProperties(t *testing.T) {
 				if p.Name == "nonPlainProperty" {
 					nonPlainProperty = p
 				}
+
+				if p.Name == "nestedProperty" {
+					nestedProperty = p
+				}
 			}
 
-			// assert that the input property "exampleProperty" is plain
 			assert.NotNil(t, exampleProperty)
-			assert.True(t, exampleProperty.Plain)
-
-			// assert that the output property is not plain
 			assert.NotNil(t, nonPlainProperty)
+			assert.NotNil(t, nestedProperty)
+
+			assert.True(t, exampleProperty.Plain)
 			assert.False(t, nonPlainProperty.Plain)
+			assert.True(t, nestedProperty.Plain)
+
+			opt, ok := nestedProperty.Type.(*OptionalType)
+			assert.True(t, ok)
+			arr, ok := opt.ElementType.(*ArrayType)
+			assert.True(t, ok)
+			str, ok := arr.ElementType.(primitiveType)
+			assert.True(t, ok)
+			assert.Equal(t, stringType, str)
 		}
 
 		check(exampleResource.InputProperties)
