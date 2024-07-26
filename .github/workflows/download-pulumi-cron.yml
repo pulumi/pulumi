@@ -25,6 +25,7 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
+          # shellcheck disable=SC2129
           echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
           echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
           echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version')" >> "${GITHUB_OUTPUT}"
@@ -93,6 +94,7 @@ jobs:
         id: vars
         shell: bash
         run: |
+          # shellcheck disable=SC2129
           echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
           echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
           echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version')" >> "${GITHUB_OUTPUT}"
