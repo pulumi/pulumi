@@ -49,7 +49,7 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 		map[resource.PropertyKey][]resource.URN{
 			"k1": {"urn1", "urn2"},
 		},
-		"provider", "1.0")
+		"provider", "1.0", "")
 	require.NoError(t, err)
 
 	assert.Equal(t, map[resource.PropertyKey][]resource.URN{

@@ -180,6 +180,23 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						Status: resource.StatusOK,
 					}, nil
 				},
+				CallF: func(_ context.Context, req plugin.CallRequest, _ *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
+					assert.Equal(t, "pkgExt:index:call", req.Tok.String())
+					assert.Equal(t, resource.NewStringProperty("in"), req.Args["input"])
+					assert.Equal(t, map[resource.PropertyKey][]resource.URN{
+						"input": {"urn:pulumi:stack::m::typA::resB"},
+					}, req.Options.ArgDependencies)
+
+					return plugin.CallResponse{
+						Return: resource.PropertyMap{
+							"output": resource.NewStringProperty("output"),
+						},
+						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
+							"output": {"urn:pulumi:stack::m::typA::resB"},
+						},
+						Failures: nil,
+					}, nil
+				},
 			}, nil
 		}),
 	}
@@ -220,6 +237,28 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		// Test reading a resource on the replacement provider
 		_, _, err = monitor.ReadResource("pkgExt:m:typA", "resC", "id", "", resource.PropertyMap{}, "", "", "", extRef)
 		require.NoError(t, err)
+
+		// Test calling a function on the replacement provider
+		callOuts, callDeps, callFailures, err := monitor.Call(
+			"pkgExt:index:call",
+			resource.PropertyMap{
+				"input": resource.NewStringProperty("in"),
+			},
+			map[resource.PropertyKey][]resource.URN{
+				"input": {"urn:pulumi:stack::m::typA::resB"},
+			},
+			"", /*provider*/
+			"", /*version*/
+			extRef,
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"output": resource.NewStringProperty("output"),
+		}, callOuts)
+		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
+			"output": {"urn:pulumi:stack::m::typA::resB"},
+		}, callDeps)
+		assert.Nil(t, callFailures)
 
 		return err
 	})

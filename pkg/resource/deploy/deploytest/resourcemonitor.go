@@ -424,7 +424,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 
 func (rm *ResourceMonitor) Call(
 	tok tokens.ModuleMember, args resource.PropertyMap, argDependencies map[resource.PropertyKey][]resource.URN,
-	provider string, version string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
+	provider string, version string, packageRef string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
 	[]*pulumirpc.CheckFailure, error,
 ) {
 	// marshal inputs
@@ -456,6 +456,7 @@ func (rm *ResourceMonitor) Call(
 		Args:            mArgs,
 		ArgDependencies: mArgDependencies,
 		Version:         version,
+		PackageRef:      packageRef,
 	})
 	if err != nil {
 		return nil, nil, nil, err
