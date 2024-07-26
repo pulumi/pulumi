@@ -912,9 +912,16 @@ type CheckRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Urn        string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`               // the Pulumi URN for this resource.
-	Olds       *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`             // the old Pulumi inputs for this resource, if any.
-	News       *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`             // the new Pulumi inputs for this resource.
+	Urn  string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`   // the Pulumi URN for this resource.
+	Olds *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"` // the old Pulumi inputs for this resource, if any.
+	// the new Pulumi inputs for this resource.
+	//
+	// Note that if the user specifies the ignoreChanges resource option, the value of news passed
+	// to the provider here may differ from the values written in the program source. It will be pre-processed by
+	// replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
+	//
+	// See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+	News       *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
 	RandomSeed []byte           `protobuf:"bytes,5,opt,name=randomSeed,proto3" json:"randomSeed,omitempty"` // a deterministically random hash, primarily intended for global unique naming.
 }
 
@@ -1093,10 +1100,11 @@ type DiffRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id            string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // the ID of the resource to diff.
-	Urn           string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`                              // the Pulumi URN for this resource.
-	Olds          *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`                            // the old output values of resource to diff.
-	News          *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`                            // the new input values of resource to diff.
+	Id   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // the ID of the resource to diff.
+	Urn  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`   // the Pulumi URN for this resource.
+	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"` // the old output values of resource to diff.
+	// the new input values of resource to diff, copied from CheckResponse.inputs.
+	News          *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
 	IgnoreChanges []string         `protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`          // a set of property paths that should be treated as unchanged.
 	OldInputs     *structpb.Struct `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"` // the old input values of the resource to diff.
 }
@@ -1620,10 +1628,11 @@ type UpdateRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id            string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // the ID of the resource to update.
-	Urn           string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`                              // the Pulumi URN for this resource.
-	Olds          *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`                            // the old values of provider inputs for the resource to update.
-	News          *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`                            // the new values of provider inputs for the resource to update.
+	Id   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // the ID of the resource to update.
+	Urn  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`   // the Pulumi URN for this resource.
+	Olds *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"` // the old values of provider inputs for the resource to update.
+	// the new values of provider inputs for the resource to update, copied from CheckResponse.inputs.
+	News          *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
 	Timeout       float64          `protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`                    // the update request timeout represented in seconds.
 	IgnoreChanges []string         `protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`          // a set of property paths that should be treated as unchanged.
 	Preview       bool             `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`                     // true if this is a preview and the provider should not actually create the resource.

@@ -503,7 +503,14 @@ class CheckRequest(google.protobuf.message.Message):
         """the old Pulumi inputs for this resource, if any."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new Pulumi inputs for this resource."""
+        """the new Pulumi inputs for this resource.
+
+        Note that if the user specifies the ignoreChanges resource option, the value of news passed
+        to the provider here may differ from the values written in the program source. It will be pre-processed by
+        replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
+
+        See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+        """
     randomSeed: builtins.bytes
     """a deterministically random hash, primarily intended for global unique naming."""
     def __init__(
@@ -581,7 +588,7 @@ class DiffRequest(google.protobuf.message.Message):
         """the old output values of resource to diff."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new input values of resource to diff."""
+        """the new input values of resource to diff, copied from CheckResponse.inputs."""
     @property
     def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """a set of property paths that should be treated as unchanged."""
@@ -905,7 +912,7 @@ class UpdateRequest(google.protobuf.message.Message):
         """the old values of provider inputs for the resource to update."""
     @property
     def news(self) -> google.protobuf.struct_pb2.Struct:
-        """the new values of provider inputs for the resource to update."""
+        """the new values of provider inputs for the resource to update, copied from CheckResponse.inputs."""
     timeout: builtins.float
     """the update request timeout represented in seconds."""
     @property
