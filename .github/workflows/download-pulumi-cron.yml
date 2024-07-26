@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
           echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
-          echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version') >> "${GITHUB_OUTPUT}
+          echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version')" >> "${GITHUB_OUTPUT}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version && steps.vars.outputs.expected-version != steps.vars.outputs.installed-version}}
         run: |
@@ -95,7 +95,7 @@ jobs:
         run: |
           echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
           echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
-          echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version') >> "${GITHUB_OUTPUT}
+          echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version')" >> "${GITHUB_OUTPUT}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version && steps.vars.outputs.expected-version != steps.vars.outputs.installed-version}}
         run: |
