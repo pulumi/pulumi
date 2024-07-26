@@ -11,6 +11,14 @@
         },
         "nonPlainProperty": {
           "type": "string"
+        },
+        "nestedProperty": {
+          "type": "array",
+          "plain": true,
+          "items": {
+            "type": "string",
+            "plain": true
+          }
         }
       }
     }
@@ -25,6 +33,14 @@
         },
         "nonPlainProperty": {
           "type": "string"
+        },
+        "nestedProperty": {
+          "type": "array",
+          "plain": true,
+          "items": {
+            "type": "string",
+            "plain": true
+          }
         }
       },
       "inputProperties": {
@@ -34,6 +50,14 @@
         },
         "nonPlainProperty": {
           "type": "string"
+        },
+        "nestedProperty": {
+          "type": "array",
+          "plain": true,
+          "items": {
+            "type": "string",
+            "plain": true
+          }
         }
       }
     }

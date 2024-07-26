@@ -1313,7 +1313,7 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 	switch t := t.(type) {
 	case *InputType:
-		el := pkg.marshalType(t.ElementType, plain)
+		el := pkg.marshalType(t.ElementType, false)
 		el.Plain = false
 		return el
 	case *ArrayType:
@@ -1356,11 +1356,20 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 			Plain:         !plain,
 		}
 	case *ObjectType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.PackageReference, "types", t.Token)}
+		return TypeSpec{
+			Ref:   pkg.marshalTypeRef(t.PackageReference, "types", t.Token),
+			Plain: !plain,
+		}
 	case *EnumType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.PackageReference, "types", t.Token)}
+		return TypeSpec{
+			Ref:   pkg.marshalTypeRef(t.PackageReference, "types", t.Token),
+			Plain: !plain,
+		}
 	case *ResourceType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.PackageReference, "resources", t.Token)}
+		return TypeSpec{
+			Ref:   pkg.marshalTypeRef(t.Resource.PackageReference, "resources", t.Token),
+			Plain: !plain,
+		}
 	case *TokenType:
 		var defaultType string
 		if t.UnderlyingType != nil {
@@ -1368,27 +1377,52 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 		}
 
 		return TypeSpec{
-			Type: defaultType,
-			Ref:  pkg.marshalTypeRef(pkg.Reference(), "types", t.Token),
+			Type:  defaultType,
+			Ref:   pkg.marshalTypeRef(pkg.Reference(), "types", t.Token),
+			Plain: !plain,
 		}
 	default:
 		switch t {
 		case BoolType:
-			return TypeSpec{Type: "boolean"}
+			return TypeSpec{
+				Type:  "boolean",
+				Plain: !plain,
+			}
 		case StringType:
-			return TypeSpec{Type: "string"}
+			return TypeSpec{
+				Type:  "string",
+				Plain: !plain,
+			}
 		case IntType:
-			return TypeSpec{Type: "integer"}
+			return TypeSpec{
+				Type:  "integer",
+				Plain: !plain,
+			}
 		case NumberType:
-			return TypeSpec{Type: "number"}
+			return TypeSpec{
+				Type:  "number",
+				Plain: !plain,
+			}
 		case AnyType:
-			return TypeSpec{Ref: "pulumi.json#/Any"}
+			return TypeSpec{
+				Ref:   "pulumi.json#/Any",
+				Plain: !plain,
+			}
 		case ArchiveType:
-			return TypeSpec{Ref: "pulumi.json#/Archive"}
+			return TypeSpec{
+				Ref:   "pulumi.json#/Archive",
+				Plain: !plain,
+			}
 		case AssetType:
-			return TypeSpec{Ref: "pulumi.json#/Asset"}
+			return TypeSpec{
+				Ref:   "pulumi.json#/Asset",
+				Plain: !plain,
+			}
 		case JSONType:
-			return TypeSpec{Ref: "pulumi.json#/Json"}
+			return TypeSpec{
+				Ref:   "pulumi.json#/Json",
+				Plain: !plain,
+			}
 		default:
 			panic(fmt.Errorf("unexepcted type %v (%T)", t, t))
 		}
