@@ -215,6 +215,7 @@ message ResourceCallRequest {
     reserved "project", "stack", "config", "configSecretKeys", "dryRun", "parallel", "monitorEndpoint", "organization";
 
     SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
+    string packageRef = 17; // a reference from RegisterProviderRequest.
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.

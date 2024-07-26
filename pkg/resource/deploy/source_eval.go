@@ -1064,6 +1064,16 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, err
 	}
+
+	packageRef := req.GetPackageRef()
+	if packageRef != "" {
+		var has bool
+		providerReq, has = rm.packageRefMap[packageRef]
+		if !has {
+			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+		}
+	}
+
 	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err

@@ -519,6 +519,8 @@ export class ResourceCallRequest extends jspb.Message {
     clearSourceposition(): void;
     getSourceposition(): pulumi_source_pb.SourcePosition | undefined;
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceCallRequest;
+    getPackageref(): string;
+    setPackageref(value: string): ResourceCallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
@@ -542,6 +544,7 @@ export namespace ResourceCallRequest {
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
+        packageref: string,
     }
 
 

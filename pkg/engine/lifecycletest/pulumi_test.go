@@ -2395,14 +2395,14 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		var outs resource.PropertyMap
 		if preview {
 			// We can't send any args or dependencies in preview because the RegisterResource call above failed.
-			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "")
+			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "", "")
 			assert.NoError(t, err)
 		} else {
 			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 				"name": respC.Outputs["foo"],
 			}, map[resource.PropertyKey][]resource.URN{
 				"name": {respC.URN},
-			}, provRef.String(), "")
+			}, provRef.String(), "", "")
 			assert.NoError(t, err)
 		}
 		if preview {
@@ -2885,7 +2885,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 			"name": resource.NewStringProperty("Alice"),
-		}, nil, "", "")
+		}, nil, "", "", "")
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"message": resource.NewStringProperty("Alice, bar!"),
@@ -2968,7 +2968,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 			"foo": resource.NewStringProperty("bar"),
 		}, resp.Outputs)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "")
+		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "", "")
 		assert.NoError(t, err)
 		return nil
 	})
@@ -4724,7 +4724,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "")
+		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "", "")
 		assert.NoError(t, err)
 
 		return nil
@@ -4848,7 +4848,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "")
+			}, nil, "", "", "")
 			assert.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -5001,7 +5001,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "")
+			}, nil, "", "", "")
 			assert.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -5164,7 +5164,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "")
+			}, nil, "", "", "")
 			assert.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
@@ -5333,7 +5333,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 				}),
 			}, map[resource.PropertyKey][]resource.URN{
 				"arg": {urn},
-			}, "", "")
+			}, "", "", "")
 			assert.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
