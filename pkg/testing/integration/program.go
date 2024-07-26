@@ -845,8 +845,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	prepareProgram(t, opts)
-	pt := newProgramTester(t, opts)
+	pt := ProgramTestManualLifeCycle(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	if !errors.Is(err, ErrTestFailed) {
 		assert.NoError(t, err)
