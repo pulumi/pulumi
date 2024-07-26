@@ -35,7 +35,7 @@ test_fast:: $(TEST_ALL_DEPS)
 	@$(GO_TEST_FAST) $(TEST_FAST_PKGS)
 
 	@cd pulumi-language-go && \
-		$(GO_TEST_FAST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
+		$(GO_TEST_FAST) $(shell cd pulumi-language-go && go list ./... | grep -v /vendor/ | grep -v templates)
 
 test_auto:: $(TEST_ALL_DEPS)
 	@$(GO_TEST) $(TEST_AUTO_PKGS)
