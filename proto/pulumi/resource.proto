@@ -82,6 +82,8 @@ message ReadResourceRequest {
     map<string, bytes> pluginChecksums = 15; // a map of checksums of the provider to use when servicing this request.
 
     SourcePosition sourcePosition = 14;    // the optional source position of the user code that initiated the read.
+
+    string packageRef = 16; // a reference from RegisterProviderRequest.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.

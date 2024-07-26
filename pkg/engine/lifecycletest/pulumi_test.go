@@ -495,7 +495,7 @@ func TestBadResourceType(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
 		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
 
-		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "", "", "")
+		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "", "", "", "")
 		assert.Error(t, err)
 		rpcerr, ok = rpcerror.FromError(err)
 		assert.True(t, ok)
@@ -999,7 +999,7 @@ func TestStackReference(t *testing.T) {
 		_, state, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
-			}), "", "", "")
+			}), "", "", "", "")
 		assert.NoError(t, err)
 		if !info.DryRun {
 			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
@@ -1075,7 +1075,7 @@ func TestStackReference(t *testing.T) {
 		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "rehto",
-			}), "", "", "")
+			}), "", "", "", "")
 		assert.Error(t, err)
 		return err
 	})
@@ -1093,7 +1093,7 @@ func TestStackReference(t *testing.T) {
 			resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "other",
 				"foo":  "bar",
-			}), "", "", "")
+			}), "", "", "", "")
 		assert.Error(t, err)
 		return err
 	})
@@ -2048,7 +2048,7 @@ func TestMissingRead(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "")
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
 		assert.Error(t, err)
 		return nil
 	})
@@ -3396,7 +3396,7 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "")
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "", "")
 		assert.Error(t, err)
 		return nil
 	})
@@ -4399,7 +4399,7 @@ func TestSourcePositions(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resB", "id", "", inputs, "", "", "file://"+readPos)
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resB", "id", "", inputs, "", "", "file://"+readPos, "")
 		require.NoError(t, err)
 
 		return nil

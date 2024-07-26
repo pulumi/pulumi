@@ -31,7 +31,7 @@ func TestDuplicateURN(t *testing.T) {
 		assert.Error(t, err)
 
 		// Reads use the same URN namespace as register so make sure this also errors
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", "")
 		assert.Error(t, err)
 
 		return nil
@@ -174,7 +174,7 @@ func TestReadReplaceStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
 					assert.NoError(t, err)
 					return nil
 				}, false).
@@ -226,7 +226,7 @@ func TestRelinquishStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
 					assert.NoError(t, err)
 					return nil
 				}, true).
@@ -256,7 +256,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", "")
 			assert.NoError(t, err)
 			return nil
 		}, false).
@@ -357,7 +357,7 @@ func TestReadNilOutputs(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
 			assert.ErrorContains(t, err, "resource 'my-resource-id' does not exist")
 
 			return nil

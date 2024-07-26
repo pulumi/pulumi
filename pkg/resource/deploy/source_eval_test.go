@@ -402,11 +402,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
-		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "")
+		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "")
+		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "")
+		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", "")
 		assert.NoError(t, perr)
 
 		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
@@ -478,11 +478,11 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
-		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "")
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "")
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "")
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
 		assert.NoError(t, err)
 
 		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
@@ -660,11 +660,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 					aPkgProvider = providerARef.String()
 				}
 				// Perform some reads and invokes with explicit provider references.
-				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "")
+				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "")
+				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
 				assert.NoError(t, perr)
-				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "")
+				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
 				assert.NoError(t, perr)
 
 				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")

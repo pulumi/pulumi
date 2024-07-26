@@ -1256,6 +1256,16 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
+		packageRef := req.GetPackageRef()
+		if packageRef != "" {
+			var has bool
+			providerReq, has = rm.packageRefMap[packageRef]
+			if !has {
+				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+			}
+		}
+
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr

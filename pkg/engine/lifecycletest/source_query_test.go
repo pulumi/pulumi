@@ -53,7 +53,7 @@ func TestRunQuery_nocreate(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.ErrorContains(t, err, "Query mode does not support creating, updating, or deleting resources")
 
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", "")
 		assert.ErrorContains(t, err, "Query mode does not support reading resources")
 		return nil
 	})
