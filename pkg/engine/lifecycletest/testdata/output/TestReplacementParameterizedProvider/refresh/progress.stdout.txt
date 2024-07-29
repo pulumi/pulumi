@@ -11,9 +11,13 @@
  <{%reset%}>  <{%reset%}> pkgExt:m:typA resB <{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgExt:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgExt:m:typA resC <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgExt provider <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:providers:pkgExt provider <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgExt:m:typA resD <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgExt:m:typA resD <{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    3 unchanged
+    5 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

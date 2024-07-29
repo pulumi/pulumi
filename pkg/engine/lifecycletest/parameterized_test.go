@@ -25,6 +25,7 @@ import (
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -260,6 +261,24 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		}, callDeps)
 		assert.Nil(t, callFailures)
 
+		// Test that we can create an explicit replacement provider and can use it
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgExt", "provider", true, deploytest.ResourceOptions{
+			PackageRef: extRef,
+		})
+		assert.NoError(t, err)
+		provID := prov.ID
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+		provRef, err := providers.NewReference(prov.URN, provID)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt:m:typA", "resD", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
 		return err
 	})
 
@@ -272,10 +291,10 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 5)
+	assert.Len(t, snap.Resources, 7)
 
-	// Check that we loaded the provider twice
-	assert.Equal(t, 2, loadCount)
+	// Check that we loaded the provider thrice
+	assert.Equal(t, 3, loadCount)
 
 	// Check the state of the parameterized provider is what we expect
 	prov := snap.Resources[2]
@@ -294,7 +313,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 5)
+	assert.Len(t, snap.Resources, 7)
 
 	snap, err = TestOp(Destroy).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")

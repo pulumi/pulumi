@@ -2068,6 +2068,28 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
 
+		if req.GetPackageRef() != "" {
+			packageRef := req.GetPackageRef()
+			providerReq, has := rm.packageRefMap[packageRef]
+			if !has {
+				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+			}
+
+			if providerReq.Version() != nil {
+				providers.SetProviderVersion(props, providerReq.Version())
+			}
+			if providerReq.PluginDownloadURL() != "" {
+				providers.SetProviderURL(props, providerReq.PluginDownloadURL())
+			}
+			if providerReq.PluginChecksums() != nil {
+				providers.SetProviderChecksums(props, providerReq.PluginChecksums())
+			}
+			if providerReq.Parameterization() != nil {
+				providers.SetProviderName(props, providerReq.Name())
+				providers.SetProviderParameterization(props, providerReq.Parameterization())
+			}
+		}
+
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
 		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
