@@ -197,6 +197,29 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						Failures: nil,
 					}, nil
 				},
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					_ *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					if param == "" {
+						assert.Equal(t, tokens.Type("pkgA:m:typA"), req.Type)
+						assert.Equal(t, "mlcA", req.Name)
+					} else {
+						assert.Equal(t, tokens.Type("pkgExt:m:typA"), req.Type)
+						assert.Equal(t, "mlcB", req.Name)
+					}
+
+					return plugin.ConstructResponse{
+						URN: resource.NewURN("", "", "", req.Type, req.Name),
+						Outputs: resource.PropertyMap{
+							"output": resource.NewStringProperty("output"),
+						},
+						OutputDependencies: map[resource.PropertyKey][]resource.URN{
+							"output": {"urn:pulumi:stack::m::typA::resB"},
+						},
+					}, nil
+				},
 			}, nil
 		}),
 	}
@@ -211,6 +234,20 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		// Register a multi-language component with the base provider
+		mlcA, err := monitor.RegisterResource("pkgA:m:typA", "mlcA", true, deploytest.ResourceOptions{
+			PackageRef: pkgRef,
+			Remote:     true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "mlcA", mlcA.URN.Name())
+		assert.Equal(t, resource.PropertyMap{
+			"output": resource.NewStringProperty("output"),
+		}, mlcA.Outputs)
+		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
+			"output": {"urn:pulumi:stack::m::typA::resB"},
+		}, mlcA.Dependencies)
+
 		// Now register a replacement provider
 		extRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, &pulumirpc.Parameterization{
 			Name:    "pkgExt",
@@ -224,6 +261,20 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			PackageRef: extRef,
 		})
 		require.NoError(t, err)
+
+		// Register a multi-language component with the replacement provider
+		mlcB, err := monitor.RegisterResource("pkgExt:m:typA", "mlcB", true, deploytest.ResourceOptions{
+			PackageRef: extRef,
+			Remote:     true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "mlcB", mlcB.URN.Name())
+		assert.Equal(t, resource.PropertyMap{
+			"output": resource.NewStringProperty("output"),
+		}, mlcB.Outputs)
+		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
+			"output": {"urn:pulumi:stack::m::typA::resB"},
+		}, mlcB.Dependencies)
 
 		// Test invoking a function on the replacement provider
 		result, _, err := monitor.Invoke("pkgExt:index:func", resource.PropertyMap{
