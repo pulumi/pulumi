@@ -110,7 +110,7 @@ class Random(pulumi.CustomResource):
             resource_name,
             __props__,
             opts,
-            packageRef=_utilities.get_package())
+            package_ref=_utilities.get_package())
 
     @staticmethod
     def get(resource_name: str,
