@@ -37,7 +37,7 @@ service ResourceProvider {
     //
     // Parameterize should work the same for both the `ParametersArgs` input and the `ParametersValue` input. Either way
     // should return the sub-package name and version (which for `ParametersValue` should match the given input).
-    // 
+    //
     // For extension resources their CRUD operations will include the version of which sub-package they correspond to.
     rpc Parameterize(ParameterizeRequest) returns (ParameterizeResponse) {}
 
@@ -229,7 +229,15 @@ message CallResponse {
 message CheckRequest {
     string urn = 1;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
-    google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
+
+    // the new Pulumi inputs for this resource.
+    //
+    // Note that if the user specifies the ignoreChanges resource option, the value of news passed
+    // to the provider here may differ from the values written in the program source. It will be pre-processed by
+    // replacing every ignoreChanges property by a matching value from the old inputs stored in the state.
+    //
+    // See also: https://www.pulumi.com/docs/concepts/options/ignorechanges/
+    google.protobuf.Struct news = 3;
 
     // We used to send sequenceNumber but that has been replaced by randomSeed.
     reserved 4;
@@ -252,7 +260,10 @@ message DiffRequest {
     string id = 1;                     // the ID of the resource to diff.
     string urn = 2;                    // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3;   // the old output values of resource to diff.
-    google.protobuf.Struct news = 4;   // the new input values of resource to diff.
+
+    // the new input values of resource to diff, copied from CheckResponse.inputs.
+    google.protobuf.Struct news = 4;
+
     repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
     google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
 }
@@ -351,7 +362,10 @@ message UpdateRequest {
     string id = 1;                     // the ID of the resource to update.
     string urn = 2;                    // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
-    google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
+
+    // the new values of provider inputs for the resource to update, copied from CheckResponse.inputs.
+    google.protobuf.Struct news = 4;
+
     double timeout = 5;                // the update request timeout represented in seconds.
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
