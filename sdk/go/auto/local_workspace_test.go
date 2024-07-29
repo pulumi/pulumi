@@ -952,6 +952,12 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
+	// -- pulumi destroy --preview-only --
+
+	pdRes, err := s.PreviewDestroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
+	assert.NoError(t, err, "preview-only destroy failed")
+	assert.Equal(t, 1, pdRes.ChangeSummary[apitype.OpSame])
+
 	// -- pulumi destroy --
 
 	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
@@ -2837,11 +2843,11 @@ func TestListStacks(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				   "current": false, 
-				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				  {"name": "testorg1/testproj1/teststack2", 
-				   "current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				  {"name": "testorg1/testproj1/teststack2",
+				   "current": false,
 				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2870,11 +2876,11 @@ func TestListStacksCorrectArgs(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				"current": false, 
-				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				{"name": "testorg1/testproj1/teststack2", 
-				"current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				{"name": "testorg1/testproj1/teststack2",
+				"current": false,
 				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2897,11 +2903,11 @@ func TestListAllStacks(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				   "current": false, 
-				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				  {"name": "testorg1/testproj2/teststack2", 
-				   "current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				  {"name": "testorg1/testproj2/teststack2",
+				   "current": false,
 				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2930,11 +2936,11 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				"current": false, 
-				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				{"name": "testorg1/testproj1/teststack2", 
-				"current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				{"name": "testorg1/testproj1/teststack2",
+				"current": false,
 				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,

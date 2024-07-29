@@ -753,6 +753,77 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	return args
 }
 
+func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (PreviewResult, error) {
+	var res PreviewResult
+
+	// 3.105.0 added this flag (https://github.com/pulumi/pulumi/releases/tag/v3.105.0)
+	if minVer := (semver.Version{Major: 3, Minor: 105}); s.Workspace().PulumiCommand().Version().LT(minVer) {
+		return res, fmt.Errorf("PreviewRefresh requires Pulumi CLI version >= %s", minVer)
+	}
+
+	destroyOpts := &optdestroy.Options{}
+	for _, o := range opts {
+		o.ApplyOption(destroyOpts)
+	}
+
+	args := destroyOptsToCmd(destroyOpts, s)
+	args = append(args, "--preview-only")
+
+	var summaryEvents []apitype.SummaryEvent
+	eventChannel := make(chan events.EngineEvent)
+	eventsDone := make(chan bool)
+	go func() {
+		for {
+			event, ok := <-eventChannel
+			if !ok {
+				close(eventsDone)
+				return
+			}
+			if event.SummaryEvent != nil {
+				summaryEvents = append(summaryEvents, *event.SummaryEvent)
+			}
+		}
+	}()
+
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, destroyOpts.EventStreams...)
+	t, err := tailLogs("destroy", eventChannels)
+	if err != nil {
+		return res, fmt.Errorf("failed to tail logs: %w", err)
+	}
+	defer t.Close()
+	args = append(args, "--event-log", t.Filename)
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		destroyOpts.ProgressStreams,      /* additionalOutputs */
+		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to preview destroy: %w", err), stdout, stderr, code)
+	}
+
+	// Close the file watcher wait for all events to send
+	t.Close()
+	<-eventsDone
+
+	if len(summaryEvents) == 0 {
+		return res, newAutoError(errors.New("failed to get preview refresh summary"), stdout, stderr, code)
+	}
+	if len(summaryEvents) > 1 {
+		return res, newAutoError(errors.New("got multiple preview refresh summaries"), stdout, stderr, code)
+	}
+
+	res = PreviewResult{
+		ChangeSummary: summaryEvents[0].ResourceChanges,
+		StdOut:        stdout,
+		StdErr:        stderr,
+	}
+
+	return res, nil
+}
+
 // Destroy deletes all resources in a stack, leaving all history and configuration intact.
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
@@ -762,46 +833,8 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		o.ApplyOption(destroyOpts)
 	}
 
-	args := slice.Prealloc[string](len(destroyOpts.Target))
-
-	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
-	args = append(args, "destroy", "--yes", "--skip-preview")
-	if destroyOpts.Message != "" {
-		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
-	}
-	for _, tURN := range destroyOpts.Target {
-		args = append(args, "--target="+tURN)
-	}
-	if destroyOpts.TargetDependents {
-		args = append(args, "--target-dependents")
-	}
-	if destroyOpts.Parallel > 0 {
-		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
-	}
-	if destroyOpts.UserAgent != "" {
-		args = append(args, "--exec-agent="+destroyOpts.UserAgent)
-	}
-	if destroyOpts.Color != "" {
-		args = append(args, "--color="+destroyOpts.Color)
-	}
-	if destroyOpts.Refresh {
-		args = append(args, "--refresh")
-	}
-	if destroyOpts.SuppressOutputs {
-		args = append(args, "--suppress-outputs")
-	}
-	if destroyOpts.SuppressProgress {
-		args = append(args, "--suppress-progress")
-	}
-	if destroyOpts.ContinueOnError {
-		args = append(args, "--continue-on-error")
-	}
-
-	execKind := constant.ExecKindAutoLocal
-	if s.Workspace().Program() != nil {
-		execKind = constant.ExecKindAutoInline
-	}
-	args = append(args, "--exec-kind="+execKind)
+	args := destroyOptsToCmd(destroyOpts, s)
+	args = append(args, "--yes", "--skip-preview")
 
 	if len(destroyOpts.EventStreams) > 0 {
 		eventChannels := destroyOpts.EventStreams
@@ -812,9 +845,6 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
-
-	// Apply the remote args, if needed.
-	args = append(args, s.remoteArgs()...)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
@@ -862,6 +892,54 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 
 	return res, nil
+}
+
+func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
+	args := slice.Prealloc[string](len(destroyOpts.Target))
+
+	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
+	args = append(args, "destroy")
+	if destroyOpts.Message != "" {
+		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
+	}
+	for _, tURN := range destroyOpts.Target {
+		args = append(args, "--target="+tURN)
+	}
+	if destroyOpts.TargetDependents {
+		args = append(args, "--target-dependents")
+	}
+	if destroyOpts.Parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
+	}
+	if destroyOpts.UserAgent != "" {
+		args = append(args, "--exec-agent="+destroyOpts.UserAgent)
+	}
+	if destroyOpts.Color != "" {
+		args = append(args, "--color="+destroyOpts.Color)
+	}
+	if destroyOpts.Refresh {
+		args = append(args, "--refresh")
+	}
+	if destroyOpts.SuppressOutputs {
+		args = append(args, "--suppress-outputs")
+	}
+	if destroyOpts.SuppressProgress {
+		args = append(args, "--suppress-progress")
+	}
+	if destroyOpts.ContinueOnError {
+		args = append(args, "--continue-on-error")
+	}
+
+	execKind := constant.ExecKindAutoLocal
+	if s.Workspace().Program() != nil {
+		execKind = constant.ExecKindAutoInline
+	}
+	args = append(args, "--exec-kind="+execKind)
+
+	// Apply the remote args, if needed.
+	args = append(args, s.remoteArgs()...)
+
+	return args
 }
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
