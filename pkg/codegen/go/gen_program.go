@@ -1376,16 +1376,33 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 }
 
-func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
-	value := v.Value
-	destType := v.Value.Type()
-	if !model.ContainsOutputs(destType) {
-		// if the value is a plain type T, then lift it to Output[T]
-		// because ctx.Export expects an output value
+func isOutput(t model.Type) bool {
+	_, ok := t.(*model.OutputType)
+	return ok
+}
+
+func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
+	destType := value.Type()
+	if !isOutput(destType) {
 		destType = model.NewOutputType(destType)
-		value = pcl.NewConvertCall(value, destType)
 	}
 
+	switch expr := value.(type) {
+	case *model.TupleConsExpression:
+		// if the value is a tuple, then lift each element to Output[T] as well
+		for i, elem := range expr.Expressions {
+			lifted, _ := liftValueToOutput(elem)
+			expr.Expressions[i] = lifted
+		}
+	}
+
+	return pcl.NewConvertCall(value, destType), destType
+}
+
+func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
+	// if the value is a plain type T, then lift it to Output[T]
+	// because ctx.Export expects an output value
+	value, destType := liftValueToOutput(v.Value)
 	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)

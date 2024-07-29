@@ -172,7 +172,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // TODO: These tests are not working yet because of issues in sdkgen and programgen
 var expectedFailures = map[string]string{
-	"l1-output-array":                    "error in compiling Go",
 	"l1-stack-reference":                 "error in compiling Go",
 	"l2-target-up-with-new-dependency":   "missing go.mod",
 	"l2-destroy":                         "missing go.mod",
