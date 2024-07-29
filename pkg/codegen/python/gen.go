@@ -1938,13 +1938,24 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)\n")
 
 	// Now simply invoke the runtime function with the arguments.
-	var typ string
+	trailingArgs := ""
 	if returnType != nil {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
-		typ = ", typ=" + baseName
+		trailingArgs += ", typ=" + baseName
 	}
-	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
+
+	// If the invoke is on a parameterized package, make sure we pass the
+	// parameter.
+	pkg, err := fun.PackageReference.Definition()
+	if err != nil {
+		return "", err
+	}
+	if pkg.Parameterization != nil {
+		trailingArgs += ", package_ref=_utilities.get_package()"
+	}
+
+	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, trailingArgs)
 	fmt.Fprintf(w, "\n")
 
 	// And copy the results to an object, if there are indeed any expected returns.

@@ -37,37 +37,42 @@ func init() {
 	}
 }
 
-type failsOnCreateResourceProvider struct{}
+type failsOnCreateProvider struct{}
 
-func (p *failsOnCreateResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *failsOnCreateProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *failsOnCreateResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *failsOnCreateProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
 	return &rpc.DiffResponse{
 		Changes: rpc.DiffResponse_DIFF_NONE,
 	}, nil
 }
 
-func (p *failsOnCreateResourceProvider) Create(
+func (p *failsOnCreateProvider) Create(
 	ctx context.Context, req *rpc.CreateRequest,
 ) (*rpc.CreateResponse, error) {
 	return nil, errors.New("Create always fails for the FailsOnCreate resource")
 }
 
-func (p *failsOnCreateResourceProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *failsOnCreateProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
 	return &rpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
-func (p *failsOnCreateResourceProvider) Update(
+func (p *failsOnCreateProvider) Update(
 	ctx context.Context, req *rpc.UpdateRequest,
 ) (*rpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *failsOnCreateResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *failsOnCreateProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (p *failsOnCreateProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+	// The fails-on-create provider doesn't support any invokes currently.
+	panic("Invoke not implemented")
 }

@@ -50,17 +50,38 @@ func init() {
 			},
 		},
 	}
+	providerSchema.Functions["testprovider:index:doEcho"] = pschema.FunctionSpec{
+		Description: "A test invoke that echoes its input.",
+		Inputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		Outputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
 }
 
-type echoResourceProvider struct {
+type echoProvider struct {
 	id int
 }
 
-func (p *echoResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *echoProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *echoProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -85,7 +106,7 @@ func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (
 	}, nil
 }
 
-func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *echoProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		KeepUnknowns: true,
 		SkipNulls:    true,
@@ -109,17 +130,21 @@ func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateReques
 	}, nil
 }
 
-func (p *echoResourceProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *echoProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
 	return &rpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
-func (p *echoResourceProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *echoProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *echoResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *echoProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (p *echoProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+	return &rpc.InvokeResponse{Return: req.Args}, nil
 }

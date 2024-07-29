@@ -1329,7 +1329,7 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 // Test a paramaterized provider with python.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestParamaterizedPython(t *testing.T) {
+func TestParameterizedPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
 	// work. This also means we don't delete the directory after the test runs.
