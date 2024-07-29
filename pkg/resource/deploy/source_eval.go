@@ -2069,6 +2069,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 
 		if req.GetPackageRef() != "" {
+			// If the provider resource has a package ref then we need to set all it's input fields as in
+			// newRegisterDefaultProviderEvent.
 			packageRef := req.GetPackageRef()
 			providerReq, has := rm.packageRefMap[packageRef]
 			if !has {
