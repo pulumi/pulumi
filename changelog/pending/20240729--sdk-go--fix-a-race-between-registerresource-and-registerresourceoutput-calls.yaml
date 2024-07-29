@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: sdk/go
-  description: Fix a race between RegisterResource and RegisterResourceOutput calls
+  description: Fix a race between RegisterResourceOutput calls and resource reads
