@@ -1568,7 +1568,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		return "", err
 	}
 	if pkg.Parameterization != nil {
-		fmt.Fprintf(w, ",\n            packageRef=_utilities.get_package()")
+		fmt.Fprintf(w, ",\n            package_ref=_utilities.get_package()")
 	}
 	fmt.Fprintf(w, ")\n\n")
 

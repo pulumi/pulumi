@@ -854,7 +854,7 @@ def register_resource(
     props: "Inputs",
     opts: Optional["ResourceOptions"],
     typ: Optional[type] = None,
-    packageRef: Optional[Awaitable[Optional[str]]] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> None:
     """
     Registers a new resource object with a given type t and name.  It returns the
@@ -910,11 +910,11 @@ def register_resource(
             opts = opts if opts is not None else ResourceOptions()
 
             # If we have a package reference, we need to wait for it to resolve.
-            packageRefStr = None
-            if packageRef is not None:
-                packageRefStr = await packageRef
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
                 # If we have a package reference we can clear some of the resource options
-                if packageRefStr is not None:
+                if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
 
@@ -1003,7 +1003,7 @@ def register_resource(
                 sourcePosition=source_position,
                 transforms=callbacks,
                 supportsResultReporting=True,
-                packageRef=packageRefStr or "",
+                packageRef=package_ref_str or "",
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
