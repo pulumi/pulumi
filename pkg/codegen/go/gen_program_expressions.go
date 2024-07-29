@@ -1150,6 +1150,11 @@ func (g *generator) genStringLiteral(w io.Writer, v string, allowRaw bool) {
 func (g *generator) escapeString(v string) string {
 	builder := strings.Builder{}
 	for _, c := range v {
+		if c == '\x00' {
+			// escape NUL bytes
+			builder.WriteString(fmt.Sprintf("\\u%04x", c))
+			continue
+		}
 		if c == '"' || c == '\\' {
 			builder.WriteRune('\\')
 		}
