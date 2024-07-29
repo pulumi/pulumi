@@ -73,6 +73,8 @@ type contextState struct {
 	rpcError                 error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
+
+	registerOutputsLock sync.RWMutex // a lock protecting registering resource outputs
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -1181,6 +1183,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption,
 ) error {
+	ctx.state.registerOutputsLock.RLock()
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -1280,6 +1283,7 @@ func (ctx *Context) registerResource(
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
 	go func() {
+		defer ctx.state.registerOutputsLock.RUnlock()
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var urn, resID string
 		var inputs *resourceInputs
@@ -2189,8 +2193,11 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
+	ctx.state.registerOutputsLock.Lock()
 
 	go func() {
+		defer ctx.state.registerOutputsLock.Unlock()
+
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var err error
 		defer func() {
