@@ -257,6 +257,36 @@ export function getStackResource(): Stack | undefined {
 }
 
 /**
+ * Get the resource package map for the current stack deployment.
+ *
+ * @internal
+ */
+export function getResourcePackages(): Map<string, ResourcePackage[]> {
+    let { resourcePackages } = getStore();
+    if (resourcePackages === undefined) {
+        // resourcePackages can be undefined if an older SDK where it was not defined is created it.
+        // In this case, we should initialize it to an empty map.
+        resourcePackages = new Map<string, ResourcePackage[]>();
+    }
+    return resourcePackages;
+}
+
+/**
+ * Get the resource module map for the current stack deployment.
+ *
+ * @internal
+ */
+export function getResourceModules(): Map<string, ResourceModule[]> {
+    let { resourceModules } = getStore();
+    if (resourceModules === undefined) {
+        // resourceModules can be undefined if an older SDK where it was not defined is created it.
+        // In this case, we should initialize it to an empty map.
+        resourceModules = new Map<string, ResourceModule[]>();
+    }
+    return resourceModules;
+}
+
+/**
  * @internal
  */
 export function setStackResource(newStackResource?: Stack) {
