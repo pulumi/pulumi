@@ -5,6 +5,10 @@
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .do_echo import *
+from .echo import *
+from .fails_on_create import *
+from .fails_on_delete import *
 from .provider import *
 from .random import *
 _utilities.register(
@@ -15,6 +19,9 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_pkg",
   "classes": {
+   "pkg:index:Echo": "Echo",
+   "pkg:index:FailsOnCreate": "FailsOnCreate",
+   "pkg:index:FailsOnDelete": "FailsOnDelete",
    "pkg:index:Random": "Random"
   }
  }

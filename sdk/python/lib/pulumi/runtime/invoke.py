@@ -106,13 +106,14 @@ def invoke(
     props: "Inputs",
     opts: Optional[InvokeOptions] = None,
     typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> InvokeResult:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
-    return _invoke(tok, props, opts, typ, run_async=False)
+    return _invoke(tok, props, opts, typ, run_async=False, package_ref=package_ref)
 
 
 async def invoke_async(
@@ -120,13 +121,14 @@ async def invoke_async(
     props: "Inputs",
     opts: Optional[InvokeOptions] = None,
     typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> Any:
     """
     invoke_async dynamically asynchronously invokes the function, tok, which is offered by a provider plugin.
     the inputs can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
     resolves when the invoke finishes.
     """
-    return await _invoke(tok, props, opts, typ, run_async=True)
+    return await _invoke(tok, props, opts, typ, run_async=True, package_ref=package_ref)
 
 
 @overload
@@ -136,6 +138,7 @@ def _invoke(
     opts: Optional[InvokeOptions],
     typ: Optional[type],
     run_async: Literal[False],
+    package_ref: Optional[Awaitable[Optional[str]]],
 ) -> InvokeResult: ...
 @overload
 def _invoke(
@@ -144,6 +147,7 @@ def _invoke(
     opts: Optional[InvokeOptions],
     typ: Optional[type],
     run_async: Literal[True],
+    package_ref: Optional[Awaitable[Optional[str]]],
 ) -> Coroutine[Any, Any, Any]: ...
 def _invoke(
     tok: str,
@@ -151,6 +155,7 @@ def _invoke(
     opts: Optional[InvokeOptions],
     typ: Optional[type],
     run_async: bool,
+    package_ref: Optional[Awaitable[Optional[str]]],
 ):
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
@@ -172,6 +177,17 @@ def _invoke(
             provider_ref = f"{provider_urn}::{provider_id}"
             log.debug(f"Invoke using provider {provider_ref}")
 
+        # If we have a package reference, we need to wait for it to resolve.
+        package_ref_str = None
+        if package_ref is not None:
+            package_ref_str = await package_ref
+            # If we have a package reference we can clear some of the invoke
+            # options.
+            if package_ref_str is not None:
+                opts.plugin_download_url = None
+                opts.version = None
+                log.debug(f"Invoke using package reference {package_ref_str}")
+
         monitor = get_monitor()
         inputs = await rpc.serialize_properties(props, {})
         version = opts.version or ""
@@ -187,6 +203,7 @@ def _invoke(
             version=version,
             acceptResources=accept_resources,
             pluginDownloadURL=plugin_download_url,
+            packageRef=package_ref_str,
         )
 
         def do_invoke():
