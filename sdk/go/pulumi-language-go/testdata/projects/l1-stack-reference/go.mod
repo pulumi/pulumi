@@ -1,4 +1,4 @@
-module l1-empty
+module l1-stack-reference
 
 go 1.20
 

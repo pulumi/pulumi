@@ -377,6 +377,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "ctx.Project()")
 	case "cwd":
 		g.Fgen(w, "func(cwd string, err error) string { if err != nil { panic(err) }; return cwd }(os.Getwd())")
+	case "getOutput":
+		g.Fgenf(w, "%v.GetOutput(pulumi.String(%v))", expr.Args[0], expr.Args[1])
 	default:
 		// toJSON and readDir are reduced away, shouldn't see them here
 		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
