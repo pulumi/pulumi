@@ -32,6 +32,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/mod/modfile"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -4512,7 +4514,10 @@ func packageName(pkg *schema.Package) string {
 	return goPackage(root)
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func GeneratePackage(tool string,
+	pkg *schema.Package,
+	localDependencies map[string]string,
+) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
 	}
@@ -4881,6 +4886,32 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 			setGenericVariantFile(path.Join(mod, "init.go"), genericVariantBuffer.String())
 		}
+	}
+
+	// create a go.mod file with references to local dependencies
+	if len(localDependencies) > 0 {
+		var vPath string
+		if pkg.Version != nil && pkg.Version.Major > 1 {
+			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
+		}
+
+		modulePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s", pkg.Name, vPath)
+		var gomod modfile.File
+		err = gomod.AddModuleStmt(modulePath)
+		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
+		err = gomod.AddGoStmt("1.20")
+		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
+		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
+		pulumiVersion := "v3.30.0"
+		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
+		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
+		if replacementPath, hasReplacement := localDependencies["pulumi"]; hasReplacement {
+			err = gomod.AddReplace(pulumiPackagePath, "", replacementPath, "")
+			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
+		}
+
+		files["go.mod"], err = gomod.Format()
+		contract.AssertNoErrorf(err, "could not format go.mod")
 	}
 
 	return files, nil

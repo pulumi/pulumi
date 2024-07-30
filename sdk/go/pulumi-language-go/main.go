@@ -1169,14 +1169,16 @@ func (host *goLanguageHost) GeneratePackage(
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
-	files, err := codegen.GeneratePackage("pulumi-language-go", pkg)
+	files, err := codegen.GeneratePackage("pulumi-language-go", pkg, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
 
 	for filename, data := range files {
 		outPath := filepath.Join(req.Directory, filename)
-
+		if filename != "go.mod" && req.LocalDependencies != nil {
+			outPath = filepath.Join(req.Directory, "go", filename)
+		}
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {
 			return nil, fmt.Errorf("could not create output directory %s: %w", filepath.Dir(filename), err)

@@ -600,8 +600,13 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
-			packagePaths[p.Name] = packageName
-			err = gomod.AddRequire(packageName, version)
+			requiredModule := packageName
+			if _, isLocal := localDependencies[p.Name]; isLocal {
+				requiredModule = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s", p.Name, vPath)
+			}
+
+			packagePaths[p.Name] = requiredModule
+			err = gomod.AddRequire(requiredModule, version)
 			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}
 	}
