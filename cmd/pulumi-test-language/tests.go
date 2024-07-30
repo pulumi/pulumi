@@ -696,6 +696,9 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.ConfigProvider{}},
 		runs: []testRun{
 			{
+				config: config.Map{
+					config.MustParseKey("config:name"): config.NewValue("hello"),
+				},
 				updateOptions: engine.UpdateOptions{
 					ContinueOnError: true,
 				},
@@ -727,6 +730,7 @@ var languageTests = map[string]languageTest{
 					require.Equal(l, "default_9_0_0_http_/example.com", defaultProvider.URN.Name())
 					expectedOutputs = resource.NewPropertyMapFromMap(map[string]interface{}{
 						"version": "9.0.0",
+						"name":    "hello",
 					})
 					expectedInputs = deepcopy.Copy(expectedOutputs).(resource.PropertyMap)
 					// inputs should also have the __internal key
