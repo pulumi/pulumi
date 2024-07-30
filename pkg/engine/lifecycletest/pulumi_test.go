@@ -4569,7 +4569,8 @@ func TestProviderChecksums(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 	// Check the checksum was saved in the provider resource
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
-	assert.Equal(t, "0001020304", snap.Resources[0].Inputs["pluginChecksums"].ObjectValue()["windows-x64"].StringValue())
+	checksums := snap.Resources[0].Inputs["__internal"].ObjectValue()["pluginChecksums"].ObjectValue()
+	assert.Equal(t, "0001020304", checksums["windows-x64"].StringValue())
 
 	// Delete the resource and ensure the checksums are passed to EnsurePlugins
 	createResource = false

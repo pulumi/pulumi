@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1706,4 +1706,74 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx.Host
+}
+
+func TestProviderVersionIsAnError(t *testing.T) {
+	// c.f. https://github.com/pulumi/pulumi/issues/16757
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	// Test that "version" isn't allowed as a property in the package config.
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Config: ConfigSpec{
+			Variables: map[string]PropertySpec{
+				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, diags[0].Summary, "#/config/variables/version: version is a reserved configuration key")
+
+	// Test that "version" isn't allowed as an input property on the provider object.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			InputProperties: map[string]PropertySpec{
+				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err = BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved property name")
+
+	// Test that "version" is allowed as an output property on the provider object. Most providers probably won't add
+	// this, but it's there if they want to expose it.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Properties: map[string]PropertySpec{
+					"version": {
+						TypeSpec: TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors())
+	assert.NotNil(t, pkg)
 }

@@ -617,14 +617,26 @@ func TestProviderDownloadURL(t *testing.T) {
 		err = json.Unmarshal(deployment.Deployment, data)
 		assert.NoError(t, err)
 		urlKey := "pluginDownloadURL"
+		getPluginDownloadURL := func(inputs map[string]interface{}) string {
+			internal, ok := inputs["__internal"].(map[string]interface{})
+			if ok {
+				pluginDownloadURL, _ := internal[urlKey].(string)
+				return pluginDownloadURL
+			}
+			return ""
+		}
 		for _, resource := range data.Resources {
 			switch {
 			case providers.IsDefaultProvider(resource.URN):
-				assert.Equalf(t, "get.example.test", resource.Inputs[urlKey], "Inputs")
-				assert.Equalf(t, "get.example.test", resource.Outputs[urlKey], "Outputs")
+				assert.Equalf(t, "get.example.test", getPluginDownloadURL(resource.Inputs), "Inputs")
+				assert.Equalf(t, "", getPluginDownloadURL(resource.Outputs), "Outputs")
+				assert.Equalf(t, nil, resource.Inputs[urlKey], "Outputs")
+				assert.Equalf(t, nil, resource.Outputs[urlKey], "Outputs")
 			case providers.IsProviderType(resource.Type):
-				assert.Equalf(t, "get.pulumi.test/providers", resource.Inputs[urlKey], "Inputs")
-				assert.Equal(t, "get.pulumi.test/providers", resource.Outputs[urlKey], "Outputs")
+				assert.Equalf(t, "get.pulumi.test/providers", getPluginDownloadURL(resource.Inputs), "Inputs")
+				assert.Equalf(t, "", getPluginDownloadURL(resource.Outputs), "Outputs")
+				assert.Equalf(t, nil, resource.Inputs[urlKey], "Outputs")
+				assert.Equalf(t, nil, resource.Outputs[urlKey], "Outputs")
 			default:
 				_, hasURL := resource.Inputs[urlKey]
 				assert.False(t, hasURL)

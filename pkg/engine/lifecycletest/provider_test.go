@@ -2,6 +2,7 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -1245,8 +1246,11 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 	) error {
 		for _, e := range entries {
 			r := e.Step.New()
-			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
-				return fmt.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
+			if r.Type == pkgAType {
+				downloadURL := r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
+				if downloadURL != pkgAPluginDownloadURL {
+					return fmt.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
+				}
 			}
 		}
 		return nil
@@ -1433,7 +1437,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			validate: func(t *testing.T, r *resource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
-					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/default")
+					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/default")
 				}
 			},
 			prog: prog(),
@@ -1450,7 +1454,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					_, hasVersion := r.Inputs["version"]
 					assert.False(t, hasVersion)
-					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/download")
+					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/download")
 				}
 			},
 			prog: prog(deploytest.ResourceOptions{PluginDownloadURL: "example.com/download"}),
@@ -1728,4 +1732,51 @@ func TestComponentProvidersInheritance(t *testing.T) {
 	project := p.GetProject()
 	_, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
+}
+
+// TestRefreshLegacyState tests that if we have a snapshot that contains a legacy state (before __internal was added) we
+// can still load the provider version and pluginDownloadURL from the state. c.f.
+// https://github.com/pulumi/pulumi/issues/16757.
+func TestRefreshLegacyState(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.5.0"), func() (plugin.Provider, error) {
+			return nil, errors.New("should not be called")
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	snapshot := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type: "providers:pulumi:pkgA",
+				URN:  p.NewURN("providers:pulumi:pkgA", "prov", ""),
+				Inputs: map[resource.PropertyKey]resource.PropertyValue{
+					"version":           resource.NewPropertyValue("1.3.0"),
+					"pluginDownloadURL": resource.NewStringProperty("http://example.com"),
+				},
+			},
+		},
+	}
+
+	project := p.GetProject()
+	snap, err := TestOp(Refresh).Run(project, p.GetTarget(t, snapshot), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	prov := snap.Resources[0]
+	assert.Equal(t, "1.3.0", prov.Inputs["version"].StringValue())
+	assert.Equal(t, "http://example.com", prov.Inputs["pluginDownloadURL"].StringValue())
 }
