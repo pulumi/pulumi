@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -142,7 +143,38 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot = &deploy.Snapshot{}
 	}
 	if destSnapshot.SecretsManager == nil {
-		destSnapshot.SecretsManager = sourceSnapshot.SecretsManager
+		// If the destination stack has no secret manager, we need to create one.  This only works if the user is currently in the destination project directory.  If we fail here this indicates that they are not, and we return an error explaining that.
+		error := errors.New("destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory.")
+		path, err := workspace.DetectProjectPath()
+		if err != nil {
+			return error
+		}
+		if path == "" {
+			return error
+		}
+		project, err := workspace.LoadProject(path)
+		if err != nil {
+			return error
+		}
+		if string(project.Name) != string(dest.Ref().FullyQualifiedName().Namespace().Name()) {
+			return error
+		}
+
+		// The user is in the right directory.  If we fail below we will return the error of that failure.
+		err = createSecretsManager(ctx, dest, "", false, true)
+		if err != nil {
+			return err
+		}
+		ps, err := loadProjectStack(project, dest)
+		if err != nil {
+			return err
+		}
+
+		destSecretManager, err := dest.DefaultSecretManager(ps)
+		if err != nil {
+			return err
+		}
+		destSnapshot.SecretsManager = destSecretManager
 	}
 
 	resourcesToMove := make(map[string]*resource.State)

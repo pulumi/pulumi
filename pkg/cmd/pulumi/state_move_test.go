@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -919,9 +921,8 @@ func TestMoveRootStack(t *testing.T) {
 		destSnapshot.Resources[2].Parent)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestMoveSecret(t *testing.T) {
-	t.Parallel()
-
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
 		{
@@ -964,6 +965,19 @@ func TestMoveSecret(t *testing.T) {
 	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
 		return b64.NewBase64SecretsManager(), nil
 	})
+	mp = mp.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
+
+	chdir(t, tmpDir)
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+	// Set up dummy project in this directory
+	err = os.WriteFile("Pulumi.yaml", []byte(`
+name: test
+runtime: mock
+`), 0o600)
+	require.NoError(t, err)
 
 	var stdout bytes.Buffer
 
