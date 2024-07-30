@@ -71,7 +71,7 @@ func TestRepoLookup(t *testing.T) {
 		assert.NoError(t, err)
 		// should assure the directory is using linux path separator as deployments are
 		// currently run only on linux images.
-		assert.Equal(t, "goproj/something", dir)
+		assert.Equal(t, filepath.Join("goproj", "something"), dir)
 
 		branch := rl.GetBranchName()
 		assert.Equal(t, "refs/heads/master", branch)
@@ -104,9 +104,9 @@ func TestValidateRelativeDirectory(t *testing.T) {
 
 	// relative directory values are always linux type paths
 	pathsToTest := []relativeDirectoryValidationCase{
-		{true, "./goproj"},
-		{false, "./goproj/child"},
-		{false, "./goproj/Pulumi.yaml"},
+		{true, filepath.Join(".", "goproj")},
+		{false, filepath.Join(".", "goproj", "child")},
+		{false, filepath.Join(".", "goproj", "Pulumi.yaml")},
 	}
 
 	for _, c := range pathsToTest {

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -139,8 +138,7 @@ func (r *repoLookupImpl) GetRootDirectory(wd string) (string, error) {
 		return "", err
 	}
 
-	// we have to convert non linux to use the linux path separator
-	return convertToLinuxPath(dir), err
+	return dir, err
 }
 
 func (r *repoLookupImpl) GetBranchName() string {
@@ -196,7 +194,7 @@ func ValidateRelativeDirectory(rootDir string) func(string) error {
 			return nil
 		}
 
-		dir := filepath.Join(rootDir, convertToNativePath(s))
+		dir := filepath.Join(rootDir, filepath.FromSlash(s))
 		info, err := os.Stat(dir)
 
 		switch {
@@ -236,12 +234,4 @@ func ValidateShortInput(s string) error {
 	}
 
 	return nil
-}
-
-func convertToLinuxPath(dir string) string {
-	return strings.ReplaceAll(dir, string(os.PathSeparator), "/")
-}
-
-func convertToNativePath(dir string) string {
-	return strings.ReplaceAll(dir, "/", string(os.PathSeparator))
 }

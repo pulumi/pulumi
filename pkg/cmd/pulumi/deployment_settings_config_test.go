@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -138,7 +139,7 @@ func TestDSConfigureGit(t *testing.T) {
 				{true, true},
 			},
 			PromptValueResponses: []promptAssertion[string, string]{
-				{"goproj", "goproj"},
+				{"goproj", filepath.Join(".", "goproj")},
 				{"refs/heads/master", "master"},
 				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
 			},

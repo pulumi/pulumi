@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -375,7 +376,8 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 
 	var defaultRepoDir string
 	if sd.DeploymentSettings.SourceContext.Git.RepoDir != "" {
-		defaultRepoDir = sd.DeploymentSettings.SourceContext.Git.RepoDir
+		// we convert the directory to use the native path separator to keep it consistent with the environment
+		defaultRepoDir = filepath.FromSlash(sd.DeploymentSettings.SourceContext.Git.RepoDir)
 	} else {
 		defaultRepoDir, err = rl.GetRootDirectory(d.WorkDir)
 		if err != nil {
@@ -388,7 +390,9 @@ func configureGit(d *deploymentSettingsCommandDependencies, gitSSHPrivateKeyPath
 	if err != nil {
 		return err
 	}
-	sd.DeploymentSettings.SourceContext.Git.RepoDir = repoDir
+
+	// we have to convert non unix to use the unix path separator
+	sd.DeploymentSettings.SourceContext.Git.RepoDir = filepath.ToSlash(repoDir)
 
 	var branchName string
 	if sd.DeploymentSettings.SourceContext.Git.Branch != "" {
