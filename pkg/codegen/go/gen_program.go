@@ -611,7 +611,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there
 		goPath, ok := packagePaths[pkg]
 		if ok {
-			err = gomod.AddReplace(goPath, "", path, "")
+			err = gomod.AddReplace(strings.TrimSuffix(goPath, "/"), "", path, "")
 			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
 		}
 	}
