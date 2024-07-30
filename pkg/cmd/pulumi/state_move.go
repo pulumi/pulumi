@@ -141,6 +141,9 @@ func (cmd *stateMoveCmd) Run(
 	if destSnapshot == nil {
 		destSnapshot = &deploy.Snapshot{}
 	}
+	if destSnapshot.SecretsManager == nil {
+		destSnapshot.SecretsManager = sourceSnapshot.SecretsManager
+	}
 
 	resourcesToMove := make(map[string]*resource.State)
 	providersToCopy := make(map[string]bool)
