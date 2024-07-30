@@ -84,7 +84,7 @@ func (utc utcFlag) time(t time.Time) time.Time {
 	if utc {
 		return t.UTC()
 	}
-	return t
+	return t.Local()
 }
 
 func printRevision(stdout io.Writer, st *style.Stylist, r client.EnvironmentRevision, utc utcFlag) {

@@ -18,7 +18,8 @@ environments:
       - yaml:
           values:
             string: hello, world!
-        tag: stable
+        tags:
+          - stable
       - yaml:
           imports:
             - a

@@ -1,0 +1,30 @@
+run: |
+  esc env tag ls test-org/env --utc
+  esc env tag mv test-org/env team owner --utc
+  esc env tag get test-org/env owner --utc
+  esc env tag mv test-org/env team --utc
+error: exit status 1
+environments:
+  test-org/env:
+    tags:
+      team: pulumi
+stdout: |
+  > esc env tag ls test-org/env --utc
+  Name: team
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag mv test-org/env team owner --utc
+  Name: owner
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag get test-org/env owner --utc
+  Name: owner
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag mv test-org/env team --utc
+stderr: |
+  > esc env tag ls test-org/env --utc
+  > esc env tag mv test-org/env team owner --utc
+  > esc env tag get test-org/env owner --utc
+  > esc env tag mv test-org/env team --utc
+  Error: accepts 3 arg(s), received 2

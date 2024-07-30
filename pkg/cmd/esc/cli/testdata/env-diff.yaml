@@ -23,7 +23,8 @@ environments:
             string: hello, world!
             environmentVariables:
               FOO: bar
-        tag: stable
+        tags:
+          - stable
       - yaml:
           imports:
             - a
@@ -51,7 +52,8 @@ environments:
             string: bonjour, monde!
             environmentVariables:
               FOO: bar
-        tag: stable
+        tags:
+          - stable
       - yaml:
           imports:
             - a

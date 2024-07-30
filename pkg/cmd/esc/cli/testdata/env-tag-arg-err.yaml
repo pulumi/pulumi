@@ -1,0 +1,13 @@
+run: |
+  esc env tag ls test-org/env
+  esc env tag test-org/env owner
+error: exit status 1
+environments:
+  test-org/env: {}
+stdout: |
+  > esc env tag ls test-org/env
+  > esc env tag test-org/env owner
+stderr: |
+  > esc env tag ls test-org/env
+  > esc env tag test-org/env owner
+  Error: accepts 3 arg(s), received 2

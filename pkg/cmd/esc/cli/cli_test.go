@@ -253,13 +253,14 @@ type testEnvironmentRetract struct {
 type testEnvironmentRevision struct {
 	number    int
 	yaml      []byte
-	tag       string
+	tags      map[string]bool
 	retracted *testEnvironmentRetract
 }
 
 type testEnvironment struct {
-	revisions []*testEnvironmentRevision
-	tags      map[string]int
+	revisions    []*testEnvironmentRevision
+	revisionTags map[string]int
+	tags         map[string]string
 }
 
 func (env *testEnvironment) latest() *testEnvironmentRevision {
@@ -365,7 +366,7 @@ func (c *testPulumiClient) getEnvironment(orgName, envName, version string) (*te
 		}
 		revision = int(rev)
 	} else {
-		rev, ok := env.tags[version]
+		rev, ok := env.revisionTags[version]
 		if !ok {
 			return nil, nil, errors.New("not found")
 		}
@@ -500,8 +501,9 @@ func (c *testPulumiClient) CreateEnvironment(ctx context.Context, orgName, envNa
 		return errors.New("already exists")
 	}
 	c.environments[name] = &testEnvironment{
-		revisions: []*testEnvironmentRevision{{}},
-		tags:      map[string]int{"latest": 0},
+		revisions:    []*testEnvironmentRevision{{}},
+		revisionTags: map[string]int{"latest": 0},
+		tags:         map[string]string{},
 	}
 	return nil
 }
@@ -527,7 +529,12 @@ func (c *testPulumiClient) GetEnvironment(
 		yaml = plaintext
 	}
 
-	return yaml, env.tag, env.number, nil
+	eTag := ""
+	if len(env.tags) > 0 {
+		eTag = maps.Keys(env.tags)[0]
+	}
+
+	return yaml, eTag, env.number, nil
 }
 
 func (c *testPulumiClient) UpdateEnvironment(
@@ -552,7 +559,9 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 	if err != nil {
 		return nil, 0, err
 	}
-	if tag != "" && tag != latest.tag {
+
+	latestRevHasTag := latest.tags[tag]
+	if tag != "" && !latestRevHasTag {
 		return nil, 0, errors.New("tag mismatch")
 	}
 
@@ -570,12 +579,12 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 		env.revisions = append(env.revisions, &testEnvironmentRevision{
 			number: revisionNumber,
 			yaml:   yaml,
-			tag:    base64.StdEncoding.EncodeToString(h.Sum(nil)),
+			tags:   map[string]bool{base64.StdEncoding.EncodeToString(h.Sum(nil)): true},
 		})
-		env.tags["latest"] = revisionNumber
+		env.revisionTags["latest"] = revisionNumber
 	}
 
-	return diags, env.tags["latest"], err
+	return diags, env.revisionTags["latest"], err
 }
 
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, envName string) error {
@@ -632,6 +641,130 @@ func (c *testPulumiClient) GetOpenProperty(ctx context.Context, orgName, envName
 	return nil, errors.New("NYI")
 }
 
+func (c *testPulumiClient) GetEnvironmentTag(
+	ctx context.Context,
+	orgName, envName, key string,
+) (*client.EnvironmentTag, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s", orgName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+
+	if v, ok := env.tags[key]; ok {
+		ts, _ := time.Parse(time.RFC1123, "Mon, 29 Jul 2024 12:30:00 UTC")
+		return &client.EnvironmentTag{
+			ID:          key,
+			Name:        key,
+			Value:       v,
+			Created:     ts,
+			Modified:    ts,
+			EditorLogin: "pulumipus",
+			EditorName:  "pulumipus",
+		}, nil
+	}
+	return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
+}
+
+func (c *testPulumiClient) ListEnvironmentTags(
+	ctx context.Context,
+	orgName string,
+	envName string,
+	options client.ListEnvironmentTagsOptions,
+) ([]*client.EnvironmentTag, string, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s", orgName, envName)]
+	if !ok {
+		return nil, "", errors.New("environment not found")
+	}
+
+	ts, _ := time.Parse(time.RFC1123, "Mon, 29 Jul 2024 12:30:00 UTC")
+	tags := []*client.EnvironmentTag{}
+	for k, v := range env.tags {
+		tags = append(tags, &client.EnvironmentTag{
+			ID:          k,
+			Name:        k,
+			Value:       v,
+			Created:     ts,
+			Modified:    ts,
+			EditorLogin: "pulumipus",
+			EditorName:  "pulumipus",
+		})
+	}
+	return tags, "0", nil
+}
+
+func (c *testPulumiClient) CreateEnvironmentTag(
+	ctx context.Context,
+	orgName, envName, key, value string,
+) (*client.EnvironmentTag, error) {
+	ts, _ := time.Parse(time.RFC1123, "Mon, 29 Jul 2024 12:30:00 UTC")
+	tag := &client.EnvironmentTag{
+		ID:          key,
+		Name:        key,
+		Value:       value,
+		Created:     ts,
+		Modified:    ts,
+		EditorLogin: "pulumipus",
+		EditorName:  "pulumipus",
+	}
+	env, ok := c.environments[fmt.Sprintf("%s/%s", orgName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+	if _, ok := env.tags[key]; ok {
+		return nil, errors.New("tag already exists")
+	}
+	env.tags[key] = value
+	return tag, nil
+}
+
+func (c *testPulumiClient) UpdateEnvironmentTag(
+	ctx context.Context,
+	orgName, envName, currentKey, currentValue, newKey, newValue string,
+) (*client.EnvironmentTag, error) {
+	name := newKey
+	if name == "" {
+		name = currentKey
+	}
+	value := newValue
+	if value == "" {
+		value = currentValue
+	}
+	ts, _ := time.Parse(time.RFC1123, "Mon, 29 Jul 2024 12:30:00 UTC")
+	env, ok := c.environments[fmt.Sprintf("%s/%s", orgName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+
+	if _, ok := env.tags[currentKey]; !ok {
+		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
+	}
+	if newKey != "" {
+		delete(env.tags, currentKey)
+	}
+	env.tags[name] = value
+	return &client.EnvironmentTag{
+		ID:          name,
+		Name:        name,
+		Value:       value,
+		Created:     ts,
+		Modified:    ts,
+		EditorLogin: "pulumipus",
+		EditorName:  "pulumipus",
+	}, nil
+}
+
+func (c *testPulumiClient) DeleteEnvironmentTag(ctx context.Context, orgName, envName, tagName string) error {
+	env, ok := c.environments[fmt.Sprintf("%s/%s", orgName, envName)]
+	if !ok {
+		return errors.New("environment not found")
+	}
+	if _, ok := env.tags[tagName]; !ok {
+		return errors.New("tag not found")
+	}
+	delete(env.tags, tagName)
+	return nil
+}
+
 func (c *testPulumiClient) GetEnvironmentRevision(
 	ctx context.Context,
 	orgName string,
@@ -666,9 +799,11 @@ func (c *testPulumiClient) ListEnvironmentRevisions(
 
 	var resp []client.EnvironmentRevision
 	for i := before - 1; i > 0; i-- {
-		var tags []string
-		if tag := env.revisions[i-1].tag; tag != "" {
-			tags = []string{tag}
+		tags := []string{}
+		for k := range env.revisions[i-1].tags {
+			if k != "" {
+				tags = append(tags, k)
+			}
 		}
 
 		var retracted *client.EnvironmentRevisionRetracted
@@ -738,11 +873,11 @@ func (c *testPulumiClient) CreateEnvironmentRevisionTag(
 		return errors.New("not found")
 	}
 
-	if _, ok := env.tags[tagName]; ok {
+	if _, ok := env.revisionTags[tagName]; ok {
 		return errors.New("already exists")
 	}
 
-	env.tags[tagName] = rev
+	env.revisionTags[tagName] = rev
 	return nil
 }
 
@@ -758,7 +893,7 @@ func (c *testPulumiClient) GetEnvironmentRevisionTag(
 		return nil, err
 	}
 
-	rev, ok := env.tags[tagName]
+	rev, ok := env.revisionTags[tagName]
 	if !ok {
 		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
 	}
@@ -786,11 +921,11 @@ func (c *testPulumiClient) UpdateEnvironmentRevisionTag(
 		return errors.New("not found")
 	}
 
-	if _, ok := env.tags[tagName]; !ok {
+	if _, ok := env.revisionTags[tagName]; !ok {
 		return &apitype.ErrorResponse{Code: http.StatusNotFound}
 	}
 
-	env.tags[tagName] = rev
+	env.revisionTags[tagName] = rev
 	return nil
 }
 
@@ -806,11 +941,11 @@ func (c *testPulumiClient) DeleteEnvironmentRevisionTag(
 		return err
 	}
 
-	if _, ok := env.tags[tagName]; !ok {
+	if _, ok := env.revisionTags[tagName]; !ok {
 		return errors.New("not found")
 	}
 
-	delete(env.tags, tagName)
+	delete(env.revisionTags, tagName)
 	return nil
 }
 
@@ -826,10 +961,10 @@ func (c *testPulumiClient) ListEnvironmentRevisionTags(
 		return nil, err
 	}
 
-	names := maps.Keys(env.tags)
+	names := maps.Keys(env.revisionTags)
 	slices.Sort(names)
 	return fx.ToSlice(fx.FMap(fx.IterSlice(names), func(name string) (client.EnvironmentRevisionTag, bool) {
-		return client.EnvironmentRevisionTag{Name: name, Revision: env.tags[name]}, name > options.After
+		return client.EnvironmentRevisionTag{Name: name, Revision: env.revisionTags[name]}, name > options.After
 	})), nil
 }
 
@@ -915,8 +1050,22 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				esc.SetIn(hc.Stdin)
 				esc.SetOut(hc.Stdout)
 				esc.SetErr(hc.Stderr)
-				if err := esc.Execute(); err != nil {
-					return interp.NewExitStatus(1)
+
+				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				esc.SetContext(ctx)
+				defer cancel()
+
+				ch := make(chan error, 1)
+				go func() {
+					ch <- esc.Execute()
+				}()
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case result := <-ch:
+					if result != nil {
+						return interp.NewExitStatus(1)
+					}
 				}
 				return nil
 			}
@@ -971,12 +1120,16 @@ type cliTestcaseRetract struct {
 
 type cliTestcaseRevision struct {
 	YAML      yaml.Node           `yaml:"yaml"`
-	Tag       string              `yaml:"tag,omitempty"`
+	Tags      []string            `yaml:"tags,omitempty"`
 	Retracted *cliTestcaseRetract `yaml:"retracted,omitempty"`
 }
 
 type cliTestcaseRevisions struct {
 	Revisions []cliTestcaseRevision `yaml:"revisions,omitempty"`
+}
+
+type cliTestcaseEnvironmentTags struct {
+	Tags map[string]string `yaml:"tags,omitempty"`
 }
 
 type cliTestcaseYAML struct {
@@ -1035,8 +1188,14 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			revisions = cliTestcaseRevisions{Revisions: []cliTestcaseRevision{{YAML: env}}}
 		}
 
+		var tags cliTestcaseEnvironmentTags
+		envTags := map[string]string{}
+		if err := env.Decode(&tags); tags.Tags != nil && err == nil {
+			envTags = tags.Tags
+		}
+
 		envRevisions := []*testEnvironmentRevision{{number: 1}}
-		tags := map[string]int{}
+		revisionTags := map[string]int{}
 		for _, rev := range revisions.Revisions {
 			bytes, err := yaml.Marshal(rev.YAML)
 			if err != nil {
@@ -1056,21 +1215,23 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 				number:    revisionNumber,
 				yaml:      bytes,
 				retracted: retract,
+				tags:      map[string]bool{},
 			})
 
-			if rev.Tag != "" {
-				if _, ok := tags[rev.Tag]; ok || rev.Tag == "latest" {
-					return nil, nil, fmt.Errorf("duplicate tag %q", rev.Tag)
+			for _, rt := range rev.Tags {
+				if _, ok := revisionTags[rt]; ok || rt == "latest" {
+					return nil, nil, fmt.Errorf("duplicate tag %q", rt)
 				}
-				tags[rev.Tag] = revisionNumber
-				envRevisions[revisionNumber-1].tag = rev.Tag
+				revisionTags[rt] = revisionNumber
+				envRevisions[revisionNumber-1].tags[rt] = true
 			}
 		}
-		tags["latest"] = len(envRevisions)
+		revisionTags["latest"] = len(envRevisions)
 
 		environments[k] = &testEnvironment{
-			revisions: envRevisions,
-			tags:      tags,
+			revisions:    envRevisions,
+			revisionTags: revisionTags,
+			tags:         envTags,
 		}
 	}
 

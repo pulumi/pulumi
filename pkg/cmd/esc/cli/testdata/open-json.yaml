@@ -11,7 +11,8 @@ environments:
       - yaml:
           values:
             foo: bar
-        tag: stable
+        tags:
+          - stable
       - yaml:
           imports:
             - test-2

@@ -1,0 +1,33 @@
+run: |
+  esc env tag ls test-org/one-tag --utc
+  esc env tag ls test-org/no-tags --utc
+  esc env tag ls test-user/multi-tags --utc
+environments:
+  test-org/no-tags: {}
+  test-org/one-tag:
+    tags:
+      owner: pulumi
+  test-user/multi-tags:
+    tags:
+      owner: pulumipus
+      team: esc
+  test-user/unused:
+    tags:
+      owner: pulumipus
+stdout: |
+  > esc env tag ls test-org/one-tag --utc
+  Name: owner
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag ls test-org/no-tags --utc
+  > esc env tag ls test-user/multi-tags --utc
+  Name: owner
+  Value: pulumipus
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  Name: team
+  Value: esc
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+stderr: |
+  > esc env tag ls test-org/one-tag --utc
+  > esc env tag ls test-org/no-tags --utc
+  > esc env tag ls test-user/multi-tags --utc

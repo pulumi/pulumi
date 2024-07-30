@@ -85,6 +85,33 @@ type UpdateEnvironmentRevisionTagRequest struct {
 	Revision *int `json:"revision,omitempty"`
 }
 
+type EnvironmentTag struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Value       string    `json:"value"`
+	Created     time.Time `json:"created"`
+	Modified    time.Time `json:"modified"`
+	EditorLogin string    `json:"editorLogin"`
+	EditorName  string    `json:"editorName"`
+}
+
+type ListEnvironmentTagsResponse struct {
+	Tags      map[string]*EnvironmentTag `json:"tags"`
+	NextToken string                     `json:"nextToken"`
+}
+
+type TagRequest struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type CreateEnvironmentTagRequest = TagRequest
+
+type UpdateEnvironmentTagRequest struct {
+	CurrentTag TagRequest `json:"currentTag"`
+	NewTag     TagRequest `json:"newTag"`
+}
+
 type EnvironmentRevisionTag struct {
 	Name        string    `json:"name"`
 	Revision    int       `json:"revision"`

@@ -1,0 +1,40 @@
+run: |
+  esc env tag ls test-org/env --utc
+  esc env tag test-org/env owner pulumi --utc
+  esc env tag get test-org/env owner --utc
+  esc env tag test-org/env team esc-team --utc
+  esc env tag ls test-org/env --utc
+environments:
+  test-org/env:
+    tags:
+      team: esc
+stdout: |
+  > esc env tag ls test-org/env --utc
+  Name: team
+  Value: esc
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag test-org/env owner pulumi --utc
+  Name: owner
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag get test-org/env owner --utc
+  Name: owner
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag test-org/env team esc-team --utc
+  Name: team
+  Value: esc-team
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  > esc env tag ls test-org/env --utc
+  Name: owner
+  Value: pulumi
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+  Name: team
+  Value: esc-team
+  Last updated at 2024-07-29 12:30:00 +0000 UTC by pulumipus <pulumipus>
+stderr: |
+  > esc env tag ls test-org/env --utc
+  > esc env tag test-org/env owner pulumi --utc
+  > esc env tag get test-org/env owner --utc
+  > esc env tag test-org/env team esc-team --utc
+  > esc env tag ls test-org/env --utc
