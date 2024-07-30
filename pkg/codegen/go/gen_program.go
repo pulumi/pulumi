@@ -521,7 +521,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
 	packagePaths := map[string]string{}
-	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3/"
+	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3"
 	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
 	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
@@ -611,7 +611,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there
 		goPath, ok := packagePaths[pkg]
 		if ok {
-			err = gomod.AddReplace(strings.TrimSuffix(goPath, "/"), "", path, "")
+			err = gomod.AddReplace(goPath, "", path, "")
 			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
 		}
 	}
