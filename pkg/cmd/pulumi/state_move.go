@@ -143,21 +143,26 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot = &deploy.Snapshot{}
 	}
 	if destSnapshot.SecretsManager == nil {
-		// If the destination stack has no secret manager, we need to create one.  This only works if the user is currently in the destination project directory.  If we fail here this indicates that they are not, and we return an error explaining that.
-		error := errors.New("destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory.")
+		// If the destination stack has no secret manager, we
+		// need to create one.  This only works if the user is
+		// currently in the destination project directory.  If
+		// we fail here this indicates that they are not, and
+		// we return an projectError explaining that.
+		//nolint:lll
+		projectError := errors.New("destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 		path, err := workspace.DetectProjectPath()
 		if err != nil {
-			return error
+			return projectError
 		}
 		if path == "" {
-			return error
+			return projectError
 		}
 		project, err := workspace.LoadProject(path)
 		if err != nil {
-			return error
+			return projectError
 		}
 		if string(project.Name) != string(dest.Ref().FullyQualifiedName().Namespace().Name()) {
-			return error
+			return projectError
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.

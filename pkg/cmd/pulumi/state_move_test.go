@@ -540,9 +540,8 @@ func TestEmptySourceStack(t *testing.T) {
 	assert.ErrorContains(t, err, "source stack has no resources")
 }
 
+//nolint:paralleltest // changest directory for process
 func TestEmptyDestStack(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -577,7 +576,19 @@ func TestEmptyDestStack(t *testing.T) {
 	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
 		return b64.NewBase64SecretsManager(), nil
 	})
+	mp = mp.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
 
+	chdir(t, tmpDir)
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+	// Set up dummy project in this directory
+	err = os.WriteFile("Pulumi.yaml", []byte(`
+name: test
+runtime: mock
+`), 0o600)
+	require.NoError(t, err)
 	stateMoveCmd := stateMoveCmd{
 		Yes:       true,
 		Colorizer: colors.Never,
