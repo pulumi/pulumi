@@ -124,12 +124,15 @@ func (p *ConfigProvider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	// We should have the version but also name and pluginDownloadURL
 
-	check := func(key resource.PropertyKey, expected string) *plugin.CheckConfigResponse {
-		value, ok := req.News["version"]
+	check := func(required bool, key resource.PropertyKey, expected string) *plugin.CheckConfigResponse {
+		value, ok := req.News[key]
 		if !ok {
-			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("missing %s", key)),
+			if required {
+				return &plugin.CheckConfigResponse{
+					Failures: makeCheckFailure(key, fmt.Sprintf("missing %s", key)),
+				}
 			}
+			return nil
 		}
 		if !value.IsString() {
 			return &plugin.CheckConfigResponse{
@@ -144,17 +147,17 @@ func (p *ConfigProvider) CheckConfig(
 		return nil
 	}
 
-	ok := check("version", "9.0.0")
+	ok := check(true, "version", "9.0.0")
 	if ok != nil {
 		return *ok, nil
 	}
 
-	ok = check("name", "")
+	ok = check(true, "name", "")
 	if ok != nil {
 		return *ok, nil
 	}
 
-	ok = check("pluginDownloadURL", "")
+	ok = check(false, "pluginDownloadURL", "")
 	if ok != nil {
 		return *ok, nil
 	}
