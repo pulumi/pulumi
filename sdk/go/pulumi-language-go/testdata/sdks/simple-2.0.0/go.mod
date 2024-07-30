@@ -1,4 +1,4 @@
-module l1-empty
+module github.com/pulumi/pulumi-simple/sdk/v2
 
 go 1.20
 

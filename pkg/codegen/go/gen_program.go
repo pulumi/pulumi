@@ -521,7 +521,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
 	packagePaths := map[string]string{}
-	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3/"
+	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3"
 	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
 	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
@@ -600,18 +600,23 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			version = "v" + p.Version.String()
 		}
 		if packageName != "" {
-			packagePaths[p.Name] = packageName
-			err = gomod.AddRequire(packageName, version)
+			requiredModule := packageName
+			if _, isLocal := localDependencies[p.Name]; isLocal {
+				requiredModule = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s", p.Name, vPath)
+			}
+
+			packagePaths[p.Name] = requiredModule
+			err = gomod.AddRequire(requiredModule, version)
 			contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", packageName)
 		}
 	}
 
 	// For any local dependencies, add a replace statement
-	for pkg, path := range localDependencies {
+	for pkg, localPath := range localDependencies {
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there
 		goPath, ok := packagePaths[pkg]
 		if ok {
-			err = gomod.AddReplace(goPath, "", path, "")
+			err = gomod.AddReplace(goPath, "", localPath, "")
 			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
 		}
 	}
