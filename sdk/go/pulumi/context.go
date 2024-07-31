@@ -74,7 +74,8 @@ type contextState struct {
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 
-	registerOutputsWg sync.WaitGroup // a wait group protecting registering resource outputs
+	registerOutputsWg   sync.WaitGroup // a wait group protecting registering resource outputs
+	registerOutputsLock sync.Mutex     // a lock protecting the registerOutputsWg
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -1134,7 +1135,9 @@ func (ctx *Context) RegisterResource(
 }
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
+	ctx.state.registerOutputsLock.Lock()
 	ctx.state.registerOutputsWg.Wait()
+	ctx.state.registerOutputsLock.Unlock()
 
 	// This is a resource that already exists. Read its state from the engine.
 	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -2201,7 +2204,9 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		return err
 	}
 
+	ctx.state.registerOutputsLock.Lock()
 	ctx.state.registerOutputsWg.Add(1)
+	ctx.state.registerOutputsLock.Unlock()
 	go func() {
 		defer ctx.state.registerOutputsWg.Done()
 
