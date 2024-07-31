@@ -51,7 +51,6 @@ func (p *SimpleProvider) Pkg() tokens.Package {
 func (p *SimpleProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
