@@ -4895,7 +4895,18 @@ func GeneratePackage(tool string,
 			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
 		}
 
-		modulePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s", pkg.Name, vPath)
+		modulePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", pkg.Name, vPath)
+		if langInfo, found := pkg.Language["go"]; found {
+			goInfo, ok := langInfo.(GoPackageInfo)
+			if ok && goInfo.ImportBasePath != "" {
+				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
+				if separatorIndex >= 0 {
+					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
+					modulePath = fmt.Sprintf("%s%s", modulePrefix, vPath)
+				}
+			}
+		}
+
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)
 		contract.AssertNoErrorf(err, "could not add module statement to go.mod")

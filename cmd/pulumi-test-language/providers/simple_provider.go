@@ -48,9 +48,36 @@ func (p *SimpleProvider) Pkg() tokens.Package {
 	return "simple"
 }
 
+func marshalLanguage(lang map[string]interface{}) (map[string]schema.RawMessage, error) {
+	if len(lang) == 0 {
+		return nil, nil
+	}
+
+	result := map[string]schema.RawMessage{}
+	for name, data := range lang {
+		bytes, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling %v language data: %w", name, err)
+		}
+		result[name] = bytes
+	}
+	return result, nil
+}
+
 func (p *SimpleProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
+
+	language, err := marshalLanguage(map[string]interface{}{
+		"go": map[string]interface{}{
+			"importBasePath": "github.com/pulumi/pulumi-simple/sdk/go/v2/simple",
+		},
+	})
+
+	if err != nil {
+		return plugin.GetSchemaResponse{}, err
+	}
+
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
@@ -63,6 +90,10 @@ func (p *SimpleProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    "simple",
 		Version: "2.0.0",
+		Meta: &schema.MetadataSpec{
+			SupportPack: true,
+		},
+		Language: language,
 		Resources: map[string]schema.ResourceSpec{
 			"simple:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{

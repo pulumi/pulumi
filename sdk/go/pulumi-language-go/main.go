@@ -1176,9 +1176,6 @@ func (host *goLanguageHost) GeneratePackage(
 
 	for filename, data := range files {
 		outPath := filepath.Join(req.Directory, filename)
-		if filename != "go.mod" && req.LocalDependencies != nil {
-			outPath = filepath.Join(req.Directory, "go", filename)
-		}
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {
 			return nil, fmt.Errorf("could not create output directory %s: %w", filepath.Dir(filename), err)
