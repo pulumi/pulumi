@@ -4525,7 +4525,22 @@ func GeneratePackage(tool string,
 	var goPkgInfo GoPackageInfo
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
+	} else {
+		goPkgInfo = GoPackageInfo{}
 	}
+
+	if goPkgInfo.ImportBasePath == "" {
+		if !pkg.SupportPack {
+			goPkgInfo.ImportBasePath = extractImportBasePath(pkg.Reference())
+		} else {
+			var vPath string
+			if pkg.Version != nil && pkg.Version.Major > 1 {
+				vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
+			}
+			goPkgInfo.ImportBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", pkg.Name, vPath, pkg.Name)
+		}
+	}
+
 	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, NewCache())
 	if err != nil {
 		return nil, err
