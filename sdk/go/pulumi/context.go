@@ -2189,12 +2189,19 @@ func (ctx *Context) endRPC(err error) {
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
 func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
+	// We need to await the URN synchronously because it cna potentially do a read, which we can't do after adding
+	// to the waitgroup.  Reads could be blocked on the waitgroup otherwise.
+	urn, _, _, err := resource.URN().awaitURN(context.TODO())
+	if err != nil {
+		return err
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
-	ctx.state.registerOutputsWg.Add(1)
 
+	ctx.state.registerOutputsWg.Add(1)
 	go func() {
 		defer ctx.state.registerOutputsWg.Done()
 
@@ -2204,11 +2211,6 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			// Signal the completion of this RPC and notify any potential awaiters.
 			ctx.endRPC(err)
 		}()
-
-		urn, _, _, err := resource.URN().awaitURN(context.TODO())
-		if err != nil {
-			return
-		}
 
 		outsResolved, _, err := marshalInput(outs, anyType, true)
 		if err != nil {
