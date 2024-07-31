@@ -262,7 +262,7 @@ export function getStackResource(): Stack | undefined {
  * @internal
  */
 export function getResourcePackages(): Map<string, ResourcePackage[]> {
-    const store = getStore();
+    const store = getGlobalStore();
     if (store.resourcePackages === undefined) {
         // resourcePackages can be undefined if an older SDK where it was not defined is created it.
         // In this case, we should initialize it to an empty map.
@@ -277,7 +277,7 @@ export function getResourcePackages(): Map<string, ResourcePackage[]> {
  * @internal
  */
 export function getResourceModules(): Map<string, ResourceModule[]> {
-    const store = getStore();
+    const store = getGlobalStore();
     if (store.resourceModules === undefined) {
         // resourceModules can be undefined if an older SDK where it was not defined is created it.
         // In this case, we should initialize it to an empty map.
@@ -330,6 +330,13 @@ export const getStore = () => {
         return global.globalStore;
     }
     return localStore;
+};
+
+export const getGlobalStore =() => {
+    if (global.globalStore === undefined) {
+        global.globalStore = new LocalStore();
+    }
+    return global.globalStore;
 };
 
 (<any>getStore).captureReplacement = () => {
