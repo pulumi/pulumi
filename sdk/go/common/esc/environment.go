@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/esc/schema"
 )
 
+const AnonymousProjectName = "<project>"
 const AnonymousEnvironmentName = "<yaml>"
 
 type EnvExecContext interface {
