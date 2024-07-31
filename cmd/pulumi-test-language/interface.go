@@ -159,6 +159,11 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 		return nil, err
 	}
 
+	if spec.Meta == nil {
+		spec.Meta = &schema.MetadataSpec{}
+	}
+
+	spec.Meta.SupportPack = true
 	p, err := schema.ImportPartialSpec(spec, nil, l)
 	if err != nil {
 		return nil, err

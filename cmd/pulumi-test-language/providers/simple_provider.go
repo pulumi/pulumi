@@ -63,9 +63,6 @@ func (p *SimpleProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    "simple",
 		Version: "2.0.0",
-		Meta: &schema.MetadataSpec{
-			SupportPack: true,
-		},
 		Resources: map[string]schema.ResourceSpec{
 			"simple:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{

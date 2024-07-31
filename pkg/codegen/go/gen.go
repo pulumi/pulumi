@@ -3656,10 +3656,16 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 func extractImportBasePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
+	name := extPkg.Name()
 	if version != nil && version.Major > 1 {
 		vPath = fmt.Sprintf("/v%d", version.Major)
 	}
-	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", extPkg.Name(), vPath, extPkg.Name())
+
+	if extPkg.SupportPack() {
+		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", name, vPath, name)
+	}
+
+	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", name, vPath, name)
 }
 
 func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
@@ -4525,20 +4531,10 @@ func GeneratePackage(tool string,
 	var goPkgInfo GoPackageInfo
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
-	} else {
-		goPkgInfo = GoPackageInfo{}
 	}
 
 	if goPkgInfo.ImportBasePath == "" {
-		if !pkg.SupportPack {
-			goPkgInfo.ImportBasePath = extractImportBasePath(pkg.Reference())
-		} else {
-			var vPath string
-			if pkg.Version != nil && pkg.Version.Major > 1 {
-				vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
-			}
-			goPkgInfo.ImportBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", pkg.Name, vPath, pkg.Name)
-		}
+		goPkgInfo.ImportBasePath = extractImportBasePath(pkg.Reference())
 	}
 
 	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, NewCache())
