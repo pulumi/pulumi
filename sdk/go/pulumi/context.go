@@ -2191,7 +2191,7 @@ func (ctx *Context) endRPC(err error) {
 func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	// We need to await the URN synchronously because it can potentially do a read, which we can't do after adding
 	// to the waitgroup.  Reads could be blocked on the waitgroup otherwise.
-	urn, _, _, err := resource.URN().awaitURN(context.TODO())
+	urn, _, _, err := resource.URN().awaitURN(ctx.Context())
 	if err != nil {
 		return err
 	}
