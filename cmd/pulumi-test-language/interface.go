@@ -121,7 +121,7 @@ func (eng *languageTestServer) Done() error {
 
 // A providerLoader is a schema loader that loads schemas from a given set of providers.
 type providerLoader struct {
-	providers []plugin.Provider
+	providers []languageTestProvider
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
@@ -130,7 +130,7 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 	}
 
 	// Find the provider with the given package name
-	var provider plugin.Provider
+	var provider languageTestProvider
 	for _, p := range l.providers {
 		if string(p.Pkg()) == pkg {
 			info, err := p.GetPluginInfo(context.TODO())
@@ -145,11 +145,30 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 		}
 	}
 
-	if provider == nil {
+	if provider.Provider == nil {
 		return nil, fmt.Errorf("could not load schema for %s, provider not known", pkg)
 	}
 
-	jsonSchema, err := provider.GetSchema(context.TODO(), plugin.GetSchemaRequest{})
+	var subpackageName string
+	var subpackageVersion *semver.Version
+	if provider.parameters != nil {
+		res, err := provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeArgs{
+				Args: provider.parameters,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize provider %s: %w", pkg, err)
+		}
+
+		subpackageName = res.Name
+		subpackageVersion = res.Version
+	}
+
+	jsonSchema, err := provider.GetSchema(context.TODO(), plugin.GetSchemaRequest{
+		SubpackageName:    subpackageName,
+		SubpackageVersion: subpackageVersion,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get schema for %s: %w", pkg, err)
 	}

@@ -183,6 +183,7 @@ var expectedFailures = map[string]string{
 	"l2-engine-update-options":           "missing go.mod",
 	"l2-resource-primitives":             "missing go.mod",
 	"l2-resource-config":                 "missing go.mod",
+	"l2-parameterized-providers":         "missing go.mod",
 }
 
 func TestLanguage(t *testing.T) {

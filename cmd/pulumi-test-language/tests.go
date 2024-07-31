@@ -47,12 +47,18 @@ type testRun struct {
 
 type languageTest struct {
 	// TODO: This should be a function so we don't have to load all providers in memory all the time.
-	providers []plugin.Provider
+	providers []languageTestProvider
 
 	// stackReferences specifies other stack data that this test depends on.
 	stackReferences map[string]resource.PropertyMap
 
 	runs []testRun
+}
+
+type languageTestProvider struct {
+	plugin.Provider
+
+	parameter []string
 }
 
 // lorem is a long string used for testing large string values.
@@ -71,7 +77,11 @@ var languageTests = map[string]languageTest{
 	// INTERNAL
 	// ==========
 	"internal-bad-schema": {
-		providers: []plugin.Provider{&providers.BadProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.BadProvider{},
+			},
+		},
 	},
 	// ==========
 	// L1 (Tests not using providers)
@@ -272,7 +282,11 @@ var languageTests = map[string]languageTest{
 	// L2 (Tests using providers)
 	// ==========
 	"l2-resource-simple": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.SimpleProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				assert: func(l *L,
@@ -298,7 +312,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-primitives": {
-		providers: []plugin.Provider{&providers.PrimitiveProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.PrimitiveProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				assert: func(l *L,
@@ -331,7 +349,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-alpha": {
-		providers: []plugin.Provider{&providers.AlphaProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.AlphaProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				assert: func(l *L,
@@ -357,7 +379,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-explicit-provider": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.SimpleProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				assert: func(l *L,
@@ -385,7 +411,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-asset-archive": {
-		providers: []plugin.Provider{&providers.AssetArchiveProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.AssetArchiveProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				main: "subdir",
@@ -501,7 +531,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-engine-update-options": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.SimpleProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
@@ -529,7 +563,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-destroy": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.SimpleProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				assert: func(l *L,
@@ -578,7 +616,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-target-up-with-new-dependency": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.SimpleProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				assert: func(l *L,
@@ -631,7 +673,14 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-failed-create-continue-on-error": {
-		providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.SimpleProvider{},
+			},
+			{
+				Provider: &providers.FailOnCreateProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
@@ -658,7 +707,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-large-string": {
-		providers: []plugin.Provider{&providers.LargeProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.LargeProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
@@ -693,7 +746,11 @@ var languageTests = map[string]languageTest{
 		},
 	},
 	"l2-resource-config": {
-		providers: []plugin.Provider{&providers.ConfigProvider{}},
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.ConfigProvider{},
+			},
+		},
 		runs: []testRun{
 			{
 				updateOptions: engine.UpdateOptions{
@@ -736,6 +793,29 @@ var languageTests = map[string]languageTest{
 						}))
 					require.Equal(l, expectedInputs, defaultProvider.Inputs)
 					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
+				},
+			},
+		},
+	},
+	"l2-parameterized-providers": {
+		providers: []languageTestProvider{
+			{
+				Provider: &providers.ParameterizedProvider{},
+			},
+		},
+		runs: []testRun{
+			{
+				updateOptions: engine.UpdateOptions{
+					ContinueOnError: true,
+				},
+				assert: func(
+					l *L,
+					projectDirectory string,
+					res result.Result,
+					snap *deploy.Snapshot,
+					changes display.ResourceChanges,
+				) {
+					require.Len(l, snap.Resources, 2, "expected 2 resources in snapshot")
 				},
 			},
 		},

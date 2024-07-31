@@ -1,0 +1,5 @@
+name: l2-parameterized-providers
+runtime:
+  name: python
+  options:
+    virtualenv: venv
