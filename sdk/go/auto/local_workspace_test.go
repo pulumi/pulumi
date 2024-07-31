@@ -2837,11 +2837,11 @@ func TestListStacks(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				   "current": false, 
-				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				  {"name": "testorg1/testproj1/teststack2", 
-				   "current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				  {"name": "testorg1/testproj1/teststack2",
+				   "current": false,
 				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2870,11 +2870,11 @@ func TestListStacksCorrectArgs(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				"current": false, 
-				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				{"name": "testorg1/testproj1/teststack2", 
-				"current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				{"name": "testorg1/testproj1/teststack2",
+				"current": false,
 				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2897,11 +2897,11 @@ func TestListAllStacks(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				   "current": false, 
-				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				  {"name": "testorg1/testproj2/teststack2", 
-				   "current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				   "current": false,
+				   "url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				  {"name": "testorg1/testproj2/teststack2",
+				   "current": false,
 				   "url": "https://app.pulumi.com/testorg1/testproj2/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2930,11 +2930,11 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
-		stdout: `[{"name": "testorg1/testproj1/teststack1", 
-				"current": false, 
-				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"}, 
-				{"name": "testorg1/testproj1/teststack2", 
-				"current": false, 
+		stdout: `[{"name": "testorg1/testproj1/teststack1",
+				"current": false,
+				"url": "https://app.pulumi.com/testorg1/testproj1/teststack1"},
+				{"name": "testorg1/testproj1/teststack2",
+				"current": false,
 				"url": "https://app.pulumi.com/testorg1/testproj1/teststack2"}]`,
 		stderr:   "",
 		exitCode: 0,
@@ -2948,6 +2948,36 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"stack", "ls", "--json", "--all"}, m.capturedArgs)
+}
+
+func TestInstallWithOptions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "install")
+
+	defer os.RemoveAll(filepath.Join(pDir, "venv"))
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir))
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Run with options
+	err = workspace.Install(ctx, &InstallOptions{
+		Stdout: stdout,
+		Stderr: stderr,
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, stdout.String(), "Creating virtual environment...")
+	require.Contains(t, stdout.String(), "Successfully installed urllib3")
+	require.Contains(t, stdout.String(), "Finished installing dependencies")
+	require.Empty(t, stderr.String())
+	require.DirExists(t, filepath.Join(pDir, "venv"))
+
+	// Run without options
+	err = workspace.Install(ctx, nil)
+
+	require.NoError(t, err)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
