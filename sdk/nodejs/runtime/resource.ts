@@ -849,7 +849,7 @@ export async function prepareResource(
                 componentOpts.providers = [componentOpts.provider];
             } else if ((<ProviderResource[]>componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
                 const pkg = componentOpts.provider.getPackage();
-                const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
+                const message = `There is a conflict between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
                 const deprecationd =
                     "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details";
                 log.warn(message + deprecationd);
