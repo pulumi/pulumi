@@ -180,7 +180,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					refresh = true
 				}
 
-				if refresh && (m.Op == deploy.OpUpdate || m.Op == deploy.OpDelete) && m.DetailedDiff != nil {
+				if refresh && ((m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete) {
 					step := getPreviewMetadataStep(m, opts)
 					for i, s := range digest.Steps {
 						if s.URN == m.URN {
