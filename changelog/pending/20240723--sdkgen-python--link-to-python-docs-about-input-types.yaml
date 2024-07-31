@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen/python
+  description: Link to Python docs about input types

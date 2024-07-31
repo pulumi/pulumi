@@ -332,6 +332,12 @@ To learn more about resource properties and how to use them, see [Inputs and Out
 
 ### Inputs
 
+<pulumi-choosable type="language" values="python">
+<p>
+In Python, inputs that are objects can be passed either as <a href="/docs/languages-sdks/python/#inputs-and-outputs">argument classes or as dictionary literals</a>.
+</p>
+</pulumi-choosable>
+
 The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
