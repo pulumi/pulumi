@@ -4889,7 +4889,7 @@ func GeneratePackage(tool string,
 	}
 
 	// create a go.mod file with references to local dependencies
-	if len(localDependencies) > 0 {
+	if pkg.SupportPack {
 		var vPath string
 		if pkg.Version != nil && pkg.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
