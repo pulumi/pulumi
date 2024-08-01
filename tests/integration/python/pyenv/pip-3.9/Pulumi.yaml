@@ -1,7 +1,0 @@
-name: "pyenv-pip-3.12"
-runtime:
-  name: python
-  options:
-    toolchain: pip
-    virtualenv: venv
-description: A Python program that checks the Python version
