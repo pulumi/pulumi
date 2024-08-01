@@ -223,7 +223,7 @@ jobs:
         uses: gabrielfalcao/pyenv-action@v18
         with:
           default: "${{ env.PYENV_PYTHON_VERSION }}"
-          versions: 3.9, 3.12
+          versions: 3.9.18, 3.12.0
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
