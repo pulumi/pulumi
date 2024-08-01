@@ -332,7 +332,7 @@ export const getStore = () => {
     return localStore;
 };
 
-export const getGlobalStore =() => {
+export const getGlobalStore = () => {
     if (global.globalStore === undefined) {
         global.globalStore = new LocalStore();
     }
