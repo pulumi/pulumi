@@ -174,10 +174,10 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 func TestGetAmiIdsWorks(t *testing.T) {
 	makeFilter := func(n int) mypkg.GetAmiIdsFilterInput {
 		return &mypkg.GetAmiIdsFilterArgs{
-			Name: pulumi.String(fmt.Sprintf("filter-%d-name", n)),
+			Name: pulumi.Sprintf("filter-%d-name", n),
 			Values: pulumi.StringArray{
-				pulumi.String(fmt.Sprintf("value-%d-1", n)),
-				pulumi.String(fmt.Sprintf("value-%d-2", n)),
+				pulumi.Sprintf("value-%d-1", n),
+				pulumi.Sprintf("value-%d-2", n),
 			},
 		}
 	}
