@@ -119,7 +119,8 @@ func usePyenv(cwd string) (bool, string, string, error) {
 			return false, "", "", fmt.Errorf("error while looking for pyenv %+v", err)
 		}
 		// No pyenv installed
-		logging.V(9).Infof("Python toolchain: found .python-version file at %s, but could not find pyenv executable", versionFile)
+		logging.V(9).Infof("Python toolchain: found .python-version file at %s, but could not find pyenv executable",
+			versionFile)
 		return false, "", "", nil
 	}
 	return true, pyenvPath, versionFile, nil
@@ -135,7 +136,11 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 	}
 
 	if showOutput {
-		infoWriter.Write([]byte(fmt.Sprintf("Installing python version from .python-version file at %s\n", versionFile)))
+		_, err := infoWriter.Write([]byte(fmt.Sprintf("Installing python version from .python-version file at %s\n",
+			versionFile)))
+		if err != nil {
+			return fmt.Errorf("error while writing to infoWriter %s", err)
+		}
 	}
 	cmd := exec.CommandContext(ctx, pyenv, "install", "--skip-existing")
 	cmd.Dir = cwd
@@ -148,10 +153,8 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			return fmt.Errorf("error while running pyenv install %s", string(exitErr.Stderr))
-		} else {
-			return fmt.Errorf("error while running pyenv install %s", err)
 		}
+		return fmt.Errorf("error while running pyenv install %s", err)
 	}
-
 	return nil
 }
