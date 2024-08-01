@@ -220,10 +220,10 @@ jobs:
           echo "PYENV_PYTHON_VERSION=${version}" >> "$GITHUB_ENV"
       - name: Install pyenv
         if: ${{ runner.os != 'Windows' }}
-        uses: gabrielfalcao/pyenv-action@v18
+        uses: julienp/pyenv-action@v19
         with:
           default: "${{ env.PYENV_PYTHON_VERSION }}"
-          versions: 3.9.18, 3.12.0
+          versions: 3.9.19, 3.12.4
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
