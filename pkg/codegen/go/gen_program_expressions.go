@@ -719,7 +719,8 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	}
 	argTypeName := g.argumentTypeName(destType, false)
 	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
-	if isPulumiType {
+	isPulumiStr := argTypeName == "pulumi.String"
+	if isPulumiType && !isPulumiStr {
 		g.Fgenf(w, "%s(", argTypeName)
 		defer g.Fgenf(w, ")")
 	}
@@ -746,7 +747,11 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		fmtStr.WriteString("%v")
 		g.Fgenf(args, ", %.v", v)
 	}
-	g.Fgenf(w, "fmt.Sprintf(")
+	if isPulumiStr {
+		g.Fgenf(w, "pulumi.Sprintf(")
+	} else {
+		g.Fgenf(w, "fmt.Sprintf(")
+	}
 	g.genStringLiteral(w, fmtStr.String(), canBeRaw)
 	_, err := args.WriteTo(w)
 	contract.AssertNoErrorf(err, "Failed to write arguments")
