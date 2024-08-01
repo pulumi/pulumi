@@ -332,13 +332,6 @@ export const getStore = () => {
     return localStore;
 };
 
-export const getGlobalStore = () => {
-    if (global.globalStore === undefined) {
-        global.globalStore = new LocalStore();
-    }
-    return global.globalStore;
-};
-
 (<any>getStore).captureReplacement = () => {
     const returnFunc = () => {
         if (global.globalStore === undefined) {
@@ -347,4 +340,14 @@ export const getGlobalStore = () => {
         return global.globalStore;
     };
     return returnFunc;
+};
+
+/**
+ * @internal
+ */
+export const getGlobalStore = () => {
+    if (global.globalStore === undefined) {
+        global.globalStore = new LocalStore();
+    }
+    return global.globalStore;
 };
