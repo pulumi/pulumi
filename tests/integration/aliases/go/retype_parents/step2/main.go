@@ -35,7 +35,7 @@ func NewComponentSix(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOp
 	aliases := make([]pulumi.Alias, 0)
 	for i := 0; i < 100; i++ {
 		aliases = append(aliases, pulumi.Alias{
-			Type: pulumi.StringInput(pulumi.Sprintf("my:module:ComponentSix-v%d", i)),
+			Type: pulumi.Sprintf("my:module:ComponentSix-v%d", i),
 		})
 	}
 	err := ctx.RegisterComponentResource(
@@ -59,7 +59,7 @@ func NewComponentSixParent(ctx *pulumi.Context, name string,
 	aliases := make([]pulumi.Alias, 0)
 	for i := 0; i < 10; i++ {
 		aliases = append(aliases, pulumi.Alias{
-			Type: pulumi.StringInput(pulumi.Sprintf("my:module:ComponentSixParent-v%d", i)),
+			Type: pulumi.Sprintf("my:module:ComponentSixParent-v%d", i),
 		})
 	}
 	err := ctx.RegisterComponentResource(
