@@ -15,12 +15,13 @@
 package fsutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 )
 
-var ErrNotFound = fmt.Errorf("not found")
+var ErrNotFound = errors.New("not found")
 
 // Searchup searches for a file in the current directory and then walks up the directory tree until it finds the file,
 // returning the path to the file. If the file is not found, it returns ErrNotFound.
