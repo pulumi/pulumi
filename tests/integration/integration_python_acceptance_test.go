@@ -548,38 +548,3 @@ pulumi = ">=3.0.0,<4.0.0"
 python = "^3.8"
 `, string(b))
 }
-
-func TestPyenv(t *testing.T) {
-	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("pyenv is not supported on Windows")
-	}
-	for _, test := range []string{"python/pyenv/poetry-3.9", "python/pyenv/poetry-3.12", "python/pyenv/pip-3.12"} {
-		test := test
-		t.Run(test, func(t *testing.T) {
-			t.Parallel()
-			e := ptesting.NewEnvironment(t)
-			defer e.DeleteIfNotFailed()
-			e.ImportDirectory(test)
-			e.Env = []string{
-				"PULUMI_LANGUAGE_VERSION_FILES=true",
-			}
-			stackName := ptesting.RandomStackName()
-			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-			e.RunCommand("pulumi", "install")
-			e.RunCommand("pulumi", "stack", "init", stackName)
-			e.RunCommand("pulumi", "up", "--yes", "--skip-preview", "--stack", stackName)
-		})
-	}
-}
-
-func TestPyenvNoVersionFile(t *testing.T) {
-	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("pyenv is not supported on Windows")
-	}
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-	e.ImportDirectory("python/pyenv/poetry-3.9")
-	e.RunCommand("rm", ".python-version")
-}

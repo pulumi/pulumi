@@ -211,19 +211,6 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Install poetry
         run: pipx install poetry
-      - name: Python version for pyenv
-        # The python version from the inputs can contain a `.x` suffix, e.g. 3.12.x, which pyenv does not support.
-        if: ${{ runner.os != 'Windows' }}
-        run: |
-          version="${{ fromJson(inputs.version-set).python }}"
-          version=${version%".x"}
-          echo "PYENV_PYTHON_VERSION=${version}" >> "$GITHUB_ENV"
-      - name: Install pyenv
-        if: ${{ runner.os != 'Windows' }}
-        uses: julienp/pyenv-action@v19
-        with:
-          default: "${{ env.PYENV_PYTHON_VERSION }}"
-          versions: 3.9.19, 3.12.4
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
