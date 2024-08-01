@@ -249,9 +249,9 @@ func TestPyenvInstall(t *testing.T) {
 	// The binary will write its arguments to a file, that we read back later to verify that it was called with the
 	// correct arguments.
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
-	//nolint:gosec // we want this file to be executable
 	outPath := filepath.Join(tmpDir, "out.txt")
 	script := fmt.Sprintf("#!/bin/sh\necho $@ > %s\n", outPath)
+	//nolint:gosec // we want this file to be executable
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "pyenv"), []byte(script), 0o700))
 	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
