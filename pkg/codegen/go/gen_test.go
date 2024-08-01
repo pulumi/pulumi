@@ -73,7 +73,7 @@ func TestGeneratePackage(t *testing.T) {
 			t.Logf("Ignoring extraFile %s", f)
 		}
 
-		return GeneratePackage(tool, pkg)
+		return GeneratePackage(tool, pkg, nil)
 	}
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
@@ -296,7 +296,7 @@ func TestPackageNaming(t *testing.T) {
 					RootPackageName: tt.rootPackageName,
 				},
 			}
-			files, err := GeneratePackage("test", schema)
+			files, err := GeneratePackage("test", schema, nil)
 			require.NoError(t, err)
 			ordering := slice.Prealloc[string](len(files))
 			for k := range files {
@@ -576,7 +576,7 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	t.Logf("%v", diags)
 	require.False(t, diags.HasErrors())
 
-	fs, err := GeneratePackage("tests", pkg)
+	fs, err := GeneratePackage("tests", pkg, nil)
 	require.NoError(t, err)
 
 	for f := range fs {

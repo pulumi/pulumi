@@ -25,6 +25,9 @@ type PackageReference interface {
 	// Description returns the packages description.
 	Description() string
 
+	// SupportPack specifies the package definition can be packed by language plugins
+	SupportPack() bool
+
 	// Types returns the package's types.
 	Types() PackageTypes
 	// Config returns the package's configuration variables, if any.
@@ -145,6 +148,10 @@ func (p packageDefRef) Version() *semver.Version {
 
 func (p packageDefRef) Description() string {
 	return p.pkg.Description
+}
+
+func (p packageDefRef) SupportPack() bool {
+	return p.pkg.SupportPack
 }
 
 func (p packageDefRef) Types() PackageTypes {
@@ -335,6 +342,16 @@ func (p *PartialPackage) Description() string {
 		return p.def.Description
 	}
 	return p.types.pkg.Description
+}
+
+func (p *PartialPackage) SupportPack() bool {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.SupportPack
+	}
+	return p.types.pkg.SupportPack
 }
 
 func (p *PartialPackage) Types() PackageTypes {

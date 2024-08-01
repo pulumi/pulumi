@@ -582,6 +582,10 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
 		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
+		if p.SupportPack {
+			// then the default is that we no longer nest source files under the go subdirectory
+			packageName = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", p.Name, vPath)
+		}
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
@@ -930,7 +934,11 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
 	importPath := func(mod, importBasePath string) string {
 		if importBasePath == "" {
-			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+			if schema, ok := g.packages[pkg]; ok && schema.SupportPack {
+				importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", pkg, versionPath, pkg)
+			} else {
+				importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+			}
 		}
 
 		if mod != "" && mod != IndexToken {

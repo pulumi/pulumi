@@ -177,7 +177,6 @@ var expectedFailures = map[string]string{
 	"l2-large-string":                    "missing go.mod",
 	"l2-explicit-provider":               "missing go.mod",
 	"l2-resource-alpha":                  "missing go.mod",
-	"l2-resource-simple":                 "missing go.mod",
 	"l2-resource-asset-archive":          "missing go.mod",
 	"l2-failed-create-continue-on-error": "missing go.mod",
 	"l2-engine-update-options":           "missing go.mod",

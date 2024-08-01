@@ -32,6 +32,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/mod/modfile"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -3654,10 +3656,16 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 func extractImportBasePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
+	name := extPkg.Name()
 	if version != nil && version.Major > 1 {
 		vPath = fmt.Sprintf("/v%d", version.Major)
 	}
-	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", extPkg.Name(), vPath, extPkg.Name())
+
+	if extPkg.SupportPack() {
+		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", name, vPath, name)
+	}
+
+	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", name, vPath, name)
 }
 
 func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
@@ -4512,7 +4520,10 @@ func packageName(pkg *schema.Package) string {
 	return goPackage(root)
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func GeneratePackage(tool string,
+	pkg *schema.Package,
+	localDependencies map[string]string,
+) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
 	}
@@ -4521,6 +4532,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
+
+	if goPkgInfo.ImportBasePath == "" {
+		goPkgInfo.ImportBasePath = extractImportBasePath(pkg.Reference())
+	}
+
 	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, NewCache())
 	if err != nil {
 		return nil, err
@@ -4881,6 +4897,43 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 			setGenericVariantFile(path.Join(mod, "init.go"), genericVariantBuffer.String())
 		}
+	}
+
+	// create a go.mod file with references to local dependencies
+	if pkg.SupportPack {
+		var vPath string
+		if pkg.Version != nil && pkg.Version.Major > 1 {
+			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
+		}
+
+		modulePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", pkg.Name, vPath)
+		if langInfo, found := pkg.Language["go"]; found {
+			goInfo, ok := langInfo.(GoPackageInfo)
+			if ok && goInfo.ImportBasePath != "" {
+				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
+				if separatorIndex >= 0 {
+					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
+					modulePath = fmt.Sprintf("%s%s", modulePrefix, vPath)
+				}
+			}
+		}
+
+		var gomod modfile.File
+		err = gomod.AddModuleStmt(modulePath)
+		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
+		err = gomod.AddGoStmt("1.20")
+		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
+		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
+		pulumiVersion := "v3.30.0"
+		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
+		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
+		if replacementPath, hasReplacement := localDependencies["pulumi"]; hasReplacement {
+			err = gomod.AddReplace(pulumiPackagePath, "", replacementPath, "")
+			contract.AssertNoErrorf(err, "could not add replace statement to go.mod")
+		}
+
+		files["go.mod"], err = gomod.Format()
+		contract.AssertNoErrorf(err, "could not format go.mod")
 	}
 
 	return files, nil
