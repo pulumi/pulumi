@@ -1,0 +1,6 @@
+name: "pyenv-poetry-3.12"
+runtime:
+  name: python
+  options:
+    toolchain: poetry
+description: A Python program that checks the Python version

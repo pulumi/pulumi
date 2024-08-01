@@ -211,6 +211,12 @@ jobs:
           python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Install poetry
         run: pipx install poetry
+      - name: Install pyenv
+        if: ${{ runner.os != 'Windows' }}
+        uses: gabrielfalcao/pyenv-action@v18
+        with:
+          default: "${{ fromJson(inputs.version-set).python }}"
+          versions: 3.9, 3.12
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"

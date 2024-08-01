@@ -194,6 +194,42 @@ func TestAbout(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
+func TestUsePyenv(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Test without pyenv or .python-version file
+	use, pyenvPath, versionFile, err := usePyenv(tmpDir)
+	require.NoError(t, err)
+	require.False(t, use)
+
+	// Test witbout .python-version file
+	use, pyenvPath, versionFile, err = usePyenv(tmpDir)
+	require.NoError(t, err)
+	require.False(t, use)
+
+	// Add a fake pyenv binary to $tmp/bin and set $PATH to $tmp/bin
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0755))
+	os.WriteFile(filepath.Join(tmpDir, "bin", "pyenv"), []byte("#!/bin/sh\nexit 0;\n"), 0755)
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
+
+	// Create a .python-version file
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".python-version"), []byte("3.9.0"), 0644))
+
+	// Test without PULUMI_LANGUAGE_VERSION_FILES set
+	use, pyenvPath, versionFile, err = usePyenv(tmpDir)
+	require.NoError(t, err)
+	require.False(t, use)
+
+	// Test with PULUMI_LANGUAGE_VERSION_FILES
+	t.Setenv("PULUMI_LANGUAGE_VERSION_FILES", "true")
+	use, pyenvPath, versionFile, err = usePyenv(tmpDir)
+	require.NoError(t, err)
+	require.True(t, use)
+	require.Equal(t, filepath.Join(tmpDir, ".python-version"), versionFile)
+	require.Equal(t, filepath.Join(tmpDir, "bin", "pyenv"), pyenvPath)
+}
+
 func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	t.Helper()
 

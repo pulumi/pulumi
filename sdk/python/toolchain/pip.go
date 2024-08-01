@@ -376,6 +376,10 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, showOutput bo
 		}
 	}
 
+	if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
+		return err
+	}
+
 	if venvDir != "" {
 		printmsg("Creating virtual environment...")
 

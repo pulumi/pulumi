@@ -97,7 +97,20 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
+	if err := installPython(ctx, root, showOutput, infoWriter, errorWriter); err != nil {
+		return err
+	}
+
 	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
+	// For poetry to work nicely with pyenv, we need to make poetry use the active python,
+	// otherwise poetry will use the python version used to run poetry itself.
+	use, _, _, err := usePyenv(root)
+	if err != nil {
+		return fmt.Errorf("checking for pyenv: %w", err)
+	}
+	if use {
+		poetryCmd.Env = append(os.Environ(), "POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true")
+	}
 	poetryCmd.Dir = p.directory
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter
