@@ -324,7 +324,9 @@ class Resource(CustomResource):
         # When serialize_as_secret_always is set to False, the serialized provider is made a
         # secret only if any secret Outputs were captured during serialization of the
         # provider.
-        serialize_as_secret_always: bool = getattr(provider, "serialize_as_secret_always", True)
+        serialize_as_secret_always: bool = getattr(
+            provider, "serialize_as_secret_always", True
+        )
         if serialize_as_secret_always or contains_secrets:
             serialized_provider = pulumi.Output.secret(serialized_provider)
 

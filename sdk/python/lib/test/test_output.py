@@ -177,7 +177,7 @@ class OutputFromInputTests(unittest.TestCase):
             baz: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
             nested: Optional[
                 pulumi.Input[pulumi.InputType["OutputFromInputTests.NestedArgs"]]
-            ] = None
+            ] = None,
         ):
             if foo is not None:
                 pulumi.set(self, "foo", foo)
@@ -499,14 +499,16 @@ class OutputSerializationTests(unittest.TestCase):
         i = Output.from_input("hello")
         with self.assertRaisesRegex(
             Exception,
-            "Cannot call '.get' during update or preview. To manipulate the value of this Output, use '.apply' instead."
+            "Cannot call '.get' during update or preview. To manipulate the value of this Output, use '.apply' instead.",
         ):
             i.get()
 
     @pulumi_test
     async def test_get_state_raises(self):
         i = Output.from_input("hello")
-        with self.assertRaisesRegex(Exception, "__getstate__ can only be called during serialization"):
+        with self.assertRaisesRegex(
+            Exception, "__getstate__ can only be called during serialization"
+        ):
             i.__getstate__()
 
     @pulumi_test
@@ -548,8 +550,10 @@ class OutputSerializationTests(unittest.TestCase):
         _deserialize(lambda: i.__setstate__({"value": "world"}))
 
         def expected_msg(name: str):
-            return f"'{name}' is not allowed from inside a cloud-callback. " \
+            return (
+                f"'{name}' is not allowed from inside a cloud-callback. "
                 + "Use 'get' to retrieve the value of this Output directly."
+            )
 
         with self.assertRaisesRegex(Exception, expected_msg("apply")):
             i.apply(lambda x: x)
