@@ -488,6 +488,76 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	})
 }
 
+// Tests dynamic provider in Python with `serialize_as_secret_always` set to `False`.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
+	dir := filepath.Join("dynamic", "python-disable-serialization-as-secret")
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: dir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      filepath.Join(dir, "step1"),
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+
+				// `serialize_as_secret_always` is set to `False`, so we expect `__provider` to be a plain string
+				// and not a secret since it didn't capture any secrets.
+				dynRes := stack.Deployment.Resources[2]
+				assert.IsType(t, "", dynRes.Inputs["__provider"], "expect __provider to be a string")
+				assert.IsType(t, "", dynRes.Outputs["__provider"], "expect __provider to be a string")
+
+				// Ensure there are no diagnostic events other than debug.
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil {
+						assert.Equal(t, "debug", event.DiagnosticEvent.Severity,
+							"unexpected diagnostic event: %#v", event.DiagnosticEvent)
+					}
+				}
+			},
+		}},
+		UseSharedVirtualEnv: boolPointer(false),
+	})
+}
+
+// Tests custom resource type name of dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicProviderSecretsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-secrets"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Secrets: map[string]string{
+			"password": "s3cret",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the __provider input (and corresponding output) was marked secret
+			dynRes := stackInfo.Deployment.Resources[2]
+			for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
+				switch v := providerVal.(type) {
+				case string:
+					assert.Fail(t, "__provider was not a secret")
+				case map[string]interface{}:
+					assert.Equal(t, resource.SecretSig, v[resource.SigKey])
+				}
+			}
+			// Ensure the resulting output had the expected value
+			code, ok := stackInfo.Outputs["out"].(string)
+			assert.True(t, ok)
+			assert.Equal(t, "200", code)
+		},
+	})
+}
+
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialValuesPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

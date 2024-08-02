@@ -40,6 +40,11 @@ from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
 from .runtime.settings import SETTINGS
+from .runtime._serialization import (
+    _serialization_enabled,
+    _secrets_allowed,
+    _set_contained_secrets,
+)
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -153,6 +158,68 @@ class Output(Generic[T_co]):
         return self._is_known
 
     # End private implementation details.
+
+    def __getstate__(self):
+        """
+        Serialize this Output into a dictionary for pickling, only when serialization is enabled.
+        """
+
+        if not _serialization_enabled():
+            raise Exception("__getstate__ can only be called during serialization")
+
+        value, is_secret = _sync_await(asyncio.gather(self.future(), self.is_secret()))
+
+        if is_secret:
+            if _secrets_allowed():
+                _set_contained_secrets(True)
+            else:
+                raise Exception("Secret outputs cannot be captured")
+
+        return {"value": value}
+
+    def __setstate__(self, state):
+        """
+        Deserialize this Output from a dictionary, only when serialization is enabled.
+        """
+
+        if not _serialization_enabled():
+            raise Exception("__setstate__ can only be called during deserialization")
+
+        value = state["value"]
+
+        # Replace '.get' with a function that returns the value without raising an error.
+        self.get = lambda: value
+
+        def error(name: str):
+            def f(*args: Any, **kwargs: Any):
+                raise Exception(
+                    f"'{name}' is not allowed from inside a cloud-callback. "
+                    + "Use 'get' to retrieve the value of this Output directly."
+                )
+
+            return f
+
+        # Replace '.apply' and other methods on Output with implementations that raise an error.
+        self.apply = error("apply")
+        self.resources = error("resources")
+        self.future = error("future")
+        self.is_known = error("is_known")
+        self.is_secret = error("is_secret")
+
+    def get(self) -> T_co:
+        """
+        Retrieves the underlying value of this Output.
+
+        This function is only callable in code that runs post-deployment. At this point all Output
+        values will be known and can be safely retrieved. During pulumi deployment or preview
+        execution this must not be called (and will raise an error). This is because doing so would
+        allow Output values to flow into Resources while losing the data that would allow the
+        dependency graph to be changed.
+        """
+        raise Exception(
+            "Cannot call '.get' during update or preview. To manipulate the value of this Output, "
+            + "use '.apply' instead."
+        )
 
     def is_secret(self) -> Awaitable[bool]:
         return self._is_secret
