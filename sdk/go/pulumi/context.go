@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -2191,6 +2192,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	}
 
 	go func() {
+		time.Sleep(5 * time.Second)
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var err error
 		defer func() {

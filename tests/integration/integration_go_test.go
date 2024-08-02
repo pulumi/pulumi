@@ -963,6 +963,9 @@ func TestResourceRefsGetResourceGo(t *testing.T) {
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
 		Quick: true,
 	})
 }

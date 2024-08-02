@@ -14,16 +14,28 @@ import (
 )
 
 type Child struct {
-	pulumi.ResourceState
+	pulumi.CustomResourceState
 
 	Message pulumi.StringOutput `pulumi:"message"`
+}
+
+type randomArgs struct {
+	Length int `pulumi:"length"`
+}
+
+type RandomArgs struct {
+	Length pulumi.IntInput
+}
+
+func (RandomArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*randomArgs)(nil)).Elem()
 }
 
 func NewChild(ctx *pulumi.Context, name string, message pulumi.StringInput,
 	opts ...pulumi.ResourceOption,
 ) (*Child, error) {
 	component := &Child{}
-	if err := ctx.RegisterComponentResource("test:index:Child", name, component, opts...); err != nil {
+	if err := ctx.RegisterResource("testprovider:index:Random", name, &RandomArgs{Length: pulumi.Int(7)}, component, opts...); err != nil {
 		return nil, err
 	}
 	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
@@ -49,7 +61,7 @@ func (ChildOutput) ElementType() reflect.Type {
 }
 
 type Container struct {
-	pulumi.ResourceState
+	pulumi.CustomResourceState
 
 	Child ChildOutput `pulumi:"child"`
 }
@@ -58,7 +70,7 @@ func NewContainer(ctx *pulumi.Context, name string, child ChildInput,
 	opts ...pulumi.ResourceOption,
 ) (*Container, error) {
 	component := &Container{}
-	if err := ctx.RegisterComponentResource("test:index:Container", name, component, opts...); err != nil {
+	if err := ctx.RegisterResource("testprovider:index:Container", name, nil, component, opts...); err != nil {
 		return nil, err
 	}
 	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
@@ -79,7 +91,7 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
-	case "test:index:Child":
+	case "testprovider:index:Random":
 		r = &Child{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
@@ -114,7 +126,7 @@ func main() {
 		containerURN := containerURNResult.Value.(pulumi.URN)
 
 		roundTrippedContainer := &Container{}
-		if err := ctx.RegisterComponentResource("test:index:Container", "mycontainer", roundTrippedContainer,
+		if err := ctx.RegisterResource("testprovider:index:Container", "mycontainer", nil, roundTrippedContainer,
 			pulumi.URN_(string(containerURN))); err != nil {
 			return err
 		}
