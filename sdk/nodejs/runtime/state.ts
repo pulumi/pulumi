@@ -19,6 +19,7 @@ import { Stack } from "./stack";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",
@@ -188,6 +189,16 @@ export interface Store {
      * callbacks and forwards them to the engine.
      */
     callbacks?: ICallbackServer;
+
+    /**
+     * Tracks the list of resource packages that have been registered.
+     */
+    resourcePackages: Map<string, ResourcePackage[]>;
+
+    /**
+     * Tracks the list of resource modules that have been registered.
+     */
+    resourceModules: Map<string, ResourceModule[]>;
 }
 
 /**
@@ -231,6 +242,8 @@ export class LocalStore implements Store {
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
+    resourcePackages = new Map<string, ResourcePackage[]>();
+    resourceModules = new Map<string, ResourceModule[]>();
 }
 
 /**
@@ -241,6 +254,36 @@ export class LocalStore implements Store {
 export function getStackResource(): Stack | undefined {
     const { stackResource } = getStore();
     return stackResource;
+}
+
+/**
+ * Get the resource package map for the current stack deployment.
+ *
+ * @internal
+ */
+export function getResourcePackages(): Map<string, ResourcePackage[]> {
+    const store = getGlobalStore();
+    if (store.resourcePackages === undefined) {
+        // resourcePackages can be undefined if an older SDK where it was not defined is created it.
+        // In this case, we should initialize it to an empty map.
+        store.resourcePackages = new Map<string, ResourcePackage[]>();
+    }
+    return store.resourcePackages;
+}
+
+/**
+ * Get the resource module map for the current stack deployment.
+ *
+ * @internal
+ */
+export function getResourceModules(): Map<string, ResourceModule[]> {
+    const store = getGlobalStore();
+    if (store.resourceModules === undefined) {
+        // resourceModules can be undefined if an older SDK where it was not defined is created it.
+        // In this case, we should initialize it to an empty map.
+        store.resourceModules = new Map<string, ResourceModule[]>();
+    }
+    return store.resourceModules;
 }
 
 /**
@@ -297,4 +340,14 @@ export const getStore = () => {
         return global.globalStore;
     };
     return returnFunc;
+};
+
+/**
+ * @internal
+ */
+export const getGlobalStore = () => {
+    if (global.globalStore === undefined) {
+        global.globalStore = new LocalStore();
+    }
+    return global.globalStore;
 };

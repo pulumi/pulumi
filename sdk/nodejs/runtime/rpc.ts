@@ -20,7 +20,7 @@ import { ComponentResource, CustomResource, DependencyResource, ProviderResource
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./resource";
 import { excessiveDebugOutput, isDryRun } from "./settings";
-import { getStore } from "./state";
+import { getStore, getResourcePackages, getResourceModules } from "./state";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as semver from "semver";
@@ -838,13 +838,12 @@ export interface ResourcePackage {
     constructProvider(name: string, type: string, urn: string): ProviderResource;
 }
 
-const resourcePackages = new Map<string, ResourcePackage[]>();
-
 /**
  * @internal
  *  Used only for testing purposes.
  */
 export function _resetResourcePackages() {
+    const resourcePackages = getResourcePackages();
     resourcePackages.clear();
 }
 
@@ -854,10 +853,12 @@ export function _resetResourcePackages() {
  * current instance of the Pulumi JavaScript SDK.
  */
 export function registerResourcePackage(pkg: string, resourcePackage: ResourcePackage) {
+    const resourcePackages = getResourcePackages();
     register(resourcePackages, "package", pkg, resourcePackage);
 }
 
 export function getResourcePackage(pkg: string, version: string | undefined): ResourcePackage | undefined {
+    const resourcePackages = getResourcePackages();
     return getRegistration(resourcePackages, pkg, version);
 }
 
@@ -870,8 +871,6 @@ export interface ResourceModule {
     construct(name: string, type: string, urn: string): Resource;
 }
 
-const resourceModules = new Map<string, ResourceModule[]>();
-
 function moduleKey(pkg: string, mod: string): string {
     return `${pkg}:${mod}`;
 }
@@ -881,6 +880,7 @@ function moduleKey(pkg: string, mod: string): string {
  *  Used only for testing purposes.
  */
 export function _resetResourceModules() {
+    const resourceModules = getResourceModules();
     resourceModules.clear();
 }
 
@@ -891,10 +891,12 @@ export function _resetResourceModules() {
  */
 export function registerResourceModule(pkg: string, mod: string, module: ResourceModule) {
     const key = moduleKey(pkg, mod);
+    const resourceModules = getResourceModules();
     register(resourceModules, "module", key, module);
 }
 
 export function getResourceModule(pkg: string, mod: string, version: string | undefined): ResourceModule | undefined {
     const key = moduleKey(pkg, mod);
+    const resourceModules = getResourceModules();
     return getRegistration(resourceModules, key, version);
 }

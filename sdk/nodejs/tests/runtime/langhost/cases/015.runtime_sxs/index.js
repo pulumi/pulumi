@@ -83,3 +83,18 @@ res1.runtime1.apply((value) => assert.strictEqual(value, 1));
 res1.runtime2.apply((value) => assert.strictEqual(value, 2));
 res2.runtime1.apply((value) => assert.strictEqual(value, 1));
 res2.runtime2.apply((value) => assert.strictEqual(value, 2));
+
+pulumi1.runtime.registerResourcePackage("test1", {
+    version: "0.0.1",
+});
+pulumi2.runtime.registerResourcePackage("test2", {
+    version: "0.0.2",
+});
+let test1pulumi1 = pulumi1.runtime.getResourcePackage("test1");
+assert.strictEqual(test1pulumi1.version, "0.0.1");
+let test1pulumi2 = pulumi2.runtime.getResourcePackage("test1");
+assert.strictEqual(test1pulumi2.version, "0.0.1");
+let test2pulumi1 = pulumi1.runtime.getResourcePackage("test2");
+assert.strictEqual(test2pulumi1.version, "0.0.2");
+let test2pulumi2 = pulumi2.runtime.getResourcePackage("test2");
+assert.strictEqual(test2pulumi2.version, "0.0.2");
