@@ -171,3 +171,37 @@ runtime: nodejs`
 	assert.NoError(t, err)
 	assert.Equal(t, yamlDeployPath, path)
 }
+
+func TestDetectPolicyPackPathAt(t *testing.T) {
+	t.Parallel()
+	tmpDir := mkTempDir(t)
+
+	// No policy pack file, return empty string
+	path, err := DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, "", path)
+
+	// Create a PolicyPack.yaml
+	policyPackPath := filepath.Join(tmpDir, "PulumiPolicy.yaml")
+	yamlContents := "runtime: nodejs\n"
+	require.NoError(t, os.WriteFile(policyPackPath, []byte(yamlContents), 0o600))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, policyPackPath, path)
+
+	// Check that we can also detect a PolicyPack.json
+	require.NoError(t, os.Remove(policyPackPath))
+	policyPackPath = filepath.Join(tmpDir, "PulumiPolicy.json")
+	jsonContents := `{"runtime": "nodejs"}`
+	require.NoError(t, os.WriteFile(policyPackPath, []byte(jsonContents), 0o600))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, policyPackPath, path)
+
+	// Return an empty string if the path is a directory
+	require.NoError(t, os.Remove(policyPackPath))
+	require.NoError(t, os.Mkdir(policyPackPath, 0o700))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, "", path)
+}

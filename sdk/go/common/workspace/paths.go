@@ -164,6 +164,26 @@ func DetectPolicyPackPathFrom(path string) (string, error) {
 	})
 }
 
+// DetectPolicyPackPathAt locates the PulumiPolicy file at the given path. If no project is found, an empty path is
+// returned. Unlike DetectPolicyPackPathFrom, this function does not search upwards in the directory hierarchy.
+func DetectPolicyPackPathAt(path string) (string, error) {
+	for _, ext := range encoding.Exts {
+		packPath := filepath.Join(path, PolicyPackFile+ext)
+		info, err := os.Stat(packPath)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			return "", err
+		}
+		if info.IsDir() {
+			return "", nil
+		}
+		return packPath, nil
+	}
+	return "", nil
+}
+
 // DetectProject loads the closest project from the current working directory, or an error if not found.
 func DetectProject() (*Project, error) {
 	proj, _, err := DetectProjectAndPath()

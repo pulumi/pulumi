@@ -408,14 +408,13 @@ func getPluginsFromDir(
 			// If a directory, recurse into it. However we have to take care to avoid recursing
 			// into nested policy packs. The plugins in a policy pack are not dependencies of the
 			// program, so we should not include them in the list of plugins to install.
-			policyPack, err := workspace.DetectPolicyPackPathFrom(curr)
+			policyPack, err := workspace.DetectPolicyPackPathAt(curr)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
 				continue
 			}
-			policyPackDir := filepath.Dir(policyPack)
-			if policyPack != "" && strings.Contains(curr, policyPackDir) {
-				// The path is within a policy pack, stop recursing.
+			if policyPack != "" {
+				// curr is a policy pack, so we should not recurse into it.
 				continue
 			}
 
