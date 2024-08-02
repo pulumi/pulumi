@@ -17,6 +17,7 @@ package workspace
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -29,6 +30,8 @@ import (
 )
 
 const RetryCount = 6
+
+var ErrPulumiCloudUnauthorized = errors.New("unauthorized")
 
 // Sanitize archive file pathing from "G305: Zip Slip vulnerability"
 func sanitizeArchivePath(d, t string) (v string, err error) {
@@ -45,7 +48,11 @@ func isZIPTemplateURL(templateNamePathOrURL string) bool {
 	if err != nil {
 		return false
 	}
-	return parsedURL.Path != "" && strings.HasSuffix(parsedURL.Path, ".zip")
+	return parsedURL.Path != "" // && strings.HasSuffix(parsedURL.Path, ".zip")
+}
+
+func isPulumiHostResponse(resp *http.Response) bool {
+	return resp.Header.Get("X-Pulumi-Request-ID") != ""
 }
 
 func RetrieveZIPTemplates(templateURL string, opts ...RequestOption) (TemplateRepository, error) {
@@ -164,6 +171,9 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string, opts ...Req
 	packageResponse, err := client.Do(packageRequest)
 	if err != nil {
 		return "", err
+	}
+	if packageResponse.StatusCode == http.StatusUnauthorized && isPulumiHostResponse(packageResponse) {
+		return "", fmt.Errorf("failed to download package: %w", ErrPulumiCloudUnauthorized)
 	}
 	if packageResponse.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to download package: %s", packageResponse.Status)
