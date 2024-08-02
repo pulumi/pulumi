@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from contextvars import ContextVar, copy_context
-from typing import Callable, ParamSpec, TypeVar, Tuple
+from typing import Callable, TypeVar, Tuple
 
 
 __all__ = [
@@ -26,7 +26,6 @@ __all__ = [
 
 
 _T = TypeVar("_T")
-_P = ParamSpec("_P")
 
 # ContextVars that control whether serialization is enabled, whether secrets are allowed to be serialized,
 # and whether the serialized data contains secrets.
@@ -40,7 +39,7 @@ _var_serialization_contained_secrets = ContextVar(
 
 
 def _serialize(
-    allow_secrets: bool, f: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs
+    allow_secrets: bool, f: Callable[..., _T], *args, **kwargs
 ) -> Tuple[_T, bool]:
     """
     Run the given function with serialization enabled.
@@ -56,7 +55,7 @@ def _serialize(
     return ctx.run(serialize)
 
 
-def _deserialize(f: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> _T:
+def _deserialize(f: Callable[..., _T], *args, **kwargs) -> _T:
     """
     Run the given function with serialization enabled.
     """
