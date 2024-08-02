@@ -66,7 +66,7 @@ type NamedStackSecretsProvider struct {
 }
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is uknown or the state is invalid.
+// if the type is unknown or the state is invalid.
 func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
