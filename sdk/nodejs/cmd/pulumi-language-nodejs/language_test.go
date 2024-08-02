@@ -229,7 +229,7 @@ func TestLanguage(t *testing.T) {
 
 		for _, tt := range tests.Tests {
 			tt := tt
-			t.Run(fmt.Sprintf("forceTsc=%v-/%s", forceTsc, tt), func(t *testing.T) {
+			t.Run(fmt.Sprintf("forceTsc=%v/%s", forceTsc, tt), func(t *testing.T) {
 				t.Parallel()
 
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
