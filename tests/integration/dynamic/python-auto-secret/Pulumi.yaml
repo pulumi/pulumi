@@ -1,3 +1,0 @@
-name: dynamic_py_auto_secret
-description: A simple Python program that uses dynamic providers with auto secret capture.
-runtime: python

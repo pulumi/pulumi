@@ -9,8 +9,6 @@ password = config.require_secret("password")
 
 
 class SimpleProvider(ResourceProvider):
-    auto_secret = True
-
     def create(self, props):
         # Need to use `password.get()` to get the underlying value of the secret from within the serialized code.
         # This simulates using this as a credential to talk to an external system.

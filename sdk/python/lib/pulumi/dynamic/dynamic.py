@@ -182,11 +182,11 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
-    auto_secret: bool = False
+    serialize_as_secret_always: bool = True
     """
-    auto_secret controls whether the serialized provider is a secret.
-    By default this is False which makes the serialized provider a secret always.
-    Set to True in a subclass to make the serialized provider a secret only
+    Controls whether the serialized provider is a secret.
+    By default it is True which makes the serialized provider a secret always.
+    Set to False in a subclass to make the serialized provider a secret only
     if any secret Outputs were captured during serialization of the provider.
     """
 
@@ -319,11 +319,13 @@ class Resource(CustomResource):
             True, serialize_provider, provider
         )
 
-        # auto_secret == False is the default, which makes the serialized provider a secret always, which
-        # is the existing behavior as of v3.75.0. When auto_secret == True, the serialized provider is a
-        # secret only if any secret Outputs were captured during serialization of the provider.
-        auto_secret: bool = getattr(provider, "auto_secret", False)
-        if not auto_secret or contains_secrets:
+        # serialize_as_secret_always is True by default, which makes the serialized provider
+        # a secret always, which is the existing behavior as of v3.75.0.
+        # When serialize_as_secret_always is set to False, the serialized provider is made a
+        # secret only if any secret Outputs were captured during serialization of the
+        # provider.
+        serialize_as_secret_always: bool = getattr(provider, "serialize_as_secret_always", True)
+        if serialize_as_secret_always or contains_secrets:
             serialized_provider = pulumi.Output.secret(serialized_provider)
 
         props[PROVIDER_KEY] = serialized_provider

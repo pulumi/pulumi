@@ -6,7 +6,7 @@ from pulumi import export
 from pulumi.dynamic import Resource, ResourceProvider, CreateResult
 
 class RandomResourceProvider(ResourceProvider):
-    auto_secret = True
+    serialize_as_secret_always = False
 
     def create(self, props):
         val = binascii.b2a_hex(os.urandom(15)).decode("ascii")
