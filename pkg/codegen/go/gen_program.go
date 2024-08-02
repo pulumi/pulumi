@@ -610,8 +610,11 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		}
 	}
 
-	// For any local dependencies, add a replace statement
-	for pkg, path := range localDependencies {
+	// For any local dependencies, add a replace statement. Make sure we iter this in sorted order (c.f.
+	// https://github.com/pulumi/pulumi/issues/16859).
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		path := localDependencies[pkg]
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there
 		goPath, ok := packagePaths[pkg]
 		if ok {
