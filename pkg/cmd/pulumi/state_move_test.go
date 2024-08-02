@@ -997,7 +997,7 @@ runtime: mock
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	assert.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
@@ -1087,7 +1087,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 		Colorizer: colors.Never,
 	}
 
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	//nolint:lll
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
@@ -1170,7 +1170,7 @@ runtime: mock
 		Colorizer: colors.Never,
 	}
 
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	//nolint:lll
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
