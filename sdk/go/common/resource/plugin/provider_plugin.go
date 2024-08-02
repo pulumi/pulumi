@@ -1387,6 +1387,12 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	return DeleteResponse{Status: resource.StatusOK}, err
 }
 
+type ProviderNotFullyConfiguredError struct{}
+
+func (e ProviderNotFullyConfiguredError) Error() string {
+	return "provider is not fully configured"
+}
+
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
 func (p *provider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {
@@ -1404,10 +1410,9 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{}, err
 	}
 
-	// If the provider is not fully configured, we need to error. We can't support unknown URNs but if the
-	// provider isn't configured we can't call into it to get the URN.
+	// If the provider is not fully configured return an empty ConstructResult.
 	if !pcfg.known {
-		return ConstructResult{}, errors.New("cannot construct components if the provider is configured with unknown values")
+		return ConstructResult{}, ProviderNotFullyConfiguredError{}
 	}
 
 	if !pcfg.acceptSecrets {
