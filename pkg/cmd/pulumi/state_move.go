@@ -86,7 +86,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
 
-			return stateMove.Run(ctx, sourceStack, destStack, args, stack.DefaultSecretsProvider)
+			sourceSecretsProvider := stack.StackSecretsProvider{
+				StackName: sourceStack.Ref().FullyQualifiedName().String(),
+			}
+			destSecretsProvider := stack.StackSecretsProvider{
+				StackName: destStack.Ref().FullyQualifiedName().String(),
+			}
+
+			return stateMove.Run(ctx, sourceStack, destStack, args, sourceSecretsProvider, destSecretsProvider)
 		}),
 	}
 
@@ -101,7 +108,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 
 func (cmd *stateMoveCmd) Run(
 	ctx context.Context, source backend.Stack, dest backend.Stack, args []string,
-	secretsProvider secrets.Provider,
+	sourceSecretsProvider secrets.Provider, destSecretsProvider secrets.Provider,
 ) error {
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
@@ -110,11 +117,11 @@ func (cmd *stateMoveCmd) Run(
 		cmd.Stdout = os.Stdout
 	}
 
-	sourceSnapshot, err := source.Snapshot(ctx, secretsProvider)
+	sourceSnapshot, err := source.Snapshot(ctx, sourceSecretsProvider)
 	if err != nil {
 		return err
 	}
-	destSnapshot, err := dest.Snapshot(ctx, secretsProvider)
+	destSnapshot, err := dest.Snapshot(ctx, destSecretsProvider)
 	if err != nil {
 		return err
 	}

@@ -108,7 +108,7 @@ func runMoveWithOptions(
 		Colorizer:      colors.Never,
 		IncludeParents: options.IncludeParents,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
 	assert.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
@@ -391,7 +391,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	assert.ErrorContains(t, err, "provider urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0 "+
 		"already exists in destination stack")
 }
@@ -453,7 +453,7 @@ func TestMoveWithExistingResource(t *testing.T) {
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	assert.ErrorContains(t, err, "resource urn:pulumi:destStack::test::d:e:f$a:b:c::name "+
 		"already exists in destination stack")
 }
@@ -535,7 +535,7 @@ func TestEmptySourceStack(t *testing.T) {
 		Yes:       true,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-there"}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-there"}, mp, mp)
 	assert.ErrorContains(t, err, "source stack has no resources")
 }
 
@@ -581,7 +581,7 @@ func TestEmptyDestStack(t *testing.T) {
 		Yes:       true,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	assert.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
@@ -663,7 +663,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	assert.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
@@ -677,7 +677,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	// The provider, rootstack and the moved resource are in the destination
 	assert.Equal(t, 3, len(destSnapshot.Resources))
 
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[3].URN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[3].URN)}, mp, mp)
 	assert.NoError(t, err)
 
 	sourceSnapshot, err = sourceStack.Snapshot(ctx, mp)
@@ -759,7 +759,7 @@ func TestMoveUnknownResource(t *testing.T) {
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-a-urn"}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-a-urn"}, mp, mp)
 	assert.ErrorContains(t, err, "no resources found to move")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
@@ -866,7 +866,7 @@ func TestMoveProvider(t *testing.T) {
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
-	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(providerURN)}, mp)
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(providerURN)}, mp, mp)
 	assert.ErrorContains(t, err, "cannot move provider")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
