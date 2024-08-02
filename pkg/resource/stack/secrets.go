@@ -57,15 +57,17 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	return NewCachingSecretsManager(sm), nil
 }
 
-// StackSecretsProvider is the same as the default secrets provider, but is aware of the stack name for which it is used.
-// Currently this is only used for prompting passphrase secrets managers to show the stackname in the prompt for the passphrase.
-type StackSecretsProvider struct {
+// NamedStackSecretsProvider is the same as the default secrets provider,
+// but is aware of the stack name for which it is used.  Currently
+// this is only used for prompting passphrase secrets managers to show
+// the stackname in the prompt for the passphrase.
+type NamedStackSecretsProvider struct {
 	StackName string
 }
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
 // if the type is uknown or the state is invalid.
-func (s StackSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {

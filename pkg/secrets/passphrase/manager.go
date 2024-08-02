@@ -275,7 +275,9 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
 // It also takes a stack name to include in the prompt.
-func NewStackPromptingPassphraseSecretsManagerFromState(state json.RawMessage, stackName string) (secrets.Manager, error) {
+func NewStackPromptingPassphraseSecretsManagerFromState(
+	state json.RawMessage, stackName string,
+) (secrets.Manager, error) {
 	var s localSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)

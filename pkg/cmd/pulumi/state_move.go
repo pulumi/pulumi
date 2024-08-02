@@ -86,10 +86,10 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
 
-			sourceSecretsProvider := stack.StackSecretsProvider{
+			sourceSecretsProvider := stack.NamedStackSecretsProvider{
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
 			}
-			destSecretsProvider := stack.StackSecretsProvider{
+			destSecretsProvider := stack.NamedStackSecretsProvider{
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 
