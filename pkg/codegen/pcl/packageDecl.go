@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build js
-// +build js
-
-package schema
+package pcl
 
 import (
-	"time"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-func (l *pluginLoader) loadCachedSchemaBytes(string, time.Time) ([]byte, bool) {
-	return nil, false
+// PackageDecl represents a "package" declaration, normally for a parameterized package.
+type PackageDecl struct {
+	syntax *hclsyntax.Block
+
+	Definition *model.Block
+}
+
+func (pd *PackageDecl) SyntaxNode() hclsyntax.Node {
+	return pd.syntax
 }

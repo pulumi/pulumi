@@ -31,7 +31,7 @@ type GetSchemaRequest struct {
 	// Version is the version of the schema to return. If omitted, the latest version of the schema should be returned.
 	Version int
 	// Subpackage name to get the schema for.
-	SubpackageName string
+	SubpackageName tokens.Package
 	// Subpackage version to get the schema for.
 	SubpackageVersion *semver.Version
 }
@@ -46,7 +46,7 @@ type (
 	}
 
 	ParameterizeValue struct {
-		Name    string
+		Name    tokens.Package
 		Version semver.Version
 		Value   []byte
 	}
@@ -60,7 +60,7 @@ type ParameterizeRequest struct {
 }
 
 type ParameterizeResponse struct {
-	Name    string
+	Name    tokens.Package
 	Version semver.Version
 }
 

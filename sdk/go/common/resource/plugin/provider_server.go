@@ -143,7 +143,7 @@ func (p *providerServer) Parameterize(
 			return nil, err
 		}
 		params = &ParameterizeValue{
-			Name:    p.Value.GetName(),
+			Name:    tokens.Package(p.Value.GetName()),
 			Version: version,
 			Value:   p.Value.Value,
 		}
@@ -153,7 +153,7 @@ func (p *providerServer) Parameterize(
 		return nil, err
 	}
 	return &pulumirpc.ParameterizeResponse{
-		Name:    resp.Name,
+		Name:    resp.Name.String(),
 		Version: resp.Version.String(),
 	}, nil
 }
@@ -172,7 +172,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 
 	schema, err := p.provider.GetSchema(ctx, GetSchemaRequest{
 		Version:           int(req.Version),
-		SubpackageName:    req.SubpackageName,
+		SubpackageName:    tokens.Package(req.SubpackageName),
 		SubpackageVersion: subpackageVersion,
 	})
 	if err != nil {

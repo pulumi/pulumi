@@ -352,7 +352,7 @@ func loadParameterizedProvider(
 	if parameter != nil {
 		resp, err := provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Name:    string(parameter.name),
+				Name:    parameter.name,
 				Version: parameter.version,
 				Value:   parameter.value,
 			},
@@ -360,8 +360,13 @@ func loadParameterizedProvider(
 		if err != nil {
 			return nil, err
 		}
-		if resp.Name != string(parameter.name) {
-			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, parameter.name)
+		if resp.Name != parameter.name {
+			return nil, fmt.Errorf(
+				"parameterize response name %q does not match expected %q", resp.Name, parameter.name)
+		}
+		if !resp.Version.EQ(parameter.version) {
+			return nil, fmt.Errorf(
+				"parameterize response version %q does not match expected %q", resp.Version, parameter.version)
 		}
 	}
 	return provider, nil

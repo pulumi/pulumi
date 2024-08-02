@@ -83,9 +83,10 @@ type binder struct {
 	referencedPackages map[string]schema.PackageReference
 	schemaTypes        map[schema.Type]model.Type
 
-	tokens syntax.TokenMap
-	nodes  []Node
-	root   *model.Scope
+	tokens   syntax.TokenMap
+	nodes    []Node
+	root     *model.Scope
+	packages []*PackageDecl
 }
 
 type BindOption func(*bindOptions)
@@ -186,6 +187,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		referencedPackages: map[string]schema.PackageReference{},
 		schemaTypes:        map[schema.Type]model.Type{},
 		root:               model.NewRootScope(syntax.None),
+		packages:           []*PackageDecl{},
 	}
 
 	// Define null.
@@ -206,6 +208,15 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Name < files[j].Name
 	})
+	// We have to find all package declarations first, so that we can load the schemas for the resources
+	for _, f := range files {
+		fileDiags, err := b.declarePackages(f)
+		if err != nil {
+			return nil, nil, err
+		}
+		diagnostics = append(diagnostics, fileDiags...)
+	}
+
 	for _, f := range files {
 		fileDiags, err := b.declareNodes(f)
 		if err != nil {
@@ -297,6 +308,29 @@ func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectTyp
 	}
 
 	return objectType
+}
+
+func (b *binder) declarePackages(file *syntax.File) (hcl.Diagnostics, error) {
+	var diagnostics hcl.Diagnostics
+
+	for _, item := range model.SourceOrderBody(file.Body) {
+		switch item := item.(type) {
+		case *hclsyntax.Block:
+			switch item.Type {
+			case "package":
+				v := &PackageDecl{
+					syntax: item,
+				}
+
+				block, diags := model.BindBlock(item, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+				v.Definition = block
+				b.packages = append(b.packages, v)
+				diagnostics = append(diagnostics, diags...)
+			}
+		}
+	}
+
+	return diagnostics, nil
 }
 
 // declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and

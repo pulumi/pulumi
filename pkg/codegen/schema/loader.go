@@ -46,6 +46,28 @@ type ReferenceLoader interface {
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 }
 
+type LoadSchemaParameterization struct {
+	Name    tokens.Package
+	Version semver.Version
+	Value   []byte
+}
+
+// LoadSchemaRequest is the domain model for codegenrpc.GetSchemaRequest.
+type LoadSchemaRequest struct {
+	Package           tokens.Package
+	Version           *semver.Version
+	PluginDownloadURL string
+	Parameterization  *LoadSchemaParameterization
+}
+
+// PackageLoader that can load a package given the same package information that programs send to the engine for
+// resource registrations. That is name, and version, but also pluginDownloadURL and parameterization.
+type PackageLoader interface {
+	ReferenceLoader
+
+	LoadSchema(ctx context.Context, req *LoadSchemaRequest) (PackageReference, error)
+}
+
 type pluginLoader struct {
 	m sync.RWMutex
 
@@ -65,7 +87,7 @@ type pluginLoaderCacheOptions struct {
 	disableMmap bool
 }
 
-func NewPluginLoader(host plugin.Host) ReferenceLoader {
+func NewPluginLoader(host plugin.Host) PackageLoader {
 	return &pluginLoader{
 		host:    host,
 		entries: map[string]PackageReference{},
@@ -134,19 +156,26 @@ func schemaIsEmpty(schemaBytes []byte) bool {
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
-	if pkg == "pulumi" {
+	return l.LoadSchema(context.TODO(), &LoadSchemaRequest{
+		Package: tokens.Package(pkg),
+		Version: version,
+	})
+}
+
+func (l *pluginLoader) LoadSchema(ctx context.Context, req *LoadSchemaRequest) (PackageReference, error) {
+	if req.Package == "pulumi" {
 		return DefaultPulumiPackage.Reference(), nil
 	}
 
 	l.m.Lock()
 	defer l.m.Unlock()
 
-	key := packageIdentity(pkg, version)
+	key := packageIdentity(req.Package, req.Version)
 	if p, ok := l.getPackage(key); ok {
 		return p, nil
 	}
 
-	schemaBytes, version, err := l.loadSchemaBytes(context.TODO(), pkg, version)
+	schemaBytes, version, err := l.loadSchemaBytes(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -212,29 +241,29 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 }
 
 func (l *pluginLoader) loadSchemaBytes(
-	ctx context.Context, pkg string, version *semver.Version,
+	ctx context.Context, req *LoadSchemaRequest,
 ) ([]byte, *semver.Version, error) {
-	attachPort, err := plugin.GetProviderAttachPort(tokens.Package(pkg))
+	attachPort, err := plugin.GetProviderAttachPort(req.Package)
 	if err != nil {
 		return nil, nil, err
 	}
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
 	// interaction and load the schema directly from the given port.
 	if attachPort != nil {
-		schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, pkg, version)
+		schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, req)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
 
-		if version == nil {
+		if req.Version == nil {
 			info, err := provider.GetPluginInfo(ctx)
 			contract.IgnoreError(err) // nonfatal error
-			version = info.Version
+			req.Version = info.Version
 		}
-		return schemaBytes, version, nil
+		return schemaBytes, req.Version, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
+	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, req.Package.String(), req.Version)
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
@@ -244,8 +273,8 @@ func (l *pluginLoader) loadSchemaBytes(
 
 		spec := workspace.PluginSpec{
 			Kind:    apitype.ResourcePlugin,
-			Name:    pkg,
-			Version: version,
+			Name:    req.Package.String(),
+			Version: req.Version,
 		}
 
 		log := func(sev diag.Severity, msg string) {
@@ -257,25 +286,25 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
+		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, req.Package.String(), req.Version)
 		if err != nil {
-			return nil, version, err
+			return nil, req.Version, err
 		}
 	}
-	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", pkg)
+	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", req.Package)
 
-	if version == nil {
-		version = pluginInfo.Version
+	if req.Version == nil {
+		req.Version = pluginInfo.Version
 	}
 
-	if pluginInfo.SchemaPath != "" && version != nil {
-		schemaBytes, ok := l.loadCachedSchemaBytes(pkg, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
+	if pluginInfo.SchemaPath != "" && req.Version != nil {
+		schemaBytes, ok := l.loadCachedSchemaBytes(pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil
 		}
 	}
 
-	schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, pkg, version)
+	schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
@@ -287,26 +316,57 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 	}
 
-	if version == nil {
+	if req.Version == nil {
 		info, _ := provider.GetPluginInfo(ctx) // nonfatal error
-		version = info.Version
+		req.Version = info.Version
 	}
 
-	return schemaBytes, version, nil
+	return schemaBytes, req.Version, nil
 }
 
 func (l *pluginLoader) loadPluginSchemaBytes(
-	ctx context.Context, pkg string, version *semver.Version,
+	ctx context.Context, req *LoadSchemaRequest,
 ) ([]byte, plugin.Provider, error) {
-	provider, err := l.host.Provider(tokens.Package(pkg), version)
+	provider, err := l.host.Provider(req.Package, req.Version)
 	if err != nil {
 		return nil, nil, err
 	}
-	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", pkg, version)
+	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", req.Package, req.Version)
+
+	var subpackageName tokens.Package
+	var subpackageVersion *semver.Version
+	if req.Parameterization != nil {
+		resp, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{
+				Name:    req.Parameterization.Name,
+				Version: req.Parameterization.Version,
+				Value:   req.Parameterization.Value,
+			},
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("parameterizing provider: %w", err)
+		}
+
+		if resp.Name != req.Parameterization.Name {
+			return nil, nil, fmt.Errorf(
+				"unexpected parameterization response, expected name %s got %s",
+				req.Parameterization.Name, resp.Name)
+		}
+		if !resp.Version.EQ(req.Parameterization.Version) {
+			return nil, nil, fmt.Errorf(
+				"unexpected parameterization response, expected version %v got %v",
+				req.Parameterization.Version, resp.Version)
+		}
+
+		subpackageName = resp.Name
+		subpackageVersion = &resp.Version
+	}
 
 	schemaFormatVersion := 0
 	schema, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{
-		Version: schemaFormatVersion,
+		Version:           schemaFormatVersion,
+		SubpackageName:    subpackageName,
+		SubpackageVersion: subpackageVersion,
 	})
 	if err != nil {
 		return nil, nil, err

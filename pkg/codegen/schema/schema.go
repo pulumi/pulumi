@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"gopkg.in/yaml.v3"
 )
@@ -877,10 +878,10 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	return nil
 }
 
-func packageIdentity(name string, version *semver.Version) string {
+func packageIdentity(name tokens.Package, version *semver.Version) string {
 	// The package's identity is its name and version (if any) separated buy a ':'. The ':' character is not allowed
 	// in package names and so is safe to use as a separator.
-	id := name + ":"
+	id := string(name) + ":"
 	if version != nil {
 		return id + version.String()
 	}
@@ -888,7 +889,7 @@ func packageIdentity(name string, version *semver.Version) string {
 }
 
 func (pkg *Package) Identity() string {
-	return packageIdentity(pkg.Name, pkg.Version)
+	return packageIdentity(tokens.Package(pkg.Name), pkg.Version)
 }
 
 func (pkg *Package) Equals(other *Package) bool {

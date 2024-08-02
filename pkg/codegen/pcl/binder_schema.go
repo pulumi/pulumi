@@ -145,7 +145,6 @@ func (c *PackageCache) getPackageSchema(pkg PackageInfo) (*packageSchema, bool) 
 
 // loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
 // GetSchema method.
-// If a version is passed in, the cache will be bypassed and the package will be reloaded.
 func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version string) (*packageSchema, error) {
 	pkgInfo := PackageInfo{
 		name:    name,

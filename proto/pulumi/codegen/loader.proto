@@ -25,13 +25,27 @@ service Loader {
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
 }
 
+// N.B. GetSchemaRequest and Parameterization should stay in sync with RegisterPackageRequest in resource.proto.
+
 // GetSchemaRequest allows the engine to return a schema for a given package and version.
 message GetSchemaRequest {
     // the package name for the schema being requested.
     string package = 1;
     // the version for the schema being requested, must be a valid semver or empty.
     string version = 2;
+    // the optional plugin download url.
+    string download_url = 3; 
+    // the optional parameterization for this package.
+    Parameterization parameterization = 4; 
 }
+
+// Parameterization specifies a parameterized package. 
+message Parameterization {
+    string name = 1; // the parameterized package name.
+    string version = 2; // the parameterized package version.
+    bytes value = 3; // the parameter value for the parameterized package.
+}
+
 
 // GetSchemaResponse returns the schema data for the requested package.
 message GetSchemaResponse {

@@ -27,7 +27,7 @@ import (
 
 var mmapedFiles = make(map[string]mmap.MMap)
 
-func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime time.Time) ([]byte, bool) {
+func (l *pluginLoader) loadCachedSchemaBytes(path string, schemaTime time.Time) ([]byte, bool) {
 	if l.cacheOptions.disableFileCache {
 		return nil, false
 	}

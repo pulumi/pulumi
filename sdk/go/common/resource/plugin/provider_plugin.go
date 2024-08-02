@@ -317,7 +317,7 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 	case *ParameterizeValue:
 		params.Parameters = &pulumirpc.ParameterizeRequest_Value{
 			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
-				Name:    p.Name,
+				Name:    p.Name.String(),
 				Version: p.Version.String(),
 				Value:   p.Value,
 			},
@@ -335,7 +335,7 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 	if err != nil {
 		return ParameterizeResponse{}, err
 	}
-	return ParameterizeResponse{Name: resp.Name, Version: version}, err
+	return ParameterizeResponse{Name: tokens.Package(resp.Name), Version: version}, err
 }
 
 // GetSchema fetches the schema for this resource provider, if any.
@@ -347,7 +347,7 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 
 	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
 		Version:           int32(req.Version),
-		SubpackageName:    req.SubpackageName,
+		SubpackageName:    req.SubpackageName.String(),
 		SubpackageVersion: subpackageVersion,
 	})
 	if err != nil {

@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -1202,9 +1203,9 @@ func TestPackageIdentity(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		nameA    string
+		nameA    tokens.Package
 		versionA string
-		nameB    string
+		nameB    tokens.Package
 		versionB string
 		equal    bool
 	}{
@@ -1259,7 +1260,7 @@ func TestPackageIdentity(t *testing.T) {
 	}
 	for _, c := range cases {
 		c := c
-		t.Run(c.nameA, func(t *testing.T) {
+		t.Run(c.nameA.String(), func(t *testing.T) {
 			t.Parallel()
 
 			var verA *semver.Version
@@ -1274,8 +1275,8 @@ func TestPackageIdentity(t *testing.T) {
 				verB = &v
 			}
 
-			pkgA := &Package{Name: c.nameA, Version: verA}
-			pkgB := &Package{Name: c.nameB, Version: verB}
+			pkgA := &Package{Name: c.nameA.String(), Version: verA}
+			pkgB := &Package{Name: c.nameB.String(), Version: verB}
 			if c.equal {
 				assert.Equal(t, packageIdentity(c.nameA, verA), packageIdentity(c.nameB, verB))
 				assert.Equal(t, pkgA.Identity(), pkgB.Identity())
