@@ -36,13 +36,43 @@ var DefaultSecretsProvider secrets.Provider = &defaultSecretsProvider{}
 type defaultSecretsProvider struct{}
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is uknown or the state is invalid.
+// if the type is unknown or the state is invalid.
 func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	case service.Type:
+		sm, err = service.NewServiceSecretsManagerFromState(state)
+	case cloud.Type:
+		sm, err = cloud.NewCloudSecretsManagerFromState(state)
+	default:
+		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
+	}
+
+	return NewCachingSecretsManager(sm), nil
+}
+
+// NamedStackSecretsProvider is the same as the default secrets provider,
+// but is aware of the stack name for which it is used.  Currently
+// this is only used for prompting passphrase secrets managers to show
+// the stackname in the prompt for the passphrase.
+type NamedStackSecretsProvider struct {
+	StackName string
+}
+
+// OfType returns a secrets manager for the given secrets type. Returns an error
+// if the type is unknown or the state is invalid.
+func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+	var sm secrets.Manager
+	var err error
+	switch ty {
+	case passphrase.Type:
+		sm, err = passphrase.NewStackPromptingPassphraseSecretsManagerFromState(state, s.StackName)
 	case service.Type:
 		sm, err = service.NewServiceSecretsManagerFromState(state)
 	case cloud.Type:

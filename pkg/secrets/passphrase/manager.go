@@ -218,15 +218,20 @@ func GetPassphraseSecretsManager(phrase string, state string) (secrets.Manager, 
 // newPromptingPassphraseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
-func newPromptingPassphraseSecretsManagerFromState(state string) (secrets.Manager, error) {
+func newPromptingPassphraseSecretsManagerFromState(state, stackName string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
 	if cached, ok := getCachedSecretsManager(state); ok {
 		return cached, nil
 	}
 
 	// Otherwise, prompt for the password.
-	const prompt = "Enter your passphrase to unlock config/secrets\n" +
-		"    (set PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE to remember)"
+	prompt := "Enter your passphrase to unlock config/secrets"
+	if stackName != "" {
+		prompt += " for stack " + stackName + "\n"
+	} else {
+		prompt += "\n"
+	}
+	prompt += "    (set PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE to remember)"
 	for {
 		phrase, interactive, phraseErr := readPassphrase(prompt, true /*useEnv*/)
 		if phraseErr != nil {
@@ -255,7 +260,30 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt)
+	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt, "")
+	switch {
+	case err == ErrIncorrectPassphrase:
+		return newLockedPasspharseSecretsManager(state), nil
+	case err != nil:
+		return nil, fmt.Errorf("constructing secrets manager: %w", err)
+	default:
+		return sm, nil
+	}
+}
+
+// NewStackPromptingPassphraseSecretsManager returns a new passphrase-based secrets manager, from the
+// given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
+// PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
+// It also takes a stack name to include in the prompt.
+func NewStackPromptingPassphraseSecretsManagerFromState(
+	state json.RawMessage, stackName string,
+) (secrets.Manager, error) {
+	var s localSecretsManagerState
+	if err := json.Unmarshal(state, &s); err != nil {
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
+	}
+
+	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt, stackName)
 	switch {
 	case err == ErrIncorrectPassphrase:
 		return newLockedPasspharseSecretsManager(state), nil
@@ -280,7 +308,7 @@ func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
 
 	// If we have a salt, we can just use it.
 	if info.EncryptionSalt != "" {
-		return newPromptingPassphraseSecretsManagerFromState(info.EncryptionSalt)
+		return newPromptingPassphraseSecretsManagerFromState(info.EncryptionSalt, "")
 	}
 
 	// Otherwise, prompt the user for a new passphrase.
