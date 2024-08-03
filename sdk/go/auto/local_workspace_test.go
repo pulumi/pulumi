@@ -952,6 +952,12 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
+	// -- pulumi destroy --preview-only --
+
+	pdRes, err := s.PreviewDestroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
+	assert.NoError(t, err, "preview-only destroy failed")
+	assert.Equal(t, map[apitype.OpType]int{apitype.OpDelete: 1}, pdRes.ChangeSummary)
+
 	// -- pulumi destroy --
 
 	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent), optdestroy.Refresh())
