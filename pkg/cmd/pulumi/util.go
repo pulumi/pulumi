@@ -701,6 +701,10 @@ func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 		return fmt.Errorf("detecting Git repository: %w", err)
 	}
 	if repo == nil {
+		// If we can't detect git metadata, we'll see if we can get from the environment.
+		// This is useful for CI systems that don't check out the git repo, but still
+		// want to provide git metadata.
+		addGitMetadataFromEnvironment(m.Environment)
 		return nil
 	}
 
@@ -713,6 +717,25 @@ func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 	}
 
 	return allErrors.ErrorOrNil()
+}
+
+// addGitMetadataFromEnvironment adds git metadata to the environment if it is available in the environment.
+func addGitMetadataFromEnvironment(env map[string]string) {
+	if owner := os.Getenv("PULUMI_REPO_OWNER"); owner != "" {
+		env[backend.VCSRepoOwner] = owner
+	}
+	if repo := os.Getenv("PULUMI_REPO_NAME"); repo != "" {
+		env[backend.VCSRepoName] = repo
+	}
+	if kind := os.Getenv("PULUMI_REPO_KIND"); kind != "" {
+		env[backend.VCSRepoKind] = kind
+	}
+	if branch := os.Getenv("PULUMI_BRANCH"); branch != "" {
+		env[backend.GitHeadName] = branch
+	}
+	if commit := os.Getenv("PULUMI_COMMIT"); commit != "" {
+		env[backend.GitHead] = commit
+	}
 }
 
 // AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.

@@ -219,6 +219,42 @@ func TestReadingGitLabMetadata(t *testing.T) {
 	}
 }
 
+// TestReadingGitMetadataFromEnvironment tests the functions which read data fom env vars
+// when local git repo is not available
+//
+//nolint:paralleltest // mutates environment variables
+func TestReadingGitMetadataFromEnvironment(t *testing.T) {
+	// Disable our CI/CD detection code, since if this unit test is ran under CI
+	// it will change the expected behavior.
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+
+	t.Setenv("PULUMI_REPO_OWNER", "owner-name")
+	t.Setenv("PULUMI_REPO_NAME", "repo-name")
+	t.Setenv("PULUMI_REPO_KIND", gitutil.GitHubHostName)
+	t.Setenv("PULUMI_BRANCH", "test-branch")
+	t.Setenv("PULUMI_COMMIT", "fake-commit-sha")
+
+	e := pul_testing.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Test the state of the world from an empty git repo
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		assert.NoError(t, addGitMetadata(e.RootPath, test))
+
+		_, ok := test.Environment[backend.GitHead]
+		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoKind, gitutil.GitHubHostName)
+		assertEnvValue(t, test, backend.GitHeadName, "test-branch")
+		assertEnvValue(t, test, backend.GitHead, "fake-commit-sha")
+	}
+}
+
 func Test_makeJSONString(t *testing.T) {
 	t.Parallel()
 
