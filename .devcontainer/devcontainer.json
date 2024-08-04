@@ -1,6 +1,5 @@
 {
     "name": "Pulumi",
-
     "build": {
         "dockerfile": "Dockerfile",
         "args": {
@@ -8,19 +7,39 @@
             "USER_UID": "1000"
         }
     },
-
     "containerEnv": {
         "PULUMI_ACCESS_TOKEN": "${localEnv:PULUMI_ACCESS_TOKEN}",
         "PULUMI_TEST_ORG": "${localEnv:PULUMI_TEST_ORG}"
     },
-
     "remoteUser": "user",
-
-    "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python", "formulahendry.dotnet-test-explorer"],
-
     "postCreateCommand": "make ensure",
-
-    "settings": {
-        "extensions.ignoreRecommendations": true
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.go",
+                "ms-dotnettools.csharp",
+                "ms-python.python",
+                "formulahendry.dotnet-test-explorer"
+            ],
+            "settings": {
+                "extensions.ignoreRecommendations": true,
+                "omnisharp.sdkPath": "/usr/local/dotnet/current"
+            }
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "configureZshAsDefaultShell": false,
+            "upgradePackages": true,
+            "username": "user"
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        // The /root/.dotnet directory is not available to "user"
+        "ghcr.io/devcontainers/features/dotnet:1": {
+            "version": "6.0.412",
+            "installUsingApt": false
+        }
     }
 }
