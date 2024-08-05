@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go,nodejs,python
-  description: Fix generation of nested plain input types.
