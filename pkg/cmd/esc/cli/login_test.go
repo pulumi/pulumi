@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
@@ -42,6 +43,48 @@ func TestNoCreds(t *testing.T) {
 	}
 	err := esc.getCachedClient(context.Background())
 	assert.ErrorContains(t, err, "could not determine current cloud")
+}
+
+type invalidatedCredsLoginManager int
+
+func (invalidatedCredsLoginManager) Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*pulumi_workspace.Account, error) {
+	// nil, nil is a valid response to Current and will be returned by the httpstate backend when an account is current but it's token has expired.
+	return nil, nil
+}
+
+func (invalidatedCredsLoginManager) Login(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	command string,
+	message string,
+	welcome func(display.Options),
+	current bool,
+	opts display.Options,
+) (*pulumi_workspace.Account, error) {
+	return nil, fmt.Errorf("not expected to call")
+}
+
+// Test for https://github.com/pulumi/esc/issues/367
+func TestCurrentAccountButInvalidToken(t *testing.T) {
+	fs := testFS{}
+	esc := &escCommand{
+		command: "esc",
+		workspace: workspace.New(fs, &testPulumiWorkspace{
+			credentials: pulumi_workspace.Credentials{
+				Current: "bobm",
+				Accounts: map[string]pulumi_workspace.Account{
+					"bobm": {
+						AccessToken: "expired",
+						Username:    "bobm",
+					},
+				},
+			},
+		}),
+		login: invalidatedCredsLoginManager(0),
+	}
+	err := esc.getCachedClient(context.Background())
+	assert.ErrorContains(t, err, "no credentials. Please run `esc login` to log in.")
 }
 
 func TestInvalidSelfHostedBackend(t *testing.T) {

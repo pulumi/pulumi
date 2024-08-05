@@ -204,6 +204,9 @@ func (esc *escCommand) getCachedCredentials(ctx context.Context, backendURL stri
 	if err != nil {
 		return false, err
 	}
+	if account == nil {
+		return false, nil
+	}
 
 	defaultOrg, err := esc.workspace.GetBackendConfigDefaultOrg(backendURL, account.Username)
 	if err != nil {
