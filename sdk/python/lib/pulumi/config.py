@@ -69,6 +69,8 @@ class Config:
     def get(self, key: str, default: str) -> str: ...
     @overload
     def get(self, key: str) -> Optional[str]: ...
+    @overload
+    def get(self, key: str, default: Optional[str] = None) -> Optional[str]: ...
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """
         Returns an optional configuration value by its key,
@@ -87,6 +89,10 @@ class Config:
     def get_secret(self, key: str, default: str) -> Output[str]: ...
     @overload
     def get_secret(self, key: str) -> Optional[Output[str]]: ...
+    @overload
+    def get_secret(
+        self, key: str, default: Optional[str] = None
+    ) -> Optional[Output[str]]: ...
     def get_secret(
         self, key: str, default: Optional[str] = None
     ) -> Optional[Output[str]]:
@@ -125,6 +131,8 @@ class Config:
     def get_bool(self, key: str, default: bool) -> bool: ...
     @overload
     def get_bool(self, key: str) -> Optional[bool]: ...
+    @overload
+    def get_bool(self, key: str, default: Optional[bool] = None) -> Optional[bool]: ...
     def get_bool(self, key: str, default: Optional[bool] = None) -> Optional[bool]:
         """
         Returns an optional configuration value, as a bool, by its key,
@@ -145,6 +153,10 @@ class Config:
     def get_secret_bool(self, key: str, default: bool) -> Output[bool]: ...
     @overload
     def get_secret_bool(self, key: str) -> Optional[Output[bool]]: ...
+    @overload
+    def get_secret_bool(
+        self, key: str, default: Optional[bool] = None
+    ) -> Optional[Output[bool]]: ...
     def get_secret_bool(
         self, key: str, default: Optional[bool] = None
     ) -> Optional[Output[bool]]:
@@ -184,6 +196,8 @@ class Config:
     def get_int(self, key: str, default: int) -> int: ...
     @overload
     def get_int(self, key: str) -> Optional[int]: ...
+    @overload
+    def get_int(self, key: str, default: Optional[int] = None) -> Optional[int]: ...
     def get_int(self, key: str, default: Optional[int] = None) -> Optional[int]:
         """
         Returns an optional configuration value, as an int, by its key,
@@ -204,6 +218,10 @@ class Config:
     def get_secret_int(self, key: str, default: int) -> Output[int]: ...
     @overload
     def get_secret_int(self, key: str) -> Optional[Output[int]]: ...
+    @overload
+    def get_secret_int(
+        self, key: str, default: Optional[int] = None
+    ) -> Optional[Output[int]]: ...
     def get_secret_int(
         self, key: str, default: Optional[int] = None
     ) -> Optional[Output[int]]:
@@ -243,6 +261,10 @@ class Config:
     def get_float(self, key: str, default: float) -> float: ...
     @overload
     def get_float(self, key: str) -> Optional[float]: ...
+    @overload
+    def get_float(
+        self, key: str, default: Optional[float] = None
+    ) -> Optional[float]: ...
     def get_float(self, key: str, default: Optional[float] = None) -> Optional[float]:
         """
         Returns an optional configuration value, as a float, by its key, marked as a secret,
@@ -263,6 +285,10 @@ class Config:
     def get_secret_float(self, key: str, default: float) -> Output[float]: ...
     @overload
     def get_secret_float(self, key: str) -> Optional[Output[float]]: ...
+    @overload
+    def get_secret_float(
+        self, key: str, default: Optional[float] = None
+    ) -> Optional[Output[float]]: ...
     def get_secret_float(
         self, key: str, default: Optional[float] = None
     ) -> Optional[Output[float]]:
@@ -302,6 +328,8 @@ class Config:
     def get_object(self, key: str, default: Any) -> Any: ...
     @overload
     def get_object(self, key: str) -> Optional[Any]: ...
+    @overload
+    def get_object(self, key: str, default: Optional[Any] = None) -> Optional[Any]: ...
     def get_object(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         """
         Returns an optional configuration value, as an object, by its key,
@@ -324,6 +352,10 @@ class Config:
     def get_secret_object(self, key: str, default: Any) -> Output[Any]: ...
     @overload
     def get_secret_object(self, key: str) -> Optional[Output[Any]]: ...
+    @overload
+    def get_secret_object(
+        self, key: str, default: Optional[Any] = None
+    ) -> Optional[Output[Any]]: ...
     def get_secret_object(
         self, key: str, default: Optional[Any] = None
     ) -> Optional[Output[Any]]:
