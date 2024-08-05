@@ -868,13 +868,9 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	// Parse the parameterization
 	var parameterization *providers.ProviderParameterization
 	if req.Parameterization != nil {
-		var parameterizationVersion *semver.Version
-		if req.Parameterization.Version != "" {
-			v, err := semver.Parse(req.Parameterization.Version)
-			if err != nil {
-				return nil, fmt.Errorf("parse parameter version %s: %w", req.Parameterization.Version, err)
-			}
-			parameterizationVersion = &v
+		parameterizationVersion, err := semver.Parse(req.Parameterization.Version)
+		if err != nil {
+			return nil, fmt.Errorf("parse parameter version %s: %w", req.Parameterization.Version, err)
 		}
 
 		// RegisterPackageRequest keeps all the plugin information in the root fields "name", "version" etc, while the

@@ -260,7 +260,7 @@ func GetProviderParameterization(name tokens.Package, inputs resource.PropertyMa
 
 	return &ProviderParameterization{
 		name:    name,
-		version: &sv,
+		version: sv,
 		value:   bytes,
 	}, nil
 }

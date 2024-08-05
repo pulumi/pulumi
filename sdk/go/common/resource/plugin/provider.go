@@ -47,7 +47,7 @@ type (
 
 	ParameterizeValue struct {
 		Name    string
-		Version *semver.Version
+		Version semver.Version
 		Value   []byte
 	}
 )
@@ -61,7 +61,7 @@ type ParameterizeRequest struct {
 
 type ParameterizeResponse struct {
 	Name    string
-	Version *semver.Version
+	Version semver.Version
 }
 
 type GetSchemaResponse struct {

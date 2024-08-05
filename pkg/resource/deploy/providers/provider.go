@@ -28,13 +28,13 @@ type ProviderParameterization struct {
 	// The name of the parametrized package.
 	name tokens.Package
 	// The version of the parametrized package.
-	version *semver.Version
+	version semver.Version
 	// The value of the parameter.
 	value []byte
 }
 
 // NewProviderParameterization constructs a new provider parameterization.
-func NewProviderParameterization(name tokens.Package, version *semver.Version, value []byte,
+func NewProviderParameterization(name tokens.Package, version semver.Version, value []byte,
 ) *ProviderParameterization {
 	return &ProviderParameterization{
 		name:    name,
@@ -127,7 +127,7 @@ func (p ProviderRequest) DefaultName() string {
 
 	var v *semver.Version
 	if p.parameterization != nil {
-		v = p.parameterization.version
+		v = &p.parameterization.version
 	} else {
 		v = p.version
 	}

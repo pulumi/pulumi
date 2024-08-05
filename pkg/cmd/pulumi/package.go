@@ -120,7 +120,7 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 
 		request = plugin.GetSchemaRequest{
 			SubpackageName:    resp.Name,
-			SubpackageVersion: resp.Version,
+			SubpackageVersion: &resp.Version,
 		}
 	}
 
