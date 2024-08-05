@@ -54,10 +54,10 @@ func (p *BadProvider) GetSchema(_ context.Context, request plugin.GetSchemaReque
 	resourceRequired := []string{"value"}
 
 	pkg := schema.PackageSpec{
-		Name:    "simple",
+		Name:    "bad",
 		Version: "3.0.0",
 		Resources: map[string]schema.ResourceSpec{
-			"simple:index:Resource": {
+			"bad:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: resourceProperties,

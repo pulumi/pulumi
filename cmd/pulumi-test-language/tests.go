@@ -72,6 +72,7 @@ var languageTests = map[string]languageTest{
 	// ==========
 	"internal-bad-schema": {
 		providers: []plugin.Provider{&providers.BadProvider{}},
+		runs:      []testRun{{}},
 	},
 	// ==========
 	// L1 (Tests not using providers)
