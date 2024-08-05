@@ -138,13 +138,9 @@ func (p *providerServer) Parameterize(
 	case *pulumirpc.ParameterizeRequest_Args:
 		params = &ParameterizeArgs{Args: p.Args.GetArgs()}
 	case *pulumirpc.ParameterizeRequest_Value:
-		var version *semver.Version
-		if v := p.Value.GetVersion(); v != "" {
-			pV, err := semver.Parse(v)
-			if err != nil {
-				return nil, err
-			}
-			version = &pV
+		version, err := semver.Parse(p.Value.GetVersion())
+		if err != nil {
+			return nil, err
 		}
 		params = &ParameterizeValue{
 			Name:    p.Value.GetName(),
@@ -156,13 +152,9 @@ func (p *providerServer) Parameterize(
 	if err != nil {
 		return nil, err
 	}
-	var v string
-	if resp.Version != nil {
-		v = resp.Version.String()
-	}
 	return &pulumirpc.ParameterizeResponse{
 		Name:    resp.Name,
-		Version: v,
+		Version: resp.Version.String(),
 	}, nil
 }
 

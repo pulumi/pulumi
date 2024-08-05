@@ -315,14 +315,10 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 			},
 		}
 	case *ParameterizeValue:
-		var version string
-		if p.Version != nil {
-			version = p.Version.String()
-		}
 		params.Parameters = &pulumirpc.ParameterizeRequest_Value{
 			Value: &pulumirpc.ParameterizeRequest_ParametersValue{
 				Name:    p.Name,
-				Version: version,
+				Version: p.Version.String(),
 				Value:   p.Value,
 			},
 		}
@@ -335,13 +331,9 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 	if err != nil {
 		return ParameterizeResponse{}, err
 	}
-	var version *semver.Version
-	if resp.Version != "" {
-		v, err := semver.Parse(resp.Version)
-		if err != nil {
-			return ParameterizeResponse{}, err
-		}
-		version = &v
+	version, err := semver.Parse(resp.Version)
+	if err != nil {
+		return ParameterizeResponse{}, err
 	}
 	return ParameterizeResponse{Name: resp.Name, Version: version}, err
 }
