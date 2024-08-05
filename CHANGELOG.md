@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.128.0 (2024-08-05)
+
+
+### Features
+
+- [auto/go] Add install command to workspace
+  [#16782](https://github.com/pulumi/pulumi/pull/16782)
+
+- [auto/go] Add support for `pulumi destroy --preview-only`
+  [#16839](https://github.com/pulumi/pulumi/pull/16839)
+
+- [programgen/go] Use `pulumi.Sprintf(...)` instead of `pulumi.String(fmt.Sprintf(...))` in Go program generation
+  [#16852](https://github.com/pulumi/pulumi/pull/16852)
+
+- [cli/plugin] Enable overriding plugin download URLs for air-gapped environments with an environment variable
+  [#16648](https://github.com/pulumi/pulumi/pull/16648)
+
+- [sdk/python] Allow Python dynamic providers to capture secrets
+  [#15864](https://github.com/pulumi/pulumi/pull/15864)
+
+
+### Bug Fixes
+
+- [engine] Separate provider internal from provider user config. This allows providers to use a config key like "pluginDownloadURL" which previously would have conflicted with the engine's internal state. It also allows the engine to add new internal state fields without concern for clashing with existing or future provider config keys.
+  [#16837](https://github.com/pulumi/pulumi/pull/16837)
+
+- [cli/state] Fix moving resources with secrets when the destination stack has no secrets manager defined
+  [#16844](https://github.com/pulumi/pulumi/pull/16844)
+
+- [cli/state] Include the stack name in the passhprase prompt in state move
+  [#16861](https://github.com/pulumi/pulumi/pull/16861)
+
+- [sdk/nodejs] Fix resource reference serialization when multiple copies of @pulumi/pulumi are present
+  [#13240](https://github.com/pulumi/pulumi/pull/13240)
+
+- [sdk/nodejs] Don't search upwards for policy packs when determining required plugins
+  [#16865](https://github.com/pulumi/pulumi/pull/16865)
+
+- [sdk/python] Fix missing overloads to config getters
+  [#16878](https://github.com/pulumi/pulumi/pull/16878)
+
+- [sdkgen/{go,nodejs,python}] Fix generation of nested plain input types.
+  [#16812](https://github.com/pulumi/pulumi/pull/16812)
+
+
+### Miscellaneous
+
+- [sdkgen/python] Link to Python docs about input types
+  [#16763](https://github.com/pulumi/pulumi/pull/16763)
+
 ## 3.127.0 (2024-07-25)
 
 

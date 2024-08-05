@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Don't search upwards for policy packs when determining required plugins

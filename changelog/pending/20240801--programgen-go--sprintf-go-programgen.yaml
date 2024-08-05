@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/go
-  description: Use `pulumi.Sprintf(...)` instead of `pulumi.String(fmt.Sprintf(...))` in Go program generation
