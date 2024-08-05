@@ -193,15 +193,16 @@ func runNew(ctx context.Context, args newArgs) error {
 	var repo workspace.TemplateRepository
 	repo, err = workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
-		// If the request has 401'd AND we've identified the backend as being a Pulumi Cloud instance, we can
-		// attempt to retrieve the template using the user's Pulumi Cloud credentials.
-		if errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
-			repo, err = retrievePrivatePulumiCloudTemplate(args.templateNameOrURL)
-			if err != nil {
-				return fmt.Errorf("retrieving private pulumi cloud template: %w", err)
-			}
-		} else {
+		// Bail on all errors unless its a 401 from a Pulumi Cloud backend...
+		if !errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
 			return err
+		}
+
+		// ...If the request has 401'd AND we've identified the backend as being a Pulumi Cloud instance, we can
+		// attempt to retrieve the template using the user's Pulumi Cloud credentials.
+		repo, err = retrievePrivatePulumiCloudTemplate(args.templateNameOrURL)
+		if err != nil {
+			return fmt.Errorf("retrieving private pulumi cloud template: %w", err)
 		}
 	}
 

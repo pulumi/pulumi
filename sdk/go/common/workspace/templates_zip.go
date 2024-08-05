@@ -48,7 +48,7 @@ func isZIPTemplateURL(templateNamePathOrURL string) bool {
 	if err != nil {
 		return false
 	}
-	return parsedURL.Path != "" // && strings.HasSuffix(parsedURL.Path, ".zip")
+	return parsedURL.Path != "" && strings.HasSuffix(parsedURL.Path, ".zip")
 }
 
 func isPulumiHostResponse(resp *http.Response) bool {
