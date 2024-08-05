@@ -1,0 +1,5 @@
+name: l2-invoke-simple
+runtime:
+  name: python
+  options:
+    virtualenv: venv
