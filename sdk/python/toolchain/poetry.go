@@ -97,8 +97,10 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
-	if err := installPython(ctx, root, showOutput, infoWriter, errorWriter); err != nil {
-		return err
+	if useLanguageVersionTools {
+		if err := installPython(ctx, root, showOutput, infoWriter, errorWriter); err != nil {
+			return err
+		}
 	}
 
 	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
