@@ -1439,10 +1439,10 @@ func TestConfigGetterOverloads(t *testing.T) {
 	// handle editable packages well. We have to manually install the SDK without `-e` flag instead.
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
-	sdkPath := filepath.Join(cwd, "../../sdk/python/env/src")
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python", "env", "src")
 	pythonBin := "./venv/bin/python"
 	if runtime.GOOS == "windows" {
-		pythonBin = "./venv/Scripts/python.exe"
+		pythonBin = ".\\venv\\Scripts\\python.exe"
 	}
 	e.RunCommand(pythonBin, "-m", "pip", "install", sdkPath)
 
