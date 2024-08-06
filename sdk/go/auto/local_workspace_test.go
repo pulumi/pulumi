@@ -2986,6 +2986,38 @@ func TestInstallWithOptions(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestInstallWithUseLanguageVersionTools(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "install-use-language-version-tools")
+
+	// Option is not used on < 3.129
+	m := mockPulumiCommand{
+		version: semver.Version{Major: 3, Minor: 128},
+	}
+
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install"}, m.capturedArgs)
+
+	// Option is used on >= 3.129
+	m = mockPulumiCommand{
+		version: semver.Version{Major: 3, Minor: 129},
+	}
+
+	workspace, err = NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")

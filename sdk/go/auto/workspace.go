@@ -201,4 +201,6 @@ type InstallOptions struct {
 	Stdout io.Writer
 	// Stderr is the optional writer to use for the error output during installation.
 	Stderr io.Writer
+	// Use language version tools setup the language runtime before installing the dependencies.
+	UseLanguageVersionTools bool
 }
