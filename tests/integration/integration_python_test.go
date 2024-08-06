@@ -1423,7 +1423,6 @@ func TestParameterizedPython(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigGetterOverloads(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
