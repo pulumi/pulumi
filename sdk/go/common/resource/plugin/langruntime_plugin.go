@@ -283,25 +283,25 @@ func (h *langhost) Close() error {
 	return nil
 }
 
-func (h *langhost) InstallDependencies(options InstallDependenciesRequest) error {
+func (h *langhost) InstallDependencies(request InstallDependenciesRequest) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) executing",
-		h.runtime, options)
+		h.runtime, request)
 
-	minfo, err := options.Info.Marshal()
+	minfo, err := request.Info.Marshal()
 	if err != nil {
 		return err
 	}
 
 	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:               options.Info.ProgramDirectory(),
+		Directory:               request.Info.ProgramDirectory(),
 		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
 		Info:                    minfo,
-		UseLanguageVersionTools: options.UseLanguageVersionTools,
+		UseLanguageVersionTools: request.UseLanguageVersionTools,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: err=%v",
-			h.runtime, options, rpcError)
+			h.runtime, request, rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
 		// method.  In such cases, we will silently error (with the above log left behind).
@@ -320,7 +320,7 @@ func (h *langhost) InstallDependencies(options InstallDependenciesRequest) error
 			}
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: err=%v",
-				h.runtime, options, rpcError)
+				h.runtime, request, rpcError)
 			return rpcError
 		}
 
@@ -334,7 +334,7 @@ func (h *langhost) InstallDependencies(options InstallDependenciesRequest) error
 	}
 
 	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) success",
-		h.runtime, options)
+		h.runtime, request)
 	return nil
 }
 

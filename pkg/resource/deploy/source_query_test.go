@@ -813,9 +813,9 @@ func (rt *mockLanguageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	panic("unimplemented")
 }
 
-func (rt *mockLanguageRuntime) InstallDependencies(options plugin.InstallDependenciesRequest) error {
+func (rt *mockLanguageRuntime) InstallDependencies(request plugin.InstallDependenciesRequest) error {
 	if rt.InstallDependenciesF != nil {
-		return rt.InstallDependenciesF(options)
+		return rt.InstallDependenciesF(request)
 	}
 	panic("unimplemented")
 }

@@ -130,7 +130,7 @@ type LanguageRuntime interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(options InstallDependenciesRequest) error
+	InstallDependencies(request InstallDependenciesRequest) error
 
 	// RuntimeOptions returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
