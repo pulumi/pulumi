@@ -54,13 +54,14 @@ func newPip(root, virtualenv string) (*pip, error) {
 	return &pip{virtualenvPath, virtualenv, root}, nil
 }
 
-func (p *pip) InstallDependencies(ctx context.Context, cwd string, showOutput bool,
+func (p *pip) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter io.Writer, errorWriter io.Writer,
 ) error {
 	return InstallDependencies(
 		ctx,
 		cwd,
 		p.virtualenvPath,
+		useLanguageVersionTools,
 		showOutput,
 		infoWriter,
 		errorWriter)
@@ -138,7 +139,9 @@ func (p *pip) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (p *pip) EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+func (p *pip) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
+	showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
 	// If we are using global/ambient Python, do nothing.
 	if p.virtualenvOption == "" {
 		return nil
@@ -170,7 +173,7 @@ func (p *pip) EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoW
 	}
 
 	if createVirtualEnv {
-		return p.InstallDependencies(ctx, cwd, showOutput, infoWriter, errorWriter)
+		return p.InstallDependencies(ctx, cwd, useLanguageVersionTools, showOutput, infoWriter, errorWriter)
 	}
 
 	return nil
@@ -367,7 +370,7 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(ctx context.Context, cwd, venvDir string, showOutput bool,
+func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
 	printmsg := func(message string) {
@@ -376,8 +379,10 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, showOutput bo
 		}
 	}
 
-	if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
-		return err
+	if useLanguageVersionTools {
+		if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			return err
+		}
 	}
 
 	if venvDir != "" {

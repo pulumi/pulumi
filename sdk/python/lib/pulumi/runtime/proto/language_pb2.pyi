@@ -377,6 +377,7 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     DIRECTORY_FIELD_NUMBER: builtins.int
     IS_TERMINAL_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
+    USE_LANGUAGE_VERSION_TOOLS_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the program's working directory."""
     is_terminal: builtins.bool
@@ -384,15 +385,18 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     @property
     def info(self) -> global___ProgramInfo:
         """the program info to use to execute the plugin."""
+    use_language_version_tools: builtins.bool
+    """if we should use language version tools like pyenv or"""
     def __init__(
         self,
         *,
         directory: builtins.str = ...,
         is_terminal: builtins.bool = ...,
         info: global___ProgramInfo | None = ...,
+        use_language_version_tools: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
 
 global___InstallDependenciesRequest = InstallDependenciesRequest
 

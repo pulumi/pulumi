@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -55,9 +54,11 @@ type Info struct {
 
 type Toolchain interface {
 	// InstallDependencies installs the dependencies of the project found in `cwd`.
-	InstallDependencies(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
+		showOutput bool, infoWriter, errorWriter io.Writer) error
 	// EnsureVenv validates virtual environment of the toolchain and creates it if it doesn't exist.
-	EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
+		showOutput bool, infoWriter, errorWriter io.Writer) error
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
@@ -99,11 +100,7 @@ func virtualEnvBinDirName() string {
 // Determines if we should use pyenv. To use pyenv we need:
 //   - pyenv installed
 //   - .python-version file in the current directory or any of its parents
-//   - PULUMI_LANGUAGE_VERSION_FILES environment variable set to true
 func usePyenv(cwd string) (bool, string, string, error) {
-	if !env.LanguageVersionFiles.Value() {
-		return false, "", "", nil
-	}
 	versionFile, err := fsutil.Searchup(cwd, ".python-version")
 	if err != nil {
 		if !errors.Is(err, fsutil.ErrNotFound) {

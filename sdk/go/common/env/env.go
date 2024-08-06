@@ -91,9 +91,6 @@ var SkipVersionCheck = env.Bool("AUTOMATION_API_SKIP_VERSION_CHECK",
 var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 	"Continue to perform the update/destroy operation despite the occurrence of errors.")
 
-var LanguageVersionFiles = env.Bool("LANGUAGE_VERSION_FILES",
-	"Detect and use .python-version files during installation.")
-
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
 //

@@ -879,7 +879,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13941): We don't capture stdout/stderr from the language
 		// plugin, so we can't show it back to the test.
-		err = languageClient.InstallDependencies(programInfo)
+		err = languageClient.InstallDependencies(plugin.InstallDependenciesRequest{Info: programInfo})
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
 		}

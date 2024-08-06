@@ -413,7 +413,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-	err = tc.InstallDependencies(context.Background(), pDir, true /*showOutput*/, os.Stdout, os.Stderr)
+	err = tc.InstallDependencies(context.Background(), pDir, false /*useLanguageVersionTools */, true /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		t.Errorf("failed to create a venv and install project dependencies: %v", err)
 		t.FailNow()

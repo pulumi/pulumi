@@ -1536,7 +1536,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			if err != nil {
 				return fmt.Errorf("getting python toolchain: %w", err)
 			}
-			if err := tc.InstallDependencies(ctx, finalDir, false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
+			if err := tc.InstallDependencies(ctx, finalDir, false /*useLanguageVersionTools */, false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}

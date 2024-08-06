@@ -102,6 +102,15 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 	}, nil
 }
 
+type InstallDependenciesRequest struct {
+	Info                    ProgramInfo
+	UseLanguageVersionTools bool
+}
+
+func (options InstallDependenciesRequest) String() string {
+	return fmt.Sprintf("Info=[%s], UseLanguageVersionTools=%t", options.Info, options.UseLanguageVersionTools)
+}
+
 // LanguageRuntime is a convenient interface for interacting with language runtime plugins.  These tend to be
 // dynamically loaded as plugins, although this interface hides this fact from the calling code.
 type LanguageRuntime interface {
@@ -121,7 +130,7 @@ type LanguageRuntime interface {
 	GetPluginInfo() (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(info ProgramInfo) error
+	InstallDependencies(options InstallDependenciesRequest) error
 
 	// RuntimeOptions returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)

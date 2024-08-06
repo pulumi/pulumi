@@ -327,7 +327,8 @@ func completePythonInstall(ctx context.Context, finalDir, projPath string, proj 
 		return fmt.Errorf("failed to get python toolchain: %w", err)
 	}
 
-	if err := tc.InstallDependencies(ctx, finalDir, false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
+	if err := tc.InstallDependencies(ctx, finalDir, false /* useLanguageVersionTools */, false, /*showOutput*/
+		os.Stdout, os.Stderr); err != nil {
 		return err
 	}
 

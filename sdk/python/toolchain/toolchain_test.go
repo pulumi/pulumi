@@ -47,7 +47,7 @@ func TestValidateVenv(t *testing.T) {
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
-			err = tc.InstallDependencies(context.Background(), opts.Root, true, os.Stdout, os.Stderr)
+			err = tc.InstallDependencies(context.Background(), opts.Root, false, true, os.Stdout, os.Stderr)
 			require.NoError(t, err)
 			err = tc.ValidateVenv(context.Background())
 			require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestPyenv(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 
-	// Test without pyenv, a .python-version file or PULUMI_LANGUAGE_VERSION_FILES
+	// Test without pyenv, a .python-version file
 	use, _, _, err := usePyenv(tmpDir)
 	require.NoError(t, err)
 	require.False(t, use)
@@ -213,7 +213,7 @@ func TestPyenv(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "pyenv"), []byte("#!/bin/sh\nexit 0;\n"), 0o700))
 	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
-	// Test witbout .python-version file or PULUMI_LANGUAGE_VERSION_FILES
+	// Test witbout .python-version file
 	use, _, _, err = usePyenv(tmpDir)
 	require.NoError(t, err)
 	require.False(t, use)
@@ -221,13 +221,6 @@ func TestPyenv(t *testing.T) {
 	// Create a .python-version file
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".python-version"), []byte("3.9.0"), 0o600))
 
-	// Test without PULUMI_LANGUAGE_VERSION_FILES set
-	use, _, _, err = usePyenv(tmpDir)
-	require.NoError(t, err)
-	require.False(t, use)
-
-	// We now have pyenv, a .python-version file and PULUMI_LANGUAGE_VERSION_FILES
-	t.Setenv("PULUMI_LANGUAGE_VERSION_FILES", "true")
 	use, pyenvPath, versionFile, err := usePyenv(tmpDir)
 	t.Log("X", use, pyenvPath, versionFile, err)
 	require.NoError(t, err)
@@ -258,8 +251,6 @@ func TestPyenvInstall(t *testing.T) {
 	// Create a .python-version file
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".python-version"), []byte("3.9.0"), 0o600))
 
-	t.Setenv("PULUMI_LANGUAGE_VERSION_FILES", "true")
-
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	err := installPython(context.Background(), tmpDir, false, stdout, stderr)
@@ -276,7 +267,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	if opts.Toolchain == Pip {
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, true, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), opts.Root, false /*useLanguageVersionTools*/, true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {
@@ -291,7 +282,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePoetryToml(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, true, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), opts.Root, false /*useLanguageVersionTools*/, true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {
