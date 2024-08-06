@@ -160,7 +160,8 @@ func buildVirtualEnv(ctx context.Context) error {
 		return err
 	}
 
-	err = tc.InstallDependencies(ctx, hereDir, false /*useLanguageVersionTools */, false /*showOutput*/, os.Stdout, os.Stderr)
+	err = tc.InstallDependencies(ctx, hereDir, false, /*useLanguageVersionTools */
+		false /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		return err
 	}

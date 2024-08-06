@@ -267,7 +267,8 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	if opts.Toolchain == Pip {
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false /*useLanguageVersionTools*/, true /*showOutput */, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {
@@ -282,7 +283,8 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePoetryToml(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false /*useLanguageVersionTools*/, true /*showOutput */, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {

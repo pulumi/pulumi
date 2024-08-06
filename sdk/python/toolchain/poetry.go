@@ -201,7 +201,9 @@ func (p *poetry) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer) error {
+func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
+	showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
 	_, err := p.virtualenvPath(ctx)
 	if err != nil {
 		// Couldn't get the virtualenv path, this means it does not exist. Let's create it.
