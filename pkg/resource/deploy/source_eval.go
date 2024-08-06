@@ -2138,7 +2138,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var result *RegisterResult
 
 	var outputDeps map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies
-	fakeNonRemoteBecauseUnknownProvider := false
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
 		if providers.IsDenyDefaultsProvider(providerRef) {
@@ -2183,35 +2182,29 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Inputs:  props,
 			Options: options,
 		})
-		if err != nil && !errors.Is(err, plugin.ProviderNotFullyConfiguredError{}) {
+		if err != nil {
 			return nil, err
 		}
+		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
-		if errors.Is(err, plugin.ProviderNotFullyConfiguredError{}) {
-			fakeNonRemoteBecauseUnknownProvider = true
-		} else {
-			result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
-
-			// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
-			// Secret but also add them to the outputDeps map.
-			if constructResult.OutputDependencies == nil {
-				constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
-			}
-			for k, v := range result.State.Outputs {
-				constructResult.OutputDependencies[k] = extendOutputDependencies(constructResult.OutputDependencies[k], v)
-			}
-
-			outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
-			for k, deps := range constructResult.OutputDependencies {
-				urns := make([]string, len(deps))
-				for i, d := range deps {
-					urns[i] = string(d)
-				}
-				outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
-			}
+		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
+		// Secret but also add them to the outputDeps map.
+		if constructResult.OutputDependencies == nil {
+			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
-	}
-	if !remote || fakeNonRemoteBecauseUnknownProvider {
+		for k, v := range result.State.Outputs {
+			constructResult.OutputDependencies[k] = extendOutputDependencies(constructResult.OutputDependencies[k], v)
+		}
+
+		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
+		for k, deps := range constructResult.OutputDependencies {
+			urns := make([]string, len(deps))
+			for i, d := range deps {
+				urns[i] = string(d)
+			}
+			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
+		}
+	} else {
 		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
 		for _, name := range additionalSecretOutputs {
 			additionalSecretKeys = append(additionalSecretKeys, resource.PropertyKey(name))

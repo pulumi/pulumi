@@ -1387,12 +1387,6 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	return DeleteResponse{Status: resource.StatusOK}, err
 }
 
-type ProviderNotFullyConfiguredError struct{}
-
-func (e ProviderNotFullyConfiguredError) Error() string {
-	return "provider is not fully configured"
-}
-
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
 func (p *provider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {
@@ -1410,9 +1404,30 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{}, err
 	}
 
-	// If the provider is not fully configured return an empty ConstructResult.
+	// If the provider is not fully configured.  Pretend we are the provider and call RegisterResource to get the URN.
 	if !pcfg.known {
-		return ConstructResult{}, ProviderNotFullyConfiguredError{}
+		// Connect to the resource monitor and create an appropriate client.
+		conn, err := grpc.Dial(
+			req.Info.MonitorAddress,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			rpcutil.GrpcChannelOptions(),
+		)
+		if err != nil {
+			return ConstructResult{}, fmt.Errorf("could not connect to resource monitor: %w", err)
+		}
+		resmon := pulumirpc.NewResourceMonitorClient(conn)
+		resp, err := resmon.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+			Type:   string(req.Type),
+			Name:   req.Name,
+			Parent: string(req.Parent),
+		})
+		if err != nil {
+			return ConstructResult{}, err
+		}
+		return ConstructResult{
+			URN: resource.URN(resp.GetUrn()),
+		}, nil
+
 	}
 
 	if !pcfg.acceptSecrets {
