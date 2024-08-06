@@ -28,12 +28,14 @@ import (
 )
 
 func init() {
-	providerSchema.Resources["testprovider:index:Random"] = pschema.ResourceSpec{
+	providerSchema.Resources["testprovider:index:Container"] = pschema.ResourceSpec{
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
 			Description: "A test resource that generates a random string of a given length and with an optional prefix.",
 			Properties: map[string]pschema.PropertySpec{
 				"child": {
-					TypeSpec:    pschema.TypeSpec{Type: "object"},
+					TypeSpec: pschema.TypeSpec{
+						Ref: "#/types/testprovider:index:Random",
+					},
 					Description: "The child of the container",
 				},
 			},
@@ -41,7 +43,9 @@ func init() {
 		},
 		InputProperties: map[string]pschema.PropertySpec{
 			"child": {
-				TypeSpec:    pschema.TypeSpec{Type: "object"},
+				TypeSpec: pschema.TypeSpec{
+					Ref: "#/types/testprovider:index:Random",
+				},
 				Description: "The child of the container",
 			},
 		},
@@ -63,18 +67,19 @@ func (p *containerResourceProvider) Diff(ctx context.Context, req *rpc.DiffReque
 
 func (p *containerResourceProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		KeepUnknowns: true,
-		SkipNulls:    true,
+		KeepUnknowns:     true,
+		SkipNulls:        true,
+		KeepResources:    true,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-		"child": inputs["child"],
-	})
+	outputs := resource.PropertyMap{}
+	outputs["child"] = inputs["child"]
 	outputProperties, err := plugin.MarshalProperties(
 		outputs,
-		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
+		plugin.MarshalOptions{KeepUnknowns: true, KeepResources: true, KeepOutputValues: true},
 	)
 	if err != nil {
 		return nil, err
@@ -94,11 +99,13 @@ func (p *containerResourceProvider) Read(ctx context.Context, req *rpc.ReadReque
 }
 
 func (p *containerResourceProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
-	// Our Random resource will never be updated - if there is a diff, it will be a replacement.
 	panic("Update not implemented")
 }
 
 func (p *containerResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
-	// Note that for our Random resource, we don't have to do anything on Delete.
 	return &emptypb.Empty{}, nil
+}
+
+func (p *containerResourceProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+	panic("Invoke not implemented")
 }
