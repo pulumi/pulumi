@@ -924,7 +924,7 @@ export interface OutputInstance<T> {
      * remains an {@link Output} so that dependent resources can be properly
      * tracked.
      *
-     * `func` should not be used to create resources unless necessary. Creating resources within `func` can cause unknown behaviour.
+     * `func` should not be used to create resources unless necessary as `func` may not be run during some program executions.
      *
      * `func` can return other {@link Output}s. This can be handy if you have an
      * `Output<SomeVal>` and you want to get a transitive dependency of it,
