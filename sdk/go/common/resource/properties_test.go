@@ -402,3 +402,28 @@ func TestHasValue(t *testing.T) {
 		})
 	}
 }
+
+// Test for https://github.com/pulumi/pulumi/issues/16889
+func TestMapFromMapNestedPropertyValues(t *testing.T) {
+	t.Parallel()
+
+	actual := NewPropertyMapFromMap(map[string]interface{}{
+		"prop": NewStringProperty("value"),
+		"nested": map[string]interface{}{
+			"obj": NewObjectProperty(PropertyMap{
+				"k": NewStringProperty("v"),
+			}),
+		},
+	})
+
+	expected := PropertyMap{
+		"prop": NewStringProperty("value"),
+		"nested": NewObjectProperty(PropertyMap{
+			"obj": NewObjectProperty(PropertyMap{
+				"k": NewStringProperty("v"),
+			}),
+		}),
+	}
+
+	assert.Equal(t, expected, actual)
+}
