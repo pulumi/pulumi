@@ -231,7 +231,7 @@ class Output(Generic[T_co]):
         Transforms the data of the output with the provided func.  The result remains an
         Output so that dependent resources can be properly tracked.
 
-        'func' is not allowed to make resources.
+        'func' should not be used to create resources unless necessary. Creating resources within 'func' can cause unknown behaviour.
 
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
