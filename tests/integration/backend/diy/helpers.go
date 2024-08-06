@@ -30,4 +30,10 @@ func loginAndCreateStack(t *testing.T, cloudURL string) {
 	out, err = exec.Command("pulumi", "stack", "ls").CombinedOutput()
 	assert.NoError(t, err, string(out))
 	assert.Contains(t, string(out), stackName+"*")
+
+	out, err = exec.Command("pulumi", "up", "--skip-preview").CombinedOutput()
+	assert.NoError(t, err, string(out))
+
+	out, err = exec.Command("pulumi", "destroy", "--skip-preview").CombinedOutput()
+	assert.NoError(t, err, string(out))
 }
