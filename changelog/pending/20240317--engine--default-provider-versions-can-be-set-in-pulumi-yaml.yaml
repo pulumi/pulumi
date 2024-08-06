@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Default provider versions can be set in Pulumi.yaml
