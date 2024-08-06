@@ -1441,7 +1441,6 @@ func TestConfigGetterOverloads(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	sdkPath := filepath.Join(cwd, "../../sdk/python/env/src")
-	fmt.Println("localSDKPath: ", sdkPath)
 	pythonBin := "./venv/bin/python"
 	if runtime.GOOS == "windows" {
 		pythonBin = "./venv/Scripts/python.exe"
