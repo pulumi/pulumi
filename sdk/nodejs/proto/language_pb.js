@@ -5703,7 +5703,8 @@ proto.pulumirpc.GeneratePackageRequest.toObject = function(includeInstance, msg)
     schema: jspb.Message.getFieldWithDefault(msg, 2, ""),
     extraFilesMap: (f = msg.getExtraFilesMap()) ? f.toObject(includeInstance, undefined) : [],
     loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : []
+    localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : [],
+    local: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -5764,6 +5765,10 @@ proto.pulumirpc.GeneratePackageRequest.deserializeBinaryFromReader = function(ms
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
       break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setLocal(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5821,6 +5826,13 @@ proto.pulumirpc.GeneratePackageRequest.serializeBinaryToWriter = function(messag
   f = message.getLocalDependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getLocal();
+  if (f) {
+    writer.writeBool(
+      6,
+      f
+    );
   }
 };
 
@@ -5921,6 +5933,24 @@ proto.pulumirpc.GeneratePackageRequest.prototype.getLocalDependenciesMap = funct
 proto.pulumirpc.GeneratePackageRequest.prototype.clearLocalDependenciesMap = function() {
   this.getLocalDependenciesMap().clear();
   return this;};
+
+
+/**
+ * optional bool local = 6;
+ * @return {boolean}
+ */
+proto.pulumirpc.GeneratePackageRequest.prototype.getLocal = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.GeneratePackageRequest} returns this
+ */
+proto.pulumirpc.GeneratePackageRequest.prototype.setLocal = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
+};
 
 
 

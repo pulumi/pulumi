@@ -770,6 +770,7 @@ class GeneratePackageRequest(google.protobuf.message.Message):
     EXTRA_FILES_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    LOCAL_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the directory to generate the package in."""
     schema: builtins.str
@@ -784,6 +785,10 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         """local dependencies to use instead of using the package system. This is a map of package name to a local
         path of a language specific artifact to use for the SDK for that package.
         """
+    local: builtins.bool
+    """if true generates an SDK appropriate for local usage, this may differ from a standard publishable SDK depending
+    on the language.
+    """
     def __init__(
         self,
         *,
@@ -792,8 +797,9 @@ class GeneratePackageRequest(google.protobuf.message.Message):
         extra_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         loader_target: builtins.str = ...,
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        local: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "schema", b"schema"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "loader_target", b"loader_target", "local", b"local", "local_dependencies", b"local_dependencies", "schema", b"schema"]) -> None: ...
 
 global___GeneratePackageRequest = GeneratePackageRequest
 
