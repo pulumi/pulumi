@@ -779,7 +779,13 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 	if opts != nil && opts.Stderr != nil {
 		stderrWriters = append(stderrWriters, opts.Stderr)
 	}
-	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, "install")
+	args := []string{"install"}
+	if l.pulumiCommand.Version().GTE(semver.Version{Major: 3, Minor: 129}) {
+		if opts.UseLanguageVersionTools {
+			args = append(args, "--use-language-version-tools")
+		}
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
 	}

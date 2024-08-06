@@ -1,0 +1,4 @@
+name: test-install-language-version-tools
+description: Run pulumi install via automation api
+runtime:
+  name: python
