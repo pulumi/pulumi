@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
@@ -29,10 +30,10 @@ import (
 type loaderServer struct {
 	codegenrpc.UnsafeLoaderServer // opt out of forward compat
 
-	loader ReferenceLoader
+	loader SchemaLoader
 }
 
-func NewLoaderServer(loader ReferenceLoader) codegenrpc.LoaderServer {
+func NewLoaderServer(loader SchemaLoader) codegenrpc.LoaderServer {
 	return &loaderServer{loader: loader}
 }
 
@@ -52,14 +53,40 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 		version = &v
 	}
 
-	pkg, err := m.loader.LoadPackage(req.Package, version)
+	var parameterization *LoadSchemaParameterization
+	if req.Parameterization != nil {
+		v, err := semver.Parse(req.Parameterization.Version)
+		if err != nil {
+			logging.V(7).Infof("%s failed: %v", label, err)
+			return nil, fmt.Errorf("%s not a valid semver: %w", req.Parameterization.Version, err)
+		}
+
+		parameterization = &LoadSchemaParameterization{
+			Name:    tokens.Package(req.Parameterization.Name),
+			Version: v,
+			Value:   req.Parameterization.Value,
+		}
+	}
+
+	pkg, err := m.loader.LoadSchema(ctx, &LoadSchemaRequest{
+		Package:           tokens.Package(req.Package),
+		Version:           version,
+		PluginDownloadURL: req.DownloadUrl,
+		Parameterization:  parameterization,
+	})
+	if err != nil {
+		logging.V(7).Infof("%s failed: %v", label, err)
+		return nil, err
+	}
+
+	def, err := pkg.Definition()
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err
 	}
 
 	// Marshal the package into a JSON string.
-	spec, err := pkg.MarshalSpec()
+	spec, err := def.MarshalSpec()
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err

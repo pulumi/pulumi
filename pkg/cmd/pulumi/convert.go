@@ -174,7 +174,7 @@ func printDiagnostics(sink diag.Sink, diagnostics hcl.Diagnostics) {
 }
 
 // Same pcl.BindDirectory but recovers from panics
-func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader, strict bool,
+func safePclBindDirectory(sourceDirectory string, loader schema.SchemaLoader, strict bool,
 ) (program *pcl.Program, diagnostics hcl.Diagnostics, err error) {
 	// PCL binding can be quite panic'y but even it panics we want to write out the intermediate PCL generated
 	// from the converter, so we use a recover statement here.
@@ -195,7 +195,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(
-	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.SchemaLoader, strict bool,
 ) (hcl.Diagnostics, error) {
 	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
 	// We always try to copy the source directory to the target directory even if binding failed
@@ -209,12 +209,12 @@ func pclGenerateProject(
 }
 
 type projectGeneratorFunction func(
-	string, string, *workspace.Project, schema.ReferenceLoader, bool,
+	string, string, *workspace.Project, schema.SchemaLoader, bool,
 ) (hcl.Diagnostics, error)
 
 func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) projectGeneratorFunction {
 	return func(
-		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.SchemaLoader, strict bool,
 	) (hcl.Diagnostics, error) {
 		contract.Requiref(proj != nil, "proj", "must not be nil")
 
@@ -298,7 +298,7 @@ func runConvert(
 		projectGenerator = func(
 			sourceDirectory, targetDirectory string,
 			proj *workspace.Project,
-			loader schema.ReferenceLoader,
+			loader schema.SchemaLoader,
 			strict bool,
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")

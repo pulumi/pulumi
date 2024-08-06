@@ -60,9 +60,9 @@ type LoadSchemaRequest struct {
 	Parameterization  *LoadSchemaParameterization
 }
 
-// PackageLoader that can load a package given the same package information that programs send to the engine for
+// SchemaLoader that can load a package given the same package information that programs send to the engine for
 // resource registrations. That is name, and version, but also pluginDownloadURL and parameterization.
-type PackageLoader interface {
+type SchemaLoader interface { //nolint: revive
 	ReferenceLoader
 
 	LoadSchema(ctx context.Context, req *LoadSchemaRequest) (PackageReference, error)
@@ -77,6 +77,9 @@ type pluginLoader struct {
 	cacheOptions pluginLoaderCacheOptions
 }
 
+// Ensure this is a SchemaLoader
+var _ SchemaLoader = &pluginLoader{}
+
 // Caching options intended for benchmarking or debugging:
 type pluginLoaderCacheOptions struct {
 	// useEntriesCache enables in-memory re-use of packages
@@ -87,14 +90,14 @@ type pluginLoaderCacheOptions struct {
 	disableMmap bool
 }
 
-func NewPluginLoader(host plugin.Host) PackageLoader {
+func NewPluginLoader(host plugin.Host) SchemaLoader {
 	return &pluginLoader{
 		host:    host,
 		entries: map[string]PackageReference{},
 	}
 }
 
-func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
+func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) SchemaLoader {
 	return &pluginLoader{
 		host:    host,
 		entries: map[string]PackageReference{},

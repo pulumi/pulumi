@@ -463,7 +463,7 @@ func getCurrentDeploymentForStack(
 
 type programGeneratorFunc func(
 	p *pcl.Program,
-	loader schema.ReferenceLoader,
+	loader schema.SchemaLoader,
 ) (map[string][]byte, hcl.Diagnostics, error)
 
 func generateImportedDefinitions(ctx *plugin.Context,
@@ -851,8 +851,8 @@ func newImportCmd() *cobra.Command {
 
 			wrapper := func(
 				f func(*pcl.Program) (map[string][]byte, hcl.Diagnostics, error),
-			) func(*pcl.Program, schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-				return func(p *pcl.Program, loader schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
+			) func(*pcl.Program, schema.SchemaLoader) (map[string][]byte, hcl.Diagnostics, error) {
+				return func(p *pcl.Program, loader schema.SchemaLoader) (map[string][]byte, hcl.Diagnostics, error) {
 					return f(p)
 				}
 			}
@@ -867,7 +867,7 @@ func newImportCmd() *cobra.Command {
 				programGenerator = wrapper(yamlgen.GenerateProgram)
 			default:
 				programGenerator = func(
-					program *pcl.Program, loader schema.ReferenceLoader,
+					program *pcl.Program, loader schema.SchemaLoader,
 				) (map[string][]byte, hcl.Diagnostics, error) {
 					cwd, err := os.Getwd()
 					if err != nil {

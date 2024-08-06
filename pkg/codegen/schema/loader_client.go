@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -35,7 +36,7 @@ type loaderClient struct {
 	clientRaw codegenrpc.LoaderClient // the raw loader client; usually unsafe to use directly.
 }
 
-func NewLoaderClient(target string) (ReferenceLoader, error) {
+func NewLoaderClient(target string) (SchemaLoader, error) {
 	contract.Assertf(target != "", "unexpected empty target for loader")
 
 	conn, err := grpc.Dial(
@@ -65,18 +66,28 @@ func (l *loaderClient) Close() error {
 	return nil
 }
 
-func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+func (l *loaderClient) LoadSchema(ctx context.Context, req *LoadSchemaRequest) (PackageReference, error) {
 	label := "GetSchema"
-	logging.V(7).Infof("%s executing: package=%s, version=%s", label, pkg, version)
+	logging.V(7).Infof("%s executing: package=%s, version=%s", label, req.Package, req.Version)
 
 	var versionString string
-	if version != nil {
-		versionString = version.String()
+	if req.Version != nil {
+		versionString = req.Version.String()
 	}
 
-	resp, err := l.clientRaw.GetSchema(context.TODO(), &codegenrpc.GetSchemaRequest{
-		Package: pkg,
-		Version: versionString,
+	var parameterization *codegenrpc.Parameterization
+	if req.Parameterization != nil {
+		parameterization = &codegenrpc.Parameterization{
+			Name:    req.Parameterization.Name.String(),
+			Version: req.Parameterization.Version.String(),
+			Value:   req.Parameterization.Value,
+		}
+	}
+	resp, err := l.clientRaw.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
+		Package:          req.Package.String(),
+		Version:          versionString,
+		DownloadUrl:      req.PluginDownloadURL,
+		Parameterization: parameterization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -91,18 +102,18 @@ func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version)
 
 	// Insert a version into the spec if the package does not provide one or if the
 	// existing version is less than the provided one
-	if version != nil {
+	if req.Version != nil {
 		setVersion := true
 		if spec.PackageInfoSpec.Version != "" {
 			vSemver, err := semver.Make(spec.PackageInfoSpec.Version)
 			if err == nil {
-				if vSemver.Compare(*version) == 1 {
+				if vSemver.Compare(*req.Version) == 1 {
 					setVersion = false
 				}
 			}
 		}
 		if setVersion {
-			spec.PackageInfoSpec.Version = version.String()
+			spec.PackageInfoSpec.Version = req.Version.String()
 		}
 	}
 
@@ -121,4 +132,11 @@ func (l *loaderClient) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 	return ref.Definition()
+}
+
+func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+	return l.LoadSchema(context.TODO(), &LoadSchemaRequest{
+		Package: tokens.Package(pkg),
+		Version: version,
+	})
 }
