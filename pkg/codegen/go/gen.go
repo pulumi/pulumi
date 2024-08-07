@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"reflect"
@@ -3669,7 +3670,11 @@ func extractModulePath(extPkg schema.PackageReference) string {
 	}
 	// And if we have a repository, use that instead of the publisher
 	if extPkg.Repository() != "" {
-		root = extPkg.Repository()
+		url, err := url.Parse(extPkg.Repository())
+		if err == nil {
+			// If there's any errors parsing the URL ignore it. Else use the host and path as go doesn't expect http://
+			root = url.Host + url.Path
+		}
 	}
 
 	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
