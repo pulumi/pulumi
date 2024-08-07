@@ -44,6 +44,7 @@ const (
 	optPreviewPr                   = "Run previews for pull requests"
 	optUpdatePushes                = "Run updates for pushed commits"
 	optPrTemplate                  = "Use this stack as a template for pull request stacks"
+	optNoAuthentication            = "No authentication"
 	optUserPass                    = "Username/Password"
 	optSSH                         = "SSH key"
 	optSkipDepsInstall             = "Skip automatic dependency installation step"
@@ -511,6 +512,7 @@ func configureBareGitRepo(d *deploymentSettingsCommandDependencies,
 		[]string{
 			optUserPass,
 			optSSH,
+			optNoAuthentication,
 		},
 		optUserPass,
 		d.DisplayOptions.Color)
@@ -520,6 +522,8 @@ func configureBareGitRepo(d *deploymentSettingsCommandDependencies,
 		return configureGitPassword(d)
 	case optSSH:
 		return configureGitSSH(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+	case optNoAuthentication:
+		sd.DeploymentSettings.SourceContext.Git.GitAuth = nil
 	}
 
 	return nil
