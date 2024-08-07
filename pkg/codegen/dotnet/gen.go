@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -2238,12 +2239,31 @@ func genProjectFile(pkg *schema.Package,
 		restoreSources = strings.Join(folders.ToSlice(), ";")
 	}
 
-	// Add the Pulumi package reference
+	// Add local package references
 	for _, path := range localDependencies {
-		filename := filepath.Base(path)
-		pkg, rest, _ := strings.Cut(filename, ".")
-		version, _ := strings.CutSuffix(rest, ".nupkg")
-		packageReferences[pkg] = version
+		nugetFile := ""
+		if strings.HasSuffix(path, ".nupkg") {
+			nugetFile = path
+		} else {
+			files, _ := os.ReadDir(path)
+			for _, file := range files {
+				if strings.HasSuffix(file.Name(), ".nupkg") {
+					nugetFile = filepath.Join(path, file.Name())
+					break
+				}
+			}
+		}
+
+		filename := filepath.Base(nugetFile)
+		parts := strings.Split(filename, ".")
+		if len(parts) >= 5 {
+			patch := parts[len(parts)-2]
+			minor := parts[len(parts)-3]
+			major := parts[len(parts)-4]
+			version := fmt.Sprintf("%s.%s.%s", major, minor, patch)
+			pkg := strings.TrimSuffix(filename, fmt.Sprintf(".%s.nupkg", version))
+			packageReferences[pkg] = version
+		}
 	}
 
 	// if we don't have a package reference to Pulumi SDK from nuget
