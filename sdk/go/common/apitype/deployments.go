@@ -55,6 +55,47 @@ func ParsePulumiOperation(o string) (PulumiOperation, error) {
 	}
 }
 
+// A DurationMarshaller
+type DurationMarshaller time.Duration
+
+func (v DurationMarshaller) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(v).String())
+}
+
+func (v *DurationMarshaller) UnmarshalJSON(bytes []byte) error {
+	var s string
+	if err := json.Unmarshal(bytes, &s); err != nil {
+		return err
+	}
+	if s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return err
+		}
+		*v = DurationMarshaller(d)
+	}
+	return nil
+}
+
+func (v DurationMarshaller) MarshalYAML() (any, error) {
+	return time.Duration(v).String(), nil
+}
+
+func (v *DurationMarshaller) UnmarshalYAML(node *yaml.Node) error {
+	var s string
+	if err := node.Decode(&s); err != nil {
+		return err
+	}
+	if s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return err
+		}
+		*v = DurationMarshaller(d)
+	}
+	return nil
+}
+
 // CreateDeploymentRequest defines the request payload that is expected when
 // creating a new deployment.
 type CreateDeploymentRequest struct {
@@ -160,7 +201,7 @@ type SourceContext struct {
 }
 
 type SourceContextGit struct {
-	RepoURL string `json:"repoURL" yaml:"repoURL,omitempty"`
+	RepoURL string `json:"repoUrl" yaml:"repoUrl,omitempty"`
 
 	Branch string `json:"branch" yaml:"branch"`
 
@@ -241,7 +282,7 @@ type OperationContextOIDCConfiguration struct {
 
 type OperationContextAWSOIDCConfiguration struct {
 	// Duration is the duration of the assume-role session.
-	Duration time.Duration `json:"duration,omitempty" yaml:"duration,omitempty"`
+	Duration DurationMarshaller `json:"duration,omitempty" yaml:"duration,omitempty"`
 	// PolicyARNs is an optional set of IAM policy ARNs that further restrict the assume-role session.
 	PolicyARNs []string `json:"policyArns,omitempty" yaml:"policyArns,omitempty"`
 	// The ARN of the role to assume using the OIDC token.
@@ -271,7 +312,7 @@ type OperationContextGCPOIDCConfiguration struct {
 	// ServiceAccount is the email address of the service account to use.
 	ServiceAccount string `json:"serviceAccount" yaml:"serviceAccount"`
 	// TokenLifetime is the lifetime of the temporary credentials.
-	TokenLifetime time.Duration `json:"tokenLifetime,omitempty" yaml:"tokenLifetime,omitempty"`
+	TokenLifetime DurationMarshaller `json:"tokenLifetime,omitempty" yaml:"tokenLifetime,omitempty"`
 }
 
 // OperationContextOptions is a bag of settings to specify or override default behavior in a deployment
