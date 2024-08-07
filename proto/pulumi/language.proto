@@ -250,6 +250,9 @@ message GeneratePackageRequest {
     // local dependencies to use instead of using the package system. This is a map of package name to a local
     // path of a language specific artifact to use for the SDK for that package.
     map<string, string> local_dependencies = 5;
+    // if true generates an SDK appropriate for local usage, this may differ from a standard publishable SDK depending
+    // on the language.
+    bool local = 6;
 }
 
 message GeneratePackageResponse {

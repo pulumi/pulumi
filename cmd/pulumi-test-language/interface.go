@@ -644,7 +644,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 
 			diags, err := languageClient.GeneratePackage(
-				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies)
+				sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 			}
