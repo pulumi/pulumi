@@ -2033,9 +2033,12 @@ func TestNodeOOM(t *testing.T) {
 
 // Test a paramaterized provider with nodejs.
 //
-//nolint:paralleltest // ProgramTest calls t.Parallel()
+//nolint:paralleltest // mutates environment
 func TestParamaterizedNode(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
+
+	// Enable MultiArgumentInputs in the testprovider/echo schema
+	t.Setenv("PULUMI_TEST_MULTI_ARGUMENT_INPUTS", "true")
 
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
 	// work.

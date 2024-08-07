@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -74,40 +75,43 @@ func init() {
 			},
 		},
 	}
-	providerSchema.Functions["testprovider:index:doMultiEcho"] = pschema.FunctionSpec{
-		Description: "A test invoke that echoes its input, using multiple inputs.",
-		MultiArgumentInputs: []string{
-			"echoA",
-			"echoB",
-		},
-		Inputs: &pschema.ObjectTypeSpec{
-			Properties: map[string]pschema.PropertySpec{
-				"echoA": {
-					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+	if os.Getenv("PULUMI_TEST_MULTI_ARGUMENT_INPUTS") != "" {
+		// Conditionally add this if an env flag is set, since it does not work with all langs
+		providerSchema.Functions["testprovider:index:doMultiEcho"] = pschema.FunctionSpec{
+			Description: "A test invoke that echoes its input, using multiple inputs.",
+			MultiArgumentInputs: []string{
+				"echoA",
+				"echoB",
+			},
+			Inputs: &pschema.ObjectTypeSpec{
+				Properties: map[string]pschema.PropertySpec{
+					"echoA": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
 					},
-				},
-				"echoB": {
-					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+					"echoB": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
 					},
 				},
 			},
-		},
-		Outputs: &pschema.ObjectTypeSpec{
-			Properties: map[string]pschema.PropertySpec{
-				"echoA": {
-					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+			Outputs: &pschema.ObjectTypeSpec{
+				Properties: map[string]pschema.PropertySpec{
+					"echoA": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
 					},
-				},
-				"echoB": {
-					TypeSpec: pschema.TypeSpec{
-						Type: "string",
+					"echoB": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
 					},
 				},
 			},
-		},
+		}
 	}
 	providerSchema.Functions["testprovider:index:Echo/doEchoMethod"] = pschema.FunctionSpec{
 		Description: "A test call that echoes its input.",
