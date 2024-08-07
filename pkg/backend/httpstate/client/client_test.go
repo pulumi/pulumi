@@ -282,12 +282,12 @@ func TestDeploymentSettingsApi(t *testing.T) {
 		payload := `{
     "sourceContext": {
         "git": {
-            "repoUrl": "git@github.com:glena/test-action.git",
-            "branch": "cloud-dev-pr",
+            "repoUrl": "git@github.com:pulumi/test-repo.git",
+            "branch": "main",
             "repoDir": ".",
             "gitAuth": {
                 "basicAuth": {
-                    "userName": "asd",
+                    "userName": "jdoe",
                     "password": {
                         "secret": "[secret]",
                         "ciphertext": "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8="
@@ -301,10 +301,10 @@ func TestDeploymentSettingsApi(t *testing.T) {
             "aws": {
                 "duration": "1h0m0s",
                 "policyArns": [
-                    "asdf"
+                    "policy:arn"
                 ],
-                "roleArn": "asdf",
-                "sessionName": "asdf"
+                "roleArn": "the_role",
+                "sessionName": "the_session_name"
             }
         },
         "options": {
@@ -331,13 +331,13 @@ func TestDeploymentSettingsApi(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.SourceContext)
 		assert.NotNil(t, resp.SourceContext.Git)
-		assert.Equal(t, "cloud-dev-pr", resp.SourceContext.Git.Branch)
-		assert.Equal(t, "git@github.com:glena/test-action.git", resp.SourceContext.Git.RepoURL)
+		assert.Equal(t, "main", resp.SourceContext.Git.Branch)
+		assert.Equal(t, "git@github.com:pulumi/test-repo.git", resp.SourceContext.Git.RepoURL)
 		assert.Equal(t, ".", resp.SourceContext.Git.RepoDir)
 		assert.NotNil(t, resp.SourceContext.Git.GitAuth)
 		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth)
 		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.UserName)
-		assert.Equal(t, "asd", resp.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
+		assert.Equal(t, "jdoe", resp.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
 		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.Password)
 		assert.Equal(t, "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8=",
 			resp.SourceContext.Git.GitAuth.BasicAuth.Password.Ciphertext)
@@ -351,11 +351,11 @@ func TestDeploymentSettingsApi(t *testing.T) {
 		assert.Nil(t, resp.Operation.OIDC.Azure)
 		assert.Nil(t, resp.Operation.OIDC.GCP)
 		assert.NotNil(t, resp.Operation.OIDC.AWS)
-		assert.Equal(t, "asdf", resp.Operation.OIDC.AWS.SessionName)
-		assert.Equal(t, "asdf", resp.Operation.OIDC.AWS.RoleARN)
+		assert.Equal(t, "the_session_name", resp.Operation.OIDC.AWS.SessionName)
+		assert.Equal(t, "the_role", resp.Operation.OIDC.AWS.RoleARN)
 		duration, _ := time.ParseDuration("1h0m0s")
 		assert.Equal(t, apitype.DurationMarshaller(duration), resp.Operation.OIDC.AWS.Duration)
-		assert.Equal(t, []string{"asdf"}, resp.Operation.OIDC.AWS.PolicyARNs)
+		assert.Equal(t, []string{"policy:arn"}, resp.Operation.OIDC.AWS.PolicyARNs)
 		assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *resp.AgentPoolID)
 	})
 }
