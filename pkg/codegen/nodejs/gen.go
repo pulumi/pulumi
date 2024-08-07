@@ -2361,16 +2361,19 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string) error {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies)
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK)
 	if err != nil {
 		return err
 	}
 	fs.Add("package.json", []byte(packageJSON))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
+	if localSDK {
+		fs.Add("scripts/postinstall.js", genPostInstallScript())
+	}
 	return nil
 }
 
@@ -2383,6 +2386,7 @@ type npmPackage struct {
 	Homepage         string                  `json:"homepage,omitempty"`
 	Repository       string                  `json:"repository,omitempty"`
 	License          string                  `json:"license,omitempty"`
+	Main             string                  `json:"main,omitempty"`
 	Scripts          map[string]string       `json:"scripts,omitempty"`
 	Dependencies     map[string]string       `json:"dependencies,omitempty"`
 	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
@@ -2391,7 +2395,7 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string) (string, error) {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		packageName = "@pulumi/" + pkg.Name
@@ -2460,6 +2464,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		Pulumi:          pulumiPlugin,
 	}
 
+	if localSDK {
+		npminfo.Main = "bin/index.js"
+		npminfo.Scripts["postinstall"] = "node ./scripts/postinstall.js"
+	}
+
 	// Copy the overlay dependencies, if any.
 	for depk, depv := range info.Dependencies {
 		if npminfo.Dependencies == nil {
@@ -2509,6 +2518,23 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
 	return string(npmjson) + "\n", nil
+}
+
+func genPostInstallScript() []byte {
+	return []byte(`const fs = require("node:fs");
+const path = require("node:path")
+const process = require("node:process")
+const { execSync } = require('node:child_process');
+try {
+  const out = execSync('tsc')
+  console.log(out.toString())
+} catch (error) {
+  console.error(error.message + ": " + error.stdout.toString() + "\n" + error.stderr.toString())
+  process.exit(1)
+}
+// TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
+fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
+`)
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
@@ -2779,7 +2805,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package,
-	extraFiles map[string][]byte, localDependencies map[string]string,
+	extraFiles map[string][]byte, localDependencies map[string]string, localSDK bool,
 ) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
@@ -2798,7 +2824,7 @@ func GeneratePackage(tool string, pkg *schema.Package,
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files, localDependencies); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK); err != nil {
 		return nil, err
 	}
 	return files, nil
