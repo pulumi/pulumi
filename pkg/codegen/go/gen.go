@@ -3653,7 +3653,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-func extractImportBasePath(extPkg schema.PackageReference) string {
+func extractModulePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -3661,11 +3661,37 @@ func extractImportBasePath(extPkg schema.PackageReference) string {
 		vPath = fmt.Sprintf("/v%d", version.Major)
 	}
 
-	if extPkg.SupportPack() {
-		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", name, vPath, name)
+	// Default to github.com/pulumi/pulumi-pkg if we have no other information.
+	root := fmt.Sprintf("github.com/pulumi/pulumi-%s", name)
+	// But if we have a publisher use that instead, assuming it's from github
+	if extPkg.Publisher() != "" {
+		root = fmt.Sprintf("github.com/%s/pulumi-%s", extPkg.Publisher(), name)
+	}
+	// And if we have a repository, use that instead of the publisher
+	if extPkg.Repository() != "" {
+		root = extPkg.Repository()
 	}
 
-	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", name, vPath, name)
+	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
+	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
+	if extPkg.SupportPack() {
+		return fmt.Sprintf("%s/sdk/go%s", root, vPath)
+	}
+
+	return fmt.Sprintf("%s/sdk%s", root, vPath)
+}
+
+func extractImportBasePath(extPkg schema.PackageReference) string {
+	modpath := extractModulePath(extPkg)
+	name := extPkg.Name()
+
+	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
+	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
+	if extPkg.SupportPack() {
+		return fmt.Sprintf("%s/%s", modpath, name)
+	}
+
+	return fmt.Sprintf("%s/go/%s", modpath, name)
 }
 
 func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
