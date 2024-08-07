@@ -581,18 +581,12 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
-		if p.SupportPack {
-			// then the default is that we no longer nest source files under the go subdirectory
-			packageName = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", p.Name, vPath)
-		}
+		packageName := extractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
 				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
-				if separatorIndex < 0 {
-					packageName = ""
-				} else {
+				if separatorIndex >= 0 {
 					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
 					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
 				}
