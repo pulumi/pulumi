@@ -1036,13 +1036,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnTypePlain {
 			// Unwrap magic property "res" for methods that return a plain non-object-type.
 			if objectReturnType == nil {
-				fmt.Fprintf(w, `, {property: "res"});`)
+				fmt.Fprintf(w, `, {property: "res"}`)
 			} else {
-				fmt.Fprintf(w, `, {});`)
+				fmt.Fprintf(w, `, {}`)
 			}
-		} else {
-			fmt.Fprintf(w, ");\n")
 		}
+
+		// If the call is on a parameterized package, make sure we pass the parameter.
+		pkg, err := fun.PackageReference.Definition()
+		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", utilities.getPackage()")
+		}
+
+		fmt.Fprintf(w, ");\n")
 
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))

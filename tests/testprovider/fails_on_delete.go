@@ -82,3 +82,8 @@ func (p *failsOnDeleteProvider) Invoke(ctx context.Context, req *rpc.InvokeReque
 	// The fails-on-delete provider doesn't support any invokes currently.
 	panic("Invoke not implemented")
 }
+
+func (p *failsOnDeleteProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	// The random provider doesn't support any call currently.
+	panic("Call not implemented")
+}

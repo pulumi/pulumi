@@ -70,18 +70,20 @@ type testProvider interface {
 	Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error)
 	Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error)
 	Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error)
+	Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error)
 }
 
 var testProviders = func() map[string]testProvider {
 	ep := &echoProvider{}
 
 	testProviders := map[string]testProvider{
-		"testprovider:index:Random":        &randomProvider{},
-		"testprovider:index:Echo":          ep,
-		"testprovider:index:doEcho":        ep,
-		"testprovider:index:doMultiEcho":   ep,
-		"testprovider:index:FailsOnDelete": &failsOnDeleteProvider{},
-		"testprovider:index:FailsOnCreate": &failsOnCreateProvider{},
+		"testprovider:index:Random":            &randomProvider{},
+		"testprovider:index:Echo":              ep,
+		"testprovider:index:Echo/doEchoMethod": ep,
+		"testprovider:index:doEcho":            ep,
+		"testprovider:index:doMultiEcho":       ep,
+		"testprovider:index:FailsOnDelete":     &failsOnDeleteProvider{},
+		"testprovider:index:FailsOnCreate":     &failsOnCreateProvider{},
 	}
 
 	return testProviders
@@ -192,6 +194,11 @@ func (p *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
 
 func (p *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
 	tok := req.GetTok()
+
+	if p, ok := testProviders[tok]; ok {
+		return p.Call(context.Background(), req)
+	}
+
 	return nil, fmt.Errorf("Unknown Call token '%s'", tok)
 }
 
@@ -322,9 +329,18 @@ func (p *testproviderProvider) GetSchema(ctx context.Context,
 
 			for k, r := range providerSchema.Resources {
 				sch.Resources[strings.Replace(k, "testprovider", p.parameter, 1)] = r
+				for k, m := range r.Methods {
+					r.Methods[k] = strings.Replace(m, "testprovider", p.parameter, 1)
+				}
 			}
 			for k, f := range providerSchema.Functions {
 				sch.Functions[strings.Replace(k, "testprovider", p.parameter, 1)] = f
+				for k, prop := range f.Inputs.Properties {
+					if prop.TypeSpec.Ref != "" {
+						prop.TypeSpec.Ref = strings.Replace(prop.TypeSpec.Ref, "testprovider", p.parameter, 1)
+						f.Inputs.Properties[k] = prop
+					}
+				}
 			}
 		} else {
 			return nil, fmt.Errorf("expected subpackage %s", req.SubpackageName)

@@ -49,6 +49,9 @@ func init() {
 				Description: "An echoed input.",
 			},
 		},
+		Methods: map[string]string{
+			"doEchoMethod": "testprovider:index:Echo/doEchoMethod",
+		},
 	}
 	providerSchema.Functions["testprovider:index:doEcho"] = pschema.FunctionSpec{
 		Description: "A test invoke that echoes its input.",
@@ -99,6 +102,32 @@ func init() {
 					},
 				},
 				"echoB": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+	providerSchema.Functions["testprovider:index:Echo/doEchoMethod"] = pschema.FunctionSpec{
+		Description: "A test call that echoes its input.",
+		Inputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"__self__": {
+					TypeSpec: pschema.TypeSpec{
+						Ref: "#/types/testprovider:index:Echo",
+					},
+				},
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		Outputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
 					TypeSpec: pschema.TypeSpec{
 						Type: "string",
 					},
@@ -182,4 +211,8 @@ func (p *echoProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emp
 
 func (p *echoProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
 	return &rpc.InvokeResponse{Return: req.Args}, nil
+}
+
+func (p *echoProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	return &rpc.CallResponse{Return: req.Args}, nil
 }

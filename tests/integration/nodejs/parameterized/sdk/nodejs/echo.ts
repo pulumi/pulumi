@@ -57,6 +57,17 @@ export class Echo extends pulumi.CustomResource {
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Echo.__pulumiType, name, resourceInputs, opts, false /*dependency*/, utilities.getPackage());
     }
+
+    /**
+     * A test call that echoes its input.
+     */
+    doEchoMethod(args?: Echo.DoEchoMethodArgs): pulumi.Output<Echo.DoEchoMethodResult> {
+        args = args || {};
+        return pulumi.runtime.call("pkg:index:Echo/doEchoMethod", {
+            "__self__": this,
+            "echo": args.echo,
+        }, this, utilities.getPackage());
+    }
 }
 
 /**
@@ -67,4 +78,21 @@ export interface EchoArgs {
      * An echoed input.
      */
     echo?: any;
+}
+
+export namespace Echo {
+    /**
+     * The set of arguments for the Echo.doEchoMethod method.
+     */
+    export interface DoEchoMethodArgs {
+        echo?: pulumi.Input<string>;
+    }
+
+    /**
+     * The results of the Echo.doEchoMethod method.
+     */
+    export interface DoEchoMethodResult {
+        readonly echo?: string;
+    }
+
 }

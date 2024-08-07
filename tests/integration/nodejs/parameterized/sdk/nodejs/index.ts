@@ -15,10 +15,8 @@ export const doMultiEcho: typeof import("./doMultiEcho").doMultiEcho = null as a
 export const doMultiEchoOutput: typeof import("./doMultiEcho").doMultiEchoOutput = null as any;
 utilities.lazyLoad(exports, ["doMultiEcho","doMultiEchoOutput"], () => require("./doMultiEcho"));
 
-export { EchoArgs } from "./echo";
-export type Echo = import("./echo").Echo;
-export const Echo: typeof import("./echo").Echo = null as any;
-utilities.lazyLoad(exports, ["Echo"], () => require("./echo"));
+export * from "./echo";
+import { Echo } from "./echo";
 
 export { FailsOnCreateArgs } from "./failsOnCreate";
 export type FailsOnCreate = import("./failsOnCreate").FailsOnCreate;

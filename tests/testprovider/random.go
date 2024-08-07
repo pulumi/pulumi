@@ -173,6 +173,11 @@ func (p *randomProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*r
 	panic("Invoke not implemented")
 }
 
+func (p *randomProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	// The random provider doesn't support any call currently.
+	panic("Call not implemented")
+}
+
 func makeRandom(length int) (string, error) {
 	charset := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	result := make([]rune, length)

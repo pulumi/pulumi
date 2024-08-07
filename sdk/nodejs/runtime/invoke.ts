@@ -289,7 +289,12 @@ function deserializeResponse(
 /**
  * Dynamically calls the function `tok`, which is offered by a provider plugin.
  */
-export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
+export function call<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -326,6 +331,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                     provider,
                     version,
                     pluginDownloadURL,
+                    packageRef,
                 );
 
                 const monitor = getMonitor();
@@ -476,12 +482,22 @@ async function createCallRequest(
     provider?: string,
     version?: string,
     pluginDownloadURL?: string,
+    packageRef?: Promise<string | undefined>,
 ) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
+    let packageRefStr = undefined;
+    if (packageRef !== undefined) {
+        packageRefStr = await packageRef;
+        if (packageRefStr !== undefined) {
+            // If we have a package reference we can clear some of the resource options
+            version = undefined;
+            pluginDownloadURL = undefined;
+        }
+    }
 
     const req = new resourceproto.ResourceCallRequest();
     req.setTok(tok);
@@ -489,6 +505,7 @@ async function createCallRequest(
     req.setProvider(provider || "");
     req.setVersion(version || "");
     req.setPlugindownloadurl(pluginDownloadURL || "");
+    req.setPackageref(packageRefStr || "");
 
     const argDependencies = req.getArgdependenciesMap();
     for (const [key, propertyDeps] of serializedDeps) {

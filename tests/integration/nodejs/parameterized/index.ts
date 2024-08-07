@@ -12,3 +12,7 @@ export const res3 = pkg.doEchoOutput({ echo: "hello" });
 export const res4 = pkg.doMultiEcho("hello_a", "hello_b");
 
 export const res5 = pkg.doMultiEchoOutput("hello_a", "hello_b");
+
+export const res6 = new pkg.Echo("echo");
+
+export const res7 = res6.doEchoMethod({ echo: "hello" });
