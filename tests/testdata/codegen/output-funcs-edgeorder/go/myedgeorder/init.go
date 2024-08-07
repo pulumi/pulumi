@@ -6,8 +6,8 @@ package myedgeorder
 import (
 	"fmt"
 
+	"example.com/pulumi-myedgeorder/sdk/go/myedgeorder/internal"
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi-myedgeorder/sdk/go/myedgeorder/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
