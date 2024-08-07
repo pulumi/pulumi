@@ -533,7 +533,7 @@ export function registerResource(
             }
 
             const req = new resproto.RegisterResourceRequest();
-            req.setPackage(packageRefStr || "");
+            req.setPackageref(packageRefStr || "");
             req.setType(t);
             req.setName(name);
             req.setParent(resop.parentURN || "");
