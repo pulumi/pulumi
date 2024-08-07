@@ -2046,7 +2046,7 @@ func TestParamaterizedNode(t *testing.T) {
 	err = os.RemoveAll(filepath.Join("nodejs", "parameterized", "sdk"))
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "nodejs")
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "nodejs", "--local")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Verbose:       true,
@@ -2056,29 +2056,16 @@ func TestParamaterizedNode(t *testing.T) {
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		PrePrepareProject: func(project *engine.Projinfo) error {
-			// Run pulumi pack on the generated SDK so we have a built .tar.gz that yarn/npm can successfully link to.
-			e.CWD = filepath.Join(project.Root, "sdk")
-
-			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs"))
+			// Patch up the local SDK's package.json so its pulumi dependency points to the local core SDK
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 			if err != nil {
 				return err
 			}
-			e.RunCommand("pulumi", "package", "pack-sdk", "nodejs", coreSDK)
+			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
 
-			// Find the pulumi tgz written by the pack command
-			files, err := os.ReadDir(e.CWD)
-			if err != nil {
-				return err
-			}
-			var tgz string
-			for _, f := range files {
-				if strings.HasSuffix(f.Name(), ".tgz") {
-					tgz = f.Name()
-				}
-			}
+			fmt.Println("coreSDK", coreSDK)
+			fmt.Println("packagejson", packageJSON)
 
-			// Edit the generated package.json to point to the local tgz
-			packageJSON := filepath.Join(e.CWD, "nodejs", "package.json")
 			data, err := os.ReadFile(packageJSON)
 			if err != nil {
 				return err
@@ -2089,7 +2076,7 @@ func TestParamaterizedNode(t *testing.T) {
 				return err
 			}
 			deps := pkgJSON["dependencies"].(map[string]interface{})
-			deps["@pulumi/pulumi"] = filepath.Join(e.CWD, tgz)
+			deps["@pulumi/pulumi"] = "file:" + coreSDK
 			data, err = json.MarshalIndent(pkgJSON, "", "  ")
 			if err != nil {
 				return err
@@ -2098,9 +2085,6 @@ func TestParamaterizedNode(t *testing.T) {
 			if err != nil {
 				return err
 			}
-
-			// Now we can pack the provider sdk
-			e.RunCommand("pulumi", "package", "pack-sdk", "nodejs", "nodejs")
 
 			return nil
 		},

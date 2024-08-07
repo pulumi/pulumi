@@ -1,8 +1,10 @@
 {
     "name": "@pulumi/pkg",
     "version": "1.0.0",
+    "main": "bin/index.js",
     "scripts": {
-        "build": "tsc"
+        "build": "tsc",
+        "postinstall": "node ./scripts/postinstall.js"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.42.0",

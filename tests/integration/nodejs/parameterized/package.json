@@ -4,7 +4,7 @@
         "typescript": "^3.0.0"
     },
     "dependencies": {
-        "@pulumi/pkg": "./sdk/pulumi-pkg-1.0.0.tgz"
+        "@pulumi/pkg": "file:./sdk/nodejs"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

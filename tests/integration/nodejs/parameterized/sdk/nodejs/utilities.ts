@@ -118,7 +118,7 @@ export async function getPackage() : Promise<string | undefined> {
 					if (err) {
 						reject(err);
 					} else {
-						resolve(resp); 
+						resolve(resp);
 					}
 				});
 			});

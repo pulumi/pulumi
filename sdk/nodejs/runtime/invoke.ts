@@ -75,8 +75,8 @@ import * as providerproto from "../proto/provider_pb";
  * All of these contain async values that would prevent `invoke from being able
  * to operate synchronously.
  */
-export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return invokeAsync(tok, props, opts);
+export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}, packageRef?: Promise<string | undefined>): Promise<any> {
+    return invokeAsync(tok, props, opts, packageRef);
 }
 
 /*
@@ -84,8 +84,8 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
  * provider plugin. Similar to `invoke`, but returns a single value instead of
  * an object with a single key.
  */
-export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return invokeAsync(tok, props, opts).then((outputs) => {
+export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}, packageRef?: Promise<string | undefined>): Promise<any> {
+    return invokeAsync(tok, props, opts, packageRef).then((outputs) => {
         // assume outputs have a single key
         const keys = Object.keys(outputs);
         // return the first key's value from the outputs
@@ -113,7 +113,7 @@ export async function streamInvoke(
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = createInvokeRequest(tok, serialized, provider, opts);
+        const req = await createInvokeRequest(tok, serialized, provider, opts);
 
         // Call `streamInvoke`.
         const result = monitor.streamInvoke(req, {});
@@ -140,7 +140,7 @@ export async function streamInvoke(
     }
 }
 
-async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Promise<any> {
+async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions, packageRef?: Promise<string | undefined>): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -158,7 +158,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = createInvokeRequest(tok, serialized, provider, opts);
+        const req = await createInvokeRequest(tok, serialized, provider, opts, packageRef);
 
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
@@ -213,19 +213,29 @@ export class StreamInvokeResponse<T> implements AsyncIterable<T> {
     }
 }
 
-function createInvokeRequest(tok: string, serialized: any, provider: string | undefined, opts: InvokeOptions) {
+async function createInvokeRequest(tok: string, serialized: any, provider: string | undefined, opts: InvokeOptions, packageRef?: Promise<string | undefined>) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
-
+    let packageRefStr = undefined;
+    if (packageRef !== undefined) {
+      packageRefStr = await packageRef;
+      if (packageRefStr !== undefined) {
+        // If we have a package reference we can clear some of the resource options
+        opts.version = undefined;
+        opts.pluginDownloadURL = undefined;
+      }
+    }
     const req = new resourceproto.ResourceInvokeRequest();
     req.setTok(tok);
     req.setArgs(obj);
     req.setProvider(provider || "");
     req.setVersion(opts.version || "");
     req.setAcceptresources(!utils.disableResourceReferences);
+    req.setPlugindownloadurl(opts.pluginDownloadURL || "")
+    req.setPackageref(packageRefStr || "");
     return req;
 }
 
