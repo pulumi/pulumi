@@ -2058,6 +2058,7 @@ func TestParamaterizedNode(t *testing.T) {
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
+		NoParallel: true,
 		PrePrepareProject: func(project *engine.Projinfo) error {
 			// Patch up the local SDK's package.json so its pulumi dependency points to the local core SDK
 			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
