@@ -308,35 +308,15 @@ func GenerateProject(
 	csproj.WriteString("	<ItemGroup>\n")
 
 	// Add local package references
-	for _, path := range localDependencies {
-		nugetFile := ""
-		if strings.HasSuffix(path, ".nupkg") {
-			nugetFile = path
-		} else {
-			files, err := os.ReadDir(path)
-			if err != nil {
-				return fmt.Errorf("could not read directory: %w", err)
-			}
-
-			for _, file := range files {
-				if strings.HasSuffix(file.Name(), ".nupkg") {
-					nugetFile = filepath.Join(path, file.Name())
-					break
-				}
-			}
-		}
-
-		filename := filepath.Base(nugetFile)
-		parts := strings.Split(filename, ".")
-		if len(parts) >= 5 {
-			patch := parts[len(parts)-2]
-			minor := parts[len(parts)-3]
-			major := parts[len(parts)-4]
-			version := fmt.Sprintf("%s.%s.%s", major, minor, patch)
-			pkg := strings.TrimSuffix(filename, fmt.Sprintf(".%s.nupkg", version))
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
 			csproj.WriteString(fmt.Sprintf(
 				"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
-				pkg, version))
+				packageName, version))
+		} else {
+			return fmt.Errorf("could not extract package name and version from %s", nugetFilePath)
 		}
 	}
 

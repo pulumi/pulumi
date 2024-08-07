@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -2240,29 +2239,13 @@ func genProjectFile(pkg *schema.Package,
 	}
 
 	// Add local package references
-	for _, path := range localDependencies {
-		nugetFile := ""
-		if strings.HasSuffix(path, ".nupkg") {
-			nugetFile = path
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
+			packageReferences[packageName] = version
 		} else {
-			files, _ := os.ReadDir(path)
-			for _, file := range files {
-				if strings.HasSuffix(file.Name(), ".nupkg") {
-					nugetFile = filepath.Join(path, file.Name())
-					break
-				}
-			}
-		}
-
-		filename := filepath.Base(nugetFile)
-		parts := strings.Split(filename, ".")
-		if len(parts) >= 5 {
-			patch := parts[len(parts)-2]
-			minor := parts[len(parts)-3]
-			major := parts[len(parts)-4]
-			version := fmt.Sprintf("%s.%s.%s", major, minor, patch)
-			pkg := strings.TrimSuffix(filename, fmt.Sprintf(".%s.nupkg", version))
-			packageReferences[pkg] = version
+			return nil, fmt.Errorf("unable to extract package name and version from nuget file path %s", nugetFilePath)
 		}
 	}
 
