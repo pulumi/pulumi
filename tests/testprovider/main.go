@@ -79,6 +79,7 @@ var testProviders = func() map[string]testProvider {
 		"testprovider:index:Random":        &randomProvider{},
 		"testprovider:index:Echo":          ep,
 		"testprovider:index:doEcho":        ep,
+		"testprovider:index:doMultiEcho":   ep,
 		"testprovider:index:FailsOnDelete": &failsOnDeleteProvider{},
 		"testprovider:index:FailsOnCreate": &failsOnCreateProvider{},
 	}

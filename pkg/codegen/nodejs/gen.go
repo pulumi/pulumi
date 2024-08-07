@@ -1256,7 +1256,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 
 	fmt.Fprintf(w, "    }, opts")
 
-	// If the invoke is on a parameterized package, make sure we pass the  parameter.
+	// If the invoke is on a parameterized package, make sure we pass the parameter.
 	pkg, err := fun.PackageReference.Definition()
 	if err != nil {
 		return info, err
@@ -1380,18 +1380,8 @@ func (mod *modContext) genFunctionOutputVersion(
 			// Pass the argument to the invocation.
 			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
 		}
-		fmt.Fprint(w, "opts")
-
-		// If the invoke is on a parameterized package, make sure we pass the  parameter.
-		pkg, err := fun.PackageReference.Definition()
-		if err != nil {
-			return info, err
-		}
-		if pkg.Parameterization != nil {
-			fmt.Fprintf(w, ", utilities.getPackage()")
-		}
-
-		fmt.Fprintf(w, "));\n}\n")
+		fmt.Fprint(w, "opts));\n")
+		fmt.Fprint(w, "}\n")
 	}
 
 	if !fun.MultiArgumentInputs && fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {

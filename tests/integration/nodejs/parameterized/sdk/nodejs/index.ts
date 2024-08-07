@@ -10,6 +10,11 @@ export const doEcho: typeof import("./doEcho").doEcho = null as any;
 export const doEchoOutput: typeof import("./doEcho").doEchoOutput = null as any;
 utilities.lazyLoad(exports, ["doEcho","doEchoOutput"], () => require("./doEcho"));
 
+export { DoMultiEchoResult } from "./doMultiEcho";
+export const doMultiEcho: typeof import("./doMultiEcho").doMultiEcho = null as any;
+export const doMultiEchoOutput: typeof import("./doMultiEcho").doMultiEchoOutput = null as any;
+utilities.lazyLoad(exports, ["doMultiEcho","doMultiEchoOutput"], () => require("./doMultiEcho"));
+
 export { EchoArgs } from "./echo";
 export type Echo = import("./echo").Echo;
 export const Echo: typeof import("./echo").Echo = null as any;
