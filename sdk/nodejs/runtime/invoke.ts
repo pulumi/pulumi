@@ -75,7 +75,12 @@ import * as providerproto from "../proto/provider_pb";
  * All of these contain async values that would prevent `invoke from being able
  * to operate synchronously.
  */
-export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}, packageRef?: Promise<string | undefined>): Promise<any> {
+export function invoke(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Promise<any> {
     return invokeAsync(tok, props, opts, packageRef);
 }
 
@@ -84,7 +89,12 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}, pac
  * provider plugin. Similar to `invoke`, but returns a single value instead of
  * an object with a single key.
  */
-export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}, packageRef?: Promise<string | undefined>): Promise<any> {
+export function invokeSingle(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions = {},
+    packageRef?: Promise<string | undefined>,
+): Promise<any> {
     return invokeAsync(tok, props, opts, packageRef).then((outputs) => {
         // assume outputs have a single key
         const keys = Object.keys(outputs);
@@ -140,7 +150,12 @@ export async function streamInvoke(
     }
 }
 
-async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions, packageRef?: Promise<string | undefined>): Promise<any> {
+async function invokeAsync(
+    tok: string,
+    props: Inputs,
+    opts: InvokeOptions,
+    packageRef?: Promise<string | undefined>,
+): Promise<any> {
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -213,7 +228,13 @@ export class StreamInvokeResponse<T> implements AsyncIterable<T> {
     }
 }
 
-async function createInvokeRequest(tok: string, serialized: any, provider: string | undefined, opts: InvokeOptions, packageRef?: Promise<string | undefined>) {
+async function createInvokeRequest(
+    tok: string,
+    serialized: any,
+    provider: string | undefined,
+    opts: InvokeOptions,
+    packageRef?: Promise<string | undefined>,
+) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }
@@ -221,12 +242,12 @@ async function createInvokeRequest(tok: string, serialized: any, provider: strin
     const obj = gstruct.Struct.fromJavaScript(serialized);
     let packageRefStr = undefined;
     if (packageRef !== undefined) {
-      packageRefStr = await packageRef;
-      if (packageRefStr !== undefined) {
-        // If we have a package reference we can clear some of the resource options
-        opts.version = undefined;
-        opts.pluginDownloadURL = undefined;
-      }
+        packageRefStr = await packageRef;
+        if (packageRefStr !== undefined) {
+            // If we have a package reference we can clear some of the resource options
+            opts.version = undefined;
+            opts.pluginDownloadURL = undefined;
+        }
     }
     const req = new resourceproto.ResourceInvokeRequest();
     req.setTok(tok);
@@ -234,7 +255,7 @@ async function createInvokeRequest(tok: string, serialized: any, provider: strin
     req.setProvider(provider || "");
     req.setVersion(opts.version || "");
     req.setAcceptresources(!utils.disableResourceReferences);
-    req.setPlugindownloadurl(opts.pluginDownloadURL || "")
+    req.setPlugindownloadurl(opts.pluginDownloadURL || "");
     req.setPackageref(packageRefStr || "");
     return req;
 }

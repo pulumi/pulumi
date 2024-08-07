@@ -1062,7 +1062,14 @@ export abstract class CustomResource extends Resource {
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}, dependency = false, packageRef?: Promise<string | undefined>) {
+    constructor(
+        t: string,
+        name: string,
+        props?: Inputs,
+        opts: CustomResourceOptions = {},
+        dependency = false,
+        packageRef?: Promise<string | undefined>,
+    ) {
         if ((<ComponentResourceOptions>opts).providers) {
             throw new ResourceError(
                 "Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?",
@@ -1122,7 +1129,14 @@ export abstract class ProviderResource extends CustomResource {
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(pkg: string, name: string, props?: Inputs, opts: ResourceOptions = {}, dependency: boolean = false, packageRef?: Promise<string | undefined>) {
+    constructor(
+        pkg: string,
+        name: string,
+        props?: Inputs,
+        opts: ResourceOptions = {},
+        dependency: boolean = false,
+        packageRef?: Promise<string | undefined>,
+    ) {
         super(`pulumi:providers:${pkg}`, name, props, opts, dependency, packageRef);
         this.pkg = pkg;
     }
@@ -1212,7 +1226,16 @@ export class ComponentResource<TData = any> extends Resource {
         // for a component resource.  The component is just used for organizational purposes and does
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ remote || opts?.urn ? args : {}, opts, remote, false, packageRef);
+        super(
+            type,
+            name,
+            /*custom:*/ false,
+            /*props:*/ remote || opts?.urn ? args : {},
+            opts,
+            remote,
+            false,
+            packageRef,
+        );
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
