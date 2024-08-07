@@ -1254,8 +1254,18 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 	}
 
-	fmt.Fprint(w, "    }, opts);\n")
-	fmt.Fprint(w, "}\n")
+	fmt.Fprintf(w, "    }, opts")
+
+	// If the invoke is on a parameterized package, make sure we pass the  parameter.
+	pkg, err := fun.PackageReference.Definition()
+	if err != nil {
+		return info, err
+	}
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n}\n")
 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
@@ -1370,8 +1380,18 @@ func (mod *modContext) genFunctionOutputVersion(
 			// Pass the argument to the invocation.
 			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
 		}
-		fmt.Fprint(w, "opts))\n")
-		fmt.Fprint(w, "}\n")
+		fmt.Fprint(w, "opts")
+
+		// If the invoke is on a parameterized package, make sure we pass the  parameter.
+		pkg, err := fun.PackageReference.Definition()
+		if err != nil {
+			return info, err
+		}
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", utilities.getPackage()")
+		}
+
+		fmt.Fprintf(w, "));\n}\n")
 	}
 
 	if !fun.MultiArgumentInputs && fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
@@ -2886,7 +2906,7 @@ export async function getPackage() : Promise<string | undefined> {
 					if (err) {
 						reject(err);
 					} else {
-						resolve(resp); 
+						resolve(resp);
 					}
 				});
 			});

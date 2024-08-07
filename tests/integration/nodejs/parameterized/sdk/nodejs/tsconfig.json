@@ -13,6 +13,10 @@
         "strict": true
     },
     "files": [
+        "doEcho.ts",
+        "echo.ts",
+        "failsOnCreate.ts",
+        "failsOnDelete.ts",
         "index.ts",
         "provider.ts",
         "random.ts",

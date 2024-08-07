@@ -5,6 +5,26 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { DoEchoArgs, DoEchoResult, DoEchoOutputArgs } from "./doEcho";
+export const doEcho: typeof import("./doEcho").doEcho = null as any;
+export const doEchoOutput: typeof import("./doEcho").doEchoOutput = null as any;
+utilities.lazyLoad(exports, ["doEcho","doEchoOutput"], () => require("./doEcho"));
+
+export { EchoArgs } from "./echo";
+export type Echo = import("./echo").Echo;
+export const Echo: typeof import("./echo").Echo = null as any;
+utilities.lazyLoad(exports, ["Echo"], () => require("./echo"));
+
+export { FailsOnCreateArgs } from "./failsOnCreate";
+export type FailsOnCreate = import("./failsOnCreate").FailsOnCreate;
+export const FailsOnCreate: typeof import("./failsOnCreate").FailsOnCreate = null as any;
+utilities.lazyLoad(exports, ["FailsOnCreate"], () => require("./failsOnCreate"));
+
+export { FailsOnDeleteArgs } from "./failsOnDelete";
+export type FailsOnDelete = import("./failsOnDelete").FailsOnDelete;
+export const FailsOnDelete: typeof import("./failsOnDelete").FailsOnDelete = null as any;
+utilities.lazyLoad(exports, ["FailsOnDelete"], () => require("./failsOnDelete"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -20,6 +40,12 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "pkg:index:Echo":
+                return new Echo(name, <any>undefined, { urn })
+            case "pkg:index:FailsOnCreate":
+                return new FailsOnCreate(name, <any>undefined, { urn })
+            case "pkg:index:FailsOnDelete":
+                return new FailsOnDelete(name, <any>undefined, { urn })
             case "pkg:index:Random":
                 return new Random(name, <any>undefined, { urn })
             default:

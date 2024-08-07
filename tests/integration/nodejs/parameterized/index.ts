@@ -3,4 +3,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as pkg from "@pulumi/pkg";
 
-const res1 = new pkg.Random("res1", { length: 5 });
+export const res1 = new pkg.Random("res1", { length: 5 });
+
+export const res2 = pkg.doEcho({echo: "hello"});
+
+export const res3 = pkg.doEchoOutput({echo: "hello"})
