@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: "[template zip] only copy over valid pulumi projects"
