@@ -4932,10 +4932,12 @@ func GeneratePackage(tool string,
 			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
 		}
 
-		modulePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", pkg.Name, vPath)
+		modulePath := extractModulePath(pkg.Reference())
 		if langInfo, found := pkg.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
-			if ok && goInfo.ImportBasePath != "" {
+			if ok && goInfo.ModulePath != "" {
+				modulePath = goInfo.ModulePath
+			} else if ok && goInfo.ImportBasePath != "" {
 				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
 				if separatorIndex >= 0 {
 					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
