@@ -1729,8 +1729,6 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRefsGetResourceNode(t *testing.T) {
-	t.Skip() // TODO[pulumi/pulumi#11677]
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("resource_refs_get_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
