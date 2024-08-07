@@ -255,7 +255,6 @@ async function createInvokeRequest(
     req.setProvider(provider || "");
     req.setVersion(opts.version || "");
     req.setAcceptresources(!utils.disableResourceReferences);
-    req.setPlugindownloadurl(opts.pluginDownloadURL || "");
     req.setPackageref(packageRefStr || "");
     return req;
 }
