@@ -3663,7 +3663,7 @@ func extractModulePath(extPkg schema.PackageReference) string {
 	}
 
 	// Default to example.com/pulumi-pkg if we have no other information.
-	root := fmt.Sprintf("example.com/pulumi-%s", name)
+	root := "example.com/pulumi-" + name
 	// But if we have a publisher use that instead, assuming it's from github
 	if extPkg.Publisher() != "" {
 		root = fmt.Sprintf("github.com/%s/pulumi-%s", extPkg.Publisher(), name)
