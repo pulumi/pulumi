@@ -1631,7 +1631,7 @@ type ResourceSpec struct {
 	// PlainInputs was a list of the names of the resource's plain input properties. This property is ignored:
 	// instead, property types should be marked as plain where necessary.
 	PlainInputs []string `json:"plainInputs,omitempty" yaml:"plainInputs,omitempty"`
-	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that mau be necessary to get an
+	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that may be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
 	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty" yaml:"stateInputs,omitempty"`
 	// Aliases is the list of aliases for the resource.
