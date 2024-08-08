@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/nodejs
+  description: Generate fine-grained types modules when generating TypeScript SDKs
