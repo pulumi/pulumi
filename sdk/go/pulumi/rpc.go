@@ -795,11 +795,17 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		if err != nil {
 			return false, err
 		}
-		resV := reflect.ValueOf(res).Elem()
-		if !resV.Type().AssignableTo(dest.Type()) {
+		resV := reflect.ValueOf(res)
+		if resV.Kind() == reflect.Ptr && dest.Type().Kind() == reflect.Interface &&
+			resV.Elem().Type().AssignableTo(dest.Type()) {
+			dest.Set(resV)
+			return secret, nil
+		}
+
+		if !resV.Elem().Type().AssignableTo(dest.Type()) {
 			return false, fmt.Errorf("expected a %s, got a resource of type %s", dest.Type(), resV.Type())
 		}
-		dest.Set(resV)
+		dest.Set(resV.Elem())
 		return secret, nil
 	case v.IsOutput():
 		if _, err := unmarshalOutput(ctx, v.OutputValue().Element, dest); err != nil {
