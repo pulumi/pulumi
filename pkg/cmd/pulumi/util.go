@@ -1203,11 +1203,9 @@ func promptUserMulti(msg string, options []string, defaultOptions []string, colo
 
 	var response []string
 	if err := survey.AskOne(&survey.MultiSelect{
-		Message:  prompt,
-		Options:  options,
-		Default:  defaultOptions,
-		Help:     "enter to accept",
-		ShowHelp: true,
+		Message: prompt,
+		Options: options,
+		Default: defaultOptions,
 	}, &response, surveyIcons); err != nil {
 		return []string{}
 	}
