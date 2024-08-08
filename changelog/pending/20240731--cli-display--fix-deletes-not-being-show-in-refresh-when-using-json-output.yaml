@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix deletes not being show in `refresh` when using json output
