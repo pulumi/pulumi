@@ -223,7 +223,7 @@ func TestDSFileParsing(t *testing.T) {
 	assert.Equal(t, "the_session_name", deploymentFile.DeploymentSettings.Operation.OIDC.AWS.SessionName)
 	assert.Equal(t, "the_role", deploymentFile.DeploymentSettings.Operation.OIDC.AWS.RoleARN)
 	duration, _ := time.ParseDuration("1h0m0s")
-	assert.Equal(t, apitype.DurationMarshaller(duration), deploymentFile.DeploymentSettings.Operation.OIDC.AWS.Duration)
+	assert.Equal(t, apitype.DeploymentDuration(duration), deploymentFile.DeploymentSettings.Operation.OIDC.AWS.Duration)
 	assert.Equal(t, []string{"policy:arn"}, deploymentFile.DeploymentSettings.Operation.OIDC.AWS.PolicyARNs)
 	assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *deploymentFile.DeploymentSettings.AgentPoolID)
 }

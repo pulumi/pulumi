@@ -55,14 +55,15 @@ func ParsePulumiOperation(o string) (PulumiOperation, error) {
 	}
 }
 
-// A DurationMarshaller
-type DurationMarshaller time.Duration
+// DeploymentDuration, wrapper over time.Duration to properly marshall
+// time durations according to pulumi cloud spec.
+type DeploymentDuration time.Duration
 
-func (v DurationMarshaller) MarshalJSON() ([]byte, error) {
+func (v DeploymentDuration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(time.Duration(v).String())
 }
 
-func (v *DurationMarshaller) UnmarshalJSON(bytes []byte) error {
+func (v *DeploymentDuration) UnmarshalJSON(bytes []byte) error {
 	var s string
 	if err := json.Unmarshal(bytes, &s); err != nil {
 		return err
@@ -72,16 +73,16 @@ func (v *DurationMarshaller) UnmarshalJSON(bytes []byte) error {
 		if err != nil {
 			return err
 		}
-		*v = DurationMarshaller(d)
+		*v = DeploymentDuration(d)
 	}
 	return nil
 }
 
-func (v DurationMarshaller) MarshalYAML() (any, error) {
+func (v DeploymentDuration) MarshalYAML() (any, error) {
 	return time.Duration(v).String(), nil
 }
 
-func (v *DurationMarshaller) UnmarshalYAML(node *yaml.Node) error {
+func (v *DeploymentDuration) UnmarshalYAML(node *yaml.Node) error {
 	var s string
 	if err := node.Decode(&s); err != nil {
 		return err
@@ -91,7 +92,7 @@ func (v *DurationMarshaller) UnmarshalYAML(node *yaml.Node) error {
 		if err != nil {
 			return err
 		}
-		*v = DurationMarshaller(d)
+		*v = DeploymentDuration(d)
 	}
 	return nil
 }
@@ -282,7 +283,7 @@ type OperationContextOIDCConfiguration struct {
 
 type OperationContextAWSOIDCConfiguration struct {
 	// Duration is the duration of the assume-role session.
-	Duration DurationMarshaller `json:"duration,omitempty" yaml:"duration,omitempty"`
+	Duration DeploymentDuration `json:"duration,omitempty" yaml:"duration,omitempty"`
 	// PolicyARNs is an optional set of IAM policy ARNs that further restrict the assume-role session.
 	PolicyARNs []string `json:"policyArns,omitempty" yaml:"policyArns,omitempty"`
 	// The ARN of the role to assume using the OIDC token.
@@ -312,7 +313,7 @@ type OperationContextGCPOIDCConfiguration struct {
 	// ServiceAccount is the email address of the service account to use.
 	ServiceAccount string `json:"serviceAccount" yaml:"serviceAccount"`
 	// TokenLifetime is the lifetime of the temporary credentials.
-	TokenLifetime DurationMarshaller `json:"tokenLifetime,omitempty" yaml:"tokenLifetime,omitempty"`
+	TokenLifetime DeploymentDuration `json:"tokenLifetime,omitempty" yaml:"tokenLifetime,omitempty"`
 }
 
 // OperationContextOptions is a bag of settings to specify or override default behavior in a deployment

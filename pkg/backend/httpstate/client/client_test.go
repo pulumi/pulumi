@@ -354,7 +354,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 		assert.Equal(t, "the_session_name", resp.Operation.OIDC.AWS.SessionName)
 		assert.Equal(t, "the_role", resp.Operation.OIDC.AWS.RoleARN)
 		duration, _ := time.ParseDuration("1h0m0s")
-		assert.Equal(t, apitype.DurationMarshaller(duration), resp.Operation.OIDC.AWS.Duration)
+		assert.Equal(t, apitype.DeploymentDuration(duration), resp.Operation.OIDC.AWS.Duration)
 		assert.Equal(t, []string{"policy:arn"}, resp.Operation.OIDC.AWS.PolicyARNs)
 		assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *resp.AgentPoolID)
 	})
