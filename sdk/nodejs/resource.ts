@@ -548,7 +548,7 @@ export abstract class Resource {
                     opts.parent,
                 );
             }
-            readResource(this, parent, t, name, props, opts, sourcePosition);
+            readResource(this, parent, t, name, props, opts, sourcePosition, packageRef);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
