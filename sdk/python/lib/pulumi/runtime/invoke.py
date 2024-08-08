@@ -346,7 +346,6 @@ def call(
                     version = ""
                     log.debug(f"Call using package reference {package_ref_str}")
 
-
             req = resource_pb2.ResourceCallRequest(
                 tok=tok,
                 args=inputs,
