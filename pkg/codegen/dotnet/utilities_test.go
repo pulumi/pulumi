@@ -51,6 +51,7 @@ func Test_makeValidIdentifier(t *testing.T) {
 	}{
 		{"@default", "@default"},
 		{"8", "_8"},
+		{"has-a.little_punctuation!", "has_a_little_punctuation_"},
 	}
 	for _, tt := range tests {
 		tt := tt

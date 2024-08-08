@@ -14,7 +14,30 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type Bar struct {
-	HasAHyphen *string `pulumi:"has-a-hyphen"`
+	HasAHyphen        *string `pulumi:"has-a-hyphen"`
+	HasADot           *string `pulumi:"has.a.dot"`
+	Has_an_underscore *string `pulumi:"has_an_underscore"`
+}
+
+// Defaults sets the appropriate defaults for Bar
+func (val *Bar) Defaults() *Bar {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if tmp.HasAHyphen == nil {
+		hasAHyphen_ := "foo"
+		tmp.HasAHyphen = &hasAHyphen_
+	}
+	if tmp.HasADot == nil {
+		hasADot_ := "baz"
+		tmp.HasADot = &hasADot_
+	}
+	if tmp.Has_an_underscore == nil {
+		has_an_underscore_ := "bar"
+		tmp.Has_an_underscore = &has_an_underscore_
+	}
+	return &tmp
 }
 
 type BarOutput struct{ *pulumi.OutputState }
@@ -33,6 +56,14 @@ func (o BarOutput) ToBarOutputWithContext(ctx context.Context) BarOutput {
 
 func (o BarOutput) HasAHyphen() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Bar) *string { return v.HasAHyphen }).(pulumi.StringPtrOutput)
+}
+
+func (o BarOutput) HasADot() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v Bar) *string { return v.HasADot }).(pulumi.StringPtrOutput)
+}
+
+func (o BarOutput) Has_an_underscore() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v Bar) *string { return v.Has_an_underscore }).(pulumi.StringPtrOutput)
 }
 
 type BarArrayOutput struct{ *pulumi.OutputState }
