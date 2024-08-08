@@ -1827,11 +1827,18 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		}
 
 		// Now simply call the function with the arguments.
-		var typ string
+		trailingArgs := ""
 		if retTypeNameQualified != "" {
 			// Pass along the private output_type we generated, so any nested output classes are instantiated by
 			// the call.
-			typ = ", typ=" + retTypeNameQualified
+			trailingArgs = ", typ=" + retTypeNameQualified
+		}
+
+		// If the call is on a parameterized package, make sure we pass the parameter.
+		pkg, err := fun.PackageReference.Definition()
+		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
+		if pkg.Parameterization != nil {
+			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
 		if fun.ReturnTypePlain {
@@ -1841,16 +1848,16 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 				property = "." + PyName("res")
 			}
 			fmt.Fprintf(w, "        return _utilities.call_plain('%s', __args__, res=__self__%s)%s\n",
-				fun.Token, typ, property)
+				fun.Token, trailingArgs, property)
 		} else if returnType == nil {
-			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
 		} else if shouldLiftReturn {
 			// Store the return in a variable and return the property output
-			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
 			fmt.Fprintf(w, "        return __result__.%s\n", PyName(returnType.Properties[0].Name))
 		} else {
 			// Otherwise return the call directly
-			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
 		}
 
 		fmt.Fprintf(w, "\n")

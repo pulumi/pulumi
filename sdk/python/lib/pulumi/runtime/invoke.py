@@ -278,6 +278,7 @@ def call(
     props: "Inputs",
     res: Optional["Resource"] = None,
     typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> "Output[Any]":
     """
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
@@ -334,6 +335,18 @@ def call(
                     )
                 )
 
+            # If we have a package reference, we need to wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                # If we have a package reference we can clear some of the invoke
+                # options.
+                if package_ref_str is not None:
+                    plugin_download_url = ""
+                    version = ""
+                    log.debug(f"Call using package reference {package_ref_str}")
+
+
             req = resource_pb2.ResourceCallRequest(
                 tok=tok,
                 args=inputs,
@@ -341,6 +354,7 @@ def call(
                 provider="" if provider_ref is None else provider_ref,
                 version=version,
                 pluginDownloadURL=plugin_download_url,
+                packageRef=package_ref_str or "",
             )
 
             def do_rpc_call():

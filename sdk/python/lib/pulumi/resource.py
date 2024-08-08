@@ -973,7 +973,7 @@ class Resource:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider"
                 )
-            read_resource(cast("CustomResource", self), t, name, props, opts, typ)
+            read_resource(cast("CustomResource", self), t, name, props, opts, typ, package_ref)
         else:
             register_resource(
                 self,
