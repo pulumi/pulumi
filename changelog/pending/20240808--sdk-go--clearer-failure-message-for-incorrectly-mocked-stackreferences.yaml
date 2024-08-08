@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Clearer failure message for incorrectly mocked StackReferences
