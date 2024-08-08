@@ -166,6 +166,8 @@ func TestValidateShortInputNonEmpty(t *testing.T) {
 }
 
 func TestDSFileParsing(t *testing.T) {
+	t.Parallel()
+
 	stackDeploymentConfigFile := "Pulumi.stack.deploy.yaml"
 	projectDir := t.TempDir()
 	pyaml := filepath.Join(projectDir, stackDeploymentConfigFile)
