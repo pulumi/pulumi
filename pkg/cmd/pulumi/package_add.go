@@ -178,8 +178,42 @@ func printNodejsLinkInstructions(root string, pkg string, out string) error {
 // Prints instructions for linking a locally generated SDK to an existing Python
 // project, in the absence of us attempting to perform this linking automatically.
 func printPythonLinkInstructions(root string, pkg string, out string) error {
+	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg, out)
+	fmt.Println()
+	fmt.Println("To use this SDK in your Python project, run the following command:")
+	fmt.Println()
+	proj, _, err := readProject()
+	if err != nil {
+		return err
+	}
+	packageSpecifier, err := filepath.Rel(root, out)
+	if err != nil {
+		return err
+	}
+	pipInstructions := func() {
+		fmt.Printf("  echo %s >> requirements.txt\n\n", packageSpecifier)
+		fmt.Printf("  pulumi install\n")
+	}
+	options := proj.Runtime.Options()
+	if toolchain, ok := options["toolchain"]; ok {
+		if tc, ok := toolchain.(string); ok {
+			switch tc {
+			case "pip":
+				pipInstructions()
+			case "poetry":
+				fmt.Println("  poetry add " + packageSpecifier)
+			default:
+				return fmt.Errorf("unsupported package manager: %s", tc)
+			}
+		} else {
+			return fmt.Errorf("packagemanager option must be a string: %v", toolchain)
+		}
+	} else {
+		// Assume pip if no packagemanager is specified
+		pipInstructions()
+	}
+	fmt.Println()
 	return nil
-	// TODO: Codify Python linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Go
