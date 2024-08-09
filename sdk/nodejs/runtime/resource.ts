@@ -297,6 +297,7 @@ export function readResource(
     props: Inputs,
     opts: ResourceOptions,
     sourcePosition?: SourcePosition,
+    packageRef?: Promise<string | undefined>,
 ): void {
     if (!opts.id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
@@ -320,7 +321,15 @@ export function readResource(
                 `ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
                     (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``),
             );
-
+            let packageRefStr = undefined;
+            if (packageRef !== undefined) {
+                packageRefStr = await packageRef;
+                if (packageRefStr !== undefined) {
+                    // If we have a package reference we can clear some of the resource options
+                    opts.version = undefined;
+                    opts.pluginDownloadURL = undefined;
+                }
+            }
             // Create a resource request and do the RPC.
             const req = new resproto.ReadResourceRequest();
             req.setType(t);
@@ -336,6 +345,7 @@ export function readResource(
             req.setAcceptresources(!utils.disableResourceReferences);
             req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
             req.setSourceposition(marshalSourcePosition(sourcePosition));
+            req.setPackageref(packageRefStr || "");
 
             // Now run the operation, serializing the invocation if necessary.
             const opLabel = `monitor.readResource(${label})`;
