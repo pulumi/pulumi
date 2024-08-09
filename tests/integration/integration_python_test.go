@@ -1422,3 +1422,35 @@ func TestParameterizedPython(t *testing.T) {
 		},
 	})
 }
+
+func TestConfigGetterOverloads(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("python/config-getter-types")
+
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+
+	// ProgramTest installs extra dependencies as editable packages using the `-e` flag, but typecheckers do not
+	// handle editable packages well. We have to manually install the SDK without `-e` flag instead.
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python", "env", "src")
+	pythonBin := "./venv/bin/python"
+	if runtime.GOOS == "windows" {
+		pythonBin = ".\\venv\\Scripts\\python.exe"
+	}
+	e.RunCommand(pythonBin, "-m", "pip", "install", sdkPath)
+
+	// Add some config values
+	e.RunCommand("pulumi", "config", "set", "foo", "bar")
+	e.RunCommand("pulumi", "config", "set", "foo_int", "42")
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo_secret", "3")
+
+	// Run a preview. This will typecheck the program and fail if typechecking has errors.
+	e.RunCommand("pulumi", "preview")
+}
