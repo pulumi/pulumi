@@ -209,7 +209,7 @@ jobs:
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
-              --partition-module tests 1 \
+              --partition-module tests 2 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
           fi
