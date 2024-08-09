@@ -172,6 +172,22 @@ func printNodejsLinkInstructions(root string, pkg string, out string) error {
 	}
 	fmt.Println("  " + addCmd)
 	fmt.Println()
+	useTypescript := true
+	if typescript, ok := options["typescript"]; ok {
+		if val, ok := typescript.(bool); ok {
+			useTypescript = val
+		}
+	}
+	if useTypescript {
+		fmt.Println("You can then import the SDK in your TypeScript code with:")
+		fmt.Println()
+		fmt.Printf("  import * as %s from \"%s\";\n", pkg, pkg)
+	} else {
+		fmt.Println("You can then import the SDK in your Javascript code with:")
+		fmt.Println()
+		fmt.Printf("  const %s = require(\"%s\");\n", pkg, pkg)
+	}
+	fmt.Println()
 	return nil
 }
 
@@ -212,6 +228,10 @@ func printPythonLinkInstructions(root string, pkg string, out string) error {
 		// Assume pip if no packagemanager is specified
 		pipInstructions()
 	}
+	fmt.Println()
+	fmt.Println("You can then import the SDK in your Python code with:")
+	fmt.Println()
+	fmt.Printf("  import pulumi_%s as %s\n", pkg, pkg)
 	fmt.Println()
 	return nil
 }
