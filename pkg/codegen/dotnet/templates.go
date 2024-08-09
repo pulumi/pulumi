@@ -81,7 +81,17 @@ namespace {{.Namespace}}
             dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
             return dst;
         }
-
+{{if .HasParameterization }}		public static global::Pulumi.RegisterPackageRequest PackageParameterization()
+		{
+			return new global::Pulumi.RegisterPackageRequest(
+				name: "{{.BaseProviderName}}",
+				version: "{{.BaseProviderVersion}}",
+				downloadUrl: "{{.BaseProviderPluginDownloadURL}}",
+				parameterization: new global::Pulumi.RegisterPackageRequest.PackageParameterization(
+					name: "{{.PackageName}}",
+					version: "{{.PackageVersion}}",
+					value: global::System.Convert.FromBase64String("{{.ParameterValue}}")));
+        }{{end}}
         private readonly static string version;
         public static string Version => version;
 
@@ -112,11 +122,18 @@ namespace {{.Namespace}}
 var csharpUtilitiesTemplate = template.Must(template.New("CSharpUtilities").Parse(csharpUtilitiesTemplateText))
 
 type csharpUtilitiesTemplateContext struct {
-	Name              string
-	Namespace         string
-	ClassName         string
-	Tool              string
-	PluginDownloadURL string
+	Name                          string
+	Namespace                     string
+	ClassName                     string
+	Tool                          string
+	PluginDownloadURL             string
+	HasParameterization           bool
+	PackageName                   string
+	PackageVersion                string
+	BaseProviderName              string
+	BaseProviderVersion           string
+	BaseProviderPluginDownloadURL string
+	ParameterValue                string
 }
 
 // TODO(pdg): parameterize package name

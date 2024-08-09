@@ -46,7 +46,7 @@ func newPackageCmd() *cobra.Command {
 		Short: "Work with Pulumi packages",
 		Long: `Work with Pulumi packages
 
-Subcommands of this command are useful to package authors during development.`,
+Install and configure Pulumi packages and their plugins and SDKs.`,
 		Args: cmdutil.NoArgs,
 	}
 	cmd.AddCommand(
@@ -55,6 +55,7 @@ Subcommands of this command are useful to package authors during development.`,
 		newGenSdkCommand(),
 		newPackagePublishCmd(),
 		newPackagePackCmd(),
+		newPackageAddCmd(),
 	)
 	return cmd
 }
@@ -78,7 +79,7 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if len(args) > 0 {
-			return nil, errors.New("parametrization arguments are not supported for yaml files")
+			return nil, errors.New("parameterization arguments are not supported for yaml files")
 		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
@@ -91,7 +92,7 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string, args []st
 		return bind(spec)
 	} else if ext == ".json" {
 		if len(args) > 0 {
-			return nil, errors.New("parametrization arguments are not supported for json files")
+			return nil, errors.New("parameterization arguments are not supported for json files")
 		}
 
 		f, err := os.ReadFile(packageSource)

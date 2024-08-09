@@ -16,3 +16,7 @@ export const res5 = pkg.doMultiEchoOutput("hello_a", "hello_b");
 export const res6 = new pkg.Echo("echo");
 
 export const res7 = res6.doEchoMethod({ echo: "hello" });
+
+// Read on testprovider.Random just returns inputs back, so this works even though the resource
+// doesn't exist in the state.
+export const res8 = pkg.Random.get("res8", "banana");

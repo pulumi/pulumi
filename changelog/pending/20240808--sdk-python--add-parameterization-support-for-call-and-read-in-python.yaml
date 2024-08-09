@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add parameterization support for call & read in python
