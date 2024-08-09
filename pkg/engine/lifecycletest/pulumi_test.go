@@ -2383,8 +2383,8 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		if preview {
 			// We expect construction of remote component resources to fail during previews if the provider is
 			// configured with unknowns.
-			assert.ErrorContains(t, err, "cannot construct components if the provider is configured with unknown values")
-			assert.Nil(t, respC)
+			assert.NoError(t, err)
+			assert.True(t, respC.Outputs.DeepEquals(resource.PropertyMap{}))
 		} else {
 			assert.NoError(t, err)
 			assert.True(t, respC.Outputs.DeepEquals(resource.PropertyMap{

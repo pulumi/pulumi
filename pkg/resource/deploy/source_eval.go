@@ -2181,7 +2181,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
@@ -2201,7 +2200,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
-
 	} else {
 		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
 		for _, name := range additionalSecretOutputs {
