@@ -508,6 +508,9 @@ func (m *modInfo) readPulumiPluginJSON(moduleRoot string) (*plugin.PulumiPluginJ
 	if path, err := filepath.Glob(filepath.Join(dir, "go", "*", "pulumi-plugin.json")); err == nil {
 		paths = append(paths, path...)
 	}
+	if path, err := filepath.Glob(filepath.Join(dir, "*", "pulumi-plugin.json")); err == nil {
+		paths = append(paths, path...)
+	}
 
 	for _, path := range paths {
 		plugin, err := plugin.LoadPulumiPluginJSON(path)

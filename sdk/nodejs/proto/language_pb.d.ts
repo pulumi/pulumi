@@ -711,6 +711,8 @@ export class GeneratePackageRequest extends jspb.Message {
 
     getLocalDependenciesMap(): jspb.Map<string, string>;
     clearLocalDependenciesMap(): void;
+    getLocal(): boolean;
+    setLocal(value: boolean): GeneratePackageRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GeneratePackageRequest.AsObject;
@@ -731,6 +733,7 @@ export namespace GeneratePackageRequest {
         loaderTarget: string,
 
         localDependenciesMap: Array<[string, string]>,
+        local: boolean,
     }
 }
 

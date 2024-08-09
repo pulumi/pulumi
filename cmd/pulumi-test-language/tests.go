@@ -72,6 +72,7 @@ var languageTests = map[string]languageTest{
 	// ==========
 	"internal-bad-schema": {
 		providers: []plugin.Provider{&providers.BadProvider{}},
+		runs:      []testRun{{}},
 	},
 	// ==========
 	// L1 (Tests not using providers)
@@ -661,9 +662,6 @@ var languageTests = map[string]languageTest{
 		providers: []plugin.Provider{&providers.LargeProvider{}},
 		runs: []testRun{
 			{
-				updateOptions: engine.UpdateOptions{
-					ContinueOnError: true,
-				},
 				assert: func(l *L,
 					projectDirectory string, res result.Result,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
@@ -698,9 +696,6 @@ var languageTests = map[string]languageTest{
 			{
 				config: config.Map{
 					config.MustParseKey("config:name"): config.NewValue("hello"),
-				},
-				updateOptions: engine.UpdateOptions{
-					ContinueOnError: true,
 				},
 				assert: func(l *L,
 					projectDirectory string, res result.Result,
@@ -740,6 +735,50 @@ var languageTests = map[string]languageTest{
 						}))
 					require.Equal(l, expectedInputs, defaultProvider.Inputs)
 					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
+				},
+			},
+		},
+	},
+	"l2-invoke-simple": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					require.Len(l, snap.Resources, 2, "expected 2 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
+					assertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
+				},
+			},
+		},
+	},
+	"l2-invoke-variants": {
+		providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					require.Len(l, snap.Resources, 3, "expected 3 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assertPropertyMapMember(l, outputs, "outputInput", resource.NewStringProperty("Goodbye world"))
+					assertPropertyMapMember(l, outputs, "unit", resource.NewStringProperty("Hello world"))
 				},
 			},
 		},

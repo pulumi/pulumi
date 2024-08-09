@@ -31,6 +31,7 @@ import dill
 import pulumi
 
 from .. import CustomResource, ResourceOptions
+from ..runtime._serialization import _serialize
 
 if TYPE_CHECKING:
     from ..output import Inputs, Output
@@ -181,6 +182,14 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
+    serialize_as_secret_always: bool = True
+    """
+    Controls whether the serialized provider is a secret.
+    By default it is True which makes the serialized provider a secret always.
+    Set to False in a subclass to make the serialized provider a secret only
+    if any secret Outputs were captured during serialization of the provider.
+    """
+
     def check(self, _olds: Dict[str, Any], news: Dict[str, Any]) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
@@ -304,6 +313,23 @@ class Resource(CustomResource):
             raise Exception("A dynamic resource must not define the __provider key")
 
         props = cast(dict, props)
-        props[PROVIDER_KEY] = pulumi.Output.secret(serialize_provider(provider))
+
+        # Serialize the provider, allowing secret Outputs to be captured.
+        serialized_provider, contains_secrets = _serialize(
+            True, serialize_provider, provider
+        )
+
+        # serialize_as_secret_always is True by default, which makes the serialized provider
+        # a secret always, which is the existing behavior as of v3.75.0.
+        # When serialize_as_secret_always is set to False, the serialized provider is made a
+        # secret only if any secret Outputs were captured during serialization of the
+        # provider.
+        serialize_as_secret_always: bool = getattr(
+            provider, "serialize_as_secret_always", True
+        )
+        if serialize_as_secret_always or contains_secrets:
+            serialized_provider = pulumi.Output.secret(serialized_provider)
+
+        props[PROVIDER_KEY] = serialized_provider
 
         super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)

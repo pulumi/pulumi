@@ -131,7 +131,7 @@ func (p *languageRuntime) GenerateProject(string, string, string,
 }
 
 func (p *languageRuntime) GeneratePackage(
-	string, string, map[string][]byte, string, map[string]string,
+	string, string, map[string][]byte, string, map[string]string, bool,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GeneratePackage is not supported")
 }

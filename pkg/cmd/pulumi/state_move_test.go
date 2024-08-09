@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -88,7 +90,6 @@ func runMoveWithOptions(
 	assert.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
-
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
 
 	destResources := []*resource.State{}
@@ -539,9 +540,8 @@ func TestEmptySourceStack(t *testing.T) {
 	assert.ErrorContains(t, err, "source stack has no resources")
 }
 
+//nolint:paralleltest // changest directory for process
 func TestEmptyDestStack(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -576,7 +576,19 @@ func TestEmptyDestStack(t *testing.T) {
 	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
 		return b64.NewBase64SecretsManager(), nil
 	})
+	mp = mp.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
 
+	chdir(t, tmpDir)
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+	// Set up dummy project in this directory
+	err = os.WriteFile("Pulumi.yaml", []byte(`
+name: test
+runtime: mock
+`), 0o600)
+	require.NoError(t, err)
 	stateMoveCmd := stateMoveCmd{
 		Yes:       true,
 		Colorizer: colors.Never,
@@ -918,4 +930,260 @@ func TestMoveRootStack(t *testing.T) {
 		destSnapshot.Resources[2].Provider)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[2].Parent)
+}
+
+//nolint:paralleltest // changes directory for process
+func TestMoveSecret(t *testing.T) {
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/test/destStack"
+	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
+	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	require.NoError(t, err)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+	mp = mp.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
+
+	chdir(t, tmpDir)
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+	// Set up dummy project in this directory
+	err = os.WriteFile("Pulumi.yaml", []byte(`
+name: test
+runtime: mock
+`), 0o600)
+	require.NoError(t, err)
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
+	assert.NoError(t, err)
+
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	destStack, err = b.GetStack(ctx, destRef)
+	require.NoError(t, err)
+
+	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	// Expect the root stack and the provider to remain in the source stack
+	assert.Equal(t, 2, len(sourceSnapshot.Resources))
+	// All other resources are moved to the destination
+	assert.Equal(t, 3, len(destSnapshot.Resources))
+
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, resource.DefaultRootStackURN("destStack", "test"),
+		destSnapshot.Resources[1].Parent)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
+	assert.True(t, destSnapshot.Resources[2].Outputs["secret"].IsSecret())
+	assert.Equal(t, "secret", destSnapshot.Resources[2].Outputs["secret"].SecretValue().Element.V)
+}
+
+func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/test/destStack"
+	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
+	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	require.NoError(t, err)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+	mp = mp.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
+	//nolint:lll
+	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
+
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	destStack, err = b.GetStack(ctx, destRef)
+	require.NoError(t, err)
+
+	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	// Expect no resources to be moved
+	assert.Equal(t, 3, len(sourceSnapshot.Resources))
+	assert.Nil(t, destSnapshot)
+}
+
+func TestMoveSecretNotInDestProjectDir(t *testing.T) {
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+		},
+	}
+
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	sourceStackName := "organization/test/sourceStack"
+	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
+
+	destStackName := "organization/anotherproject/destStack"
+	destRef, err := b.ParseStackReference(destStackName)
+	require.NoError(t, err)
+
+	destStack, err := b.CreateStack(ctx, destRef, "", nil)
+	require.NoError(t, err)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+	mp = mp.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
+		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
+	})
+
+	chdir(t, tmpDir)
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+	// Set up dummy project in this directory
+	err = os.WriteFile("Pulumi.yaml", []byte(`
+name: yetanotherproject
+runtime: mock
+`), 0o600)
+	require.NoError(t, err)
+
+	var stdout bytes.Buffer
+
+	stateMoveCmd := stateMoveCmd{
+		Yes:       true,
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
+	}
+
+	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
+	//nolint:lll
+	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
+
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	destStack, err = b.GetStack(ctx, destRef)
+	require.NoError(t, err)
+
+	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	assert.NoError(t, err)
+
+	// Expect no resources to be moved
+	assert.Equal(t, 3, len(sourceSnapshot.Resources))
+	assert.Nil(t, destSnapshot)
 }

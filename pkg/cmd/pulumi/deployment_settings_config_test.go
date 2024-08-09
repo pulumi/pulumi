@@ -257,6 +257,79 @@ func TestDSConfigureGit(t *testing.T) {
 		prompts.AssertComplete()
 	})
 
+	t.Run("no authentication", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+
+		repo := auto.GitRepo{
+			URL:         "https://github.com/pulumi/test-repo.git",
+			ProjectPath: "goproj",
+			Shallow:     true,
+			Branch:      "master",
+		}
+		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
+		require.NoError(t, err)
+
+		gitSSHPrivateKeyPath := ""
+		gitSSHPrivateKeyValue := ""
+
+		prompts := &promptHandlersMock{
+			T: t,
+			ConfirmationResponses: []promptAssertion[bool, bool]{
+				{true, false},
+			},
+			PromptUserResponses: []promptAssertion[string, string]{
+				{optUserPass, optNoAuthentication},
+			},
+			PromptValueResponses: []promptAssertion[string, string]{
+				{"goproj", "goproj"},
+				{"refs/heads/master", "master"},
+				{"https://github.com/pulumi/test-repo.git", "https://github.com/pulumi/test-repo.git"},
+			},
+		}
+
+		d := &deploymentSettingsCommandDependencies{
+			Deployment: &workspace.ProjectStackDeployment{
+				DeploymentSettings: apitype.DeploymentSettings{
+					SourceContext: &apitype.SourceContext{
+						Git: &apitype.SourceContextGit{
+							GitAuth: &apitype.GitAuthConfig{
+								BasicAuth: &apitype.BasicAuth{
+									UserName: apitype.SecretValue{Value: "user"},
+									Password: apitype.SecretValue{Ciphertext: "ciphered"},
+								},
+							},
+						},
+					},
+				},
+			},
+			WorkDir: ws.WorkDir(),
+			Backend: &backend.MockBackend{
+				EncryptStackDeploymentSettingsSecretF: func(
+					ctx context.Context, stack backend.Stack, secret string,
+				) (*apitype.SecretValue, error) {
+					assert.Equal(t, "password", secret)
+					return &apitype.SecretValue{Secret: true, Ciphertext: "encrypted"}, nil
+				},
+			},
+			DisplayOptions: &display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: true,
+			},
+			Prompts: prompts,
+		}
+
+		err = configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
+		assert.Equal(t, "master", d.Deployment.DeploymentSettings.SourceContext.Git.Branch)
+		assert.Equal(t, "https://github.com/pulumi/test-repo.git", d.Deployment.DeploymentSettings.SourceContext.Git.RepoURL)
+		assert.Nil(t, d.Deployment.DeploymentSettings.SourceContext.Git.GitAuth)
+
+		prompts.AssertComplete()
+	})
+
 	t.Run("using credentials", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()

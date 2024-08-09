@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-splat/sdk/go/splat"
+	"example.com/pulumi-splat/sdk/go/splat"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

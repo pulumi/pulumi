@@ -581,18 +581,12 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
-		if p.SupportPack {
-			// then the default is that we no longer nest source files under the go subdirectory
-			packageName = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", p.Name, vPath)
-		}
+		packageName := extractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
 				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
-				if separatorIndex < 0 {
-					packageName = ""
-				} else {
+				if separatorIndex >= 0 {
 					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
 					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
 				}
@@ -935,12 +929,14 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	// We do this before we let the user set overrides. That way the user can still have a
 	// module named IndexToken.
 	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
-	importPath := func(mod, importBasePath string) string {
-		if importBasePath == "" {
-			if schema, ok := g.packages[pkg]; ok && schema.SupportPack {
-				importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", pkg, versionPath, pkg)
-			} else {
-				importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+	importPath := func(mod string) string {
+		importBasePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+		if info.ImportBasePath != "" {
+			importBasePath = info.ImportBasePath
+		} else {
+			p, ok := g.packages[pkg]
+			if ok {
+				importBasePath = extractImportBasePath(p.Reference())
 			}
 		}
 
@@ -957,7 +953,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 
 	if !hasInfo {
 		mod = strings.SplitN(mod, "/", 2)[0]
-		path := importPath(mod, "")
+		path := importPath(mod)
 		// users hasn't provided any extra overrides
 		if mod == "" || mod == IndexToken {
 			mod = pkg
@@ -975,7 +971,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		mod = m
 	}
 
-	path := importPath(mod, info.ImportBasePath)
+	path := importPath(mod)
 	if alias, ok := info.PackageImportAliases[path]; ok {
 		g.importer.Import(path, alias)
 		return
@@ -986,7 +982,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	// aws:s3/bucket:Bucket).
 	mod = strings.SplitN(mod, "/", 2)[0]
 
-	path = importPath(mod, info.ImportBasePath)
+	path = importPath(mod)
 	pkgName := mod
 	if len(pkgName) == 0 || pkgName == IndexToken {
 		// If mod is empty, then the package is the root package.

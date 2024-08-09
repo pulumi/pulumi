@@ -144,6 +144,7 @@ type LanguageRuntime interface {
 	GeneratePackage(
 		directory string, schema string, extraFiles map[string][]byte,
 		loaderTarget string, localDependencies map[string]string,
+		local bool,
 	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program

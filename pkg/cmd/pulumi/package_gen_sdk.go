@@ -39,6 +39,7 @@ func newGenSdkCommand() *cobra.Command {
 	var language string
 	var out string
 	var version string
+	var local bool
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source> [provider parameters]",
 		Args:  cobra.MinimumNArgs(1),
@@ -76,14 +77,14 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := genSDK(lang, out, pkg, overlays)
+					err := genSDK(lang, out, pkg, overlays, local)
 					if err != nil {
 						return err
 					}
 				}
 				return nil
 			}
-			return genSDK(language, out, pkg, overlays)
+			return genSDK(language, out, pkg, overlays, local)
 		}),
 	}
 	cmd.Flags().StringVarP(&language, "language", "", "all",
@@ -92,11 +93,12 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 		"The directory to write the SDK to")
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
 	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
+	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
 
-func genSDK(language, out string, pkg *schema.Package, overlays string) error {
+func genSDK(language, out string, pkg *schema.Package, overlays string, local bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current working directory: %w", err)
@@ -174,7 +176,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 			}
 			defer contract.IgnoreClose(grpcServer)
 
-			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil)
+			diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
 			if err != nil {
 				return err
 			}

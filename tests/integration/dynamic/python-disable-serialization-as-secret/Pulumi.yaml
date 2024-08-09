@@ -1,0 +1,3 @@
+name: dynamic_py_disable_serialization_as_secret
+description: A simple Python program that uses dynamic providers with serialization as secret disabled.
+runtime: python

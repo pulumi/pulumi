@@ -182,6 +182,8 @@ var expectedFailures = map[string]string{
 	"l2-engine-update-options":           "missing go.mod",
 	"l2-resource-primitives":             "missing go.mod",
 	"l2-resource-config":                 "missing go.mod",
+	"l2-invoke-simple":                   "multiple-value in single-value context",
+	"l2-invoke-variants":                 "multiple-value in single-value context",
 }
 
 func TestLanguage(t *testing.T) {
