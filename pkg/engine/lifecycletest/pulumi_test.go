@@ -5571,3 +5571,89 @@ func TestStackOutputsResourceError(t *testing.T) {
 		"second": resource.NewProperty("step 3"),
 	})
 }
+
+func TestDuplicatedDiffsDisplayedCorrectly(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap,
+					timeout float64, preview bool) (
+					resource.ID, resource.PropertyMap, resource.Status, error,
+				) {
+					return "id", inputs, resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+						ChangedKeys: []resource.PropertyKey{
+							"privileges",
+							"privileges",
+							"privileges",
+							"privileges",
+							"privileges",
+						},
+						DetailedDiff: map[string]plugin.PropertyDiff{
+							"privileges": {
+								Kind: plugin.DiffUpdate,
+							},
+							"privileges[0]": {
+								Kind: plugin.DiffDelete,
+							},
+							"privileges[1]": {
+								Kind: plugin.DiffDelete,
+							},
+							"privileges[2]": {
+								Kind: plugin.DiffDelete,
+							},
+							"privileges[3]": {
+								Kind: plugin.DiffDelete,
+							},
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var inputs resource.PropertyMap
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		inputs = inputs.Copy()
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &TestPlan{
+		Options: TestUpdateOptions{T: t, HostF: hostF},
+	}
+	// Run the initial update.
+	project := p.GetProject()
+
+	inputs = resource.PropertyMap{
+		"privileges": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("CREATE EXTERNAL TABLE"),
+			resource.NewStringProperty("CREATE TABLE"),
+			resource.NewStringProperty("CREATE VIEW"),
+			resource.NewStringProperty("CREATE TEMPORARY TABLE"),
+			resource.NewStringProperty("USAGE"),
+		}),
+	}
+	snap, err := TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+
+	inputs = resource.PropertyMap{
+		"privileges": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("USAGE"),
+		}),
+	}
+	_, err = TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.NoError(t, err)
+}
