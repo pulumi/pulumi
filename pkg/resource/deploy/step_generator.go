@@ -2154,6 +2154,17 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 			NewInputs:     inputsForDiff,
 			AllowUnknowns: true,
 		})
+
+		goal, hasGoal := sg.deployment.goals.Load(r.URN)
+		if hasGoal {
+			// Update the diff to apply any replaceOnChanges annotations and to include initErrors in the diff.
+			hasInitErrors := len(r.InitErrors) > 0
+			diff, err = applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
+			if err != nil {
+				return false, nil, err
+			}
+		}
+
 		if err != nil {
 			return false, nil, err
 		}
