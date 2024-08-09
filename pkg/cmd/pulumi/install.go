@@ -39,6 +39,7 @@ import (
 func newInstallCmd() *cobra.Command {
 	var reinstall bool
 	var noPlugins, noDependencies bool
+	var useLanguageVersionTools bool
 
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -107,7 +108,10 @@ func newInstallCmd() *cobra.Command {
 			}
 
 			if !noDependencies {
-				if err = lang.InstallDependencies(programInfo); err != nil {
+				if err = lang.InstallDependencies(plugin.InstallDependenciesRequest{
+					Info:                    programInfo,
+					UseLanguageVersionTools: useLanguageVersionTools,
+				}); err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)
 				}
 			}
@@ -181,6 +185,8 @@ func newInstallCmd() *cobra.Command {
 		"no-plugins", false, "Skip installing plugins")
 	cmd.PersistentFlags().BoolVar(&noDependencies,
 		"no-dependencies", false, "Skip installing dependencies")
+	cmd.PersistentFlags().BoolVar(&useLanguageVersionTools,
+		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
 
 	return cmd
 }

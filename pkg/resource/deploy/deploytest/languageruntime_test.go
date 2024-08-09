@@ -56,7 +56,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{closed: true}
-			err := p.InstallDependencies(plugin.ProgramInfo{})
+			err := p.InstallDependencies(plugin.InstallDependenciesRequest{})
 			assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 		})
 		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestLanguageRuntime(t *testing.T) {
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
-			assert.NoError(t, p.InstallDependencies(plugin.ProgramInfo{}))
+			assert.NoError(t, p.InstallDependencies(plugin.InstallDependenciesRequest{}))
 		})
 		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
 			t.Parallel()

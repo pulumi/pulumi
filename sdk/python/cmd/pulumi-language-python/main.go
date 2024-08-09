@@ -264,7 +264,8 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, true, stdout, stderr); err != nil {
+	if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, false, /*useLanguageVersionTools */
+		true /* showOutput */, stdout, stderr); err != nil {
 		return nil, err
 	}
 
@@ -946,7 +947,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 	if err != nil {
 		return err
 	}
-	if err := tc.InstallDependencies(server.Context(), req.Info.ProgramDirectory,
+	if err := tc.InstallDependencies(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 		true /*showOutput*/, stdout, stderr); err != nil {
 		return err
 	}

@@ -90,7 +90,7 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(info plugin.ProgramInfo) error {
+func (p *languageRuntime) InstallDependencies(plugin.InstallDependenciesRequest) error {
 	if p.closed {
 		return ErrLanguageRuntimeIsClosed
 	}

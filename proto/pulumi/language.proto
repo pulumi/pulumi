@@ -150,6 +150,8 @@ message InstallDependenciesRequest {
     string directory = 1 [deprecated = true]; // the program's working directory.
     bool is_terminal = 2; // if we are running in a terminal and should use ANSI codes
     ProgramInfo info = 3; // the program info to use to execute the plugin.
+    bool use_language_version_tools = 4; // if we should use language version tools like pyenv or
+                                         // nvm to setup the language version.
 }
 
 message InstallDependenciesResponse {
