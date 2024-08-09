@@ -2291,12 +2291,15 @@ func genProjectFile(pkg *schema.Package,
 		restoreSources = strings.Join(folders.ToSlice(), ";")
 	}
 
-	// Add the Pulumi package reference
-	for _, path := range localDependencies {
-		filename := filepath.Base(path)
-		pkg, rest, _ := strings.Cut(filename, ".")
-		version, _ := strings.CutSuffix(rest, ".nupkg")
-		packageReferences[pkg] = version
+	// Add local package references
+	pkgs := codegen.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
+			packageReferences[packageName] = version
+		} else {
+			return nil, fmt.Errorf("unable to extract package name and version from nuget file path %s", nugetFilePath)
+		}
 	}
 
 	// if we don't have a package reference to Pulumi SDK from nuget

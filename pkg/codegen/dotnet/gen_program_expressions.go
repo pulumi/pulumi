@@ -731,6 +731,12 @@ func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression)
 func (g *generator) escapeString(v string, verbatim, expressions bool) string {
 	builder := strings.Builder{}
 	for _, c := range v {
+		if c == '\x00' {
+			// escape NUL bytes
+			builder.WriteString("\u0000")
+			continue
+		}
+
 		if verbatim {
 			if c == '"' {
 				builder.WriteRune('"')
