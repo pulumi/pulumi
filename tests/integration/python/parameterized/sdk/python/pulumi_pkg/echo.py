@@ -118,3 +118,25 @@ class Echo(pulumi.CustomResource):
         """
         return pulumi.get(self, "echo")
 
+    @pulumi.output_type
+    class DoEchoMethodResult:
+        def __init__(__self__, echo=None):
+            if echo and not isinstance(echo, str):
+                raise TypeError("Expected argument 'echo' to be a str")
+            pulumi.set(__self__, "echo", echo)
+
+        @property
+        @pulumi.getter
+        def echo(self) -> Optional[str]:
+            return pulumi.get(self, "echo")
+
+    def do_echo_method(__self__, *,
+                       echo: Optional[pulumi.Input[str]] = None) -> pulumi.Output['Echo.DoEchoMethodResult']:
+        """
+        A test call that echoes its input.
+        """
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        __args__['echo'] = echo
+        return pulumi.runtime.call('pkg:index:Echo/doEchoMethod', __args__, res=__self__, typ=Echo.DoEchoMethodResult, package_ref=_utilities.get_package())
+

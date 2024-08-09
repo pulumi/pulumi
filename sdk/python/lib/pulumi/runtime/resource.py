@@ -696,6 +696,7 @@ def read_resource(
     props: "Inputs",
     opts: "ResourceOptions",
     typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
 ) -> None:
     if opts.id is None:
         raise Exception("Cannot read resource whose options are lacking an ID value")
@@ -760,6 +761,18 @@ def read_resource(
                 os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
                 in {"TRUE", "1"}
             )
+
+            # If we have a package reference, we need to wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                # If we have a package reference we can clear some of the invoke
+                # options.
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+                    log.debug(f"Read using package reference {package_ref_str}")
+
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
                 name=name,
@@ -774,6 +787,7 @@ def read_resource(
                 acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
                 sourcePosition=source_position,
+                packageRef=package_ref_str or "",
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
