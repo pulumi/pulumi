@@ -1216,11 +1216,11 @@ func assertHasDeps(
 	expectedDeps ...Resource,
 ) {
 	name := res.getName()
-	resDeps := depTracker.dependencies(urn(t, ctx, res))
+	resDeps := depTracker.dependencies(urnForRes(t, ctx, res))
 
 	expDeps := slice.Prealloc[URN](len(expectedDeps))
 	for _, expDepRes := range expectedDeps {
-		expDep := urn(t, ctx, expDepRes)
+		expDep := urnForRes(t, ctx, expDepRes)
 		expDeps = append(expDeps, expDep)
 		assert.Containsf(t, resDeps, expDep, "Resource %s does not depend on %s",
 			name, expDep)
@@ -1245,7 +1245,7 @@ func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption)
 	return &res
 }
 
-func urn(t *testing.T, ctx *Context, res Resource) URN {
+func urnForRes(t *testing.T, ctx *Context, res Resource) URN {
 	urn, _, _, err := res.URN().awaitURN(ctx.ctx)
 	if err != nil {
 		t.Fatal(err)

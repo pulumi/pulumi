@@ -754,8 +754,10 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		return false, nil
 	}
 
+	allocatedPointer := false
 	// Allocate storage as necessary.
 	for dest.Kind() == reflect.Ptr {
+		allocatedPointer = true
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
 		dest = elem.Elem()
@@ -796,7 +798,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			return false, err
 		}
 		resV := reflect.ValueOf(res)
-		if resV.Kind() == reflect.Ptr && dest.Type().Kind() == reflect.Interface &&
+		if !allocatedPointer && resV.Kind() == reflect.Ptr && dest.Type().Kind() == reflect.Interface &&
 			resV.Elem().Type().AssignableTo(dest.Type()) {
 			dest.Set(resV)
 			return secret, nil

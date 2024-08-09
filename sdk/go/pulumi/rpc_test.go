@@ -26,6 +26,7 @@ import (
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -868,6 +869,23 @@ func TestInvalidArchive(t *testing.T) {
 
 	_, _, err = marshalInput(d, archiveType, true)
 	assert.EqualError(t, err, "invalid archive")
+}
+
+func TestUnmarshalPointer(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.NoError(t, err)
+
+	res := resource.ResourceReference{
+		URN: urn.New("testStack", "testProj", "", "test:index:component", "test"),
+	}
+
+	var d any
+	RegisterResourceModule("test", "index", &testResourceModule{})
+	_, err = unmarshalOutput(ctx, resource.NewResourceReferenceProperty(res), reflect.ValueOf(&d).Elem())
+	assert.NoError(t, err)
+	assert.IsType(t, &simpleComponentResource{}, d)
 }
 
 func TestDependsOnComponent(t *testing.T) {
