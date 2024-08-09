@@ -2031,10 +2031,10 @@ func TestNodeOOM(t *testing.T) {
 	})
 }
 
-// Test a paramaterized provider with nodejs.
+// Test a parameterized provider with nodejs.
 //
 //nolint:paralleltest // mutates environment
-func TestParamaterizedNode(t *testing.T) {
+func TestParameterizedNode(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 
 	// Enable MultiArgumentInputs in the testprovider/echo schema

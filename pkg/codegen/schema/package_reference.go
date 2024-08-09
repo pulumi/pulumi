@@ -25,6 +25,11 @@ type PackageReference interface {
 	// Description returns the packages description.
 	Description() string
 
+	// Publisher returns the package publisher.
+	Publisher() string
+	// Repository returns the package repository.
+	Repository() string
+
 	// SupportPack specifies the package definition can be packed by language plugins
 	SupportPack() bool
 
@@ -148,6 +153,14 @@ func (p packageDefRef) Version() *semver.Version {
 
 func (p packageDefRef) Description() string {
 	return p.pkg.Description
+}
+
+func (p packageDefRef) Publisher() string {
+	return p.pkg.Publisher
+}
+
+func (p packageDefRef) Repository() string {
+	return p.pkg.Repository
 }
 
 func (p packageDefRef) SupportPack() bool {
@@ -342,6 +355,26 @@ func (p *PartialPackage) Description() string {
 		return p.def.Description
 	}
 	return p.types.pkg.Description
+}
+
+func (p *PartialPackage) Publisher() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.Publisher
+	}
+	return p.types.pkg.Publisher
+}
+
+func (p *PartialPackage) Repository() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.Repository
+	}
+	return p.types.pkg.Repository
 }
 
 func (p *PartialPackage) SupportPack() bool {

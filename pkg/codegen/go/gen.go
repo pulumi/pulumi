@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"reflect"
@@ -3653,7 +3654,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-func extractImportBasePath(extPkg schema.PackageReference) string {
+func extractModulePath(extPkg schema.PackageReference) string {
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -3661,11 +3662,41 @@ func extractImportBasePath(extPkg schema.PackageReference) string {
 		vPath = fmt.Sprintf("/v%d", version.Major)
 	}
 
-	if extPkg.SupportPack() {
-		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s/%s", name, vPath, name)
+	// Default to example.com/pulumi-pkg if we have no other information.
+	root := "example.com/pulumi-" + name
+	// But if we have a publisher use that instead, assuming it's from github
+	if extPkg.Publisher() != "" {
+		root = fmt.Sprintf("github.com/%s/pulumi-%s", extPkg.Publisher(), name)
+	}
+	// And if we have a repository, use that instead of the publisher
+	if extPkg.Repository() != "" {
+		url, err := url.Parse(extPkg.Repository())
+		if err == nil {
+			// If there's any errors parsing the URL ignore it. Else use the host and path as go doesn't expect http://
+			root = url.Host + url.Path
+		}
 	}
 
-	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", name, vPath, name)
+	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
+	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
+	if extPkg.SupportPack() {
+		return fmt.Sprintf("%s/sdk/go%s", root, vPath)
+	}
+
+	return fmt.Sprintf("%s/sdk%s", root, vPath)
+}
+
+func extractImportBasePath(extPkg schema.PackageReference) string {
+	modpath := extractModulePath(extPkg)
+	name := extPkg.Name()
+
+	// Support pack sdks write a go mod inside the go folder. Old legacy sdks would manually write a go.mod in the sdk
+	// folder. This happened to mean that sdk/dotnet, sdk/nodejs etc where also considered part of the go sdk module.
+	if extPkg.SupportPack() {
+		return fmt.Sprintf("%s/%s", modpath, name)
+	}
+
+	return fmt.Sprintf("%s/go/%s", modpath, name)
 }
 
 func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
@@ -4906,10 +4937,12 @@ func GeneratePackage(tool string,
 			vPath = fmt.Sprintf("/v%d", pkg.Version.Major)
 		}
 
-		modulePath := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go%s", pkg.Name, vPath)
+		modulePath := extractModulePath(pkg.Reference())
 		if langInfo, found := pkg.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
-			if ok && goInfo.ImportBasePath != "" {
+			if ok && goInfo.ModulePath != "" {
+				modulePath = goInfo.ModulePath
+			} else if ok && goInfo.ImportBasePath != "" {
 				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
 				if separatorIndex >= 0 {
 					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
