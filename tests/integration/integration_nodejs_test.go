@@ -18,6 +18,7 @@ package ints
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -2026,6 +2027,70 @@ func TestNodeOOM(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			t.Logf("stdout: %s", stderr.String())
 			assert.Contains(t, stderr.String(), "Detected a possible out of memory error")
+		},
+	})
+}
+
+// Test a parameterized provider with nodejs.
+//
+//nolint:paralleltest // mutates environment
+func TestParameterizedNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	// Enable MultiArgumentInputs in the testprovider/echo schema
+	t.Setenv("PULUMI_TEST_MULTI_ARGUMENT_INPUTS", "true")
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work.
+	var err error
+	e.CWD, err = filepath.Abs("nodejs/parameterized")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("nodejs", "parameterized", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "nodejs", "--local")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Verbose:       true,
+		DebugLogLevel: 10,
+		Dir:           filepath.Join("nodejs", "parameterized"),
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		NoParallel: true,
+		PrePrepareProject: func(project *engine.Projinfo) error {
+			// Patch up the local SDK's package.json so its pulumi dependency points to the local core SDK
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+			if err != nil {
+				return err
+			}
+			packageJSON := filepath.Join(project.Root, "sdk", "nodejs", "package.json")
+
+			fmt.Println("coreSDK", coreSDK)
+			fmt.Println("packagejson", packageJSON)
+
+			data, err := os.ReadFile(packageJSON)
+			if err != nil {
+				return err
+			}
+			var pkgJSON map[string]interface{}
+			err = json.Unmarshal(data, &pkgJSON)
+			if err != nil {
+				return err
+			}
+			deps := pkgJSON["dependencies"].(map[string]interface{})
+			deps["@pulumi/pulumi"] = "file:" + coreSDK
+			data, err = json.MarshalIndent(pkgJSON, "", "  ")
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(packageJSON, data, 0o600)
+			if err != nil {
+				return err
+			}
+
+			return nil
 		},
 	})
 }

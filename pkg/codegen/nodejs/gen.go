@@ -21,6 +21,7 @@ package nodejs
 import (
 	"bytes"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -908,14 +909,26 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, replaceOnChanges);\n")
 	}
 
-	// If it's a ComponentResource, set the remote option.
-	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/);\n", name)
-	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts);\n", name)
+	pkg, err := r.PackageReference.Definition()
+	if err != nil {
+		return resourceFileInfo{}, err
 	}
 
-	fmt.Fprintf(w, "    }\n")
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
+	} else {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", false /*dependency*/")
+		}
+	}
+
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n    }\n")
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) {
@@ -1023,13 +1036,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnTypePlain {
 			// Unwrap magic property "res" for methods that return a plain non-object-type.
 			if objectReturnType == nil {
-				fmt.Fprintf(w, `, {property: "res"});`)
+				fmt.Fprintf(w, `, {property: "res"}`)
 			} else {
-				fmt.Fprintf(w, `, {});`)
+				fmt.Fprintf(w, `, {}`)
 			}
-		} else {
-			fmt.Fprintf(w, ");\n")
 		}
+
+		// If the call is on a parameterized package, make sure we pass the parameter.
+		pkg, err := fun.PackageReference.Definition()
+		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", utilities.getPackage()")
+		}
+
+		fmt.Fprintf(w, ");\n")
 
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
@@ -1241,8 +1261,18 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 	}
 
-	fmt.Fprint(w, "    }, opts);\n")
-	fmt.Fprint(w, "}\n")
+	fmt.Fprintf(w, "    }, opts")
+
+	// If the invoke is on a parameterized package, make sure we pass the parameter.
+	pkg, err := fun.PackageReference.Definition()
+	if err != nil {
+		return info, err
+	}
+	if pkg.Parameterization != nil {
+		fmt.Fprintf(w, ", utilities.getPackage()")
+	}
+
+	fmt.Fprintf(w, ");\n}\n")
 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
@@ -2348,27 +2378,32 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string) error {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies)
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK)
 	if err != nil {
 		return err
 	}
 	fs.Add("package.json", []byte(packageJSON))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
+	if localSDK {
+		fs.Add("scripts/postinstall.js", genPostInstallScript())
+	}
 	return nil
 }
 
 type npmPackage struct {
 	Name             string                  `json:"name"`
 	Version          string                  `json:"version"`
+	Type             string                  `json:"type,omitempty"`
 	Description      string                  `json:"description,omitempty"`
 	Keywords         []string                `json:"keywords,omitempty"`
 	Homepage         string                  `json:"homepage,omitempty"`
 	Repository       string                  `json:"repository,omitempty"`
 	License          string                  `json:"license,omitempty"`
+	Main             string                  `json:"main,omitempty"`
 	Scripts          map[string]string       `json:"scripts,omitempty"`
 	Dependencies     map[string]string       `json:"dependencies,omitempty"`
 	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
@@ -2377,7 +2412,7 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string) (string, error) {
+func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		packageName = "@pulumi/" + pkg.Name
@@ -2397,12 +2432,35 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		version = pkg.Version.String()
 		pluginVersion = version
 	}
-	if pkg.SupportPack {
+	// Parameterized schemas _always_ respect schema version
+	if pkg.SupportPack || pkg.Parameterization != nil {
 		if pkg.Version == nil {
 			return "", errors.New("package version is required")
 		}
 		pluginVersion = pkg.Version.String()
 		version = pluginVersion
+	}
+
+	var pulumiPlugin plugin.PulumiPluginJSON
+	if pkg.Parameterization != nil {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Name:     pkg.Parameterization.BaseProvider.Name,
+			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Server:   pkg.Parameterization.BaseProvider.PluginDownloadURL,
+		}
+	} else {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     pkg.Name,
+			Version:  pluginVersion,
+		}
+	}
+
+	dependencies := map[string]string{}
+	if pkg.Parameterization != nil {
+		dependencies["async-mutex"] = "^0.5.0"
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2418,12 +2476,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
-		Pulumi: plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Name,
-			Version:  pluginVersion,
-		},
+		Dependencies:    dependencies,
+		Pulumi:          pulumiPlugin,
+	}
+
+	if localSDK {
+		npminfo.Main = "bin/index.js"
+		npminfo.Scripts["postinstall"] = "node ./scripts/postinstall.js"
 	}
 
 	// Copy the overlay dependencies, if any.
@@ -2475,6 +2534,23 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
 	return string(npmjson) + "\n", nil
+}
+
+func genPostInstallScript() []byte {
+	return []byte(`const fs = require("node:fs");
+const path = require("node:path")
+const process = require("node:process")
+const { execSync } = require('node:child_process');
+try {
+  const out = execSync('tsc')
+  console.log(out.toString())
+} catch (error) {
+  console.error(error.message + ": " + error.stdout.toString() + "\n" + error.stderr.toString())
+  process.exit(1)
+}
+// TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
+fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
+`)
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
@@ -2745,7 +2821,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package,
-	extraFiles map[string][]byte, localDependencies map[string]string,
+	extraFiles map[string][]byte, localDependencies map[string]string, localSDK bool,
 ) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
@@ -2764,7 +2840,7 @@ func GeneratePackage(tool string, pkg *schema.Package,
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files, localDependencies); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK); err != nil {
 		return nil, err
 	}
 	return files, nil
@@ -2778,6 +2854,13 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+
+	if def.Parameterization != nil {
+		fmt.Fprintf(w, `import * as resproto from "@pulumi/pulumi/proto/resource_pb";
+import * as mutex from "async-mutex";
+`)
+	}
+
 	code := utilitiesFile
 
 	if url := def.PluginDownloadURL; url != "" {
@@ -2788,6 +2871,52 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	}
 
 	_, err = fmt.Fprintf(w, "%s", code)
+	if err != nil {
+		return err
+	}
+
+	if def.Parameterization != nil {
+
+		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
+
+		_, err = fmt.Fprintf(w, `
+const _packageLock = new mutex.Mutex();
+var _packageRef : undefined | string = undefined;
+export async function getPackage() : Promise<string | undefined> {
+	if (_packageRef === undefined) {
+		await _packageLock.acquire();
+		if (_packageRef === undefined) {
+			const monitor = runtime.getMonitor();
+			const params = new resproto.Parameterization();
+			params.setName("%s");
+			params.setVersion("%s");
+			params.setValue(%s);
+
+			const req = new resproto.RegisterPackageRequest();
+			req.setName("%s");
+			req.setVersion("%s");
+			req.setDownloadUrl("%s");
+			req.setParameterization(params);
+			const resp : any = await new Promise((resolve, reject) => {
+				monitor!.registerPackage(req, (err: any, resp: any) => {
+					if (err) {
+						reject(err);
+					} else {
+						resolve(resp);
+					}
+				});
+			});
+			_packageRef = resp.getRef();
+		}
+		_packageLock.release();
+	}
+	return _packageRef as string;
+}
+`,
+			def.Name, def.Version, parameterValue,
+			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.Parameterization.BaseProvider.PluginDownloadURL)
+	}
+
 	return err
 }
 
