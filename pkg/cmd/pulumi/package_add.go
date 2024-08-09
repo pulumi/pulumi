@@ -17,6 +17,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -68,12 +70,16 @@ as in:
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
 
-			out := root
+			tempOut, err := os.MkdirTemp("", "pulumi-package-add-")
+			if err != nil {
+				return fmt.Errorf("failed to create temporary directory: %w", err)
+			}
+
 			local := true
 
 			err = genSDK(
 				language,
-				out,
+				tempOut,
 				pkg,
 				"",    /*overlays*/
 				local, /*local*/
@@ -82,7 +88,24 @@ as in:
 				return fmt.Errorf("failed to generate SDK: %w", err)
 			}
 
-			printLinkInstructions(language, plugin, out)
+			out := filepath.Join(root, "sdks")
+			err = os.MkdirAll(out, 0o755)
+			if err != nil {
+				return fmt.Errorf("failed to create directory for SDK: %w", err)
+			}
+
+			out = filepath.Join(out, pkg.Name)
+			err = copyAll(out, filepath.Join(tempOut, language))
+			if err != nil {
+				return fmt.Errorf("failed to move SDK to project: %w", err)
+			}
+
+			err = os.RemoveAll(tempOut)
+			if err != nil {
+				return fmt.Errorf("failed to remove temporary directory: %w", err)
+			}
+
+			printLinkInstructions(language, root, pkg.Name, out)
 
 			return nil
 		}),
@@ -93,18 +116,18 @@ as in:
 
 // Prints instructions for linking a locally generated SDK to an existing
 // project, in the absence of us attempting to perform this linking automatically.
-func printLinkInstructions(language string, plugin string, out string) {
+func printLinkInstructions(language string, root string, pkg string, out string) {
 	switch language {
 	case "nodejs":
-		printNodejsLinkInstructions(plugin, out)
+		printNodejsLinkInstructions(root, pkg, out)
 	case "python":
-		printPythonLinkInstructions(plugin, out)
+		printPythonLinkInstructions(root, pkg, out)
 	case "go":
-		printGoLinkInstructions(plugin, out)
+		printGoLinkInstructions(root, pkg, out)
 	case "dotnet":
-		printDotnetLinkInstructions(plugin, out)
+		printDotnetLinkInstructions(root, pkg, out)
 	case "java":
-		printJavaLinkInstructions(plugin, out)
+		printJavaLinkInstructions(root, pkg, out)
 	default:
 		break
 	}
@@ -112,37 +135,37 @@ func printLinkInstructions(language string, plugin string, out string) {
 
 // Prints instructions for linking a locally generated SDK to an existing NodeJS
 // project, in the absence of us attempting to perform this linking automatically.
-func printNodejsLinkInstructions(plugin string, out string) {
+func printNodejsLinkInstructions(root string, pkg string, out string) {
 	// TODO: Codify NodeJS linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Python
 // project, in the absence of us attempting to perform this linking automatically.
-func printPythonLinkInstructions(plugin string, out string) {
+func printPythonLinkInstructions(root string, pkg string, out string) {
 	// TODO: Codify Python linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Go
 // project, in the absence of us attempting to perform this linking automatically.
-func printGoLinkInstructions(plugin string, out string) {
+func printGoLinkInstructions(root string, pkg string, out string) {
 	// TODO: Codify Go linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing .NET
 // project, in the absence of us attempting to perform this linking automatically.
-func printDotnetLinkInstructions(plugin string, out string) {
+func printDotnetLinkInstructions(root string, pkg string, out string) {
 	// TODO: Codify .NET linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Java
 // project, in the absence of us attempting to perform this linking automatically.
-func printJavaLinkInstructions(plugin string, out string) {
-	fmt.Printf("Successfully generated a Java SDK for the %s plugin at %s\n", plugin, out)
+func printJavaLinkInstructions(root string, pkg string, out string) {
+	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", pkg, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Java project, complete the following steps:")
 	fmt.Println()
 	fmt.Println("1. Copy the contents of the generated SDK to your Java project:")
-	fmt.Printf("     cp -r %[1]s/java/src/* %[1]s/src\n", out)
+	fmt.Printf("     cp -r %s/src/* %s/src\n", out, root)
 	fmt.Println()
 	fmt.Println("2. Add the SDK's dependencies to your Java project's build configuration.")
 	fmt.Println("   If you are using Maven, add the following dependencies to your pom.xml:")
@@ -160,4 +183,43 @@ func printJavaLinkInstructions(plugin string, out string) {
 	fmt.Println("         </dependency>")
 	fmt.Println("     </dependencies>")
 	fmt.Println()
+}
+
+// copyAll copies src to dst. If src is a directory, its contents will be copied
+// recursively.
+func copyAll(dst string, src string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		// Recursively copy all files in a directory.
+		files, err := os.ReadDir(src)
+		if err != nil {
+			return fmt.Errorf("read dir: %w", err)
+		}
+		for _, file := range files {
+			name := file.Name()
+			copyerr := copyAll(filepath.Join(dst, name), filepath.Join(src, name))
+			if copyerr != nil {
+				return copyerr
+			}
+		}
+	} else if info.Mode().IsRegular() {
+		// Copy files by reading and rewriting their contents.  Skip other special files.
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return fmt.Errorf("read file: %w", err)
+		}
+		dstdir := filepath.Dir(dst)
+		if err = os.MkdirAll(dstdir, 0o700); err != nil {
+			return err
+		}
+		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
