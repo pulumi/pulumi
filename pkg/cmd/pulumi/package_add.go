@@ -105,9 +105,7 @@ as in:
 				return fmt.Errorf("failed to remove temporary directory: %w", err)
 			}
 
-			printLinkInstructions(language, root, pkg.Name, out)
-
-			return nil
+			return printLinkInstructions(language, root, pkg.Name, out)
 		}),
 	}
 
@@ -116,50 +114,91 @@ as in:
 
 // Prints instructions for linking a locally generated SDK to an existing
 // project, in the absence of us attempting to perform this linking automatically.
-func printLinkInstructions(language string, root string, pkg string, out string) {
+func printLinkInstructions(language string, root string, pkg string, out string) error {
 	switch language {
 	case "nodejs":
-		printNodejsLinkInstructions(root, pkg, out)
+		return printNodejsLinkInstructions(root, pkg, out)
 	case "python":
-		printPythonLinkInstructions(root, pkg, out)
+		return printPythonLinkInstructions(root, pkg, out)
 	case "go":
-		printGoLinkInstructions(root, pkg, out)
+		return printGoLinkInstructions(root, pkg, out)
 	case "dotnet":
-		printDotnetLinkInstructions(root, pkg, out)
+		return printDotnetLinkInstructions(root, pkg, out)
 	case "java":
-		printJavaLinkInstructions(root, pkg, out)
+		return printJavaLinkInstructions(root, pkg, out)
 	default:
 		break
 	}
+	return nil
 }
 
 // Prints instructions for linking a locally generated SDK to an existing NodeJS
 // project, in the absence of us attempting to perform this linking automatically.
-func printNodejsLinkInstructions(root string, pkg string, out string) {
-	// TODO: Codify NodeJS linking instructions
+func printNodejsLinkInstructions(root string, pkg string, out string) error {
+	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg, out)
+	fmt.Println()
+	fmt.Println("To use this SDK in your Nodejs project, run the following command:")
+	fmt.Println()
+	proj, _, err := readProject()
+	if err != nil {
+		return err
+	}
+	relOut, err := filepath.Rel(root, out)
+	if err != nil {
+		return err
+	}
+	packageSpecifier := fmt.Sprintf("%s@file:%s", pkg, relOut)
+	addCmd := ""
+	options := proj.Runtime.Options()
+	if packagemanager, ok := options["packagemanager"]; ok {
+		if pm, ok := packagemanager.(string); ok {
+			switch pm {
+			case "npm":
+				fallthrough
+			case "yarn":
+				fallthrough
+			case "pnpm":
+				addCmd = pm + " add " + packageSpecifier
+			default:
+				return fmt.Errorf("unsupported package manager: %s", pm)
+			}
+		} else {
+			fmt.Println("packagemanager", packagemanager)
+			return fmt.Errorf("packagemanager option must be a string: %v", packagemanager)
+		}
+	} else {
+		// Assume npm if no packagemanager is specified
+		addCmd = "npm add " + packageSpecifier
+	}
+	fmt.Println("  " + addCmd)
+	fmt.Println()
+	return nil
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Python
 // project, in the absence of us attempting to perform this linking automatically.
-func printPythonLinkInstructions(root string, pkg string, out string) {
+func printPythonLinkInstructions(root string, pkg string, out string) error {
+	return nil
 	// TODO: Codify Python linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Go
 // project, in the absence of us attempting to perform this linking automatically.
-func printGoLinkInstructions(root string, pkg string, out string) {
+func printGoLinkInstructions(root string, pkg string, out string) error {
+	return nil
 	// TODO: Codify Go linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing .NET
 // project, in the absence of us attempting to perform this linking automatically.
-func printDotnetLinkInstructions(root string, pkg string, out string) {
+func printDotnetLinkInstructions(root string, pkg string, out string) error {
+	return nil
 	// TODO: Codify .NET linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Java
 // project, in the absence of us attempting to perform this linking automatically.
-func printJavaLinkInstructions(root string, pkg string, out string) {
+func printJavaLinkInstructions(root string, pkg string, out string) error {
 	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", pkg, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Java project, complete the following steps:")
@@ -183,6 +222,7 @@ func printJavaLinkInstructions(root string, pkg string, out string) {
 	fmt.Println("         </dependency>")
 	fmt.Println("     </dependencies>")
 	fmt.Println()
+	return nil
 }
 
 // copyAll copies src to dst. If src is a directory, its contents will be copied
