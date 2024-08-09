@@ -133,8 +133,19 @@ func loginToCloud(
 	insecure bool,
 	opts display.Options,
 ) (backend.Backend, error) {
+	return loginToCloudInternal(ctx, cloudURL, project, insecure, false /* setCurrent */, opts)
+}
+
+func loginToCloudInternal(
+	ctx context.Context,
+	cloudURL string,
+	project *workspace.Project,
+	insecure bool,
+	setCurrent bool,
+	opts display.Options,
+) (backend.Backend, error) {
 	lm := httpstate.NewLoginManager()
-	_, err := lm.Login(ctx, cloudURL, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, true /*current*/, opts)
+	_, err := lm.Login(ctx, cloudURL, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
 	if err != nil {
 		return nil, err
 	}

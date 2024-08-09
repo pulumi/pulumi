@@ -17,6 +17,7 @@ package workspace
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -29,6 +30,8 @@ import (
 )
 
 const RetryCount = 6
+
+var ErrPulumiCloudUnauthorized = errors.New("unauthorized")
 
 // Sanitize archive file pathing from "G305: Zip Slip vulnerability"
 func sanitizeArchivePath(d, t string) (v string, err error) {
@@ -48,7 +51,11 @@ func isZIPTemplateURL(templateNamePathOrURL string) bool {
 	return parsedURL.Path != "" && strings.HasSuffix(parsedURL.Path, ".zip")
 }
 
-func retrieveZIPTemplates(templateURL string) (TemplateRepository, error) {
+func isPulumiHostResponse(resp *http.Response) bool {
+	return resp.Header.Get("X-Pulumi-Request-ID") != ""
+}
+
+func RetrieveZIPTemplates(templateURL string, opts ...RequestOption) (TemplateRepository, error) {
 	var err error
 	// Create a temp dir.
 	var temp string
@@ -62,7 +69,7 @@ func retrieveZIPTemplates(templateURL string) (TemplateRepository, error) {
 	}
 
 	var fullPath string
-	if fullPath, err = RetrieveZIPTemplateFolder(parsedURL, temp); err != nil {
+	if fullPath, err = RetrieveZIPTemplateFolder(parsedURL, temp, opts...); err != nil {
 		return TemplateRepository{}, fmt.Errorf("failed to retrieve zip archive: %w", err)
 	}
 
@@ -143,7 +150,10 @@ func NewRetryableClient() *http.Client {
 	}
 }
 
-func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, error) {
+// RequestOption is a function that modifies an http.Request.
+type RequestOption func(*http.Request)
+
+func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string, opts ...RequestOption) (string, error) {
 	if templateURL.Scheme == "" {
 		return "", fmt.Errorf("invalid template URL: %s", templateURL.String())
 	}
@@ -153,9 +163,20 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string) (string, er
 		return "", err
 	}
 	packageRequest.Header.Set("Accept", "application/zip")
+
+	for _, opt := range opts {
+		opt(packageRequest)
+	}
+
 	packageResponse, err := client.Do(packageRequest)
 	if err != nil {
 		return "", err
+	}
+	if packageResponse.StatusCode == http.StatusUnauthorized && isPulumiHostResponse(packageResponse) {
+		return "", fmt.Errorf("failed to download package: %w", ErrPulumiCloudUnauthorized)
+	}
+	if packageResponse.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download package: %s", packageResponse.Status)
 	}
 	packageResponseBody, err := io.ReadAll(packageResponse.Body)
 	if err != nil {
