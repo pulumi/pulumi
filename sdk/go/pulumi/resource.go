@@ -438,6 +438,7 @@ type resourceOptions struct {
 	PluginDownloadURL       string
 	RetainOnDelete          bool
 	DeletedWith             Resource
+	Parameterization        []byte
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -517,6 +518,9 @@ type InvokeOptions struct {
 	// should be downloaded.
 	// This will be blank if the URL was inferred automatically.
 	PluginDownloadURL string
+
+	// This is an internal write only field that is used to store the parameterization from the default options.
+	parameterization []byte
 }
 
 // NOTE:
@@ -909,5 +913,17 @@ func RetainOnDelete(b bool) ResourceOption {
 func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeletedWith = r
+	})
+}
+
+// If set this resource will be parameterized with the given package reference.
+func Parameterization(parameter []byte) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+		switch {
+		case ro != nil:
+			ro.Parameterization = parameter
+		case io != nil:
+			io.parameterization = parameter
+		}
 	})
 }
