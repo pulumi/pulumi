@@ -2167,10 +2167,14 @@ func (bh *barHider) Read(dest []byte) (int, error) {
 }
 
 func (bh *barHider) Close() error {
-	bh.bar.FinishPrint("\r")
-	err := bh.readCloser.Close()
-	hasBar.Store(false)
-	return err
+	if bh.bar != nil {
+		// We were showing a progress bar, free up the slot.
+		bh.bar.FinishPrint("\r")
+		err := bh.readCloser.Close()
+		hasBar.Store(false)
+		return err
+	}
+	return bh.readCloser.Close()
 }
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
