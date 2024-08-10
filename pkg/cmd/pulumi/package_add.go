@@ -19,10 +19,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Constructs the `pulumi package add` command.
@@ -243,11 +246,40 @@ func printGoLinkInstructions(root string, pkg string, out string) error {
 	// TODO: Codify Go linking instructions
 }
 
+// csharpPackageName converts a package name to a C#-friendly package name.
+// for example "aws-api-gateway" becomes "AwsApiGateway".
+func csharpPackageName(pkgName string) string {
+	title := cases.Title(language.English)
+	parts := strings.Split(pkgName, "-")
+	for i, part := range parts {
+		parts[i] = title.String(part)
+	}
+	return strings.Join(parts, "")
+}
+
 // Prints instructions for linking a locally generated SDK to an existing .NET
 // project, in the absence of us attempting to perform this linking automatically.
 func printDotnetLinkInstructions(root string, pkg string, out string) error {
+	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", pkg, out)
+	fmt.Println()
+	fmt.Println("To use this SDK in your .NET project, run the following command:")
+	fmt.Println()
+	relOut, err := filepath.Rel(root, out)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  dotnet add reference %s\n", filepath.Join(".", relOut))
+	fmt.Println()
+	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
+	fmt.Println()
+	fmt.Println("  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>")
+	fmt.Println()
+	fmt.Println("You can then use the SDK in your .NET code with:")
+	fmt.Println()
+	fmt.Printf("  using Pulumi.%s;\n", csharpPackageName(pkg))
+	fmt.Println()
 	return nil
-	// TODO: Codify .NET linking instructions
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Java
