@@ -263,7 +263,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
 
 	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+		return workspace.BarHider(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
 		logging.V(preparePluginVerboseLog).Infof(

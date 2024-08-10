@@ -35,6 +35,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/blang/semver"
@@ -2113,6 +2114,65 @@ func SelectCompatiblePlugin(
 	return &bestMatch
 }
 
+var hasBar atomic.Bool
+
+func BarHider(
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
+) io.ReadCloser {
+	if size == -1 {
+		return closer
+	}
+
+	if !cmdutil.Interactive() {
+		return closer
+	}
+
+	return &barHider{
+		readCloser:   closer,
+		size:         size,
+		read:         0,
+		message:      message,
+		colorization: colorization,
+	}
+}
+
+type barHider struct {
+	readCloser   io.ReadCloser
+	size         int64
+	read         int64
+	bar          *pb.ProgressBar
+	message      string
+	colorization colors.Colorization
+}
+
+func (bh *barHider) Read(dest []byte) (int, error) {
+	if hasBar.CompareAndSwap(false, true) {
+		bar := pb.New(int(bh.size))
+		bar.ShowFinalTime = false
+		bar.Output = os.Stderr
+		bar.Prefix(bh.colorization.Colorize(colors.SpecUnimportant + bh.message + ":"))
+		bar.Postfix(bh.colorization.Colorize(colors.Reset))
+		bar.SetMaxWidth(80)
+		bar.SetUnits(pb.U_BYTES)
+		bar.Set(int(bh.read))
+		bh.readCloser = bar.NewProxyReader(bh.readCloser)
+		bh.bar = bar
+		bar.Start()
+	}
+
+	n, err := bh.readCloser.Read(dest)
+	// Keep track of how much we've read so far, so we can start the bar at the right place.
+	bh.read += int64(n)
+	return n, err
+}
+
+func (bh *barHider) Close() error {
+	bh.bar.FinishPrint("\r")
+	err := bh.readCloser.Close()
+	hasBar.Store(false)
+	return err
+}
+
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
 func ReadCloserProgressBar(
 	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
@@ -2245,6 +2305,7 @@ func getPluginSize(path string) (int64, error) {
 }
 
 type barCloser struct {
+	// bar        *pb3.ProgressBar
 	bar        *pb.ProgressBar
 	readCloser io.ReadCloser
 }
