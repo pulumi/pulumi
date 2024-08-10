@@ -271,6 +271,10 @@ func printDotnetLinkInstructions(root string, pkg string, out string) error {
 
 	fmt.Printf("  dotnet add reference %s\n", filepath.Join(".", relOut))
 	fmt.Println()
+	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
+	fmt.Println()
+	fmt.Println("  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>")
+	fmt.Println()
 	fmt.Println("You can then use the SDK in your .NET code with:")
 	fmt.Println()
 	fmt.Printf("  using Pulumi.%s;\n", csharpPackageName(pkg))
