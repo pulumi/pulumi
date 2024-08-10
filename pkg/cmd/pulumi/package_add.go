@@ -242,8 +242,23 @@ func printPythonLinkInstructions(root string, pkg string, out string) error {
 // Prints instructions for linking a locally generated SDK to an existing Go
 // project, in the absence of us attempting to perform this linking automatically.
 func printGoLinkInstructions(root string, pkg string, out string) error {
+	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", pkg, out)
+	fmt.Println()
+	fmt.Println("To use this SDK in your Go project, run the following command:")
+	fmt.Println()
+
+	relOut, err := filepath.Rel(root, out)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("   go mod edit -replace example.com/pulumi-%s/sdk/go/%s=%s\n", pkg, pkg, filepath.Join(".", relOut))
+	fmt.Println()
+	fmt.Println("You can then use the SDK in your Go code with:")
+	fmt.Println()
+	fmt.Printf("  import \"example.com/pulumi-%s/sdk/go/%s\"", pkg, pkg)
+	fmt.Println()
 	return nil
-	// TODO: Codify Go linking instructions
 }
 
 // csharpPackageName converts a package name to a C#-friendly package name.
