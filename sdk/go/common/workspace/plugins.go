@@ -2117,7 +2117,7 @@ func SelectCompatiblePlugin(
 var hasBar atomic.Bool
 
 func BarHider(
-	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization, finishMessage string,
 ) io.ReadCloser {
 	if size == -1 {
 		return closer
@@ -2128,21 +2128,23 @@ func BarHider(
 	}
 
 	return &barHider{
-		readCloser:   closer,
-		size:         size,
-		read:         0,
-		message:      message,
-		colorization: colorization,
+		readCloser:    closer,
+		size:          size,
+		read:          0,
+		message:       message,
+		colorization:  colorization,
+		finishMessage: finishMessage,
 	}
 }
 
 type barHider struct {
-	readCloser   io.ReadCloser
-	size         int64
-	read         int64
-	bar          *pb.ProgressBar
-	message      string
-	colorization colors.Colorization
+	readCloser    io.ReadCloser
+	size          int64
+	read          int64
+	bar           *pb.ProgressBar
+	message       string
+	colorization  colors.Colorization
+	finishMessage string
 }
 
 func (bh *barHider) Read(dest []byte) (int, error) {
@@ -2170,6 +2172,7 @@ func (bh *barHider) Close() error {
 	if bh.bar != nil {
 		// We were showing a progress bar, free up the slot.
 		bh.bar.FinishPrint("\r")
+		fmt.Fprintf(os.Stderr, bh.finishMessage)
 		err := bh.readCloser.Close()
 		hasBar.Store(false)
 		return err

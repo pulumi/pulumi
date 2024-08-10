@@ -262,8 +262,10 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
 
+	finishMessage := fmt.Sprintf("[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
+
 	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		return workspace.BarHider(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+		return workspace.BarHider(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization(), finishMessage)
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
 		logging.V(preparePluginVerboseLog).Infof(
@@ -276,7 +278,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	}
 	defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
 
-	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
+	// fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
