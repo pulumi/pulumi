@@ -206,6 +206,7 @@ var functionImports = map[string][]string{
 	"sha1":             {"hashlib"},
 	"stack":            {"pulumi"},
 	"project":          {"pulumi"},
+	"organization":     {"pulumi"},
 	"cwd":              {"os"},
 	"mimeType":         {"mimetypes"},
 }
@@ -423,6 +424,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "pulumi.get_project()")
 	case "stack":
 		g.Fgen(w, "pulumi.get_stack()")
+	case "organization":
+		g.Fgen(w, "pulumi.get_organization()")
 	case "cwd":
 		g.Fgen(w, "os.getcwd()")
 	case "getOutput":

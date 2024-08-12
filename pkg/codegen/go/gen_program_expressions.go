@@ -375,6 +375,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "ctx.Stack()")
 	case "project":
 		g.Fgen(w, "ctx.Project()")
+	case "organization":
+		g.Fgen(w, "ctx.Organization()")
 	case "cwd":
 		g.Fgen(w, "func(cwd string, err error) string { if err != nil { panic(err) }; return cwd }(os.Getwd())")
 	case "getOutput":
