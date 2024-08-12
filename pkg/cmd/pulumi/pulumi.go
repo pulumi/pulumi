@@ -41,6 +41,7 @@ import (
 	"github.com/moby/term"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -160,7 +161,7 @@ type PulumiConfig struct {
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
-	var cwd string
+	updateCheckResult := make(chan *diag.Diag)
 	var logFlow bool
 	var logToStderr bool
 	var tracingFlag string
@@ -170,7 +171,9 @@ func NewPulumiCmd() *cobra.Command {
 	var color string
 	var memProfileRate int
 
-	updateCheckResult := make(chan *diag.Diag)
+	v := viper.New()
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
@@ -192,6 +195,9 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			pulumiCmdOpts := PulumiConfig{}
+			pulumiCmdOpts = UnmashalOpts(v, pulumiCmdOpts, cmd.Name()).(PulumiConfig)
+
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
@@ -216,11 +222,13 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if cwd != "" {
-				if err := os.Chdir(cwd); err != nil {
+			if pulumiCmdOpts.Cwd != "" {
+				if err := os.Chdir(pulumiCmdOpts.Cwd); err != nil {
 					return err
 				}
 			}
+
+			fmt.Println("Pulumi command line", pulumiCmdOpts.Cwd)
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
@@ -295,8 +303,9 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
+	cmd.PersistentFlags().StringP("cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")
+	v.BindPFlag("cwd", cmd.PersistentFlags().Lookup("cwd"))
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.FullyQualifyStackNames, "fully-qualify-stack-names", "Q", false,
