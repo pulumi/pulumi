@@ -36,6 +36,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type StackOutputConfig struct {
+	PulumiConfig
+
+	Stack       string
+	ShowSecrets bool
+	JSON        bool
+	Shell       bool
+}
+
+type stackOutputCmd struct {
+	Config StackOutputConfig
+
+	OS string // defaults to runtime.GOOS
+
+	// requireStack is a reference to the top-level requireStack function.
+	// This is a field on stackOutputCmd so that we can replace it
+	// from tests.
+	requireStack func(ctx context.Context, name string, lopt stackLoadOption, opts display.Options) (backend.Stack, error)
+
+	Stdout io.Writer // defaults to os.Stdout
+}
+
 func newStackOutputCmd() *cobra.Command {
 	var socmd stackOutputCmd
 	cmd := &cobra.Command{
@@ -52,31 +74,15 @@ func newStackOutputCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&socmd.jsonOut, "json", "j", false, "Emit output as JSON")
+		&socmd.Config.JSON, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().BoolVar(
-		&socmd.shellOut, "shell", false, "Emit output as a shell script")
+		&socmd.Config.Shell, "shell", false, "Emit output as a shell script")
 	cmd.PersistentFlags().StringVarP(
-		&socmd.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+		&socmd.Config.Stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(
-		&socmd.showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
+		&socmd.Config.ShowSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
 
 	return cmd
-}
-
-type stackOutputCmd struct {
-	stackName   string
-	showSecrets bool
-	jsonOut     bool
-	shellOut    bool
-
-	OS string // defaults to runtime.GOOS
-
-	// requireStack is a reference to the top-level requireStack function.
-	// This is a field on stackOutputCmd so that we can replace it
-	// from tests.
-	requireStack func(ctx context.Context, name string, lopt stackLoadOption, opts display.Options) (backend.Stack, error)
-
-	Stdout io.Writer // defaults to os.Stdout
 }
 
 func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
@@ -100,18 +106,18 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	var outw stackOutputWriter
-	if cmd.shellOut && cmd.jsonOut {
+	if cmd.Config.Shell && cmd.Config.JSON {
 		return errors.New("only one of --json and --shell may be set")
-	} else if cmd.jsonOut {
+	} else if cmd.Config.JSON {
 		outw = &jsonStackOutputWriter{W: stdout}
-	} else if cmd.shellOut {
+	} else if cmd.Config.Shell {
 		outw = newShellStackOutputWriter(stdout, osys)
 	} else {
 		outw = &consoleStackOutputWriter{W: stdout}
 	}
 
 	// Fetch the current stack and its output properties.
-	s, err := requireStack(ctx, cmd.stackName, stackLoadOnly, opts)
+	s, err := requireStack(ctx, cmd.Config.Stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}
@@ -120,7 +126,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	outputs, err := getStackOutputs(snap, cmd.showSecrets)
+	outputs, err := getStackOutputs(snap, cmd.Config.ShowSecrets)
 	if err != nil {
 		return fmt.Errorf("getting outputs: %w", err)
 	}
@@ -145,7 +151,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		}
 	}
 
-	if cmd.showSecrets {
+	if cmd.Config.ShowSecrets {
 		log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack output")
 	}
 
