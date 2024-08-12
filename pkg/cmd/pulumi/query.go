@@ -28,11 +28,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+type QueryConfig struct {
+	PulumiConfig
+
+	Stack string
+}
+
 // intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
 func newQueryCmd() *cobra.Command {
-	var stackName string
+	var config QueryConfig
 
 	cmd := &cobra.Command{
 		Use:   "query",
@@ -101,7 +107,7 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
