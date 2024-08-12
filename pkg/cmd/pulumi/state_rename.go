@@ -30,6 +30,109 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type StateRenameConfig struct {
+	PulumiConfig
+
+	Stack string
+	Yes   bool
+}
+
+//nolint:lll
+func newStateRenameCommand() *cobra.Command {
+	var config StateRenameConfig
+
+	cmd := &cobra.Command{
+		Use:   "rename [resource URN] [new name]",
+		Short: "Renames a resource from a stack's state",
+		Long: `Renames a resource from a stack's state
+
+This command renames a resource from a stack's state. The resource is specified
+by its Pulumi URN and the new name of the resource.
+
+Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+
+To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
+`,
+		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
+		Args:    cmdutil.MaximumNArgs(2),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			config.Yes = config.Yes || skipConfirmations()
+
+			if len(args) < 2 && !cmdutil.Interactive() {
+				return missingNonInteractiveArg("resource URN", "new name")
+			}
+
+			var urn resource.URN
+			var newResourceName tokens.QName
+			switch len(args) {
+			case 0: // We got neither the URN nor the name.
+				var snap *deploy.Snapshot
+				err := surveyStack(
+					func() (err error) {
+						urn, err = getURNFromState(ctx, config.Stack, &snap, "Select a resource to rename:")
+						if err != nil {
+							err = fmt.Errorf("failed to select resource: %w", err)
+						}
+						return
+					},
+					func() (err error) {
+						newResourceName, err = getNewResourceName()
+						return
+					},
+				)
+				if err != nil {
+					return err
+				}
+			case 1: // We got the urn but not the name
+				urn = resource.URN(args[0])
+				if !urn.IsValid() {
+					return errors.New("The provided input URN is not valid")
+				}
+				var err error
+				newResourceName, err = getNewResourceName()
+				if err != nil {
+					return err
+				}
+			case 2: // We got the URN and the name.
+				urn = resource.URN(args[0])
+				if !urn.IsValid() {
+					return errors.New("The provided input URN is not valid")
+				}
+				rName := args[1]
+				if !tokens.IsQName(rName) {
+					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
+					return fmt.Errorf("invalid name %q: %s", rName, reason)
+				}
+				newResourceName = tokens.QName(rName)
+			}
+
+			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
+			showPrompt := !config.Yes
+
+			err := runTotalStateEdit(ctx, config.Stack, showPrompt,
+				func(opts display.Options, snap *deploy.Snapshot) error {
+					return stateRenameOperation(urn, newResourceName, opts, snap)
+				})
+			if err != nil {
+				// an error occurred
+				// return it
+				return err
+			}
+
+			fmt.Println("Resource renamed")
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().StringVarP(
+		&config.Stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
+
+	cmd.Flags().BoolVarP(&config.Yes, "yes", "y", false, "Skip confirmation prompts")
+	return cmd
+}
+
 func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn resource.URN) []resource.URN {
 	var updatedDependencies []resource.URN
 	for _, dependency := range dependencies {
@@ -149,101 +252,4 @@ func stateRenameOperation(
 	// update the URN with only the name part changed
 	newUrn := urn.Rename(string(newResourceName))
 	return stateReurnOperation(urn, newUrn, opts, snap)
-}
-
-//nolint:lll
-func newStateRenameCommand() *cobra.Command {
-	var stack string
-	var yes bool
-
-	cmd := &cobra.Command{
-		Use:   "rename [resource URN] [new name]",
-		Short: "Renames a resource from a stack's state",
-		Long: `Renames a resource from a stack's state
-
-This command renames a resource from a stack's state. The resource is specified
-by its Pulumi URN and the new name of the resource.
-
-Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
-
-To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
-`,
-		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
-		Args:    cmdutil.MaximumNArgs(2),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
-
-			if len(args) < 2 && !cmdutil.Interactive() {
-				return missingNonInteractiveArg("resource URN", "new name")
-			}
-
-			var urn resource.URN
-			var newResourceName tokens.QName
-			switch len(args) {
-			case 0: // We got neither the URN nor the name.
-				var snap *deploy.Snapshot
-				err := surveyStack(
-					func() (err error) {
-						urn, err = getURNFromState(ctx, stack, &snap, "Select a resource to rename:")
-						if err != nil {
-							err = fmt.Errorf("failed to select resource: %w", err)
-						}
-						return
-					},
-					func() (err error) {
-						newResourceName, err = getNewResourceName()
-						return
-					},
-				)
-				if err != nil {
-					return err
-				}
-			case 1: // We got the urn but not the name
-				urn = resource.URN(args[0])
-				if !urn.IsValid() {
-					return errors.New("The provided input URN is not valid")
-				}
-				var err error
-				newResourceName, err = getNewResourceName()
-				if err != nil {
-					return err
-				}
-			case 2: // We got the URN and the name.
-				urn = resource.URN(args[0])
-				if !urn.IsValid() {
-					return errors.New("The provided input URN is not valid")
-				}
-				rName := args[1]
-				if !tokens.IsQName(rName) {
-					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
-					return fmt.Errorf("invalid name %q: %s", rName, reason)
-				}
-				newResourceName = tokens.QName(rName)
-			}
-
-			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
-			showPrompt := !yes
-
-			err := runTotalStateEdit(ctx, stack, showPrompt,
-				func(opts display.Options, snap *deploy.Snapshot) error {
-					return stateRenameOperation(urn, newResourceName, opts, snap)
-				})
-			if err != nil {
-				// an error occurred
-				// return it
-				return err
-			}
-
-			fmt.Println("Resource renamed")
-			return nil
-		}),
-	}
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
-	return cmd
 }
