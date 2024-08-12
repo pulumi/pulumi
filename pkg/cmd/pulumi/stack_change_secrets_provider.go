@@ -33,11 +33,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type StackChangeSecretsProviderConfig struct {
+	PulumiConfig
+
+	Stack string
+}
+
 type stackChangeSecretsProviderCmd struct {
-	stdout io.Writer
+	Config StackChangeSecretsProviderConfig
 
-	stack string
-
+	stdout          io.Writer
 	secretsProvider secrets.Provider
 }
 
@@ -72,7 +77,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&scspcmd.stack, "stack", "s", "",
+		&scspcmd.Config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
@@ -101,7 +106,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// Get the current stack and its project
-	currentStack, err := requireStack(ctx, cmd.stack, stackLoadOnly, opts)
+	currentStack, err := requireStack(ctx, cmd.Config.Stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}
