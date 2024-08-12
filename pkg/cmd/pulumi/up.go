@@ -20,10 +20,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -32,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -150,7 +149,6 @@ func newUpCmd() *cobra.Command {
 		if err != nil {
 			return result.FromError(err)
 		}
-		fmt.Println("continue on error", continueOnError)
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -380,7 +378,6 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		fmt.Println("continue on error", continueOnError)
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:         parallel,
@@ -441,15 +438,7 @@ func newUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-			viper.SetEnvPrefix("PULUMI")
-			viper.AutomaticEnv()
 			ctx := cmd.Context()
-
-			continueOnError = viper.GetBool("continue-on-error")
-			fmt.Println("continue on error", continueOnError)
-			fmt.Println("json", viper.Get("json"))
-			fmt.Println(viper.AllSettings())
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -604,7 +593,6 @@ func newUpCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
-	viper.BindPFlag("json", cmd.Flags().Lookup("json"))
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -649,10 +637,9 @@ func newUpCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", false,
+		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue updating resources even if an error is encountered "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
-	viper.BindPFlag("continue-on-error", cmd.PersistentFlags().Lookup("continue-on-error"))
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
