@@ -36,12 +36,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type StackLsConfig struct {
+	PulumiConfig
+
+	JSON         bool
+	AllStacks    bool
+	Organization string
+	Project      string
+	Tag          string
+}
+
 func newStackLsCmd() *cobra.Command {
-	var jsonOut bool
-	var allStacks bool
-	var orgFilter string
-	var projFilter string
-	var tagFilter string
+	var config StackLsConfig
 
 	cmd := &cobra.Command{
 		Use:   "ls",
@@ -58,45 +64,30 @@ func newStackLsCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			cmdArgs := stackLSArgs{
-				jsonOut:    jsonOut,
-				allStacks:  allStacks,
-				orgFilter:  orgFilter,
-				projFilter: projFilter,
-				tagFilter:  tagFilter,
-			}
-			return runStackLS(ctx, cmdArgs)
+			return runStackLS(ctx, config, nil)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+		&config.JSON, "json", "j", false, "Emit output as JSON")
 
 	cmd.PersistentFlags().BoolVarP(
-		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
+		&config.AllStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
 	cmd.PersistentFlags().StringVarP(
-		&orgFilter, "organization", "o", "", "Filter returned stacks to those in a specific organization")
+		&config.Organization, "organization", "o", "", "Filter returned stacks to those in a specific organization")
 	cmd.PersistentFlags().StringVarP(
-		&projFilter, "project", "p", "", "Filter returned stacks to those with a specific project name")
+		&config.Project, "project", "p", "", "Filter returned stacks to those with a specific project name")
 	cmd.PersistentFlags().StringVarP(
-		&tagFilter, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name=tag-value)")
+		&config.Tag, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name=tag-value)")
 
 	return cmd
 }
 
-type stackLSArgs struct {
-	jsonOut    bool
-	allStacks  bool
-	orgFilter  string
-	projFilter string
-	tagFilter  string
-	stdout     io.Writer
-}
-
-func runStackLS(ctx context.Context, args stackLSArgs) error {
-	if args.stdout == nil {
-		args.stdout = os.Stdout
+func runStackLS(ctx context.Context, config StackLsConfig, stdout io.Writer) error {
+	if stdout == nil {
+		stdout = os.Stdout
 	}
+
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
 	strPtrIfSet := func(s string) *string {
@@ -106,17 +97,17 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		return nil
 	}
 	filter := backend.ListStacksFilter{
-		Organization: strPtrIfSet(args.orgFilter),
-		Project:      strPtrIfSet(args.projFilter),
+		Organization: strPtrIfSet(config.Organization),
+		Project:      strPtrIfSet(config.Project),
 	}
-	if args.tagFilter != "" {
-		tagName, tagValue := parseTagFilter(args.tagFilter)
+	if config.Tag != "" {
+		tagName, tagValue := parseTagFilter(config.Tag)
 		filter.TagName = &tagName
 		filter.TagValue = tagValue
 	}
 
 	// If --all is not specified, default to filtering to just the current project.
-	if !args.allStacks && args.projFilter == "" {
+	if !config.AllStacks && config.Project == "" {
 		// Ensure we are in a project; if not, we will fail.
 		projPath, err := workspace.DetectProjectPath()
 		if err != nil {
@@ -182,8 +173,8 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		return allStackSummaries[i].Name().String() < allStackSummaries[j].Name().String()
 	})
 
-	if args.jsonOut {
-		return formatStackSummariesJSON(b, current, allStackSummaries, args.stdout)
+	if config.JSON {
+		return formatStackSummariesJSON(b, current, allStackSummaries, stdout)
 	}
 
 	return formatStackSummariesConsole(b, current, allStackSummaries)
