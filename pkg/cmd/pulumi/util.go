@@ -1236,3 +1236,19 @@ func renderTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) string {
 	}
 	return table.Render(opts)
 }
+
+// getOrganization returns the organization to use for the given project.
+func getOrganization(project *workspace.Project, cloudBackend backend.Backend) (string, error) {
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return "", err
+	}
+	if defaultOrg != "" {
+		return defaultOrg, nil
+	}
+	userName, _, _, err := cloudBackend.CurrentUser()
+	if err != nil {
+		return "", err
+	}
+	return userName, nil
+}

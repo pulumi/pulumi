@@ -76,7 +76,8 @@ type PulumiQueryResponse struct {
 }
 
 type PulumiQueryRequest struct {
-	Query string `url:"query"`
+	Query      string `url:"query"`
+	Properties bool   `url:"properties,omitempty"`
 }
 
 // ParseQueryParams takes a list of parameters passed into the CLI

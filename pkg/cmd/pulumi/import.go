@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -534,6 +535,7 @@ func newImportCmd() *cobra.Command {
 	var parentSpec string
 	var providerSpec string
 	var importFilePath string
+	var importQuery string
 	var outputFilePath string
 	var generateCode bool
 
@@ -663,13 +665,54 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("create plugin context: %w", err))
 			}
 
-			var importFile importFile
+			// Fetch the project.
+			proj, root, err := readProject()
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			yes = yes || skipPreview || skipConfirmations()
+			interactive := cmdutil.Interactive()
+			if !interactive && !yes && !previewOnly {
+				return result.FromError(
+					errors.New("--yes or --skip-preview or --preview-only" +
+						" must be passed in to proceed when running in non-interactive mode"))
+			}
+
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			displayType := display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
+			opts.Display = display.Options{
+				Color:            cmdutil.GetGlobalColorization(),
+				ShowConfig:       showConfig,
+				SuppressOutputs:  suppressOutputs,
+				SuppressProgress: suppressProgress,
+				IsInteractive:    interactive,
+				Type:             displayType,
+				EventLogPath:     eventLogPath,
+				Debug:            debug,
+				JSONDisplay:      jsonDisplay,
+			}
+
+			be, err := currentBackend(ctx, proj, opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			var importFileData importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
 				}
-				if from != "" {
+				if from != "" || importQuery != "" {
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf("a converter may not be specified in conjunction with an import file")
 				}
@@ -677,7 +720,7 @@ func newImportCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(fmt.Errorf("could not read import file: %w", err))
 				}
-				importFile = f
+				importFileData = f
 			} else if from != "" {
 				log := func(sev diag.Severity, msg string) {
 					pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
@@ -742,7 +785,42 @@ func newImportCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(err)
 				}
-				importFile = f
+				importFileData = f
+			} else if importQuery != "" {
+				cloudBackend, isCloud := be.(httpstate.Backend)
+				if !isCloud {
+					return result.Errorf("cannot import from a resource search query using a non-Pulumi Cloud backend")
+				}
+				org, err := getOrganization(proj, cloudBackend)
+				if err != nil {
+					return result.FromError(err)
+				}
+				resp, err := cloudBackend.Search(ctx, org, &apitype.PulumiQueryRequest{
+					Query:      importQuery,
+					Properties: true,
+				})
+				if err != nil {
+					return result.FromError(err)
+				}
+				// TODO: Pagination
+				var resources []importSpec
+				// fmt.Printf("searched in org '%s' for: %v\n", org, importQuery)
+				// fmt.Printf("resources (%d): %v\n", len(resp.Resources), resp.Resources)
+				for _, res := range resp.Resources {
+					// fmt.Printf("resource: %v %v -- %v\n", *res.Name, *res.Type, res.Properties)
+					if res.ID != nil && !skipResourceType(*res.Type) {
+						resources = append(resources, importSpec{
+							Type: tokens.Type(*res.Type),
+							Name: *res.Name,
+							ID:   importID(*res.ID, *res.Type, res.Properties),
+							// TODO: Other fields?
+						})
+					}
+				}
+				importFileData = importFile{
+					NameTable: map[string]resource.URN{},
+					Resources: resources,
+				}
 			} else {
 				msg := "an inline resource must be specified if no converter or import file is used, missing "
 				if len(args) == 0 {
@@ -765,7 +843,7 @@ func newImportCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(err)
 				}
-				importFile = f
+				importFileData = f
 			}
 
 			if !generateCode && outputFilePath != "" {
@@ -781,42 +859,6 @@ func newImportCmd() *cobra.Command {
 				}
 				defer contract.IgnoreClose(f)
 				output = f
-			}
-
-			// Fetch the project.
-			proj, root, err := readProject()
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			yes = yes || skipPreview || skipConfirmations()
-			interactive := cmdutil.Interactive()
-			if !interactive && !yes && !previewOnly {
-				return result.FromError(
-					errors.New("--yes or --skip-preview or --preview-only" +
-						" must be passed in to proceed when running in non-interactive mode"))
-			}
-
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			displayType := display.DisplayProgress
-			if diffDisplay {
-				displayType = display.DisplayDiff
-			}
-
-			opts.Display = display.Options{
-				Color:            cmdutil.GetGlobalColorization(),
-				ShowConfig:       showConfig,
-				SuppressOutputs:  suppressOutputs,
-				SuppressProgress: suppressProgress,
-				IsInteractive:    interactive,
-				Type:             displayType,
-				EventLogPath:     eventLogPath,
-				Debug:            debug,
-				JSONDisplay:      jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -844,7 +886,7 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, protectResources)
+			imports, nameTable, err := parseImportFile(importFileData, s.Ref().Name(), proj.Name, protectResources)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -1001,7 +1043,7 @@ func newImportCmd() *cobra.Command {
 				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
 				// directory so if there's any issues users can manually edit the file and try again with --file
 				if from != "" {
-					path, err := writeImportFileToTemp(importFile)
+					path, err := writeImportFileToTemp(importFileData)
 					if err != nil {
 						return result.FromError(err)
 					}
@@ -1027,6 +1069,8 @@ func newImportCmd() *cobra.Command {
 		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
+	cmd.PersistentFlags().StringVarP(
+		&importQuery, "query", "q", "", "The Pulumi Cloud resource search query to use to provide a list of resources to import")
 	cmd.PersistentFlags().StringVarP(
 		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
 	cmd.PersistentFlags().BoolVar(
@@ -1096,4 +1140,27 @@ func newImportCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
+}
+
+func importID(id string, typ string, properties *json.RawMessage) resource.ID {
+	var props map[string]interface{}
+	if properties != nil {
+		json.Unmarshal(*properties, &props)
+	}
+	if typ == "aws:s3/bucketObject:BucketObject" {
+		// fmt.Printf("using S3 BucketObject import ID: %s\n", props["bucket"].(string)+"/"+id)
+		return resource.ID(props["bucket"].(string) + "/" + id)
+	}
+	return resource.ID(id)
+}
+
+func skipResourceType(t string) bool {
+	// These types are known to not be importable, we will always skip them.
+	if strings.HasPrefix(t, "pulumi:providers:") {
+		return true
+	}
+	if t == "pulumi:pulumi:Stack" {
+		return true
+	}
+	return false
 }
