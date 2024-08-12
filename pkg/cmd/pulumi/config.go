@@ -48,12 +48,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newConfigCmd() *cobra.Command {
-	var stack string
-	var showSecrets bool
-	var jsonOut bool
-	var open bool
+type ConfigConfig struct {
+	PulumiConfig
 
+	Stack       string
+	ShowSecrets bool
+	JSON        bool
+	Open        bool
+}
+
+func newConfigCmd() *cobra.Command {
+	config := ConfigConfig{}
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage configuration",
@@ -72,7 +77,7 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, config.Stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -87,40 +92,40 @@ func newConfigCmd() *cobra.Command {
 
 			var openEnvironment bool
 			if openSetByUser {
-				openEnvironment = open
+				openEnvironment = config.Open
 			} else {
-				openEnvironment = showSecrets
+				openEnvironment = config.ShowSecrets
 			}
 
-			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut, openEnvironment)
+			return listConfig(ctx, os.Stdout, project, stack, ps, config.ShowSecrets, config.JSON, openEnvironment)
 		}),
 	}
 
 	cmd.Flags().BoolVar(
-		&showSecrets, "show-secrets", false,
+		&config.ShowSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.Flags().BoolVar(
-		&open, "open", false,
+		&config.Open, "open", false,
 		"Open and resolve any environments listed in the stack configuration. "+
 			"Defaults to true if --show-secrets is set, false otherwise")
 	cmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
+		&config.JSON, "json", "j", false,
 		"Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
-	cmd.AddCommand(newConfigGetCmd(&stack))
-	cmd.AddCommand(newConfigRmCmd(&stack))
-	cmd.AddCommand(newConfigRmAllCmd(&stack))
-	cmd.AddCommand(newConfigSetCmd(&stack))
-	cmd.AddCommand(newConfigSetAllCmd(&stack))
-	cmd.AddCommand(newConfigRefreshCmd(&stack))
-	cmd.AddCommand(newConfigCopyCmd(&stack))
-	cmd.AddCommand(newConfigEnvCmd(&stack))
+	cmd.AddCommand(newConfigGetCmd(&config.Stack))
+	cmd.AddCommand(newConfigRmCmd(&config.Stack))
+	cmd.AddCommand(newConfigRmAllCmd(&config.Stack))
+	cmd.AddCommand(newConfigSetCmd(&config.Stack))
+	cmd.AddCommand(newConfigSetAllCmd(&config.Stack))
+	cmd.AddCommand(newConfigRefreshCmd(&config.Stack))
+	cmd.AddCommand(newConfigCopyCmd(&config.Stack))
+	cmd.AddCommand(newConfigEnvCmd(&config.Stack))
 
 	return cmd
 }

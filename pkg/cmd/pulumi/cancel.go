@@ -27,9 +27,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+type CancelConfig struct {
+	PulumiConfig
+
+	Yes   bool
+	Stack string
+}
+
 func newCancelCmd() *cobra.Command {
-	var yes bool
-	var stack string
+	config := CancelConfig{}
 	cmd := &cobra.Command{
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -46,18 +52,18 @@ func newCancelCmd() *cobra.Command {
 			ctx := cmd.Context()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
-				if stack != "" {
+				if config.Stack != "" {
 					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
 
-				stack = args[0]
+				config.Stack = args[0]
 			}
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -65,7 +71,7 @@ func newCancelCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			stackName := s.Ref().Name().String()
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
-			if cmdutil.Interactive() && (!yes && !confirmPrompt(prompt, stackName, opts)) {
+			if cmdutil.Interactive() && (!config.Yes && !confirmPrompt(prompt, stackName, opts)) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
@@ -84,10 +90,10 @@ func newCancelCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&config.Yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd

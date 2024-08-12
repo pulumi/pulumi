@@ -44,10 +44,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type AboutConfig struct {
+	PulumiConfig
+
+	JSON                   bool
+	TransitiveDependencies bool
+	Stack                  string
+}
+
 func newAboutCmd() *cobra.Command {
-	var jsonOut bool
-	var transitiveDependencies bool
-	var stack string
+	// var jsonOut bool
+	// var transitiveDependencies bool
+	// var stack string
+	config := AboutConfig{}
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
 		Use:   "about",
@@ -65,8 +74,8 @@ func newAboutCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
-			if jsonOut {
+			summary := getSummaryAbout(ctx, config.TransitiveDependencies, config.Stack)
+			if config.JSON {
 				return printJSON(summary)
 			}
 			summary.Print()
@@ -77,12 +86,12 @@ func newAboutCmd() *cobra.Command {
 	cmd.AddCommand(newAboutEnvCmd())
 
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+		&config.JSON, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to get info on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVarP(
-		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+		&config.TransitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
 
 	return cmd
 }

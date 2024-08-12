@@ -49,6 +49,18 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
+type ConvertConfig struct {
+	PulumiConfig
+
+	OutDir       string
+	From         string
+	Language     string
+	GenerateOnly bool
+	Mappings     []string
+	Strict       bool
+	Name         string
+}
+
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
 func loadConverterPlugin(
@@ -92,13 +104,7 @@ func loadConverterPlugin(
 }
 
 func newConvertCmd() *cobra.Command {
-	var outDir string
-	var from string
-	var language string
-	var generateOnly bool
-	var mappings []string
-	var strict bool
-	var name string
+	config := ConvertConfig{}
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -124,40 +130,40 @@ func newConvertCmd() *cobra.Command {
 				env.Global(),
 				args,
 				cwd,
-				mappings,
-				from,
-				language,
-				outDir,
-				generateOnly,
-				strict,
-				name,
+				config.Mappings,
+				config.From,
+				config.Language,
+				config.OutDir,
+				config.GenerateOnly,
+				config.Strict,
+				config.Name,
 			)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
+		&config.Language, "language", "", "Which language plugin to use to generate the Pulumi project")
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&from, "from", "yaml", "Which converter plugin to use to read the source program")
+		&config.From, "from", "yaml", "Which converter plugin to use to read the source program")
 
 	cmd.PersistentFlags().StringVar(
-		&outDir, "out", ".", "The output directory to write the converted project to")
+		&config.OutDir, "out", ".", "The output directory to write the converted project to")
 
 	cmd.PersistentFlags().BoolVar(
-		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
+		&config.GenerateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
 
 	cmd.PersistentFlags().StringSliceVar(
-		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
+		&config.Mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
 
 	cmd.PersistentFlags().BoolVar(
-		&strict, "strict", false, "Fail the conversion on errors such as missing variables")
+		&config.Strict, "strict", false, "Fail the conversion on errors such as missing variables")
 
 	cmd.PersistentFlags().StringVar(
-		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
+		&config.Name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
 
 	return cmd
 }

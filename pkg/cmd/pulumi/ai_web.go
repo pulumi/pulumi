@@ -32,6 +32,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type AIWebConfig struct {
+	PulumiConfig
+
+	AppURL            string
+	DisableAutoSubmit bool
+	Language          PulumiAILanguage
+}
+
 type PulumiAILanguage string
 
 const (
@@ -72,9 +80,7 @@ func (l *PulumiAILanguage) Type() string {
 }
 
 type aiWebCmd struct {
-	appURL            string
-	disableAutoSubmit bool
-	language          PulumiAILanguage
+	config AIWebConfig
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -91,7 +97,7 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = currentBackend
 	}
-	requestURL, err := url.Parse(cmd.appURL)
+	requestURL, err := url.Parse(cmd.config.AppURL)
 	if err != nil {
 		return err
 	}
@@ -99,16 +105,16 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		query.Set("prompt", args[0])
 	}
-	if !cmd.disableAutoSubmit {
+	if !cmd.config.DisableAutoSubmit {
 		if len(args) == 0 {
 			return errors.New("prompt must be provided when auto-submit is enabled")
 		}
 		query.Set("autoSubmit", "true")
 	}
-	if cmd.language == "" {
-		cmd.language = TypeScript // TODO: default to the language of the current project if one is present
+	if cmd.config.Language == "" {
+		cmd.config.Language = TypeScript // TODO: default to the language of the current project if one is present
 	}
-	query.Set("language", cmd.language.String())
+	query.Set("language", cmd.config.Language.String())
 
 	requestURL.RawQuery = query.Encode()
 	if err = browser.OpenURL(requestURL.String()); err != nil {
@@ -122,9 +128,9 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 
 func newAIWebCommand() *cobra.Command {
 	var aiwebcmd aiWebCmd
-	aiwebcmd.appURL = env.AIServiceEndpoint.Value()
-	if aiwebcmd.appURL == "" {
-		aiwebcmd.appURL = "https://www.pulumi.com/ai"
+	aiwebcmd.config.AppURL = env.AIServiceEndpoint.Value()
+	if aiwebcmd.config.AppURL == "" {
+		aiwebcmd.config.AppURL = "https://www.pulumi.com/ai"
 	}
 	cmd := &cobra.Command{
 		Use:   "web",
@@ -148,11 +154,11 @@ by passing the --no-auto-submit flag.
 		),
 	}
 	cmd.PersistentFlags().BoolVar(
-		&aiwebcmd.disableAutoSubmit, "no-auto-submit", false,
+		&aiwebcmd.config.DisableAutoSubmit, "no-auto-submit", false,
 		"Opt-out of automatically submitting the prompt to Pulumi AI",
 	)
 	cmd.PersistentFlags().VarP(
-		&aiwebcmd.language, "language", "l",
+		&aiwebcmd.config.Language, "language", "l",
 		"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]",
 	)
 	return cmd

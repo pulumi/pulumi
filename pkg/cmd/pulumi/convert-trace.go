@@ -47,6 +47,14 @@ import (
 // each root is sampled at a particular granularity. the nested traces are converted into a callstack at each
 // sampling point.
 
+type ConvertTraceConfig struct {
+	PulumiConfig
+
+	Otel           bool
+	IgnoreLogSpans bool
+	Quantum        time.Duration
+}
+
 func traceRoots(querier appdash.Queryer) ([]*appdash.Trace, error) {
 	traces, err := querier.Traces(appdash.TracesOpts{})
 	if err != nil {
@@ -694,9 +702,7 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 }
 
 func newConvertTraceCmd() *cobra.Command {
-	var otel bool
-	var ignoreLogSpans bool
-	var quantum time.Duration
+	config := ConvertTraceConfig{}
 	cmd := &cobra.Command{
 		Use:   "convert-trace [trace-file]",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
@@ -713,16 +719,16 @@ func newConvertTraceCmd() *cobra.Command {
 			if err := readTrace(args[0], store); err != nil {
 				return err
 			}
-			if otel {
-				return exportTraceToOtel(store, ignoreLogSpans)
+			if config.Otel {
+				return exportTraceToOtel(store, config.IgnoreLogSpans)
 			}
-			return convertTraceToPprof(quantum, store)
+			return convertTraceToPprof(config.Quantum, store)
 		}),
 	}
 
-	cmd.Flags().DurationVarP(&quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")
-	cmd.Flags().BoolVar(&otel, "otel", false, "true to export to OpenTelemetry")
-	cmd.Flags().BoolVar(&ignoreLogSpans, "ignore-log-spans", true, "true to ignore log spans")
+	cmd.Flags().DurationVarP(&config.Quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")
+	cmd.Flags().BoolVar(&config.Otel, "otel", false, "true to export to OpenTelemetry")
+	cmd.Flags().BoolVar(&config.IgnoreLogSpans, "ignore-log-spans", true, "true to ignore log spans")
 
 	return cmd
 }
