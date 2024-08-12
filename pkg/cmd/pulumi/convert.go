@@ -163,7 +163,10 @@ func newConvertCmd() *cobra.Command {
 		&config.Strict, "strict", false, "Fail the conversion on errors such as missing variables")
 
 	cmd.PersistentFlags().StringVar(
-		&config.Name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
+		&config.Name,
+		"name", "",
+		"The name to use for the converted project; defaults to the directory of the source project",
+	)
 
 	return cmd
 }

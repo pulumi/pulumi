@@ -101,7 +101,12 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 	}
 
 	cmd.Flags().StringVarP(&stateMove.Config.SourceStack, "source", "", "", "The name of the stack to move resources from")
-	cmd.Flags().StringVarP(&stateMove.Config.DestinationStack, "dest", "", "", "The name of the stack to move resources to")
+	cmd.Flags().StringVarP(
+		&stateMove.Config.DestinationStack,
+		"dest", "",
+		"",
+		"The name of the stack to move resources to",
+	)
 	cmd.Flags().BoolVarP(&stateMove.Config.Yes, "yes", "y", false, "Automatically approve and perform the move")
 	cmd.Flags().BoolVarP(&stateMove.Config.IncludeParents, "include-parents", "", false,
 		"Include all the parents of the moved resources as well")

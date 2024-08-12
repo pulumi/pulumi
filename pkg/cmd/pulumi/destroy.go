@@ -57,7 +57,7 @@ type DestroyConfig struct {
 	RemoteArgs RemoteArgs
 
 	// Flags for engine.UpdateOptions.
-	JsonDisplay          bool
+	JSONDisplay          bool
 	DiffDisplay          bool
 	EventLogPath         string
 	Parallel             int
@@ -140,7 +140,7 @@ func newDestroyCmd() *cobra.Command {
 				Type:                 displayType,
 				EventLogPath:         config.EventLogPath,
 				Debug:                config.Debug,
-				JSONDisplay:          config.JsonDisplay,
+				JSONDisplay:          config.JSONDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -152,7 +152,7 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			if config.RemoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(false, nil, false, "", config.JsonDisplay, nil,
+				err = validateUnsupportedRemoteFlags(false, nil, false, "", config.JSONDisplay, nil,
 					nil, config.Refresh, config.ShowConfig, false, config.ShowReplacementSteps, config.ShowSames, false,
 					config.SuppressOutputs, "default", config.Targets, nil, nil,
 					config.TargetDependents, "", stackConfigFile)
@@ -272,7 +272,7 @@ func newDestroyCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
-					if !config.JsonDisplay {
+					if !config.JSONDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
 					}
@@ -309,11 +309,11 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			})
 
-			if res == nil && protectedCount > 0 && !config.JsonDisplay {
+			if res == nil && protectedCount > 0 && !config.JSONDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
 			} else if res == nil && len(*config.Targets) == 0 {
-				if !config.JsonDisplay && !config.Remove && !config.PreviewOnly {
+				if !config.JSONDisplay && !config.Remove && !config.PreviewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
@@ -326,7 +326,7 @@ func newDestroyCmd() *cobra.Command {
 					if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 							return result.FromError(err)
-						} else if !config.JsonDisplay {
+						} else if !config.JSONDisplay {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
@@ -363,15 +363,19 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&config.TargetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")
-	cmd.PersistentFlags().BoolVar(&config.ExcludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
-		" Destroy all other resources.")
+	cmd.PersistentFlags().BoolVar(
+		&config.ExcludeProtected,
+		"exclude-protected",
+		false,
+		"Do not destroy protected resources. Destroy all other resources.",
+	)
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
 		&config.DiffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
 	cmd.Flags().BoolVarP(
-		&config.JsonDisplay, "json", "j", false,
+		&config.JSONDisplay, "json", "j", false,
 		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&config.Parallel, "parallel", "p", defaultParallel,
