@@ -475,7 +475,7 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 								Name: argsParamName,
 							}),
 							Key: &model.LiteralValueExpression{
-								Value: cty.StringVal(fmt.Sprintf("\"%s\"", param.Name)),
+								Value: cty.StringVal(fmt.Sprintf("'%s'", param.Name)),
 							},
 						}, nil
 					}
