@@ -28,6 +28,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type StackInitConfig struct {
+	PulumiConfig
+
+	SecretsProvider          string
+	Stack                    string
+	ConfigurationSourceStack string
+	NoSelect                 bool
+	Teams                    []string
+}
+
+// stackInitCmd implements the `pulumi stack init` command.
+type stackInitCmd struct {
+	Config StackInitConfig
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
 const (
 	possibleSecretsProviderChoices = "The type of the provider that should be used to encrypt and decrypt secrets\n" +
 		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
@@ -73,35 +92,26 @@ func newStackInitCmd() *cobra.Command {
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&sicmd.stackName, "stack", "s", "", "The name of the stack to create")
+		&sicmd.Config.Stack, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
-		&sicmd.secretsProvider, "secrets-provider", "", possibleSecretsProviderChoices)
+		&sicmd.Config.SecretsProvider, "secrets-provider", "", possibleSecretsProviderChoices)
 	cmd.PersistentFlags().StringVar(
-		&sicmd.stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
+		&sicmd.Config.ConfigurationSourceStack,
+		"copy-config-from",
+		"",
+		"The name of the stack to copy existing config from",
+	)
 	cmd.PersistentFlags().BoolVar(
-		&sicmd.noSelect, "no-select", false, "Do not select the stack")
-	cmd.PersistentFlags().StringArrayVar(&sicmd.teams, "teams", nil, "A list of team "+
+		&sicmd.Config.NoSelect, "no-select", false, "Do not select the stack")
+	cmd.PersistentFlags().StringArrayVar(&sicmd.Config.Teams, "teams", nil, "A list of team "+
 		"names that should have permission to read and update this stack,"+
 		" once created")
 	return cmd
 }
 
-// stackInitCmd implements the `pulumi stack init` command.
-type stackInitCmd struct {
-	secretsProvider string
-	stackName       string
-	stackToCopy     string
-	noSelect        bool
-	teams           []string
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
-}
-
 func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
-	if cmd.secretsProvider == "" {
-		cmd.secretsProvider = "default"
+	if cmd.Config.SecretsProvider == "" {
+		cmd.Config.SecretsProvider = "default"
 	}
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = currentBackend
@@ -124,19 +134,19 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	if len(args) > 0 {
-		if cmd.stackName != "" {
+		if cmd.Config.Stack != "" {
 			return errors.New("only one of --stack or argument stack name may be specified, not both")
 		}
 
-		cmd.stackName = args[0]
+		cmd.Config.Stack = args[0]
 	}
 
 	// Validate secrets provider type
-	if err := validateSecretsProvider(cmd.secretsProvider); err != nil {
+	if err := validateSecretsProvider(cmd.Config.SecretsProvider); err != nil {
 		return err
 	}
 
-	if cmd.stackName == "" && cmdutil.Interactive() {
+	if cmd.Config.Stack == "" && cmdutil.Interactive() {
 		if b.SupportsOrganizations() {
 			fmt.Print("Please enter your desired stack name.\n" +
 				"To create a stack in an organization, " +
@@ -147,18 +157,18 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		if nameErr != nil {
 			return nameErr
 		}
-		cmd.stackName = name
+		cmd.Config.Stack = name
 	}
 
-	if cmd.stackName == "" {
+	if cmd.Config.Stack == "" {
 		return errors.New("missing stack name")
 	}
 
-	if err := b.ValidateStackName(cmd.stackName); err != nil {
+	if err := b.ValidateStackName(cmd.Config.Stack); err != nil {
 		return err
 	}
 
-	stackRef, err := b.ParseStackReference(cmd.stackName)
+	stackRef, err := b.ParseStackReference(cmd.Config.Stack)
 	if err != nil {
 		return err
 	}
@@ -168,23 +178,31 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
-	createOpts := newCreateStackOptions(cmd.teams)
-	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	createOpts := newCreateStackOptions(cmd.Config.Teams)
+	newStack, err := createStack(
+		ctx,
+		b,
+		stackRef,
+		root,
+		createOpts,
+		!cmd.Config.NoSelect,
+		cmd.Config.SecretsProvider,
+	)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
-				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
+				"%s does not support --teams", cmd.Config.Stack, b.Name(), b.Name())
 		}
 		return err
 	}
 
-	if cmd.stackToCopy != "" {
+	if cmd.Config.ConfigurationSourceStack != "" {
 		if projectErr != nil {
 			return projectErr
 		}
 
 		// load the old stack and its project
-		copyStack, err := requireStack(ctx, cmd.stackToCopy, stackLoadOnly, opts)
+		copyStack, err := requireStack(ctx, cmd.Config.ConfigurationSourceStack, stackLoadOnly, opts)
 		if err != nil {
 			return err
 		}
