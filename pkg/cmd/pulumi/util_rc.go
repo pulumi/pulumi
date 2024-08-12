@@ -21,8 +21,32 @@ func valueFromRc(v *viper.Viper, name, iniSection string) any {
 	if v.IsSet(defaultName) {
 		return v.Get(defaultName)
 	}
-	val := v.Get(name)
-	return val
+	return v.Get(name)
+}
+
+func defaultValueFromRc(v *viper.Viper, kind reflect.Kind, name, iniSection string) any {
+	val := valueFromRc(v, name, iniSection)
+	switch kind {
+	case reflect.Bool:
+		if val == nil {
+			return false
+		}
+		return val
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if val == nil {
+			return int(0)
+		}
+		return val
+	case reflect.String:
+		if val == nil {
+			return ""
+		}
+		return val
+	default:
+		contract.Failf("unexpected type, %v", kind)
+	}
+	return nil
 }
 
 func dashedFieldName(name string) string {
@@ -30,10 +54,8 @@ func dashedFieldName(name string) string {
 	for i, c := range name {
 		if i > 0 && 'A' <= c && c <= 'Z' {
 			result += "-"
-			result += strings.ToLower(string(c))
-		} else {
-			result += string(c)
 		}
+		result += strings.ToLower(string(c))
 	}
 	return result
 }
@@ -53,13 +75,16 @@ func UnmashalOpts(v *viper.Viper, opts any, iniSection string) any {
 				rv.Field(i).Set(reflect.ValueOf(UnmashalOpts(v, rv.Field(i).Interface(), iniSection)))
 			case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
-				reflect.Uint64, reflect.Uintptr:
-				rv.Field(i).Set(reflect.ValueOf(valueFromRc(v, fieldName, iniSection)))
+				reflect.Uint64, reflect.Uintptr, reflect.String:
+				rv.Field(i).Set(reflect.ValueOf(
+					defaultValueFromRc(v, rv.Field(i).Kind(), fieldName, iniSection)))
+			default:
+				contract.Failf("unexpected type %v", rv.Field(i).Kind())
 			}
 		}
 		return rv.Interface()
 	default:
-		contract.Failf("unexpected type")
+		contract.Failf("unexpected type %v", ref.Kind())
 	}
 	return nil
 }

@@ -41,6 +41,7 @@ import (
 	"github.com/moby/term"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -171,6 +172,7 @@ func NewPulumiCmd() *cobra.Command {
 	var memProfileRate int
 
 	updateCheckResult := make(chan *diag.Diag)
+	v := viper.New()
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
@@ -192,6 +194,8 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := PulumiConfig{}
+			opts = UnmashalOpts(v, opts, cmd.Name()).(PulumiConfig)
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
