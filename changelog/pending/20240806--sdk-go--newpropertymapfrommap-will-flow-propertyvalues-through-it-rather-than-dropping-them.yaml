@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: NewPropertyMapFromMap will flow PropertyValues through it, rather than dropping them

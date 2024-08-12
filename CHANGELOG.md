@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.129.0 (2024-08-12)
+
+
+### Features
+
+- [cli/package] Add the `pulumi package add` command for installing packages and SDKs
+  [#16923](https://github.com/pulumi/pulumi/pull/16923)
+
+- [sdkgen/dotnet] Support parameterized .NET provider SDKs
+  [#16912](https://github.com/pulumi/pulumi/pull/16912)
+
+- [sdk/nodejs] Add parameterization support for read in nodejs
+  [#16913](https://github.com/pulumi/pulumi/pull/16913)
+
+- [sdk/python] Add parameterization support for call & read in python
+  [#16915](https://github.com/pulumi/pulumi/pull/16915)
+
+- [sdk/yaml] Update pulumi-yaml to 1.9.2
+  [#16925](https://github.com/pulumi/pulumi/pull/16925)
+
+- [sdkgen/go] Go SDKs will default the import path based on the publisher and repository schema fields
+  [#16899](https://github.com/pulumi/pulumi/pull/16899)
+
+- [sdkgen/nodejs] Add parameterized provider support for Nodejs SDK
+  [#16901](https://github.com/pulumi/pulumi/pull/16901)
+
+
+### Bug Fixes
+
+- [programgen/python] Fix generated apply calls with `pulumi.all`
+  [#16941](https://github.com/pulumi/pulumi/pull/16941)
+
+- [sdk/go] NewPropertyMapFromMap will flow PropertyValues through it, rather than dropping them
+  [#16894](https://github.com/pulumi/pulumi/pull/16894)
+
+- [sdk/nodejs] Pass through pluginDownloadURL in invokes
+  [#16917](https://github.com/pulumi/pulumi/pull/16917)
+
+
+### Miscellaneous
+
+- [pkg] Upgrade pulumi-java to v0.13.0
+  [#16882](https://github.com/pulumi/pulumi/pull/16882)
+
 ## 3.128.0 (2024-08-05)
 
 

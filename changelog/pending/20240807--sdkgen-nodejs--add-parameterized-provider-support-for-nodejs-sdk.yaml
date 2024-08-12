@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/nodejs
-  description: Add parameterized provider support for Nodejs SDK

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/go
-  description: Go SDKs will default the import path based on the publisher and repository schema fields
