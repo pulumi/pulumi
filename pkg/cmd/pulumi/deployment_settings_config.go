@@ -32,6 +32,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: hack/pulumirc
+
 const (
 	optYes                         = "Yes"
 	optNo                          = "No"

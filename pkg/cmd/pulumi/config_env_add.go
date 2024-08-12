@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: hack/pulumirc
+
 func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvAddCmd{parent: parent}
 

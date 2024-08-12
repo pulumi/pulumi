@@ -26,12 +26,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeploymentRunCmd() *cobra.Command {
-	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+type DeploymentRunConfig struct {
+	PulumiConfig
 
-	var stack string
-	var suppressPermalink bool
+	// TODO: hack/pulumirc
+	RemoteArgs        RemoteArgs
+	Stack             string
+	SuppressPermalink bool
+}
+
+func newDeploymentRunCmd() *cobra.Command {
+	config := DeploymentRunConfig{}
+
+	// Flags for remote operations.
+	// remoteArgs := RemoteArgs{}
 
 	cmd := &cobra.Command{
 		Use:   "run <operation> [url]",
@@ -58,7 +66,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 				// we only suppress permalinks if the user passes true. the default is an empty string
 				// which we pass as 'false'
-				SuppressPermalink: suppressPermalink,
+				SuppressPermalink: config.SuppressPermalink,
 			}
 
 			project, _, err := readProject()
@@ -76,28 +84,28 @@ func newDeploymentRunCmd() *cobra.Command {
 					currentBe.Name()))
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, display)
+			s, err := requireStack(ctx, config.Stack, stackOfferNew|stackSetCurrent, display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			if errResult := validateDeploymentFlags(url, remoteArgs); errResult != nil {
+			if errResult := validateDeploymentFlags(url, config.RemoteArgs); errResult != nil {
 				return errResult
 			}
 
-			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, config.RemoteArgs)
 		}),
 	}
 
 	// Remote flags
-	remoteArgs.applyFlagsForDeploymentCommand(cmd)
+	config.RemoteArgs.applyFlagsForDeploymentCommand(cmd)
 
 	cmd.PersistentFlags().BoolVar(
-		&suppressPermalink, "suppress-permalink", false,
+		&config.SuppressPermalink, "suppress-permalink", false,
 		"Suppress display of the state permalink")
 
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
