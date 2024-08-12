@@ -29,10 +29,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type StateUnprotectConfig struct {
+	PulumiConfig
+
+	UnprotectAll bool
+	Stack        string
+	Yes          bool
+}
+
 func newStateUnprotectCommand() *cobra.Command {
-	var unprotectAll bool
-	var stack string
-	var yes bool
+	var config StateUnprotectConfig
 
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN]",
@@ -45,12 +51,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
+			config.Yes = config.Yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
-			showPrompt := !yes
+			showPrompt := !config.Yes
 
-			if unprotectAll {
-				return unprotectAllResources(ctx, stack, showPrompt)
+			if config.UnprotectAll {
+				return unprotectAllResources(ctx, config.Stack, showPrompt)
 			}
 
 			var urn resource.URN
@@ -60,22 +66,22 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, config.Stack, nil, "Select a resource to unprotect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
 				urn = resource.URN(args[0])
 			}
-			return unprotectResource(ctx, stack, urn, showPrompt)
+			return unprotectResource(ctx, config.Stack, urn, showPrompt)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().BoolVar(&config.UnprotectAll, "all", false, "Unprotect all resources in the checkpoint")
+	cmd.Flags().BoolVarP(&config.Yes, "yes", "y", false, "Skip confirmation prompts")
 
 	return cmd
 }
