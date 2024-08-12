@@ -36,8 +36,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type StateEditConfig struct {
+	PulumiConfig
+
+	Stack string
+}
+
+type stateEditCmd struct {
+	Config    StateEditConfig
+	Stdin     io.Reader
+	Stdout    io.Writer
+	Colorizer colors.Colorization
+}
+
 func newStateEditCommand() *cobra.Command {
-	var stackName string
 	stateEdit := &stateEditCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -58,7 +70,7 @@ a preview showing a diff of the altered state.`,
 				return result.Error("pulumi state edit must be run in interactive mode")
 			}
 			ctx := cmd.Context()
-			s, err := requireStack(ctx, stackName, stackLoadOnly, display.Options{
+			s, err := requireStack(ctx, stateEdit.Config.Stack, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
@@ -72,15 +84,9 @@ a preview showing a diff of the altered state.`,
 		}),
 	}
 	cmd.PersistentFlags().StringVar(
-		&stackName, "stack", "",
+		&stateEdit.Config.Stack, "stack", "",
 		"Remove the stack and its config file after all resources in the stack have been deleted")
 	return cmd
-}
-
-type stateEditCmd struct {
-	Stdin     io.Reader
-	Stdout    io.Writer
-	Colorizer colors.Colorization
 }
 
 type snapshotBuffer struct {
