@@ -88,7 +88,7 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 		if i > 0 {
 			g.Fgen(w, ",")
 		}
-		g.Fgenf(w, " %s", p.Name)
+		g.Fgenf(w, " %s", PyName(p.Name))
 	}
 
 	g.Fgenf(w, ": %.v", expr.Body)
@@ -169,14 +169,20 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.Fgenf(w, "%.16v.apply(%.v)", applyArgs[0], then)
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
-		g.Fgen(w, "pulumi.Output.all(")
-		for i, o := range applyArgs {
-			if i > 0 {
-				g.Fgen(w, ", ")
+		g.Fgen(w, "pulumi.Output.all(\n")
+		g.Indented(func() {
+			for i, arg := range applyArgs {
+				argName := then.Signature.Parameters[i].Name
+				g.Fgenf(w, "%s%s=%v", g.Indent, argName, arg)
+				if i < len(applyArgs)-1 {
+					g.Fgen(w, ",")
+				}
+				g.Fgen(w, "\n")
 			}
-			g.Fgenf(w, "%.v", o)
-		}
-		g.Fgenf(w, ").apply(%.v)", then)
+		})
+		g.Fgen(w, ").apply(lambda resolved_outputs: ")
+		rewrittenLambdaBody := rewriteApplyLambdaBody(then, "resolved_outputs")
+		g.Fgenf(w, "%.v)\n", rewrittenLambdaBody)
 	}
 }
 

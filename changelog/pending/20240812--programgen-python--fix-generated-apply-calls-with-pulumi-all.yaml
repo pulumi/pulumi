@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/python
+  description: Fix generated apply calls with `pulumi.all`
