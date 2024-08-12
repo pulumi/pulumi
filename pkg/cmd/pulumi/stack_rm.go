@@ -32,11 +32,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type StackRmConfig struct {
+	PulumiConfig
+
+	Stack          string
+	Yes            bool
+	Force          bool
+	PreserveConfig bool
+}
+
 func newStackRmCmd() *cobra.Command {
-	var stack string
-	var yes bool
-	var force bool
-	var preserveConfig bool
+	var config StackRmConfig
 	cmd := &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -49,31 +55,31 @@ func newStackRmCmd() *cobra.Command {
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
+			config.Yes = config.Yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
-				if stack != "" {
+				if config.Stack != "" {
 					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
-				stack = args[0]
+				config.Stack = args[0]
 			}
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
-			if !yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
+			if !config.Yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
-			hasResources, err := s.Remove(ctx, force)
+			hasResources, err := s.Remove(ctx, config.Force)
 			if err != nil {
 				if hasResources {
 					return fmt.Errorf(
@@ -85,7 +91,7 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			if !preserveConfig {
+			if !config.PreserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
 				if proj, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 					// Check that the detected project matches the stacks project, users can run `rm --stack
@@ -108,16 +114,16 @@ func newStackRmCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
+		&config.Force, "force", "f", false,
 		"Forces deletion of the stack, leaving behind any resources managed by the stack")
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&config.Yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(
-		&preserveConfig, "preserve-config", false,
+		&config.PreserveConfig, "preserve-config", false,
 		"Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack")
 
 	return cmd
