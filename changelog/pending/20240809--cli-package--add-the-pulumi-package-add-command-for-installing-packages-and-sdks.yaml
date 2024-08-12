@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Add the `pulumi package add` command for installing packages and SDKs
