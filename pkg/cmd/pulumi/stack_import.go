@@ -34,10 +34,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type StackImportConfig struct {
+	PulumiConfig
+
+	Force bool
+	File  string
+	Stack string
+}
+
 func newStackImportCmd() *cobra.Command {
-	var force bool
-	var file string
-	var stackName string
+	var config StackImportConfig
 	cmd := &cobra.Command{
 		Use:   "import",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -55,15 +61,15 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and import a deployment.
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
-			if file != "" {
-				reader, err = os.Open(file)
+			if config.File != "" {
+				reader, err = os.Open(config.File)
 				if err != nil {
 					return fmt.Errorf("could not open file: %w", err)
 				}
@@ -83,7 +89,7 @@ func newStackImportCmd() *cobra.Command {
 			if err != nil {
 				return checkDeploymentVersionError(err, s.Ref().Name().String())
 			}
-			if err := saveSnapshot(ctx, s, snapshot, force); err != nil {
+			if err := saveSnapshot(ctx, s, snapshot, config.Force); err != nil {
 				return err
 			}
 			fmt.Printf("Import complete.\n")
@@ -92,12 +98,16 @@ func newStackImportCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+		&config.Stack,
+		"stack", "s",
+		"",
+		"The name of the stack to operate on. Defaults to the current stack",
+	)
 	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
+		&config.Force, "force", "f", false,
 		"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)")
 	cmd.PersistentFlags().StringVarP(
-		&file, "file", "", "", "A filename to read stack input from")
+		&config.File, "file", "", "", "A filename to read stack input from")
 
 	return cmd
 }
