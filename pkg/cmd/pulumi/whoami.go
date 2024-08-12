@@ -29,6 +29,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type WhoAmIConfig struct {
+	PulumiConfig
+
+	JSON    bool
+	Verbose bool
+}
+
+type whoAmICmd struct {
+	config WhoAmIConfig
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
 func newWhoAmICmd() *cobra.Command {
 	var whocmd whoAmICmd
 	cmd := &cobra.Command{
@@ -44,24 +61,13 @@ func newWhoAmICmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&whocmd.jsonOut, "json", "j", false, "Emit output as JSON")
+		&whocmd.config.JSON, "json", "j", false, "Emit output as JSON")
 
 	cmd.PersistentFlags().BoolVarP(
-		&whocmd.verbose, "verbose", "v", false,
+		&whocmd.config.Verbose, "verbose", "v", false,
 		"Print detailed whoami information")
 
 	return cmd
-}
-
-type whoAmICmd struct {
-	jsonOut bool
-	verbose bool
-
-	Stdout io.Writer // defaults to os.Stdout
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *whoAmICmd) Run(ctx context.Context) error {
@@ -94,7 +100,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	if cmd.jsonOut {
+	if cmd.config.JSON {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:             name,
 			Organizations:    orgs,
@@ -103,7 +109,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		})
 	}
 
-	if cmd.verbose {
+	if cmd.config.Verbose {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
