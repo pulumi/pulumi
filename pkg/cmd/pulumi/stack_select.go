@@ -27,11 +27,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type StackSelectConfig struct {
+	PulumiConfig
+
+	Stack           string
+	Create          bool
+	SecretsProvider string
+}
+
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
 func newStackSelectCmd() *cobra.Command {
-	var stack string
-	var secretsProvider string
-	var create bool
+	var config StackSelectConfig
 	cmd := &cobra.Command{
 		Use:   "select [<stack>]",
 		Short: "Switch the current workspace to the given stack",
@@ -61,16 +67,16 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				if stack != "" {
+				if config.Stack != "" {
 					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
 
-				stack = args[0]
+				config.Stack = args[0]
 			}
 
-			if stack != "" {
+			if config.Stack != "" {
 				// A stack was given, ask the backend about it.
-				stackRef, stackErr := b.ParseStackReference(stack)
+				stackRef, stackErr := b.ParseStackReference(config.Stack)
 				if stackErr != nil {
 					return stackErr
 				}
@@ -82,8 +88,8 @@ func newStackSelectCmd() *cobra.Command {
 					return state.SetCurrentStack(stackRef.String())
 				}
 				// If create flag was passed and stack was not found, create it and select it.
-				if create && stack != "" {
-					s, err := stackInit(ctx, b, stack, root, false, secretsProvider)
+				if config.Create && config.Stack != "" {
+					s, err := stackInit(ctx, b, config.Stack, root, false, config.SecretsProvider)
 					if err != nil {
 						return err
 					}
@@ -104,13 +110,13 @@ func newStackSelectCmd() *cobra.Command {
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to select")
 	cmd.PersistentFlags().BoolVarP(
-		&create, "create", "c", false,
+		&config.Create, "create", "c", false,
 		"If selected stack does not exist, create it")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default",
+		&config.SecretsProvider, "secrets-provider", "default",
 		"Use with --create flag, "+possibleSecretsProviderChoices)
 	return cmd
 }
