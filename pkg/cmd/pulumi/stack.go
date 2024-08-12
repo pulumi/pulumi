@@ -35,18 +35,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-type stackArgs struct {
-	showIDs                bool
-	showURNs               bool
-	showSecrets            bool
-	startTime              string
-	showStackName          bool
-	fullyQualifyStackNames bool
+type StackConfig struct {
+	PulumiConfig
+
+	Stack                  string
+	ShowIDs                bool
+	ShowURNs               bool
+	ShowSecrets            bool
+	StartTime              string
+	ShowStackName          bool
+	FullyQualifyStackNames bool
 }
 
 func newStackCmd() *cobra.Command {
-	var stackName string
-	args := stackArgs{}
+	config := StackConfig{}
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -63,26 +65,26 @@ func newStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts)
+			s, err := requireStack(ctx, config.Stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
 
-			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
-			return runStack(ctx, s, os.Stdout, args)
+			config.FullyQualifyStackNames = cmdutil.FullyQualifyStackNames
+			return runStack(ctx, s, os.Stdout, config)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVarP(
-		&args.showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
+		&config.ShowIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.Flags().BoolVarP(
-		&args.showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
+		&config.ShowURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 	cmd.Flags().BoolVar(
-		&args.showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
+		&config.ShowSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 	cmd.Flags().BoolVar(
-		&args.showStackName, "show-name", false, "Display only the stack name")
+		&config.ShowStackName, "show-name", false, "Display only the stack name")
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
@@ -101,9 +103,9 @@ func newStackCmd() *cobra.Command {
 	return cmd
 }
 
-func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
-	if args.showStackName {
-		if args.fullyQualifyStackNames {
+func runStack(ctx context.Context, s backend.Stack, out io.Writer, args StackConfig) error {
+	if args.ShowStackName {
+		if args.FullyQualifyStackNames {
 			fmt.Fprintln(out, s.Ref().String())
 		} else {
 			fmt.Fprintln(out, s.Ref().Name())
@@ -129,8 +131,8 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 
 			if currentOp := cs.CurrentOperation(); currentOp != nil {
 				fmt.Fprintf(out, "    Update in progress:\n")
-				args.startTime = humanize.Time(time.Unix(currentOp.Started, 0))
-				fmt.Fprintf(out, "	Started: %v\n", args.startTime)
+				args.StartTime = humanize.Time(time.Unix(currentOp.Started, 0))
+				fmt.Fprintf(out, "	Started: %v\n", args.StartTime)
 				fmt.Fprintf(out, "	Requested By: %s\n", currentOp.Author)
 			}
 		}
@@ -138,7 +140,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 
 	if snap != nil {
 		t := snap.Manifest.Time.Local()
-		if args.startTime == "" {
+		if args.StartTime == "" {
 			if !t.IsZero() && t.Before(time.Now()) {
 				fmt.Fprintf(out, "    Last updated: %s (%v)\n", humanize.Time(t), t)
 			}
@@ -167,10 +169,10 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 	if resourceCount == 0 {
 		fmt.Fprintf(out, "    No resources currently in this stack\n")
 	} else {
-		rows, ok := renderTree(snap, args.showURNs, args.showIDs)
+		rows, ok := renderTree(snap, args.ShowURNs, args.ShowIDs)
 		if !ok {
 			for _, res := range snap.Resources {
-				rows = append(rows, renderResourceRow(res, "", "    ", args.showURNs, args.showIDs))
+				rows = append(rows, renderResourceRow(res, "", "    ", args.ShowURNs, args.ShowIDs))
 			}
 		}
 
@@ -180,14 +182,14 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 			Prefix:  "    ",
 		}, nil)
 
-		outputs, err := getStackOutputs(snap, args.showSecrets)
+		outputs, err := getStackOutputs(snap, args.ShowSecrets)
 		if err == nil {
 			fmt.Fprintf(out, "\n")
 			_ = fprintStackOutputs(os.Stdout, outputs)
 
 		}
 
-		if args.showSecrets {
+		if args.ShowSecrets {
 			log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
 		}
 	}
