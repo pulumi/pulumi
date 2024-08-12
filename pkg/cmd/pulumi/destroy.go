@@ -42,38 +42,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newDestroyCmd() *cobra.Command {
-	var debug bool
-	var remove bool
-	var stackName string
+type DestroyConfig struct {
+	PulumiConfig
 
-	var message string
-	var execKind string
-	var execAgent string
+	Debug     bool
+	Remove    bool
+	StackName string
+
+	Message   string
+	ExecKind  string
+	ExecAgent string
 
 	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+	RemoteArgs RemoteArgs
 
 	// Flags for engine.UpdateOptions.
-	var jsonDisplay bool
-	var diffDisplay bool
-	var eventLogPath string
-	var parallel int
-	var previewOnly bool
-	var refresh string
-	var showConfig bool
-	var showReplacementSteps bool
-	var showSames bool
-	var skipPreview bool
-	var suppressOutputs bool
-	var suppressProgress bool
-	var suppressPermalink string
-	var yes bool
-	var targets *[]string
-	var targetDependents bool
-	var excludeProtected bool
-	var continueOnError bool
+	JsonDisplay          bool
+	DiffDisplay          bool
+	EventLogPath         string
+	Parallel             int
+	PreviewOnly          bool
+	Refresh              string
+	ShowConfig           bool
+	ShowReplacementSteps bool
+	ShowSames            bool
+	SkipPreview          bool
+	SuppressOutputs      bool
+	SuppressProgress     bool
+	SuppressPermalink    string
+	Yes                  bool
+	Targets              *[]string
+	TargetDependents     bool
+	ExcludeProtected     bool
+	ContinueOnError      bool
+}
 
+func newDestroyCmd() *cobra.Command {
+	config := DestroyConfig{}
+
+	// TODO: hack/pulumirc
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if remoteSupported() {
 		use, cmdArgs = "destroy [url]", cmdutil.MaximumNArgs(1)
@@ -99,55 +106,56 @@ func newDestroyCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
-			if remoteArgs.remote {
-				skipPreview = true
+			if config.RemoteArgs.remote {
+				config.SkipPreview = true
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			// TODO: hack/pulumirc suspicous code
+			config.Yes = config.Yes || config.SkipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
-			if !interactive && !yes && !previewOnly {
+			if !interactive && !config.Yes && !config.PreviewOnly {
 				return result.FromError(
 					errors.New("--yes or --skip-preview or --preview-only " +
 						"must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := updateFlagsToOptions(interactive, config.SkipPreview, config.Yes, config.PreviewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			displayType := display.DisplayProgress
-			if diffDisplay {
+			if config.DiffDisplay {
 				displayType = display.DisplayDiff
 			}
 
 			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				SuppressOutputs:      suppressOutputs,
-				SuppressProgress:     suppressProgress,
+				ShowConfig:           config.ShowConfig,
+				ShowReplacementSteps: config.ShowReplacementSteps,
+				ShowSameResources:    config.ShowSames,
+				SuppressOutputs:      config.SuppressOutputs,
+				SuppressProgress:     config.SuppressProgress,
 				IsInteractive:        interactive,
 				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
+				EventLogPath:         config.EventLogPath,
+				Debug:                config.Debug,
+				JSONDisplay:          config.JsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if suppressPermalink == "true" {
+			if config.SuppressPermalink == "true" {
 				opts.Display.SuppressPermalink = true
 			} else {
 				opts.Display.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
-					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
-					suppressOutputs, "default", targets, nil, nil,
-					targetDependents, "", stackConfigFile)
+			if config.RemoteArgs.remote {
+				err = validateUnsupportedRemoteFlags(false, nil, false, "", config.JsonDisplay, nil,
+					nil, config.Refresh, config.ShowConfig, false, config.ShowReplacementSteps, config.ShowSames, false,
+					config.SuppressOutputs, "default", config.Targets, nil, nil,
+					config.TargetDependents, "", stackConfigFile)
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -157,11 +165,11 @@ func newDestroyCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
+				if errResult := validateRemoteDeploymentFlags(url, config.RemoteArgs); errResult != nil {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
+				return runDeployment(ctx, cmd, opts.Display, apitype.Destroy, config.StackName, url, config.RemoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
@@ -171,11 +179,11 @@ func newDestroyCmd() *cobra.Command {
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && isDIYBackend {
+			if config.SuppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, config.StackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -198,7 +206,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
+			m, err := getUpdateMetadata(config.Message, root, config.ExecKind, config.ExecAgent, false, cmd.Flags())
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -215,7 +223,7 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			getConfig := getStackConfiguration
-			if stackName != "" {
+			if config.StackName != "" {
 				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = getStackConfigurationOrLatest
@@ -247,24 +255,24 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
 			}
 
-			refreshOption, err := getRefreshOption(proj, refresh)
+			refreshOption, err := getRefreshOption(proj, config.Refresh)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			if len(*targets) > 0 && excludeProtected {
+			if len(*config.Targets) > 0 && config.ExcludeProtected {
 				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
 			}
 
 			var protectedCount int
-			targetUrns := *targets
-			if excludeProtected {
+			targetUrns := *config.Targets
+			if config.ExcludeProtected {
 				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
-					if !jsonDisplay {
+					if !config.JsonDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
 					}
@@ -276,18 +284,18 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:                  parallel,
-				Debug:                     debug,
+				Parallel:                  config.Parallel,
+				Debug:                     config.Debug,
 				Refresh:                   refreshOption,
 				Targets:                   deploy.NewUrnTargets(targetUrns),
-				TargetDependents:          targetDependents,
+				TargetDependents:          config.TargetDependents,
 				UseLegacyDiff:             useLegacyDiff(),
 				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
 				Experimental:              hasExperimentalCommands(),
-				ContinueOnError:           continueOnError,
+				ContinueOnError:           config.ContinueOnError,
 			}
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{
@@ -301,15 +309,15 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			})
 
-			if res == nil && protectedCount > 0 && !jsonDisplay {
+			if res == nil && protectedCount > 0 && !config.JsonDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
-			} else if res == nil && len(*targets) == 0 {
-				if !jsonDisplay && !remove && !previewOnly {
+			} else if res == nil && len(*config.Targets) == 0 {
+				if !config.JsonDisplay && !config.Remove && !config.PreviewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
-				} else if remove {
+				} else if config.Remove {
 					_, err = s.Remove(ctx, false)
 					if err != nil {
 						return result.FromError(err)
@@ -318,7 +326,7 @@ func newDestroyCmd() *cobra.Command {
 					if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 							return result.FromError(err)
-						} else if !jsonDisplay {
+						} else if !config.JsonDisplay {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
@@ -332,94 +340,94 @@ func newDestroyCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&debug, "debug", "d", false,
+		&config.Debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVar(
-		&remove, "remove", false,
+		&config.Remove, "remove", false,
 		"Remove the stack and its config file after all resources in the stack have been deleted")
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
+		&config.StackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringVarP(
-		&message, "message", "m", "",
+		&config.Message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
 
-	targets = cmd.PersistentFlags().StringArrayP(
+	config.Targets = cmd.PersistentFlags().StringArrayP(
 		"target", "t", []string{},
 		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
 			" Multiple resources can be specified using: --target urn1 --target urn2."+
 			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().BoolVar(
-		&targetDependents, "target-dependents", false,
+		&config.TargetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")
-	cmd.PersistentFlags().BoolVar(&excludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
+	cmd.PersistentFlags().BoolVar(&config.ExcludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
 		" Destroy all other resources.")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
-		&diffDisplay, "diff", false,
+		&config.DiffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
 	cmd.Flags().BoolVarP(
-		&jsonDisplay, "json", "j", false,
+		&config.JsonDisplay, "json", "j", false,
 		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&config.Parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
-		&previewOnly, "preview-only", false,
+		&config.PreviewOnly, "preview-only", false,
 		"Only show a preview of the destroy, but don't perform the destroy itself")
 	cmd.PersistentFlags().StringVarP(
-		&refresh, "refresh", "r", "",
+		&config.Refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
-		&showConfig, "show-config", false,
+		&config.ShowConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", false,
+		&config.ShowReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
-		&showSames, "show-sames", false,
+		&config.ShowSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
-		&skipPreview, "skip-preview", "f", false,
+		&config.SkipPreview, "skip-preview", "f", false,
 		"Do not calculate a preview before performing the destroy")
 	cmd.PersistentFlags().BoolVar(
-		&suppressOutputs, "suppress-outputs", false,
+		&config.SuppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVar(
-		&suppressProgress, "suppress-progress", false,
+		&config.SuppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
-		&suppressPermalink, "suppress-permalink", "",
+		&config.SuppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVar(
-		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
+		&config.ContinueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue to perform the destroy operation despite the occurrence of errors "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR env var)")
 
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&config.Yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
 
 	// Remote flags
-	remoteArgs.applyFlags(cmd)
+	config.RemoteArgs.applyFlags(cmd)
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
-			&eventLogPath, "event-log", "",
+			&config.EventLogPath, "event-log", "",
 			"Log events to a file at this path")
 	}
 
 	// internal flags
-	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	cmd.PersistentFlags().StringVar(&config.ExecKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
-	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	cmd.PersistentFlags().StringVar(&config.ExecAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
