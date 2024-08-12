@@ -38,37 +38,39 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type RefreshConfig struct {
+	PulumiConfig
+
+	Debug                bool
+	ExpectNoChanges      bool
+	Message              string
+	ExecKind             string
+	ExecAgent            string
+	Stack                string
+	JSON                 bool
+	DisplayDiff          bool
+	EventLogPath         string
+	Parallel             int
+	Preview              bool
+	ShowConfig           bool
+	ShowReplacementSteps bool
+	ShowSames            bool
+	SkipPreview          bool
+	SuppressOutputs      bool
+	SuppressProgress     bool
+	SuppressPermalink    string
+	Yes                  bool
+	Targets              *[]string
+	SkipPendingCreates   bool
+	ClearPendingCreates  bool
+	ImportPendingCreates *[]string
+}
+
 func newRefreshCmd() *cobra.Command {
-	var debug bool
-	var expectNop bool
-	var message string
-	var execKind string
-	var execAgent string
-	var stackName string
+	var config RefreshConfig
 
 	// Flags for remote operations.
 	remoteArgs := RemoteArgs{}
-
-	// Flags for engine.UpdateOptions.
-	var jsonDisplay bool
-	var diffDisplay bool
-	var eventLogPath string
-	var parallel int
-	var previewOnly bool
-	var showConfig bool
-	var showReplacementSteps bool
-	var showSames bool
-	var skipPreview bool
-	var suppressOutputs bool
-	var suppressProgress bool
-	var suppressPermalink string
-	var yes bool
-	var targets *[]string
-
-	// Flags for handling pending creates
-	var skipPendingCreates bool
-	var clearPendingCreates bool
-	var importPendingCreates *[]string
 
 	use, cmdArgs := "refresh", cmdutil.NoArgs
 	if remoteSupported() {
@@ -93,53 +95,53 @@ func newRefreshCmd() *cobra.Command {
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
-				skipPreview = true
+				config.SkipPreview = true
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			config.Yes = config.Yes || config.SkipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
-			if !interactive && !yes && !previewOnly {
+			if !interactive && !config.Yes && !config.Preview {
 				return result.FromError(
 					errors.New("--yes or --skip-preview or --preview-only " +
 						"must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := updateFlagsToOptions(interactive, config.SkipPreview, config.Yes, config.Preview)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			displayType := display.DisplayProgress
-			if diffDisplay {
+			if config.DisplayDiff {
 				displayType = display.DisplayDiff
 			}
 
 			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				SuppressOutputs:      suppressOutputs,
-				SuppressProgress:     suppressProgress,
+				ShowConfig:           config.ShowConfig,
+				ShowReplacementSteps: config.ShowReplacementSteps,
+				ShowSameResources:    config.ShowSames,
+				SuppressOutputs:      config.SuppressOutputs,
+				SuppressProgress:     config.SuppressProgress,
 				IsInteractive:        interactive,
 				Type:                 displayType,
-				EventLogPath:         eventLogPath,
-				Debug:                debug,
-				JSONDisplay:          jsonDisplay,
+				EventLogPath:         config.EventLogPath,
+				Debug:                config.Debug,
+				JSONDisplay:          config.JSON,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if suppressPermalink == "true" {
+			if config.SuppressPermalink == "true" {
 				opts.Display.SuppressPermalink = true
 			} else {
 				opts.Display.SuppressPermalink = false
 			}
 
 			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
-					nil, "", showConfig, false, showReplacementSteps, showSames, false,
-					suppressOutputs, "default", targets, nil, nil,
+				err = validateUnsupportedRemoteFlags(config.ExpectNoChanges, nil, false, "", config.JSON, nil,
+					nil, "", config.ShowConfig, false, config.ShowReplacementSteps, config.ShowSames, false,
+					config.SuppressOutputs, "default", config.Targets, nil, nil,
 					false, "", stackConfigFile)
 				if err != nil {
 					return result.FromError(err)
@@ -154,7 +156,7 @@ func newRefreshCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
+				return runDeployment(ctx, cmd, opts.Display, apitype.Refresh, config.Stack, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
@@ -164,11 +166,11 @@ func newRefreshCmd() *cobra.Command {
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && isDIYBackend {
+			if config.SuppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, config.Stack, stackOfferNew, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -178,7 +180,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
+			m, err := getUpdateMetadata(config.Message, root, config.ExecKind, config.ExecAgent, false, cmd.Flags())
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -210,17 +212,23 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}
 
-			if skipPendingCreates && clearPendingCreates {
+			if config.SkipPendingCreates && config.ClearPendingCreates {
 				return result.FromError(errors.New("cannot set both --skip-pending-creates and --clear-pending-creates"))
 			}
 
 			// First we handle explicit create->imports we were given
-			if importPendingCreates != nil && len(*importPendingCreates) > 0 {
+			if config.ImportPendingCreates != nil && len(*config.ImportPendingCreates) > 0 {
 				stderr := opts.Display.Stderr
 				if stderr == nil {
 					stderr = os.Stderr
 				}
-				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
+				if unused, err := pendingCreatesToImports(
+					ctx,
+					s,
+					config.Yes,
+					opts.Display,
+					*config.ImportPendingCreates,
+				); err != nil {
 					return result.FromError(err)
 				} else if len(unused) > 1 {
 					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
@@ -240,31 +248,31 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			// We then allow the user to interactively handle remaining pending creates.
-			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
+			if interactive && hasPendingCreates(snap) && !config.SkipPendingCreates {
 				if err := filterMapPendingCreates(ctx, s, opts.Display,
-					yes, interactiveFixPendingCreate); err != nil {
+					config.Yes, interactiveFixPendingCreate); err != nil {
 					return result.FromError(err)
 				}
 			}
 
 			// We remove remaining pending creates
-			if clearPendingCreates && hasPendingCreates(snap) {
+			if config.ClearPendingCreates && hasPendingCreates(snap) {
 				// Remove all pending creates.
 				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
 					return nil, nil
 				}
-				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
+				err := filterMapPendingCreates(ctx, s, opts.Display, config.Yes, removePendingCreates)
 				if err != nil {
 					return result.FromError(err)
 				}
 			}
 
 			targetUrns := []string{}
-			targetUrns = append(targetUrns, *targets...)
+			targetUrns = append(targetUrns, *config.Targets...)
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:                  parallel,
-				Debug:                     debug,
+				Parallel:                  config.Parallel,
+				Debug:                     config.Debug,
 				UseLegacyDiff:             useLegacyDiff(),
 				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
@@ -290,7 +298,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(errors.New("refresh cancelled"))
 			case res != nil:
 				return PrintEngineResult(res)
-			case expectNop && changes != nil && engine.HasChanges(changes):
+			case config.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
 				return result.FromError(errors.New("no changes were expected but changes occurred"))
 			default:
 				return nil
@@ -299,70 +307,70 @@ func newRefreshCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&debug, "debug", "d", false,
+		&config.Debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVar(
-		&expectNop, "expect-no-changes", false,
+		&config.ExpectNoChanges, "expect-no-changes", false,
 		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
+		&config.Stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	cmd.PersistentFlags().StringVarP(
-		&message, "message", "m", "",
+		&config.Message, "message", "m", "",
 		"Optional message to associate with the update operation")
 
-	targets = cmd.PersistentFlags().StringArrayP(
+	config.Targets = cmd.PersistentFlags().StringArrayP(
 		"target", "t", []string{},
 		"Specify a single resource URN to refresh. Multiple resource can be specified using: --target urn1 --target urn2")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
-		&diffDisplay, "diff", false,
+		&config.DisplayDiff, "diff", false,
 		"Display operation as a rich diff showing the overall change")
 	cmd.Flags().BoolVarP(
-		&jsonDisplay, "json", "j", false,
+		&config.JSON, "json", "j", false,
 		"Serialize the refresh diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&config.Parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
-		&previewOnly, "preview-only", false,
+		&config.Preview, "preview-only", false,
 		"Only show a preview of the refresh, but don't perform the refresh itself")
 	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", false,
+		&config.ShowReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
-		&showSames, "show-sames", false,
+		&config.ShowSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
-		&skipPreview, "skip-preview", "f", false,
+		&config.SkipPreview, "skip-preview", "f", false,
 		"Do not calculate a preview before performing the refresh")
 	cmd.PersistentFlags().BoolVar(
-		&suppressOutputs, "suppress-outputs", false,
+		&config.SuppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVar(
-		&suppressProgress, "suppress-progress", false,
+		&config.SuppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
-		&suppressPermalink, "suppress-permalink", "",
+		&config.SuppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&config.Yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
 
 	// Flags for pending creates
 	cmd.PersistentFlags().BoolVar(
-		&skipPendingCreates, "skip-pending-creates", false,
+		&config.SkipPendingCreates, "skip-pending-creates", false,
 		"Skip importing pending creates in interactive mode")
 	cmd.PersistentFlags().BoolVar(
-		&clearPendingCreates, "clear-pending-creates", false,
+		&config.ClearPendingCreates, "clear-pending-creates", false,
 		"Clear all pending creates, dropping them from the state")
-	importPendingCreates = cmd.PersistentFlags().StringArray(
+	config.ImportPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
@@ -371,15 +379,15 @@ func newRefreshCmd() *cobra.Command {
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
-			&eventLogPath, "event-log", "",
+			&config.EventLogPath, "event-log", "",
 			"Log events to a file at this path")
 	}
 
 	// internal flags
-	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	cmd.PersistentFlags().StringVar(&config.ExecKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
-	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	cmd.PersistentFlags().StringVar(&config.ExecAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
