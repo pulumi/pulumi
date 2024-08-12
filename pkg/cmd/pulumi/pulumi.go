@@ -145,6 +145,19 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
 
+// PulumiConfig contains configuration that pertains to all Pulumi commands.
+type PulumiConfig struct {
+	Cwd                     string
+	FlowLogs                bool
+	LogToStderr             bool
+	TracingEndpoint         string
+	TracingHeader           string
+	ProfilingFilenamePrefix string
+	Verbosity               int
+	Color                   string
+	MemProfileRate          int
+}
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
 	var cwd string
