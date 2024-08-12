@@ -128,7 +128,7 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 		Stdout: io.Discard,
 	}
 
-	cmd.config.Yes = true
+	cmd.Config.Yes = true
 	err := cmd.Run(context.Background())
 	require.NoError(t, err)
 

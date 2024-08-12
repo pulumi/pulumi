@@ -42,7 +42,7 @@ type StateUpgradeConfig struct {
 
 // stateUpgradeCmd implements the 'pulumi state upgrade' command.
 type stateUpgradeCmd struct {
-	config StateUpgradeConfig
+	Config StateUpgradeConfig
 
 	Stdin  io.Reader // defaults to os.Stdin
 	Stdout io.Writer // defaults to os.Stdout
@@ -70,7 +70,7 @@ This only has an effect on DIY backends.
 			return nil
 		}),
 	}
-	cmd.Flags().BoolVarP(&sucmd.config.Yes, "yes", "y", false, "Automatically approve and perform the upgrade")
+	cmd.Flags().BoolVarP(&sucmd.Config.Yes, "yes", "y", false, "Automatically approve and perform the upgrade")
 	return cmd
 }
 
@@ -113,7 +113,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	prompt := "This will upgrade the current backend to the latest supported version.\n" +
 		"Older versions of Pulumi will not be able to read the new format.\n" +
 		"Are you sure you want to proceed?"
-	if !cmd.config.Yes && !confirmPrompt(prompt, "yes", dopts) {
+	if !cmd.Config.Yes && !confirmPrompt(prompt, "yes", dopts) {
 		fmt.Fprintln(cmd.Stdout, "Upgrade cancelled")
 		return nil
 	}
