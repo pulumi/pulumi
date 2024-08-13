@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -36,10 +37,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newInstallCmd() *cobra.Command {
-	var reinstall bool
-	var noPlugins, noDependencies bool
+type InstallArgs struct {
+	PulumiConfig
 
+	Reinstall      bool
+	NoPlugins      bool
+	NoDependencies bool
+}
+
+func newInstallCmd(v *viper.Viper) *cobra.Command {
+	args := UnmarshalOpts[InstallArgs](v, "install")
 	cmd := &cobra.Command{
 		Use:   "install",
 		Args:  cmdutil.NoArgs,
@@ -47,7 +54,7 @@ func newInstallCmd() *cobra.Command {
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -106,13 +113,13 @@ func newInstallCmd() *cobra.Command {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
 
-			if !noDependencies {
+			if !args.NoDependencies {
 				if err = lang.InstallDependencies(programInfo); err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)
 				}
 			}
 
-			if !noPlugins {
+			if !args.NoPlugins {
 				// Compute the set of plugins the current project needs.
 				installs, err := lang.GetRequiredPlugins(programInfo)
 				if err != nil {
@@ -125,7 +132,7 @@ func newInstallCmd() *cobra.Command {
 					label := fmt.Sprintf("%s plugin %s", install.Kind, install)
 
 					// If the plugin already exists, don't download it unless --reinstall was passed.
-					if !reinstall {
+					if !args.Reinstall {
 						if install.Version != nil {
 							if workspace.HasPlugin(install) {
 								logging.V(1).Infof("%s skipping install (existing == match)", label)
@@ -165,7 +172,7 @@ func newInstallCmd() *cobra.Command {
 					payload := workspace.TarPlugin(r)
 
 					logging.V(1).Infof("%s installing tarball ...", label)
-					if err = install.InstallWithContext(ctx, payload, reinstall); err != nil {
+					if err = install.InstallWithContext(ctx, payload, args.Reinstall); err != nil {
 						return fmt.Errorf("installing %s: %w", label, err)
 					}
 				}
@@ -175,12 +182,9 @@ func newInstallCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVar(&reinstall,
-		"reinstall", false, "Reinstall a plugin even if it already exists")
-	cmd.PersistentFlags().BoolVar(&noPlugins,
-		"no-plugins", false, "Skip installing plugins")
-	cmd.PersistentFlags().BoolVar(&noDependencies,
-		"no-dependencies", false, "Skip installing dependencies")
+	AddBoolConfig(v, cmd, "reinstall", "", false, "Reinstall a plugin even if it already exists")
+	AddBoolConfig(v, cmd, "no-plugins", "", false, "Skip installing plugins")
+	AddBoolConfig(v, cmd, "no-dependencies", "", false, "Skip installing dependencies")
 
 	return cmd
 }
