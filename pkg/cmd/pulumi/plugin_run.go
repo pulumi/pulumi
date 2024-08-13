@@ -34,15 +34,40 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type pluginRunCmd struct {
-	kind string
+type PluginRunConfig struct {
+	PulumiConfig
+
+	Kind string
 }
 
-func (cmd *pluginRunCmd) run(args []string) error {
-	if !apitype.IsPluginKind(cmd.kind) {
-		return fmt.Errorf("unrecognized plugin kind: %s", cmd.kind)
+func newPluginRunCmd() *cobra.Command {
+	var c PluginRunConfig
+
+	cmd := &cobra.Command{
+		Use:    "run NAME[@VERSION] [ARGS]",
+		Args:   cmdutil.MinimumNArgs(1),
+		Hidden: !env.Dev.Value(),
+		Short:  "Run a command on a plugin binary",
+		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
+			"\n" +
+			"Directly executes a plugin binary, if VERSION is not specified " +
+			"the latest installed plugin will be used.",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			return c.run(args)
+		}),
 	}
-	kind := apitype.PluginKind(cmd.kind)
+
+	cmd.PersistentFlags().StringVar(&c.Kind,
+		"kind", "tool", "The plugin kind")
+
+	return cmd
+}
+
+func (cmd *PluginRunConfig) run(args []string) error {
+	if !apitype.IsPluginKind(cmd.Kind) {
+		return fmt.Errorf("unrecognized plugin kind: %s", cmd.Kind)
+	}
+	kind := apitype.PluginKind(cmd.Kind)
 
 	// Parse the name and version from the second argument in the form of "NAME[@VERSION]".
 	name := args[0]
@@ -122,27 +147,4 @@ func (cmd *pluginRunCmd) run(args []string) error {
 	}
 
 	return nil
-}
-
-func newPluginRunCmd() *cobra.Command {
-	var c pluginRunCmd
-
-	cmd := &cobra.Command{
-		Use:    "run NAME[@VERSION] [ARGS]",
-		Args:   cmdutil.MinimumNArgs(1),
-		Hidden: !env.Dev.Value(),
-		Short:  "Run a command on a plugin binary",
-		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
-			"\n" +
-			"Directly executes a plugin binary, if VERSION is not specified " +
-			"the latest installed plugin will be used.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return c.run(args)
-		}),
-	}
-
-	cmd.PersistentFlags().StringVar(&c.kind,
-		"kind", "tool", "The plugin kind")
-
-	return cmd
 }
