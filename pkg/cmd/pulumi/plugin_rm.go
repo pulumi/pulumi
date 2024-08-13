@@ -32,9 +32,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type PluginRmConfig struct {
+	PulumiConfig
+
+	All bool
+	Yes bool
+}
+
 func newPluginRmCmd() *cobra.Command {
-	var all bool
-	var yes bool
+	var config PluginRmConfig
 	cmd := &cobra.Command{
 		Use:   "rm [KIND [NAME [VERSION]]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -50,7 +56,7 @@ func newPluginRmCmd() *cobra.Command {
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 			"using the plugin install command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			yes = yes || skipConfirmations()
+			config.Yes = config.Yes || skipConfirmations()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -64,7 +70,7 @@ func newPluginRmCmd() *cobra.Command {
 					return fmt.Errorf("unrecognized plugin kind: %s", kind)
 				}
 				kind = apitype.PluginKind(args[0])
-			} else if !all {
+			} else if !config.All {
 				return errors.New("please pass --all if you'd like to remove all plugins")
 			}
 			if len(args) > 1 {
@@ -99,7 +105,7 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			// Confirm that the user wants to do this (unless --yes was passed).
-			if !yes {
+			if !config.Yes {
 				var suffix string
 				if len(deletes) != 1 {
 					suffix = "s"
@@ -131,10 +137,10 @@ func newPluginRmCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&all, "all", "a", false,
+		&config.All, "all", "a", false,
 		"Remove all plugins")
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&config.Yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 
 	return cmd
