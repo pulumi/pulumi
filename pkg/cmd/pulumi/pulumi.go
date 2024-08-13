@@ -149,14 +149,14 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 // PulumiConfig contains configuration that pertains to all Pulumi commands.
 type PulumiConfig struct {
 	Cwd                     string
-	FlowLogs                bool   `our_new_tag:"logflow"`
-	LogToStderr             bool   `our_new_tag:"logtostderr"`
-	TracingEndpoint         string `our_new_tag:"tracing"`
+	FlowLogs                bool   `args:"logflow"`
+	LogToStderr             bool   `args:"logtostderr"`
+	TracingEndpoint         string `args:"tracing"`
 	TracingHeader           string
-	ProfilingFilenamePrefix string `our_new_tag:"profiling"`
-	Verbosity               int    `our_new_tag:"verbose"`
+	ProfilingFilenamePrefix string `args:"profiling"`
+	Verbosity               int    `args:"verbose"`
 	Color                   string
-	MemProfileRate          int `our_new_tag:"memprofilerate"`
+	MemProfileRate          int `args:"memprofilerate"`
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.

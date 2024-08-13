@@ -79,7 +79,7 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 			}
 			fieldName := dashedFieldName(ref.Type().Field(i).Name)
 
-			tag := rv.Type().Field(i).Tag.Get("our_new_tag")
+			tag := rv.Type().Field(i).Tag.Get("args")
 			if tag != "" {
 				fieldName = tag
 			}
