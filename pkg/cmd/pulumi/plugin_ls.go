@@ -26,9 +26,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type PluginLsConfig struct {
+	PulumiConfig
+
+	Project bool
+	JSON    bool
+}
+
 func newPluginLsCmd() *cobra.Command {
-	var projectOnly bool
-	var jsonOut bool
+	var config PluginLsConfig
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List plugins",
@@ -37,7 +43,7 @@ func newPluginLsCmd() *cobra.Command {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
 			var err error
-			if projectOnly {
+			if config.Project {
 				var pluginSpecs []workspace.PluginSpec
 				if pluginSpecs, err = getProjectPlugins(); err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
@@ -65,7 +71,7 @@ func newPluginLsCmd() *cobra.Command {
 				return false
 			})
 
-			if jsonOut {
+			if config.JSON {
 				return formatPluginsJSON(plugins)
 			}
 			return formatPluginConsole(plugins)
@@ -73,10 +79,10 @@ func newPluginLsCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&projectOnly, "project", "p", false,
+		&config.Project, "project", "p", false,
 		"List only the plugins used by the current project")
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false,
+		&config.JSON, "json", "j", false,
 		"Emit output as JSON")
 
 	return cmd
