@@ -12,14 +12,19 @@ import (
 )
 
 func valueFromRc(v *viper.Viper, name, iniSection string) any {
+	// Check if it's set via a CLI flag or env var
 	if v.IsSet(name) {
 		return v.Get(name)
 	}
-	sectionName := iniSection + "." + name
-	if v.IsSet(sectionName) {
-		return v.Get(sectionName)
+	// Check in the command specific section of the rc file
+	if iniSection != "" {
+		sectionName := iniSection + "." + name
+		if v.IsSet(sectionName) {
+			return v.Get(sectionName)
+		}
 	}
-	defaultName := "default." + name
+	// Check in the global section of the rc file
+	defaultName := "global." + name
 	if v.IsSet(defaultName) {
 		return v.Get(defaultName)
 	}
@@ -39,6 +44,10 @@ func defaultValueFromRc(v *viper.Viper, kind reflect.Kind, name, iniSection stri
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if val == nil {
 			return int(0)
+		}
+		v, ok := val.(int64)
+		if ok {
+			return int(v)
 		}
 		return val
 	case reflect.String:
@@ -69,6 +78,10 @@ func dashedFieldName(name string) string {
 }
 
 // UnmarshalArgs unmarshals the options from the given viper instance into a struct of type `T`.
+// A fieldname using camelcase will be read from the viper instance using a dashed fieldname.
+// To override the fieldname, use the `args` tag.
+// To set a default value, use the `argsDefault` tag.
+// To set a usage description, use the `argsUsage` tag.
 func UnmarshalArgs[T any](v *viper.Viper, iniSection string) T {
 	typ := reflect.TypeFor[T]()
 	val := reflect.New(typ).Elem().Interface()

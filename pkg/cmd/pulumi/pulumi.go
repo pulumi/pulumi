@@ -202,6 +202,7 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}()
 
+			// TODO hack/pulumirc
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
 			// get DisplayOptions passed in.
@@ -415,6 +416,11 @@ func NewPulumiCmd() *cobra.Command {
 	// (`gen-completion` / `newGenCompletionCmd`), we disable Cobra's default
 	// completion command as a recommended best practice.
 	cmd.CompletionOptions.DisableDefaultCmd = true
+
+	// TODO: hack/pulumirc
+	// Lint yaml, check all top level keys
+	// if the key is not `global` or the name of a command
+	// -> error out
 
 	return cmd
 }
