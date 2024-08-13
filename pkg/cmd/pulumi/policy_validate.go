@@ -23,8 +23,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type PolicyValidateConfig struct {
+	PulumiConfig
+
+	Config string
+}
+
 func newPolicyValidateCmd() *cobra.Command {
-	var argConfig string
+	var config PolicyValidateConfig
 
 	cmd := &cobra.Command{
 		Use:   "validate-config <org-name>/<policy-pack-name> <version>",
@@ -42,10 +48,10 @@ func newPolicyValidateCmd() *cobra.Command {
 			// Get version from cmd argument
 			version := &cliArgs[1]
 
-			// Load the configuration from the user-specified JSON file into config object.
-			var config map[string]*json.RawMessage
-			if argConfig != "" {
-				config, err = loadPolicyConfigFromFile(argConfig)
+			// Load the configuration from the user-specified JSON file into jsonConfig object.
+			var jsonConfig map[string]*json.RawMessage
+			if config.Config != "" {
+				jsonConfig, err = loadPolicyConfigFromFile(config.Config)
 				if err != nil {
 					return err
 				}
@@ -55,7 +61,7 @@ func newPolicyValidateCmd() *cobra.Command {
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					Config:     jsonConfig,
 				})
 			if err != nil {
 				return err
@@ -65,7 +71,7 @@ func newPolicyValidateCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVar(&argConfig, "config", "",
+	cmd.Flags().StringVar(&config.Config, "config", "",
 		"The file path for the Policy Pack configuration file")
 	cmd.MarkFlagRequired("config") //nolint:errcheck
 
