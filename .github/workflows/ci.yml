@@ -15,11 +15,6 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      build-all-targets:
-        required: false
-        default: true
-        description: "Build targets to produce, false builds only for Linux amd64."
-        type: boolean
       test-codegen:
         required: false
         default: true
@@ -123,7 +118,6 @@ jobs:
       - name: build matrix
         id: matrix
         env:
-          BUILD_ALL_TARGETS: ${{ inputs.build-all-targets }}
           TEST_CODEGEN: ${{ inputs.test-codegen }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
@@ -145,18 +139,13 @@ jobs:
           readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
           readarray -td' ' ACCEPTANCE_PLATFORMS < <(echo -n "$INPUT_ACCEPTANCE_TEST_PLATFORMS"); declare -p ACCEPTANCE_PLATFORMS;
           BUILD_TARGETS='[
-            { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }
-          ]'
-          if [ "${BUILD_ALL_TARGETS}" = "true" ]; then
-            BUILD_TARGETS='[
               { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "darwin",  "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
-            ]'
-          fi
+          ]'
 
           CODEGEN_TESTS_FLAG=--codegen-tests
           PKG_UNIT_TEST_PARTITIONS=7

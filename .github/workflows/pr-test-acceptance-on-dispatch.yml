@@ -61,7 +61,6 @@ jobs:
       ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
       version: ${{ needs.info.outputs.version }}
       lint: true
-      build-all-targets: false
       test-version-sets: current
       integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: ''
