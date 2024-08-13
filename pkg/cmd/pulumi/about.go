@@ -53,8 +53,7 @@ type AboutConfig struct {
 	Stack                  string
 }
 
-func newAboutCmd() *cobra.Command {
-	v := viper.New()
+func newAboutCmd(v *viper.Viper) *cobra.Command {
 	config := UnmarshalOpts[AboutConfig](v, "about")
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{

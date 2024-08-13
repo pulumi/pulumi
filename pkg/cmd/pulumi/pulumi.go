@@ -372,7 +372,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				newVersionCmd(),
-				newAboutCmd(),
+				newAboutCmd(v),
 				newGenCompletionCmd(cmd),
 			},
 		},
