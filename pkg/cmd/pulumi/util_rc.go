@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -66,6 +67,7 @@ func dashedFieldName(name string) string {
 	return result
 }
 
+// UnmarshalOpts unmarshals the options from the given viper instance into a struct of type `T`.
 func UnmarshalOpts[T any](v *viper.Viper, iniSection string) T {
 	typ := reflect.TypeFor[T]()
 	val := reflect.New(typ).Elem().Interface()
@@ -120,8 +122,14 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 	return nil
 }
 
+// BindFlags binds all of the public fields of the struct type `T` as flags on the provided `cobra.Command`
+// and hooks thme up to the provided `viper.Viper` instance.
+// Use `UnmarshalOpts` to get the options back out from viper into a struct.
 func BindFlags[T any](v *viper.Viper, cmd *cobra.Command) {
 	typ := reflect.TypeFor[T]()
+	if typ.Kind() != reflect.Struct {
+		panic(fmt.Sprintf("BindFlags expects a struct type, got %v", typ.Kind()))
+	}
 	val := reflect.New(typ).Elem().Interface()
 	bindFlags(v, cmd, val)
 }
