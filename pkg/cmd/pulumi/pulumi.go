@@ -327,7 +327,7 @@ func NewPulumiCmd() *cobra.Command {
 				newImportCmd(),
 				newRefreshCmd(),
 				newStateCmd(),
-				newInstallCmd(),
+				newInstallCmd(v),
 			},
 		},
 		{
@@ -412,7 +412,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				newAICommand(),
+				newAICommand(v),
 			},
 		},
 	})
