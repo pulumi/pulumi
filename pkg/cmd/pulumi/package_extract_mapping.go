@@ -24,8 +24,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type PackageExtractMappingConfig struct {
+	PulumiConfig
+
+	Out string
+}
+
 func newExtractMappingCommand() *cobra.Command {
-	var out string
+	var config PackageExtractMappingConfig
 
 	cmd := &cobra.Command{
 		Use:   "get-mapping <key> <schema_source> [<provider key>]",
@@ -62,7 +68,7 @@ func newExtractMappingCommand() *cobra.Command {
 
 			fmt.Printf("%s maps to provider %s\n", source, mapping.Provider)
 
-			err = os.WriteFile(out, mapping.Data, 0o600)
+			err = os.WriteFile(config.Out, mapping.Data, 0o600)
 			if err != nil {
 				return fmt.Errorf("write mapping data file: %w", err)
 			}
@@ -71,7 +77,7 @@ func newExtractMappingCommand() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
+	cmd.Flags().StringVarP(&config.Out, "out", "o", "", "The file to write the mapping data to")
 	contract.AssertNoErrorf(cmd.MarkFlagRequired("out"), `Could not mark "out" as required`)
 
 	return cmd
