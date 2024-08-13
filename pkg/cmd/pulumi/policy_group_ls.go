@@ -39,8 +39,14 @@ func newPolicyGroupCmd() *cobra.Command {
 	return cmd
 }
 
+type PolicyGroupLsConfig struct {
+	PulumiConfig
+
+	JSON bool
+}
+
 func newPolicyGroupLsCmd() *cobra.Command {
-	var jsonOut bool
+	var config PolicyGroupLsConfig
 	cmd := &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -91,14 +97,14 @@ func newPolicyGroupLsCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			if jsonOut {
+			if config.JSON {
 				return formatPolicyGroupsJSON(allPolicyGroups)
 			}
 			return formatPolicyGroupsConsole(allPolicyGroups)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+		&config.JSON, "json", "j", false, "Emit output as JSON")
 	return cmd
 }
 
