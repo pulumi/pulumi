@@ -309,7 +309,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	AddStringConfig(v, cmd, "profiling", "", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
-	AddIntConfig(v, cmd, "memprofilerate", "", 0, "Enable more precise memory profiles by setting the memory profiler rate")
+	AddIntConfig(v, cmd, "memprofilerate", "", 0,
+		"Enable more precise memory profiles by setting the memory profiler rate")
 	AddIntConfig(v, cmd, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	AddStringConfig(v, cmd, "color", "", "auto", "Colorize output. Choices are: always, never, raw, auto")
 

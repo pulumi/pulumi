@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -14,11 +13,11 @@ func valueFromRc(v *viper.Viper, name, iniSection string) any {
 	if v.IsSet(name) {
 		return v.Get(name)
 	}
-	sectionName := fmt.Sprintf("%s.%s", iniSection, name)
+	sectionName := iniSection + "." + name
 	if v.IsSet(sectionName) {
 		return v.Get(sectionName)
 	}
-	defaultName := fmt.Sprintf("default.%s", name)
+	defaultName := "default." + name
 	if v.IsSet(defaultName) {
 		return v.Get(defaultName)
 	}
@@ -27,6 +26,7 @@ func valueFromRc(v *viper.Viper, name, iniSection string) any {
 
 func defaultValueFromRc(v *viper.Viper, kind reflect.Kind, name, iniSection string) any {
 	val := valueFromRc(v, name, iniSection)
+	//nolint:exhaustive
 	switch kind {
 	case reflect.Bool:
 		if val == nil {
@@ -69,12 +69,13 @@ func UnmarshalOpts[T any](v *viper.Viper, iniSection string) T {
 
 func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 	ref := reflect.ValueOf(opts)
+	//nolint:exhaustive
 	switch ref.Kind() {
 	case reflect.Struct:
 		rv := reflect.New(ref.Type()).Elem()
 		for i := 0; i < ref.NumField(); i++ {
 			if !rv.Field(i).CanSet() {
-				panic(fmt.Sprintf("can't set field %s", ref.Type().Field(i).Name))
+				panic("can't set field " + ref.Type().Field(i).Name)
 			}
 			fieldName := dashedFieldName(ref.Type().Field(i).Name)
 
@@ -83,6 +84,7 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 				fieldName = tag
 			}
 
+			//nolint:exhaustive
 			switch rv.Field(i).Kind() {
 			case reflect.Struct:
 				rv.Field(i).Set(reflect.ValueOf(unmarshalOpts(v, rv.Field(i).Interface(), iniSection)))
@@ -104,17 +106,17 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 
 func AddBoolConfig(v *viper.Viper, cmd *cobra.Command, name, shortname string, defaultValue bool, description string) {
 	cmd.PersistentFlags().BoolP(name, shortname, defaultValue, description)
-	v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
+	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
 }
 
 func AddStringConfig(v *viper.Viper, cmd *cobra.Command, name, shortname, defaultValue, description string) {
 	cmd.PersistentFlags().StringP(name, shortname, defaultValue, description)
-	v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
+	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
 }
 
 func AddIntConfig(v *viper.Viper, cmd *cobra.Command, name, shortname string, defaultValue int, description string) {
 	cmd.PersistentFlags().IntP(name, shortname, defaultValue, description)
-	v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
+	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
 }
 
 func AddJSONConfig(v *viper.Viper, cmd *cobra.Command) {
