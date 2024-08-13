@@ -1093,12 +1093,17 @@ type NonFunctionPropertyNames<T> = {
 // Lift up all the non-function properties.  If it was optional before, keep it optional after.
 // If it's require before, keep it required afterwards.
 export type LiftedObject<T, K extends keyof T> = {
-    [P in K]: T[P] extends OutputInstance<infer T1>
+    [P in K]: IsStrictlyAny<T[P]> extends true // If the record value is `any`, leave it as `any`.
+        ? Output<any>
+        : T[P] extends OutputInstance<infer T1>
         ? Output<T1>
         : T[P] extends Promise<infer T2>
           ? Output<T2>
           : Output<T[P]>;
 };
+
+// Credit to StackOverflow user CRice: https://stackoverflow.com/a/61625831
+type IsStrictlyAny<T> = (T extends never ? true : false) extends false ? false : true;
 
 export type LiftedArray<T> = {
     /**
