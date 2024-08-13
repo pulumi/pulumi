@@ -34,12 +34,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+type PackageGenSDKConfig struct {
+	PulumiConfig
+
+	Overlays string
+	Language string
+	Out      string
+	Version  string
+	Local    bool
+}
+
 func newGenSdkCommand() *cobra.Command {
-	var overlays string
-	var language string
-	var out string
-	var version string
-	var local bool
+	var config PackageGenSDKConfig
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source> [provider parameters]",
 		Args:  cobra.MinimumNArgs(1),
@@ -57,10 +63,10 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			if version != "" {
-				pkgVersion, err := semver.Parse(version)
+			if config.Version != "" {
+				pkgVersion, err := semver.Parse(config.Version)
 				if err != nil {
-					return fmt.Errorf("invalid version %q: %w", version, err)
+					return fmt.Errorf("invalid version %q: %w", config.Version, err)
 				}
 				if pkg.Version != nil {
 					d.Infof(diag.Message("", "overriding package version %s with %s"), pkg.Version, pkgVersion)
@@ -68,32 +74,32 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				pkg.Version = &pkgVersion
 			}
 			// Normalize from well known language names the the matching runtime names.
-			switch language {
+			switch config.Language {
 			case "csharp", "c#":
-				language = "dotnet"
+				config.Language = "dotnet"
 			case "typescript":
-				language = "nodejs"
+				config.Language = "nodejs"
 			}
 
-			if language == "all" {
+			if config.Language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := genSDK(lang, out, pkg, overlays, local)
+					err := genSDK(lang, config.Out, pkg, config.Overlays, config.Local)
 					if err != nil {
 						return err
 					}
 				}
 				return nil
 			}
-			return genSDK(language, out, pkg, overlays, local)
+			return genSDK(config.Language, config.Out, pkg, config.Overlays, config.Local)
 		}),
 	}
-	cmd.Flags().StringVarP(&language, "language", "", "all",
+	cmd.Flags().StringVarP(&config.Language, "language", "", "all",
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
-	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
+	cmd.Flags().StringVarP(&config.Out, "out", "o", "./sdk",
 		"The directory to write the SDK to")
-	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
-	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
-	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
+	cmd.Flags().StringVar(&config.Overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
+	cmd.Flags().StringVar(&config.Version, "version", "", "The provider plugin version to generate the SDK for")
+	cmd.Flags().BoolVar(&config.Local, "local", false, "Generate an SDK appropriate for local usage")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
