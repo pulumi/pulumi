@@ -531,36 +531,35 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	}, resources, names)
 }
 
+//nolint:lll
 type ImportConfig struct {
-	PulumiConfig
+	ParentSpec     string `args:"parent" argsUsage:"The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource"`
+	ProviderSpec   string `args:"provider" argsUsage:"The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource"`
+	ImportFilePath string `args:"file" argsShort:"f" argsUsage:"The path to a JSON-encoded file containing a list of resources to import"`
+	OutputFilePath string `args:"out" argsShort:"o" argsUsage:"The path to the file that will contain the generated resource declarations"`
+	GenerateCode   bool   `argsDefault:"true" argsUsage:"Generate resource declaration code for the imported resources"`
 
-	ParentSpec     string `args:"parent"`
-	ProviderSpec   string `args:"provider"`
-	ImportFilePath string `args:"file"`
-	OutputFilePath string `args:"out"`
-	GenerateCode   bool
-
-	Debug     bool
-	Message   string
-	StackName string `args:"stack"`
+	Debug     bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
+	Message   string `argsShort:"m" argsUsage:"Optional message to associate with the update operation"`
+	StackName string `args:"stack" argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 	ExecKind  string
 	ExecAgent string
 
 	// Flags for engine.UpdateOptions.
-	JSONDisplay       bool   `name:"json"`
-	DiffDisplay       bool   `name:"diff"`
-	EventLogPath      string `name:"event-log"`
-	Parallel          int
-	PreviewOnly       bool
-	SkipPreview       bool
-	SuppressOutputs   bool
-	SuppressProgress  bool
-	SuppressPermalink string
-	Yes               bool
-	ProtectResources  bool `name:"protect"`
-	Properties        []string
+	JSONDisplay       bool     `args:"json" argsShort:"j" argsUsage:"Serialize the import diffs, operations, and overall output as JSON"`
+	DiffDisplay       bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
+	EventLogPath      string   `args:"event-log" argsUsage:"Log events to a file at this path"`
+	Parallel          int      `argsShort:"p" argsDefault:"80" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)"`
+	PreviewOnly       bool     `argsUsage:"Only show a preview of the import, but don't perform the import itself"`
+	SkipPreview       bool     `argsUsage:"Do not calculate a preview before performing the import"`
+	SuppressOutputs   bool     `argsUsage:"Suppress display of stack outputs (in case they contain sensitive values)"`
+	SuppressProgress  bool     `argsUsage:"Suppress display of periodic progress dots"`
+	SuppressPermalink string   `argsUsage:"Suppress display of the state permalink"`
+	Yes               bool     `argsShort:"y" argsUsage:"Automatically approve and perform the import after previewing it"`
+	ProtectResources  bool     `args:"protect" argsDefault:"true" argsUsage:"Allow resources to be imported with protection from deletion enabled"`
+	Properties        []string `argsUsage:"The property names to use for the import in the format name1,name2"`
 
-	From string
+	From string `argsUsage:"Invoke a converter to import the resources"`
 }
 
 func newImportCmd(v *viper.Viper) *cobra.Command {
@@ -1020,65 +1019,14 @@ func newImportCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
-	//nolint:lll
-	AddStringConfig(v, cmd, "parent", "", "",
-		"The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource")
-	//nolint:lll
-	AddStringConfig(v, cmd, "provider", "", "",
-		"The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
-	AddStringSliceConfig(v, cmd, "properties", "", nil,
-		"The property names to use for the import in the format name1,name2")
-	AddStringConfig(v, cmd, "file", "f", "",
-		"The path to a JSON-encoded file containing a list of resources to import")
-	AddStringConfig(v, cmd, "out", "o", "",
-		"The path to the file that will contain the generated resource declarations")
-	AddBoolConfig(v, cmd, "generate-code", "", true,
-		"Generate resource declaration code for the imported resources")
-	AddBoolConfig(v, cmd, "debug", "d", false,
-		"Print detailed debugging output during resource operations")
-	AddStringConfig(v, cmd, "message", "m", "",
-		"Optional message to associate with the update operation")
-	AddStringConfig(v, cmd, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	AddStringConfig(v, cmd, "config-file", "", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
+	BindFlags[ImportConfig](v, cmd)
 
-	// Flags for engine.UpdateOptions.
-	AddBoolConfig(v, cmd, "diff", "", false,
-		"Display operation as a rich diff showing the overall change")
-	AddIntConfig(v, cmd, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
-	AddBoolConfig(v, cmd, "prevew-only", "", false,
-		"Only show a preview of the import, but don't perform the import itself")
-	AddBoolConfig(v, cmd, "skip-preview", "", false,
-		"Do not calculate a preview before performing the import")
-	AddBoolConfig(v, cmd, "json", "j", false,
-		"Serialize the import diffs, operations, and overall output as JSON")
-	AddBoolConfig(v, cmd, "suppress-outputs", "", false,
-		"Suppress display of stack outputs (in case they contain sensitive values)")
-	AddBoolConfig(v, cmd, "suppress-progress", "", false,
-		"Suppress display of periodic progress dots")
-	AddStringConfig(v, cmd, "suppress-permalink", "", "",
-		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
-	AddBoolConfig(v, cmd, "yes", "y", false,
-		"Automatically approve and perform the import after previewing it")
-	AddBoolConfig(v, cmd, "protect", "", true,
-		"Allow resources to be imported with protection from deletion enabled")
-	AddStringConfig(v, cmd, "from", "", "",
-		"Invoke a converter to import the resources")
-
-	if hasDebugCommands() {
-		AddStringConfig(v, cmd, "event-log", "", "",
-			"Log events to a file at this path")
+	// TODO: hack/pulumirc
+	if !hasDebugCommands() {
+		_ = cmd.PersistentFlags().MarkHidden("event-log")
 	}
-
-	// internal flags
-	AddStringConfig(v, cmd, "exec-kind", "", "", "")
-	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
-	AddStringConfig(v, cmd, "exec-agent", "", "", "")
-	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd

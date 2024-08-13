@@ -172,6 +172,9 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 				}
 				cmd.PersistentFlags().StringP(fieldName, shortName, defaultString, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
+			case reflect.Array, reflect.Slice:
+				cmd.PersistentFlags().StringSliceP(fieldName, shortName, []string{}, usage)
+				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			default:
 				contract.Failf("unexpected type %v", rv.Field(i).Kind())
 			}
