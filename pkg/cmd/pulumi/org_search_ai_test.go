@@ -61,13 +61,13 @@ func TestSearchAI_cmd(t *testing.T) {
 		},
 	}
 	cmd := searchAICmd{
-		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
-			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-				return b, nil
-			},
-			outputFormat: outputFormatTable,
+		Config: OrgSearchAIConfig{
+			Organization: orgName,
+			OutputFormat: outputFormatTable,
+		},
+		Stdout: &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return b, nil
 		},
 	}
 
@@ -91,31 +91,31 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 	modified := "2023-01-01T00:00:00.000Z"
 	orgName := "user"
 	cmd := searchAICmd{
-		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
-			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-				return &stubHTTPBackend{
-					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
-						return &apitype.ResourceSearchResponse{
-							Resources: []apitype.ResourceResult{
-								{
-									Name:     &name,
-									Type:     &typ,
-									Program:  &program,
-									Stack:    &stack,
-									Package:  &pack,
-									Module:   &mod,
-									Modified: &modified,
-								},
+		Config: OrgSearchAIConfig{
+			Organization: orgName,
+		},
+		Stdout: &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &stubHTTPBackend{
+				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+					return &apitype.ResourceSearchResponse{
+						Resources: []apitype.ResourceResult{
+							{
+								Name:     &name,
+								Type:     &typ,
+								Program:  &program,
+								Stack:    &stack,
+								Package:  &pack,
+								Module:   &mod,
+								Modified: &modified,
 							},
-						}, nil
-					},
-					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-						return "user", []string{"org1", "org2"}, nil, nil
-					},
-				}, nil
-			},
+						},
+					}, nil
+				},
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "user", []string{"org1", "org2"}, nil, nil
+				},
+			}, nil
 		},
 	}
 

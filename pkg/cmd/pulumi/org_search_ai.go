@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/pkg/browser"
@@ -29,10 +30,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type OrgSearchAIConfig struct {
+	PulumiConfig
+
+	Organization   string
+	CSVDelimiter   Delimiter
+	OutputFormat   outputFormat
+	QueryString    string
+	OpenWebBrowser bool
+}
+
 type searchAICmd struct {
-	searchCmd
-	queryString string
-	openWeb     bool
+	Config OrgSearchAIConfig
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
@@ -42,8 +57,8 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		cmd.Stdout = os.Stdout
 	}
 
-	if cmd.outputFormat == "" {
-		cmd.outputFormat = outputFormatTable
+	if cmd.Config.OutputFormat == "" {
+		cmd.Config.OutputFormat = outputFormatTable
 	}
 
 	if cmd.currentBackend == nil {
@@ -79,32 +94,32 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if defaultOrg != "" && cmd.orgName == "" {
-		cmd.orgName = defaultOrg
+	if defaultOrg != "" && cmd.Config.Organization == "" {
+		cmd.Config.Organization = defaultOrg
 	}
-	if cmd.orgName == "" {
-		cmd.orgName = userName
+	if cmd.Config.Organization == "" {
+		cmd.Config.Organization = userName
 	}
-	if cmd.orgName == userName {
+	if cmd.Config.Organization == userName {
 		return fmt.Errorf(
 			"%s is an individual account, not an organization."+
 				"Organization search is not supported for individual accounts",
 			userName,
 		)
 	}
-	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
-		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
+	if !sliceContains(orgs, cmd.Config.Organization) && cmd.Config.Organization != "" {
+		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.Config.Organization)
 	}
 
-	res, err := cloudBackend.NaturalLanguageSearch(ctx, cmd.orgName, cmd.queryString)
+	res, err := cloudBackend.NaturalLanguageSearch(ctx, cmd.Config.Organization, cmd.Config.QueryString)
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	err = cmd.Config.OutputFormat.Render(cmd.Stdout, rune(cmd.Config.CSVDelimiter), res)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
 	}
-	if cmd.openWeb {
+	if cmd.Config.OpenWebBrowser {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
 			return fmt.Errorf("failed to open URL: %w", err)
@@ -127,23 +142,23 @@ func newSearchAICmd() *cobra.Command {
 		),
 	}
 	cmd.PersistentFlags().StringVar(
-		&scmd.orgName, "org", "",
+		&scmd.Config.Organization, "org", "",
 		"Organization name to search within",
 	)
 	cmd.PersistentFlags().StringVarP(
-		&scmd.queryString, "query", "q", "",
+		&scmd.Config.QueryString, "query", "q", "",
 		"Plaintext natural language query",
 	)
 	cmd.PersistentFlags().VarP(
-		&scmd.outputFormat, "output", "o",
+		&scmd.Config.OutputFormat, "output", "o",
 		"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.",
 	)
 	cmd.PersistentFlags().Var(
-		&scmd.csvDelimiter, "delimiter",
+		&scmd.Config.CSVDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",
 	)
 	cmd.PersistentFlags().BoolVar(
-		&scmd.openWeb, "web", false,
+		&scmd.Config.OpenWebBrowser, "web", false,
 		"Open the search results in a web browser.",
 	)
 	return cmd
