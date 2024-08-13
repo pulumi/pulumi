@@ -71,10 +71,10 @@ func dashedFieldName(name string) string {
 func UnmarshalArgs[T any](v *viper.Viper, iniSection string) T {
 	typ := reflect.TypeFor[T]()
 	val := reflect.New(typ).Elem().Interface()
-	return unmarshalOpts(v, val, iniSection).(T)
+	return unmarshalArgs(v, val, iniSection).(T)
 }
 
-func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
+func unmarshalArgs(v *viper.Viper, opts any, iniSection string) any {
 	ref := reflect.ValueOf(opts)
 	//nolint:exhaustive
 	switch ref.Kind() {
@@ -94,7 +94,7 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 			//nolint:exhaustive
 			switch rv.Field(i).Kind() {
 			case reflect.Struct:
-				rv.Field(i).Set(reflect.ValueOf(unmarshalOpts(v, rv.Field(i).Interface(), iniSection)))
+				rv.Field(i).Set(reflect.ValueOf(unmarshalArgs(v, rv.Field(i).Interface(), iniSection)))
 			case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
 				reflect.Uint64, reflect.Uintptr, reflect.String:

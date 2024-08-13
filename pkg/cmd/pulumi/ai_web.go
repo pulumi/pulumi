@@ -132,7 +132,7 @@ func newAIWebCommand(v *viper.Viper) *cobra.Command {
 
 	// TODO: hack/pulumirc
 	// This crashes because of the Language enum
-	// aiwebcmd.config = UnmarshalOpts[AIWebConfig](v, "ai.web")
+	// aiwebcmd.config = UnmarshalArgs[AIWebConfig](v, "ai.web")
 
 	// TODO: hack/pulumirc
 	aiwebcmd.config.AppURL = env.AIServiceEndpoint.Value()
