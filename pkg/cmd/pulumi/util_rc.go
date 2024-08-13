@@ -44,6 +44,11 @@ func defaultValueFromRc(v *viper.Viper, kind reflect.Kind, name, iniSection stri
 			return ""
 		}
 		return val
+	case reflect.Array | reflect.Slice:
+		if val == nil {
+			return []string{}
+		}
+		return val
 	default:
 		contract.Failf("unexpected type, %v", kind)
 	}
@@ -93,6 +98,17 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 				reflect.Uint64, reflect.Uintptr, reflect.String:
 				rv.Field(i).Set(reflect.ValueOf(
 					defaultValueFromRc(v, rv.Field(i).Kind(), fieldName, iniSection)))
+			case reflect.Slice | reflect.Array:
+				values := defaultValueFromRc(v, rv.Field(i).Kind(), fieldName, iniSection).([]string)
+
+				rv.Field(i).Set(reflect.MakeSlice(
+					rv.Field(i).Type(),
+					len(values),
+					cap(values)))
+				for j := 0; j < len(values); j++ {
+					rv.Field(i).Index(j).Set(reflect.ValueOf(values[j]))
+				}
+
 			default:
 				contract.Failf("unexpected type %v", rv.Field(i).Kind())
 			}
@@ -111,6 +127,13 @@ func AddBoolConfig(v *viper.Viper, cmd *cobra.Command, name, shortname string, d
 
 func AddStringConfig(v *viper.Viper, cmd *cobra.Command, name, shortname, defaultValue, description string) {
 	cmd.PersistentFlags().StringP(name, shortname, defaultValue, description)
+	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
+}
+
+func AddStringSliceConfig(
+	v *viper.Viper, cmd *cobra.Command, name, shortname string, defaultValue []string, description string,
+) {
+	cmd.PersistentFlags().StringSliceP(name, shortname, defaultValue, description)
 	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
 }
 

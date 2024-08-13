@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -530,36 +531,39 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	}, resources, names)
 }
 
-func newImportCmd() *cobra.Command {
-	var parentSpec string
-	var providerSpec string
-	var importFilePath string
-	var outputFilePath string
-	var generateCode bool
+type ImportConfig struct {
+	PulumiConfig
 
-	var debug bool
-	var message string
-	var stackName string
-	var execKind string
-	var execAgent string
+	ParentSpec     string `args:"parent"`
+	ProviderSpec   string `args:"provider"`
+	ImportFilePath string `args:"file"`
+	OutputFilePath string `args:"out"`
+	GenerateCode   bool
+
+	Debug     bool
+	Message   string
+	StackName string `args:"stack"`
+	ExecKind  string
+	ExecAgent string
 
 	// Flags for engine.UpdateOptions.
-	var jsonDisplay bool
-	var diffDisplay bool
-	var eventLogPath string
-	var parallel int
-	var previewOnly bool
-	var showConfig bool
-	var skipPreview bool
-	var suppressOutputs bool
-	var suppressProgress bool
-	var suppressPermalink string
-	var yes bool
-	var protectResources bool
-	var properties []string
+	JSONDisplay       bool   `name:"json"`
+	DiffDisplay       bool   `name:"diff"`
+	EventLogPath      string `name:"event-log"`
+	Parallel          int
+	PreviewOnly       bool
+	SkipPreview       bool
+	SuppressOutputs   bool
+	SuppressProgress  bool
+	SuppressPermalink string
+	Yes               bool
+	ProtectResources  bool `name:"protect"`
+	Properties        []string
 
-	var from string
+	From string
+}
 
+func newImportCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
 		Short: "Import resources into an existing stack",
@@ -652,6 +656,7 @@ func newImportCmd() *cobra.Command {
 			"IDs and any properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
+			config := UnmarshalOpts[ImportConfig](v, cmd.Name())
 
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -664,25 +669,25 @@ func newImportCmd() *cobra.Command {
 			}
 
 			var importFile importFile
-			if importFilePath != "" {
-				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
+			if config.ImportFilePath != "" {
+				if len(args) != 0 || config.ParentSpec != "" || config.ProviderSpec != "" || len(config.Properties) != 0 {
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
 				}
-				if from != "" {
+				if config.From != "" {
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf("a converter may not be specified in conjunction with an import file")
 				}
-				f, err := readImportFile(importFilePath)
+				f, err := readImportFile(config.ImportFilePath)
 				if err != nil {
 					return result.FromError(fmt.Errorf("could not read import file: %w", err))
 				}
 				importFile = f
-			} else if from != "" {
+			} else if config.From != "" {
 				log := func(sev diag.Severity, msg string) {
 					pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 				}
-				converter, err := loadConverterPlugin(pCtx, from, log)
+				converter, err := loadConverterPlugin(pCtx, config.From, log)
 				if err != nil {
 					return result.Errorf("load converter plugin: %w", err)
 				}
@@ -712,7 +717,7 @@ func newImportCmd() *cobra.Command {
 
 				mapper, err := convert.NewPluginMapper(
 					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-					from, nil, installProvider)
+					config.From, nil, installProvider)
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -761,21 +766,21 @@ func newImportCmd() *cobra.Command {
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf("only expected at most three arguments")
 				}
-				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
+				f, err := makeImportFile(args[0], args[1], args[2], config.Properties, config.ParentSpec, config.ProviderSpec, "")
 				if err != nil {
 					return result.FromError(err)
 				}
 				importFile = f
 			}
 
-			if !generateCode && outputFilePath != "" {
+			if !config.GenerateCode && config.OutputFilePath != "" {
 				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
 			output := io.Writer(&outputResult)
-			if outputFilePath != "" {
-				f, err := os.Create(outputFilePath)
+			if config.OutputFilePath != "" {
+				f, err := os.Create(config.OutputFilePath)
 				if err != nil {
 					return result.Errorf("could not open output file: %v", err)
 				}
@@ -789,39 +794,38 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			yes = yes || skipPreview || skipConfirmations()
+			yes := config.Yes || config.SkipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
-			if !interactive && !yes && !previewOnly {
+			if !interactive && !yes && !config.PreviewOnly {
 				return result.FromError(
 					errors.New("--yes or --skip-preview or --preview-only" +
 						" must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := updateFlagsToOptions(interactive, config.SkipPreview, yes, config.PreviewOnly)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			displayType := display.DisplayProgress
-			if diffDisplay {
+			if config.DiffDisplay {
 				displayType = display.DisplayDiff
 			}
 
 			opts.Display = display.Options{
 				Color:            cmdutil.GetGlobalColorization(),
-				ShowConfig:       showConfig,
-				SuppressOutputs:  suppressOutputs,
-				SuppressProgress: suppressProgress,
+				SuppressOutputs:  config.SuppressOutputs,
+				SuppressProgress: config.SuppressProgress,
 				IsInteractive:    interactive,
 				Type:             displayType,
-				EventLogPath:     eventLogPath,
-				Debug:            debug,
-				JSONDisplay:      jsonDisplay,
+				EventLogPath:     config.EventLogPath,
+				Debug:            config.Debug,
+				JSONDisplay:      config.JSONDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if suppressPermalink == "true" {
+			if config.SuppressPermalink == "true" {
 				opts.Display.SuppressPermalink = true
 			} else {
 				opts.Display.SuppressPermalink = false
@@ -834,17 +838,17 @@ func newImportCmd() *cobra.Command {
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && isDIYBackend {
+			if config.SuppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, config.StackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, protectResources)
+			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, config.ProtectResources)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -906,7 +910,7 @@ func newImportCmd() *cobra.Command {
 				}
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
+			m, err := getUpdateMetadata(config.Message, root, config.ExecKind, config.ExecAgent, false, cmd.Flags())
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -939,8 +943,8 @@ func newImportCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:             parallel,
-				Debug:                debug,
+				Parallel:             config.Parallel,
+				Debug:                config.Debug,
 				UseLegacyDiff:        useLegacyDiff(),
 				UseLegacyRefreshDiff: useLegacyRefreshDiff(),
 				Experimental:         hasExperimentalCommands(),
@@ -957,7 +961,7 @@ func newImportCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
-			if generateCode {
+			if config.GenerateCode {
 				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return result.FromError(err)
@@ -965,7 +969,7 @@ func newImportCmd() *cobra.Command {
 
 				validImports, err := generateImportedDefinitions(
 					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-					protectResources)
+					config.ProtectResources)
 				if err != nil {
 					if _, ok := err.(*importer.DiagnosticsError); ok {
 						err = fmt.Errorf("internal error: %w", err)
@@ -979,10 +983,10 @@ func newImportCmd() *cobra.Command {
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" && !jsonDisplay {
+					if config.OutputFilePath == "" && !config.JSONDisplay {
 						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
 							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
-						if protectResources {
+						if config.ProtectResources {
 							fmt.Print(("Please note that the imported resources are marked as protected. " +
 								"To destroy them\n" +
 								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
@@ -1000,7 +1004,7 @@ func newImportCmd() *cobra.Command {
 
 				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
 				// directory so if there's any issues users can manually edit the file and try again with --file
-				if from != "" {
+				if config.From != "" {
 					path, err := writeImportFileToTemp(importFile)
 					if err != nil {
 						return result.FromError(err)
@@ -1016,82 +1020,64 @@ func newImportCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		//nolint:lll
-		&parentSpec, "parent", "", "The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource")
-	cmd.PersistentFlags().StringVar(
-		//nolint:lll
-		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
-	cmd.PersistentFlags().StringSliceVar(
-		//nolint:lll
-		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
-	cmd.PersistentFlags().StringVarP(
-		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
-	cmd.PersistentFlags().StringVarP(
-		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
-	cmd.PersistentFlags().BoolVar(
-		&generateCode, "generate-code", true, "Generate resource declaration code for the imported resources")
-
-	cmd.PersistentFlags().BoolVarP(
-		&debug, "debug", "d", false,
+	//nolint:lll
+	AddStringConfig(v, cmd, "parent", "", "",
+		"The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource")
+	//nolint:lll
+	AddStringConfig(v, cmd, "provider", "", "",
+		"The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
+	AddStringSliceConfig(v, cmd, "properties", "", nil,
+		"The property names to use for the import in the format name1,name2")
+	AddStringConfig(v, cmd, "file", "f", "",
+		"The path to a JSON-encoded file containing a list of resources to import")
+	AddStringConfig(v, cmd, "out", "o", "",
+		"The path to the file that will contain the generated resource declarations")
+	AddBoolConfig(v, cmd, "generate-code", "", true,
+		"Generate resource declaration code for the imported resources")
+	AddBoolConfig(v, cmd, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().StringVarP(
-		&message, "message", "m", "",
+	AddStringConfig(v, cmd, "message", "m", "",
 		"Optional message to associate with the update operation")
-	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
+	AddStringConfig(v, cmd, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
+	AddStringConfig(v, cmd, "config-file", "", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().BoolVar(
-		&diffDisplay, "diff", false,
+	AddBoolConfig(v, cmd, "diff", "", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", defaultParallel,
+	AddIntConfig(v, cmd, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
-	cmd.PersistentFlags().BoolVar(
-		&previewOnly, "preview-only", false,
+	AddBoolConfig(v, cmd, "prevew-only", "", false,
 		"Only show a preview of the import, but don't perform the import itself")
-	cmd.PersistentFlags().BoolVar(
-		&skipPreview, "skip-preview", false,
+	AddBoolConfig(v, cmd, "skip-preview", "", false,
 		"Do not calculate a preview before performing the import")
-	cmd.Flags().BoolVarP(
-		&jsonDisplay, "json", "j", false,
+	AddBoolConfig(v, cmd, "json", "j", false,
 		"Serialize the import diffs, operations, and overall output as JSON")
-	cmd.PersistentFlags().BoolVar(
-		&suppressOutputs, "suppress-outputs", false,
+	AddBoolConfig(v, cmd, "suppress-outputs", "", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
-	cmd.PersistentFlags().BoolVar(
-		&suppressProgress, "suppress-progress", false,
+	AddBoolConfig(v, cmd, "suppress-progress", "", false,
 		"Suppress display of periodic progress dots")
-	cmd.PersistentFlags().StringVar(
-		&suppressPermalink, "suppress-permalink", "",
+	AddStringConfig(v, cmd, "suppress-permalink", "", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+	AddBoolConfig(v, cmd, "yes", "y", false,
 		"Automatically approve and perform the import after previewing it")
-	cmd.PersistentFlags().BoolVarP(
-		&protectResources, "protect", "", true,
+	AddBoolConfig(v, cmd, "protect", "", true,
 		"Allow resources to be imported with protection from deletion enabled")
-	cmd.PersistentFlags().StringVar(
-		&from, "from", "",
+	AddStringConfig(v, cmd, "from", "", "",
 		"Invoke a converter to import the resources")
 
 	if hasDebugCommands() {
-		cmd.PersistentFlags().StringVar(
-			&eventLogPath, "event-log", "",
+		AddStringConfig(v, cmd, "event-log", "", "",
 			"Log events to a file at this path")
 	}
 
 	// internal flags
-	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	AddStringConfig(v, cmd, "exec-kind", "", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
-	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	AddStringConfig(v, cmd, "exec-agent", "", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 

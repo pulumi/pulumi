@@ -324,7 +324,7 @@ func NewPulumiCmd() *cobra.Command {
 				newConfigCmd(),
 				newStackCmd(),
 				newConsoleCmd(),
-				newImportCmd(),
+				newImportCmd(v),
 				newRefreshCmd(),
 				newStateCmd(),
 				newInstallCmd(v),
