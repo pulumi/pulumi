@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/appdash"
 	"github.com/pulumi/appdash/traceapp"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -39,8 +40,11 @@ func readTrace(path string, store io.ReaderFrom) error {
 	return err
 }
 
-func newViewTraceCmd() *cobra.Command {
-	var port int
+type ViewTraceArgs struct {
+	Port int `argsDefault:"8008" argsUsing:"the port the trace viewer will listen on"`
+}
+
+func newViewTraceCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view-trace [trace-file]",
 		Short: "Display a trace from the Pulumi CLI",
@@ -55,7 +59,8 @@ func newViewTraceCmd() *cobra.Command {
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
+			config := UnmarshalArgs[ViewTraceArgs](v, cmd.Name())
+			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", config.Port))
 			if err != nil {
 				return err
 			}
@@ -72,12 +77,11 @@ func newViewTraceCmd() *cobra.Command {
 			app.Store, app.Queryer = store, store
 
 			fmt.Printf("Displaying trace at %v\n", url)
-			return http.ListenAndServe(fmt.Sprintf(":%d", port), app) //nolint:gosec
+			return http.ListenAndServe(fmt.Sprintf(":%d", config.Port), app) //nolint:gosec
 		}),
 	}
 
-	cmd.PersistentFlags().IntVar(&port, "port", 8008,
-		"the port the trace viewer will listen on")
+	BindFlags[ViewTraceArgs](v, cmd)
 
 	return cmd
 }

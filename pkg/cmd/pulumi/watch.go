@@ -32,6 +32,8 @@ import (
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
+// TODO: hack/pulumirc
+//
 //nolint:vetshadow
 func newWatchCmd() *cobra.Command {
 	var debug bool
