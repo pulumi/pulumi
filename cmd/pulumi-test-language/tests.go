@@ -52,6 +52,7 @@ type languageTest struct {
 	// stackReferences specifies other stack data that this test depends on.
 	stackReferences map[string]resource.PropertyMap
 
+	// runs is a list of test runs to execute.
 	runs []testRun
 }
 
