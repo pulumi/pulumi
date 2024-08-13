@@ -16,7 +16,7 @@ import unittest
 from typing import Optional
 
 import pulumi
-import pulumi._types as _types
+from pulumi import _types
 
 
 @pulumi.input_type
