@@ -79,7 +79,7 @@ describe("StackReference.getOutputDetails", () => {
             }),
         );
         const ref = new pulumi.StackReference("foo");
-        const password: pulumi.Output<number> = ref.outputs["password"].apply(x => x.length);
+        const password: pulumi.Output<number> = ref.outputs["password"].apply((x) => x.length);
 
         assert.deepStrictEqual(await password.promise(), passwordValue.length);
     });
