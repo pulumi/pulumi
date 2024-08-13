@@ -203,6 +203,7 @@ func defaultInt(defaultValue string) int {
 	return 0
 }
 
+// TODO hack/pulumirc: These methods should probably go away
 func AddBoolConfig(v *viper.Viper, cmd *cobra.Command, name, shortname string, defaultValue bool, description string) {
 	cmd.PersistentFlags().BoolP(name, shortname, defaultValue, description)
 	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
