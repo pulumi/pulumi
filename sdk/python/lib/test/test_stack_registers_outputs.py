@@ -61,7 +61,7 @@ def my_mocks():
         # place them inside a test and make the code run after the
         # test stack completes constructing.
         assert monitor.outputs is not None
-        assert type(monitor.outputs.urn) == str
+        assert isinstance(monitor.outputs.urn, str)
 
 
 @pulumi.runtime.test
