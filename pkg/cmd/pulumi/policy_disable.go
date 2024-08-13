@@ -20,13 +20,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type policyDisableArgs struct {
-	policyGroup string
-	version     string
+type PolicyDisableConfig struct {
+	PulumiConfig
+
+	PolicyGroup string
+	Version     string
 }
 
 func newPolicyDisableCmd() *cobra.Command {
-	args := policyDisableArgs{}
+	config := PolicyDisableConfig{}
 
 	cmd := &cobra.Command{
 		Use:   "disable <org-name>/<policy-pack-name>",
@@ -43,18 +45,18 @@ func newPolicyDisableCmd() *cobra.Command {
 			}
 
 			// Attempt to disable the Policy Pack.
-			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
-				VersionTag: &args.version, Scopes: backend.CancellationScopes,
+			return policyPack.Disable(ctx, config.PolicyGroup, backend.PolicyPackOperation{
+				VersionTag: &config.Version, Scopes: backend.CancellationScopes,
 			})
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&args.policyGroup, "policy-group", "",
+		&config.PolicyGroup, "policy-group", "",
 		"The Policy Group for which the Policy Pack will be disabled; if not specified, the default Policy Group is used")
 
 	cmd.PersistentFlags().StringVar(
-		&args.version, "version", "",
+		&config.Version, "version", "",
 		"The version of the Policy Pack that will be disabled; "+
 			"if not specified, any enabled version of the Policy Pack will be disabled")
 
