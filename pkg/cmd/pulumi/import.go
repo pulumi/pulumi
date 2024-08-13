@@ -533,6 +533,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 
 //nolint:lll
 type ImportConfig struct {
+	ConfigFile     string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
 	ParentSpec     string `args:"parent" argsUsage:"The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource"`
 	ProviderSpec   string `args:"provider" argsUsage:"The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource"`
 	ImportFilePath string `args:"file" argsShort:"f" argsUsage:"The path to a JSON-encoded file containing a list of resources to import"`
@@ -549,7 +550,7 @@ type ImportConfig struct {
 	JSONDisplay       bool     `args:"json" argsShort:"j" argsUsage:"Serialize the import diffs, operations, and overall output as JSON"`
 	DiffDisplay       bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
 	EventLogPath      string   `args:"event-log" argsUsage:"Log events to a file at this path"`
-	Parallel          int      `argsShort:"p" argsDefault:"80" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)"`
+	Parallel          int      `argsShort:"p" argsDefault:"80" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
 	PreviewOnly       bool     `argsUsage:"Only show a preview of the import, but don't perform the import itself"`
 	SkipPreview       bool     `argsUsage:"Do not calculate a preview before performing the import"`
 	SuppressOutputs   bool     `argsUsage:"Suppress display of stack outputs (in case they contain sensitive values)"`
