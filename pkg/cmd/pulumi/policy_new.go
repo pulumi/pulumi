@@ -32,16 +32,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type newPolicyArgs struct {
-	dir               string
-	force             bool
-	generateOnly      bool
-	offline           bool
-	templateNameOrURL string
+type PolicyNewConfig struct {
+	PulumiConfig
+
+	Dir               string
+	Force             bool
+	GenerateOnly      bool
+	Offline           bool
+	TemplateNameOrURL string
 }
 
 func newPolicyNewCmd() *cobra.Command {
-	args := newPolicyArgs{}
+	config := PolicyNewConfig{}
 
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
@@ -59,29 +61,29 @@ func newPolicyNewCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
-				args.templateNameOrURL = cliArgs[0]
+				config.TemplateNameOrURL = cliArgs[0]
 			}
-			return runNewPolicyPack(ctx, args)
+			return runNewPolicyPack(ctx, config)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&args.dir, "dir", "",
+		&config.Dir, "dir", "",
 		"The location to place the generated Policy Pack; if not specified, the current directory is used")
 	cmd.PersistentFlags().BoolVarP(
-		&args.force, "force", "f", false,
+		&config.Force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
 	cmd.PersistentFlags().BoolVarP(
-		&args.generateOnly, "generate-only", "g", false,
+		&config.GenerateOnly, "generate-only", "g", false,
 		"Generate the Policy Pack only; do not install dependencies")
 	cmd.PersistentFlags().BoolVarP(
-		&args.offline, "offline", "o", false,
+		&config.Offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests")
 
 	return cmd
 }
 
-func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
+func runNewPolicyPack(ctx context.Context, args PolicyNewConfig) error {
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
@@ -96,22 +98,22 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
-	if args.dir != "" {
-		cwd, err = useSpecifiedDir(args.dir)
+	if args.Dir != "" {
+		cwd, err = useSpecifiedDir(args.Dir)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Return an error if the directory isn't empty.
-	if !args.force {
+	if !args.Force {
 		if err = errorIfNotEmptyDirectory(cwd); err != nil {
 			return err
 		}
 	}
 
 	// Retrieve the templates-policy repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPolicyPack)
+	repo, err := workspace.RetrieveTemplates(args.TemplateNameOrURL, args.Offline, workspace.TemplateKindPolicyPack)
 	if err != nil {
 		return err
 	}
@@ -142,19 +144,19 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Do a dry run, if we're not forcing files to be overwritten.
-	if !args.force {
+	if !args.Force {
 		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, ""); err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
+				return fmt.Errorf("template '%s' not found: %w", args.TemplateNameOrURL, err)
 			}
 			return err
 		}
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, "", ""); err != nil {
+	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.Force, "", ""); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
+			return fmt.Errorf("template '%s' not found: %w", args.TemplateNameOrURL, err)
 		}
 		return err
 	}
@@ -179,7 +181,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Install dependencies.
-	if !args.generateOnly {
+	if !args.GenerateOnly {
 		if err := installPolicyPackDependencies(ctx, root, proj); err != nil {
 			return err
 		}
@@ -191,7 +193,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			" " + cmdutil.EmojiOr("✨", ""))
 	fmt.Println()
 
-	printPolicyPackNextSteps(proj, root, args.generateOnly, opts)
+	printPolicyPackNextSteps(proj, root, args.GenerateOnly, opts)
 
 	return nil
 }

@@ -31,8 +31,8 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	args := newPolicyArgs{
-		templateNameOrURL: "aws-javascript",
+	args := PolicyNewConfig{
+		TemplateNameOrURL: "aws-javascript",
 	}
 
 	err := runNewPolicyPack(context.Background(), args)
@@ -53,8 +53,8 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
-		args := newPolicyArgs{
-			templateNameOrURL: nonExistantTemplate,
+		args := PolicyNewConfig{
+			TemplateNameOrURL: nonExistantTemplate,
 		}
 
 		err := runNewPolicyPack(context.Background(), args)
@@ -66,10 +66,10 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
-		args := newPolicyArgs{
-			generateOnly:      true,
-			offline:           true,
-			templateNameOrURL: nonExistantTemplate,
+		args := PolicyNewConfig{
+			GenerateOnly:      true,
+			Offline:           true,
+			TemplateNameOrURL: nonExistantTemplate,
 		}
 
 		err := runNewPolicyPack(context.Background(), args)
