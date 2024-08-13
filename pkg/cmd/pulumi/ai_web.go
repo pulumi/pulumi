@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 type AIWebConfig struct {
@@ -126,8 +127,14 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAIWebCommand() *cobra.Command {
+func newAIWebCommand(v *viper.Viper) *cobra.Command {
 	var aiwebcmd aiWebCmd
+
+	// TODO: hack/pulumirc
+	// This crashes because of the Language enum
+	// aiwebcmd.config = UnmarshalOpts[AIWebConfig](v, "ai.web")
+
+	// TODO: hack/pulumirc
 	aiwebcmd.config.AppURL = env.AIServiceEndpoint.Value()
 	if aiwebcmd.config.AppURL == "" {
 		aiwebcmd.config.AppURL = "https://www.pulumi.com/ai"
@@ -153,13 +160,9 @@ by passing the --no-auto-submit flag.
 		},
 		),
 	}
-	cmd.PersistentFlags().BoolVar(
-		&aiwebcmd.config.DisableAutoSubmit, "no-auto-submit", false,
-		"Opt-out of automatically submitting the prompt to Pulumi AI",
-	)
-	cmd.PersistentFlags().VarP(
-		&aiwebcmd.config.Language, "language", "l",
-		"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]",
-	)
+
+	AddBoolConfig(v, cmd, "no-auto-submit", "", false, "Opt-out of automatically submitting the prompt to Pulumi AI")
+	AddStringConfig(v, cmd, "language", "l", "",
+		"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]")
 	return cmd
 }
