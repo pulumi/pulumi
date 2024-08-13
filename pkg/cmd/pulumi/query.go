@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -50,6 +51,14 @@ func newQueryCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
+
+			cmdutil.Diag().Warningf(diag.RawMessage("" /*urn*/, `
+================================================================================
+query was an experimental command that we have opted to discontinue. It is due
+to be removed in a future release before the end of this year (2024).
+If you have any feedback or concerns, please let us know by commenting on the
+issue at https://github.com/pulumi/pulumi/issues/16964.
+================================================================================`))
 
 			opts := backend.UpdateOptions{}
 			opts.Display = display.Options{
