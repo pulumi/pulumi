@@ -41,7 +41,7 @@ func readTrace(path string, store io.ReaderFrom) error {
 }
 
 type ViewTraceArgs struct {
-	Port int `argsDefault:"8008" argsUsing:"the port the trace viewer will listen on"`
+	Port int `argsDefault:"8008" argsUsage:"the port the trace viewer will listen on"`
 }
 
 func newViewTraceCmd(v *viper.Viper) *cobra.Command {
