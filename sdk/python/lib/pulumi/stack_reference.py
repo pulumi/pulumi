@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from asyncio import ensure_future
-from typing import Optional, Any, List, Callable
-from copy import deepcopy
+from typing import Optional, Dict, Any, List
 
 from .output import Output, Input
 from .resource import CustomResource, ResourceOptions
@@ -63,7 +62,7 @@ class StackReference(CustomResource):
     The name of the referenced stack.
     """
 
-    outputs: Output[dict]
+    outputs: Output[Dict[str, Any]]
     """
     The outputs of the referenced stack.
     """
