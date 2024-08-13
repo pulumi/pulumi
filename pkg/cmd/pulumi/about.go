@@ -54,7 +54,8 @@ type AboutConfig struct {
 }
 
 func newAboutCmd() *cobra.Command {
-	config := UnmarshalOpts[AboutConfig](viper.New(), "about")
+	v := viper.New()
+	config := UnmarshalOpts[AboutConfig](v, "about")
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
 		Use:   "about",
@@ -83,13 +84,9 @@ func newAboutCmd() *cobra.Command {
 
 	cmd.AddCommand(newAboutEnvCmd())
 
-	cmd.PersistentFlags().BoolVarP(
-		&config.JSON, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"The name of the stack to get info on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVarP(
-		&config.TransitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+	AddJSONConfig(v, cmd)
+	AddStringConfig(v, cmd, "stack", "s", "", "The name of the stack to get info on. Defaults to the current stack")
+	AddBoolConfig(v, cmd, "transitive", "t", false, "Include transitive dependencies")
 
 	return cmd
 }
