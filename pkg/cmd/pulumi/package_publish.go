@@ -31,8 +31,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type PackagePublishConfig struct {
+	PulumiConfig
+
+	Path string
+}
+
 func newPackagePublishCmd() *cobra.Command {
-	var publCmd publishCmd
+	var config PackagePublishConfig
 	cmd := &cobra.Command{
 		Use:    "publish-sdk <language>",
 		Args:   cobra.RangeArgs(0, 1),
@@ -40,21 +46,17 @@ func newPackagePublishCmd() *cobra.Command {
 		Hidden: !env.Dev.Value(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			return publCmd.Run(ctx, args)
+			return config.Run(ctx, args)
 		}),
 	}
-	cmd.PersistentFlags().StringVar(&publCmd.Path, "path", "",
+	cmd.PersistentFlags().StringVar(&config.Path, "path", "",
 		`The path to the root of your package.
 	Example: ./sdk/nodejs
 	`)
 	return cmd
 }
 
-type publishCmd struct {
-	Path string
-}
-
-func (cmd *publishCmd) Run(ctx context.Context, args []string) error {
+func (cmd *PackagePublishConfig) Run(ctx context.Context, args []string) error {
 	lang := "all"
 	if len(args) > 0 {
 		lang = args[0]
