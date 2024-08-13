@@ -38,6 +38,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type PluginInstallConfig struct {
+	PulumiConfig
+
+	ServerURL string
+	Exact     bool
+	File      string
+	Reinstall bool
+	Checksum  string
+}
+
+type pluginInstallCmd struct {
+	Config PluginInstallConfig
+
+	diag  diag.Sink
+	env   env.Env
+	color colors.Colorization
+
+	pluginGetLatestVersion func(
+		workspace.PluginSpec,
+	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
+}
+
 func newPluginInstallCmd() *cobra.Command {
 	var picmd pluginInstallCmd
 	cmd := &cobra.Command{
@@ -61,34 +83,18 @@ func newPluginInstallCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(&picmd.serverURL,
+	cmd.PersistentFlags().StringVar(&picmd.Config.ServerURL,
 		"server", "", "A URL to download plugins from")
-	cmd.PersistentFlags().BoolVar(&picmd.exact,
+	cmd.PersistentFlags().BoolVar(&picmd.Config.Exact,
 		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
-	cmd.PersistentFlags().StringVarP(&picmd.file,
+	cmd.PersistentFlags().StringVarP(&picmd.Config.File,
 		"file", "f", "", "Install a plugin from a binary, folder or tarball, instead of downloading it")
-	cmd.PersistentFlags().BoolVar(&picmd.reinstall,
+	cmd.PersistentFlags().BoolVar(&picmd.Config.Reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
-	cmd.PersistentFlags().StringVar(&picmd.checksum,
+	cmd.PersistentFlags().StringVar(&picmd.Config.Checksum,
 		"checksum", "", "The expected SHA256 checksum for the plugin archive")
 
 	return cmd
-}
-
-type pluginInstallCmd struct {
-	serverURL string
-	exact     bool
-	file      string
-	reinstall bool
-	checksum  string
-
-	diag  diag.Sink
-	env   env.Env
-	color colors.Colorization
-
-	pluginGetLatestVersion func(
-		workspace.PluginSpec,
-	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
 }
 
 func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
@@ -122,13 +128,13 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				return fmt.Errorf("invalid plugin semver: %w", err)
 			}
 		}
-		if len(args) < 3 && cmd.file != "" {
+		if len(args) < 3 && cmd.Config.File != "" {
 			return errors.New("missing plugin version argument, this is required if installing from a file")
 		}
 
 		var checksums map[string][]byte
-		if cmd.checksum != "" {
-			checksumBytes, err := hex.DecodeString(cmd.checksum)
+		if cmd.Config.Checksum != "" {
+			checksumBytes, err := hex.DecodeString(cmd.Config.Checksum)
 			if err != nil {
 				return fmt.Errorf("--checksum was not a valid hex string: %w", err)
 			}
@@ -141,7 +147,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			Kind:              apitype.PluginKind(args[0]),
 			Name:              args[1],
 			Version:           version,
-			PluginDownloadURL: cmd.serverURL, // If empty, will use default plugin source.
+			PluginDownloadURL: cmd.Config.ServerURL, // If empty, will use default plugin source.
 			Checksums:         checksums,
 		}
 
@@ -176,10 +182,10 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 		installs = append(installs, pluginSpec)
 	} else {
-		if cmd.file != "" {
+		if cmd.Config.File != "" {
 			return errors.New("--file (-f) is only valid if a specific package is being installed")
 		}
-		if cmd.checksum != "" {
+		if cmd.Config.Checksum != "" {
 			return errors.New("--checksum is only valid if a specific package is being installed")
 		}
 
@@ -203,8 +209,8 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 		// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
-		if !cmd.reinstall {
-			if cmd.exact {
+		if !cmd.Config.Reinstall {
+			if cmd.Config.Exact {
 				if workspace.HasPlugin(install) {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
@@ -224,7 +230,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		var source string
 		var payload workspace.PluginContent
 		var err error
-		if cmd.file == "" {
+		if cmd.Config.File == "" {
 			withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
 				return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmd.color)
 			}
@@ -241,15 +247,15 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 			payload = workspace.TarPlugin(r)
 		} else {
-			source = cmd.file
-			logging.V(1).Infof("%s opening tarball from %s", label, cmd.file)
-			payload, err = getFilePayload(cmd.file, install)
+			source = cmd.Config.File
+			logging.V(1).Infof("%s opening tarball from %s", label, cmd.Config.File)
+			payload, err = getFilePayload(cmd.Config.File, install)
 			if err != nil {
 				return err
 			}
 		}
 		logging.V(1).Infof("%s installing tarball ...", label)
-		if err = install.InstallWithContext(ctx, payload, cmd.reinstall); err != nil {
+		if err = install.InstallWithContext(ctx, payload, cmd.Config.Reinstall); err != nil {
 			return fmt.Errorf("installing %s from %s: %w", label, source, err)
 		}
 	}
