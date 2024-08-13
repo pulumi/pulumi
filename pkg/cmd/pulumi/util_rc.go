@@ -166,11 +166,7 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 				cmd.PersistentFlags().IntP(fieldName, shortName, d, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			case reflect.String:
-				defaultString := ""
-				if defaultValue != "" {
-					defaultString = defaultValue
-				}
-				cmd.PersistentFlags().StringP(fieldName, shortName, defaultString, usage)
+				cmd.PersistentFlags().StringP(fieldName, shortName, defaultValue, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			case reflect.Array, reflect.Slice:
 				cmd.PersistentFlags().StringSliceP(fieldName, shortName, []string{}, usage)
