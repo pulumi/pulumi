@@ -184,6 +184,7 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// TODO: hack/pulumirc: recurse up cmd.Parent() to get the full section, like `ai.web`, or `config.set`
 			config := UnmarshalOpts[PulumiConfig](v, cmd.Name())
 
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
