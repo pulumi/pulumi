@@ -15,8 +15,8 @@
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import os
-import pytest
 import unittest
+import pytest
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks

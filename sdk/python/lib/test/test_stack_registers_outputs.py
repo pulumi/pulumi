@@ -20,11 +20,11 @@ Regresses https://github.com/pulumi/pulumi/issues/8273
 
 """
 
+from copy import deepcopy
+
 import pytest
 from pulumi.runtime import settings, mocks
 import pulumi
-
-from copy import deepcopy
 
 
 class MyMocks(pulumi.runtime.Mocks):
