@@ -46,15 +46,12 @@ import (
 )
 
 type AboutConfig struct {
-	PulumiConfig
-
-	JSON                   bool
-	TransitiveDependencies bool
-	Stack                  string
+	JSON                   bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	TransitiveDependencies bool   `args:"transitive" argsShort:"t" argsUsage:"Include transitive dependencies"`
+	Stack                  string `argsShort:"s" argsUsage:"The name of the stack to get info on. Defaults to the current stack"`
 }
 
 func newAboutCmd(v *viper.Viper) *cobra.Command {
-	config := UnmarshalOpts[AboutConfig](v, "about")
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
 		Use:   "about",
@@ -71,6 +68,7 @@ func newAboutCmd(v *viper.Viper) *cobra.Command {
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalOpts[AboutConfig](v, "about")
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, config.TransitiveDependencies, config.Stack)
 			if config.JSON {
@@ -83,9 +81,7 @@ func newAboutCmd(v *viper.Viper) *cobra.Command {
 
 	cmd.AddCommand(newAboutEnvCmd())
 
-	AddJSONConfig(v, cmd)
-	AddStringConfig(v, cmd, "stack", "s", "", "The name of the stack to get info on. Defaults to the current stack")
-	AddBoolConfig(v, cmd, "transitive", "t", false, "Include transitive dependencies")
+	BindFlags[AboutConfig](v, cmd)
 
 	return cmd
 }

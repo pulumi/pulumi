@@ -120,6 +120,51 @@ func unmarshalOpts(v *viper.Viper, opts any, iniSection string) any {
 	return nil
 }
 
+func BindFlags[T any](v *viper.Viper, cmd *cobra.Command) {
+	typ := reflect.TypeFor[T]()
+	val := reflect.New(typ).Elem().Interface()
+	bindFlags(v, cmd, val)
+}
+
+func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
+	ref := reflect.ValueOf(opts)
+	//nolint:exhaustive
+	switch ref.Kind() {
+	case reflect.Struct:
+		rv := reflect.New(ref.Type()).Elem()
+		for i := 0; i < ref.NumField(); i++ {
+			fieldName := dashedFieldName(ref.Type().Field(i).Name)
+			tag := rv.Type().Field(i).Tag.Get("args")
+			if tag != "" {
+				fieldName = tag
+			}
+			shortName := rv.Type().Field(i).Tag.Get("argsShort")
+			usage := rv.Type().Field(i).Tag.Get("argsUsage")
+
+			//nolint:exhaustive
+			switch rv.Field(i).Kind() {
+			case reflect.Struct:
+				bindFlags(v, cmd, rv.Field(i).Interface())
+			case reflect.Bool:
+				cmd.PersistentFlags().BoolP(fieldName, shortName, false, usage)
+				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
+				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+				reflect.Uint64, reflect.Uintptr:
+				cmd.PersistentFlags().IntP(fieldName, shortName, 0, usage)
+				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
+			case reflect.String:
+				cmd.PersistentFlags().StringP(fieldName, shortName, "", usage)
+				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
+			default:
+				contract.Failf("unexpected type %v", rv.Field(i).Kind())
+			}
+		}
+	default:
+		contract.Failf("unexpected type %v", ref.Kind())
+	}
+}
+
 func AddBoolConfig(v *viper.Viper, cmd *cobra.Command, name, shortname string, defaultValue bool, description string) {
 	cmd.PersistentFlags().BoolP(name, shortname, defaultValue, description)
 	_ = v.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
