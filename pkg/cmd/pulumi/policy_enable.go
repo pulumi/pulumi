@@ -26,13 +26,15 @@ import (
 
 const latestKeyword = "latest"
 
-type policyEnableArgs struct {
-	policyGroup string
-	config      string
+type PolicyEnableConfig struct {
+	PulumiConfig
+
+	PolicyGroup string
+	Config      string
 }
 
 func newPolicyEnableCmd() *cobra.Command {
-	args := policyEnableArgs{}
+	config := PolicyEnableConfig{}
 
 	cmd := &cobra.Command{
 		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
@@ -54,31 +56,31 @@ func newPolicyEnableCmd() *cobra.Command {
 				version = &cliArgs[1]
 			}
 
-			// Load the configuration from the user-specified JSON file into config object.
-			var config map[string]*json.RawMessage
-			if args.config != "" {
-				config, err = loadPolicyConfigFromFile(args.config)
+			// Load the configuration from the user-specified JSON file into jsonConfig object.
+			var jsonConfig map[string]*json.RawMessage
+			if config.Config != "" {
+				jsonConfig, err = loadPolicyConfigFromFile(config.Config)
 				if err != nil {
 					return err
 				}
 			}
 
 			// Attempt to enable the Policy Pack.
-			return policyPack.Enable(ctx, args.policyGroup,
+			return policyPack.Enable(ctx, config.PolicyGroup,
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					Config:     jsonConfig,
 				})
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&args.policyGroup, "policy-group", "",
+		&config.PolicyGroup, "policy-group", "",
 		"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used")
 
 	cmd.PersistentFlags().StringVar(
-		&args.config, "config", "",
+		&config.Config, "config", "",
 		"The file path for the Policy Pack configuration file")
 
 	return cmd
