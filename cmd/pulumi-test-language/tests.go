@@ -269,6 +269,29 @@ var languageTests = map[string]languageTest{
 			},
 		},
 	},
+	"l1-builtin-info": {
+		runs: []testRun{
+			{
+				assert: func(l *L,
+					projectDirectory string, res result.Result,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, res, changes)
+
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
+					outputs := stack.Outputs
+
+					assert.Len(l, outputs, 3, "expected 3 outputs")
+					assertPropertyMapMember(l, outputs, "stackOutput", resource.NewStringProperty("test"))
+					assertPropertyMapMember(l, outputs, "projectOutput", resource.NewStringProperty("l1-builtin-info"))
+					assertPropertyMapMember(l, outputs, "organizationOutput", resource.NewStringProperty("organization"))
+				},
+			},
+		},
+	},
 	// ==========
 	// L2 (Tests using providers)
 	// ==========
