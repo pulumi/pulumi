@@ -484,7 +484,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "ten": ConfigValue(value="ten"),
         }
         stack.set_all_config(config)
-        stack.remove_all_config([key for key in config])
+        stack.remove_all_config(list(config))
 
         ws.remove_stack(stack_name)
 
