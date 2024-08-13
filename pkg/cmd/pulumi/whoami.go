@@ -27,17 +27,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type WhoAmIConfig struct {
-	PulumiConfig
-
-	JSON    bool
-	Verbose bool
+type WhoAmIArgs struct {
+	JSON    bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	Verbose bool `argsShort:"v" argsUsage:"Print detailed whoami information"`
 }
 
 type whoAmICmd struct {
-	config WhoAmIConfig
+	JSON    bool
+	Verbose bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -46,7 +46,7 @@ type whoAmICmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func newWhoAmICmd() *cobra.Command {
+func newWhoAmICmd(v *viper.Viper) *cobra.Command {
 	var whocmd whoAmICmd
 	cmd := &cobra.Command{
 		Use:   "whoami",
@@ -56,16 +56,14 @@ func newWhoAmICmd() *cobra.Command {
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[WhoAmIArgs](v, cmd.Name())
+			whocmd.JSON = config.JSON
+			whocmd.Verbose = config.Verbose
 			return whocmd.Run(cmd.Context())
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&whocmd.config.JSON, "json", "j", false, "Emit output as JSON")
-
-	cmd.PersistentFlags().BoolVarP(
-		&whocmd.config.Verbose, "verbose", "v", false,
-		"Print detailed whoami information")
+	BindFlags[WhoAmIArgs](v, cmd)
 
 	return cmd
 }
@@ -100,7 +98,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	if cmd.config.JSON {
+	if cmd.JSON {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:             name,
 			Organizations:    orgs,
@@ -109,7 +107,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		})
 	}
 
-	if cmd.config.Verbose {
+	if cmd.Verbose {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
