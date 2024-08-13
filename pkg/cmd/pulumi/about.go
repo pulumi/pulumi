@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+//nolint:lll
 type AboutConfig struct {
 	JSON                   bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 	TransitiveDependencies bool   `args:"transitive" argsShort:"t" argsUsage:"Include transitive dependencies"`

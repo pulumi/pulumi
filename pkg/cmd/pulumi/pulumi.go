@@ -147,6 +147,8 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 }
 
 // PulumiConfig contains configuration that pertains to all Pulumi commands.
+//
+//nolint:lll
 type PulumiConfig struct {
 	Cwd                     string `argsShort:"C" argsUsage:"Run pulumi as if it had been started in another directory"`
 	FlowLogs                bool   `args:"logflow" argsUsage:"Flow log settings to child processes (like plugins)"`

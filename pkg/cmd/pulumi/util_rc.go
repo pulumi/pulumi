@@ -190,9 +190,8 @@ func defaultBool(defaultValue string) bool {
 			return true
 		} else if defaultValue == "false" {
 			return false
-		} else {
-			contract.Failf("unexpected default value %q for bool", defaultValue)
 		}
+		contract.Failf("unexpected default value %q for bool", defaultValue)
 	}
 	return false
 }
