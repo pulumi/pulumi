@@ -25,10 +25,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const allKeyword = "all"
+type PolicyRmConfig struct {
+	PulumiConfig
+
+	Yes bool
+}
 
 func newPolicyRmCmd() *cobra.Command {
-	var yes bool
+	var config PolicyRmConfig
 	cmd := &cobra.Command{
 		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
@@ -37,7 +41,7 @@ func newPolicyRmCmd() *cobra.Command {
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
+			config.Yes = config.Yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, args[0], loginToCloud)
 			if err != nil {
@@ -54,7 +58,7 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
-			if !yes && !confirmPrompt(prompt, args[0], opts) {
+			if !config.Yes && !confirmPrompt(prompt, args[0], opts) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
@@ -71,8 +75,10 @@ func newPolicyRmCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+		&config.Yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 
 	return cmd
 }
+
+const allKeyword = "all"
