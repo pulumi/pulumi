@@ -20,15 +20,13 @@ import (
 	b64 "encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
-
-	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -45,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -205,123 +202,6 @@ func makeTestResponse(msg string) *testingrpc.RunLanguageTestResponse {
 		Success:  false,
 		Messages: []string{msg},
 	}
-}
-
-type testHost struct {
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]plugin.Provider
-}
-
-var _ plugin.Host = (*testHost)(nil)
-
-func (h *testHost) ServerAddr() string {
-	panic("not implemented")
-}
-
-func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	panic("not implemented")
-}
-
-func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	panic("not implemented")
-}
-
-func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
-	panic("not implemented")
-}
-
-func (h *testHost) PolicyAnalyzer(
-	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
-) (plugin.Analyzer, error) {
-	panic("not implemented")
-}
-
-func (h *testHost) ListAnalyzers() []plugin.Analyzer {
-	// We're not using analyzers for matrix tests, yet.
-	return nil
-}
-
-func (h *testHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	// Look in the providers map for this provider
-	if version == nil {
-		return nil, errors.New("unexpected provider request with no version")
-	}
-
-	key := fmt.Sprintf("%s@%s", pkg, version)
-	provider, has := h.providers[key]
-	if !has {
-		return nil, fmt.Errorf("unknown provider %s", key)
-	}
-	return provider, nil
-}
-
-func (h *testHost) CloseProvider(provider plugin.Provider) error {
-	// We don't actually need to close off these providers.
-	return nil
-}
-
-// LanguageRuntime returns the language runtime initialized by the test host.
-// ProgramInfo is only used here for compatibility reasons and will be removed from this function.
-func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
-	if runtime != h.runtimeName {
-		return nil, fmt.Errorf("unexpected runtime %s", runtime)
-	}
-	return h.runtime, nil
-}
-
-func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
-	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
-	// that that returned the expected plugins (with expected versions).
-	expected := mapset.NewSet(
-		fmt.Sprintf("language-%s@<nil>", h.runtimeName),
-	)
-	for _, provider := range h.providers {
-		pkg := provider.Pkg()
-		version, err := getProviderVersion(provider)
-		if err != nil {
-			return fmt.Errorf("get provider version %s: %w", pkg, err)
-		}
-		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
-	}
-
-	actual := mapset.NewSetWithSize[string](len(plugins))
-	for _, plugin := range plugins {
-		actual.Add(fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version))
-	}
-
-	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
-	diff := expected.SymmetricDifference(actual)
-	if !diff.IsEmpty() {
-		expectedSlice := expected.ToSlice()
-		slices.Sort(expectedSlice)
-		actualSlice := actual.ToSlice()
-		slices.Sort(actualSlice)
-		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actualSlice, expectedSlice)
-	}
-
-	return nil
-}
-
-func (h *testHost) ResolvePlugin(
-	kind apitype.PluginKind, name string, version *semver.Version,
-) (*workspace.PluginInfo, error) {
-	panic("not implemented")
-}
-
-func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	// We're not using project plugins, in fact this method shouldn't even really exists on Host given it's
-	// just reading off Pulumi.yaml.
-	return nil
-}
-
-func (h *testHost) SignalCancellation() error {
-	panic("not implemented")
-}
-
-func (h *testHost) Close() error {
-	return nil
 }
 
 type replacement struct {
@@ -534,6 +414,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
 		providers:   providers,
+		connections: make(map[plugin.Provider]io.Closer),
 	}
 
 	// Generate SDKs for all the packages we need
