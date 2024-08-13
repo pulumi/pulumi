@@ -28,8 +28,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type PolicyLsConfig struct {
+	PulumiConfig
+
+	JSON bool
+}
+
 func newPolicyLsCmd() *cobra.Command {
-	var jsonOut bool
+	var config PolicyLsConfig
 
 	cmd := &cobra.Command{
 		Use:   "ls [org-name]",
@@ -81,14 +87,14 @@ func newPolicyLsCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			if jsonOut {
+			if config.JSON {
 				return formatPolicyPacksJSON(allPolicyPacks)
 			}
 			return formatPolicyPacksConsole(allPolicyPacks)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+		&config.JSON, "json", "j", false, "Emit output as JSON")
 	return cmd
 }
 
