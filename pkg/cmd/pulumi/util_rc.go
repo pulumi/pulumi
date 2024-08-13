@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -148,21 +149,28 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 			}
 			shortName := rv.Type().Field(i).Tag.Get("argsShort")
 			usage := rv.Type().Field(i).Tag.Get("argsUsage")
+			defaultValue := rv.Type().Field(i).Tag.Get("argsDefault")
 
 			//nolint:exhaustive
 			switch rv.Field(i).Kind() {
 			case reflect.Struct:
 				bindFlags(v, cmd, rv.Field(i).Interface())
 			case reflect.Bool:
-				cmd.PersistentFlags().BoolP(fieldName, shortName, false, usage)
+				d := defaultBool(defaultValue)
+				cmd.PersistentFlags().BoolP(fieldName, shortName, d, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
 				reflect.Uint64, reflect.Uintptr:
-				cmd.PersistentFlags().IntP(fieldName, shortName, 0, usage)
+				d := defaultInt(defaultValue)
+				cmd.PersistentFlags().IntP(fieldName, shortName, d, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			case reflect.String:
-				cmd.PersistentFlags().StringP(fieldName, shortName, "", usage)
+				defaultString := ""
+				if defaultValue != "" {
+					defaultString = defaultValue
+				}
+				cmd.PersistentFlags().StringP(fieldName, shortName, defaultString, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			default:
 				contract.Failf("unexpected type %v", rv.Field(i).Kind())
@@ -171,6 +179,30 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 	default:
 		contract.Failf("unexpected type %v", ref.Kind())
 	}
+}
+
+func defaultBool(defaultValue string) bool {
+	if defaultValue != "" {
+		if defaultValue == "true" {
+			return true
+		} else if defaultValue == "false" {
+			return false
+		} else {
+			contract.Failf("unexpected default value %q for bool", defaultValue)
+		}
+	}
+	return false
+}
+
+func defaultInt(defaultValue string) int {
+	if defaultValue != "" {
+		d, err := strconv.Atoi(defaultValue)
+		if err != nil {
+			contract.Failf("failed to parse default value %q as int: %v", defaultValue, err)
+		}
+		return d
+	}
+	return 0
 }
 
 func AddBoolConfig(v *viper.Viper, cmd *cobra.Command, name, shortname string, defaultValue bool, description string) {

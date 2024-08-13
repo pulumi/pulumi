@@ -148,15 +148,15 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 
 // PulumiConfig contains configuration that pertains to all Pulumi commands.
 type PulumiConfig struct {
-	Cwd                     string
-	FlowLogs                bool   `args:"logflow"`
-	LogToStderr             bool   `args:"logtostderr"`
-	TracingEndpoint         string `args:"tracing"`
-	TracingHeader           string
-	ProfilingFilenamePrefix string `args:"profiling"`
-	Verbosity               int    `args:"verbose"`
-	Color                   string
-	MemProfileRate          int `args:"memprofilerate"`
+	Cwd                     string `argsShort:"C" argsUsage:"Run pulumi as if it had been started in another directory"`
+	FlowLogs                bool   `args:"logflow" argsUsage:"Flow log settings to child processes (like plugins)"`
+	LogToStderr             bool   `args:"logtostderr" argsUsage:"Log to stderr instead of to files"`
+	TracingEndpoint         string "args:\"tracing\" argsUsage:\"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file\""
+	TracingHeader           string `argsUsage:"Include the tracing header with the given contents"`
+	ProfilingFilenamePrefix string `args:"profiling" argsUsage:"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively"`
+	Verbosity               int    `args:"verbose" argsShort:"v" argsUsage:"Enable verbose logging (e.g., v=3); anything >3 is very verbose"`
+	Color                   string `args:"color" argsDefault:"auto" argsUsage:"Colorize output. Choices are: always, never, raw, auto"`
+	MemProfileRate          int    `args:"memprofilerate" argsUsage:"Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate"`
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -289,7 +289,7 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	}
 
-	AddStringConfig(v, cmd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
+	BindFlags[PulumiConfig](v, cmd)
 
 	// TODO: hack/pulumirc
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
@@ -298,22 +298,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Show fully-qualified stack names")
 	cmd.PersistentFlags().BoolVar(&backend.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
-
-	AddBoolConfig(v, cmd, "logflow", "F", false, "Flow log settings to child processes (like plugins)")
-	AddBoolConfig(v, cmd, "logToStderr", "", false, "Flow log settings to child processes (like plugins)")
-
-	// TODO: hack/pulumirc
 	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
-
-	AddStringConfig(v, cmd, "tracing", "", "",
-		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
-	AddStringConfig(v, cmd, "profiling", "", "",
-		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
-	AddIntConfig(v, cmd, "memprofilerate", "", 0,
-		"Enable more precise memory profiles by setting the memory profiler rate")
-	AddIntConfig(v, cmd, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	AddStringConfig(v, cmd, "color", "", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	setCommandGroups(cmd, []commandGroup{
 		// Common commands:
@@ -417,8 +403,7 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	})
 
-	AddStringConfig(v, cmd, "tracing-header", "", "", "Include the tracing header with the given contents")
-
+	// TODO: hack/pulumirc
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
 		contract.IgnoreError(err)
