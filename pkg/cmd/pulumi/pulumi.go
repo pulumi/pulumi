@@ -269,24 +269,22 @@ func NewPulumiCmd() *cobra.Command {
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			// Before exiting, if there is a new version of the CLI available, print it out.
-			jsonFlag := cmd.Flag("json")
-			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
-
+			// Before exiting, if there is a new version of the CLI available, print it out.,
+			// unless the command supports JSON output and the JSON output flag was set.
 			checkVersionMsg, ok := <-updateCheckResult
-			if ok && checkVersionMsg != nil && !isJSON {
+			if ok && checkVersionMsg != nil && !v.GetBool("json") {
 				cmdutil.Diag().Warningf(checkVersionMsg)
 			}
 
 			logging.Flush()
 			cmdutil.CloseTracing()
 
-			// TODO: hack/pulumirc
-			// if profiling != "" {
-			// 	if err := cmdutil.CloseProfiling(profiling); err != nil {
-			// 		logging.Warningf("could not close profiling: %v", err)
-			// 	}
-			// }
+			config := UnmarshalOpts[PulumiConfig](v, cmd.Name())
+			if config.ProfilingFilenamePrefix != "" {
+				if err := cmdutil.CloseProfiling(config.ProfilingFilenamePrefix); err != nil {
+					logging.Warningf("could not close profiling: %v", err)
+				}
+			}
 		},
 	}
 
