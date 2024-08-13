@@ -46,7 +46,7 @@ type InstallArgs struct {
 }
 
 func newInstallCmd(v *viper.Viper) *cobra.Command {
-	args := UnmarshalOpts[InstallArgs](v, "install")
+	args := UnmarshalArgs[InstallArgs](v, "install")
 	cmd := &cobra.Command{
 		Use:   "install",
 		Args:  cmdutil.NoArgs,
