@@ -51,6 +51,8 @@ lint:: ensure
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
 		python -m pylint ./lib/pulumi --rcfile=.pylintrc
+	. venv/*/activate && \
+		python -m pyright
 
 format:: ensure
 	. venv/*/activate && \
