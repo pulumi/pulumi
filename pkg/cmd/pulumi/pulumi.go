@@ -149,30 +149,20 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 // PulumiConfig contains configuration that pertains to all Pulumi commands.
 type PulumiConfig struct {
 	Cwd                     string
-	FlowLogs                bool
-	LogToStderr             bool
-	TracingEndpoint         string
+	FlowLogs                bool   `our_new_tag:"logflow"`
+	LogToStderr             bool   `our_new_tag:"logtostderr"`
+	TracingEndpoint         string `our_new_tag:"tracing"`
 	TracingHeader           string
-	ProfilingFilenamePrefix string
-	Verbosity               int
+	ProfilingFilenamePrefix string `our_new_tag:"profiling"`
+	Verbosity               int    `our_new_tag:"verbose"`
 	Color                   string
-	MemProfileRate          int
+	MemProfileRate          int `our_new_tag:"memprofilerate"`
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
-	var cwd string
-	var logFlow bool
-	var logToStderr bool
-	var tracingFlag string
-	var tracingHeaderFlag string
-	var profiling string
-	var verbose int
-	var color string
-	var memProfileRate int
-
-	updateCheckResult := make(chan *diag.Diag)
 	v := viper.New()
+	updateCheckResult := make(chan *diag.Diag)
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
@@ -194,8 +184,10 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := PulumiConfig{}
-			opts = UnmashalOpts(v, opts, cmd.Name()).(PulumiConfig)
+			config := UnmarshalOpts[PulumiConfig](v, cmd.Name())
+
+			fmt.Printf("CONFIG = %+v\n", config)
+
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
@@ -220,14 +212,14 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if cwd != "" {
-				if err := os.Chdir(cwd); err != nil {
+			if config.Cwd != "" {
+				if err := os.Chdir(config.Cwd); err != nil {
 					return err
 				}
 			}
 
-			logging.InitLogging(logToStderr, verbose, logFlow)
-			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
+			logging.InitLogging(config.LogToStderr, config.Verbosity, config.FlowLogs)
+			cmdutil.InitTracing("pulumi-cli", "pulumi", config.TracingEndpoint)
 
 			ctx := cmd.Context()
 			if cmdutil.IsTracingEnabled() {
@@ -237,8 +229,8 @@ func NewPulumiCmd() *cobra.Command {
 
 				// This is used to control the contents of the tracing header.
 				tracingHeader := os.Getenv("PULUMI_TRACING_HEADER")
-				if tracingHeaderFlag != "" {
-					tracingHeader = tracingHeaderFlag
+				if config.TracingHeader != "" {
+					tracingHeader = config.TracingHeader
 				}
 
 				tracingOptions := tracing.Options{
@@ -258,8 +250,8 @@ func NewPulumiCmd() *cobra.Command {
 			loggingWriter := &loggingWriter{}
 			log.SetOutput(loggingWriter)
 
-			if profiling != "" {
-				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
+			if config.ProfilingFilenamePrefix != "" {
+				if err := cmdutil.InitProfiling(config.ProfilingFilenamePrefix, config.MemProfileRate); err != nil {
 					logging.Warningf("could not initialize profiling: %v", err)
 				}
 			}
@@ -291,38 +283,39 @@ func NewPulumiCmd() *cobra.Command {
 			logging.Flush()
 			cmdutil.CloseTracing()
 
-			if profiling != "" {
-				if err := cmdutil.CloseProfiling(profiling); err != nil {
-					logging.Warningf("could not close profiling: %v", err)
-				}
-			}
+			// TODO: hack/pulumirc
+			// if profiling != "" {
+			// 	if err := cmdutil.CloseProfiling(profiling); err != nil {
+			// 		logging.Warningf("could not close profiling: %v", err)
+			// 	}
+			// }
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
-		"Run pulumi as if it had been started in another directory")
+	AddStringConfig(v, cmd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
+
+	// TODO: hack/pulumirc
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.FullyQualifyStackNames, "fully-qualify-stack-names", "Q", false,
 		"Show fully-qualified stack names")
 	cmd.PersistentFlags().BoolVar(&backend.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
-	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
-		"Flow log settings to child processes (like plugins)")
-	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false,
-		"Log to stderr instead of to files")
+
+	AddBoolConfig(v, cmd, "logflow", "F", false, "Flow log settings to child processes (like plugins)")
+	AddBoolConfig(v, cmd, "logToStderr", "", false, "Flow log settings to child processes (like plugins)")
+
+	// TODO: hack/pulumirc
 	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
-	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
+
+	AddStringConfig(v, cmd, "tracing", "", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
-	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
+	AddStringConfig(v, cmd, "profiling", "", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
-	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
-		"Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate")
-	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
-		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	cmd.PersistentFlags().StringVar(
-		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
+	AddIntConfig(v, cmd, "memprofilerate", "", 0, "Enable more precise memory profiles by setting the memory profiler rate")
+	AddIntConfig(v, cmd, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	AddStringConfig(v, cmd, "color", "", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	setCommandGroups(cmd, []commandGroup{
 		// Common commands:
@@ -426,8 +419,7 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	})
 
-	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
-		"Include the tracing header with the given contents.")
+	AddStringConfig(v, cmd, "tracing-header", "", "", "Include the tracing header with the given contents")
 
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")

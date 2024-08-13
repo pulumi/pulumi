@@ -28,6 +28,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -53,10 +54,7 @@ type AboutConfig struct {
 }
 
 func newAboutCmd() *cobra.Command {
-	// var jsonOut bool
-	// var transitiveDependencies bool
-	// var stack string
-	config := AboutConfig{}
+	config := UnmarshalOpts[AboutConfig](viper.New(), "about")
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
 		Use:   "about",
