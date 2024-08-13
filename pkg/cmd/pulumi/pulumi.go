@@ -186,8 +186,6 @@ func NewPulumiCmd() *cobra.Command {
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			config := UnmarshalOpts[PulumiConfig](v, cmd.Name())
 
-			fmt.Printf("CONFIG = %+v\n", config)
-
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
