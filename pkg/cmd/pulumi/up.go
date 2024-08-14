@@ -81,7 +81,7 @@ type UpArgs struct {
 	Replaces               []string `args:"replace" argsCommaSplit:"false" argsUsage:"Specify a single resource URN to replace. Multiple resources can be specified using --replace urn1 --replace urn2. Wildcards (*, **) are also supported"`
 	TargetReplaces         []string `args:"target-replace" argsCommaSplit:"false" argsUsage:"Specify a single resource URN to replace. Other resources will not be updated. Shorthand for --target urn --replace urn."`
 	TargetDependents       bool     `argsUsage:"Allows updating of dependent targets discovered but not specified in --target list"`
-	PlanFilePath           string   `args:"plan" argsUsage:"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead of sames).`
+	PlanFilePath           string   `args:"plan" argsUsage:"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead of sames)."`
 }
 
 // intentionally disabling here for cleaner err declaration/assignment.

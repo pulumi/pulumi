@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+//nolint:lll
 type ConfigArgs struct {
 	Stack           string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 	ShowSecrets     bool   `argsUsage:"Show secret values when listing config instead of displaying blinded values"`

@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+//nolint:lll
 type AIWebArgs struct {
 	DisableAutoSubmit bool             `args:"no-auto-submit" argsUsage:"Opt-out of automatically submitting the prompt to Pulumi AI"`
 	Language          PulumiAILanguage `argsType:"var" argsShort:"l" argsUsage:"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]"`
