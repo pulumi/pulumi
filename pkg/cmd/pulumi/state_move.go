@@ -36,26 +36,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type StateMoveConfig struct {
-	PulumiConfig
-
-	SourceStack      string
-	DestinationStack string
-	IncludeParents   bool
-	Yes              bool
+type StateMoveArgs struct {
+	SourceStack      string `args:"source" argsUsage:"The name of the stack to move resources from"`
+	DestinationStack string `args:"dest" argsUsage:"The name of the stack to move resources to"`
+	IncludeParents   bool   `args:"include-parents" argsUsage:"Include all the parents of the moved resources as well"`
+	Yes              bool   `argsShort:"y" argsUsage:"Automatically approve and perform the move"`
 }
 
 type stateMoveCmd struct {
-	Config StateMoveConfig
+	Args StateMoveArgs
 
 	Stdin     io.Reader
 	Stdout    io.Writer
 	Colorizer colors.Colorization
 }
 
-func newStateMoveCommand() *cobra.Command {
+func newStateMoveCommand(v *viper.Viper) *cobra.Command {
 	stateMove := &stateMoveCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -69,19 +68,21 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			stateMove.Args = UnmarshalArgs[StateMoveArgs](v, cmd)
+
 			ctx := cmd.Context()
 
-			if stateMove.Config.SourceStack == "" && stateMove.Config.DestinationStack == "" {
+			if stateMove.Args.SourceStack == "" && stateMove.Args.DestinationStack == "" {
 				return errors.New("at least one of --source or --dest must be provided")
 			}
-			sourceStack, err := requireStack(ctx, stateMove.Config.SourceStack, stackLoadOnly, display.Options{
+			sourceStack, err := requireStack(ctx, stateMove.Args.SourceStack, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
 				return err
 			}
-			destStack, err := requireStack(ctx, stateMove.Config.DestinationStack, stackLoadOnly, display.Options{
+			destStack, err := requireStack(ctx, stateMove.Args.DestinationStack, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
@@ -100,16 +101,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 		}),
 	}
 
-	cmd.Flags().StringVarP(&stateMove.Config.SourceStack, "source", "", "", "The name of the stack to move resources from")
-	cmd.Flags().StringVarP(
-		&stateMove.Config.DestinationStack,
-		"dest", "",
-		"",
-		"The name of the stack to move resources to",
-	)
-	cmd.Flags().BoolVarP(&stateMove.Config.Yes, "yes", "y", false, "Automatically approve and perform the move")
-	cmd.Flags().BoolVarP(&stateMove.Config.IncludeParents, "include-parents", "", false,
-		"Include all the parents of the moved resources as well")
+	BindFlags[StateMoveArgs](v, cmd)
 
 	return cmd
 }
@@ -220,7 +212,7 @@ func (cmd *stateMoveCmd) Run(
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)
 
-	if cmd.Config.IncludeParents {
+	if cmd.Args.IncludeParents {
 		for _, res := range resourcesToMove {
 			for _, parent := range sourceDepGraph.ParentsOf(res) {
 				if res.Type == resource.RootStackType && res.Parent == "" {
@@ -386,7 +378,7 @@ func (cmd *stateMoveCmd) Run(
 				colors.Reset))
 	}
 
-	if !cmd.Config.Yes {
+	if !cmd.Args.Yes {
 		yes := "yes"
 		no := "no"
 		msg := "Do you want to perform this move?"

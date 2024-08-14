@@ -104,7 +104,7 @@ func runMoveWithOptions(
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			IncludeParents: options.IncludeParents,
 			Yes:            true,
 		},
@@ -390,7 +390,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -454,7 +454,7 @@ func TestMoveWithExistingResource(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -539,7 +539,7 @@ func TestEmptySourceStack(t *testing.T) {
 	})
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Colorizer: colors.Never,
@@ -598,7 +598,7 @@ runtime: mock
 `), 0o600)
 	require.NoError(t, err)
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Colorizer: colors.Never,
@@ -681,7 +681,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -779,7 +779,7 @@ func TestMoveUnknownResource(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -888,7 +888,7 @@ func TestMoveProvider(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -1009,7 +1009,7 @@ runtime: mock
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -1100,7 +1100,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
@@ -1185,7 +1185,7 @@ runtime: mock
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Config: StateMoveConfig{
+		Args: StateMoveArgs{
 			Yes: true,
 		},
 		Stdout:    &stdout,
