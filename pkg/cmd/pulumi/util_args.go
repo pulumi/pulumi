@@ -182,7 +182,12 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 				cmd.PersistentFlags().StringP(fieldName, shortName, defaultValue, usage)
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			case reflect.Array, reflect.Slice:
-				cmd.PersistentFlags().StringSliceP(fieldName, shortName, []string{}, usage)
+				def := strings.Split(defaultValue, ",")
+				if rv.Type().Field(i).Tag.Get("argsCommaSplit") == "false" {
+					cmd.PersistentFlags().StringArrayP(fieldName, shortName, def, usage)
+				} else {
+					cmd.PersistentFlags().StringSliceP(fieldName, shortName, def, usage)
+				}
 				_ = v.BindPFlag(fieldName, cmd.PersistentFlags().Lookup(fieldName))
 			default:
 				contract.Failf("unexpected type %v", rv.Field(i).Kind())

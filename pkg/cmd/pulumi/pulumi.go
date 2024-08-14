@@ -322,7 +322,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
-				newUpCmd(),
+				newUpCmd(v),
 				newDestroyCmd(),
 				newPreviewCmd(),
 				newCancelCmd(),
