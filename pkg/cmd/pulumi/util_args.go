@@ -8,6 +8,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -138,8 +139,10 @@ func unmarshalArgs(v *viper.Viper, scopes []string, opts any) any {
 			case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
 				reflect.Uint64, reflect.Uintptr, reflect.String:
-				rv.Field(i).Set(reflect.ValueOf(
-					defaultLookupArg(v, scopes, rv.Field(i).Kind(), fieldName)))
+				typ := rv.Field(i).Type()
+				val := defaultLookupArg(v, scopes, rv.Field(i).Kind(), fieldName)
+				refVal := reflect.ValueOf(val).Convert(typ)
+				rv.Field(i).Set(refVal)
 			case reflect.Slice | reflect.Array:
 				values := defaultLookupArg(v, scopes, rv.Field(i).Kind(), fieldName).([]string)
 
@@ -215,7 +218,15 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 				}
 				_ = v.BindPFlag(storeKey, cmd.PersistentFlags().Lookup(longName))
 			case reflect.String:
-				cmd.PersistentFlags().StringP(longName, shortName, defaultValue, usage)
+				if rv.Type().Field(i).Tag.Get("argsType") == "var" {
+					if defaultSet {
+						contract.Failf("can't set default value with argsType:\"var\"")
+					}
+					value := reflect.New(rv.Field(i).Type()).Interface().(pflag.Value)
+					cmd.PersistentFlags().VarP(value, longName, shortName, usage)
+				} else {
+					cmd.PersistentFlags().StringP(longName, shortName, defaultValue, usage)
+				}
 				if defaultSet {
 					v.SetDefault(storeKey, defaultValue)
 				}
