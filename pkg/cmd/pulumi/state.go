@@ -52,7 +52,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newStateEditCommand())
+	cmd.AddCommand(newStateEditCommand(v))
 	cmd.AddCommand(newStateDeleteCommand())
 	cmd.AddCommand(newStateUnprotectCommand(v))
 	cmd.AddCommand(newStateRenameCommand(v))
