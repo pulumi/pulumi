@@ -46,33 +46,33 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			config := UnmarshalArgs[StateUnprotectArgs](v, cmd)
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StateUnprotectArgs](v, cmd)
 
 			ctx := cmd.Context()
-			config.Yes = config.Yes || skipConfirmations()
+			args.Yes = args.Yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
-			showPrompt := !config.Yes
+			showPrompt := !args.Yes
 
-			if config.UnprotectAll {
-				return unprotectAllResources(ctx, config.Stack, showPrompt)
+			if args.UnprotectAll {
+				return unprotectAllResources(ctx, args.Stack, showPrompt)
 			}
 
 			var urn resource.URN
 
-			if len(args) != 1 {
+			if len(cmdArgs) != 1 {
 				if !cmdutil.Interactive() {
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, config.Stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, args.Stack, nil, "Select a resource to unprotect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
-				urn = resource.URN(args[0])
+				urn = resource.URN(cmdArgs[0])
 			}
-			return unprotectResource(ctx, config.Stack, urn, showPrompt)
+			return unprotectResource(ctx, args.Stack, urn, showPrompt)
 		}),
 	}
 

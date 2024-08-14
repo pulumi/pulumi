@@ -28,19 +28,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type StateRenameConfig struct {
-	PulumiConfig
-
-	Stack string
-	Yes   bool
+type StateRenameArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes   bool   `argsShort:"y" argsUsage:"Skip confirmation prompts"`
 }
 
 //nolint:lll
-func newStateRenameCommand() *cobra.Command {
-	var config StateRenameConfig
-
+func newStateRenameCommand(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rename [resource URN] [new name]",
 		Short: "Renames a resource from a stack's state",
@@ -55,22 +52,24 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
 		Args:    cmdutil.MaximumNArgs(2),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			config.Yes = config.Yes || skipConfirmations()
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StateRenameArgs](v, cmd)
 
-			if len(args) < 2 && !cmdutil.Interactive() {
+			ctx := cmd.Context()
+			args.Yes = args.Yes || skipConfirmations()
+
+			if len(cmdArgs) < 2 && !cmdutil.Interactive() {
 				return missingNonInteractiveArg("resource URN", "new name")
 			}
 
 			var urn resource.URN
 			var newResourceName tokens.QName
-			switch len(args) {
+			switch len(cmdArgs) {
 			case 0: // We got neither the URN nor the name.
 				var snap *deploy.Snapshot
 				err := surveyStack(
 					func() (err error) {
-						urn, err = getURNFromState(ctx, config.Stack, &snap, "Select a resource to rename:")
+						urn, err = getURNFromState(ctx, args.Stack, &snap, "Select a resource to rename:")
 						if err != nil {
 							err = fmt.Errorf("failed to select resource: %w", err)
 						}
@@ -85,7 +84,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					return err
 				}
 			case 1: // We got the urn but not the name
-				urn = resource.URN(args[0])
+				urn = resource.URN(cmdArgs[0])
 				if !urn.IsValid() {
 					return errors.New("The provided input URN is not valid")
 				}
@@ -95,11 +94,11 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					return err
 				}
 			case 2: // We got the URN and the name.
-				urn = resource.URN(args[0])
+				urn = resource.URN(cmdArgs[0])
 				if !urn.IsValid() {
 					return errors.New("The provided input URN is not valid")
 				}
-				rName := args[1]
+				rName := cmdArgs[1]
 				if !tokens.IsQName(rName) {
 					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
 					return fmt.Errorf("invalid name %q: %s", rName, reason)
@@ -108,9 +107,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			}
 
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
-			showPrompt := !config.Yes
+			showPrompt := !args.Yes
 
-			err := runTotalStateEdit(ctx, config.Stack, showPrompt,
+			err := runTotalStateEdit(ctx, args.Stack, showPrompt,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					return stateRenameOperation(urn, newResourceName, opts, snap)
 				})
@@ -125,11 +124,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	BindFlags[StateRenameArgs](v, cmd)
 
-	cmd.Flags().BoolVarP(&config.Yes, "yes", "y", false, "Skip confirmation prompts")
 	return cmd
 }
 
