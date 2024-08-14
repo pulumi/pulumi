@@ -792,7 +792,12 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("nodejs")
 
 	var argsType string
+
 	optsType := "CustomResourceOptions"
+	if (isKubernetesPackage(mod.pkg) && mod.isComponentResource()) || r.IsComponent {
+		optsType = "ComponentResourceOptions"
+	}
+
 	// The args type for k8s package differs from the rest depending on whether we are dealing with
 	// overlay resources or regular k8s resources.
 	if isKubernetesPackage(mod.pkg) {
@@ -805,10 +810,6 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		} else {
 			// The non-schema-based k8s codegen does not apply a suffix to the input types.
 			argsType = name
-		}
-
-		if mod.isComponentResource() {
-			optsType = "ComponentResourceOptions"
 		}
 	} else {
 		argsType = name + "Args"
@@ -904,9 +905,9 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 
 func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
-	optsType := "CustomResourceOptions"
 
-	if isKubernetesPackage(mod.pkg) && mod.isComponentResource() {
+	optsType := "CustomResourceOptions"
+	if (isKubernetesPackage(mod.pkg) && mod.isComponentResource()) || r.IsComponent {
 		optsType = "ComponentResourceOptions"
 	}
 
@@ -969,9 +970,9 @@ func (mod *modContext) genConstructorYaml() []formalParam {
 
 func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool) []formalParam {
 	name := resourceName(r)
-	optsType := "CustomResourceOptions"
 
-	if mod.isComponentResource() {
+	optsType := "CustomResourceOptions"
+	if (isKubernetesPackage(mod.pkg) && mod.isComponentResource()) || r.IsComponent {
 		optsType = "ComponentResourceOptions"
 	}
 
