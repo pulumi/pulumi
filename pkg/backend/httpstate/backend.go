@@ -368,9 +368,17 @@ func (m defaultLoginManager) Current(
 ) (*workspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
-	// If we have a saved access token, and it is valid, use it.
+	// We intentionally don't accept command-line args for the user's access token. Having it in
+	// .bash_history is not great, and specifying it via flag isn't of much use.
+	accessToken := os.Getenv(AccessTokenEnvVar)
+
+	// If we have a saved access token, and it is valid, and it
+	// either matches PULUMI_ACCESS_TOKEN or PULUMI_ACCESS_TOKEN
+	// is not set use it.  If PULUMI_ACCESS_TOKEN does not match,
+	// we prefer that.
 	existingAccount, err := workspace.GetAccount(cloudURL)
-	if err == nil && existingAccount.AccessToken != "" {
+	if err == nil && existingAccount.AccessToken != "" &&
+		(accessToken == "" || existingAccount.AccessToken == accessToken) {
 		// If the account was last verified less than an hour ago, assume the token is valid.
 		valid := true
 		username := existingAccount.Username
@@ -399,10 +407,9 @@ func (m defaultLoginManager) Current(
 		}
 	}
 
-	// We intentionally don't accept command-line args for the user's access token. Having it in
-	// .bash_history is not great, and specifying it via flag isn't of much use.
-	accessToken := os.Getenv(AccessTokenEnvVar)
-
+	// We either have no token saved, or PULUMI_ACCESS_TOKEN
+	// doesn't match what we have saved.  Prefer the new
+	// PULUMI_ACCESS_TOKEN.
 	if accessToken == "" {
 		// No access token available, this isn't an error per-se but we don't have a backend
 		return nil, nil
