@@ -27,19 +27,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type StateUnprotectConfig struct {
-	PulumiConfig
-
-	UnprotectAll bool
-	Stack        string
-	Yes          bool
+type StateUnprotectArgs struct {
+	UnprotectAll bool   `args:"all" argsUsage:"Unprotect all resources in the checkpoint"`
+	Stack        string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes          bool   `argsShort:"y" argsUsage:"Skip confirmation prompts"`
 }
 
-func newStateUnprotectCommand() *cobra.Command {
-	var config StateUnprotectConfig
-
+func newStateUnprotectCommand(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN]",
 		Short: "Unprotect resources in a stack's state",
@@ -50,6 +47,8 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[StateUnprotectArgs](v, cmd)
+
 			ctx := cmd.Context()
 			config.Yes = config.Yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
@@ -77,11 +76,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&config.UnprotectAll, "all", false, "Unprotect all resources in the checkpoint")
-	cmd.Flags().BoolVarP(&config.Yes, "yes", "y", false, "Skip confirmation prompts")
+	BindFlags[StateUnprotectArgs](v, cmd)
 
 	return cmd
 }

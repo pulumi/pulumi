@@ -54,7 +54,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 
 	cmd.AddCommand(newStateEditCommand())
 	cmd.AddCommand(newStateDeleteCommand())
-	cmd.AddCommand(newStateUnprotectCommand())
+	cmd.AddCommand(newStateUnprotectCommand(v))
 	cmd.AddCommand(newStateRenameCommand())
 	cmd.AddCommand(newStateUpgradeCommand(v))
 	cmd.AddCommand(newStateMoveCommand())
