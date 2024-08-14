@@ -30,7 +30,7 @@ import (
 
 type CancelArgs struct {
 	Yes   bool   `argsShort:"y" argsUsage:"Skip confirmation prompts, and proceed with cancellation anyway"`
-	Stack string `argsShort:"s" argsUsge:"The name of the stack to operate on. Defaults to the current stack"`
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
 func newCancelCmd(v *viper.Viper) *cobra.Command {

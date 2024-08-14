@@ -24,6 +24,7 @@ import (
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -47,7 +48,7 @@ type StackConfig struct {
 	FullyQualifyStackNames bool
 }
 
-func newStackCmd() *cobra.Command {
+func newStackCmd(v *viper.Viper) *cobra.Command {
 	config := StackConfig{}
 
 	cmd := &cobra.Command{
@@ -94,7 +95,7 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackOutputCmd())
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
-	cmd.AddCommand(newStackTagCmd())
+	cmd.AddCommand(newStackTagCmd(v))
 	cmd.AddCommand(newStackRenameCmd())
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())

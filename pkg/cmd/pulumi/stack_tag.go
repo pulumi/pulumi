@@ -19,6 +19,7 @@ import (
 	"sort"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -27,9 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newStackTagCmd() *cobra.Command {
-	var stack string
-
+func newStackTagCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tag",
 		Short: "Manage stack tags",
@@ -42,30 +41,33 @@ func newStackTagCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-
-	cmd.AddCommand(newStackTagGetCmd(&stack))
-	cmd.AddCommand(newStackTagLsCmd(&stack))
-	cmd.AddCommand(newStackTagRmCmd(&stack))
-	cmd.AddCommand(newStackTagSetCmd(&stack))
+	cmd.AddCommand(newStackTagGetCmd(v))
+	cmd.AddCommand(newStackTagLsCmd(v))
+	cmd.AddCommand(newStackTagRmCmd(v))
+	cmd.AddCommand(newStackTagSetCmd(v))
 
 	return cmd
 }
 
-func newStackTagGetCmd(stack *string) *cobra.Command {
-	return &cobra.Command{
+type StackTagGetArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
+func newStackTagGetCmd(v *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "get <name>",
 		Short: "Get a single stack tag value",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackTagGetArgs](v, cmd)
+
 			ctx := cmd.Context()
-			name := args[0]
+			name := cmdArgs[0]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -84,21 +86,31 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			return fmt.Errorf("stack tag '%s' not found for stack '%s'", name, s.Ref())
 		}),
 	}
+
+	BindFlags[StackTagGetArgs](v, cmd)
+
+	return cmd
 }
 
-func newStackTagLsCmd(stack *string) *cobra.Command {
-	var jsonOut bool
+type StackTagLsArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	JSON  bool   `argsShort:"j" argsUsage:"Emit output as JSON"`
+}
+
+func newStackTagLsCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List all stack tags",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackTagLsArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, args.Stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -110,7 +122,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 
 			tags := s.Tags()
 
-			if jsonOut {
+			if args.JSON {
 				return printJSON(tags)
 			}
 
@@ -119,8 +131,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	BindFlags[StackTagLsArgs](v, cmd)
 
 	return cmd
 }
@@ -143,19 +154,25 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 	}, nil)
 }
 
-func newStackTagRmCmd(stack *string) *cobra.Command {
-	return &cobra.Command{
+type StackTagRmArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
+func newStackTagRmCmd(v *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "rm <name>",
 		Short: "Remove a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackTagRmArgs](v, cmd)
+
 			ctx := cmd.Context()
-			name := args[0]
+			name := cmdArgs[0]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, args.Stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -171,22 +188,32 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			return backend.UpdateStackTags(ctx, s, tags)
 		}),
 	}
+
+	BindFlags[StackTagRmArgs](v, cmd)
+
+	return cmd
 }
 
-func newStackTagSetCmd(stack *string) *cobra.Command {
-	return &cobra.Command{
+type StackTagSetArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
+func newStackTagSetCmd(v *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "set <name> <value>",
 		Short: "Set a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackTagSetArgs](v, cmd)
+
 			ctx := cmd.Context()
-			name := args[0]
-			value := args[1]
+			name := cmdArgs[0]
+			value := cmdArgs[1]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			s, err := requireStack(ctx, args.Stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -205,4 +232,8 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			return backend.UpdateStackTags(ctx, s, tags)
 		}),
 	}
+
+	BindFlags[StackTagSetArgs](v, cmd)
+
+	return cmd
 }

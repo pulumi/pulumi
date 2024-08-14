@@ -322,7 +322,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newNewCmd(),
 				newConfigCmd(),
-				newStackCmd(),
+				newStackCmd(v),
 				newConsoleCmd(),
 				newImportCmd(v),
 				newRefreshCmd(),
@@ -336,7 +336,7 @@ func NewPulumiCmd() *cobra.Command {
 				newUpCmd(v),
 				newDestroyCmd(),
 				newPreviewCmd(),
-				newCancelCmd(),
+				newCancelCmd(v),
 			},
 		},
 		{
