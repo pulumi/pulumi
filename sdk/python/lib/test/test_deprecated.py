@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pulumi
 import unittest
 import unittest.mock
+import pulumi
 
 
 class Resource1(pulumi.Resource):

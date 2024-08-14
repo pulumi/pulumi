@@ -20,11 +20,11 @@ Regresses https://github.com/pulumi/pulumi/issues/8273
 
 """
 
+from copy import deepcopy
+
 import pytest
 from pulumi.runtime import settings, mocks
 import pulumi
-
-from copy import deepcopy
 
 
 class MyMocks(pulumi.runtime.Mocks):
@@ -61,7 +61,7 @@ def my_mocks():
         # place them inside a test and make the code run after the
         # test stack completes constructing.
         assert monitor.outputs is not None
-        assert type(monitor.outputs.urn) == str
+        assert isinstance(monitor.outputs.urn, str)
 
 
 @pulumi.runtime.test
