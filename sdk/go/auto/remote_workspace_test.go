@@ -32,9 +32,21 @@ import (
 )
 
 const (
-	remoteTestRepo       = "https://github.com/pulumi/test-repo.git"
-	remoteTestRepoBranch = "refs/heads/master"
+	remoteTestRepoHTTP           = "https://github.com/pulumi/test-repo.git"
+	remoteTestRepoSSH            = "ssh://git@github.com/pulumi/test-repo"
+	remoteTestRepoSSHDotGit      = "ssh://git@github.com/pulumi/test-repo.git"
+	remoteTestRepoGitStyle       = "git@github.com/pulumi/test-repo"
+	remoteTestRepoGitStyleDotGit = "git@github.com/pulumi/test-repo.git"
+	remoteTestRepoBranch         = "refs/heads/master"
 )
+
+var remoteTestUrls = []string{
+	remoteTestRepoHTTP,
+	remoteTestRepoSSH,
+	remoteTestRepoSSHDotGit,
+	remoteTestRepoGitStyle,
+	remoteTestRepoGitStyleDotGit,
+}
 
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
 	opts ...RemoteWorkspaceOption) (RemoteStack, error),
@@ -91,18 +103,18 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		},
 		"no branch or commit": {
 			stack: stack,
-			repo:  GitRepo{URL: remoteTestRepo},
+			repo:  GitRepo{URL: remoteTestRepoHTTP},
 			err:   "either repo.Branch or repo.CommitHash is required if RemoteInheritSettings(true) is not set",
 		},
 		"both branch and commit": {
 			stack: stack,
-			repo:  GitRepo{URL: remoteTestRepo, Branch: "branch", CommitHash: "commit"},
+			repo:  GitRepo{URL: remoteTestRepoHTTP, Branch: "branch", CommitHash: "commit"},
 			err:   "repo.Branch and repo.CommitHash cannot both be specified",
 		},
 		"both ssh private key and path": {
 			stack: stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
+				URL:    remoteTestRepoHTTP,
 				Branch: "branch",
 				Auth:   &GitAuth{SSHPrivateKey: "key", SSHPrivateKeyPath: "path"},
 			},
@@ -111,7 +123,7 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		"executor creds with no image": {
 			stack: stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
+				URL:    remoteTestRepoHTTP,
 				Branch: "branch",
 			},
 			executorImage: &ExecutorImage{
@@ -125,7 +137,7 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		"executor image with username and no password": {
 			stack: stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
+				URL:    remoteTestRepoHTTP,
 				Branch: "branch",
 			},
 			executorImage: &ExecutorImage{
@@ -139,7 +151,7 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		"executor image with password and no username": {
 			stack: stack,
 			repo: GitRepo{
-				URL:    remoteTestRepo,
+				URL:    remoteTestRepoHTTP,
 				Branch: "branch",
 			},
 			executorImage: &ExecutorImage{
@@ -182,6 +194,7 @@ func fetchCommitHash(url, branch string) (string, error) {
 
 func testRemoteStackGitSource(
 	t *testing.T,
+	url string,
 	fn func(ctx context.Context, stackName string, repo GitRepo, opts ...RemoteWorkspaceOption) (RemoteStack, error),
 	useCommitHash bool,
 	useExecutorImage bool,
@@ -201,12 +214,12 @@ func testRemoteStackGitSource(
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	repo := GitRepo{
-		URL:         remoteTestRepo,
+		URL:         url,
 		ProjectPath: "goproj",
 	}
 	var executorImage *ExecutorImage
 	if useCommitHash {
-		commitHash, err := fetchCommitHash(remoteTestRepo, remoteTestRepoBranch)
+		commitHash, err := fetchCommitHash(url, remoteTestRepoBranch)
 		require.NoError(t, err)
 		repo.CommitHash = commitHash
 	} else {
@@ -304,7 +317,14 @@ func TestNewRemoteStackGitSourceErrors(t *testing.T) {
 
 func TestNewRemoteStackGitSource(t *testing.T) {
 	t.Parallel()
-	testRemoteStackGitSource(t, NewRemoteStackGitSource, true /*useCommitHash*/, false /*useExecutorImage*/)
+
+	for _, url := range remoteTestUrls {
+		url := url
+		t.Run(url, func(t *testing.T) {
+			t.Parallel()
+			testRemoteStackGitSource(t, url, NewRemoteStackGitSource, true /*useCommitHash*/, false /*useExecutorImage*/)
+		})
+	}
 }
 
 func TestUpsertRemoteStackGitSourceErrors(t *testing.T) {
@@ -314,7 +334,14 @@ func TestUpsertRemoteStackGitSourceErrors(t *testing.T) {
 
 func TestUpsertRemoteStackGitSource(t *testing.T) {
 	t.Parallel()
-	testRemoteStackGitSource(t, UpsertRemoteStackGitSource, false /*useCommitHash*/, true /*useExecutorImage*/)
+
+	for _, url := range remoteTestUrls {
+		url := url
+		t.Run(url, func(t *testing.T) {
+			t.Parallel()
+			testRemoteStackGitSource(t, url, UpsertRemoteStackGitSource, false /*useCommitHash*/, true /*useExecutorImage*/)
+		})
+	}
 }
 
 func TestIsFullyQualifiedStackName(t *testing.T) {

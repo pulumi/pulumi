@@ -29,9 +29,63 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
 
 var transportMutex sync.Mutex
+
+func setupGitRepoAuth(url string, auth *GitAuth) (string, transport.AuthMethod, error) {
+	if auth != nil {
+		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
+		if auth.SSHPrivateKeyPath != "" && auth.Username != "" ||
+			auth.PersonalAccessToken != "" && auth.Username != "" ||
+			auth.PersonalAccessToken != "" && auth.SSHPrivateKeyPath != "" ||
+			auth.Username != "" && auth.SSHPrivateKey != "" {
+			return "", nil, errors.New("please specify one authentication option of `Personal Access Token`, " +
+				"`Username\\Password`, `SSH Private Key Path` or `SSH Private Key`")
+		}
+
+		// Firstly we will try to check that an SSH Private Key Path has been specified
+		if auth.SSHPrivateKeyPath != "" {
+			publicKeys, err := ssh.NewPublicKeysFromFile("git", auth.SSHPrivateKeyPath, auth.Password)
+			if err != nil {
+				return "", nil, fmt.Errorf("unable to use SSH Private Key Path: %w", err)
+			}
+
+			return url, publicKeys, nil
+		}
+
+		// Then we check if the details of a SSH Private Key as passed
+		if auth.SSHPrivateKey != "" {
+			publicKeys, err := ssh.NewPublicKeys("git", []byte(auth.SSHPrivateKey), auth.Password)
+			if err != nil {
+				return "", nil, fmt.Errorf("unable to use SSH Private Key: %w", err)
+			}
+
+			return url, publicKeys, nil
+		}
+
+		// Then we check to see if a Personal Access Token has been specified
+		// the username for use with a PAT can be *anything* but an empty string
+		// so we are setting this to `git`
+		if auth.PersonalAccessToken != "" {
+			return url, &http.BasicAuth{
+				Username: "git",
+				Password: auth.PersonalAccessToken,
+			}, nil
+		}
+
+		// then we check to see if a username and a password has been specified
+		if auth.Password != "" && auth.Username != "" {
+			return url, &http.BasicAuth{
+				Username: auth.Username,
+				Password: auth.Password,
+			}, nil
+		}
+	}
+
+	return gitutil.ParseAuthURL(url)
+}
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
 	cloneOptions := &git.CloneOptions{
@@ -44,55 +98,12 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		cloneOptions.SingleBranch = true
 	}
 
-	if repoArgs.Auth != nil {
-		authDetails := repoArgs.Auth
-		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
-		if authDetails.SSHPrivateKeyPath != "" && authDetails.Username != "" ||
-			authDetails.PersonalAccessToken != "" && authDetails.Username != "" ||
-			authDetails.PersonalAccessToken != "" && authDetails.SSHPrivateKeyPath != "" ||
-			authDetails.Username != "" && authDetails.SSHPrivateKey != "" {
-			return "", errors.New("please specify one authentication option of `Personal Access Token`, " +
-				"`Username\\Password`, `SSH Private Key Path` or `SSH Private Key`")
-		}
-
-		// Firstly we will try to check that an SSH Private Key Path has been specified
-		if authDetails.SSHPrivateKeyPath != "" {
-			publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.Auth.SSHPrivateKeyPath, repoArgs.Auth.Password)
-			if err != nil {
-				return "", fmt.Errorf("unable to use SSH Private Key Path: %w", err)
-			}
-
-			cloneOptions.Auth = publicKeys
-		}
-
-		// Then we check if the details of a SSH Private Key as passed
-		if authDetails.SSHPrivateKey != "" {
-			publicKeys, err := ssh.NewPublicKeys("git", []byte(repoArgs.Auth.SSHPrivateKey), repoArgs.Auth.Password)
-			if err != nil {
-				return "", fmt.Errorf("unable to use SSH Private Key: %w", err)
-			}
-
-			cloneOptions.Auth = publicKeys
-		}
-
-		// Then we check to see if a Personal Access Token has been specified
-		// the username for use with a PAT can be *anything* but an empty string
-		// so we are setting this to `git`
-		if authDetails.PersonalAccessToken != "" {
-			cloneOptions.Auth = &http.BasicAuth{
-				Username: "git",
-				Password: repoArgs.Auth.PersonalAccessToken,
-			}
-		}
-
-		// then we check to see if a username and a password has been specified
-		if authDetails.Password != "" && authDetails.Username != "" {
-			cloneOptions.Auth = &http.BasicAuth{
-				Username: repoArgs.Auth.Username,
-				Password: repoArgs.Auth.Password,
-			}
-		}
+	url, auth, err := setupGitRepoAuth(repoArgs.URL, repoArgs.Auth)
+	if err != nil {
+		return "", err
 	}
+	cloneOptions.URL = url
+	cloneOptions.Auth = auth
 
 	// *Repository.Clone() will do appropriate fetching given a branch name. We must deal with
 	// different varieties, since people have been advised to use these as a workaround while only

@@ -31,13 +31,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -264,176 +262,91 @@ type urlAuthParser struct {
 
 	// sshKeys memoizes keys we've loaded for given host URLs, to avoid needing to
 	// re-fetch public keys.
-	sshKeys map[string]transport.AuthMethod
+	sshKeys map[string]AuthMethod
 	// sshConfig allows us to inject config for testing.
-	sshConfig sshUserSettings
+	sshConfig      sshUserSettings
+	sshAgentBroker sshAgentBroker
 }
 
 // defaultURLAuthParser uses the host's SSH configuration.
 var defaultURLAuthParser = &urlAuthParser{
-	sshConfig: ssh_config.DefaultUserSettings,
+	sshConfig:      ssh_config.DefaultUserSettings,
+	sshAgentBroker: &defaultSSHAgentBroker{},
 }
+
+type TransportAuth struct {
+	transport.AuthMethod
+}
+
+// publicKeys implements AuthMethod.
+func (w *TransportAuth) publicKeys() ([]ssh.Signer, error) {
+	return nil, errors.New("publicKeys not implemented for wrappedTransportAuth")
+}
+
+var _ AuthMethod = (*TransportAuth)(nil)
 
 // Parse parses a given URL and returns relevant auth. For SSH URLs, keys are
 // read from the provided sshUserSettings.
-func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, error) {
+func (p *urlAuthParser) Parse(remoteURL string) (string, AuthMethod, error) {
 	endpoint, err := transport.NewEndpoint(remoteURL)
 	if err != nil {
 		return "", nil, err
 	}
 
 	if endpoint.Protocol == "ssh" {
-		var auth transport.AuthMethod
-		cacheAuthMethod := false
-
 		p.mu.Lock()
 		defer p.mu.Unlock()
-		defer func() {
-			// Memoize the key when we're done, if there was one.
-			if !cacheAuthMethod {
-				return
-			}
-			if p.sshKeys == nil {
-				p.sshKeys = make(map[string]transport.AuthMethod)
-			}
-			logging.V(10).Infof("caching auth for %s", endpoint.Host)
-			p.sshKeys[endpoint.Host] = auth
-		}()
 
 		// See if we've encountered this host before; if yes, use the existing key.
 		if existing, ok := p.sshKeys[endpoint.Host]; ok {
 			return remoteURL, existing, nil
 		}
 
-		auth, err = getSSHPublicKeys(endpoint.User, endpoint.Host, p.sshConfig)
-		if err == nil {
-			cacheAuthMethod = true
-			return remoteURL, auth, nil
-		}
+		auth := NewDefaultSSHAuth(endpoint.User)
 
-		// If we could't acquire a key (most likely because there is no
-		// config defined for the host), we still treat the URL as valid
-		// and attempt to use the SSH agent for auth.
-		logging.V(10).Infof("%s: using agent auth instead", err)
-		auth, err = gitssh.DefaultAuthBuilder(endpoint.User)
+		passphrase := env.GitSSHPassphrase.Value()
+		err := auth.AddIdentityFiles(endpoint.Host, p.sshConfig, passphrase)
 		if err != nil {
 			return "", nil, err
 		}
-		cacheAuthMethod = true
-		return remoteURL, auth, err
+		err = auth.AddSSHAgentBroker(p.sshAgentBroker)
+		if err != nil {
+			return "", nil, err
+		}
+
+		if p.sshKeys == nil {
+			p.sshKeys = make(map[string]AuthMethod)
+		}
+		logging.V(10).Infof("caching auth for %s", endpoint.Host)
+		p.sshKeys[endpoint.Host] = &auth
+
+		return remoteURL, &auth, err
 
 	}
 
 	// For non-SSH URLs, see if there is basic auth info. Strip it from the
 	// endpoint as we go in order to remove it from the string output.
-	var auth *http.BasicAuth
+	var auth AuthMethod
 	if u, p := endpoint.User, endpoint.Password; u != "" || p != "" {
-		auth = &http.BasicAuth{Username: u, Password: p}
+		auth = &TransportAuth{&http.BasicAuth{Username: u, Password: p}}
 		endpoint.User, endpoint.Password = "", ""
 	}
 	return endpoint.String(), auth, nil
 }
 
-// parseAuthURL extracts HTTP basic auth parameters if provided in the URL.
+// ParseAuthURL extracts HTTP basic auth parameters if provided in the URL.
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
-func parseAuthURL(url string) (string, transport.AuthMethod, error) {
+func ParseAuthURL(url string) (string, AuthMethod, error) {
 	return defaultURLAuthParser.Parse(url)
-}
-
-// sshUserSettings allows us to ingect mock SSH config.
-type sshUserSettings interface {
-	GetStrict(alias, key string) (string, error)
-}
-
-var _ sshUserSettings = (*ssh_config.UserSettings)(nil)
-
-// getSSHPublicKeys reads from the user's SSH configuration and returns public
-// keys for the given host.
-//
-// The `PULUMI_GITSSH_PASSPHRASE` environment variable can be provided if the
-// relevant key is passphrase protected, or (if in an interactive session) the
-// user will be prompted to input a passphrase.
-//
-// TODO: Integrate with GCM when https://github.com/go-git/go-git/issues/490
-// lands.
-//
-// This method handles `~/.ssh/config`, `/etc/host/ssh`, and `Include`
-// directives in the SSH configuration as you would expect.
-func getSSHPublicKeys(user string, host string, sshConfig sshUserSettings) (*gitssh.PublicKeys, error) {
-	if sshConfig == nil {
-		sshConfig = ssh_config.DefaultUserSettings
-	}
-	privateKeyPath, err := sshConfig.GetStrict(host, "IdentityFile")
-	if err != nil {
-		return nil, err
-	}
-	// Expand tilde (~) if present in the path.
-	privateKeyPath, err = expandHomeDir(privateKeyPath)
-	if err != nil {
-		return nil, err
-	}
-	logging.V(10).Infof("Inferred SSH key '%s' for Git host %s", privateKeyPath, host)
-
-	privateKeyBytes, err := os.ReadFile(privateKeyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Attempt to load the key. If this is an interactive session and the key
-	// is passphrase-protected we will prompt the user to enter a passphrase.
-	signer, err := ssh.ParsePrivateKey(privateKeyBytes)
-	if errors.As(err, new(*ssh.PassphraseMissingError)) {
-		passphrase := env.GitSSHPassphrase.Value()
-
-		if passphrase == "" && cmdutil.Interactive() {
-			passphrase, err = cmdutil.ReadConsoleNoEcho(
-				fmt.Sprintf("Enter passphrase for SSH key '%s'", privateKeyPath),
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKeyBytes, []byte(passphrase))
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return &gitssh.PublicKeys{User: user, Signer: signer}, nil
-}
-
-// expandHomeDir expands file paths relative to the user's home directory (~) into absolute paths.
-func expandHomeDir(path string) (string, error) {
-	if len(path) == 0 {
-		return path, nil
-	}
-
-	if path[0] != '~' {
-		// Not a "~/foo" path.
-		return path, nil
-	}
-
-	if len(path) > 1 && path[1] != '/' && path[1] != '\\' {
-		// We won't expand "~user"-style paths.
-		return "", errors.New("cannot expand user-specific home dir")
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(home, path[1:]), nil
 }
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
 
-	u, auth, err := parseAuthURL(url)
+	u, auth, err := ParseAuthURL(url)
 	if err != nil {
 		return err
 	}
@@ -476,7 +389,7 @@ func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 		depth = 1
 	}
 
-	u, auth, err := parseAuthURL(url)
+	u, auth, err := ParseAuthURL(url)
 	if err != nil {
 		return err
 	}
@@ -823,7 +736,7 @@ func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
 		return nil, err
 	}
 
-	_, auth, err := parseAuthURL(url)
+	_, auth, err := ParseAuthURL(url)
 	if err != nil {
 		return nil, err
 	}
