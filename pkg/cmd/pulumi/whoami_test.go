@@ -38,8 +38,11 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 
 	var buff bytes.Buffer
 	cmd := whoAmICmd{
-		Verbose: true,
-		Stdout:  &buff,
+		Args: WhoAmIArgs{
+			Verbose: true,
+		},
+
+		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -67,7 +70,10 @@ func TestWhoAmICmd_json(t *testing.T) {
 
 	var buff bytes.Buffer
 	cmd := whoAmICmd{
-		JSON:   true,
+		Args: WhoAmIArgs{
+			JSON: true,
+		},
+
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
@@ -96,8 +102,11 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 
 	var buff bytes.Buffer
 	cmd := whoAmICmd{
-		Verbose: true,
-		Stdout:  &buff,
+		Args: WhoAmIArgs{
+			Verbose: true,
+		},
+
+		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
@@ -129,7 +138,10 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 
 	var buff bytes.Buffer
 	cmd := whoAmICmd{
-		JSON:   true,
+		Args: WhoAmIArgs{
+			JSON: true,
+		},
+
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
@@ -162,8 +174,11 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 
 	var buff bytes.Buffer
 	cmd := whoAmICmd{
-		Verbose: true,
-		Stdout:  &buff,
+		Args: WhoAmIArgs{
+			Verbose: true,
+		},
+
+		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
 				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {

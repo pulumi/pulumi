@@ -59,7 +59,7 @@ func newViewTraceCmd(v *viper.Viper) *cobra.Command {
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			config := UnmarshalArgs[ViewTraceArgs](v, cmd.Name())
+			config := UnmarshalArgs[ViewTraceArgs](v, cmd)
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", config.Port))
 			if err != nil {
 				return err

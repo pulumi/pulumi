@@ -69,7 +69,7 @@ func newAboutCmd(v *viper.Viper) *cobra.Command {
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			config := UnmarshalArgs[AboutConfig](v, "about")
+			config := UnmarshalArgs[AboutConfig](v, cmd)
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, config.TransitiveDependencies, config.Stack)
 			if config.JSON {

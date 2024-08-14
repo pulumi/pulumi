@@ -46,7 +46,6 @@ type InstallArgs struct {
 }
 
 func newInstallCmd(v *viper.Viper) *cobra.Command {
-	args := UnmarshalArgs[InstallArgs](v, "install")
 	cmd := &cobra.Command{
 		Use:   "install",
 		Args:  cmdutil.NoArgs,
@@ -55,6 +54,8 @@ func newInstallCmd(v *viper.Viper) *cobra.Command {
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[InstallArgs](v, cmd)
+
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

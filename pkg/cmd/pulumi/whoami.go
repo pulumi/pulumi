@@ -36,7 +36,7 @@ type WhoAmIArgs struct {
 }
 
 type whoAmICmd struct {
-	WhoAmIArgs
+	Args WhoAmIArgs
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -55,7 +55,7 @@ func newWhoAmICmd(v *viper.Viper) *cobra.Command {
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			whocmd.WhoAmIArgs = UnmarshalArgs[WhoAmIArgs](v, cmd.Name())
+			whocmd.Args = UnmarshalArgs[WhoAmIArgs](v, cmd)
 			return whocmd.Run(cmd.Context())
 		}),
 	}
@@ -95,7 +95,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	if cmd.JSON {
+	if cmd.Args.JSON {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:             name,
 			Organizations:    orgs,
@@ -104,7 +104,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		})
 	}
 
-	if cmd.Verbose {
+	if cmd.Args.Verbose {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())

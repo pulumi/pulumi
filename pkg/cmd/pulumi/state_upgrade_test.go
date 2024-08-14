@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,8 @@ func TestStateUpgradeCommand_parseArgs(t *testing.T) {
 	// then extract non-flag arguments with cmd.Flags().Args(),
 	// then run ValidateArgs to validate the positional arguments.
 
-	cmd := newStateUpgradeCommand()
+	v := viper.New()
+	cmd := newStateUpgradeCommand(v)
 	args := []string{} // no arguments
 
 	require.NoError(t, cmd.ParseFlags(args))
@@ -71,7 +73,8 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := newStateUpgradeCommand()
+			v := viper.New()
+			cmd := newStateUpgradeCommand(v)
 			args := tt.give
 
 			// Errors can occur during flag parsing
@@ -128,7 +131,7 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 		Stdout: io.Discard,
 	}
 
-	cmd.Config.Yes = true
+	cmd.Args.Yes = true
 	err := cmd.Run(context.Background())
 	require.NoError(t, err)
 

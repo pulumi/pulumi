@@ -9,6 +9,66 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetScopes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		cmd  func() *cobra.Command
+		want []string
+	}{
+		{
+			cmd: func() *cobra.Command {
+				return &cobra.Command{Use: "pulumi"}
+			},
+			want: []string{"pulumi"},
+		},
+		{
+			cmd: func() *cobra.Command {
+				pulumiCmd := &cobra.Command{Use: "pulumi"}
+				childCmd := &cobra.Command{Use: "child"}
+
+				pulumiCmd.AddCommand(childCmd)
+
+				return childCmd
+			},
+			want: []string{"child", "pulumi"},
+		},
+		{
+			cmd: func() *cobra.Command {
+				pulumiCmd := &cobra.Command{Use: "pulumi"}
+				childCmd := &cobra.Command{Use: "child"}
+				grandchildCmd := &cobra.Command{Use: "grandchild"}
+
+				pulumiCmd.AddCommand(childCmd)
+				childCmd.AddCommand(grandchildCmd)
+
+				return grandchildCmd
+			},
+			want: []string{"child.grandchild", "child", "pulumi"},
+		},
+		{
+			cmd: func() *cobra.Command {
+				pulumiCmd := &cobra.Command{Use: "pulumi"}
+				childCmd := &cobra.Command{Use: "child"}
+				grandchildCmd := &cobra.Command{Use: "grandchild"}
+				greatGrandchildCmd := &cobra.Command{Use: "great-grandchild"}
+
+				pulumiCmd.AddCommand(childCmd)
+				childCmd.AddCommand(grandchildCmd)
+				grandchildCmd.AddCommand(greatGrandchildCmd)
+
+				return greatGrandchildCmd
+			},
+			want: []string{"child.grandchild.great-grandchild", "child.grandchild", "child", "pulumi"},
+		},
+	}
+
+	for _, c := range cases {
+		got := getScopes(c.cmd())
+		require.Equal(t, c.want, got)
+	}
+}
+
 type TestUnmarshalArgs struct {
 	Somestring   string
 	Someint      int
@@ -24,14 +84,16 @@ type NestedArgs struct {
 func TestUnmarshal(t *testing.T) {
 	t.Parallel()
 
-	v := viper.New()
-	v.Set("somestring", "hello")
-	v.Set("someint", 42)
-	v.Set("dashed-name", "dashed")
-	v.Set("override", "this goes into WithOverride")
-	v.Set("somebool", true)
+	cmd := &cobra.Command{Use: "cmd"}
 
-	args := UnmarshalArgs[TestUnmarshalArgs](v, "")
+	v := viper.New()
+	v.Set("cmd.somestring", "hello")
+	v.Set("cmd.someint", 42)
+	v.Set("cmd.dashed-name", "dashed")
+	v.Set("cmd.override", "this goes into WithOverride")
+	v.Set("cmd.somebool", true)
+
+	args := UnmarshalArgs[TestUnmarshalArgs](v, cmd)
 
 	require.Equal(t, "hello", args.Somestring)
 	require.Equal(t, 42, args.Someint)
@@ -46,6 +108,13 @@ func TestUnmarshalWithFile(t *testing.T) {
 
 	v := viper.New()
 
+	globalCmd := &cobra.Command{Use: "global"}
+	child1Cmd := &cobra.Command{Use: "child1"}
+	child2Cmd := &cobra.Command{Use: "child2"}
+
+	globalCmd.AddCommand(child1Cmd)
+	globalCmd.AddCommand(child2Cmd)
+
 	config := `
 global:
   somestring: hello
@@ -53,17 +122,17 @@ global:
   dashed-name: dashed
   override: this goes into WithOverride
   sOmEbOoL: true
-somesection:
-  somestring: hello from somesection
-anothersection:
-  somestring: hello from anothersection
+child1:
+  somestring: hello from child1
+child2:
+  somestring: hello from child2
 `
 
 	v.SetConfigType("yaml")
 	require.NoError(t, v.ReadConfig(bytes.NewBufferString(config)))
 
-	// Unmarshal without a section
-	args := UnmarshalArgs[TestUnmarshalArgs](v, "")
+	// Unmarshal the global command
+	args := UnmarshalArgs[TestUnmarshalArgs](v, globalCmd)
 
 	require.Equal(t, "hello", args.Somestring)
 	require.Equal(t, 42, args.Someint)
@@ -72,8 +141,8 @@ anothersection:
 	require.Equal(t, true, args.Somebool)
 
 	// Unmarshal with a section
-	args = UnmarshalArgs[TestUnmarshalArgs](v, "somesection")
-	require.Equal(t, "hello from somesection", args.Somestring)
+	args = UnmarshalArgs[TestUnmarshalArgs](v, child1Cmd)
+	require.Equal(t, "hello from child1", args.Somestring)
 	require.Equal(t, 42, args.Someint)
 	require.Equal(t, "dashed", args.DashedName)
 	require.Equal(t, "this goes into WithOverride", args.WithOverride)
@@ -132,26 +201,31 @@ global:
   one: set in global
   two: set in global
   four: set in global only
-somesection:
-  one: set in somesection
-  two: set in somesection
-  three: set in some section only
+child1:
+  one: set in child1
+  two: set in child1
+  three: set in child1 only
 `
 	v.SetConfigType("yaml")
 	require.NoError(t, v.ReadConfig(bytes.NewBufferString(config)))
-	cmd := &cobra.Command{}
-	BindFlags[TestUnmarshalWithFileAndFlagsArgs](v, cmd)
-	require.NoError(t, cmd.ParseFlags([]string{"--one", "set in flag"}))
 
-	args := UnmarshalArgs[TestUnmarshalWithFileAndFlagsArgs](v, "somesection")
+	globalCmd := &cobra.Command{Use: "global"}
+	child1Cmd := &cobra.Command{Use: "child1"}
+
+	globalCmd.AddCommand(child1Cmd)
+
+	BindFlags[TestUnmarshalWithFileAndFlagsArgs](v, child1Cmd)
+	require.NoError(t, child1Cmd.ParseFlags([]string{"--one", "set in flag"}))
+
+	args := UnmarshalArgs[TestUnmarshalWithFileAndFlagsArgs](v, child1Cmd)
 
 	// Flag takes the highest priority
 	require.Equal(t, "set in flag", args.One)
-	// Specific section > global section
-	require.Equal(t, "set in somesection", args.Two)
-	// Section only
-	require.Equal(t, "set in some section only", args.Three)
-	// Global only
+	// Child section > parent section
+	require.Equal(t, "set in child1", args.Two)
+	// Child section only
+	require.Equal(t, "set in child1 only", args.Three)
+	// Parent section only
 	require.Equal(t, "set in global only", args.Four)
 	// Default
 	require.Equal(t, "set in default", args.Five)

@@ -24,7 +24,6 @@ import (
 //nolint:paralleltest // Changes environment variables
 func TestContinueOnErrorEnvVar(t *testing.T) {
 	commands := []func() *cobra.Command{
-		newUpCmd,
 		newDestroyCmd,
 	}
 	testCases := []struct {

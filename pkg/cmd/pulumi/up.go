@@ -44,20 +44,21 @@ import (
 // See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
 var defaultParallel = runtime.NumCPU() * 4
 
+//nolint:lll
 type UpArgs struct {
-	ConfigFile  string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
-	Debug       bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
-	ExpectNop   bool   `args:"expect-no-changes" argsUsage:"Return an error if any changes occur during this update"`
-	Message     string `args:"message" argsShort:"m" argsUsage:"Optional message to associate with the update operation"`
-	ExecKind    string
-	ExecAgent   string
-	StackName   string   `args:"stack" argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	ConfigArray []string `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to use during the update and save to the stack config file"`
-	Path        bool     `args:"config-path" argsUsage:"Config keys contain a path to a property in a map or list to set"`
-	Client      string   `argsUsage:"The address of an existing language runtime host to connect to"`
+	ConfigFile      string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
+	Debug           bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
+	ExpectNoChanges bool   `args:"expect-no-changes" argsUsage:"Return an error if any changes occur during this update"`
+	Message         string `args:"message" argsShort:"m" argsUsage:"Optional message to associate with the update operation"`
+	ExecKind        string
+	ExecAgent       string
+	StackName       string   `args:"stack" argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	ConfigArray     []string `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to use during the update and save to the stack config file"`
+	Path            bool     `args:"config-path" argsUsage:"Config keys contain a path to a property in a map or list to set"`
+	Client          string   `argsUsage:"The address of an existing language runtime host to connect to"`
 
 	// Flags for engine.UpdateOptions.
-	JsonDisplay            bool     `args:"json" argsShort:"j" argsUsage:"Serialize the update diffs, operations, and overall output as JSON"`
+	JSON                   bool     `args:"json" argsShort:"j" argsUsage:"Serialize the update diffs, operations, and overall output as JSON"`
 	PolicyPackPaths        []string `args:"policy-pack" argsUsage:"Run one or more policy packs as part of this update"`
 	PolicyPackConfigPaths  []string "args:\"policy-pack-config\" argsUsage:\"Path to JSON file containing the config for the policy pack of the corresponding \\\"--policy-pack\\\" flag\""
 	DiffDisplay            bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
@@ -92,7 +93,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) result.Result {
-		config := UnmarshalArgs[UpArgs](v, cmd.Name())
+		config := UnmarshalArgs[UpArgs](v, cmd)
 		s, err := requireStack(ctx, config.StackName, stackOfferNew, opts.Display)
 		if err != nil {
 			return result.FromError(err)
@@ -108,7 +109,14 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(config.Message, root, config.ExecKind, config.ExecAgent, config.PlanFilePath != "", cmd.Flags())
+		m, err := getUpdateMetadata(
+			config.Message,
+			root,
+			config.ExecKind,
+			config.ExecAgent,
+			config.PlanFilePath != "",
+			cmd.Flags(),
+		)
 		if err != nil {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
@@ -204,7 +212,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(errors.New("update cancelled"))
 		case res != nil:
 			return PrintEngineResult(res)
-		case config.ExpectNop && changes != nil && engine.HasChanges(changes):
+		case config.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
 			return result.FromError(errors.New("no changes were expected but changes occurred"))
 		default:
 			return nil
@@ -215,7 +223,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 	upTemplateNameOrURL := func(ctx context.Context,
 		templateNameOrURL string, opts backend.UpdateOptions, cmd *cobra.Command,
 	) result.Result {
-		config := UnmarshalArgs[UpArgs](v, cmd.Name())
+		config := UnmarshalArgs[UpArgs](v, cmd)
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
@@ -346,7 +354,14 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(config.Message, root, config.ExecKind, config.ExecAgent, config.PlanFilePath != "", cmd.Flags())
+		m, err := getUpdateMetadata(
+			config.Message,
+			root,
+			config.ExecKind,
+			config.ExecAgent,
+			config.PlanFilePath != "",
+			cmd.Flags(),
+		)
 		if err != nil {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
@@ -418,7 +433,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(errors.New("update cancelled"))
 		case res != nil:
 			return PrintEngineResult(res)
-		case config.ExpectNop && changes != nil && engine.HasChanges(changes):
+		case config.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
 			return result.FromError(errors.New("no changes were expected but changes occurred"))
 		default:
 			return nil
@@ -444,7 +459,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
-			config := UnmarshalArgs[UpArgs](v, cmd.Name())
+			config := UnmarshalArgs[UpArgs](v, cmd)
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
@@ -486,7 +501,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 				IsInteractive:          interactive,
 				Type:                   displayType,
 				Debug:                  config.Debug,
-				JSONDisplay:            config.JsonDisplay,
+				JSONDisplay:            config.JSON,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -498,10 +513,29 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			}
 
 			if remoteArgs.remote {
-				err = validateUnsupportedRemoteFlags(config.ExpectNop, config.ConfigArray, config.Path, config.Client, config.JsonDisplay, config.PolicyPackPaths,
-					config.PolicyPackConfigPaths, config.Refresh, config.ShowConfig, config.ShowPolicyRemediations, config.ShowReplacementSteps, config.ShowSames,
-					config.ShowReads, config.SuppressOutputs, config.SecretsProvider, &config.Targets, config.Replaces, config.TargetReplaces,
-					config.TargetDependents, config.PlanFilePath, stackConfigFile)
+				err = validateUnsupportedRemoteFlags(
+					config.ExpectNoChanges,
+					config.ConfigArray,
+					config.Path,
+					config.Client,
+					config.JSON,
+					config.PolicyPackPaths,
+					config.PolicyPackConfigPaths,
+					config.Refresh,
+					config.ShowConfig,
+					config.ShowPolicyRemediations,
+					config.ShowReplacementSteps,
+					config.ShowSames,
+					config.ShowReads,
+					config.SuppressOutputs,
+					config.SecretsProvider,
+					&config.Targets,
+					config.Replaces,
+					config.TargetReplaces,
+					config.TargetDependents,
+					config.PlanFilePath,
+					stackConfigFile,
+				)
 				if err != nil {
 					return result.FromError(err)
 				}

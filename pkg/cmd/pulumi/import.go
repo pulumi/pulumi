@@ -656,7 +656,7 @@ func newImportCmd(v *viper.Viper) *cobra.Command {
 			"IDs and any properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
-			config := UnmarshalArgs[ImportConfig](v, cmd.Name())
+			config := UnmarshalArgs[ImportConfig](v, cmd)
 
 			cwd, err := os.Getwd()
 			if err != nil {
