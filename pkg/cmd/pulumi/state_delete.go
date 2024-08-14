@@ -114,11 +114,5 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 
 	BindFlags[StateDeleteArgs](v, cmd)
 
-	cmd.PersistentFlags().StringVarP(
-		&args.Stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&args.Force, "force", false, "Force deletion of protected resources")
-	cmd.Flags().BoolVarP(&args.Yes, "yes", "y", false, "Skip confirmation prompts")
-	cmd.Flags().BoolVar(&args.TargetDependents, "target-dependents", false, "Delete the URN and all its dependents")
 	return cmd
 }
