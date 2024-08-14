@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Warn that query is planned to be removed
