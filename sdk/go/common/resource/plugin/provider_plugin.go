@@ -1924,6 +1924,9 @@ func (ie *InitError) Error() string {
 	for _, reason := range ie.Reasons {
 		err = multierror.Append(err, errors.New(reason))
 	}
+	if err == nil {
+		return "resource init failed"
+	}
 	return err.Error()
 }
 
