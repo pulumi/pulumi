@@ -1,0 +1,9 @@
+{
+  "venvPath": "venv",
+  "include": [
+    "lib/test_types"
+  ],
+  "strict": [
+    "lib/test_types",
+  ],
+}
