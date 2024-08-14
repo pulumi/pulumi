@@ -36,8 +36,7 @@ type WhoAmIArgs struct {
 }
 
 type whoAmICmd struct {
-	JSON    bool
-	Verbose bool
+	WhoAmIArgs
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -56,9 +55,7 @@ func newWhoAmICmd(v *viper.Viper) *cobra.Command {
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			config := UnmarshalArgs[WhoAmIArgs](v, cmd.Name())
-			whocmd.JSON = config.JSON
-			whocmd.Verbose = config.Verbose
+			whocmd.WhoAmIArgs = UnmarshalArgs[WhoAmIArgs](v, cmd.Name())
 			return whocmd.Run(cmd.Context())
 		}),
 	}
