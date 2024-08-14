@@ -28,9 +28,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newConfigEnvCmd(stackRef *string) *cobra.Command {
+func newConfigEnvCmd(v *viper.Viper) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
@@ -38,7 +39,6 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 		requireStack:     requireStack,
 		loadProjectStack: loadProjectStack,
 		saveProjectStack: saveProjectStack,
-		stackRef:         stackRef,
 	}
 
 	cmd := &cobra.Command{
@@ -77,7 +77,7 @@ type configEnvCmd struct {
 
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
 
-	stackRef *string
+	stackRef *string // TODO hack/pulumirc: remove, this should be read from config
 }
 
 func (cmd *configEnvCmd) initArgs() {
