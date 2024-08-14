@@ -194,6 +194,16 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 			shortName := rv.Type().Field(i).Tag.Get("argsShort")
 			usage := rv.Type().Field(i).Tag.Get("argsUsage")
 			defaultValue, defaultSet := rv.Type().Field(i).Tag.Lookup("argsDefault")
+			noPersist := rv.Type().Field(i).Tag.Get("argsNoPersist") == "true"
+
+			flagSet := cmd.PersistentFlags()
+			if noPersist {
+				flagSet = cmd.Flags()
+			}
+
+			if flagSet == nil {
+				contract.Failf("no flags found for command %s", cmd.Name())
+			}
 
 			storeKey := scope + "." + longName
 
@@ -203,45 +213,45 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 				bindFlags(v, cmd, rv.Field(i).Interface())
 			case reflect.Bool:
 				d := defaultBool(defaultValue)
-				cmd.PersistentFlags().BoolP(longName, shortName, d, usage)
+				flagSet.BoolP(longName, shortName, d, usage)
 				if defaultSet {
 					v.SetDefault(storeKey, d)
 				}
-				_ = v.BindPFlag(storeKey, cmd.PersistentFlags().Lookup(longName))
+				_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
 				reflect.Uint64, reflect.Uintptr:
 				d := defaultInt(defaultValue)
-				cmd.PersistentFlags().IntP(longName, shortName, d, usage)
+				flagSet.IntP(longName, shortName, d, usage)
 				if defaultSet {
 					v.SetDefault(storeKey, d)
 				}
-				_ = v.BindPFlag(storeKey, cmd.PersistentFlags().Lookup(longName))
+				_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
 			case reflect.String:
 				if rv.Type().Field(i).Tag.Get("argsType") == "var" {
 					if defaultSet {
 						contract.Failf("can't set default value with argsType:\"var\"")
 					}
 					value := reflect.New(rv.Field(i).Type()).Interface().(pflag.Value)
-					cmd.PersistentFlags().VarP(value, longName, shortName, usage)
+					flagSet.VarP(value, longName, shortName, usage)
 				} else {
-					cmd.PersistentFlags().StringP(longName, shortName, defaultValue, usage)
+					flagSet.StringP(longName, shortName, defaultValue, usage)
 				}
 				if defaultSet {
 					v.SetDefault(storeKey, defaultValue)
 				}
-				_ = v.BindPFlag(storeKey, cmd.PersistentFlags().Lookup(longName))
+				_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
 			case reflect.Array, reflect.Slice:
 				def := strings.Split(defaultValue, ",")
 				if rv.Type().Field(i).Tag.Get("argsCommaSplit") == "false" {
-					cmd.PersistentFlags().StringArrayP(longName, shortName, def, usage)
+					flagSet.StringArrayP(longName, shortName, def, usage)
 				} else {
-					cmd.PersistentFlags().StringSliceP(longName, shortName, def, usage)
+					flagSet.StringSliceP(longName, shortName, def, usage)
 				}
 				if defaultSet {
 					v.SetDefault(storeKey, def)
 				}
-				_ = v.BindPFlag(storeKey, cmd.PersistentFlags().Lookup(longName))
+				_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
 			default:
 				contract.Failf("unexpected type %v", rv.Field(i).Kind())
 			}

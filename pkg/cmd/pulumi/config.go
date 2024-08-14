@@ -52,9 +52,9 @@ import (
 //nolint:lll
 type ConfigArgs struct {
 	Stack           string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	ShowSecrets     bool   `argsUsage:"Show secret values when listing config instead of displaying blinded values"`
-	JSON            bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
-	Open            bool   `argsUsage:"Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise"`
+	ShowSecrets     bool   `argsNoPersist:"true" argsUsage:"Show secret values when listing config instead of displaying blinded values"`
+	JSON            bool   `args:"json" argsShort:"j" argsNoPersist:"true" argsUsage:"Emit output as JSON"`
+	Open            bool   `argsNoPersist:"true" argsUsage:"Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise"`
 	StackConfigFile string `args:"config-file" argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
 }
 
@@ -89,6 +89,7 @@ func newConfigCmd(v *viper.Viper) *cobra.Command {
 				return err
 			}
 
+			// TODO hack/pulumirc: Use viper store here?
 			// If --open is explicitly set, use that value. Otherwise, default to true if --show-secrets is set.
 			openSetByUser := cmd.Flags().Changed("open")
 
@@ -293,7 +294,7 @@ func copyEntireConfigMap(currentStack backend.Stack,
 
 type ConfigGetArgs struct {
 	JSON bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
-	Open bool `argsUsage:"Open and resolve any environments listed in the stack configuration"`
+	Open bool `argsDefault:"true" argsUsage:"Open and resolve any environments listed in the stack configuration"`
 	Path bool `argsUsage:"The key contains a path to a property in a map or list to get"`
 }
 
@@ -456,7 +457,7 @@ func newConfigRmAllCmd(v *viper.Viper) *cobra.Command {
 }
 
 type ConfigRefreshArgs struct {
-	Force bool `short:"f" description:"Overwrite configuration file, if it exists, without creating a backup"`
+	Force bool `argsShort:"f" argsUsage:"Overwrite configuration file, if it exists, without creating a backup"`
 }
 
 func newConfigRefreshCmd(v *viper.Viper) *cobra.Command {
@@ -568,9 +569,9 @@ func newConfigRefreshCmd(v *viper.Viper) *cobra.Command {
 }
 
 type ConfigSetArgs struct {
-	Path      bool `short:"p" description:"The key contains a path to a property in a map or list to set"`
-	Plaintext bool `description:"Save the value as plaintext (unencrypted)"`
-	Secret    bool `description:"Encrypt the value instead of storing it in plaintext"`
+	Path      bool `short:"p" argsUsage:"The key contains a path to a property in a map or list to set"`
+	Plaintext bool `argsUsage:"Save the value as plaintext (unencrypted)"`
+	Secret    bool `argsUsage:"Encrypt the value instead of storing it in plaintext"`
 }
 
 func newConfigSetCmd(v *viper.Viper) *cobra.Command {
