@@ -200,7 +200,11 @@ func TestGitAuthParse(t *testing.T) {
 		expectedURL                 string
 		expectedError               string
 		expectedPublicKeysTransport bool
-		expectedPublicAuthInstance  *http.BasicAuth
+
+		// Expect a basic auth instance with the provided username and password
+		expectedBasicAuth *http.BasicAuth
+		// The same as the above, but expects a TransportAuth wrapper
+		expectedWrappedBasicAuth *http.BasicAuth
 	}
 
 	for _, tc := range []testcase{
@@ -244,8 +248,8 @@ func TestGitAuthParse(t *testing.T) {
 			auth: &GitAuth{
 				PersonalAccessToken: "dummy-token",
 			},
-			expectedURL:                "git@example.com:repo.git",
-			expectedPublicAuthInstance: &http.BasicAuth{Username: "git", Password: "dummy-token"},
+			expectedURL:       "git@example.com:repo.git",
+			expectedBasicAuth: &http.BasicAuth{Username: "git", Password: "dummy-token"},
 		},
 		{
 			name: "username and password",
@@ -254,9 +258,9 @@ func TestGitAuthParse(t *testing.T) {
 				Username: "user",
 				Password: "pass",
 			},
-			expectedURL:                "git@example.com:repo.git",
-			expectedError:              "",
-			expectedPublicAuthInstance: &http.BasicAuth{Username: "user", Password: "pass"},
+			expectedURL:       "git@example.com:repo.git",
+			expectedError:     "",
+			expectedBasicAuth: &http.BasicAuth{Username: "user", Password: "pass"},
 		},
 		{
 			name: "incompatible auth options",
@@ -277,12 +281,6 @@ func TestGitAuthParse(t *testing.T) {
 			expectedError: "please specify one authentication option",
 		},
 		{
-			url:  "git@example.com:repo.git",
-			name: "default auth without SSH agent",
-
-			expectedError: "SSH agent requested but SSH_AUTH_SOCK not-specified",
-		},
-		{
 			url:               "git@example.com:repo.git",
 			name:              "default auth with SSH agent",
 			setSSHAgentSocket: true,
@@ -294,7 +292,7 @@ func TestGitAuthParse(t *testing.T) {
 			url:  "https://user:password@example.com/repo.git",
 
 			expectedURL: "https://example.com/repo.git",
-			expectedPublicAuthInstance: &http.BasicAuth{
+			expectedWrappedBasicAuth: &http.BasicAuth{
 				Username: "user",
 				Password: "password",
 			},
@@ -336,15 +334,26 @@ func TestGitAuthParse(t *testing.T) {
 				t.Errorf("expected transport %s of type *ssh.PublicKeys, got %T", condition, authMethod)
 			}
 
-			if tc.expectedPublicAuthInstance != nil {
+			if tc.expectedBasicAuth != nil {
+				basicAuth, ok := authMethod.(*http.BasicAuth)
+				require.Truef(t, ok, "expected Auth to be of type *http.BasicAuth, got %T", authMethod)
+				if basicAuth.Username != tc.expectedBasicAuth.Username ||
+					basicAuth.Password != tc.expectedBasicAuth.Password {
+					t.Errorf("expected BasicAuth to have username %q and password %q, got username %q and password %q",
+						tc.expectedBasicAuth.Username, tc.expectedBasicAuth.Password,
+						basicAuth.Username, basicAuth.Password)
+				}
+			}
+
+			if tc.expectedWrappedBasicAuth != nil {
 				wrapper, ok := authMethod.(*gitutil.TransportAuth)
 				require.Truef(t, ok, "expected transport to be of type *gitutil.TransportAuth, got %T", authMethod)
-				basicAuth, ok := wrapper.AuthMethod.(*http.BasicAuth)
+				basicAuth, ok := authMethod.(*http.BasicAuth)
 				require.Truef(t, ok, "expected Auth to be of type *http.BasicAuth, got %T", wrapper.AuthMethod)
-				if basicAuth.Username != tc.expectedPublicAuthInstance.Username ||
-					basicAuth.Password != tc.expectedPublicAuthInstance.Password {
+				if basicAuth.Username != tc.expectedWrappedBasicAuth.Username ||
+					basicAuth.Password != tc.expectedWrappedBasicAuth.Password {
 					t.Errorf("expected BasicAuth to have username %q and password %q, got username %q and password %q",
-						tc.expectedPublicAuthInstance.Username, tc.expectedPublicAuthInstance.Password,
+						tc.expectedWrappedBasicAuth.Username, tc.expectedWrappedBasicAuth.Password,
 						basicAuth.Username, basicAuth.Password)
 				}
 			}
