@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto
+  description: Fix panic in remote automation API
