@@ -45,7 +45,10 @@ type whoAmICmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func newWhoAmICmd(v *viper.Viper) *cobra.Command {
+func newWhoAmICmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	var whocmd whoAmICmd
 	cmd := &cobra.Command{
 		Use:   "whoami",
@@ -54,12 +57,13 @@ func newWhoAmICmd(v *viper.Viper) *cobra.Command {
 			"\n" +
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
 			whocmd.Args = UnmarshalArgs[WhoAmIArgs](v, cmd)
 			return whocmd.Run(cmd.Context())
 		}),
 	}
 
+	parentPulumiCmd.AddCommand(cmd)
 	BindFlags[WhoAmIArgs](v, cmd)
 
 	return cmd

@@ -37,7 +37,10 @@ type StateRenameArgs struct {
 }
 
 //nolint:lll
-func newStateRenameCommand(v *viper.Viper) *cobra.Command {
+func newStateRenameCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rename [resource URN] [new name]",
 		Short: "Renames a resource from a stack's state",
@@ -124,6 +127,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		}),
 	}
 
+	parentStateCmd.AddCommand(cmd)
 	BindFlags[StateRenameArgs](v, cmd)
 
 	return cmd

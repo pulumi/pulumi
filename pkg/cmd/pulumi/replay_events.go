@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -31,26 +32,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type ReplayEventsConfig struct {
-	PulumiConfig
+//nolint:lll
+type ReplayEventsArgs struct {
+	Preview              bool "argsShort:\"p\" argsUsage:\"Must be set for events from a `pulumi preview`.\""
+	JSON                 bool `args:"json" argsShort:"j" argsUsage:"Serialize the preview diffs, operations, and overall output as JSON"`
+	DisplayDiff          bool `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
+	ShowConfig           bool `argsUsage:"Show configuration keys and variables"`
+	ShowReplacementSteps bool `argsUsage:"Show detailed resource replacement creates and deletes instead of a single step"`
+	ShowSames            bool `argsUsage:"Show resources that needn't be updated because they haven't changed, alongside those that do"`
+	ShowReads            bool `argsUsage:"Show resources that are being read in, alongside those being managed directly in the stack"`
+	SuppressOutputs      bool `argsUsage:"Suppress display of stack outputs (in case they contain sensitive values)"`
+	SuppressProgress     bool `argsUsage:"Suppress display of periodic progress dots"`
+	Debug                bool `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
 
-	Preview              bool
-	JSON                 bool
-	DisplayDiff          bool
-	ShowConfig           bool
-	ShowReplacementSteps bool
-	ShowSames            bool
-	ShowReads            bool
-	SuppressOutputs      bool
-	SuppressProgress     bool
-	Debug                bool
-	Delay                time.Duration
-	Period               time.Duration
+	// TODO hack/pulumirc duration arguments
+	Delay  time.Duration `argsUsage:"Delay display by the given duration. Useful for attaching a debugger."`
+	Period time.Duration `argsUsage:"Delay each event by the given duration."`
 }
 
-func newReplayEventsCmd() *cobra.Command {
-	var config ReplayEventsConfig
-
+func newReplayEventsCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "replay-events [kind] [events-file]",
 		Short: "Replay events from a prior update, refresh, or destroy",
@@ -63,11 +66,13 @@ func newReplayEventsCmd() *cobra.Command {
 			"using either the progress view or the diff view.\n",
 		Args:   cmdutil.ExactArgs(2),
 		Hidden: !hasDebugCommands(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[ReplayEventsArgs](v, cmd)
+
 			var action apitype.UpdateKind
-			switch args[0] {
+			switch cmdArgs[0] {
 			case "update":
-				if config.Preview {
+				if args.Preview {
 					action = apitype.PreviewUpdate
 				} else {
 					action = apitype.UpdateUpdate
@@ -79,47 +84,47 @@ func newReplayEventsCmd() *cobra.Command {
 			case "import":
 				action = apitype.ResourceImportUpdate
 			default:
-				return fmt.Errorf("unrecognized update kind '%v'", args[0])
+				return fmt.Errorf("unrecognized update kind '%v'", cmdArgs[0])
 			}
 
 			displayType := display.DisplayProgress
-			if config.DisplayDiff {
+			if args.DisplayDiff {
 				displayType = display.DisplayDiff
 			}
 
 			displayOpts := display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           config.ShowConfig,
-				ShowReplacementSteps: config.ShowReplacementSteps,
-				ShowSameResources:    config.ShowSames,
-				ShowReads:            config.ShowReads,
-				SuppressOutputs:      config.SuppressOutputs,
-				SuppressProgress:     config.SuppressProgress,
+				ShowConfig:           args.ShowConfig,
+				ShowReplacementSteps: args.ShowReplacementSteps,
+				ShowSameResources:    args.ShowSames,
+				ShowReads:            args.ShowReads,
+				SuppressOutputs:      args.SuppressOutputs,
+				SuppressProgress:     args.SuppressProgress,
 				IsInteractive:        cmdutil.Interactive(),
 				Type:                 displayType,
-				JSONDisplay:          config.JSON,
-				Debug:                config.Debug,
+				JSONDisplay:          args.JSON,
+				Debug:                args.Debug,
 			}
 
-			events, err := loadEvents(args[1])
+			events, err := loadEvents(cmdArgs[1])
 			if err != nil {
 				return fmt.Errorf("error reading events: %w", err)
 			}
 
 			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
 
-			if config.Delay != 0 {
-				time.Sleep(config.Delay)
+			if args.Delay != 0 {
+				time.Sleep(args.Delay)
 			}
 
 			go display.ShowEvents(
 				"replay", action, tokens.MustParseStackName("replay"), "replay", "",
-				eventChannel, doneChannel, displayOpts, config.Preview)
+				eventChannel, doneChannel, displayOpts, args.Preview)
 
 			for _, e := range events {
 				eventChannel <- e
-				if config.Period != 0 {
-					time.Sleep(config.Period)
+				if args.Period != 0 {
+					time.Sleep(args.Period)
 				}
 			}
 			<-doneChannel
@@ -128,42 +133,8 @@ func newReplayEventsCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&config.Preview, "preview", "p", false,
-		"Must be set for events from a `pulumi preview`.")
-
-	cmd.PersistentFlags().BoolVarP(
-		&config.Debug, "debug", "d", false,
-		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().BoolVar(
-		&config.DisplayDiff, "diff", false,
-		"Display operation as a rich diff showing the overall change")
-	cmd.Flags().BoolVarP(
-		&config.JSON, "json", "j", false,
-		"Serialize the preview diffs, operations, and overall output as JSON")
-	cmd.PersistentFlags().BoolVar(
-		&config.ShowConfig, "show-config", false,
-		"Show configuration keys and variables")
-	cmd.PersistentFlags().BoolVar(
-		&config.ShowReplacementSteps, "show-replacement-steps", false,
-		"Show detailed resource replacement creates and deletes instead of a single step")
-	cmd.PersistentFlags().BoolVar(
-		&config.ShowSames, "show-sames", false,
-		"Show resources that needn't be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVar(
-		&config.ShowReads, "show-reads", false,
-		"Show resources that are being read in, alongside those being managed directly in the stack")
-	cmd.PersistentFlags().BoolVar(
-		&config.SuppressOutputs, "suppress-outputs", false,
-		"Suppress display of stack outputs (in case they contain sensitive values)")
-	cmd.PersistentFlags().BoolVar(
-		&config.SuppressProgress, "suppress-progress", false,
-		"Suppress display of periodic progress dots")
-
-	cmd.PersistentFlags().DurationVar(&config.Delay, "delay", time.Duration(0),
-		"Delay display by the given duration. Useful for attaching a debugger.")
-	cmd.PersistentFlags().DurationVar(&config.Period, "period", time.Duration(0),
-		"Delay each event by the given duration.")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[ReplayEventsArgs](v, cmd)
 
 	return cmd
 }

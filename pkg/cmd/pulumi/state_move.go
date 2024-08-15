@@ -54,7 +54,10 @@ type stateMoveCmd struct {
 	Colorizer colors.Colorization
 }
 
-func newStateMoveCommand(v *viper.Viper) *cobra.Command {
+func newStateMoveCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	stateMove := &stateMoveCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -101,6 +104,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 		}),
 	}
 
+	parentStateCmd.AddCommand(cmd)
 	BindFlags[StateMoveArgs](v, cmd)
 
 	return cmd

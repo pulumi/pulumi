@@ -72,7 +72,7 @@ func validateUnsupportedRemoteFlags(
 	showReads bool,
 	suppressOutputs bool,
 	secretsProvider string,
-	targets *[]string,
+	targets []string,
 	replaces []string,
 	targetReplaces []string,
 	targetDependents bool,
@@ -125,7 +125,7 @@ func validateUnsupportedRemoteFlags(
 	if secretsProvider != "default" {
 		return errors.New("--secrets-provider is not supported with --remote")
 	}
-	if targets != nil && len(*targets) > 0 {
+	if len(targets) > 0 {
 		return errors.New("--target is not supported with --remote")
 	}
 	if len(replaces) > 0 {

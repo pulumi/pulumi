@@ -23,23 +23,33 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newPackagePackCmd() *cobra.Command {
+type PackagePackArgs struct{}
+
+func newPackagePackCmd(
+	v *viper.Viper,
+	parentPackageCmd *cobra.Command,
+) *cobra.Command {
 	var packCmd packCmd
 	cmd := &cobra.Command{
 		Use:    "pack-sdk <language> <path>",
 		Args:   cobra.ExactArgs(2),
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			return packCmd.Run(ctx, args)
+			return packCmd.Run(ctx, cliArgs)
 		}),
 	}
+
+	parentPackageCmd.AddCommand(cmd)
+	BindFlags[PackagePackArgs](v, cmd)
+
 	return cmd
 }
 

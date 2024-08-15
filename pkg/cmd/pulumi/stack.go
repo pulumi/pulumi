@@ -36,24 +36,23 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-type StackConfig struct {
-	PulumiConfig
+//nolint:lll
+type StackArgs struct {
+	Stack       string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack" argsNoPersist:"true"`
+	ShowIDs     bool   `args:"show-ids" argsShort:"i" argsUsage:"Display each resource's provider-assigned unique ID" argsNoPersist:"true"`
+	ShowURNs    bool   `args:"show-urns" argsShort:"u" argsUsage:"Display each resource's Pulumi-assigned globally unique URN" argsNoPersist:"true"`
+	ShowSecrets bool   `argsUsage:"Display stack outputs which are marked as secret in plaintext" argsNoPersist:"true"`
 
-	Stack                  string
-	ShowIDs                bool
-	ShowURNs               bool
-	ShowSecrets            bool
-	StartTime              string
-	ShowStackName          bool
-	FullyQualifyStackNames bool
+	// TODO hack/pulumirc args that are in the struct but not the CLI
+	StartTime              string `argsNoPersist:"true"`
+	ShowStackName          bool   `argsUsage:"Display only the stack name" argsNoPersist:"true"`
+	FullyQualifyStackNames bool   `argsNoPersist:"true"`
 }
 
 func newStackCmd(
 	v *viper.Viper,
 	parentPulumiCmd *cobra.Command,
 ) *cobra.Command {
-	config := StackConfig{}
-
 	cmd := &cobra.Command{
 		Use:   "stack",
 		Short: "Manage stacks and view stack state",
@@ -64,33 +63,25 @@ func newStackCmd(
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
+			args := UnmarshalArgs[StackArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, config.Stack, stackOfferNew, opts)
+			s, err := requireStack(ctx, args.Stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
 
-			config.FullyQualifyStackNames = cmdutil.FullyQualifyStackNames
-			return runStack(ctx, s, os.Stdout, config)
+			args.FullyQualifyStackNames = cmdutil.FullyQualifyStackNames
+			return runStack(ctx, s, os.Stdout, args)
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVarP(
-		&config.ShowIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
-	cmd.Flags().BoolVarP(
-		&config.ShowURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
-	cmd.Flags().BoolVar(
-		&config.ShowSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
-	cmd.Flags().BoolVar(
-		&config.ShowStackName, "show-name", false, "Display only the stack name")
 
 	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[StackArgs](v, cmd)
 
 	newStackChangeSecretsProviderCmd(v, cmd)
 	newStackExportCmd(v, cmd)
@@ -109,7 +100,7 @@ func newStackCmd(
 	return cmd
 }
 
-func runStack(ctx context.Context, s backend.Stack, out io.Writer, args StackConfig) error {
+func runStack(ctx context.Context, s backend.Stack, out io.Writer, args StackArgs) error {
 	if args.ShowStackName {
 		if args.FullyQualifyStackNames {
 			fmt.Fprintln(out, s.Ref().String())

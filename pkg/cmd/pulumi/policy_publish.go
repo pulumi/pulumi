@@ -28,9 +28,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newPolicyPublishCmd() *cobra.Command {
+type PolicyPublishArgs struct{}
+
+func newPolicyPublishCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	var policyPublishCmd policyPublishCmd
 	cmd := &cobra.Command{
 		Use:   "publish [org-name]",
@@ -39,10 +45,13 @@ func newPolicyPublishCmd() *cobra.Command {
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return policyPublishCmd.Run(cmd.Context(), args)
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			return policyPublishCmd.Run(cmd.Context(), cliArgs)
 		}),
 	}
+
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyPublishArgs](v, cmd)
 
 	return cmd
 }

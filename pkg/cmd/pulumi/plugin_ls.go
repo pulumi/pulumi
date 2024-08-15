@@ -21,29 +21,32 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type PluginLsConfig struct {
-	PulumiConfig
-
-	Project bool
-	JSON    bool
+type PluginLsArgs struct {
+	Project bool `argsShort:"p" argsUsage:"List only the plugins used by the current project"`
+	JSON    bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 }
 
-func newPluginLsCmd() *cobra.Command {
-	var config PluginLsConfig
+func newPluginLsCmd(
+	v *viper.Viper,
+	parentPluginCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List plugins",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PluginLsArgs](v, cmd)
+
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
 			var err error
-			if config.Project {
+			if args.Project {
 				var pluginSpecs []workspace.PluginSpec
 				if pluginSpecs, err = getProjectPlugins(); err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
@@ -71,19 +74,15 @@ func newPluginLsCmd() *cobra.Command {
 				return false
 			})
 
-			if config.JSON {
+			if args.JSON {
 				return formatPluginsJSON(plugins)
 			}
 			return formatPluginConsole(plugins)
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&config.Project, "project", "p", false,
-		"List only the plugins used by the current project")
-	cmd.PersistentFlags().BoolVarP(
-		&config.JSON, "json", "j", false,
-		"Emit output as JSON")
+	parentPluginCmd.AddCommand(cmd)
+	BindFlags[PluginLsArgs](v, cmd)
 
 	return cmd
 }

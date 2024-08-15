@@ -52,7 +52,10 @@ type stateUpgradeCmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func newStateUpgradeCommand(v *viper.Viper) *cobra.Command {
+func newStateUpgradeCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	var sucmd stateUpgradeCmd
 	cmd := &cobra.Command{
 		Use:   "upgrade",
@@ -72,7 +75,9 @@ This only has an effect on DIY backends.
 		}),
 	}
 
+	parentStateCmd.AddCommand(cmd)
 	BindFlags[StateUpgradeArgs](v, cmd)
+
 	return cmd
 }
 

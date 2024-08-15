@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,18 +29,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-type QueryConfig struct {
-	PulumiConfig
-
-	Stack string
+type QueryArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
-func newQueryCmd() *cobra.Command {
-	var config QueryConfig
-
+func newQueryCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "query",
 		Short: "Run query program against cloud resources",
@@ -54,7 +54,7 @@ func newQueryCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, cmdArgs []string) result.Result {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 
@@ -106,9 +106,8 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[QueryArgs](v, cmd)
 
 	return cmd
 }

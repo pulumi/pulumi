@@ -44,7 +44,10 @@ type ViewTraceArgs struct {
 	Port int `argsDefault:"8008" argsUsage:"the port the trace viewer will listen on"`
 }
 
-func newViewTraceCmd(v *viper.Viper) *cobra.Command {
+func newViewTraceCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view-trace [trace-file]",
 		Short: "Display a trace from the Pulumi CLI",
@@ -81,6 +84,7 @@ func newViewTraceCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentPulumiCmd.AddCommand(cmd)
 	BindFlags[ViewTraceArgs](v, cmd)
 
 	return cmd

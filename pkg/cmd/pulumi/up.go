@@ -87,34 +87,37 @@ type UpArgs struct {
 // intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
-func newUpCmd(v *viper.Viper) *cobra.Command {
+func newUpCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	// Flags for remote operations.
 	remoteArgs := RemoteArgs{}
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) result.Result {
-		config := UnmarshalArgs[UpArgs](v, cmd)
-		s, err := requireStack(ctx, config.StackName, stackOfferNew, opts.Display)
+		args := UnmarshalArgs[UpArgs](v, cmd)
+		s, err := requireStack(ctx, args.StackName, stackOfferNew, opts.Display)
 		if err != nil {
 			return result.FromError(err)
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(s, config.ConfigArray, config.Path); err != nil {
+		if err := parseAndSaveConfigArray(s, args.ConfigArray, args.Path); err != nil {
 			return result.FromError(err)
 		}
 
-		proj, root, err := readProjectForUpdate(config.Client)
+		proj, root, err := readProjectForUpdate(args.Client)
 		if err != nil {
 			return result.FromError(err)
 		}
 
 		m, err := getUpdateMetadata(
-			config.Message,
+			args.Message,
 			root,
-			config.ExecKind,
-			config.ExecAgent,
-			config.PlanFilePath != "",
+			args.ExecKind,
+			args.ExecAgent,
+			args.PlanFilePath != "",
 			cmd.Flags(),
 		)
 		if err != nil {
@@ -149,22 +152,22 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		}
 
 		targetURNs, replaceURNs := []string{}, []string{}
-		targetURNs = append(targetURNs, config.Targets...)
-		replaceURNs = append(replaceURNs, config.Replaces...)
+		targetURNs = append(targetURNs, args.Targets...)
+		replaceURNs = append(replaceURNs, args.Replaces...)
 
-		for _, tr := range config.TargetReplaces {
+		for _, tr := range args.TargetReplaces {
 			targetURNs = append(targetURNs, tr)
 			replaceURNs = append(replaceURNs, tr)
 		}
 
-		refreshOption, err := getRefreshOption(proj, config.Refresh)
+		refreshOption, err := getRefreshOption(proj, args.Refresh)
 		if err != nil {
 			return result.FromError(err)
 		}
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(config.PolicyPackPaths, config.PolicyPackConfigPaths),
-			Parallel:                  config.Parallel,
-			Debug:                     config.Debug,
+			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(args.PolicyPackPaths, args.PolicyPackConfigPaths),
+			Parallel:                  args.Parallel,
+			Debug:                     args.Debug,
 			Refresh:                   refreshOption,
 			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 			UseLegacyDiff:             useLegacyDiff(),
@@ -173,15 +176,15 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			DisableResourceReferences: disableResourceReferences(),
 			DisableOutputValues:       disableOutputValues(),
 			Targets:                   deploy.NewUrnTargets(targetURNs),
-			TargetDependents:          config.TargetDependents,
+			TargetDependents:          args.TargetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
 			GeneratePlan:    true,
 			Experimental:    hasExperimentalCommands(),
-			ContinueOnError: config.ContinueOnError,
+			ContinueOnError: args.ContinueOnError,
 		}
 
-		if config.PlanFilePath != "" {
+		if args.PlanFilePath != "" {
 			dec, err := sm.Decrypter()
 			if err != nil {
 				return result.FromError(err)
@@ -190,7 +193,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-			plan, err := readPlan(config.PlanFilePath, dec, enc)
+			plan, err := readPlan(args.PlanFilePath, dec, enc)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -212,7 +215,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(errors.New("update cancelled"))
 		case res != nil:
 			return PrintEngineResult(res)
-		case config.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
+		case args.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
 			return result.FromError(errors.New("no changes were expected but changes occurred"))
 		default:
 			return nil
@@ -223,7 +226,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 	upTemplateNameOrURL := func(ctx context.Context,
 		templateNameOrURL string, opts backend.UpdateOptions, cmd *cobra.Command,
 	) result.Result {
-		config := UnmarshalArgs[UpArgs](v, cmd)
+		args := UnmarshalArgs[UpArgs](v, cmd)
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
@@ -251,7 +254,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		}
 
 		// Validate secrets provider type
-		if err := validateSecretsProvider(config.SecretsProvider); err != nil {
+		if err := validateSecretsProvider(args.SecretsProvider); err != nil {
 			return result.FromError(err)
 		}
 
@@ -279,8 +282,8 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		var name string
 		var description string
 		var s backend.Stack
-		if config.StackName != "" {
-			if s, name, description, err = getStack(ctx, b, config.StackName, opts.Display); err != nil {
+		if args.StackName != "" {
+			if s, name, description, err = getStack(ctx, b, args.StackName, opts.Display); err != nil {
 				return result.FromError(err)
 			}
 		}
@@ -289,7 +292,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		if name == "" {
 			defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
 			name, err = promptForValue(
-				config.Yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
+				args.Yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -300,7 +303,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
 				description, template.ProjectDescription, template.Description)
 			description, err = promptForValue(
-				config.Yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
+				args.Yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -325,8 +328,8 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, b, promptForValue, config.StackName, root, false /*setCurrent*/, config.Yes,
-				opts.Display, config.SecretsProvider); err != nil {
+			if s, err = promptAndCreateStack(ctx, b, promptForValue, args.StackName, root, false /*setCurrent*/, args.Yes,
+				opts.Display, args.SecretsProvider); err != nil {
 				return result.FromError(err)
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -335,8 +338,8 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		// Prompt for config values (if needed) and save.
 		if err = handleConfig(
 			ctx, promptForValue, proj, s,
-			templateNameOrURL, template, config.ConfigArray,
-			config.Yes, config.Path, opts.Display); err != nil {
+			templateNameOrURL, template, args.ConfigArray,
+			args.Yes, args.Path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -355,11 +358,11 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 		}
 
 		m, err := getUpdateMetadata(
-			config.Message,
+			args.Message,
 			root,
-			config.ExecKind,
-			config.ExecAgent,
-			config.PlanFilePath != "",
+			args.ExecKind,
+			args.ExecAgent,
+			args.PlanFilePath != "",
 			cmd.Flags(),
 		)
 		if err != nil {
@@ -393,15 +396,15 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 		}
 
-		refreshOption, err := getRefreshOption(proj, config.Refresh)
+		refreshOption, err := getRefreshOption(proj, args.Refresh)
 		if err != nil {
 			return result.FromError(err)
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(config.PolicyPackPaths, config.PolicyPackConfigPaths),
-			Parallel:         config.Parallel,
-			Debug:            config.Debug,
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(args.PolicyPackPaths, args.PolicyPackConfigPaths),
+			Parallel:         args.Parallel,
+			Debug:            args.Debug,
 			Refresh:          refreshOption,
 
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
@@ -410,7 +413,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			Experimental: hasExperimentalCommands(),
 
 			UseLegacyRefreshDiff: useLegacyRefreshDiff(),
-			ContinueOnError:      config.ContinueOnError,
+			ContinueOnError:      args.ContinueOnError,
 		}
 
 		// TODO for the URL case:
@@ -433,7 +436,7 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			return result.FromError(errors.New("update cancelled"))
 		case res != nil:
 			return PrintEngineResult(res)
-		case config.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
+		case args.ExpectNoChanges && changes != nil && engine.HasChanges(changes):
 			return result.FromError(errors.New("no changes were expected but changes occurred"))
 		default:
 			return nil
@@ -457,16 +460,16 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, cmdArgs []string) result.Result {
 			ctx := cmd.Context()
-			config := UnmarshalArgs[UpArgs](v, cmd)
+			args := UnmarshalArgs[UpArgs](v, cmd)
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.remote {
-				config.SkipPreview = true
+				args.SkipPreview = true
 			}
 
-			yes := config.Yes || config.SkipPreview || skipConfirmations()
+			yes := args.Yes || args.SkipPreview || skipConfirmations()
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -474,39 +477,39 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, config.SkipPreview, yes, false /* previewOnly */)
+			opts, err := updateFlagsToOptions(interactive, args.SkipPreview, yes, false /* previewOnly */)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			if err = validatePolicyPackConfig(config.PolicyPackPaths, config.PolicyPackConfigPaths); err != nil {
+			if err = validatePolicyPackConfig(args.PolicyPackPaths, args.PolicyPackConfigPaths); err != nil {
 				return result.FromError(err)
 			}
 
 			displayType := display.DisplayProgress
-			if config.DiffDisplay {
+			if args.DiffDisplay {
 				displayType = display.DisplayDiff
 			}
 
 			opts.Display = display.Options{
 				Color:                  cmdutil.GetGlobalColorization(),
-				ShowConfig:             config.ShowConfig,
-				ShowPolicyRemediations: config.ShowPolicyRemediations,
-				ShowReplacementSteps:   config.ShowReplacementSteps,
-				ShowSameResources:      config.ShowSames,
-				ShowReads:              config.ShowReads,
-				SuppressOutputs:        config.SuppressOutputs,
-				SuppressProgress:       config.SuppressProgress,
-				TruncateOutput:         !config.ShowFullOutput,
+				ShowConfig:             args.ShowConfig,
+				ShowPolicyRemediations: args.ShowPolicyRemediations,
+				ShowReplacementSteps:   args.ShowReplacementSteps,
+				ShowSameResources:      args.ShowSames,
+				ShowReads:              args.ShowReads,
+				SuppressOutputs:        args.SuppressOutputs,
+				SuppressProgress:       args.SuppressProgress,
+				TruncateOutput:         !args.ShowFullOutput,
 				IsInteractive:          interactive,
 				Type:                   displayType,
-				Debug:                  config.Debug,
-				JSONDisplay:            config.JSON,
+				Debug:                  args.Debug,
+				JSONDisplay:            args.JSON,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if config.SuppressPermalink == "true" {
+			if args.SuppressPermalink == "true" {
 				opts.Display.SuppressPermalink = true
 			} else {
 				opts.Display.SuppressPermalink = false
@@ -514,26 +517,26 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 
 			if remoteArgs.remote {
 				err = validateUnsupportedRemoteFlags(
-					config.ExpectNoChanges,
-					config.ConfigArray,
-					config.Path,
-					config.Client,
-					config.JSON,
-					config.PolicyPackPaths,
-					config.PolicyPackConfigPaths,
-					config.Refresh,
-					config.ShowConfig,
-					config.ShowPolicyRemediations,
-					config.ShowReplacementSteps,
-					config.ShowSames,
-					config.ShowReads,
-					config.SuppressOutputs,
-					config.SecretsProvider,
-					&config.Targets,
-					config.Replaces,
-					config.TargetReplaces,
-					config.TargetDependents,
-					config.PlanFilePath,
+					args.ExpectNoChanges,
+					args.ConfigArray,
+					args.Path,
+					args.Client,
+					args.JSON,
+					args.PolicyPackPaths,
+					args.PolicyPackConfigPaths,
+					args.Refresh,
+					args.ShowConfig,
+					args.ShowPolicyRemediations,
+					args.ShowReplacementSteps,
+					args.ShowSames,
+					args.ShowReads,
+					args.SuppressOutputs,
+					args.SecretsProvider,
+					args.Targets,
+					args.Replaces,
+					args.TargetReplaces,
+					args.TargetDependents,
+					args.PlanFilePath,
 					stackConfigFile,
 				)
 				if err != nil {
@@ -541,15 +544,15 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 				}
 
 				var url string
-				if len(args) > 0 {
-					url = args[0]
+				if len(cmdArgs) > 0 {
+					url = cmdArgs[0]
 				}
 
 				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Update, config.StackName, url, remoteArgs)
+				return runDeployment(ctx, cmd, opts.Display, apitype.Update, args.StackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
@@ -559,18 +562,19 @@ func newUpCmd(v *viper.Viper) *cobra.Command {
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if config.SuppressPermalink != "false" && isDIYBackend {
+			if args.SuppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
 
-			if len(args) > 0 {
-				return upTemplateNameOrURL(ctx, args[0], opts, cmd)
+			if len(cmdArgs) > 0 {
+				return upTemplateNameOrURL(ctx, cmdArgs[0], opts, cmd)
 			}
 
 			return upWorkingDirectory(ctx, opts, cmd)
 		}),
 	}
 
+	parentPulumiCmd.AddCommand(cmd)
 	BindFlags[UpArgs](v, cmd)
 
 	_ = cmd.PersistentFlags().MarkHidden("client")

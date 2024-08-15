@@ -24,12 +24,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
+type PackageAddArgs struct{}
+
 // Constructs the `pulumi package add` command.
-func newPackageAddCmd() *cobra.Command {
+func newPackageAddCmd(
+	v *viper.Viper,
+	parentPackageCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <provider> [provider-parameter...]",
 		Args:  cobra.MinimumNArgs(1),
@@ -43,7 +49,7 @@ dashes, you may need to use '--' to separate the provider name from the paramete
 as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			proj, root, err := readProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
@@ -56,8 +62,8 @@ as in:
 
 			ctx := cmd.Context()
 
-			plugin := args[0]
-			parameters := args[1:]
+			plugin := cliArgs[0]
+			parameters := cliArgs[1:]
 
 			var pluginInstallCommand pluginInstallCmd
 			err = pluginInstallCommand.Run(ctx, []string{
@@ -111,6 +117,9 @@ as in:
 			return printLinkInstructions(language, root, pkg.Name, out)
 		}),
 	}
+
+	parentPackageCmd.AddCommand(cmd)
+	BindFlags[PackageAddArgs](v, cmd)
 
 	return cmd
 }

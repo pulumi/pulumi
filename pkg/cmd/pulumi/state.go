@@ -41,7 +41,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func newStateCmd(v *viper.Viper) *cobra.Command {
+type StateArgs struct{}
+
+func newStateCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "state",
 		Short: "Edit the current stack's state",
@@ -52,12 +57,16 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newStateEditCommand(v))
-	cmd.AddCommand(newStateDeleteCommand(v))
-	cmd.AddCommand(newStateUnprotectCommand(v))
-	cmd.AddCommand(newStateRenameCommand(v))
-	cmd.AddCommand(newStateUpgradeCommand(v))
-	cmd.AddCommand(newStateMoveCommand(v))
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[StateArgs](v, cmd)
+
+	newStateEditCommand(v, cmd)
+	newStateDeleteCommand(v, cmd)
+	newStateUnprotectCommand(v, cmd)
+	newStateRenameCommand(v, cmd)
+	newStateUpgradeCommand(v, cmd)
+	newStateMoveCommand(v, cmd)
+
 	return cmd
 }
 

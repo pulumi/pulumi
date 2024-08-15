@@ -20,16 +20,27 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
+type VersionArgs struct{}
+
+func newVersionCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print Pulumi's version number",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			fmt.Printf("%v\n", version.Version)
 			return nil
 		}),
 	}
+
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[VersionArgs](v, cmd)
+
+	return cmd
 }

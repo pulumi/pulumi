@@ -30,7 +30,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	args := PolicyNewConfig{
+	args := PolicyNewArgs{
 		TemplateNameOrURL: "aws-typescript",
 	}
 

@@ -35,7 +35,10 @@ type StateDeleteArgs struct {
 	TargetDependents bool   `argsUsage:"Delete the URN and all its dependents"`
 }
 
-func newStateDeleteCommand(v *viper.Viper) *cobra.Command {
+func newStateDeleteCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [resource URN]",
 		Short: "Deletes a resource from a stack's state",
@@ -112,6 +115,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		}),
 	}
 
+	parentStateCmd.AddCommand(cmd)
 	BindFlags[StateDeleteArgs](v, cmd)
 
 	return cmd

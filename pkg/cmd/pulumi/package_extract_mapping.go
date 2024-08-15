@@ -22,17 +22,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type PackageExtractMappingConfig struct {
-	PulumiConfig
-
-	Out string
+type PackageExtractMappingArgs struct {
+	Out string `argsShort:"o" argsUsage:"The file to write the mapping data to"`
 }
 
-func newExtractMappingCommand() *cobra.Command {
-	var config PackageExtractMappingConfig
-
+func newExtractMappingCommand(
+	v *viper.Viper,
+	parentPackageCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-mapping <key> <schema_source> [<provider key>]",
 		Args:  cobra.RangeArgs(2, 3),
@@ -40,12 +40,14 @@ func newExtractMappingCommand() *cobra.Command {
 		Long: `Get the mapping information for a given key from a package.
 
 <schema_source> can be a package name or the path to a plugin binary.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			key := args[0]
-			source := args[1]
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PackageExtractMappingArgs](v, cmd)
+
+			key := cliArgs[0]
+			source := cliArgs[1]
 			var provider string
-			if len(args) > 2 {
-				provider = args[2]
+			if len(cliArgs) > 2 {
+				provider = cliArgs[2]
 			}
 
 			p, err := providerFromSource(source)
@@ -68,7 +70,7 @@ func newExtractMappingCommand() *cobra.Command {
 
 			fmt.Printf("%s maps to provider %s\n", source, mapping.Provider)
 
-			err = os.WriteFile(config.Out, mapping.Data, 0o600)
+			err = os.WriteFile(args.Out, mapping.Data, 0o600)
 			if err != nil {
 				return fmt.Errorf("write mapping data file: %w", err)
 			}
@@ -77,8 +79,11 @@ func newExtractMappingCommand() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVarP(&config.Out, "out", "o", "", "The file to write the mapping data to")
-	contract.AssertNoErrorf(cmd.MarkFlagRequired("out"), `Could not mark "out" as required`)
+	parentPackageCmd.AddCommand(cmd)
+	BindFlags[PackageExtractMappingArgs](v, cmd)
+
+	// TODO hack/pulumirc support required
+	contract.AssertNoErrorf(cmd.MarkPersistentFlagRequired("out"), `Could not mark "out" as required`)
 
 	return cmd
 }

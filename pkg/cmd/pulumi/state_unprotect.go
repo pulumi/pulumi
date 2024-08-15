@@ -36,7 +36,10 @@ type StateUnprotectArgs struct {
 	Yes          bool   `argsShort:"y" argsUsage:"Skip confirmation prompts"`
 }
 
-func newStateUnprotectCommand(v *viper.Viper) *cobra.Command {
+func newStateUnprotectCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN]",
 		Short: "Unprotect resources in a stack's state",
@@ -76,6 +79,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		}),
 	}
 
+	parentStateCmd.AddCommand(cmd)
 	BindFlags[StateUnprotectArgs](v, cmd)
 
 	return cmd

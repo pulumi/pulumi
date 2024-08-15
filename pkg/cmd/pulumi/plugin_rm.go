@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -32,15 +33,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type PluginRmConfig struct {
-	PulumiConfig
-
-	All bool
-	Yes bool
+type PluginRmArgs struct {
+	All bool `argsShort:"a" argsUsage:"Remove all plugins"`
+	Yes bool `argsShort:"y" argsUsage:"Skip confirmation prompts, and proceed with removal anyway"`
 }
 
-func newPluginRmCmd() *cobra.Command {
-	var config PluginRmConfig
+func newPluginRmCmd(
+	v *viper.Viper,
+	parentPluginCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm [KIND [NAME [VERSION]]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -55,8 +56,10 @@ func newPluginRmCmd() *cobra.Command {
 			"This removal cannot be undone.  If a deleted plugin is subsequently required\n" +
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 			"using the plugin install command.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			config.Yes = config.Yes || skipConfirmations()
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PluginRmArgs](v, cmd)
+
+			args.Yes = args.Yes || skipConfirmations()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -65,19 +68,19 @@ func newPluginRmCmd() *cobra.Command {
 			var kind apitype.PluginKind
 			var name string
 			var version *semver.Range
-			if len(args) > 0 {
-				if !apitype.IsPluginKind(args[0]) {
+			if len(cliArgs) > 0 {
+				if !apitype.IsPluginKind(cliArgs[0]) {
 					return fmt.Errorf("unrecognized plugin kind: %s", kind)
 				}
-				kind = apitype.PluginKind(args[0])
-			} else if !config.All {
+				kind = apitype.PluginKind(cliArgs[0])
+			} else if !args.All {
 				return errors.New("please pass --all if you'd like to remove all plugins")
 			}
-			if len(args) > 1 {
-				name = args[1]
+			if len(cliArgs) > 1 {
+				name = cliArgs[1]
 			}
-			if len(args) > 2 {
-				r, err := semver.ParseRange(args[2])
+			if len(cliArgs) > 2 {
+				r, err := semver.ParseRange(cliArgs[2])
 				if err != nil {
 					return fmt.Errorf("invalid plugin semver: %w", err)
 				}
@@ -105,7 +108,7 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			// Confirm that the user wants to do this (unless --yes was passed).
-			if !config.Yes {
+			if !args.Yes {
 				var suffix string
 				if len(deletes) != 1 {
 					suffix = "s"
@@ -136,12 +139,8 @@ func newPluginRmCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&config.All, "all", "a", false,
-		"Remove all plugins")
-	cmd.PersistentFlags().BoolVarP(
-		&config.Yes, "yes", "y", false,
-		"Skip confirmation prompts, and proceed with removal anyway")
+	parentPluginCmd.AddCommand(cmd)
+	BindFlags[PluginRmArgs](v, cmd)
 
 	return cmd
 }

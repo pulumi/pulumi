@@ -30,21 +30,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type PolicyNewConfig struct {
-	PulumiConfig
+//nolint:lll
+type PolicyNewArgs struct {
+	Dir          string `argsUsage:"The location to place the generated Policy Pack; if not specified, the current directory is used"`
+	Force        bool   `argsShort:"f" argsUsage:"Forces content to be generated even if it would change existing files"`
+	GenerateOnly bool   `argsShort:"g" argsUsage:"Generate the Policy Pack only; do not install dependencies"`
+	Offline      bool   `argsShort:"o" argsUsage:"Use locally cached templates without making any network requests"`
 
-	Dir               string
-	Force             bool
-	GenerateOnly      bool
-	Offline           bool
-	TemplateNameOrURL string
+	// TODO: hack/pulumirc don't show this
+	TemplateNameOrURL string `args:"template-name-or-url"`
 }
 
-func newPolicyNewCmd() *cobra.Command {
-	config := PolicyNewConfig{}
-
+func newPolicyNewCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
@@ -59,31 +62,23 @@ func newPolicyNewCmd() *cobra.Command {
 			"Only organization administrators can publish a Policy Pack.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyNewArgs](v, cmd)
+
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
-				config.TemplateNameOrURL = cliArgs[0]
+				args.TemplateNameOrURL = cliArgs[0]
 			}
-			return runNewPolicyPack(ctx, config)
+			return runNewPolicyPack(ctx, args)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&config.Dir, "dir", "",
-		"The location to place the generated Policy Pack; if not specified, the current directory is used")
-	cmd.PersistentFlags().BoolVarP(
-		&config.Force, "force", "f", false,
-		"Forces content to be generated even if it would change existing files")
-	cmd.PersistentFlags().BoolVarP(
-		&config.GenerateOnly, "generate-only", "g", false,
-		"Generate the Policy Pack only; do not install dependencies")
-	cmd.PersistentFlags().BoolVarP(
-		&config.Offline, "offline", "o", false,
-		"Use locally cached templates without making any network requests")
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyNewArgs](v, cmd)
 
 	return cmd
 }
 
-func runNewPolicyPack(ctx context.Context, args PolicyNewConfig) error {
+func runNewPolicyPack(ctx context.Context, args PolicyNewArgs) error {
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),

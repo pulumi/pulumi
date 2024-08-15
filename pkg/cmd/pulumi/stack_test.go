@@ -41,7 +41,7 @@ func TestShowStackName(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			args := StackConfig{ShowStackName: true, FullyQualifyStackNames: tt.full}
+			args := StackArgs{ShowStackName: true, FullyQualifyStackNames: tt.full}
 			var output bytes.Buffer
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {

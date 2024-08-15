@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -34,15 +35,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type PluginRunConfig struct {
-	PulumiConfig
-
-	Kind string
+type PluginRunArgs struct {
+	Kind string `argsUsage:"The plugin kind" argsDefault:"tool"`
 }
 
-func newPluginRunCmd() *cobra.Command {
-	var c PluginRunConfig
-
+func newPluginRunCmd(
+	v *viper.Viper,
+	parentPluginCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "run NAME[@VERSION] [ARGS]",
 		Args:   cmdutil.MinimumNArgs(1),
@@ -52,18 +52,20 @@ func newPluginRunCmd() *cobra.Command {
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
 			"the latest installed plugin will be used.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return c.run(args)
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PluginRunArgs](v, cmd)
+
+			return args.run(cliArgs)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(&c.Kind,
-		"kind", "tool", "The plugin kind")
+	parentPluginCmd.AddCommand(cmd)
+	BindFlags[PluginRunArgs](v, cmd)
 
 	return cmd
 }
 
-func (cmd *PluginRunConfig) run(args []string) error {
+func (cmd *PluginRunArgs) run(args []string) error {
 	if !apitype.IsPluginKind(cmd.Kind) {
 		return fmt.Errorf("unrecognized plugin kind: %s", cmd.Kind)
 	}

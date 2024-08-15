@@ -13,8 +13,6 @@ import (
 )
 
 func lookupArg(v *viper.Viper, scopes []string, name string) any {
-	fmt.Printf("lookupArg: %v %v\n", strings.Join(scopes, ", "), name)
-
 	for _, scope := range scopes {
 		key := scope + "." + name
 		if v.IsSet(key) {

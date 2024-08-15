@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,8 @@ func TestStateUpgradeCommand_parseArgs(t *testing.T) {
 	// then run ValidateArgs to validate the positional arguments.
 
 	v := viper.New()
-	cmd := newStateUpgradeCommand(v)
+	parentStateCmd := &cobra.Command{}
+	cmd := newStateUpgradeCommand(v, parentStateCmd)
 	args := []string{} // no arguments
 
 	require.NoError(t, cmd.ParseFlags(args))
@@ -74,7 +76,8 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 			t.Parallel()
 
 			v := viper.New()
-			cmd := newStateUpgradeCommand(v)
+			parentStateCmd := &cobra.Command{}
+			cmd := newStateUpgradeCommand(v, parentStateCmd)
 			args := tt.give
 
 			// Errors can occur during flag parsing

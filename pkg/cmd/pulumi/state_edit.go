@@ -48,7 +48,10 @@ type stateEditCmd struct {
 	Colorizer colors.Colorization
 }
 
-func newStateEditCommand(v *viper.Viper) *cobra.Command {
+func newStateEditCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	stateEdit := &stateEditCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -85,6 +88,7 @@ a preview showing a diff of the altered state.`,
 		}),
 	}
 
+	parentStateCmd.AddCommand(cmd)
 	BindFlags[StateEditArgs](v, cmd)
 
 	return cmd

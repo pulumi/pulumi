@@ -282,7 +282,7 @@ func NewPulumiCmd() *cobra.Command {
 			// unless the command supports JSON output and the JSON output flag was set.
 			checkVersionMsg, checkVersionOK := <-updateCheckResult
 			json, jsonOK := LookupArg(v, cmd, "json").(bool)
-			if checkVersionOK && checkVersionMsg != nil && !jsonOK && !json {
+			if checkVersionOK && checkVersionMsg != nil && !(jsonOK && json) {
 				cmdutil.Diag().Warningf(checkVersionMsg)
 			}
 
@@ -325,17 +325,17 @@ func NewPulumiCmd() *cobra.Command {
 				newStackCmd(v, cmd),
 				newConsoleCmd(),
 				newImportCmd(v),
-				newRefreshCmd(),
-				newStateCmd(v),
+				newRefreshCmd(v, cmd),
+				newStateCmd(v, cmd),
 				newInstallCmd(v),
 			},
 		},
 		{
 			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
-				newUpCmd(v),
+				newUpCmd(v, cmd),
 				newDestroyCmd(),
-				newPreviewCmd(),
+				newPreviewCmd(v, cmd),
 				newCancelCmd(v),
 			},
 		},
@@ -350,7 +350,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newLoginCmd(),
 				newLogoutCmd(),
-				newWhoAmICmd(v),
+				newWhoAmICmd(v, cmd),
 				newOrgCmd(),
 				newDeploymentCmd(),
 			},
@@ -358,21 +358,21 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Policy Management Commands",
 			Commands: []*cobra.Command{
-				newPolicyCmd(),
+				newPolicyCmd(v, cmd),
 			},
 		},
 		{
 			Name: "Plugin Commands",
 			Commands: []*cobra.Command{
-				newPluginCmd(),
-				newSchemaCmd(),
-				newPackageCmd(),
+				newPluginCmd(v, cmd),
+				newSchemaCmd(v, cmd),
+				newPackageCmd(v, cmd),
 			},
 		},
 		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
-				newVersionCmd(),
+				newVersionCmd(v, cmd),
 				newAboutCmd(v, cmd),
 				newGenCompletionCmd(cmd),
 			},
@@ -391,9 +391,9 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				newQueryCmd(),
+				newQueryCmd(v, cmd),
 				newConvertCmd(),
-				newWatchCmd(),
+				newWatchCmd(v, cmd),
 				newLogsCmd(),
 			},
 		},
@@ -402,9 +402,9 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Developer Commands",
 			Commands: []*cobra.Command{
-				newViewTraceCmd(v),
+				newViewTraceCmd(v, cmd),
 				newConvertTraceCmd(),
-				newReplayEventsCmd(),
+				newReplayEventsCmd(v, cmd),
 			},
 		},
 		// AI Commands relating to specifically the Pulumi AI service

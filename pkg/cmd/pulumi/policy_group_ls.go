@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,31 +29,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPolicyGroupCmd() *cobra.Command {
+type PolicyGroupArgs struct{}
+
+func newPolicyGroupCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "group",
 		Short: "Manage policy groups",
 		Args:  cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPolicyGroupLsCmd())
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyGroupArgs](v, cmd)
+
+	newPolicyGroupLsCmd(v, cmd)
+
 	return cmd
 }
 
-type PolicyGroupLsConfig struct {
-	PulumiConfig
-
-	JSON bool
+type PolicyGroupLsArgs struct {
+	JSON bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 }
 
-func newPolicyGroupLsCmd() *cobra.Command {
-	var config PolicyGroupLsConfig
+func newPolicyGroupLsCmd(
+	v *viper.Viper,
+	parentPolicyGroupCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyGroupLsArgs](v, cmd)
+
 			ctx := cmd.Context()
 
 			// Try to read the current project
@@ -97,14 +109,16 @@ func newPolicyGroupLsCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			if config.JSON {
+			if args.JSON {
 				return formatPolicyGroupsJSON(allPolicyGroups)
 			}
 			return formatPolicyGroupsConsole(allPolicyGroups)
 		}),
 	}
-	cmd.PersistentFlags().BoolVarP(
-		&config.JSON, "json", "j", false, "Emit output as JSON")
+
+	parentPolicyGroupCmd.AddCommand(cmd)
+	BindFlags[PolicyGroupLsArgs](v, cmd)
+
 	return cmd
 }
 
