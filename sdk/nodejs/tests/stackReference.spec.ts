@@ -70,4 +70,17 @@ describe("StackReference.getOutputDetails", () => {
             secretValue: "supersecretpassword",
         });
     });
+
+    it("types applies correctly", async () => {
+        const passwordValue = "supersecretpassword";
+        pulumi.runtime.setMocks(
+            new TestMocks({
+                password: pulumi.secret(passwordValue),
+            }),
+        );
+        const ref = new pulumi.StackReference("foo");
+        const password: pulumi.Output<number> = ref.outputs["password"].apply((x) => x.length);
+
+        assert.deepStrictEqual(await password.promise(), passwordValue.length);
+    });
 });
