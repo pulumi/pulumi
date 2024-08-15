@@ -167,6 +167,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
 		Repo(repo),
 		remoteExecutorImage(remoteOpts.ExecutorImage),
+		remoteAgentPoolID(remoteOpts.AgentPoolID),
 	}
 	return localOpts, nil
 }
@@ -183,6 +184,8 @@ type remoteWorkspaceOptions struct {
 	SkipInstallDependencies bool
 	// ExecutorImage is the image to use for the remote executor.
 	ExecutorImage *ExecutorImage
+	// AgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
+	AgentPoolID string
 }
 
 type ExecutorImage struct {
@@ -240,6 +243,13 @@ func RemoteInheritSettings(inheritSettings bool) RemoteWorkspaceOption {
 func RemoteExecutorImage(image *ExecutorImage) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.ExecutorImage = image
+	})
+}
+
+// RemoteExecutorImage sets the image to use for the remote executor.
+func RemoteAgentPoolID(agentPoolID string) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.AgentPoolID = agentPoolID
 	})
 }
 
