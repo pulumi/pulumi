@@ -573,7 +573,7 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.</dd></dl>
+    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32. It can also be sourced from the following environment variable: <code>PULUMI_K8S_CLIENT_TIMEOUT</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -587,7 +587,7 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.</dd></dl>
+    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32. It can also be sourced from the following environment variable: <code>PULUMI_K8S_CLIENT_TIMEOUT</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -601,7 +601,7 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
         <span class="property-indicator"></span>
         <span class="property-type">Integer</span>
     </dt>
-    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.</dd></dl>
+    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32. It can also be sourced from the following environment variable: <code>PULUMI_K8S_CLIENT_TIMEOUT</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -615,7 +615,7 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.</dd></dl>
+    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32. It can also be sourced from the following environment variable: <code>PULUMI_K8S_CLIENT_TIMEOUT</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -629,7 +629,7 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.</dd></dl>
+    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32. It can also be sourced from the following environment variable: <code>PULUMI_K8S_CLIENT_TIMEOUT</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -643,7 +643,7 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
     </dt>
-    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.</dd></dl>
+    <dd>Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32. It can also be sourced from the following environment variable: <code>PULUMI_K8S_CLIENT_TIMEOUT</code></dd></dl>
 </pulumi-choosable>
 </div>
 

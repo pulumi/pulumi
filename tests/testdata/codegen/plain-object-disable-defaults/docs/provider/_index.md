@@ -441,7 +441,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_DRIVER</code></dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -449,7 +449,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>The path to the helm plugins directory.</dd></dl>
+    <dd>The path to the helm plugins directory. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_PLUGINS_PATH</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -471,7 +471,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_DRIVER</code></dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -479,7 +479,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>The path to the helm plugins directory.</dd></dl>
+    <dd>The path to the helm plugins directory. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_PLUGINS_PATH</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -501,7 +501,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_DRIVER</code></dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_java" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -509,7 +509,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd>The path to the helm plugins directory.</dd></dl>
+    <dd>The path to the helm plugins directory. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_PLUGINS_PATH</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -531,7 +531,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_DRIVER</code></dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -539,7 +539,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>The path to the helm plugins directory.</dd></dl>
+    <dd>The path to the helm plugins directory. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_PLUGINS_PATH</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -561,7 +561,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_DRIVER</code></dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
@@ -569,7 +569,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>The path to the helm plugins directory.</dd></dl>
+    <dd>The path to the helm plugins directory. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_PLUGINS_PATH</code></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -591,7 +591,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</dd><dt class="property-optional"
+    <dd>The backend storage driver for Helm. Values are: configmap, secret, memory, sql. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_DRIVER</code></dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_yaml" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -599,7 +599,7 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd>The path to the helm plugins directory.</dd></dl>
+    <dd>The path to the helm plugins directory. It can also be sourced from the following environment variable: <code>PULUMI_K8S_HELM_PLUGINS_PATH</code></dd></dl>
 </pulumi-choosable>
 </div>
 

@@ -1102,7 +1102,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	return params
 }
 
-func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []docNestedType {
+func (mod *modContext) genNestedTypes(member interface{}, resourceType, isProvider bool) []docNestedType {
 	dctx := mod.docGenContext
 	tokens := nestedTypeUsageInfo{}
 	// Collect all of the types for this "member" as a map of resource names
@@ -1129,7 +1129,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
 				for _, lang := range dctx.supportedLanguages {
-					props[lang] = mod.getProperties(typ.Properties, lang, true, true, false)
+					props[lang] = mod.getProperties(typ.Properties, lang, true, true, isProvider)
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
@@ -1859,7 +1859,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		LookupParams:     mod.genLookupParams(r, stateParam),
 		StateInputs:      stateInputs,
 		StateParam:       stateParam,
-		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
+		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/, r.IsProvider),
 		MaxNestedTypes:   maxNestedTypes,
 
 		Methods: mod.genMethods(r),
