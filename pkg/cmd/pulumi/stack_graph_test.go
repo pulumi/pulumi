@@ -44,7 +44,7 @@ func TestStackGraphCmd(t *testing.T) {
 		t.Run("Smoke test", func(t *testing.T) {
 			t.Parallel()
 
-			config := StackGraphConfig{}
+			config := StackGraphArgs{}
 			dg := makeDependencyGraph(&snap, &config)
 
 			var outputBuf bytes.Buffer
@@ -61,7 +61,7 @@ func TestStackGraphCmd(t *testing.T) {
 		t.Run("dot fragment is inserted", func(t *testing.T) {
 			t.Parallel()
 
-			config := StackGraphConfig{
+			config := StackGraphArgs{
 				DotFragment: "[node shape=rect]\n[edge penwidth=2]",
 			}
 			dg := makeDependencyGraph(&snap, &config)
@@ -111,7 +111,7 @@ func TestStackGraphCmd(t *testing.T) {
 			t.Parallel()
 			expectedMaxNode := 2
 
-			config := StackGraphConfig{}
+			config := StackGraphArgs{}
 			dg := makeDependencyGraph(&snap, &config)
 
 			var outputBuf bytes.Buffer
@@ -135,7 +135,7 @@ func TestStackGraphCmd(t *testing.T) {
 				"provider", "parent", "child",
 			}
 
-			config := StackGraphConfig{
+			config := StackGraphArgs{
 				ShortNodeNames: true,
 			}
 			dg := makeDependencyGraph(&snap, &config)

@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,18 +29,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-type StackExportConfig struct {
-	PulumiConfig
-
-	File        string
-	Stack       string
-	Version     string
-	ShowSecrets bool
+type StackExportArgs struct {
+	File        string `argsUsage:"A filename to write stack output to"`
+	Stack       string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Version     string `argsUsage:"Previous stack version to export. (If unset, will export the latest.)"`
+	ShowSecrets bool   "argsUsage:\"Emit secrets in plaintext in exported stack. Defaults to `false`\""
 }
 
-func newStackExportCmd() *cobra.Command {
-	var config StackExportConfig
-
+func newStackExportCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -50,14 +50,16 @@ func newStackExportCmd() *cobra.Command {
 			"`pulumi stack import`. This process may be used to correct inconsistencies\n" +
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackExportArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -65,7 +67,7 @@ func newStackExportCmd() *cobra.Command {
 			var deployment *apitype.UntypedDeployment
 			// Export the latest version of the checkpoint by default. Otherwise, we require that
 			// the backend/stack implements the ability the export previous checkpoints.
-			if config.Version == "" {
+			if args.Version == "" {
 				deployment, err = s.ExportDeployment(ctx)
 				if err != nil {
 					return err
@@ -79,7 +81,7 @@ func newStackExportCmd() *cobra.Command {
 						be.Name())
 				}
 
-				deployment, err = specificExpBE.ExportDeploymentForVersion(ctx, s, config.Version)
+				deployment, err = specificExpBE.ExportDeploymentForVersion(ctx, s, args.Version)
 				if err != nil {
 					return err
 				}
@@ -87,18 +89,18 @@ func newStackExportCmd() *cobra.Command {
 
 			// Read from stdin or a specified file.
 			writer := os.Stdout
-			if config.File != "" {
-				writer, err = os.Create(config.File)
+			if args.File != "" {
+				writer, err = os.Create(args.File)
 				if err != nil {
 					return fmt.Errorf("could not open file: %w", err)
 				}
 			}
 
-			if config.ShowSecrets {
+			if args.ShowSecrets {
 				// log show secrets event
 				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 				if err != nil {
-					return checkDeploymentVersionError(err, config.Stack)
+					return checkDeploymentVersionError(err, args.Stack)
 				}
 
 				serializedDeployment, err := stack.SerializeDeployment(ctx, snap, true)
@@ -131,13 +133,9 @@ func newStackExportCmd() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().StringVarP(
-		&config.File, "file", "", "", "A filename to write stack output to")
-	cmd.PersistentFlags().StringVarP(
-		&config.Version, "version", "", "", "Previous stack version to export. (If unset, will export the latest.)")
-	cmd.Flags().BoolVarP(
-		&config.ShowSecrets, "show-secrets", "", false, "Emit secrets in plaintext in exported stack. Defaults to `false`")
+
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackExportArgs](v, cmd)
+
 	return cmd
 }

@@ -122,7 +122,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			cmd := stackOutputCmd{
 				Stdout:       &stdoutBuff,
 				requireStack: requireStack,
-				Config: StackOutputConfig{
+				Args: StackOutputArgs{
 					ShowSecrets: tt.showSecrets,
 				},
 			}
@@ -235,7 +235,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
-				Config: StackOutputConfig{
+				Args: StackOutputArgs{
 					ShowSecrets: tt.showSecrets,
 					JSON:        true,
 				},
@@ -364,7 +364,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
-				Config: StackOutputConfig{
+				Args: StackOutputArgs{
 					ShowSecrets: tt.showSecrets,
 					Shell:       true,
 				},
@@ -390,7 +390,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")
 		},
-		Config: StackOutputConfig{
+		Args: StackOutputArgs{
 			Shell: true,
 			JSON:  true,
 		},

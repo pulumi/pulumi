@@ -44,7 +44,7 @@ func TestChangeSecretsProvider_Invalid(t *testing.T) {
 	var stdoutBuff bytes.Buffer
 	cmd := stackChangeSecretsProviderCmd{
 		stdout: &stdoutBuff,
-		Config: StackChangeSecretsProviderConfig{
+		Args: StackChangeSecretsProviderArgs{
 			Stack: "test",
 		},
 	}
@@ -81,7 +81,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		stdout:          &stdoutBuff,
 		secretsProvider: secretsProvider,
 
-		Config: StackChangeSecretsProviderConfig{
+		Args: StackChangeSecretsProviderArgs{
 			Stack: "testStack",
 		},
 	}
@@ -181,7 +181,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		stdout:          &stdoutBuff,
 		secretsProvider: secretsProvider,
 
-		Config: StackChangeSecretsProviderConfig{
+		Args: StackChangeSecretsProviderArgs{
 			Stack: "testStack",
 		},
 	}

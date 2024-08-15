@@ -10,6 +10,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -20,20 +21,19 @@ import (
 
 const errorDecryptingValue = "ERROR_UNABLE_TO_DECRYPT"
 
-type StackHistoryConfig struct {
-	PulumiConfig
-
-	Stack         string
-	JSON          bool
-	ShowSecrets   bool
-	PageSize      int
-	Page          int
-	ShowFullDates bool
+type StackHistoryArgs struct {
+	Stack         string `argsShort:"s" argsUsage:"Choose a stack other than the currently selected one"`
+	JSON          bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	ShowSecrets   bool   `argsUsage:"Show secret values when listing config instead of displaying blinded values"`
+	PageSize      int    `argsUsage:"Used with 'page' to control number of results returned" argsDefault:"10"`
+	Page          int    `argsUsage:"Used with 'page-size' to paginate results" argsDefault:"1"`
+	ShowFullDates bool   `args:"full-dates" argsUsage:"Show full dates, instead of relative dates"`
 }
 
-func newStackHistoryCmd() *cobra.Command {
-	var config StackHistoryConfig
-
+func newStackHistoryCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "history",
 		Aliases:    []string{"hist"},
@@ -42,22 +42,24 @@ func newStackHistoryCmd() *cobra.Command {
 		Long: `Display history for a stack
 
 This command displays data about previous updates for a stack.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackHistoryArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(ctx, s.Ref(), config.PageSize, config.Page)
+			updates, err := b.GetHistory(ctx, s.Ref(), args.PageSize, args.Page)
 			if err != nil {
 				return fmt.Errorf("getting history: %w", err)
 			}
 			var decrypter rconfig.Decrypter
-			if config.ShowSecrets {
+			if args.ShowSecrets {
 				project, _, err := readProject()
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
@@ -78,32 +80,21 @@ This command displays data about previous updates for a stack.`,
 				decrypter = crypter
 			}
 
-			if config.ShowSecrets {
+			if args.ShowSecrets {
 				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
-			if config.JSON {
+			if args.JSON {
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, config.Page, opts, config.ShowFullDates)
+			return displayUpdatesConsole(updates, args.Page, opts, args.ShowFullDates)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
-	cmd.Flags().BoolVar(
-		&config.ShowSecrets, "show-secrets", false,
-		"Show secret values when listing config instead of displaying blinded values")
-	cmd.PersistentFlags().BoolVarP(
-		&config.JSON, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().BoolVar(
-		&config.ShowFullDates, "full-dates", false, "Show full dates, instead of relative dates")
-	cmd.PersistentFlags().IntVar(
-		&config.PageSize, "page-size", 10, "Used with 'page' to control number of results returned")
-	cmd.PersistentFlags().IntVar(
-		&config.Page, "page", 1, "Used with 'page-size' to paginate results")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackHistoryArgs](v, cmd)
+
 	return cmd
 }
 

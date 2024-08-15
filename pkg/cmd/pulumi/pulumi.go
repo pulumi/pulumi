@@ -164,6 +164,12 @@ type PulumiConfig struct {
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
 	v := viper.New()
+
+	v.SetConfigName(".pulumirc")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(".")
+	contract.IgnoreError(v.ReadInConfig())
+
 	updateCheckResult := make(chan *diag.Diag)
 
 	cmd := &cobra.Command{
@@ -185,122 +191,116 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
-	}
+		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[PulumiConfig](v, cmd)
 
-	cmd.PersistentPreRun = cmdutil.RunFunc(func(childCmd *cobra.Command, args []string) error {
-		// We are careful to unmarshal arguments for the top-level command only
-		// here, to avoid unmarshalling subcommand arguments that may clash with our
-		// own (e.g. `whoami` defines `verbose: bool`, which clashes with the
-		// top-level `verbose: int`).
-		config := UnmarshalArgs[PulumiConfig](v, cmd)
+			// We run this method for its side-effects. On windows, this will enable the windows terminal
+			// to understand ANSI escape codes.
+			_, _, _ = term.StdStreams()
 
-		// We run this method for its side-effects. On windows, this will enable the windows terminal
-		// to understand ANSI escape codes.
-		_, _, _ = term.StdStreams()
-
-		// If we fail before we start the async update check, go ahead and close the
-		// channel since we know it will never receive a value.
-		var waitForUpdateCheck bool
-		defer func() {
-			if !waitForUpdateCheck {
-				close(updateCheckResult)
-			}
-		}()
-
-		// TODO hack/pulumirc
-		// For all commands, attempt to grab out the --color value provided so we
-		// can set the GlobalColorization value to be used by any code that doesn't
-		// get DisplayOptions passed in.
-		cmdFlag := childCmd.Flag("color")
-		if cmdFlag != nil {
-			err := cmdutil.SetGlobalColorization(cmdFlag.Value.String())
-			if err != nil {
-				return err
-			}
-		}
-
-		if config.Cwd != "" {
-			if err := os.Chdir(config.Cwd); err != nil {
-				return err
-			}
-		}
-
-		logging.InitLogging(config.LogToStderr, config.Verbosity, config.FlowLogs)
-		cmdutil.InitTracing("pulumi-cli", "pulumi", config.TracingEndpoint)
-
-		ctx := childCmd.Context()
-		if cmdutil.IsTracingEnabled() {
-			if cmdutil.TracingRootSpan != nil {
-				ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
-			}
-
-			// This is used to control the contents of the tracing header.
-			tracingHeader := os.Getenv("PULUMI_TRACING_HEADER")
-			if config.TracingHeader != "" {
-				tracingHeader = config.TracingHeader
-			}
-
-			tracingOptions := tracing.Options{
-				PropagateSpans: true,
-				TracingHeader:  tracingHeader,
-			}
-			ctx = tracing.ContextWithOptions(ctx, tracingOptions)
-		}
-		childCmd.SetContext(ctx)
-
-		if logging.Verbose >= 11 {
-			logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
-		}
-
-		// The gocloud drivers use the log package to write logs, which by default just writes to stdout. This overrides
-		// that so that log messages go to the logging package that we use everywhere else instead.
-		loggingWriter := &loggingWriter{}
-		log.SetOutput(loggingWriter)
-
-		if config.ProfilingFilenamePrefix != "" {
-			if err := cmdutil.InitProfiling(config.ProfilingFilenamePrefix, config.MemProfileRate); err != nil {
-				logging.Warningf("could not initialize profiling: %v", err)
-			}
-		}
-
-		if env.SkipUpdateCheck.Value() {
-			logging.V(5).Infof("skipping update check")
-		} else {
-			// Run the version check in parallel so that it doesn't block executing the command.
-			// If there is a new version to report, we will do so after the command has finished.
-			waitForUpdateCheck = true
-			go func() {
-				updateCheckResult <- checkForUpdate(ctx)
-				close(updateCheckResult)
+			// If we fail before we start the async update check, go ahead and close the
+			// channel since we know it will never receive a value.
+			var waitForUpdateCheck bool
+			defer func() {
+				if !waitForUpdateCheck {
+					close(updateCheckResult)
+				}
 			}()
-		}
 
-		return nil
-	})
-
-	cmd.PersistentPostRun = func(childCmd *cobra.Command, args []string) {
-		// Before exiting, if there is a new version of the CLI available, print it out.,
-		// unless the command supports JSON output and the JSON output flag was set.
-		checkVersionMsg, checkVersionOK := <-updateCheckResult
-		json, jsonOK := LookupArg(v, childCmd, "json").(bool)
-		if checkVersionOK && checkVersionMsg != nil && !jsonOK && !json {
-			cmdutil.Diag().Warningf(checkVersionMsg)
-		}
-
-		logging.Flush()
-		cmdutil.CloseTracing()
-
-		// We are careful to unmarshal arguments for the top-level command only
-		// here, to avoid unmarshalling subcommand arguments that may clash with our
-		// own (e.g. `whoami` defines `verbose: bool`, which clashes with the
-		// top-level `verbose: int`).
-		config := UnmarshalArgs[PulumiConfig](v, cmd)
-
-		if config.ProfilingFilenamePrefix != "" {
-			if err := cmdutil.CloseProfiling(config.ProfilingFilenamePrefix); err != nil {
-				logging.Warningf("could not close profiling: %v", err)
+			// TODO hack/pulumirc
+			// For all commands, attempt to grab out the --color value provided so we
+			// can set the GlobalColorization value to be used by any code that doesn't
+			// get DisplayOptions passed in.
+			cmdFlag := cmd.Flag("color")
+			if cmdFlag != nil {
+				err := cmdutil.SetGlobalColorization(cmdFlag.Value.String())
+				if err != nil {
+					return err
+				}
 			}
-		}
+
+			if config.Cwd != "" {
+				if err := os.Chdir(config.Cwd); err != nil {
+					return err
+				}
+			}
+
+			logging.InitLogging(config.LogToStderr, config.Verbosity, config.FlowLogs)
+			cmdutil.InitTracing("pulumi-cli", "pulumi", config.TracingEndpoint)
+
+			ctx := cmd.Context()
+			if cmdutil.IsTracingEnabled() {
+				if cmdutil.TracingRootSpan != nil {
+					ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+				}
+
+				// This is used to control the contents of the tracing header.
+				tracingHeader := os.Getenv("PULUMI_TRACING_HEADER")
+				if config.TracingHeader != "" {
+					tracingHeader = config.TracingHeader
+				}
+
+				tracingOptions := tracing.Options{
+					PropagateSpans: true,
+					TracingHeader:  tracingHeader,
+				}
+				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
+			}
+			cmd.SetContext(ctx)
+
+			if logging.Verbose >= 11 {
+				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
+			}
+
+			// The gocloud drivers use the log package to write logs, which by default just writes to stdout. This overrides
+			// that so that log messages go to the logging package that we use everywhere else instead.
+			loggingWriter := &loggingWriter{}
+			log.SetOutput(loggingWriter)
+
+			if config.ProfilingFilenamePrefix != "" {
+				if err := cmdutil.InitProfiling(config.ProfilingFilenamePrefix, config.MemProfileRate); err != nil {
+					logging.Warningf("could not initialize profiling: %v", err)
+				}
+			}
+
+			if env.SkipUpdateCheck.Value() {
+				logging.V(5).Infof("skipping update check")
+			} else {
+				// Run the version check in parallel so that it doesn't block executing the command.
+				// If there is a new version to report, we will do so after the command has finished.
+				waitForUpdateCheck = true
+				go func() {
+					updateCheckResult <- checkForUpdate(ctx)
+					close(updateCheckResult)
+				}()
+			}
+
+			return nil
+		}),
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			// Before exiting, if there is a new version of the CLI available, print it out.,
+			// unless the command supports JSON output and the JSON output flag was set.
+			checkVersionMsg, checkVersionOK := <-updateCheckResult
+			json, jsonOK := LookupArg(v, cmd, "json").(bool)
+			if checkVersionOK && checkVersionMsg != nil && !jsonOK && !json {
+				cmdutil.Diag().Warningf(checkVersionMsg)
+			}
+
+			logging.Flush()
+			cmdutil.CloseTracing()
+
+			// We are careful to unmarshal arguments for the top-level command only
+			// here, to avoid unmarshalling subcommand arguments that may clash with our
+			// own (e.g. `whoami` defines `verbose: bool`, which clashes with the
+			// top-level `verbose: int`).
+			config := UnmarshalArgs[PulumiConfig](v, cmd)
+
+			if config.ProfilingFilenamePrefix != "" {
+				if err := cmdutil.CloseProfiling(config.ProfilingFilenamePrefix); err != nil {
+					logging.Warningf("could not close profiling: %v", err)
+				}
+			}
+		},
 	}
 
 	BindFlags[PulumiConfig](v, cmd)
@@ -322,7 +322,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newNewCmd(),
 				newConfigCmd(v),
-				newStackCmd(v),
+				newStackCmd(v, cmd),
 				newConsoleCmd(),
 				newImportCmd(v),
 				newRefreshCmd(),
@@ -373,7 +373,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				newVersionCmd(),
-				newAboutCmd(v),
+				newAboutCmd(v, cmd),
 				newGenCompletionCmd(cmd),
 			},
 		},

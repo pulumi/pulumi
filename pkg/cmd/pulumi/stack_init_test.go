@@ -38,7 +38,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		},
 	}
 	cmd := &stackInitCmd{
-		Config: StackInitConfig{
+		Args: StackInitArgs{
 			Teams: []string{"red", "blue"},
 			Stack: "dev",
 		},

@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -34,16 +35,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-type StackImportConfig struct {
-	PulumiConfig
-
-	Force bool
-	File  string
-	Stack string
+//nolint:lll
+type StackImportArgs struct {
+	Force bool   `argsShort:"f" argsUsage:"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)"`
+	File  string `argsUsage:"A filename to read stack input from"`
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
-func newStackImportCmd() *cobra.Command {
-	var config StackImportConfig
+func newStackImportCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -54,22 +56,24 @@ func newStackImportCmd() *cobra.Command {
 			"hand-edited to correct inconsistencies due to failed updates, manual changes\n" +
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackImportArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and import a deployment.
-			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
-			if config.File != "" {
-				reader, err = os.Open(config.File)
+			if args.File != "" {
+				reader, err = os.Open(args.File)
 				if err != nil {
 					return fmt.Errorf("could not open file: %w", err)
 				}
@@ -89,7 +93,7 @@ func newStackImportCmd() *cobra.Command {
 			if err != nil {
 				return checkDeploymentVersionError(err, s.Ref().Name().String())
 			}
-			if err := saveSnapshot(ctx, s, snapshot, config.Force); err != nil {
+			if err := saveSnapshot(ctx, s, snapshot, args.Force); err != nil {
 				return err
 			}
 			fmt.Printf("Import complete.\n")
@@ -97,17 +101,8 @@ func newStackImportCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack,
-		"stack", "s",
-		"",
-		"The name of the stack to operate on. Defaults to the current stack",
-	)
-	cmd.PersistentFlags().BoolVarP(
-		&config.Force, "force", "f", false,
-		"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)")
-	cmd.PersistentFlags().StringVarP(
-		&config.File, "file", "", "", "A filename to read stack input from")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackImportArgs](v, cmd)
 
 	return cmd
 }

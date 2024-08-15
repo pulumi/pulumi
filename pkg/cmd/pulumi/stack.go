@@ -48,7 +48,10 @@ type StackConfig struct {
 	FullyQualifyStackNames bool
 }
 
-func newStackCmd(v *viper.Viper) *cobra.Command {
+func newStackCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	config := StackConfig{}
 
 	cmd := &cobra.Command{
@@ -87,19 +90,21 @@ func newStackCmd(v *viper.Viper) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&config.ShowStackName, "show-name", false, "Display only the stack name")
 
-	cmd.AddCommand(newStackExportCmd())
-	cmd.AddCommand(newStackGraphCmd())
-	cmd.AddCommand(newStackImportCmd())
-	cmd.AddCommand(newStackInitCmd())
-	cmd.AddCommand(newStackLsCmd())
-	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackRmCmd())
-	cmd.AddCommand(newStackSelectCmd())
-	cmd.AddCommand(newStackTagCmd(v))
-	cmd.AddCommand(newStackRenameCmd())
-	cmd.AddCommand(newStackChangeSecretsProviderCmd())
-	cmd.AddCommand(newStackHistoryCmd())
-	cmd.AddCommand(newStackUnselectCmd())
+	parentPulumiCmd.AddCommand(cmd)
+
+	newStackChangeSecretsProviderCmd(v, cmd)
+	newStackExportCmd(v, cmd)
+	newStackGraphCmd(v, cmd)
+	newStackHistoryCmd(v, cmd)
+	newStackImportCmd(v, cmd)
+	newStackInitCmd(v, cmd)
+	newStackLsCmd(v, cmd)
+	newStackOutputCmd(v, cmd)
+	newStackRenameCmd(v, cmd)
+	newStackRmCmd(v, cmd)
+	newStackSelectCmd(v, cmd)
+	newStackTagCmd(v, cmd)
+	newStackUnselectCmd(cmd)
 
 	return cmd
 }

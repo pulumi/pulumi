@@ -13,10 +13,7 @@ import (
 )
 
 func lookupArg(v *viper.Viper, scopes []string, name string) any {
-	// Check if it's set via a CLI flag or env var
-	if v.IsSet(name) {
-		return v.Get(name)
-	}
+	fmt.Printf("lookupArg: %v %v\n", strings.Join(scopes, ", "), name)
 
 	for _, scope := range scopes {
 		key := scope + "." + name
@@ -24,12 +21,8 @@ func lookupArg(v *viper.Viper, scopes []string, name string) any {
 			return v.Get(key)
 		}
 	}
-	// Check in the global section of the rc file
-	defaultName := "global." + name
-	if v.IsSet(defaultName) {
-		return v.Get(defaultName)
-	}
-	return v.Get(name)
+
+	return nil
 }
 
 func defaultLookupArg(v *viper.Viper, scopes []string, kind reflect.Kind, name string) any {
@@ -89,7 +82,7 @@ func getScopes(cmd *cobra.Command) []string {
 	for i := len(hierarchy) - 1; i >= 0; i-- {
 		scopes[i] = prefix + hierarchy[i]
 		if i < len(hierarchy)-1 {
-			prefix += hierarchy[i] + "."
+			prefix += hierarchy[i] + ":"
 		}
 	}
 
@@ -141,6 +134,9 @@ func unmarshalArgs(v *viper.Viper, scopes []string, opts any) any {
 				reflect.Uint64, reflect.Uintptr, reflect.String:
 				typ := rv.Field(i).Type()
 				val := defaultLookupArg(v, scopes, rv.Field(i).Kind(), fieldName)
+				if !reflect.ValueOf(val).CanConvert(typ) {
+					contract.Failf("can't convert %v (%v) to %v", reflect.ValueOf(val).Kind(), val, typ)
+				}
 				refVal := reflect.ValueOf(val).Convert(typ)
 				rv.Field(i).Set(refVal)
 			case reflect.Slice | reflect.Array:
@@ -178,7 +174,7 @@ func BindFlags[T any](v *viper.Viper, cmd *cobra.Command) {
 }
 
 func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
-	scope := cmd.Name()
+	scope := getScopes(cmd)[0]
 
 	ref := reflect.ValueOf(opts)
 	//nolint:exhaustive

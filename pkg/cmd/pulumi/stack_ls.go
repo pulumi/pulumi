@@ -27,6 +27,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -36,19 +37,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type StackLsConfig struct {
-	PulumiConfig
-
-	JSON         bool
-	AllStacks    bool
-	Organization string
-	Project      string
-	Tag          string
+//nolint:lll
+type StackLsArgs struct {
+	JSON         bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	AllStacks    bool   `args:"all" argsShort:"a" argsUsage:"List all stacks instead of just stacks for the current project"`
+	Organization string `argsShort:"o" argsUsage:"Filter returned stacks to those in a specific organization"`
+	Project      string `argsShort:"p" argsUsage:"Filter returned stacks to those with a specific project name"`
+	Tag          string `argsShort:"t" argsUsage:"Filter returned stacks to those in a specific tag (tag-name or tag-name=tag-value)"`
 }
 
-func newStackLsCmd() *cobra.Command {
-	var config StackLsConfig
-
+func newStackLsCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List stacks",
@@ -64,26 +65,18 @@ func newStackLsCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			return runStackLS(ctx, config, nil)
+			args := UnmarshalArgs[StackLsArgs](v, cmd)
+			return runStackLS(ctx, args, nil)
 		}),
 	}
-	cmd.PersistentFlags().BoolVarP(
-		&config.JSON, "json", "j", false, "Emit output as JSON")
 
-	cmd.PersistentFlags().BoolVarP(
-		&config.AllStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
-
-	cmd.PersistentFlags().StringVarP(
-		&config.Organization, "organization", "o", "", "Filter returned stacks to those in a specific organization")
-	cmd.PersistentFlags().StringVarP(
-		&config.Project, "project", "p", "", "Filter returned stacks to those with a specific project name")
-	cmd.PersistentFlags().StringVarP(
-		&config.Tag, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name=tag-value)")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackLsArgs](v, cmd)
 
 	return cmd
 }
 
-func runStackLS(ctx context.Context, config StackLsConfig, stdout io.Writer) error {
+func runStackLS(ctx context.Context, config StackLsArgs, stdout io.Writer) error {
 	if stdout == nil {
 		stdout = os.Stdout
 	}

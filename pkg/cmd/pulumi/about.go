@@ -52,7 +52,10 @@ type AboutConfig struct {
 	Stack                  string `argsShort:"s" argsUsage:"The name of the stack to get info on. Defaults to the current stack"`
 }
 
-func newAboutCmd(v *viper.Viper) *cobra.Command {
+func newAboutCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
 		Use:   "about",
@@ -80,9 +83,10 @@ func newAboutCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(newAboutEnvCmd())
-
+	parentPulumiCmd.AddCommand(cmd)
 	BindFlags[AboutConfig](v, cmd)
+
+	cmd.AddCommand(newAboutEnvCmd())
 
 	return cmd
 }

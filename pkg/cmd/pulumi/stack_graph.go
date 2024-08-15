@@ -27,36 +27,37 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type StackGraphConfig struct {
-	PulumiConfig
-
-	Stack string
+//nolint:lll
+type StackGraphArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 
 	// Whether or not we should ignore parent edges when building up our graph.
-	IgnoreParentEdges bool
+	IgnoreParentEdges bool `argsUsage:"Ignores edges introduced by parent/child resource relationships"`
 
 	// Whether or not we should ignore dependency edges when building up our graph.
-	IgnoreDependencyEdges bool
+	IgnoreDependencyEdges bool `argsUsage:"Ignores edges introduced by dependency resource relationships"`
 
 	// The color of dependency edges in the graph. Defaults to #246C60, a blush-green.
-	DependencyEdgeColor string
+	DependencyEdgeColor string `argsUsage:"Sets the color of dependency edges in the graph" argsDefault:"#246C60"`
 
 	// The color of parent edges in the graph. Defaults to #AA6639, an orange.
-	ParentEdgeColor string
+	ParentEdgeColor string `argsUsage:"Sets the color of parent edges in the graph" argsDefault:"#AA6639"`
 
 	// Whether or not to return resource name as the node label for each node of the graph.
-	ShortNodeNames bool
+	ShortNodeNames bool `args:"short-node-name" argsUsage:"Sets the resource name as the node label for each node of the graph"`
 
 	// A DOT fragment that will be inserted at the top of the digraph element. This
 	// can be used for styling the graph elements, setting graph properties etc.")
-	DotFragment string
+	DotFragment string `argsUsage:"An optional DOT fragment that will be inserted at the top of the digraph element. This can be used for styling the graph elements, setting graph properties etc."`
 }
 
-func newStackGraphCmd() *cobra.Command {
-	var config StackGraphConfig
-
+func newStackGraphCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "graph [filename]",
 		Args:  cmdutil.ExactArgs(1),
@@ -66,13 +67,15 @@ func newStackGraphCmd() *cobra.Command {
 			"This command can be used to view the dependency graph that a Pulumi program\n" +
 			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackGraphArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, config.Stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -83,41 +86,30 @@ func newStackGraphCmd() *cobra.Command {
 
 			// This will prevent a panic when trying to assemble a dependencyGraph when no snapshot is found
 			if snap == nil {
-				return fmt.Errorf("unable to find snapshot for stack %q", config.Stack)
+				return fmt.Errorf("unable to find snapshot for stack %q", args.Stack)
 			}
 
-			dg := makeDependencyGraph(snap, &config)
+			dg := makeDependencyGraph(snap, &args)
 
-			file, err := os.Create(args[0])
+			file, err := os.Create(cmdArgs[0])
 			if err != nil {
 				return err
 			}
 
-			if err := dotconv.Print(dg, file, config.DotFragment); err != nil {
+			if err := dotconv.Print(dg, file, args.DotFragment); err != nil {
 				_ = file.Close()
 				return err
 			}
 
-			cmd.Printf("%sWrote stack dependency graph to `%s`", cmdutil.EmojiOr("🔍 ", ""), args[0])
+			cmd.Printf("%sWrote stack dependency graph to `%s`", cmdutil.EmojiOr("🔍 ", ""), cmdArgs[0])
 			cmd.Println()
 			return file.Close()
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVar(&config.IgnoreParentEdges, "ignore-parent-edges", false,
-		"Ignores edges introduced by parent/child resource relationships")
-	cmd.PersistentFlags().BoolVar(&config.IgnoreDependencyEdges, "ignore-dependency-edges", false,
-		"Ignores edges introduced by dependency resource relationships")
-	cmd.PersistentFlags().StringVar(&config.DependencyEdgeColor, "dependency-edge-color", "#246C60",
-		"Sets the color of dependency edges in the graph")
-	cmd.PersistentFlags().StringVar(&config.ParentEdgeColor, "parent-edge-color", "#AA6639",
-		"Sets the color of parent edges in the graph")
-	cmd.PersistentFlags().BoolVar(&config.ShortNodeNames, "short-node-name", false,
-		"Sets the resource name as the node label for each node of the graph")
-	cmd.PersistentFlags().StringVar(&config.DotFragment, "dot-fragment", "",
-		"An optional DOT fragment that will be inserted at the top of the digraph element. "+
-			"This can be used for styling the graph elements, setting graph properties etc.")
+
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackGraphArgs](v, cmd)
+
 	return cmd
 }
 
@@ -242,7 +234,7 @@ func (dg *dependencyGraph) Roots() []graph.Edge {
 
 // Makes a dependency graph from a deployment snapshot, allocating a vertex
 // for every resource in the graph.
-func makeDependencyGraph(snapshot *deploy.Snapshot, config *StackGraphConfig) *dependencyGraph {
+func makeDependencyGraph(snapshot *deploy.Snapshot, config *StackGraphArgs) *dependencyGraph {
 	dg := &dependencyGraph{
 		vertices: make(map[resource.URN]*dependencyVertex),
 	}

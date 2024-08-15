@@ -28,7 +28,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newStackTagCmd(v *viper.Viper) *cobra.Command {
+func newStackTagCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tag",
 		Short: "Manage stack tags",
@@ -41,10 +44,12 @@ func newStackTagCmd(v *viper.Viper) *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newStackTagGetCmd(v))
-	cmd.AddCommand(newStackTagLsCmd(v))
-	cmd.AddCommand(newStackTagRmCmd(v))
-	cmd.AddCommand(newStackTagSetCmd(v))
+	parentStackCmd.AddCommand(cmd)
+
+	newStackTagGetCmd(v, cmd)
+	newStackTagLsCmd(v, cmd)
+	newStackTagRmCmd(v, cmd)
+	newStackTagSetCmd(v, cmd)
 
 	return cmd
 }
@@ -53,7 +58,10 @@ type StackTagGetArgs struct {
 	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
-func newStackTagGetCmd(v *viper.Viper) *cobra.Command {
+func newStackTagGetCmd(
+	v *viper.Viper,
+	parentStackTagCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <name>",
 		Short: "Get a single stack tag value",
@@ -87,6 +95,7 @@ func newStackTagGetCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentStackTagCmd.AddCommand(cmd)
 	BindFlags[StackTagGetArgs](v, cmd)
 
 	return cmd
@@ -94,16 +103,22 @@ func newStackTagGetCmd(v *viper.Viper) *cobra.Command {
 
 type StackTagLsArgs struct {
 	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	JSON  bool   `argsShort:"j" argsUsage:"Emit output as JSON"`
+	JSON  bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 }
 
-func newStackTagLsCmd(v *viper.Viper) *cobra.Command {
+func newStackTagLsCmd(
+	v *viper.Viper,
+	parentStackTagCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List all stack tags",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			args := UnmarshalArgs[StackTagLsArgs](v, cmd)
+
+			fmt.Printf("STACK: %v\n", args.Stack)
+			fmt.Printf("JSON: %v\n", args.JSON)
 
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -131,6 +146,7 @@ func newStackTagLsCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentStackTagCmd.AddCommand(cmd)
 	BindFlags[StackTagLsArgs](v, cmd)
 
 	return cmd
@@ -158,7 +174,10 @@ type StackTagRmArgs struct {
 	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
-func newStackTagRmCmd(v *viper.Viper) *cobra.Command {
+func newStackTagRmCmd(
+	v *viper.Viper,
+	parentStackTagCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm <name>",
 		Short: "Remove a stack tag",
@@ -189,6 +208,7 @@ func newStackTagRmCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentStackTagCmd.AddCommand(cmd)
 	BindFlags[StackTagRmArgs](v, cmd)
 
 	return cmd
@@ -198,7 +218,10 @@ type StackTagSetArgs struct {
 	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
-func newStackTagSetCmd(v *viper.Viper) *cobra.Command {
+func newStackTagSetCmd(
+	v *viper.Viper,
+	parentStackTagCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set <name> <value>",
 		Short: "Set a stack tag",
@@ -233,6 +256,7 @@ func newStackTagSetCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentStackTagCmd.AddCommand(cmd)
 	BindFlags[StackTagSetArgs](v, cmd)
 
 	return cmd
