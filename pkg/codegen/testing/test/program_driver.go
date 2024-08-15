@@ -151,12 +151,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-native",
 		Description: "Azure Native",
-		SkipCompile: codegen.NewStringSet("go", "nodejs", "dotnet"),
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8073]
 		//   TODO[pulumi/pulumi#8074]
-		// Blocked on nodejs:
-		//   TODO[pulumi/pulumi#8075]
 	},
 	{
 		Directory:   "azure-native-v2-eventgrid",
@@ -188,12 +186,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "kubernetes-pod",
 		Description: "K8s Pod",
-		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8073]
 		//   TODO[pulumi/pulumi#8074]
-		// Blocked on nodejs:
-		//   TODO[pulumi/pulumi#8075]
 	},
 	{
 		Directory:   "kubernetes-template",
