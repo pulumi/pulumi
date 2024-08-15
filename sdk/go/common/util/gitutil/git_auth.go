@@ -188,10 +188,30 @@ type keyConfig struct {
 	failOnPassphrase bool
 }
 
-var DefaultIdentityFiles = []string{"~/.ssh/id_rsa", "~/.ssh/id_dsa", "~/.ssh/id_ecdsa", "~/.ssh/id_ed25519"}
+// SSH on a modern system (circa 2024, OpenSSH_8.9p1) will try:
+//
+// - ~/.ssh/id_rsa
+// - ~/.ssh/id_ecdsa
+// - ~/.ssh/id_ecdsa_sk
+// - ~/.ssh/id_ed25519
+// - ~/.ssh/id_ed25519_sk
+// - ~/.ssh/id_xmss
+// - ~/.ssh/id_dsa
+//
+// Of these:
+// - id_dsa and id_xmss are not supported in Go
+// - id_ecdsa_sk and id_ed25519_sk require interactive use with FIDO2
+//
+// Producing this list of default identity files:
+var DefaultIdentityFiles = []string{
+	"~/.ssh/id_rsa",
+	"~/.ssh/id_ecdsa",
+	"~/.ssh/id_ed25519",
+}
 
 // ClientConfig implements ssh.AuthMethod.
 func (s *DefaultSSHAuth) ClientConfig() (*ssh.ClientConfig, error) {
+	// Use known hosts alongside our signers, via SetHostKeyCallback
 	return s.SetHostKeyCallback(&ssh.ClientConfig{
 		User: s.user,
 		Auth: []ssh.AuthMethod{
