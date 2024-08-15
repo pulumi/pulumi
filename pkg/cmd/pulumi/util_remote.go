@@ -498,7 +498,8 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 
 	// we have a custom marshaller for CreateDeploymentRequest, to handle semantics around
 	// defined/undefined/null values on AgentPoolID
-	if cmd.Flag("agent-pool-id").Changed {
+	agentPoolIDConfig := cmd.Flag("agent-pool-id")
+	if agentPoolIDConfig != nil && agentPoolIDConfig.Changed {
 		// if agent pool id is set, we forward it
 		// if it is empty, we will send a null, to make it default to the shared queue
 		v := apitype.AgentPoolIDMarshaller(args.agentPoolID)
