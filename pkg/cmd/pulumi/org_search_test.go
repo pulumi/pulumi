@@ -43,7 +43,7 @@ func TestSearch_cmd(t *testing.T) {
 	total := int64(132)
 	orgName := "org1"
 	cmd := orgSearchCmd{
-		Config: OrgSearchConfig{
+		Args: OrgSearchArgs{
 			Organization: orgName,
 		},
 		Stdout: &buff,

@@ -61,7 +61,7 @@ func TestSearchAI_cmd(t *testing.T) {
 		},
 	}
 	cmd := searchAICmd{
-		Config: OrgSearchAIConfig{
+		Args: OrgSearchAIArgs{
 			Organization: orgName,
 			OutputFormat: outputFormatTable,
 		},
@@ -91,7 +91,7 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 	modified := "2023-01-01T00:00:00.000Z"
 	orgName := "user"
 	cmd := searchAICmd{
-		Config: OrgSearchAIConfig{
+		Args: OrgSearchAIArgs{
 			Organization: orgName,
 		},
 		Stdout: &buff,

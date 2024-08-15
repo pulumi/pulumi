@@ -19,13 +19,19 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newOrgCmd() *cobra.Command {
+type OrgArgs struct{}
+
+func newOrgCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "org",
 		Short: "Manage Organization configuration",
@@ -62,16 +68,22 @@ func newOrgCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(newOrgSetDefaultCmd())
-	cmd.AddCommand(newOrgGetDefaultCmd())
-	cmd.AddCommand(newSearchCmd())
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[OrgArgs](v, cmd)
+
+	newOrgSetDefaultCmd(v, cmd)
+	newOrgGetDefaultCmd(v, cmd)
+	newSearchCmd(v, cmd)
 
 	return cmd
 }
 
-func newOrgSetDefaultCmd() *cobra.Command {
-	var orgName string
+type OrgSetDefaultArgs struct{}
 
+func newOrgSetDefaultCmd(
+	v *viper.Viper,
+	parentOrgCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default [NAME]",
 		Args:  cmdutil.ExactArgs(1),
@@ -90,7 +102,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			orgName = args[0]
+			orgName := args[0]
 
 			// Try to read the current project
 			project, _, err := readProject()
@@ -116,10 +128,18 @@ func newOrgSetDefaultCmd() *cobra.Command {
 		}),
 	}
 
+	parentOrgCmd.AddCommand(cmd)
+	BindFlags[OrgSetDefaultArgs](v, cmd)
+
 	return cmd
 }
 
-func newOrgGetDefaultCmd() *cobra.Command {
+type OrgGetDefaultArgs struct{}
+
+func newOrgGetDefaultCmd(
+	v *viper.Viper,
+	parentOrgCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-default",
 		Short: "Get the default org for the current backend",
@@ -129,7 +149,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			"the current backend.\n" +
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -164,6 +184,9 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	parentOrgCmd.AddCommand(cmd)
+	BindFlags[OrgGetDefaultArgs](v, cmd)
 
 	return cmd
 }
