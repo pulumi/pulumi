@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+//nolint:lll
 type LoginArgs struct {
 	CloudURL   string `args:"cloud-url" argsShort:"c" argsUsage:"A cloud URL to log in to"`
 	DefaultOrg string `args:"default-org" argsUsage:"A default org to associate with the login. Please note, currently, only the managed and self-hosted backends support organizations"`

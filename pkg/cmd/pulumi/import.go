@@ -297,7 +297,15 @@ func newImportCmd(
 					contract.IgnoreError(cmd.Help())
 					return result.Errorf("only expected at most three arguments")
 				}
-				f, err := makeImportFile(cliArgs[0], cliArgs[1], cliArgs[2], args.Properties, args.ParentSpec, args.ProviderSpec, "")
+				f, err := makeImportFile(
+					cliArgs[0],
+					cliArgs[1],
+					cliArgs[2],
+					args.Properties,
+					args.ParentSpec,
+					args.ProviderSpec,
+					"",
+				)
 				if err != nil {
 					return result.FromError(err)
 				}

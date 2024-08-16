@@ -382,7 +382,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Hidden Commands",
 			Commands: []*cobra.Command{
-				newGenMarkdownCmd(cmd),
+				newGenMarkdownCmd(v, cmd),
 			},
 		},
 
