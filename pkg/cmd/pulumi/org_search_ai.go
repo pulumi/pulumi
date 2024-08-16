@@ -35,7 +35,7 @@ import (
 type OrgSearchAIArgs struct {
 	Organization   string       `args:"org" argsUsage:"Organization name to search within"`
 	CSVDelimiter   Delimiter    `args:"delimiter" argsUsage:"Delimiter to use when rendering CSV output."`
-	OutputFormat   outputFormat `args:"output" argsShort:"o" argsUsage:"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'."`
+	OutputFormat   outputFormat `args:"output" argsType:"var" argsShort:"o" argsUsage:"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'."`
 	QueryString    string       `args:"query" argsShort:"q" argsUsage:"Plaintext natural language query"`
 	OpenWebBrowser bool         `args:"web" argsUsage:"Open the search results in a web browser."`
 }

@@ -42,7 +42,7 @@ import (
 type OrgSearchArgs struct {
 	Organization   string       `args:"org" argsUsage:"Name of the organization to search. Defaults to the current user's default organization."`
 	CSVDelimiter   Delimiter    `args:"delimiter" argsUsage:"Delimiter to use when rendering CSV output."`
-	OutputFormat   outputFormat `args:"output" argsShort:"o" argsUsage:"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'."`
+	OutputFormat   outputFormat `args:"output" argsType:"var" argsShort:"o" argsUsage:"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'."`
 	OpenWebBrowser bool         `args:"web" argsUsage:"Open the search results in a web browser."`
 	QueryParams    []string     `args:"query" argsShort:"q" argsUsage:"A Pulumi Query to send to Pulumi Cloud for resource search. May be formatted as a single query, or multiple:\n\t-q \"type:aws:s3/bucket:Bucket modified:>=2023-09-01\"\n\t-q \"type:aws:s3/bucket:Bucket\" -q \"modified:>=2023-09-01\"\nSee https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference."`
 }
