@@ -19,17 +19,23 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newLogoutCmd() *cobra.Command {
-	var cloudURL string
-	var localMode bool
-	var all bool
+type LogoutArgs struct {
+	CloudURL  string `args:"cloud-url" argsShort:"c" argsUsage:"A cloud URL to log out of (defaults to current cloud)"`
+	LocalMode bool   `args:"local" argsShort:"l" argsUsage:"Log out of using local mode"`
+	All       bool   `args:"all" argsUsage:"Logout of all backends"`
+}
 
+func newLogoutCmd(
+	v *viper.Viper,
+	parentPublicCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logout <url>",
 		Short: "Log out of the Pulumi Cloud",
@@ -44,57 +50,55 @@ func newLogoutCmd() *cobra.Command {
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[LogoutArgs](v, cmd)
+
 			// If a <cloud> was specified as an argument, use it.
-			if len(args) > 0 {
-				if cloudURL != "" || all {
+			if len(cliArgs) > 0 {
+				if args.CloudURL != "" || args.All {
 					return errors.New("only one of --all, --cloud-url or argument URL may be specified, not both")
 				}
-				cloudURL = args[0]
+				args.CloudURL = cliArgs[0]
 			}
 
 			// For local mode, store state by default in the user's home directory.
-			if localMode {
-				if cloudURL != "" {
+			if args.LocalMode {
+				if args.CloudURL != "" {
 					return errors.New("a URL may not be specified when --local mode is enabled")
 				}
-				cloudURL = "file://~"
+				args.CloudURL = "file://~"
 			}
 
 			var err error
-			if all {
+			if args.All {
 				err = workspace.DeleteAllAccounts()
 			} else {
-				if cloudURL == "" {
+				if args.CloudURL == "" {
 					// Try to read the current project
 					project, _, err := readProject()
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err
 					}
 
-					cloudURL, err = workspace.GetCurrentCloudURL(project)
+					args.CloudURL, err = workspace.GetCurrentCloudURL(project)
 					if err != nil {
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}
 
 					// Default to the default cloud URL. This means a `pulumi logout` will delete the
 					// credentials for pulumi.com if there's no "current" user set in the credentials file.
-					cloudURL = httpstate.ValueOrDefaultURL(cloudURL)
+					args.CloudURL = httpstate.ValueOrDefaultURL(args.CloudURL)
 				}
 
-				err = workspace.DeleteAccount(cloudURL)
+				err = workspace.DeleteAccount(args.CloudURL)
 			}
-			fmt.Printf("Logged out of %s\n", cloudURL)
+			fmt.Printf("Logged out of %s\n", args.CloudURL)
 			return err
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVar(&all, "all", false,
-		"Logout of all backends")
-	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
-		"A cloud URL to log out of (defaults to current cloud)")
-	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false,
-		"Log out of using local mode")
+	parentPublicCmd.AddCommand(cmd)
+	BindFlags[LogoutArgs](v, cmd)
 
 	return cmd
 }

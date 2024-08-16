@@ -39,6 +39,7 @@ import (
 // See https://tools.ietf.org/html/rfc5424#section-6.2.3.
 const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
+//nolint:lll
 type LogsArgs struct {
 	Stack    string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 	Follow   bool   `argsShort:"f" argsUsage:"Follow the log stream in real time (like tail -f)"`
@@ -46,6 +47,8 @@ type LogsArgs struct {
 	Resource string `argsShort:"r" argsUsage:"Only return logs for the requested resource ('name', 'type::name' or full URN). Defaults to returning all logs."`
 	JSON     bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 }
+
+// TODO hack/pulumirc stackConfigFile
 
 func newLogsCmd(
 	v *viper.Viper,
