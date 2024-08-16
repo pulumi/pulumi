@@ -78,7 +78,7 @@ type NewArgs struct {
 	Yes             bool                       `argsShort:"y" argsUsage:"Skip prompts and proceed with default values"`
 	ListTemplates   bool                       `argsShort:"l" argsUsage:"List locally installed templates and exit"`
 	AiPrompt        string                     `args:"ai" argsUsage:"Prompt to use for Pulumi AI"`
-	AiLanguage      httpstate.PulumiAILanguage `args:"language" argsUsage:"Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML)"`
+	AiLanguage      httpstate.PulumiAILanguage `args:"language" argsType:"var" argsUsage:"Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML)"`
 	TemplateMode    bool                       `argsShort:"t" argsUsage:"Run in template mode, which will skip prompting for AI or Template functionality"`
 	RuntimeOptions  []string                   `argsUsage:"Additional options for the language runtime (format: key1=value1,key2=value2)"`
 }
