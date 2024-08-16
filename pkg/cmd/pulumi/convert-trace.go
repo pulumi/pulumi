@@ -698,7 +698,7 @@ func newConvertTraceCmd() *cobra.Command {
 	var ignoreLogSpans bool
 	var quantum time.Duration
 	cmd := &cobra.Command{
-		Use:   "convert-trace [trace-file]",
+		Use:   "convert-trace <trace-file>",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
 		Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +
 			"\n" +
