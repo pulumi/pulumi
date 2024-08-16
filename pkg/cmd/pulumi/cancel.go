@@ -33,7 +33,7 @@ type CancelArgs struct {
 	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
 }
 
-func newCancelCmd(v *viper.Viper) *cobra.Command {
+func newCancelCmd(v *viper.Viper, parentPulumiCommand *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -88,6 +88,7 @@ func newCancelCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentPulumiCommand.AddCommand(cmd)
 	BindFlags[CancelArgs](v, cmd)
 
 	return cmd
