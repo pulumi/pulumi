@@ -33,9 +33,59 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	auto_table "go.pennock.tech/tabular/auto"
 	"gopkg.in/yaml.v3"
 )
+
+//nolint:lll
+type OrgSearchArgs struct {
+	Organization   string       `args:"org" argsUsage:"Name of the organization to search. Defaults to the current user's default organization."`
+	CSVDelimiter   Delimiter    `args:"delimiter" argsUsage:"Delimiter to use when rendering CSV output."`
+	OutputFormat   outputFormat `args:"output" argsType:"var" argsShort:"o" argsUsage:"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'."`
+	OpenWebBrowser bool         `args:"web" argsUsage:"Open the search results in a web browser."`
+	QueryParams    []string     `args:"query" argsShort:"q" argsUsage:"A Pulumi Query to send to Pulumi Cloud for resource search. May be formatted as a single query, or multiple:\n\t-q \"type:aws:s3/bucket:Bucket modified:>=2023-09-01\"\n\t-q \"type:aws:s3/bucket:Bucket\" -q \"modified:>=2023-09-01\"\nSee https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference."`
+}
+
+type orgSearchCmd struct {
+	Args OrgSearchArgs
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func newSearchCmd(
+	v *viper.Viper,
+	parentOrgCmd *cobra.Command,
+) *cobra.Command {
+	var scmd orgSearchCmd
+	cmd := &cobra.Command{
+		Use:   "search",
+		Short: "Search for resources in Pulumi Cloud",
+		Long:  "Search for resources in Pulumi Cloud.",
+		Args:  cmdutil.NoArgs,
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			scmd.Args = UnmarshalArgs[OrgSearchArgs](v, cmd)
+
+			ctx := cmd.Context()
+			if len(scmd.Args.QueryParams) == 0 {
+				return cmd.Help()
+			}
+			return scmd.Run(ctx, cliArgs)
+		},
+		),
+	}
+
+	parentOrgCmd.AddCommand(cmd)
+	BindFlags[OrgSearchArgs](v, cmd)
+
+	newSearchAICmd(v, cmd)
+
+	return cmd
+}
 
 type Delimiter rune
 
@@ -92,29 +142,11 @@ func (o *outputFormat) Type() string {
 	return "outputFormat"
 }
 
-type searchCmd struct {
-	orgName      string
-	csvDelimiter Delimiter
-	outputFormat
-	openWeb bool
-
-	Stdout io.Writer // defaults to os.Stdout
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
-}
-
-type orgSearchCmd struct {
-	searchCmd
-	queryParams []string
-}
-
 func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
 
-	if cmd.outputFormat == "" {
-		cmd.outputFormat = outputFormatTable
+	if cmd.Args.OutputFormat == "" {
+		cmd.Args.OutputFormat = outputFormatTable
 	}
 
 	if cmd.Stdout == nil {
@@ -154,80 +186,33 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if defaultOrg != "" && cmd.orgName == "" {
-		cmd.orgName = defaultOrg
+	if defaultOrg != "" && cmd.Args.Organization == "" {
+		cmd.Args.Organization = defaultOrg
 	}
-	if cmd.orgName != "" {
-		if !sliceContains(orgs, cmd.orgName) {
-			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.orgName)
+	if cmd.Args.Organization != "" {
+		if !sliceContains(orgs, cmd.Args.Organization) {
+			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.Args.Organization)
 		}
 	} else {
-		cmd.orgName = userName
+		cmd.Args.Organization = userName
 	}
 
-	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)
-	res, err := cloudBackend.Search(ctx, cmd.orgName, parsedQueryParams)
+	parsedQueryParams := apitype.ParseQueryParams(cmd.Args.QueryParams)
+	res, err := cloudBackend.Search(ctx, cmd.Args.Organization, parsedQueryParams)
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	err = cmd.Args.OutputFormat.Render(cmd.Stdout, rune(cmd.Args.CSVDelimiter), res)
 	if err != nil {
 		return fmt.Errorf("table rendering error: %w", err)
 	}
-	if cmd.openWeb {
+	if cmd.Args.OpenWebBrowser {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
 			logging.Warningf("failed to open URL: %s", err)
 		}
 	}
 	return nil
-}
-
-func newSearchCmd() *cobra.Command {
-	var scmd orgSearchCmd
-	cmd := &cobra.Command{
-		Use:   "search",
-		Short: "Search for resources in Pulumi Cloud",
-		Long:  "Search for resources in Pulumi Cloud.",
-		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			if len(scmd.queryParams) == 0 {
-				return cmd.Help()
-			}
-			return scmd.Run(ctx, args)
-		},
-		),
-	}
-
-	cmd.AddCommand(newSearchAICmd())
-
-	cmd.PersistentFlags().StringVar(
-		&scmd.orgName, "org", "",
-		"Name of the organization to search. Defaults to the current user's default organization.",
-	)
-	cmd.PersistentFlags().StringArrayVarP(
-		&scmd.queryParams, "query", "q", nil,
-		"A Pulumi Query to send to Pulumi Cloud for resource search."+
-			"May be formatted as a single query, or multiple:\n"+
-			"\t-q \"type:aws:s3/bucket:Bucket modified:>=2023-09-01\"\n"+
-			"\t-q \"type:aws:s3/bucket:Bucket\" -q \"modified:>=2023-09-01\"\n"+
-			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
-	)
-	cmd.PersistentFlags().VarP(
-		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'.",
-	)
-	cmd.PersistentFlags().Var(
-		&scmd.csvDelimiter, "delimiter",
-		"Delimiter to use when rendering CSV output.",
-	)
-	cmd.PersistentFlags().BoolVar(
-		&scmd.openWeb, "web", false,
-		"Open the search results in a web browser.",
-	)
-
-	return cmd
 }
 
 func sliceContains(slice []string, search string) bool {
@@ -273,10 +258,6 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 	return err
 }
 
-func (cmd *searchCmd) RenderTable(results *apitype.ResourceSearchResponse) error {
-	return renderSearchTable(cmd.Stdout, results)
-}
-
 func renderSearchCSV(w io.Writer, results []apitype.ResourceResult, delimiter rune) error {
 	data := make([][]string, 0, len(results)+1)
 	writer := csv.NewWriter(w)
@@ -298,10 +279,6 @@ func renderSearchCSV(w io.Writer, results []apitype.ResourceResult, delimiter ru
 	return writer.WriteAll(data)
 }
 
-func (cmd *searchCmd) RenderCSV(results []apitype.ResourceResult, delimiter rune) error {
-	return renderSearchCSV(cmd.Stdout, results, delimiter)
-}
-
 func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
 	output, err := json.MarshalIndent(results, "", "    ")
 	if err != nil {
@@ -311,23 +288,19 @@ func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
 	return err
 }
 
-func (o *outputFormat) Render(cmd *searchCmd, result *apitype.ResourceSearchResponse) error {
+func (o *outputFormat) Render(w io.Writer, csvDelimiter rune, result *apitype.ResourceSearchResponse) error {
 	switch *o {
 	case outputFormatJSON:
-		return cmd.RenderJSON(result)
+		return renderSearchJSON(w, result.Resources)
 	case outputFormatTable:
-		return cmd.RenderTable(result)
+		return renderSearchTable(w, result)
 	case outputFormatYAML:
-		return cmd.RenderYAML(result)
+		return renderSearchYAML(w, result.Resources)
 	case outputFormatCSV:
-		return cmd.RenderCSV(result.Resources, cmd.csvDelimiter.Rune())
+		return renderSearchCSV(w, result.Resources, csvDelimiter)
 	default:
 		return fmt.Errorf("unknown output format %q", *o)
 	}
-}
-
-func (cmd *searchCmd) RenderJSON(result *apitype.ResourceSearchResponse) error {
-	return renderSearchJSON(cmd.Stdout, result.Resources)
 }
 
 func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
@@ -337,8 +310,4 @@ func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
 	}
 	_, err = w.Write(output)
 	return err
-}
-
-func (cmd *searchCmd) RenderYAML(result *apitype.ResourceSearchResponse) error {
-	return renderSearchYAML(cmd.Stdout, result.Resources)
 }

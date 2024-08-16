@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,12 +29,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newStackExportCmd() *cobra.Command {
-	var file string
-	var stackName string
-	var version string
-	var showSecrets bool
+type StackExportArgs struct {
+	File        string `argsUsage:"A filename to write stack output to"`
+	Stack       string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Version     string `argsUsage:"Previous stack version to export. (If unset, will export the latest.)"`
+	ShowSecrets bool   "argsUsage:\"Emit secrets in plaintext in exported stack. Defaults to `false`\""
+}
 
+func newStackExportCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -44,14 +50,16 @@ func newStackExportCmd() *cobra.Command {
 			"`pulumi stack import`. This process may be used to correct inconsistencies\n" +
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackExportArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -59,7 +67,7 @@ func newStackExportCmd() *cobra.Command {
 			var deployment *apitype.UntypedDeployment
 			// Export the latest version of the checkpoint by default. Otherwise, we require that
 			// the backend/stack implements the ability the export previous checkpoints.
-			if version == "" {
+			if args.Version == "" {
 				deployment, err = s.ExportDeployment(ctx)
 				if err != nil {
 					return err
@@ -73,7 +81,7 @@ func newStackExportCmd() *cobra.Command {
 						be.Name())
 				}
 
-				deployment, err = specificExpBE.ExportDeploymentForVersion(ctx, s, version)
+				deployment, err = specificExpBE.ExportDeploymentForVersion(ctx, s, args.Version)
 				if err != nil {
 					return err
 				}
@@ -81,18 +89,18 @@ func newStackExportCmd() *cobra.Command {
 
 			// Read from stdin or a specified file.
 			writer := os.Stdout
-			if file != "" {
-				writer, err = os.Create(file)
+			if args.File != "" {
+				writer, err = os.Create(args.File)
 				if err != nil {
 					return fmt.Errorf("could not open file: %w", err)
 				}
 			}
 
-			if showSecrets {
+			if args.ShowSecrets {
 				// log show secrets event
 				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 				if err != nil {
-					return checkDeploymentVersionError(err, stackName)
+					return checkDeploymentVersionError(err, args.Stack)
 				}
 
 				serializedDeployment, err := stack.SerializeDeployment(ctx, snap, true)
@@ -125,13 +133,9 @@ func newStackExportCmd() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().StringVarP(
-		&file, "file", "", "", "A filename to write stack output to")
-	cmd.PersistentFlags().StringVarP(
-		&version, "version", "", "", "Previous stack version to export. (If unset, will export the latest.)")
-	cmd.Flags().BoolVarP(
-		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in exported stack. Defaults to `false`")
+
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackExportArgs](v, cmd)
+
 	return cmd
 }

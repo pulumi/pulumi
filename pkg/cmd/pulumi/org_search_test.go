@@ -43,33 +43,33 @@ func TestSearch_cmd(t *testing.T) {
 	total := int64(132)
 	orgName := "org1"
 	cmd := orgSearchCmd{
-		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
-			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-				return &stubHTTPBackend{
-					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
-						return &apitype.ResourceSearchResponse{
-							Resources: []apitype.ResourceResult{
-								{
-									Name:     &name,
-									Type:     &typ,
-									Program:  &program,
-									Stack:    &stack,
-									Package:  &pack,
-									Module:   &mod,
-									Modified: &modified,
-								},
+		Args: OrgSearchArgs{
+			Organization: orgName,
+		},
+		Stdout: &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &stubHTTPBackend{
+				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+					return &apitype.ResourceSearchResponse{
+						Resources: []apitype.ResourceResult{
+							{
+								Name:     &name,
+								Type:     &typ,
+								Program:  &program,
+								Stack:    &stack,
+								Package:  &pack,
+								Module:   &mod,
+								Modified: &modified,
 							},
-							URL:   searchURL,
-							Total: &total,
-						}, nil
-					},
-					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-						return "user", []string{"org1", "org2"}, nil, nil
-					},
-				}, nil
-			},
+						},
+						URL:   searchURL,
+						Total: &total,
+					}, nil
+				},
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "user", []string{"org1", "org2"}, nil, nil
+				},
+			}, nil
 		},
 	}
 
@@ -96,32 +96,30 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 	searchURL := "https://app.pulumi.com/user/resources?foo=bar"
 	total := int64(132)
 	cmd := orgSearchCmd{
-		searchCmd: searchCmd{
-			Stdout: &buff,
-			currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-				return &stubHTTPBackend{
-					SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
-						return &apitype.ResourceSearchResponse{
-							Resources: []apitype.ResourceResult{
-								{
-									Name:     &name,
-									Type:     &typ,
-									Program:  &program,
-									Stack:    &stack,
-									Package:  &pack,
-									Module:   &mod,
-									Modified: &modified,
-								},
+		Stdout: &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &stubHTTPBackend{
+				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+					return &apitype.ResourceSearchResponse{
+						Resources: []apitype.ResourceResult{
+							{
+								Name:     &name,
+								Type:     &typ,
+								Program:  &program,
+								Stack:    &stack,
+								Package:  &pack,
+								Module:   &mod,
+								Modified: &modified,
 							},
-							URL:   searchURL,
-							Total: &total,
-						}, nil
-					},
-					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-						return "user", []string{"org1", "org2"}, nil, nil
-					},
-				}, nil
-			},
+						},
+						URL:   searchURL,
+						Total: &total,
+					}, nil
+				},
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "user", []string{"org1", "org2"}, nil, nil
+				},
+			}, nil
 		},
 	}
 

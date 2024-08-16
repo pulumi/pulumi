@@ -36,7 +36,7 @@ const (
 )
 
 func deriveAIOrTemplate(args newArgs) string {
-	if args.aiPrompt != "" || args.aiLanguage != "" {
+	if args.AiPrompt != "" || args.AiLanguage != "" {
 		return "ai"
 	}
 	return "template"
@@ -44,9 +44,9 @@ func deriveAIOrTemplate(args newArgs) string {
 
 func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool {
 	_, isHTTPBackend := userBackend.(httpstate.Backend)
-	return args.aiPrompt == "" &&
-		args.aiLanguage == "" &&
-		!args.templateMode &&
+	return args.AiPrompt == "" &&
+		args.AiLanguage == "" &&
+		!args.TemplateMode &&
 		isHTTPBackend
 }
 
@@ -63,14 +63,14 @@ func runAINew(
 		languageOptions = append(languageOptions, language.String())
 	}
 	var rawLanguageSelect string
-	if args.aiLanguage == "" {
+	if args.AiLanguage == "" {
 		if err = survey.AskOne(&survey.Select{
 			Message: "Please select a language for your project:",
 			Options: languageOptions,
 		}, &rawLanguageSelect, surveyIcons(opts.Color)); err != nil {
 			return "", err
 		}
-		err = args.aiLanguage.Set(rawLanguageSelect)
+		err = args.AiLanguage.Set(rawLanguageSelect)
 		if err != nil {
 			return "", err
 		}
@@ -209,14 +209,14 @@ func runAINewPromptStep(
 	err error,
 ) {
 	var promptMessage string
-	if args.aiPrompt == "" || currentContinueSelection != "" {
+	if args.AiPrompt == "" || currentContinueSelection != "" {
 		isInitial := currentContinueSelection == ""
 		promptMessage, err = promptForAiMessage(args.prompt, opts, isInitial)
 		if err != nil {
 			return "", "", "", "", err
 		}
 	} else {
-		promptMessage = args.aiPrompt
+		promptMessage = args.AiPrompt
 	}
 	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(
 		ctx,
@@ -224,7 +224,7 @@ func runAINewPromptStep(
 		promptMessage,
 		conversationID,
 		connectionID,
-		args.aiLanguage,
+		args.AiLanguage,
 	)
 	if err != nil {
 		return "", "", "", "", err
@@ -246,7 +246,7 @@ func runAINewPromptStep(
 		yesSelection:    "Use this program to create the project",
 		noSelection:     "Abort the prompt and exit",
 	}
-	if !args.yes {
+	if !args.Yes {
 		if err := survey.AskOne(&survey.Select{
 			Message: "Use this program as a template?",
 			Options: continuePromptOptions,

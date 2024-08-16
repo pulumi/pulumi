@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,12 +29,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-const (
-	possibleSecretsProviderChoices = "The type of the provider that should be used to encrypt and decrypt secrets\n" +
-		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
-)
+//nolint:lll
+type StackInitArgs struct {
+	SecretsProvider          string   `args:"secrets-provider" argsUsage:"The type of the provider that should be used to encrypt and decrypt secrets\n(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"`
+	Stack                    string   `argsShort:"s" argsUsage:"The name of the stack to create"`
+	ConfigurationSourceStack string   `args:"copy-config-from" argsUsage:"The name of the stack to copy existing config from"`
+	NoSelect                 bool     `args:"no-select" argsUsage:"Do not select the stack"`
+	Teams                    []string `argsCommaSplit:"false" argsUsage:"A list of team names that should have permission to read and update this stack, once created"`
+}
 
-func newStackInitCmd() *cobra.Command {
+// stackInitCmd implements the `pulumi stack init` command.
+type stackInitCmd struct {
+	Args StackInitArgs
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func newStackInitCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	var sicmd stackInitCmd
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<stack-name>",
@@ -67,41 +84,23 @@ func newStackInitCmd() *cobra.Command {
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			sicmd.Args = UnmarshalArgs[StackInitArgs](v, cmd)
+
 			ctx := cmd.Context()
-			return sicmd.Run(ctx, args)
+			return sicmd.Run(ctx, cmdArgs)
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&sicmd.stackName, "stack", "s", "", "The name of the stack to create")
-	cmd.PersistentFlags().StringVar(
-		&sicmd.secretsProvider, "secrets-provider", "", possibleSecretsProviderChoices)
-	cmd.PersistentFlags().StringVar(
-		&sicmd.stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
-	cmd.PersistentFlags().BoolVar(
-		&sicmd.noSelect, "no-select", false, "Do not select the stack")
-	cmd.PersistentFlags().StringArrayVar(&sicmd.teams, "teams", nil, "A list of team "+
-		"names that should have permission to read and update this stack,"+
-		" once created")
+
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackInitArgs](v, cmd)
+
 	return cmd
 }
 
-// stackInitCmd implements the `pulumi stack init` command.
-type stackInitCmd struct {
-	secretsProvider string
-	stackName       string
-	stackToCopy     string
-	noSelect        bool
-	teams           []string
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
-}
-
 func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
-	if cmd.secretsProvider == "" {
-		cmd.secretsProvider = "default"
+	if cmd.Args.SecretsProvider == "" {
+		cmd.Args.SecretsProvider = "default"
 	}
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = currentBackend
@@ -124,19 +123,19 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	if len(args) > 0 {
-		if cmd.stackName != "" {
+		if cmd.Args.Stack != "" {
 			return errors.New("only one of --stack or argument stack name may be specified, not both")
 		}
 
-		cmd.stackName = args[0]
+		cmd.Args.Stack = args[0]
 	}
 
 	// Validate secrets provider type
-	if err := validateSecretsProvider(cmd.secretsProvider); err != nil {
+	if err := validateSecretsProvider(cmd.Args.SecretsProvider); err != nil {
 		return err
 	}
 
-	if cmd.stackName == "" && cmdutil.Interactive() {
+	if cmd.Args.Stack == "" && cmdutil.Interactive() {
 		if b.SupportsOrganizations() {
 			fmt.Print("Please enter your desired stack name.\n" +
 				"To create a stack in an organization, " +
@@ -147,18 +146,18 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		if nameErr != nil {
 			return nameErr
 		}
-		cmd.stackName = name
+		cmd.Args.Stack = name
 	}
 
-	if cmd.stackName == "" {
+	if cmd.Args.Stack == "" {
 		return errors.New("missing stack name")
 	}
 
-	if err := b.ValidateStackName(cmd.stackName); err != nil {
+	if err := b.ValidateStackName(cmd.Args.Stack); err != nil {
 		return err
 	}
 
-	stackRef, err := b.ParseStackReference(cmd.stackName)
+	stackRef, err := b.ParseStackReference(cmd.Args.Stack)
 	if err != nil {
 		return err
 	}
@@ -168,23 +167,31 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
-	createOpts := newCreateStackOptions(cmd.teams)
-	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	createOpts := newCreateStackOptions(cmd.Args.Teams)
+	newStack, err := createStack(
+		ctx,
+		b,
+		stackRef,
+		root,
+		createOpts,
+		!cmd.Args.NoSelect,
+		cmd.Args.SecretsProvider,
+	)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
-				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
+				"%s does not support --teams", cmd.Args.Stack, b.Name(), b.Name())
 		}
 		return err
 	}
 
-	if cmd.stackToCopy != "" {
+	if cmd.Args.ConfigurationSourceStack != "" {
 		if projectErr != nil {
 			return projectErr
 		}
 
 		// load the old stack and its project
-		copyStack, err := requireStack(ctx, cmd.stackToCopy, stackLoadOnly, opts)
+		copyStack, err := requireStack(ctx, cmd.Args.ConfigurationSourceStack, stackLoadOnly, opts)
 		if err != nil {
 			return err
 		}

@@ -30,7 +30,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+//nolint:lll
+type AIWebArgs struct {
+	DisableAutoSubmit bool             `args:"no-auto-submit" argsUsage:"Opt-out of automatically submitting the prompt to Pulumi AI"`
+	Language          PulumiAILanguage `argsType:"var" argsShort:"l" argsUsage:"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]"`
+}
 
 type PulumiAILanguage string
 
@@ -72,9 +79,8 @@ func (l *PulumiAILanguage) Type() string {
 }
 
 type aiWebCmd struct {
-	appURL            string
-	disableAutoSubmit bool
-	language          PulumiAILanguage
+	Args   AIWebArgs
+	appURL string
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -99,16 +105,16 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		query.Set("prompt", args[0])
 	}
-	if !cmd.disableAutoSubmit {
+	if !cmd.Args.DisableAutoSubmit {
 		if len(args) == 0 {
 			return errors.New("prompt must be provided when auto-submit is enabled")
 		}
 		query.Set("autoSubmit", "true")
 	}
-	if cmd.language == "" {
-		cmd.language = TypeScript // TODO: default to the language of the current project if one is present
+	if cmd.Args.Language == "" {
+		cmd.Args.Language = TypeScript // TODO: default to the language of the current project if one is present
 	}
-	query.Set("language", cmd.language.String())
+	query.Set("language", cmd.Args.Language.String())
 
 	requestURL.RawQuery = query.Encode()
 	if err = browser.OpenURL(requestURL.String()); err != nil {
@@ -120,12 +126,9 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAIWebCommand() *cobra.Command {
+func newAIWebCommand(v *viper.Viper, parentAICmd *cobra.Command) *cobra.Command {
 	var aiwebcmd aiWebCmd
-	aiwebcmd.appURL = env.AIServiceEndpoint.Value()
-	if aiwebcmd.appURL == "" {
-		aiwebcmd.appURL = "https://www.pulumi.com/ai"
-	}
+
 	cmd := &cobra.Command{
 		Use:   "web",
 		Short: "Opens Pulumi AI in your local browser",
@@ -142,18 +145,19 @@ by passing the --no-auto-submit flag.
 `,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			aiwebcmd.Args = UnmarshalArgs[AIWebArgs](v, cmd)
+			aiwebcmd.appURL = env.AIServiceEndpoint.Value()
+			if aiwebcmd.appURL == "" {
+				aiwebcmd.appURL = "https://www.pulumi.com/ai"
+			}
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
 		},
 		),
 	}
-	cmd.PersistentFlags().BoolVar(
-		&aiwebcmd.disableAutoSubmit, "no-auto-submit", false,
-		"Opt-out of automatically submitting the prompt to Pulumi AI",
-	)
-	cmd.PersistentFlags().VarP(
-		&aiwebcmd.language, "language", "l",
-		"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]",
-	)
+
+	parentAICmd.AddCommand(cmd)
+	BindFlags[AIWebArgs](v, cmd)
+
 	return cmd
 }

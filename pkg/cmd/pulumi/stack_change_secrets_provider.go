@@ -31,17 +31,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
+type StackChangeSecretsProviderArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
 type stackChangeSecretsProviderCmd struct {
-	stdout io.Writer
+	Args StackChangeSecretsProviderArgs
 
-	stack string
-
+	stdout          io.Writer
 	secretsProvider secrets.Provider
 }
 
-func newStackChangeSecretsProviderCmd() *cobra.Command {
+func newStackChangeSecretsProviderCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	var scspcmd stackChangeSecretsProviderCmd
 	cmd := &cobra.Command{
 		Use:   "change-secrets-provider <new-secrets-provider>",
@@ -65,15 +72,16 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider " +
 			"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			scspcmd.Args = UnmarshalArgs[StackChangeSecretsProviderArgs](v, cmd)
+
 			ctx := cmd.Context()
-			return scspcmd.Run(ctx, args)
+			return scspcmd.Run(ctx, cmdArgs)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&scspcmd.stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackChangeSecretsProviderArgs](v, cmd)
 
 	return cmd
 }
@@ -101,7 +109,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// Get the current stack and its project
-	currentStack, err := requireStack(ctx, cmd.stack, stackLoadOnly, opts)
+	currentStack, err := requireStack(ctx, cmd.Args.Stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}

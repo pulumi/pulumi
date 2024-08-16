@@ -55,24 +55,26 @@ func TestRegress13774(t *testing.T) {
 	chdir(t, tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			Stack:           strings.Join([]string{orgName, projectName, "some-stack"}, "/"),
+			SecretsProvider: "default",
+			Description:     "description", // Needs special escaping for YAML
+			Force:           true,
+		},
 		interactive:       false,
-		yes:               true,
-		stack:             strings.Join([]string{orgName, projectName, "some-stack"}, "/"),
-		secretsProvider:   "default",
-		description:       "description", // Needs special escaping for YAML
 		templateNameOrURL: "typescript",
-		force:             true,
 	}
 
 	// Create new project.
 	err := runNew(context.Background(), args)
-	defer removeStack(t, tempdir, args.stack)
+	defer removeStack(t, tempdir, args.NewArgs.Stack)
 	assert.NoError(t, err)
 
 	// Create new stack on an existing project.
-	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
+	args.NewArgs.Stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
 	err = runNew(context.Background(), args)
-	defer removeStack(t, tempdir, args.stack)
+	defer removeStack(t, tempdir, args.NewArgs.Stack)
 	assert.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
 }
 
@@ -84,12 +86,14 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	chdir(t, tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			SecretsProvider: "default",
+			Description:     "foo: bar", // Needs special escaping for YAML
+			Stack:           stackName,
+		},
 		interactive:       false,
-		yes:               true,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		description:       "foo: bar", // Needs special escaping for YAML
-		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
 
@@ -115,12 +119,14 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	numericProjectName := strconv.Itoa(int(unixTsNanos))
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			Name:            numericProjectName, // Should be serialized as a string.
+			SecretsProvider: "default",
+			Stack:           stackName,
+		},
 		interactive:       false,
-		yes:               true,
-		name:              numericProjectName, // Should be serialized as a string.
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
 		templateNameOrURL: "yaml",
 	}
 
@@ -145,9 +151,11 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, stackName),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -167,12 +175,14 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			SecretsProvider: "default",
+			Stack:           stackName,
+			Yes:             true,
+		},
 		interactive:       true,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
 		templateNameOrURL: "typescript",
-		yes:               true,
 	}
 
 	err := runNew(context.Background(), args)
@@ -205,12 +215,14 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	defaultProjectName := filepath.Base(tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			SecretsProvider: "default",
+			Stack:           stackName,
+			Yes:             true,
+		},
 		interactive:       true,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
 		templateNameOrURL: "typescript",
-		yes:               true,
 	}
 
 	assert.NoError(t, runNew(context.Background(), args))

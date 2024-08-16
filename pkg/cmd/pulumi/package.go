@@ -37,10 +37,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
-func newPackageCmd() *cobra.Command {
+type PackageArgs struct{}
+
+func newPackageCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",
@@ -49,14 +55,17 @@ func newPackageCmd() *cobra.Command {
 Install and configure Pulumi packages and their plugins and SDKs.`,
 		Args: cmdutil.NoArgs,
 	}
-	cmd.AddCommand(
-		newExtractSchemaCommand(),
-		newExtractMappingCommand(),
-		newGenSdkCommand(),
-		newPackagePublishCmd(),
-		newPackagePackCmd(),
-		newPackageAddCmd(),
-	)
+
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[PackageArgs](v, cmd)
+
+	newExtractSchemaCommand(v, cmd)
+	newExtractMappingCommand(v, cmd)
+	newGenSdkCommand(v, cmd)
+	newPackagePublishCmd(v, cmd)
+	newPackagePackCmd(v, cmd)
+	newPackageAddCmd(v, cmd)
+
 	return cmd
 }
 

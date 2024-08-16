@@ -24,6 +24,7 @@ import (
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -35,19 +36,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-type stackArgs struct {
-	showIDs                bool
-	showURNs               bool
-	showSecrets            bool
-	startTime              string
-	showStackName          bool
-	fullyQualifyStackNames bool
+//nolint:lll
+type StackArgs struct {
+	Stack       string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack" argsNoPersist:"true"`
+	ShowIDs     bool   `args:"show-ids" argsShort:"i" argsUsage:"Display each resource's provider-assigned unique ID" argsNoPersist:"true"`
+	ShowURNs    bool   `args:"show-urns" argsShort:"u" argsUsage:"Display each resource's Pulumi-assigned globally unique URN" argsNoPersist:"true"`
+	ShowSecrets bool   `argsUsage:"Display stack outputs which are marked as secret in plaintext" argsNoPersist:"true"`
+
+	// TODO hack/pulumirc args that are in the struct but not the CLI
+	ShowStackName          bool `args:"show-name" argsUsage:"Display only the stack name" argsNoPersist:"true"`
+	FullyQualifyStackNames bool `argsNoPersist:"true" argsShort:"Q" argsUsage:"Show fully-qualified stack names"`
 }
 
-func newStackCmd() *cobra.Command {
-	var stackName string
-	args := stackArgs{}
+type stackArgs struct {
+	StackArgs
 
+	StartTime string
+}
+
+func newStackCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stack",
 		Short: "Manage stacks and view stack state",
@@ -58,52 +68,47 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
+			args := stackArgs{}
+			args.StackArgs = UnmarshalArgs[StackArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts)
+			s, err := requireStack(ctx, args.Stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
 
-			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
+			args.FullyQualifyStackNames = cmdutil.FullyQualifyStackNames
 			return runStack(ctx, s, os.Stdout, args)
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVarP(
-		&args.showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
-	cmd.Flags().BoolVarP(
-		&args.showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
-	cmd.Flags().BoolVar(
-		&args.showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
-	cmd.Flags().BoolVar(
-		&args.showStackName, "show-name", false, "Display only the stack name")
 
-	cmd.AddCommand(newStackExportCmd())
-	cmd.AddCommand(newStackGraphCmd())
-	cmd.AddCommand(newStackImportCmd())
-	cmd.AddCommand(newStackInitCmd())
-	cmd.AddCommand(newStackLsCmd())
-	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackRmCmd())
-	cmd.AddCommand(newStackSelectCmd())
-	cmd.AddCommand(newStackTagCmd())
-	cmd.AddCommand(newStackRenameCmd())
-	cmd.AddCommand(newStackChangeSecretsProviderCmd())
-	cmd.AddCommand(newStackHistoryCmd())
-	cmd.AddCommand(newStackUnselectCmd())
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[StackArgs](v, cmd)
+
+	newStackChangeSecretsProviderCmd(v, cmd)
+	newStackExportCmd(v, cmd)
+	newStackGraphCmd(v, cmd)
+	newStackHistoryCmd(v, cmd)
+	newStackImportCmd(v, cmd)
+	newStackInitCmd(v, cmd)
+	newStackLsCmd(v, cmd)
+	newStackOutputCmd(v, cmd)
+	newStackRenameCmd(v, cmd)
+	newStackRmCmd(v, cmd)
+	newStackSelectCmd(v, cmd)
+	newStackTagCmd(v, cmd)
+	newStackUnselectCmd(cmd)
 
 	return cmd
 }
 
 func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
-	if args.showStackName {
-		if args.fullyQualifyStackNames {
+	if args.ShowStackName {
+		if args.FullyQualifyStackNames {
 			fmt.Fprintln(out, s.Ref().String())
 		} else {
 			fmt.Fprintln(out, s.Ref().Name())
@@ -129,8 +134,8 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 
 			if currentOp := cs.CurrentOperation(); currentOp != nil {
 				fmt.Fprintf(out, "    Update in progress:\n")
-				args.startTime = humanize.Time(time.Unix(currentOp.Started, 0))
-				fmt.Fprintf(out, "	Started: %v\n", args.startTime)
+				args.StartTime = humanize.Time(time.Unix(currentOp.Started, 0))
+				fmt.Fprintf(out, "	Started: %v\n", args.StartTime)
 				fmt.Fprintf(out, "	Requested By: %s\n", currentOp.Author)
 			}
 		}
@@ -138,7 +143,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 
 	if snap != nil {
 		t := snap.Manifest.Time.Local()
-		if args.startTime == "" {
+		if args.StartTime == "" {
 			if !t.IsZero() && t.Before(time.Now()) {
 				fmt.Fprintf(out, "    Last updated: %s (%v)\n", humanize.Time(t), t)
 			}
@@ -167,10 +172,10 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 	if resourceCount == 0 {
 		fmt.Fprintf(out, "    No resources currently in this stack\n")
 	} else {
-		rows, ok := renderTree(snap, args.showURNs, args.showIDs)
+		rows, ok := renderTree(snap, args.ShowURNs, args.ShowIDs)
 		if !ok {
 			for _, res := range snap.Resources {
-				rows = append(rows, renderResourceRow(res, "", "    ", args.showURNs, args.showIDs))
+				rows = append(rows, renderResourceRow(res, "", "    ", args.ShowURNs, args.ShowIDs))
 			}
 		}
 
@@ -180,14 +185,14 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 			Prefix:  "    ",
 		}, nil)
 
-		outputs, err := getStackOutputs(snap, args.showSecrets)
+		outputs, err := getStackOutputs(snap, args.ShowSecrets)
 		if err == nil {
 			fmt.Fprintf(out, "\n")
 			_ = fprintStackOutputs(os.Stdout, outputs)
 
 		}
 
-		if args.showSecrets {
+		if args.ShowSecrets {
 			log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
 		}
 	}

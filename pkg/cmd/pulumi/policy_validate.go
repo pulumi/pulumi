@@ -20,18 +20,27 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newPolicyValidateCmd() *cobra.Command {
-	var argConfig string
+type PolicyValidateArgs struct {
+	Config string `argsUsage:"The file path for the Policy Pack configuration file"`
+}
 
+func newPolicyValidateCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate-config <org-name>/<policy-pack-name> <version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Validate a Policy Pack configuration",
 		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyValidateArgs](v, cmd)
+
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, cliArgs[0], loginToCloud)
@@ -42,10 +51,10 @@ func newPolicyValidateCmd() *cobra.Command {
 			// Get version from cmd argument
 			version := &cliArgs[1]
 
-			// Load the configuration from the user-specified JSON file into config object.
-			var config map[string]*json.RawMessage
-			if argConfig != "" {
-				config, err = loadPolicyConfigFromFile(argConfig)
+			// Load the configuration from the user-specified JSON file into jsonConfig object.
+			var jsonConfig map[string]*json.RawMessage
+			if args.Config != "" {
+				jsonConfig, err = loadPolicyConfigFromFile(args.Config)
 				if err != nil {
 					return err
 				}
@@ -55,7 +64,7 @@ func newPolicyValidateCmd() *cobra.Command {
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					Config:     jsonConfig,
 				})
 			if err != nil {
 				return err
@@ -65,9 +74,10 @@ func newPolicyValidateCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVar(&argConfig, "config", "",
-		"The file path for the Policy Pack configuration file")
-	cmd.MarkFlagRequired("config") //nolint:errcheck
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyValidateArgs](v, cmd)
+
+	contract.AssertNoErrorf(cmd.MarkPersistentFlagRequired("config"), `Could not mark "config" as required`)
 
 	return cmd
 }

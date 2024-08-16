@@ -26,6 +26,7 @@ import (
 
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -36,38 +37,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newStackOutputCmd() *cobra.Command {
-	var socmd stackOutputCmd
-	cmd := &cobra.Command{
-		Use:   "output [property-name]",
-		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Show a stack's output properties",
-		Long: "Show a stack's output properties.\n" +
-			"\n" +
-			"By default, this command lists all output properties exported from a stack.\n" +
-			"If a specific property-name is supplied, just that property's value is shown.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return socmd.Run(cmd.Context(), args)
-		}),
-	}
-
-	cmd.PersistentFlags().BoolVarP(
-		&socmd.jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().BoolVar(
-		&socmd.shellOut, "shell", false, "Emit output as a shell script")
-	cmd.PersistentFlags().StringVarP(
-		&socmd.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVar(
-		&socmd.showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
-
-	return cmd
+type StackOutputArgs struct {
+	Stack       string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	ShowSecrets bool   `argsUsage:"Display outputs which are marked as secret in plaintext"`
+	JSON        bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	Shell       bool   `argsUsage:"Emit output as a shell script"`
 }
 
 type stackOutputCmd struct {
-	stackName   string
-	showSecrets bool
-	jsonOut     bool
-	shellOut    bool
+	Args StackOutputArgs
 
 	OS string // defaults to runtime.GOOS
 
@@ -77,6 +55,31 @@ type stackOutputCmd struct {
 	requireStack func(ctx context.Context, name string, lopt stackLoadOption, opts display.Options) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
+}
+
+func newStackOutputCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
+	var socmd stackOutputCmd
+	cmd := &cobra.Command{
+		Use:   "output [property-name]",
+		Args:  cmdutil.MaximumNArgs(1),
+		Short: "Show a stack's output properties",
+		Long: "Show a stack's output properties.\n" +
+			"\n" +
+			"By default, this command lists all output properties exported from a stack.\n" +
+			"If a specific property-name is supplied, just that property's value is shown.",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			socmd.Args = UnmarshalArgs[StackOutputArgs](v, cmd)
+			return socmd.Run(cmd.Context(), cmdArgs)
+		}),
+	}
+
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackOutputArgs](v, cmd)
+
+	return cmd
 }
 
 func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
@@ -100,18 +103,18 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	var outw stackOutputWriter
-	if cmd.shellOut && cmd.jsonOut {
+	if cmd.Args.Shell && cmd.Args.JSON {
 		return errors.New("only one of --json and --shell may be set")
-	} else if cmd.jsonOut {
+	} else if cmd.Args.JSON {
 		outw = &jsonStackOutputWriter{W: stdout}
-	} else if cmd.shellOut {
+	} else if cmd.Args.Shell {
 		outw = newShellStackOutputWriter(stdout, osys)
 	} else {
 		outw = &consoleStackOutputWriter{W: stdout}
 	}
 
 	// Fetch the current stack and its output properties.
-	s, err := requireStack(ctx, cmd.stackName, stackLoadOnly, opts)
+	s, err := requireStack(ctx, cmd.Args.Stack, stackLoadOnly, opts)
 	if err != nil {
 		return err
 	}
@@ -120,7 +123,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	outputs, err := getStackOutputs(snap, cmd.showSecrets)
+	outputs, err := getStackOutputs(snap, cmd.Args.ShowSecrets)
 	if err != nil {
 		return fmt.Errorf("getting outputs: %w", err)
 	}
@@ -145,7 +148,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		}
 	}
 
-	if cmd.showSecrets {
+	if cmd.Args.ShowSecrets {
 		log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack output")
 	}
 

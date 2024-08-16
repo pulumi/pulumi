@@ -24,15 +24,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newDeploymentRunCmd() *cobra.Command {
-	// Flags for remote operations.
-	remoteArgs := RemoteArgs{}
+type DeploymentRunArgs struct {
+	RemoteArgs        RemoteArgs
+	Stack             string `argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	SuppressPermalink bool   `argsUsage:"Suppress display of the state permalink"`
+}
 
-	var stack string
-	var suppressPermalink bool
-
+func newDeploymentRunCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <operation> [url]",
 		Short: "Launch a deployment job on Pulumi Cloud",
@@ -43,6 +44,8 @@ func newDeploymentRunCmd() *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
+
+			config := UnmarshalArgs[DeploymentRunArgs](v, cmd)
 
 			operation, err := apitype.ParsePulumiOperation(args[0])
 			if err != nil {
@@ -58,7 +61,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 				// we only suppress permalinks if the user passes true. the default is an empty string
 				// which we pass as 'false'
-				SuppressPermalink: suppressPermalink,
+				SuppressPermalink: config.SuppressPermalink,
 			}
 
 			project, _, err := readProject()
@@ -76,29 +79,21 @@ func newDeploymentRunCmd() *cobra.Command {
 					currentBe.Name()))
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, display)
+			s, err := requireStack(ctx, config.Stack, stackOfferNew|stackSetCurrent, display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			if errResult := validateDeploymentFlags(url, remoteArgs); errResult != nil {
+			if errResult := validateDeploymentFlags(url, config.RemoteArgs); errResult != nil {
 				return errResult
 			}
 
-			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, config.RemoteArgs)
 		}),
 	}
 
-	// Remote flags
-	remoteArgs.applyFlagsForDeploymentCommand(cmd)
-
-	cmd.PersistentFlags().BoolVar(
-		&suppressPermalink, "suppress-permalink", false,
-		"Suppress display of the state permalink")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentRunArgs](v, cmd)
 
 	return cmd
 }

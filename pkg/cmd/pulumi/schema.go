@@ -17,9 +17,13 @@ package main
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newSchemaCmd() *cobra.Command {
+func newSchemaCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schema",
 		Short: "Analyze package schemas",
@@ -30,6 +34,9 @@ package schemas for errors.`,
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newSchemaCheckCommand())
+	parentPulumiCmd.AddCommand(cmd)
+
+	newSchemaCheckCommand(v, cmd)
+
 	return cmd
 }

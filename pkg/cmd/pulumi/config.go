@@ -28,6 +28,7 @@ import (
 
 	"github.com/nbutton23/zxcvbn-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"golang.org/x/term"
 
 	"github.com/pulumi/esc"
@@ -48,12 +49,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newConfigCmd() *cobra.Command {
-	var stack string
-	var showSecrets bool
-	var jsonOut bool
-	var open bool
+//nolint:lll
+type ConfigArgs struct {
+	Stack           string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	ShowSecrets     bool   `argsNoPersist:"true" argsUsage:"Show secret values when listing config instead of displaying blinded values"`
+	JSON            bool   `args:"json" argsShort:"j" argsNoPersist:"true" argsUsage:"Emit output as JSON"`
+	Open            bool   `argsNoPersist:"true" argsUsage:"Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise"`
+	StackConfigFile string `args:"config-file" argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
+}
 
+func newConfigCmd(v *viper.Viper, parentPulumiCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage configuration",
@@ -61,8 +66,10 @@ func newConfigCmd() *cobra.Command {
 			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigArgs](v, cmd)
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -72,7 +79,7 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, args.Stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -82,61 +89,52 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
+			// TODO hack/pulumirc: Use viper store here?
 			// If --open is explicitly set, use that value. Otherwise, default to true if --show-secrets is set.
 			openSetByUser := cmd.Flags().Changed("open")
 
 			var openEnvironment bool
 			if openSetByUser {
-				openEnvironment = open
+				openEnvironment = args.Open
 			} else {
-				openEnvironment = showSecrets
+				openEnvironment = args.ShowSecrets
 			}
 
-			return listConfig(ctx, os.Stdout, project, stack, ps, showSecrets, jsonOut, openEnvironment)
+			return listConfig(ctx, os.Stdout, project, stack, ps, args.ShowSecrets, args.JSON, openEnvironment)
 		}),
 	}
 
-	cmd.Flags().BoolVar(
-		&showSecrets, "show-secrets", false,
-		"Show secret values when listing config instead of displaying blinded values")
-	cmd.Flags().BoolVar(
-		&open, "open", false,
-		"Open and resolve any environments listed in the stack configuration. "+
-			"Defaults to true if --show-secrets is set, false otherwise")
-	cmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[ConfigArgs](v, cmd)
 
-	cmd.AddCommand(newConfigGetCmd(&stack))
-	cmd.AddCommand(newConfigRmCmd(&stack))
-	cmd.AddCommand(newConfigRmAllCmd(&stack))
-	cmd.AddCommand(newConfigSetCmd(&stack))
-	cmd.AddCommand(newConfigSetAllCmd(&stack))
-	cmd.AddCommand(newConfigRefreshCmd(&stack))
-	cmd.AddCommand(newConfigCopyCmd(&stack))
-	cmd.AddCommand(newConfigEnvCmd(&stack))
+	newConfigGetCmd(v, cmd)
+	newConfigRmCmd(v, cmd)
+	newConfigRmAllCmd(v, cmd)
+	newConfigSetCmd(v, cmd)
+	newConfigSetAllCmd(v, cmd)
+	newConfigRefreshCmd(v, cmd)
+	newConfigCopyCmd(v, cmd)
+	newConfigEnvCmd(v, cmd)
 
 	return cmd
 }
 
-func newConfigCopyCmd(stack *string) *cobra.Command {
-	var path bool
-	var destinationStackName string
+type ConfigCopyArgs struct {
+	Path                 bool   `argsUsage:"The key contains a path to a property in a map or list to set"`
+	DestinationStackName string `args:"dest" argsShort:"d" argsUsage:"The name of the new stack to copy the config to"`
+}
 
+func newConfigCopyCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	cpCommand := &cobra.Command{
 		Use:   "cp [key]",
 		Short: "Copy config to another stack",
 		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 			"then all of the config from the current stack will be copied to the destination stack.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigCopyArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -147,11 +145,11 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := requireStack(ctx, *stack, stackSetCurrent, opts)
+			currentStack, err := requireStack(ctx, parentArgs.Stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
-			if currentStack.Ref().Name().String() == destinationStackName {
+			if currentStack.Ref().Name().String() == args.DestinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
 			currentProjectStack, err := loadProjectStack(project, currentStack)
@@ -160,7 +158,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get the destination stack
-			destinationStack, err := requireStack(ctx, destinationStackName, stackLoadOnly, opts)
+			destinationStack, err := requireStack(ctx, args.DestinationStackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -170,9 +168,9 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Do we need to copy a single value or the entire map
-			if len(args) > 0 {
+			if len(cmdArgs) > 0 {
 				// A single key was specified so we only need to copy that specific value
-				return copySingleConfigKey(args[0], path, currentStack, currentProjectStack, destinationStack,
+				return copySingleConfigKey(cmdArgs[0], args.Path, currentStack, currentProjectStack, destinationStack,
 					destinationProjectStack)
 			}
 
@@ -198,12 +196,8 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 		}),
 	}
 
-	cpCommand.PersistentFlags().BoolVar(
-		&path, "path", false,
-		"The key contains a path to a property in a map or list to set")
-	cpCommand.PersistentFlags().StringVarP(
-		&destinationStackName, "dest", "d", "",
-		"The name of the new stack to copy the config to")
+	parentConfigCmd.AddCommand(cpCommand)
+	BindFlags[ConfigCopyArgs](v, cpCommand)
 
 	return cpCommand
 }
@@ -300,11 +294,13 @@ func copyEntireConfigMap(currentStack backend.Stack,
 	return requiresSaving, nil
 }
 
-func newConfigGetCmd(stack *string) *cobra.Command {
-	var jsonOut bool
-	var open bool
-	var path bool
+type ConfigGetArgs struct {
+	JSON bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	Open bool `argsDefault:"true" argsUsage:"Open and resolve any environments listed in the stack configuration"`
+	Path bool `argsUsage:"The key contains a path to a property in a map or list to get"`
+}
 
+func newConfigGetCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a single configuration value",
@@ -315,41 +311,40 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			"  - `pulumi config get --path 'names[0]'` will get the value of the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigGetArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, parentArgs.Stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
 
-			key, err := parseConfigKey(args[0])
+			key, err := parseConfigKey(cmdArgs[0])
 			if err != nil {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(ctx, s, key, path, jsonOut, open)
+			return getConfig(ctx, s, key, args.Path, args.JSON, args.Open)
 		}),
 	}
-	getCmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
-	getCmd.Flags().BoolVar(
-		&open, "open", true,
-		"Open and resolve any environments listed in the stack configuration")
-	getCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
-		"The key contains a path to a property in a map or list to get")
+
+	parentConfigCmd.AddCommand(getCmd)
+	BindFlags[ConfigGetArgs](v, getCmd)
 
 	return getCmd
 }
 
-func newConfigRmCmd(stack *string) *cobra.Command {
-	var path bool
+type ConfigRmArgs struct {
+	Path bool `argsUsage:"The key contains a path to a property in a map or list to remove"`
+}
 
+func newConfigRmCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
@@ -360,8 +355,11 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			"  - `pulumi config rm --path 'names[0]'` will remove the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigRmArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -371,12 +369,12 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			stack, err := requireStack(ctx, parentArgs.Stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
 
-			key, err := parseConfigKey(args[0])
+			key, err := parseConfigKey(cmdArgs[0])
 			if err != nil {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
@@ -386,7 +384,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			err = ps.Config.Remove(key, path)
+			err = ps.Config.Remove(key, args.Path)
 			if err != nil {
 				return err
 			}
@@ -394,16 +392,18 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			return saveProjectStack(stack, ps)
 		}),
 	}
-	rmCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
-		"The key contains a path to a property in a map or list to remove")
+
+	parentConfigCmd.AddCommand(rmCmd)
+	BindFlags[ConfigRmArgs](v, rmCmd)
 
 	return rmCmd
 }
 
-func newConfigRmAllCmd(stack *string) *cobra.Command {
-	var path bool
+type ConfigRmAllArgs struct {
+	Path bool `argsUsage:"Parse the keys as paths in a map or list rather than raw strings"`
+}
 
+func newConfigRmAllCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	rmAllCmd := &cobra.Command{
 		Use:   "rm-all <key1> <key2> <key3> ...",
 		Short: "Remove multiple configuration values",
@@ -414,7 +414,9 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			"  - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal" +
 			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[ConfigRmAllArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -425,7 +427,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, *stack, stackOfferNew, opts)
+			stack, err := requireStack(ctx, parentArgs.Stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -435,13 +437,13 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			for _, arg := range args {
+			for _, arg := range cmdArgs {
 				key, err := parseConfigKey(arg)
 				if err != nil {
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
 
-				err = ps.Config.Remove(key, path)
+				err = ps.Config.Remove(key, args.Path)
 				if err != nil {
 					return err
 				}
@@ -450,21 +452,27 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			return saveProjectStack(stack, ps)
 		}),
 	}
-	rmAllCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
-		"Parse the keys as paths in a map or list rather than raw strings")
+
+	parentConfigCmd.AddCommand(rmAllCmd)
+	BindFlags[ConfigRmAllArgs](v, rmAllCmd)
 
 	return rmAllCmd
 }
 
-func newConfigRefreshCmd(stk *string) *cobra.Command {
-	var force bool
+type ConfigRefreshArgs struct {
+	Force bool `argsShort:"f" argsUsage:"Overwrite configuration file, if it exists, without creating a backup"`
+}
+
+func newConfigRefreshCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigRefreshArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -475,7 +483,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stk, stackLoadOnly, opts)
+			s, err := requireStack(ctx, parentArgs.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -527,7 +535,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			}
 
 			// If the configuration file doesn't exist, or force has been passed, save it in place.
-			if _, err = os.Stat(configPath); os.IsNotExist(err) || force {
+			if _, err = os.Stat(configPath); os.IsNotExist(err) || args.Force {
 				return ps.Save(configPath)
 			}
 
@@ -557,17 +565,20 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			return err
 		}),
 	}
-	refreshCmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false, "Overwrite configuration file, if it exists, without creating a backup")
+
+	parentConfigCmd.AddCommand(refreshCmd)
+	BindFlags[ConfigRefreshArgs](v, refreshCmd)
 
 	return refreshCmd
 }
 
-func newConfigSetCmd(stack *string) *cobra.Command {
-	var plaintext bool
-	var secret bool
-	var path bool
+type ConfigSetArgs struct {
+	Path      bool `short:"p" argsUsage:"The key contains a path to a property in a map or list to set"`
+	Plaintext bool `argsUsage:"Save the value as plaintext (unencrypted)"`
+	Secret    bool `argsUsage:"Encrypt the value instead of storing it in plaintext"`
+}
 
+func newConfigSetCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
 		Short: "Set configuration value",
@@ -582,8 +593,11 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"  - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigSetArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -594,20 +608,20 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
+			s, err := requireStack(ctx, parentArgs.Stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
 
-			key, err := parseConfigKey(args[0])
+			key, err := parseConfigKey(cmdArgs[0])
 			if err != nil {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			var value string
 			switch {
-			case len(args) == 2:
-				value = args[1]
+			case len(cmdArgs) == 2:
+				value = cmdArgs[1]
 			case !term.IsTerminal(int(os.Stdin.Fd())):
 				b, readerr := io.ReadAll(os.Stdin)
 				if readerr != nil {
@@ -616,7 +630,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				value = cmdutil.RemoveTrailingNewline(string(b))
 			case !cmdutil.Interactive():
 				return errors.New("config value must be specified in non-interactive mode")
-			case secret:
+			case args.Secret:
 				value, err = cmdutil.ReadConsoleNoEcho("value")
 				if err != nil {
 					return err
@@ -635,7 +649,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 			// Encrypt the config value if needed.
 			var v config.Value
-			if secret {
+			if args.Secret {
 				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
 				// config data.
 				c, _, cerr := getStackEncrypter(s, ps)
@@ -651,14 +665,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewValue(value)
 
 				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
-				if !plaintext && looksLikeSecret(key, value) {
+				if !args.Plaintext && looksLikeSecret(key, value) {
 					return fmt.Errorf("config value for '%s' looks like a secret; "+
 						"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
 						key)
 				}
 			}
 
-			err = ps.Config.Set(key, v, path)
+			err = ps.Config.Set(key, v, args.Path)
 			if err != nil {
 				return err
 			}
@@ -667,24 +681,19 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 		}),
 	}
 
-	setCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
-		"The key contains a path to a property in a map or list to set")
-	setCmd.PersistentFlags().BoolVar(
-		&plaintext, "plaintext", false,
-		"Save the value as plaintext (unencrypted)")
-	setCmd.PersistentFlags().BoolVar(
-		&secret, "secret", false,
-		"Encrypt the value instead of storing it in plaintext")
+	parentConfigCmd.AddCommand(setCmd)
+	BindFlags[ConfigSetArgs](v, setCmd)
 
 	return setCmd
 }
 
-func newConfigSetAllCmd(stack *string) *cobra.Command {
-	var plaintextArgs []string
-	var secretArgs []string
-	var path bool
+type ConfigSetAllArgs struct {
+	Path          bool     `argsUsage:"Parse the keys as paths in a map or list rather than raw strings"`
+	PlaintextArgs []string `args:"plaintext" argsUsage:"Marks a value as plaintext (unencrypted)" argsCommaSplit:"false"`
+	SecretArgs    []string `args:"secret" argsUsage:"Marks a value as secret to be encrypted" argsCommaSplit:"false"`
+}
 
+func newConfigSetAllCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
 		Short: "Set multiple configuration values",
@@ -700,8 +709,10 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[ConfigSetAllArgs](v, cmd)
+			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -712,7 +723,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			stack, err := requireStack(ctx, *stack, stackOfferNew, opts)
+			stack, err := requireStack(ctx, parentArgs.Stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -722,20 +733,20 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			for _, ptArg := range plaintextArgs {
+			for _, ptArg := range args.PlaintextArgs {
 				key, value, err := parseKeyValuePair(ptArg)
 				if err != nil {
 					return err
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
+				err = ps.Config.Set(key, v, args.Path)
 				if err != nil {
 					return err
 				}
 			}
 
-			for _, sArg := range secretArgs {
+			for _, sArg := range args.SecretArgs {
 				key, value, err := parseKeyValuePair(sArg)
 				if err != nil {
 					return err
@@ -752,7 +763,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 				v := config.NewSecureValue(enc)
 
-				err = ps.Config.Set(key, v, path)
+				err = ps.Config.Set(key, v, args.Path)
 				if err != nil {
 					return err
 				}
@@ -762,15 +773,8 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 		}),
 	}
 
-	setCmd.PersistentFlags().BoolVar(
-		&path, "path", false,
-		"Parse the keys as paths in a map or list rather than raw strings")
-	setCmd.PersistentFlags().StringArrayVar(
-		&plaintextArgs, "plaintext", []string{},
-		"Marks a value as plaintext (unencrypted)")
-	setCmd.PersistentFlags().StringArrayVar(
-		&secretArgs, "secret", []string{},
-		"Marks a value as secret to be encrypted")
+	parentConfigCmd.AddCommand(setCmd)
+	BindFlags[ConfigSetAllArgs](v, setCmd)
 
 	return setCmd
 }
@@ -798,6 +802,7 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	return key, value, nil
 }
 
+// TODO hack/pulumirc get rid of this
 var stackConfigFile string
 
 func getProjectStackPath(stack backend.Stack) (string, error) {

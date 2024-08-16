@@ -18,8 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,28 +32,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+//nolint:lll
+type WatchArgs struct {
+	ConfigFile            string `argsCommaSplit:"false" argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
+	Debug                 bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
+	Message               string `argsShort:"m" argsUsage:"Optional message to associate with each update operation"`
+	ExecKind              string
+	Stack                 string   `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	ConfigArray           []string `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to use during the update"`
+	PathArray             []string `args:"path" argsCommaSplit:"false" argsUsage:"Specify one or more relative or absolute paths that need to be watched. A path can point to a folder or a file. Defaults to working directory"`
+	ConfigPath            bool     `argsUsage:"Config keys contain a path to a property in a map or list to set"`
+	PolicyPackPaths       []string `args:"policy-pack" argsUsage:"Run one or more policy packs as part of each update"`
+	PolicyPackConfigPaths []string `args:"policy-pack-config" argsUsage:"Path to JSON file containing the config for the policy pack of the corresponding \"--policy-pack\" flag"`
+	Parallel              int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
+	Refresh               bool     `argsShort:"r" argsUsage:"Refresh the state of the stack's resources before each update"`
+	ShowConfig            bool     `argsUsage:"Show configuration keys and variables"`
+	ShowReplacementSteps  bool     `argsUsage:"Show detailed resource replacement creates and deletes instead of a single step"`
+	ShowSames             bool     `argsUsage:"Show resources that don't need be updated because they haven't changed, alongside those that do"`
+	SecretsProvider       string   `argsUsage:"The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only used when creating a new stack from an existing template" argsDefault:"default"`
+}
+
 // intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
-func newWatchCmd() *cobra.Command {
-	var debug bool
-	var message string
-	var execKind string
-	var stackName string
-	var configArray []string
-	var pathArray []string
-	var configPath bool
-
-	// Flags for engine.UpdateOptions.
-	var policyPackPaths []string
-	var policyPackConfigPaths []string
-	var parallel int
-	var refresh bool
-	var showConfig bool
-	var showReplacementSteps bool
-	var showSames bool
-	var secretsProvider string
-
+func newWatchCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "watch",
 		SuggestFor: []string{"developer", "dev"},
@@ -65,7 +72,9 @@ func newWatchCmd() *cobra.Command {
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, cmdArgs []string) result.Result {
+			args := UnmarshalArgs[WatchArgs](v, cmd)
+
 			ctx := cmd.Context()
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
@@ -76,28 +85,28 @@ func newWatchCmd() *cobra.Command {
 
 			opts.Display = display.Options{
 				Color:                cmdutil.GetGlobalColorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
+				ShowConfig:           args.ShowConfig,
+				ShowReplacementSteps: args.ShowReplacementSteps,
+				ShowSameResources:    args.ShowSames,
 				SuppressOutputs:      true,
 				SuppressProgress:     true,
 				SuppressPermalink:    true,
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
-				Debug:                debug,
+				Debug:                args.Debug,
 			}
 
-			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
+			if err := validatePolicyPackConfig(args.PolicyPackPaths, args.PolicyPackConfigPaths); err != nil {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, args.Stack, stackOfferNew, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(s, configArray, configPath); err != nil {
+			if err := parseAndSaveConfigArray(s, args.ConfigArray, args.ConfigPath); err != nil {
 				return result.FromError(err)
 			}
 
@@ -106,7 +115,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */, false, cmd.Flags())
+			m, err := getUpdateMetadata(args.Message, root, args.ExecKind, "" /* execAgent */, false, cmd.Flags())
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -139,10 +148,10 @@ func newWatchCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-				Parallel:                  parallel,
-				Debug:                     debug,
-				Refresh:                   refresh,
+				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(args.PolicyPackPaths, args.PolicyPackConfigPaths),
+				Parallel:                  args.Parallel,
+				Debug:                     args.Debug,
+				Refresh:                   args.Refresh,
 				UseLegacyDiff:             useLegacyDiff(),
 				UseLegacyRefreshDiff:      useLegacyRefreshDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
@@ -160,7 +169,7 @@ func newWatchCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             backend.CancellationScopes,
-			}, pathArray)
+			}, args.PathArray)
 
 			switch {
 			case res != nil && res.Error() == context.Canceled:
@@ -173,58 +182,14 @@ func newWatchCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringArrayVarP(
-		&pathArray, "path", "", []string{""},
-		"Specify one or more relative or absolute paths that need to be watched. "+
-			"A path can point to a folder or a file. Defaults to working directory")
-	cmd.PersistentFlags().BoolVarP(
-		&debug, "debug", "d", false,
-		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
-	cmd.PersistentFlags().StringArrayVarP(
-		&configArray, "config", "c", []string{},
-		"Config to use during the update")
-	cmd.PersistentFlags().BoolVar(
-		&configPath, "config-path", false,
-		"Config keys contain a path to a property in a map or list to set")
-	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only "+
-			"used when creating a new stack from an existing template")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[WatchArgs](v, cmd)
 
-	cmd.PersistentFlags().StringVarP(
-		&message, "message", "m", "",
-		"Optional message to associate with each update operation")
+	cmd.PersistentFlags().Lookup("parallel").DefValue = strconv.Itoa(defaultParallel)
 
-	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().StringSliceVar(
-		&policyPackPaths, "policy-pack", []string{},
-		"Run one or more policy packs as part of each update")
-	cmd.PersistentFlags().StringSliceVar(
-		&policyPackConfigPaths, "policy-pack-config", []string{},
-		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
-	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", defaultParallel,
-		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
-	cmd.PersistentFlags().BoolVarP(
-		&refresh, "refresh", "r", false,
-		"Refresh the state of the stack's resources before each update")
-	cmd.PersistentFlags().BoolVar(
-		&showConfig, "show-config", false,
-		"Show configuration keys and variables")
-	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", false,
-		"Show detailed resource replacement creates and deletes instead of a single step")
-	cmd.PersistentFlags().BoolVar(
-		&showSames, "show-sames", false,
-		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+	// TODO: hack/pulumirc stackConfigFile is missing/broken
 
-	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// TODO: hack/pulumirc hidden flags
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
 

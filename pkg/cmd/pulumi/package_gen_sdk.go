@@ -23,6 +23,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 
@@ -34,12 +35,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newGenSdkCommand() *cobra.Command {
-	var overlays string
-	var language string
-	var out string
-	var version string
-	var local bool
+type PackageGenSDKArgs struct {
+	Overlays string `argsUsage:"A folder of extra overlay files to copy to the generated SDK"`
+	Language string `argsDefault:"all" argsUsage:"The SDK language to generate: [nodejs|python|go|dotnet|java|all]"`
+	Out      string `argsShort:"o" argsDefault:"./sdk" argsUsage:"The directory to write the SDK to"`
+	Version  string `argsUsage:"The provider plugin version to generate the SDK for"`
+	Local    bool   `argsUsage:"Generate an SDK appropriate for local usage"`
+}
+
+func newGenSdkCommand(
+	v *viper.Viper,
+	parentPackageCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source> [provider parameters]",
 		Args:  cobra.MinimumNArgs(1),
@@ -49,18 +56,20 @@ func newGenSdkCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			source := args[0]
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PackageGenSDKArgs](v, cmd)
+
+			source := cliArgs[0]
 
 			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-			pkg, err := schemaFromSchemaSource(cmd.Context(), source, args[1:])
+			pkg, err := schemaFromSchemaSource(cmd.Context(), source, cliArgs[1:])
 			if err != nil {
 				return err
 			}
-			if version != "" {
-				pkgVersion, err := semver.Parse(version)
+			if args.Version != "" {
+				pkgVersion, err := semver.Parse(args.Version)
 				if err != nil {
-					return fmt.Errorf("invalid version %q: %w", version, err)
+					return fmt.Errorf("invalid version %q: %w", args.Version, err)
 				}
 				if pkg.Version != nil {
 					d.Infof(diag.Message("", "overriding package version %s with %s"), pkg.Version, pkgVersion)
@@ -68,33 +77,31 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				pkg.Version = &pkgVersion
 			}
 			// Normalize from well known language names the the matching runtime names.
-			switch language {
+			switch args.Language {
 			case "csharp", "c#":
-				language = "dotnet"
+				args.Language = "dotnet"
 			case "typescript":
-				language = "nodejs"
+				args.Language = "nodejs"
 			}
 
-			if language == "all" {
+			if args.Language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := genSDK(lang, out, pkg, overlays, local)
+					err := genSDK(lang, args.Out, pkg, args.Overlays, args.Local)
 					if err != nil {
 						return err
 					}
 				}
 				return nil
 			}
-			return genSDK(language, out, pkg, overlays, local)
+			return genSDK(args.Language, args.Out, pkg, args.Overlays, args.Local)
 		}),
 	}
-	cmd.Flags().StringVarP(&language, "language", "", "all",
-		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
-	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
-		"The directory to write the SDK to")
-	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
-	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
-	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
-	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
+
+	parentPackageCmd.AddCommand(cmd)
+	BindFlags[PackageGenSDKArgs](v, cmd)
+
+	contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
+
 	return cmd
 }
 

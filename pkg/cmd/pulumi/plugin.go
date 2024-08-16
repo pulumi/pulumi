@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -24,7 +25,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginCmd() *cobra.Command {
+type PluginArgs struct{}
+
+func newPluginCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plugin",
 		Short: "Manage language and resource provider plugins",
@@ -45,10 +51,13 @@ func newPluginCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPluginInstallCmd())
-	cmd.AddCommand(newPluginLsCmd())
-	cmd.AddCommand(newPluginRmCmd())
-	cmd.AddCommand(newPluginRunCmd())
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[PluginArgs](v, cmd)
+
+	newPluginInstallCmd(v, cmd)
+	newPluginLsCmd(v, cmd)
+	newPluginRmCmd(v, cmd)
+	newPluginRunCmd(v, cmd)
 
 	return cmd
 }

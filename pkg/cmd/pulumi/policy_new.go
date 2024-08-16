@@ -30,19 +30,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type newPolicyArgs struct {
-	dir               string
-	force             bool
-	generateOnly      bool
-	offline           bool
-	templateNameOrURL string
+//nolint:lll
+type PolicyNewArgs struct {
+	Dir          string `argsUsage:"The location to place the generated Policy Pack; if not specified, the current directory is used"`
+	Force        bool   `argsShort:"f" argsUsage:"Forces content to be generated even if it would change existing files"`
+	GenerateOnly bool   `argsShort:"g" argsUsage:"Generate the Policy Pack only; do not install dependencies"`
+	Offline      bool   `argsShort:"o" argsUsage:"Use locally cached templates without making any network requests"`
+
+	// TODO: hack/pulumirc don't show this
+	TemplateNameOrURL string `args:"template-name-or-url"`
 }
 
-func newPolicyNewCmd() *cobra.Command {
-	args := newPolicyArgs{}
-
+func newPolicyNewCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
@@ -57,31 +62,23 @@ func newPolicyNewCmd() *cobra.Command {
 			"Only organization administrators can publish a Policy Pack.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyNewArgs](v, cmd)
+
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
-				args.templateNameOrURL = cliArgs[0]
+				args.TemplateNameOrURL = cliArgs[0]
 			}
 			return runNewPolicyPack(ctx, args)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&args.dir, "dir", "",
-		"The location to place the generated Policy Pack; if not specified, the current directory is used")
-	cmd.PersistentFlags().BoolVarP(
-		&args.force, "force", "f", false,
-		"Forces content to be generated even if it would change existing files")
-	cmd.PersistentFlags().BoolVarP(
-		&args.generateOnly, "generate-only", "g", false,
-		"Generate the Policy Pack only; do not install dependencies")
-	cmd.PersistentFlags().BoolVarP(
-		&args.offline, "offline", "o", false,
-		"Use locally cached templates without making any network requests")
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyNewArgs](v, cmd)
 
 	return cmd
 }
 
-func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
+func runNewPolicyPack(ctx context.Context, args PolicyNewArgs) error {
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
@@ -96,22 +93,22 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
-	if args.dir != "" {
-		cwd, err = useSpecifiedDir(args.dir)
+	if args.Dir != "" {
+		cwd, err = useSpecifiedDir(args.Dir)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Return an error if the directory isn't empty.
-	if !args.force {
+	if !args.Force {
 		if err = errorIfNotEmptyDirectory(cwd); err != nil {
 			return err
 		}
 	}
 
 	// Retrieve the templates-policy repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPolicyPack)
+	repo, err := workspace.RetrieveTemplates(args.TemplateNameOrURL, args.Offline, workspace.TemplateKindPolicyPack)
 	if err != nil {
 		return err
 	}
@@ -142,19 +139,19 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Do a dry run, if we're not forcing files to be overwritten.
-	if !args.force {
+	if !args.Force {
 		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, ""); err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
+				return fmt.Errorf("template '%s' not found: %w", args.TemplateNameOrURL, err)
 			}
 			return err
 		}
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, "", ""); err != nil {
+	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.Force, "", ""); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
+			return fmt.Errorf("template '%s' not found: %w", args.TemplateNameOrURL, err)
 		}
 		return err
 	}
@@ -179,7 +176,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Install dependencies.
-	if !args.generateOnly {
+	if !args.GenerateOnly {
 		if err := installPolicyPackDependencies(ctx, root, proj); err != nil {
 			return err
 		}
@@ -191,7 +188,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			" " + cmdutil.EmojiOr("✨", ""))
 	fmt.Println()
 
-	printPolicyPackNextSteps(proj, root, args.generateOnly, opts)
+	printPolicyPackNextSteps(proj, root, args.GenerateOnly, opts)
 
 	return nil
 }

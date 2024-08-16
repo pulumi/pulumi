@@ -25,10 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func boolPtr(v bool) *bool {
-	return &v
-}
-
 func TestConfigEnvLsCmd(t *testing.T) {
 	t.Parallel()
 
@@ -49,7 +45,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
+		ls := &configEnvLsCmd{parent: parent, args: ConfigEnvLsArgs{JSON: false}}
 		ctx := context.Background()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -74,7 +70,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
+		ls := &configEnvLsCmd{parent: parent, args: ConfigEnvLsArgs{JSON: true}}
 		ctx := context.Background()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -105,7 +101,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
+		ls := &configEnvLsCmd{parent: parent, args: ConfigEnvLsArgs{JSON: false}}
 		ctx := context.Background()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -140,7 +136,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
+		ls := &configEnvLsCmd{parent: parent, args: ConfigEnvLsArgs{JSON: true}}
 		ctx := context.Background()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -176,7 +172,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
+		ls := &configEnvLsCmd{parent: parent, args: ConfigEnvLsArgs{JSON: false}}
 		ctx := context.Background()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -212,7 +208,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
+		ls := &configEnvLsCmd{parent: parent, args: ConfigEnvLsArgs{JSON: true}}
 		ctx := context.Background()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)

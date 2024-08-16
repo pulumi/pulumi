@@ -23,38 +23,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-const allKeyword = "all"
+type PolicyRmArgs struct {
+	Yes bool `argsShort:"y" argsUsage:"Skip confirmation prompts, and proceed with removal anyway"`
+}
 
-func newPolicyRmCmd() *cobra.Command {
-	var yes bool
+func newPolicyRmCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyRmArgs](v, cmd)
+
 			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
+			args.Yes = args.Yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, args[0], loginToCloud)
+			policyPack, err := requirePolicyPack(ctx, cliArgs[0], loginToCloud)
 			if err != nil {
 				return err
 			}
 
 			var version *string
-			if args[1] != allKeyword {
-				version = &args[1]
+			if cliArgs[1] != allKeyword {
+				version = &cliArgs[1]
 			}
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
-			if !yes && !confirmPrompt(prompt, args[0], opts) {
+			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", cliArgs[0])
+			if !args.Yes && !confirmPrompt(prompt, cliArgs[0], opts) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
@@ -70,9 +77,10 @@ func newPolicyRmCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Skip confirmation prompts, and proceed with removal anyway")
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyRmArgs](v, cmd)
 
 	return cmd
 }
+
+const allKeyword = "all"

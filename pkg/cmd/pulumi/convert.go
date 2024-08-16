@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
@@ -48,6 +49,17 @@ import (
 	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
+
+//nolint:lll
+type ConvertArgs struct {
+	OutDir       string   `args:"out" argsDefault:"." argsUsage:"The output directory to write the converted project to"`
+	From         string   `argsDefault:"yaml" argsUsage:"Which converter plugin to use to read the source program"`
+	Language     string   `argsUsage:"Which language plugin to use to generate the Pulumi project"`
+	GenerateOnly bool     `argsUsage:"Generate the converted program(s) only; do not install dependencies"`
+	Mappings     []string `argsUsage:"Any mapping files to use in the conversion"`
+	Strict       bool     `argsUsage:"Fail the conversion on errors such as missing variables"`
+	Name         string   `argsUsage:"The name to use for the converted project; defaults to the directory of the source project"`
+}
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
@@ -91,15 +103,7 @@ func loadConverterPlugin(
 	return converter, nil
 }
 
-func newConvertCmd() *cobra.Command {
-	var outDir string
-	var from string
-	var language string
-	var generateOnly bool
-	var mappings []string
-	var strict bool
-	var name string
-
+func newConvertCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "convert",
 		Short: "Convert Pulumi programs from a supported source program into other supported languages",
@@ -115,6 +119,7 @@ func newConvertCmd() *cobra.Command {
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[ConvertArgs](v, cmd)
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get current working directory: %w", err)
@@ -124,40 +129,23 @@ func newConvertCmd() *cobra.Command {
 				env.Global(),
 				args,
 				cwd,
-				mappings,
-				from,
-				language,
-				outDir,
-				generateOnly,
-				strict,
-				name,
+				config.Mappings,
+				config.From,
+				config.Language,
+				config.OutDir,
+				config.GenerateOnly,
+				config.Strict,
+				config.Name,
 			)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
+	parentCmd.AddCommand(cmd)
+	BindFlags[ConvertArgs](v, cmd)
+
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
-
-	cmd.PersistentFlags().StringVar(
-		&from, "from", "yaml", "Which converter plugin to use to read the source program")
-
-	cmd.PersistentFlags().StringVar(
-		&outDir, "out", ".", "The output directory to write the converted project to")
-
-	cmd.PersistentFlags().BoolVar(
-		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
-
-	cmd.PersistentFlags().StringSliceVar(
-		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
-
-	cmd.PersistentFlags().BoolVar(
-		&strict, "strict", false, "Fail the conversion on errors such as missing variables")
-
-	cmd.PersistentFlags().StringVar(
-		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
 
 	return cmd
 }

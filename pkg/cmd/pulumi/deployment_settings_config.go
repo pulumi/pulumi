@@ -30,7 +30,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+// TODO: hack/pulumirc
 
 const (
 	optYes                         = "Yes"
@@ -51,7 +54,12 @@ const (
 	optSkipIntermediateDeployments = "Skip intermediate deployments"
 )
 
-func newDeploymentCmd() *cobra.Command {
+//nolint:lll
+type DeploymentArgs struct {
+	StackDeploymentConfigFile string `args:"config-file" argsUsage:"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml"`
+}
+
+func newDeploymentCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		// This is temporarily hidden while we iterate over the new set of commands,
 		// we will remove before releasing these new set of features.
@@ -63,21 +71,21 @@ func newDeploymentCmd() *cobra.Command {
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[DeploymentArgs](v, cmd)
+			// TODO: hack/pulumirc
+			stackDeploymentConfigFile = config.StackDeploymentConfigFile
+
 			return cmd.Help()
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&stackDeploymentConfigFile, "config-file", "",
-		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
-
-	cmd.AddCommand(newDeploymentSettingsCmd())
-	cmd.AddCommand(newDeploymentRunCmd())
+	newDeploymentSettingsCmd(v, cmd)
+	newDeploymentRunCmd(v, cmd)
 
 	return cmd
 }
 
-func newDeploymentSettingsCmd() *cobra.Command {
+func newDeploymentSettingsCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
 		Args:  cmdutil.NoArgs,
@@ -92,11 +100,13 @@ func newDeploymentSettingsCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(newDeploymentSettingsInitCmd())
-	cmd.AddCommand(newDeploymentSettingsPullCmd())
-	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
-	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
-	cmd.AddCommand(newDeploymentSettingsEnvCmd())
+	parentCmd.AddCommand(cmd)
+
+	newDeploymentSettingsInitCmd(v, cmd)
+	newDeploymentSettingsPullCmd(v, cmd)
+	newDeploymentSettingsUpdateCmd(v, cmd)
+	newDeploymentSettingsDestroyCmd(v, cmd)
+	newDeploymentSettingsEnvCmd(v, cmd)
 	cmd.AddCommand(newDeploymentSettingsConfigureCmd())
 
 	return cmd
@@ -181,12 +191,15 @@ func initializeDeploymentSettingsCmd(
 	}, nil
 }
 
-func newDeploymentSettingsInitCmd() *cobra.Command {
-	var force bool
-	var stack string
-	var gitSSHPrivateKeyPath string
-	var gitSSHPrivateKeyValue string
+//nolint:lll
+type DeploymentSettingsInitArgs struct {
+	Force                 bool   `argsShort:"f" argsUsage:"Forces content to be generated even if it is already configured"`
+	Stack                 string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	GitSSHPrivateKeyPath  string `args:"git-auth-ssh-private-key-path" argsUsage:"Git SSH private key path"`
+	GitSSHPrivateKeyValue string `args:"git-auth-ssh-private-key" argsUsage:"Git SSH private key"`
+}
 
+func newDeploymentSettingsInitCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "init",
 		SuggestFor: []string{"new", "create"},
@@ -194,36 +207,24 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			config := UnmarshalArgs[DeploymentSettingsInitArgs](v, cmd)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), config.Stack)
 			if err != nil {
 				return err
 			}
 
-			if d.Deployment != nil && !force {
+			if d.Deployment != nil && !config.Force {
 				return fmt.Errorf("Deployment settings already configured for stack %q. Rerun for a "+
 					"different stack by using --stack, update it by using the \"configure\" command or by "+
 					"editing the file manually; or use --force", d.Stack.Ref())
 			}
 
-			return initStackDeploymentCmd(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+			return initStackDeploymentCmd(d, config.GitSSHPrivateKeyPath, config.GitSSHPrivateKeyValue)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&gitSSHPrivateKeyPath, "git-auth-ssh-private-key-path", "",
-		"Git SSH private key path")
-
-	cmd.PersistentFlags().StringVar(
-		&gitSSHPrivateKeyValue, "git-auth-ssh-private-key", "",
-		"Git SSH private key")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
-		"Forces content to be generated even if it is already configured")
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentSettingsInitArgs](v, cmd)
 
 	return cmd
 }

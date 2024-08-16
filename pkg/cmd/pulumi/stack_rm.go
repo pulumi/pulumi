@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -32,11 +33,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newStackRmCmd() *cobra.Command {
-	var stack string
-	var yes bool
-	var force bool
-	var preserveConfig bool
+//nolint:lll
+type StackRmArgs struct {
+	Stack          string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes            bool   `argsShort:"y" argsUsage:"Skip confirmation prompts, and proceed with removal anyway"`
+	Force          bool   `argsShort:"f" argsUsage:"Forces deletion of the stack, leaving behind any resources managed by the stack"`
+	PreserveConfig bool   `argsUsage:"Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack"`
+}
+
+func newStackRmCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -47,33 +55,35 @@ func newStackRmCmd() *cobra.Command {
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackRmArgs](v, cmd)
+
 			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
+			args.Yes = args.Yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.
-			if len(args) > 0 {
-				if stack != "" {
+			if len(cmdArgs) > 0 {
+				if args.Stack != "" {
 					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
-				stack = args[0]
+				args.Stack = cmdArgs[0]
 			}
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
-			if !yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
+			if !args.Yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
-			hasResources, err := s.Remove(ctx, force)
+			hasResources, err := s.Remove(ctx, args.Force)
 			if err != nil {
 				if hasResources {
 					return fmt.Errorf(
@@ -85,7 +95,7 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			if !preserveConfig {
+			if !args.PreserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
 				if proj, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 					// Check that the detected project matches the stacks project, users can run `rm --stack
@@ -107,18 +117,8 @@ func newStackRmCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
-		"Forces deletion of the stack, leaving behind any resources managed by the stack")
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Skip confirmation prompts, and proceed with removal anyway")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVar(
-		&preserveConfig, "preserve-config", false,
-		"Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackRmArgs](v, cmd)
 
 	return cmd
 }

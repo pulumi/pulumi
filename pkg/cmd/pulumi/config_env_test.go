@@ -78,11 +78,11 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error),
 	newStackYAML *string,
 ) *configEnvCmd {
-	stackRef := "stack"
 	return &configEnvCmd{
 		stdin:       stdin,
 		stdout:      stdout,
 		interactive: true,
+		stack:       "stack",
 
 		readProject: func() (*workspace.Project, string, error) {
 			p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
@@ -131,8 +131,6 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			*newStackYAML = string(b)
 			return nil
 		},
-
-		stackRef: &stackRef,
 	}
 }
 

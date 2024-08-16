@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,12 +31,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newLoginCmd() *cobra.Command {
-	var cloudURL string
-	var defaultOrg string
-	var localMode bool
-	var insecure bool
+//nolint:lll
+type LoginArgs struct {
+	CloudURL   string `args:"cloud-url" argsShort:"c" argsUsage:"A cloud URL to log in to"`
+	DefaultOrg string `args:"default-org" argsUsage:"A default org to associate with the login. Please note, currently, only the managed and self-hosted backends support organizations"`
+	LocalMode  bool   `args:"local" argsShort:"l" argsUsage:"Use Pulumi in local-only mode"`
+	Insecure   bool   `argsUsage:"Allow insecure server connections when using SSL"`
+}
 
+func newLoginCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
 		Short: "Log in to the Pulumi Cloud",
@@ -86,33 +93,35 @@ func newLoginCmd() *cobra.Command {
 			"\n" +
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[LoginArgs](v, cmd)
+
 			ctx := cmd.Context()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// If a <cloud> was specified as an argument, use it.
-			if len(args) > 0 {
-				if cloudURL != "" {
+			if len(cliArgs) > 0 {
+				if args.CloudURL != "" {
 					return errors.New("only one of --cloud-url or argument URL may be specified, not both")
 				}
-				cloudURL = args[0]
+				args.CloudURL = cliArgs[0]
 			}
 
 			// For local mode, store state by default in the user's home directory.
-			if localMode {
-				if cloudURL != "" {
+			if args.LocalMode {
+				if args.CloudURL != "" {
 					return errors.New("a URL may not be specified when --local mode is enabled")
 				}
-				cloudURL = diy.FilePathPrefix + "~"
+				args.CloudURL = diy.FilePathPrefix + "~"
 			}
 
 			// If we're on Windows, and this is a local login path, then allow the user to provide
 			// backslashes as path separators.  We will normalize them here to forward slashes as that's
 			// what the gocloud blob system requires.
-			if strings.HasPrefix(cloudURL, diy.FilePathPrefix) && os.PathSeparator != '/' {
-				cloudURL = filepath.ToSlash(cloudURL)
+			if strings.HasPrefix(args.CloudURL, diy.FilePathPrefix) && os.PathSeparator != '/' {
+				args.CloudURL = filepath.ToSlash(args.CloudURL)
 			}
 
 			// Try to read the current project
@@ -121,39 +130,39 @@ func newLoginCmd() *cobra.Command {
 				return err
 			}
 
-			if cloudURL == "" {
+			if args.CloudURL == "" {
 				var err error
-				cloudURL, err = workspace.GetCurrentCloudURL(project)
+				args.CloudURL, err = workspace.GetCurrentCloudURL(project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
+				args.CloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
 				strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
-					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
+					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", args.CloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
-				if err := validateCloudBackendType(cloudURL); err != nil {
+				if err := validateCloudBackendType(args.CloudURL); err != nil {
 					return err
 				}
 			}
 
 			var be backend.Backend
-			if diy.IsDIYBackendURL(cloudURL) {
-				be, err = diy.Login(ctx, cmdutil.Diag(), cloudURL, project)
-				if defaultOrg != "" {
+			if diy.IsDIYBackendURL(args.CloudURL) {
+				be, err = diy.Login(ctx, cmdutil.Diag(), args.CloudURL, project)
+				if args.DefaultOrg != "" {
 					return errors.New("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = loginToCloud(ctx, cloudURL, project, insecure, displayOptions)
+				be, err = loginToCloud(ctx, args.CloudURL, project, args.Insecure, displayOptions)
 				// if the user has specified a default org to associate with the backend
-				if defaultOrg != "" {
+				if args.DefaultOrg != "" {
 					cloudURL, err := workspace.GetCurrentCloudURL(project)
 					if err != nil {
 						return err
 					}
-					if err := workspace.SetBackendConfigDefaultOrg(cloudURL, defaultOrg); err != nil {
+					if err := workspace.SetBackendConfigDefaultOrg(cloudURL, args.DefaultOrg); err != nil {
 						return err
 					}
 				}
@@ -173,11 +182,8 @@ func newLoginCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log in to")
-	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
-		"Please note, currently, only the managed and self-hosted backends support organizations")
-	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
-	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[LoginArgs](v, cmd)
 
 	return cmd
 }

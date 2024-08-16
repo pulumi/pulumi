@@ -28,6 +28,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -44,10 +45,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newAboutCmd() *cobra.Command {
-	var jsonOut bool
-	var transitiveDependencies bool
-	var stack string
+//nolint:lll
+type AboutConfig struct {
+	JSON                   bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	TransitiveDependencies bool   `args:"transitive" argsShort:"t" argsUsage:"Include transitive dependencies"`
+	Stack                  string `argsShort:"s" argsUsage:"The name of the stack to get info on. Defaults to the current stack"`
+}
+
+func newAboutCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	short := "Print information about the Pulumi environment."
 	cmd := &cobra.Command{
 		Use:   "about",
@@ -64,9 +72,10 @@ func newAboutCmd() *cobra.Command {
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[AboutConfig](v, cmd)
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
-			if jsonOut {
+			summary := getSummaryAbout(ctx, config.TransitiveDependencies, config.Stack)
+			if config.JSON {
 				return printJSON(summary)
 			}
 			summary.Print()
@@ -74,15 +83,10 @@ func newAboutCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(newAboutEnvCmd())
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[AboutConfig](v, cmd)
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to get info on. Defaults to the current stack")
-	cmd.PersistentFlags().BoolVarP(
-		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+	newAboutEnvCmd(v, cmd)
 
 	return cmd
 }

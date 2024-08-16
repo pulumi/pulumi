@@ -104,10 +104,12 @@ func runMoveWithOptions(
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:            true,
-		Stdout:         &stdout,
-		Colorizer:      colors.Never,
-		IncludeParents: options.IncludeParents,
+		Args: StateMoveArgs{
+			IncludeParents: options.IncludeParents,
+			Yes:            true,
+		},
+		Stdout:    &stdout,
+		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
 	assert.NoError(t, err)
@@ -388,7 +390,9 @@ func TestMoveWithExistingProvider(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -450,7 +454,9 @@ func TestMoveWithExistingResource(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -533,7 +539,9 @@ func TestEmptySourceStack(t *testing.T) {
 	})
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-there"}, mp, mp)
@@ -590,7 +598,9 @@ runtime: mock
 `), 0o600)
 	require.NoError(t, err)
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
@@ -671,7 +681,9 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -767,7 +779,9 @@ func TestMoveUnknownResource(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -874,7 +888,9 @@ func TestMoveProvider(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -993,7 +1009,9 @@ runtime: mock
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -1082,7 +1100,9 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}
@@ -1165,7 +1185,9 @@ runtime: mock
 	var stdout bytes.Buffer
 
 	stateMoveCmd := stateMoveCmd{
-		Yes:       true,
+		Args: StateMoveArgs{
+			Yes: true,
+		},
 		Stdout:    &stdout,
 		Colorizer: colors.Never,
 	}

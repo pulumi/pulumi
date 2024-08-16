@@ -32,9 +32,30 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newStateUpgradeCommand() *cobra.Command {
+type StateUpgradeArgs struct {
+	Yes bool `args:"yes" argsShort:"y" argsUsage:"Automatically approve and perform the upgrade"`
+}
+
+// stateUpgradeCmd implements the 'pulumi state upgrade' command.
+type stateUpgradeCmd struct {
+	Args StateUpgradeArgs
+
+	Stdin  io.Reader // defaults to os.Stdin
+	Stdout io.Writer // defaults to os.Stdout
+	Stderr io.Writer // defaults to os.Stderr
+
+	// Used to mock out the currentBackend function for testing.
+	// Defaults to currentBackend function.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func newStateUpgradeCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	var sucmd stateUpgradeCmd
 	cmd := &cobra.Command{
 		Use:   "upgrade",
@@ -45,27 +66,19 @@ This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			sucmd.Args = UnmarshalArgs[StateUpgradeArgs](v, cmd)
+
 			if err := sucmd.Run(cmd.Context()); err != nil {
 				return result.FromError(err)
 			}
 			return nil
 		}),
 	}
-	cmd.Flags().BoolVarP(&sucmd.yes, "yes", "y", false, "Automatically approve and perform the upgrade")
+
+	parentStateCmd.AddCommand(cmd)
+	BindFlags[StateUpgradeArgs](v, cmd)
+
 	return cmd
-}
-
-// stateUpgradeCmd implements the 'pulumi state upgrade' command.
-type stateUpgradeCmd struct {
-	Stdin  io.Reader // defaults to os.Stdin
-	Stdout io.Writer // defaults to os.Stdout
-	Stderr io.Writer // defaults to os.Stderr
-
-	yes bool
-
-	// Used to mock out the currentBackend function for testing.
-	// Defaults to currentBackend function.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
@@ -107,7 +120,7 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 	prompt := "This will upgrade the current backend to the latest supported version.\n" +
 		"Older versions of Pulumi will not be able to read the new format.\n" +
 		"Are you sure you want to proceed?"
-	if !cmd.yes && !confirmPrompt(prompt, "yes", dopts) {
+	if !cmd.Args.Yes && !confirmPrompt(prompt, "yes", dopts) {
 		fmt.Fprintln(cmd.Stdout, "Upgrade cancelled")
 		return nil
 	}

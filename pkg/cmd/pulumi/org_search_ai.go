@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/pkg/browser"
@@ -27,23 +28,61 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type searchAICmd struct {
-	searchCmd
-	queryString string
-	openWeb     bool
+//nolint:lll
+type OrgSearchAIArgs struct {
+	Organization   string       `args:"org" argsUsage:"Organization name to search within"`
+	CSVDelimiter   Delimiter    `args:"delimiter" argsUsage:"Delimiter to use when rendering CSV output."`
+	OutputFormat   outputFormat `args:"output" argsType:"var" argsShort:"o" argsUsage:"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'."`
+	QueryString    string       `args:"query" argsShort:"q" argsUsage:"Plaintext natural language query"`
+	OpenWebBrowser bool         `args:"web" argsUsage:"Open the search results in a web browser."`
 }
 
-func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
+type searchAICmd struct {
+	Args OrgSearchAIArgs
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func newSearchAICmd(
+	v *viper.Viper,
+	parentOrgSearchCmd *cobra.Command,
+) *cobra.Command {
+	var scmd searchAICmd
+	cmd := &cobra.Command{
+		Use:   "ai",
+		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
+		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
+		Args:  cmdutil.NoArgs,
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			scmd.Args = UnmarshalArgs[OrgSearchAIArgs](v, cmd)
+			ctx := cmd.Context()
+			return scmd.Run(ctx, args)
+		},
+		),
+	}
+
+	parentOrgSearchCmd.AddCommand(cmd)
+	BindFlags[OrgSearchAIArgs](v, cmd)
+
+	return cmd
+}
+
+func (cmd *searchAICmd) Run(ctx context.Context, cliArgs []string) error {
 	interactive := cmdutil.Interactive()
 
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
 	}
 
-	if cmd.outputFormat == "" {
-		cmd.outputFormat = outputFormatTable
+	if cmd.Args.OutputFormat == "" {
+		cmd.Args.OutputFormat = outputFormatTable
 	}
 
 	if cmd.currentBackend == nil {
@@ -79,72 +118,36 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if defaultOrg != "" && cmd.orgName == "" {
-		cmd.orgName = defaultOrg
+	if defaultOrg != "" && cmd.Args.Organization == "" {
+		cmd.Args.Organization = defaultOrg
 	}
-	if cmd.orgName == "" {
-		cmd.orgName = userName
+	if cmd.Args.Organization == "" {
+		cmd.Args.Organization = userName
 	}
-	if cmd.orgName == userName {
+	if cmd.Args.Organization == userName {
 		return fmt.Errorf(
 			"%s is an individual account, not an organization."+
 				"Organization search is not supported for individual accounts",
 			userName,
 		)
 	}
-	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
-		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
+	if !sliceContains(orgs, cmd.Args.Organization) && cmd.Args.Organization != "" {
+		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.Args.Organization)
 	}
 
-	res, err := cloudBackend.NaturalLanguageSearch(ctx, cmd.orgName, cmd.queryString)
+	res, err := cloudBackend.NaturalLanguageSearch(ctx, cmd.Args.Organization, cmd.Args.QueryString)
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	err = cmd.Args.OutputFormat.Render(cmd.Stdout, rune(cmd.Args.CSVDelimiter), res)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
 	}
-	if cmd.openWeb {
+	if cmd.Args.OpenWebBrowser {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
 			return fmt.Errorf("failed to open URL: %w", err)
 		}
 	}
 	return nil
-}
-
-func newSearchAICmd() *cobra.Command {
-	var scmd searchAICmd
-	cmd := &cobra.Command{
-		Use:   "ai",
-		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
-		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
-		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			return scmd.Run(ctx, args)
-		},
-		),
-	}
-	cmd.PersistentFlags().StringVar(
-		&scmd.orgName, "org", "",
-		"Organization name to search within",
-	)
-	cmd.PersistentFlags().StringVarP(
-		&scmd.queryString, "query", "q", "",
-		"Plaintext natural language query",
-	)
-	cmd.PersistentFlags().VarP(
-		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.",
-	)
-	cmd.PersistentFlags().Var(
-		&scmd.csvDelimiter, "delimiter",
-		"Delimiter to use when rendering CSV output.",
-	)
-	cmd.PersistentFlags().BoolVar(
-		&scmd.openWeb, "web", false,
-		"Open the search results in a web browser.",
-	)
-	return cmd
 }

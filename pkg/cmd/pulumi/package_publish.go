@@ -27,34 +27,38 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func newPackagePublishCmd() *cobra.Command {
-	var publCmd publishCmd
+type PackagePublishArgs struct {
+	Path string `argsUsage:"The path to the root of your package.\n  Example: ./sdk/nodejs"`
+}
+
+func newPackagePublishCmd(
+	v *viper.Viper,
+	parentPackageCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "publish-sdk <language>",
 		Args:   cobra.RangeArgs(0, 1),
 		Short:  "Publish a package SDK to supported package registries.",
 		Hidden: !env.Dev.Value(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PackagePublishArgs](v, cmd)
 			ctx := cmd.Context()
-			return publCmd.Run(ctx, args)
+			return args.Run(ctx, cliArgs)
 		}),
 	}
-	cmd.PersistentFlags().StringVar(&publCmd.Path, "path", "",
-		`The path to the root of your package.
-	Example: ./sdk/nodejs
-	`)
+
+	parentPackageCmd.AddCommand(cmd)
+	BindFlags[PackagePublishArgs](v, cmd)
+
 	return cmd
 }
 
-type publishCmd struct {
-	Path string
-}
-
-func (cmd *publishCmd) Run(ctx context.Context, args []string) error {
+func (cmd *PackagePublishArgs) Run(ctx context.Context, args []string) error {
 	lang := "all"
 	if len(args) > 0 {
 		lang = args[0]

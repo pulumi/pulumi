@@ -155,11 +155,11 @@ func TestListStacksPagination(t *testing.T) {
 	// Execute the command, which will use our mocked backend. Confirm the expected number of
 	// backend calls were made.
 	ctx := context.Background()
-	args := stackLSArgs{
-		orgFilter:  testOrgName,
-		projFilter: testProjName,
+	config := StackLsArgs{
+		Organization: testOrgName,
+		Project:      testProjName,
 	}
-	if err := runStackLS(ctx, args); err != nil {
+	if err := runStackLS(ctx, config, nil); err != nil {
 		t.Fatalf("runStackLS returned an error: %v", err)
 	}
 	if len(requestsMade) != 4 {
@@ -227,12 +227,11 @@ func TestListStacksJsonProgress(t *testing.T) {
 
 	var buff bytes.Buffer
 	ctx := context.Background()
-	args := stackLSArgs{
-		jsonOut:   true,
-		allStacks: true,
-		stdout:    &buff,
+	config := StackLsArgs{
+		JSON:      true,
+		AllStacks: true,
 	}
-	err := runStackLS(ctx, args)
+	err := runStackLS(ctx, config, &buff)
 	assert.NoError(t, err)
 
 	assert.JSONEq(t, `[
@@ -285,12 +284,11 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 
 	var buff bytes.Buffer
 	ctx := context.Background()
-	args := stackLSArgs{
-		jsonOut:   true,
-		allStacks: true,
-		stdout:    &buff,
+	config := StackLsArgs{
+		JSON:      true,
+		AllStacks: true,
 	}
-	err := runStackLS(ctx, args)
+	err := runStackLS(ctx, config, &buff)
 	assert.NoError(t, err)
 
 	assert.JSONEq(t, `[

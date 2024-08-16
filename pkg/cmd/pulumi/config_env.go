@@ -28,9 +28,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newConfigEnvCmd(stackRef *string) *cobra.Command {
+type ConfigEnvArgs struct{}
+
+func newConfigEnvCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
@@ -38,7 +41,6 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 		requireStack:     requireStack,
 		loadProjectStack: loadProjectStack,
 		saveProjectStack: saveProjectStack,
-		stackRef:         stackRef,
 	}
 
 	cmd := &cobra.Command{
@@ -49,10 +51,13 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newConfigEnvInitCmd(&impl))
-	cmd.AddCommand(newConfigEnvAddCmd(&impl))
-	cmd.AddCommand(newConfigEnvRmCmd(&impl))
-	cmd.AddCommand(newConfigEnvLsCmd(&impl))
+	parentConfigCmd.AddCommand(cmd)
+	BindFlags[ConfigEnvArgs](v, cmd)
+
+	newConfigEnvInitCmd(v, cmd, &impl)
+	newConfigEnvAddCmd(v, cmd, &impl)
+	newConfigEnvRmCmd(v, cmd, &impl)
+	newConfigEnvLsCmd(v, cmd, &impl)
 
 	return cmd
 }
@@ -61,8 +66,10 @@ type configEnvCmd struct {
 	stdin  io.Reader
 	stdout io.Writer
 
-	interactive bool
+	args        ConfigEnvArgs
+	stack       string
 	color       colors.Colorization
+	interactive bool
 
 	readProject func() (*workspace.Project, string, error)
 
@@ -76,11 +83,12 @@ type configEnvCmd struct {
 	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
 
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
-
-	stackRef *string
 }
 
-func (cmd *configEnvCmd) initArgs() {
+func (cmd *configEnvCmd) initArgs(v *viper.Viper, cobraCommand *cobra.Command) {
+	cmd.args = UnmarshalArgs[ConfigEnvArgs](v, cobraCommand)
+	parentConfig := UnmarshalArgs[ConfigArgs](v, cobraCommand)
+	cmd.stack = parentConfig.Stack
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
 }
@@ -94,7 +102,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(ctx, cmd.stack, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}

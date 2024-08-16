@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func verifyInteractiveMode(yes bool) error {
@@ -33,16 +34,19 @@ func verifyInteractiveMode(yes bool) error {
 	return nil
 }
 
-func newDeploymentSettingsPullCmd() *cobra.Command {
-	var stack string
+type DeploymentSettingsPullArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
 
+func newDeploymentSettingsPullCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull",
 		Args:  cmdutil.ExactArgs(0),
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			config := UnmarshalArgs[DeploymentSettingsPullArgs](v, cmd)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), config.Stack)
 			if err != nil {
 				return err
 			}
@@ -65,17 +69,18 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentSettingsPullArgs](v, cmd)
 
 	return cmd
 }
 
-func newDeploymentSettingsUpdateCmd() *cobra.Command {
-	var stack string
-	var yes bool
+type DeploymentSettingsUpdateArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes   bool   `argsShort:"y" argsUsage:"Automatically confirm every confirmation prompt"`
+}
 
+func newDeploymentSettingsUpdateCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "up",
 		Aliases:    []string{"update"},
@@ -85,12 +90,13 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			config := UnmarshalArgs[DeploymentSettingsUpdateArgs](v, cmd)
 
-			if err := verifyInteractiveMode(yes); err != nil {
+			if err := verifyInteractiveMode(config.Yes); err != nil {
 				return err
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), config.Stack)
 			if err != nil {
 				return err
 			}
@@ -100,7 +106,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 			}
 
 			confirm := askForConfirmation("This action will override the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, false, yes)
+				"do you want to continue?", d.DisplayOptions.Color, false, config.Yes)
 
 			if !confirm {
 				return nil
@@ -115,21 +121,18 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Automatically confirm every confirmation prompt")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentSettingsUpdateArgs](v, cmd)
 
 	return cmd
 }
 
-func newDeploymentSettingsDestroyCmd() *cobra.Command {
-	var stack string
-	var yes bool
+type DeploymentSettingsDestroyArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes   bool   `argsShort:"y" argsUsage:"Automatically confirm every confirmation prompt"`
+}
 
+func newDeploymentSettingsDestroyCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "destroy",
 		Aliases:    []string{"down", "dn", "clear"},
@@ -139,18 +142,19 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Long:       "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			config := UnmarshalArgs[DeploymentSettingsDestroyArgs](v, cmd)
 
-			if err := verifyInteractiveMode(yes); err != nil {
+			if err := verifyInteractiveMode(config.Yes); err != nil {
 				return err
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), config.Stack)
 			if err != nil {
 				return err
 			}
 
 			confirm := askForConfirmation("This action will clear the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, false, yes)
+				"do you want to continue?", d.DisplayOptions.Color, false, config.Yes)
 			if !confirm {
 				return nil
 			}
@@ -164,22 +168,19 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Automatically confirm every confirmation prompt")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentSettingsDestroyArgs](v, cmd)
 
 	return cmd
 }
 
-func newDeploymentSettingsEnvCmd() *cobra.Command {
-	var stack string
-	var secret bool
-	var remove bool
+type DeploymentSettingsEnvArgs struct {
+	Stack  string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Secret bool   `argsUsage:"whether the value should be treated as a secret and be encrypted"`
+	Remove bool   `argsUsage:"whether the key should be removed"`
+}
 
+func newDeploymentSettingsEnvCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "env <key> [value]",
 		Args:  cmdutil.RangeArgs(1, 2),
@@ -187,7 +188,9 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Long:  "",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
+			config := UnmarshalArgs[DeploymentSettingsEnvArgs](v, cmd)
+
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), config.Stack)
 			if err != nil {
 				return err
 			}
@@ -204,12 +207,12 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			key = args[0]
 
 			if len(args) == 2 {
-				if remove {
+				if config.Remove {
 					return errors.New("value not supported when removing keys")
 				}
 				value = args[1]
 			} else {
-				if !remove {
+				if !config.Remove {
 					return errors.New("value cannot be empty")
 				}
 			}
@@ -222,11 +225,11 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 				d.Deployment.DeploymentSettings.Operation.EnvironmentVariables = make(map[string]apitype.SecretValue)
 			}
 
-			if remove {
+			if config.Remove {
 				delete(d.Deployment.DeploymentSettings.Operation.EnvironmentVariables, key)
 			} else {
 				var secretValue *apitype.SecretValue
-				if secret {
+				if config.Secret {
 					secretValue, err = d.Backend.EncryptStackDeploymentSettingsSecret(ctx, d.Stack, value)
 					if err != nil {
 						return err
@@ -250,19 +253,9 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVar(
-		&secret, "secret", false,
-		"whether the value should be treated as a secret and be encrypted")
-
-	cmd.PersistentFlags().BoolVar(
-		&remove, "remove", false,
-		"whether the key should be removed")
-
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentSettingsEnvArgs](v, cmd)
 	cmd.MarkFlagsMutuallyExclusive("secret", "remove")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }

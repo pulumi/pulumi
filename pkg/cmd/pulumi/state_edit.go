@@ -34,10 +34,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newStateEditCommand() *cobra.Command {
-	var stackName string
+type StateEditArgs struct {
+	Stack string `argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
+type stateEditCmd struct {
+	Args      StateEditArgs
+	Stdin     io.Reader
+	Stdout    io.Writer
+	Colorizer colors.Colorization
+}
+
+func newStateEditCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	stateEdit := &stateEditCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -54,11 +68,13 @@ specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			stateEdit.Args = UnmarshalArgs[StateEditArgs](v, cmd)
+
 			if !cmdutil.Interactive() {
 				return result.Error("pulumi state edit must be run in interactive mode")
 			}
 			ctx := cmd.Context()
-			s, err := requireStack(ctx, stackName, stackLoadOnly, display.Options{
+			s, err := requireStack(ctx, stateEdit.Args.Stack, stackLoadOnly, display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
@@ -71,16 +87,11 @@ a preview showing a diff of the altered state.`,
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().StringVar(
-		&stackName, "stack", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	return cmd
-}
 
-type stateEditCmd struct {
-	Stdin     io.Reader
-	Stdout    io.Writer
-	Colorizer colors.Colorization
+	parentStateCmd.AddCommand(cmd)
+	BindFlags[StateEditArgs](v, cmd)
+
+	return cmd
 }
 
 type snapshotBuffer struct {

@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -27,9 +28,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func newCancelCmd() *cobra.Command {
-	var yes bool
-	var stack string
+type CancelArgs struct {
+	Yes   bool   `argsShort:"y" argsUsage:"Skip confirmation prompts, and proceed with cancellation anyway"`
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
+func newCancelCmd(v *viper.Viper, parentPulumiCommand *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -42,22 +46,23 @@ func newCancelCmd() *cobra.Command {
 			"\n" +
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			ctx := cmd.Context()
+			args := UnmarshalArgs[CancelArgs](v, cmd)
 			// Use the stack provided or, if missing, default to the current one.
-			if len(args) > 0 {
-				if stack != "" {
+			if len(cmdArgs) > 0 {
+				if args.Stack != "" {
 					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
 
-				stack = args[0]
+				args.Stack = cmdArgs[0]
 			}
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -65,7 +70,7 @@ func newCancelCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			stackName := s.Ref().Name().String()
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
-			if cmdutil.Interactive() && (!yes && !confirmPrompt(prompt, stackName, opts)) {
+			if cmdutil.Interactive() && (!args.Yes && !confirmPrompt(prompt, stackName, opts)) {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
@@ -83,12 +88,8 @@ func newCancelCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Skip confirmation prompts, and proceed with cancellation anyway")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentPulumiCommand.AddCommand(cmd)
+	BindFlags[CancelArgs](v, cmd)
 
 	return cmd
 }

@@ -44,11 +44,11 @@ func TestStackGraphCmd(t *testing.T) {
 		t.Run("Smoke test", func(t *testing.T) {
 			t.Parallel()
 
-			opts := graphCommandOptions{}
-			dg := makeDependencyGraph(&snap, &opts)
+			config := StackGraphArgs{}
+			dg := makeDependencyGraph(&snap, &config)
 
 			var outputBuf bytes.Buffer
-			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			require.NoError(t, dotconv.Print(dg, &outputBuf, config.DotFragment))
 
 			dotOutput := outputBuf.String()
 
@@ -61,13 +61,13 @@ func TestStackGraphCmd(t *testing.T) {
 		t.Run("dot fragment is inserted", func(t *testing.T) {
 			t.Parallel()
 
-			opts := graphCommandOptions{
-				dotFragment: "[node shape=rect]\n[edge penwidth=2]",
+			config := StackGraphArgs{
+				DotFragment: "[node shape=rect]\n[edge penwidth=2]",
 			}
-			dg := makeDependencyGraph(&snap, &opts)
+			dg := makeDependencyGraph(&snap, &config)
 
 			var outputBuf bytes.Buffer
-			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			require.NoError(t, dotconv.Print(dg, &outputBuf, config.DotFragment))
 
 			dotOutput := outputBuf.String()
 
@@ -111,11 +111,11 @@ func TestStackGraphCmd(t *testing.T) {
 			t.Parallel()
 			expectedMaxNode := 2
 
-			opts := graphCommandOptions{}
-			dg := makeDependencyGraph(&snap, &opts)
+			config := StackGraphArgs{}
+			dg := makeDependencyGraph(&snap, &config)
 
 			var outputBuf bytes.Buffer
-			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			require.NoError(t, dotconv.Print(dg, &outputBuf, config.DotFragment))
 
 			dotOutput := outputBuf.String()
 
@@ -135,13 +135,13 @@ func TestStackGraphCmd(t *testing.T) {
 				"provider", "parent", "child",
 			}
 
-			opts := graphCommandOptions{
-				shortNodeName: true,
+			config := StackGraphArgs{
+				ShortNodeNames: true,
 			}
-			dg := makeDependencyGraph(&snap, &opts)
+			dg := makeDependencyGraph(&snap, &config)
 
 			var outputBuf bytes.Buffer
-			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+			require.NoError(t, dotconv.Print(dg, &outputBuf, config.DotFragment))
 
 			dotOutput := outputBuf.String()
 

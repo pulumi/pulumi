@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -32,7 +33,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newSchemaCheckCommand() *cobra.Command {
+type SchemaCheckArgs struct{}
+
+func newSchemaCheckCommand(
+	v *viper.Viper,
+	parentSchemaCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check",
 		Args:  cmdutil.ExactArgs(1),
@@ -42,8 +48,8 @@ func newSchemaCheckCommand() *cobra.Command {
 			"Ensure that a Pulumi package schema meets the requirements imposed by the\n" +
 			"schema spec as well as additional requirements imposed by the supported\n" +
 			"target languages.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			file := args[0]
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			file := cmdArgs[0]
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
@@ -79,6 +85,9 @@ func newSchemaCheckCommand() *cobra.Command {
 			return err
 		}),
 	}
+
+	parentSchemaCmd.AddCommand(cmd)
+	BindFlags[SchemaCheckArgs](v, cmd)
 
 	return cmd
 }

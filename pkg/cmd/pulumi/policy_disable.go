@@ -18,22 +18,27 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type policyDisableArgs struct {
-	policyGroup string
-	version     string
+//nolint:lll
+type PolicyDisableArgs struct {
+	PolicyGroup string `argsUsage:"The Policy Group for which the Policy Pack will be disabled; if not specified, the default Policy Group is used"`
+	Version     string `argsUsage:"The version of the Policy Pack that will be disabled; if not specified, any enabled version of the Policy Pack will be disabled"`
 }
 
-func newPolicyDisableCmd() *cobra.Command {
-	args := policyDisableArgs{}
-
+func newPolicyDisableCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "disable <org-name>/<policy-pack-name>",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Disable a Policy Pack for a Pulumi organization",
 		Long:  "Disable a Policy Pack for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyDisableArgs](v, cmd)
+
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			var err error
@@ -43,20 +48,14 @@ func newPolicyDisableCmd() *cobra.Command {
 			}
 
 			// Attempt to disable the Policy Pack.
-			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
-				VersionTag: &args.version, Scopes: backend.CancellationScopes,
+			return policyPack.Disable(ctx, args.PolicyGroup, backend.PolicyPackOperation{
+				VersionTag: &args.Version, Scopes: backend.CancellationScopes,
 			})
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&args.policyGroup, "policy-group", "",
-		"The Policy Group for which the Policy Pack will be disabled; if not specified, the default Policy Group is used")
-
-	cmd.PersistentFlags().StringVar(
-		&args.version, "version", "",
-		"The version of the Policy Pack that will be disabled; "+
-			"if not specified, any enabled version of the Policy Pack will be disabled")
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyDisableArgs](v, cmd)
 
 	return cmd
 }

@@ -17,23 +17,32 @@ package main
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newPolicyCmd() *cobra.Command {
+type PolicyArgs struct{}
+
+func newPolicyCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
 		Short: "Manage resource policies",
 		Args:  cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPolicyDisableCmd())
-	cmd.AddCommand(newPolicyEnableCmd())
-	cmd.AddCommand(newPolicyGroupCmd())
-	cmd.AddCommand(newPolicyLsCmd())
-	cmd.AddCommand(newPolicyNewCmd())
-	cmd.AddCommand(newPolicyPublishCmd())
-	cmd.AddCommand(newPolicyRmCmd())
-	cmd.AddCommand(newPolicyValidateCmd())
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[PolicyArgs](v, cmd)
+
+	newPolicyDisableCmd(v, cmd)
+	newPolicyEnableCmd(v, cmd)
+	newPolicyGroupCmd(v, cmd)
+	newPolicyLsCmd(v, cmd)
+	newPolicyNewCmd(v, cmd)
+	newPolicyPublishCmd(v, cmd)
+	newPolicyRmCmd(v, cmd)
+	newPolicyValidateCmd(v, cmd)
 
 	return cmd
 }

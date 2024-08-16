@@ -21,9 +21,15 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newExtractSchemaCommand() *cobra.Command {
+type PackageExtractSchemaArgs struct{}
+
+func newExtractSchemaCommand(
+	v *viper.Viper,
+	parentPackageCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-schema <schema_source> [provider parameters]",
 		Args:  cobra.MinimumNArgs(1),
@@ -33,10 +39,10 @@ func newExtractSchemaCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			source := args[0]
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			source := cliArgs[0]
 
-			pkg, err := schemaFromSchemaSource(cmd.Context(), source, args[1:])
+			pkg, err := schemaFromSchemaSource(cmd.Context(), source, cliArgs[1:])
 			if err != nil {
 				return err
 			}
@@ -59,5 +65,9 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			return nil
 		}),
 	}
+
+	parentPackageCmd.AddCommand(cmd)
+	BindFlags[PackageExtractSchemaArgs](v, cmd)
+
 	return cmd
 }

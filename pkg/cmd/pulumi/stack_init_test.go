@@ -38,8 +38,10 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		},
 	}
 	cmd := &stackInitCmd{
-		teams:     []string{"red", "blue"},
-		stackName: "dev",
+		Args: StackInitArgs{
+			Teams: []string{"red", "blue"},
+			Stack: "dev",
+		},
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return mockBackend, nil
 		},

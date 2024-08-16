@@ -122,7 +122,9 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			cmd := stackOutputCmd{
 				Stdout:       &stdoutBuff,
 				requireStack: requireStack,
-				showSecrets:  tt.showSecrets,
+				Args: StackOutputArgs{
+					ShowSecrets: tt.showSecrets,
+				},
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 			stdout := stdoutBuff.String()
@@ -233,9 +235,11 @@ func TestStackOutputCmd_json(t *testing.T) {
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
-				showSecrets:  tt.showSecrets,
-				jsonOut:      true,
-				Stdout:       &stdoutBuff,
+				Args: StackOutputArgs{
+					ShowSecrets: tt.showSecrets,
+					JSON:        true,
+				},
+				Stdout: &stdoutBuff,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
@@ -360,10 +364,12 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
-				showSecrets:  tt.showSecrets,
-				shellOut:     true,
-				OS:           osys,
-				Stdout:       &stdoutBuff,
+				Args: StackOutputArgs{
+					ShowSecrets: tt.showSecrets,
+					Shell:       true,
+				},
+				OS:     osys,
+				Stdout: &stdoutBuff,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
@@ -384,8 +390,10 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")
 		},
-		shellOut: true,
-		jsonOut:  true,
+		Args: StackOutputArgs{
+			Shell: true,
+			JSON:  true,
+		},
 	}
 
 	err := cmd.Run(context.Background(), nil)

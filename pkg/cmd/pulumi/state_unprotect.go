@@ -27,13 +27,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newStateUnprotectCommand() *cobra.Command {
-	var unprotectAll bool
-	var stack string
-	var yes bool
+type StateUnprotectArgs struct {
+	UnprotectAll bool   `args:"all" argsUsage:"Unprotect all resources in the checkpoint"`
+	Stack        string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes          bool   `argsShort:"y" argsUsage:"Skip confirmation prompts"`
+}
 
+func newStateUnprotectCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN]",
 		Short: "Unprotect resources in a stack's state",
@@ -43,39 +49,38 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
-			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
-			showPrompt := !yes
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StateUnprotectArgs](v, cmd)
 
-			if unprotectAll {
-				return unprotectAllResources(ctx, stack, showPrompt)
+			ctx := cmd.Context()
+			args.Yes = args.Yes || skipConfirmations()
+			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
+			showPrompt := !args.Yes
+
+			if args.UnprotectAll {
+				return unprotectAllResources(ctx, args.Stack, showPrompt)
 			}
 
 			var urn resource.URN
 
-			if len(args) != 1 {
+			if len(cmdArgs) != 1 {
 				if !cmdutil.Interactive() {
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, args.Stack, nil, "Select a resource to unprotect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
-				urn = resource.URN(args[0])
+				urn = resource.URN(cmdArgs[0])
 			}
-			return unprotectResource(ctx, stack, urn, showPrompt)
+			return unprotectResource(ctx, args.Stack, urn, showPrompt)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	parentStateCmd.AddCommand(cmd)
+	BindFlags[StateUnprotectArgs](v, cmd)
 
 	return cmd
 }

@@ -10,24 +10,30 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	rconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 const errorDecryptingValue = "ERROR_UNABLE_TO_DECRYPT"
 
-func newStackHistoryCmd() *cobra.Command {
-	var stack string
-	var jsonOut bool
-	var showSecrets bool
-	var pageSize int
-	var page int
-	var showFullDates bool
+type StackHistoryArgs struct {
+	Stack         string `argsShort:"s" argsUsage:"Choose a stack other than the currently selected one"`
+	JSON          bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	ShowSecrets   bool   `argsUsage:"Show secret values when listing config instead of displaying blinded values"`
+	PageSize      int    `argsUsage:"Used with 'page' to control number of results returned" argsDefault:"10"`
+	Page          int    `argsUsage:"Used with 'page-size' to paginate results" argsDefault:"1"`
+	ShowFullDates bool   `args:"full-dates" argsUsage:"Show full dates, instead of relative dates"`
+}
 
+func newStackHistoryCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "history",
 		Aliases:    []string{"hist"},
@@ -36,22 +42,24 @@ func newStackHistoryCmd() *cobra.Command {
 		Long: `Display history for a stack
 
 This command displays data about previous updates for a stack.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackHistoryArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(ctx, s.Ref(), pageSize, page)
+			updates, err := b.GetHistory(ctx, s.Ref(), args.PageSize, args.Page)
 			if err != nil {
 				return fmt.Errorf("getting history: %w", err)
 			}
-			var decrypter config.Decrypter
-			if showSecrets {
+			var decrypter rconfig.Decrypter
+			if args.ShowSecrets {
 				project, _, err := readProject()
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
@@ -72,32 +80,21 @@ This command displays data about previous updates for a stack.`,
 				decrypter = crypter
 			}
 
-			if showSecrets {
+			if args.ShowSecrets {
 				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
-			if jsonOut {
+			if args.JSON {
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, page, opts, showFullDates)
+			return displayUpdatesConsole(updates, args.Page, opts, args.ShowFullDates)
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
-	cmd.Flags().BoolVar(
-		&showSecrets, "show-secrets", false,
-		"Show secret values when listing config instead of displaying blinded values")
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().BoolVar(
-		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
-	cmd.PersistentFlags().IntVar(
-		&pageSize, "page-size", 10, "Used with 'page' to control number of results returned")
-	cmd.PersistentFlags().IntVar(
-		&page, "page", 1, "Used with 'page-size' to paginate results")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackHistoryArgs](v, cmd)
+
 	return cmd
 }
 
@@ -117,7 +114,7 @@ type updateInfoJSON struct {
 	ResourceChanges *map[string]int `json:"resourceChanges,omitempty"`
 }
 
-func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {
+func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter rconfig.Decrypter) error {
 	makeStringRef := func(s string) *string {
 		return &s
 	}

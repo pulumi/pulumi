@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,15 +29,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPolicyLsCmd() *cobra.Command {
-	var jsonOut bool
+type PolicyLsArgs struct {
+	JSON bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+}
 
+func newPolicyLsCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Packs for a Pulumi organization",
 		Long:  "List all Policy Packs for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyLsArgs](v, cmd)
+
 			ctx := cmd.Context()
 
 			// Try to read the current project
@@ -81,14 +89,16 @@ func newPolicyLsCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			if jsonOut {
+			if args.JSON {
 				return formatPolicyPacksJSON(allPolicyPacks)
 			}
 			return formatPolicyPacksConsole(allPolicyPacks)
 		}),
 	}
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyLsArgs](v, cmd)
+
 	return cmd
 }
 

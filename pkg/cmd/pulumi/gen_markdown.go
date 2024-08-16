@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -34,15 +35,20 @@ var replaceH2Pattern = regexp.MustCompile(`(?m)^## .*$`)
 // Used to promote the `###` headings to `##` in generated markdown files.
 var h3Pattern = regexp.MustCompile(`(?m)^###\s`)
 
+type GenMarkdownArgs struct{}
+
 // newGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
-func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
-	return &cobra.Command{
+func newGenMarkdownCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:    "gen-markdown <DIR>",
 		Args:   cmdutil.ExactArgs(1),
 		Short:  "Generate Pulumi CLI documentation as Markdown (one file per command)",
 		Hidden: true,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			var files []string
 
 			// filePrepender is used to add front matter to each file, and to keep track of all
@@ -72,7 +78,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 			}
 
 			// Generate the .md files.
-			if err := doc.GenMarkdownTreeCustom(root, args[0], filePrepender, linkHandler); err != nil {
+			if err := doc.GenMarkdownTreeCustom(parentPulumiCmd, cliArgs[0], filePrepender, linkHandler); err != nil {
 				return err
 			}
 
@@ -101,4 +107,9 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 			return nil
 		}),
 	}
+
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[GenMarkdownArgs](v, cmd)
+
+	return cmd
 }

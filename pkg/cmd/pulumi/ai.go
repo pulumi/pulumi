@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 type aiCmd struct {
@@ -45,7 +46,7 @@ func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAICommand() *cobra.Command {
+func newAICommand(v *viper.Viper, parentPulumiCmd *cobra.Command) *cobra.Command {
 	var aiCommand aiCmd
 	cmd := &cobra.Command{
 		Use:    "ai",
@@ -62,6 +63,9 @@ func newAICommand() *cobra.Command {
 		},
 		),
 	}
-	cmd.AddCommand(newAIWebCommand())
+
+	parentPulumiCmd.AddCommand(cmd)
+	newAIWebCommand(v, cmd)
+
 	return cmd
 }

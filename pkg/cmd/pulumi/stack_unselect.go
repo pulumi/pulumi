@@ -24,8 +24,8 @@ import (
 
 // Resets the currently selected stack from the current workspace such that
 // next time the users get prompted with a stack to select
-func newStackUnselectCmd() *cobra.Command {
-	return &cobra.Command{
+func newStackUnselectCmd(parentStackCmd *cobra.Command) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "unselect",
 		Short: "Resets stack selection from the current workspace",
 		Long: "Resets stack selection from the current workspace.\n" +
@@ -33,7 +33,7 @@ func newStackUnselectCmd() *cobra.Command {
 			"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
 			"from.\n",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			currentWorkspace, err := workspace.New()
 			if err != nil {
 				return err
@@ -58,4 +58,8 @@ func newStackUnselectCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	parentStackCmd.AddCommand(cmd)
+
+	return cmd
 }

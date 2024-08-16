@@ -19,12 +19,15 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
-	var jsonOut bool
+type ConfigEnvLsArgs struct {
+	JSON bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+}
 
-	impl := configEnvLsCmd{parent: parent, jsonOut: &jsonOut}
+func newConfigEnvLsCmd(v *viper.Viper, parentConfigEnvCmd *cobra.Command, parent *configEnvCmd) *cobra.Command {
+	impl := configEnvLsCmd{parent: parent}
 
 	cmd := &cobra.Command{
 		Use:   "ls",
@@ -32,14 +35,14 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 		Long:  "Lists the environments imported into a stack's configuration.",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			parent.initArgs()
+			parent.initArgs(v, parentConfigEnvCmd)
+			impl.args = UnmarshalArgs[ConfigEnvLsArgs](v, cmd)
 			return impl.run(cmd.Context(), args)
 		}),
 	}
 
-	cmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
+	parentConfigEnvCmd.AddCommand(cmd)
+	BindFlags[ConfigEnvLsArgs](v, cmd)
 
 	return cmd
 }
@@ -47,9 +50,9 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 type configEnvLsCmd struct {
 	parent *configEnvCmd
 
-	jsonOut *bool
+	args ConfigEnvLsArgs
 }
 
 func (cmd *configEnvLsCmd) run(ctx context.Context, _ []string) error {
-	return cmd.parent.listStackEnvironments(ctx, *cmd.jsonOut)
+	return cmd.parent.listStackEnvironments(ctx, cmd.args.JSON)
 }

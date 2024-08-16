@@ -44,7 +44,9 @@ func TestChangeSecretsProvider_Invalid(t *testing.T) {
 	var stdoutBuff bytes.Buffer
 	cmd := stackChangeSecretsProviderCmd{
 		stdout: &stdoutBuff,
-		stack:  "test",
+		Args: StackChangeSecretsProviderArgs{
+			Stack: "test",
+		},
 	}
 	err := cmd.Run(context.Background(), []string{"not_a_secret"})
 	require.Error(t, err)
@@ -79,7 +81,9 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		stdout:          &stdoutBuff,
 		secretsProvider: secretsProvider,
 
-		stack: "testStack",
+		Args: StackChangeSecretsProviderArgs{
+			Stack: "testStack",
+		},
 	}
 
 	// Ideally this would be injected but the cmd functions repeatedly access global state to get the current
@@ -177,7 +181,9 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		stdout:          &stdoutBuff,
 		secretsProvider: secretsProvider,
 
-		stack: "testStack",
+		Args: StackChangeSecretsProviderArgs{
+			Stack: "testStack",
+		},
 	}
 
 	// Ideally this would be injected but the cmd functions repeatedly access global state to get the current

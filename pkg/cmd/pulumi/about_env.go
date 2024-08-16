@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -30,8 +31,8 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
-func newAboutEnvCmd() *cobra.Command {
-	return &cobra.Command{
+func newAboutEnvCmd(_ *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "env",
 		Short: "An overview of the environmental variables used by pulumi",
 		Args:  cmdutil.NoArgs,
@@ -57,6 +58,10 @@ func newAboutEnvCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	parentCmd.AddCommand(cmd)
+
+	return cmd
 }
 
 func emitEnvVarDiag(val declared.Var) bool {

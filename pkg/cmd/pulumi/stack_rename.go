@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -28,8 +29,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newStackRenameCmd() *cobra.Command {
-	var stack string
+//nolint:lll
+type StackRenameArgs struct {
+	Stack string `args:"stack" argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+}
+
+func newStackRenameCmd(
+	v *viper.Viper,
+	parentStackCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rename <new-stack-name>",
 		Args:  cmdutil.ExactArgs(1),
@@ -44,14 +52,16 @@ func newStackRenameCmd() *cobra.Command {
 			"You can also rename the stack's project by passing a fully-qualified stack name as well. For example:\n" +
 			"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
 			"to update the name field of Pulumi.yaml, so the project names match.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StackRenameArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Look up the stack to be moved, and find the path to the project file's location.
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -61,7 +71,7 @@ func newStackRenameCmd() *cobra.Command {
 			}
 
 			// Now perform the rename and get ready to rename the existing configuration to the new project file.
-			newStackName := args[0]
+			newStackName := cmdArgs[0]
 			newStackRef, err := s.Rename(ctx, tokens.QName(newStackName))
 			if err != nil {
 				return err
@@ -94,8 +104,8 @@ func newStackRenameCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentStackCmd.AddCommand(cmd)
+	BindFlags[StackRenameArgs](v, cmd)
+
 	return cmd
 }

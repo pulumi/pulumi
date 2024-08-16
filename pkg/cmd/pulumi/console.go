@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -29,14 +30,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newConsoleCmd() *cobra.Command {
-	var stackName string
+type ConsoleArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to view"`
+}
+
+func newConsoleCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "console",
 		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			config := UnmarshalArgs[ConsoleArgs](v, cmd)
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -58,8 +64,8 @@ func newConsoleCmd() *cobra.Command {
 			if isCloud {
 				// we only need to inspect the requested stack if we are using a cloud based backend
 				var stack backend.Stack
-				if stackName != "" {
-					ref, err := currentBackend.ParseStackReference(stackName)
+				if config.Stack != "" {
+					ref, err := currentBackend.ParseStackReference(config.Stack)
 					if err != nil {
 						return err
 					}
@@ -97,8 +103,10 @@ func newConsoleCmd() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to view")
+
+	parentCmd.AddCommand(cmd)
+	BindFlags[ConsoleArgs](v, cmd)
+
 	return cmd
 }
 

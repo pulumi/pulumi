@@ -22,18 +22,21 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const latestKeyword = "latest"
 
-type policyEnableArgs struct {
-	policyGroup string
-	config      string
+//nolint:lll
+type PolicyEnableArgs struct {
+	PolicyGroup string `argsUsage:"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used"`
+	Config      string `argsUsage:"The file path for the Policy Pack configuration file"`
 }
 
-func newPolicyEnableCmd() *cobra.Command {
-	args := policyEnableArgs{}
-
+func newPolicyEnableCmd(
+	v *viper.Viper,
+	parentPolicyCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
 		Args:  cmdutil.ExactArgs(2),
@@ -41,6 +44,8 @@ func newPolicyEnableCmd() *cobra.Command {
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[PolicyEnableArgs](v, cmd)
+
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, cliArgs[0], loginToCloud)
@@ -54,32 +59,27 @@ func newPolicyEnableCmd() *cobra.Command {
 				version = &cliArgs[1]
 			}
 
-			// Load the configuration from the user-specified JSON file into config object.
-			var config map[string]*json.RawMessage
-			if args.config != "" {
-				config, err = loadPolicyConfigFromFile(args.config)
+			// Load the configuration from the user-specified JSON file into jsonConfig object.
+			var jsonConfig map[string]*json.RawMessage
+			if args.Config != "" {
+				jsonConfig, err = loadPolicyConfigFromFile(args.Config)
 				if err != nil {
 					return err
 				}
 			}
 
 			// Attempt to enable the Policy Pack.
-			return policyPack.Enable(ctx, args.policyGroup,
+			return policyPack.Enable(ctx, args.PolicyGroup,
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					Config:     jsonConfig,
 				})
 		}),
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&args.policyGroup, "policy-group", "",
-		"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used")
-
-	cmd.PersistentFlags().StringVar(
-		&args.config, "config", "",
-		"The file path for the Policy Pack configuration file")
+	parentPolicyCmd.AddCommand(cmd)
+	BindFlags[PolicyEnableArgs](v, cmd)
 
 	return cmd
 }

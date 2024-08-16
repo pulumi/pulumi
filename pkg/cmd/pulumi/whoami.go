@@ -27,9 +27,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newWhoAmICmd() *cobra.Command {
+type WhoAmIArgs struct {
+	JSON    bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	Verbose bool `argsShort:"v" argsUsage:"Print detailed whoami information"`
+}
+
+type whoAmICmd struct {
+	Args WhoAmIArgs
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func newWhoAmICmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
 	var whocmd whoAmICmd
 	cmd := &cobra.Command{
 		Use:   "whoami",
@@ -38,30 +57,16 @@ func newWhoAmICmd() *cobra.Command {
 			"\n" +
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
+			whocmd.Args = UnmarshalArgs[WhoAmIArgs](v, cmd)
 			return whocmd.Run(cmd.Context())
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&whocmd.jsonOut, "json", "j", false, "Emit output as JSON")
-
-	cmd.PersistentFlags().BoolVarP(
-		&whocmd.verbose, "verbose", "v", false,
-		"Print detailed whoami information")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[WhoAmIArgs](v, cmd)
 
 	return cmd
-}
-
-type whoAmICmd struct {
-	jsonOut bool
-	verbose bool
-
-	Stdout io.Writer // defaults to os.Stdout
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *whoAmICmd) Run(ctx context.Context) error {
@@ -94,7 +99,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	if cmd.jsonOut {
+	if cmd.Args.JSON {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:             name,
 			Organizations:    orgs,
@@ -103,7 +108,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		})
 	}
 
-	if cmd.verbose {
+	if cmd.Args.Verbose {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())

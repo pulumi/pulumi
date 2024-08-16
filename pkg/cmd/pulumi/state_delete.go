@@ -25,14 +25,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func newStateDeleteCommand() *cobra.Command {
-	var force bool // Force deletion of protected resources
-	var stack string
-	var yes bool
-	var targetDependents bool
+type StateDeleteArgs struct {
+	Force            bool   `argsUsage:"Force deletion of protected resources"`
+	Stack            string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Yes              bool   `argsShort:"y" argsUsage:"Skip confirmation prompts"`
+	TargetDependents bool   `argsUsage:"Delete the URN and all its dependents"`
+}
 
+func newStateDeleteCommand(
+	v *viper.Viper,
+	parentStateCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [resource URN]",
 		Short: "Deletes a resource from a stack's state",
@@ -51,37 +57,39 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
 		Args:    cmdutil.MaximumNArgs(1),
 
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+			args := UnmarshalArgs[StateDeleteArgs](v, cmd)
+
 			ctx := cmd.Context()
-			yes = yes || skipConfirmations()
+			args.Yes = args.Yes || skipConfirmations()
 			var urn resource.URN
-			if len(args) == 0 {
+			if len(cmdArgs) == 0 {
 				if !cmdutil.Interactive() {
 					return missingNonInteractiveArg("resource URN")
 				}
 
 				var err error
-				urn, err = getURNFromState(ctx, stack, nil,
+				urn, err = getURNFromState(ctx, args.Stack, nil,
 					"Select the resource to delete")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
-				urn = resource.URN(args[0])
+				urn = resource.URN(cmdArgs[0])
 			}
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
-			showPrompt := !yes
+			showPrompt := !args.Yes
 
-			err := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+			err := runStateEdit(ctx, args.Stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 				var handleProtected func(*resource.State) error
-				if force {
+				if args.Force {
 					handleProtected = func(res *resource.State) error {
 						cmdutil.Diag().Warningf(diag.Message(res.URN,
 							"deleting protected resource %s due to presence of --force"), res.URN)
 						return edit.UnprotectResource(nil, res)
 					}
 				}
-				return edit.DeleteResource(snap, res, handleProtected, targetDependents)
+				return edit.DeleteResource(snap, res, handleProtected, args.TargetDependents)
 			})
 			if err != nil {
 				switch e := err.(type) {
@@ -107,11 +115,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
-	cmd.Flags().BoolVar(&targetDependents, "target-dependents", false, "Delete the URN and all its dependents")
+	parentStateCmd.AddCommand(cmd)
+	BindFlags[StateDeleteArgs](v, cmd)
+
 	return cmd
 }
