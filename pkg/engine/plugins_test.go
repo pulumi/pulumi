@@ -34,7 +34,7 @@ func mustMakeVersion(v string) *semver.Version {
 func TestDefaultProvidersSingle(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := newPluginSet()
+	languagePlugins := NewPluginSet()
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
@@ -47,7 +47,7 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		PluginDownloadURL: "com.server.url",
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, NewPluginSet())
 	assert.NotNil(t, defaultProviders)
 
 	aws, ok := defaultProviders[tokens.Package("aws")]
@@ -67,7 +67,7 @@ func TestDefaultProvidersSingle(t *testing.T) {
 func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := newPluginSet()
+	languagePlugins := NewPluginSet()
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
@@ -79,7 +79,7 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 		Kind:    apitype.ResourcePlugin,
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, NewPluginSet())
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -91,7 +91,7 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := newPluginSet()
+	languagePlugins := NewPluginSet()
 	languagePlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.0"),
@@ -108,7 +108,7 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 		Kind:    apitype.ResourcePlugin,
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, NewPluginSet())
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -120,12 +120,12 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	t.Parallel()
 
-	languagePlugins := newPluginSet()
+	languagePlugins := NewPluginSet()
 	languagePlugins.Add(workspace.PluginSpec{
 		Name: "python",
 		Kind: apitype.LanguagePlugin,
 	})
-	snapshotPlugins := newPluginSet()
+	snapshotPlugins := NewPluginSet()
 	snapshotPlugins.Add(workspace.PluginSpec{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.0"),
@@ -144,21 +144,21 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 func TestPluginSetDeduplicate(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		input    pluginSet
-		expected pluginSet
+		input    PluginSet
+		expected PluginSet
 	}{{
-		input: newPluginSet(workspace.PluginSpec{
+		input: NewPluginSet(workspace.PluginSpec{
 			Name:    "foo",
 			Version: &semver.Version{Major: 1},
 		}, workspace.PluginSpec{
 			Name: "foo",
 		}),
-		expected: newPluginSet(workspace.PluginSpec{
+		expected: NewPluginSet(workspace.PluginSpec{
 			Name:    "foo",
 			Version: &semver.Version{Major: 1},
 		}),
 	}, {
-		input: newPluginSet(workspace.PluginSpec{
+		input: NewPluginSet(workspace.PluginSpec{
 			Name:    "bar",
 			Version: &semver.Version{Minor: 3},
 		}, workspace.PluginSpec{
@@ -171,7 +171,7 @@ func TestPluginSetDeduplicate(t *testing.T) {
 		}, workspace.PluginSpec{
 			Name: "foo",
 		}),
-		expected: newPluginSet(workspace.PluginSpec{
+		expected: NewPluginSet(workspace.PluginSpec{
 			Name:    "bar",
 			Version: &semver.Version{Minor: 3},
 		}, workspace.PluginSpec{
@@ -209,7 +209,7 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 		Version: &v2,
 		Kind:    apitype.ResourcePlugin,
 	}
-	plugins := newPluginSet(p1, p2)
+	plugins := NewPluginSet(p1, p2)
 	result := computeDefaultProviderPlugins(plugins, plugins)
 	assert.Equal(t, map[tokens.Package]workspace.PluginSpec{
 		"foo": p2,

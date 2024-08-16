@@ -43,17 +43,17 @@ const (
 	preparePluginVerboseLog = 8
 )
 
-// pluginSet represents a set of plugins.
-type pluginSet map[string]workspace.PluginSpec
+// PluginSet represents a set of plugins.
+type PluginSet map[string]workspace.PluginSpec
 
 // Add adds a plugin to this plugin set.
-func (p pluginSet) Add(plug workspace.PluginSpec) {
+func (p PluginSet) Add(plug workspace.PluginSpec) {
 	p[plug.String()] = plug
 }
 
 // Union returns the union of this pluginSet with another pluginSet.
-func (p pluginSet) Union(other pluginSet) pluginSet {
-	newSet := newPluginSet()
+func (p PluginSet) Union(other PluginSet) PluginSet {
+	newSet := NewPluginSet()
 	for _, value := range p {
 		newSet.Add(value)
 	}
@@ -67,9 +67,9 @@ func (p pluginSet) Union(other pluginSet) pluginSet {
 //
 // For example, the plugin aws would be removed if there was an already existing plugin
 // aws-5.4.0.
-func (p pluginSet) Deduplicate() pluginSet {
+func (p PluginSet) Deduplicate() PluginSet {
 	existing := map[string]workspace.PluginSpec{}
-	newSet := newPluginSet()
+	newSet := NewPluginSet()
 	add := func(p workspace.PluginSpec) {
 		prev, ok := existing[p.Name]
 		if ok {
@@ -101,7 +101,7 @@ func (p pluginSet) Deduplicate() pluginSet {
 }
 
 // Values returns a slice of all of the plugins contained within this set.
-func (p pluginSet) Values() []workspace.PluginSpec {
+func (p PluginSet) Values() []workspace.PluginSpec {
 	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
 	for _, value := range p {
 		plugins = append(plugins, value)
@@ -109,9 +109,9 @@ func (p pluginSet) Values() []workspace.PluginSpec {
 	return plugins
 }
 
-// newPluginSet creates a new empty pluginSet.
-func newPluginSet(plugins ...workspace.PluginSpec) pluginSet {
-	var s pluginSet = make(map[string]workspace.PluginSpec, len(plugins))
+// NewPluginSet creates a new empty pluginSet.
+func NewPluginSet(plugins ...workspace.PluginSpec) PluginSet {
+	var s PluginSet = make(map[string]workspace.PluginSpec, len(plugins))
 	for _, p := range plugins {
 		s.Add(p)
 	}
@@ -120,11 +120,12 @@ func newPluginSet(plugins ...workspace.PluginSpec) pluginSet {
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
-func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (pluginSet, error) {
+func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plugin.ProgramInfo) (PluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
-	set := newPluginSet()
+	set := NewPluginSet()
 
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, runtime, prog.RootDirectory(), prog, plugin.AllPlugins)
+	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, runtime,
+		prog.RootDirectory(), prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
@@ -145,9 +146,9 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, runtime string, prog plug
 // gatherPluginsFromSnapshot inspects the snapshot associated with the given Target and returns the set of plugins
 // required to operate on the snapshot. The set of plugins is derived from first-class providers saved in the snapshot
 // and the plugins specified in the deployment manifest.
-func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (pluginSet, error) {
+func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (PluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromSnapshot(): gathering plugins from snapshot")
-	set := newPluginSet()
+	set := NewPluginSet()
 	if target == nil || target.Snapshot == nil {
 		logging.V(preparePluginLog).Infof("gatherPluginsFromSnapshot(): no snapshot available, skipping")
 		return set, nil
@@ -155,7 +156,8 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 	for _, res := range target.Snapshot.Resources {
 		urn := res.URN
 		if !providers.IsProviderType(urn.Type()) {
-			logging.V(preparePluginVerboseLog).Infof("gatherPluginsFromSnapshot(): skipping %q, not a provider", urn)
+			logging.V(preparePluginVerboseLog).Infof(
+				"gatherPluginsFromSnapshot(): skipping %q, not a provider", urn)
 			continue
 		}
 		pkg := providers.GetProviderPackage(urn.Type())
@@ -190,15 +192,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 	return set, nil
 }
 
-// ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
+// EnsurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(
-	ctx context.Context,
-	opts *deploymentOptions,
-	d diag.Sink,
-	plugins pluginSet,
-	projectPlugins []workspace.ProjectPlugin,
+func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
+	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
@@ -215,6 +213,22 @@ func ensurePluginsAreInstalled(
 			continue
 		}
 
+		if !reinstall {
+			// If the plugin already exists, don't download it unless `reinstall` was specified.
+			label := fmt.Sprintf("%s plugin %s", plug.Kind, plug)
+			if plug.Version != nil {
+				if workspace.HasPlugin(plug) {
+					logging.V(1).Infof("%s skipping install (existing == match)", label)
+					continue
+				}
+			} else {
+				if has, _ := workspace.HasPluginGTE(plug); has {
+					logging.V(1).Infof("%s skipping install (existing >= match)", label)
+					continue
+				}
+			}
+		}
+
 		if workspace.IsPluginBundled(plug.Kind, plug.Name) {
 			return fmt.Errorf(
 				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed."+
@@ -227,7 +241,7 @@ func ensurePluginsAreInstalled(
 		info := plug // don't close over the loop induction variable
 
 		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
-		if env.DisableAutomaticPluginAcquisition.Value() {
+		if !explicitInstall && env.DisableAutomaticPluginAcquisition.Value() {
 			installTasks.Go(func() error {
 				return fmt.Errorf("plugin %s %s not installed", info.Name, info.Version)
 			})
@@ -237,19 +251,19 @@ func ensurePluginsAreInstalled(
 		// Launch an install task asynchronously and add it to the current error group.
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
-				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
+				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
 			return installPlugin(ctx, opts, info)
 		})
 	}
 
 	err := installTasks.Wait()
-	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): completed")
+	logging.V(preparePluginLog).Infof("EnsurePluginsAreInstalled(): completed")
 	return err
 }
 
 // ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
 // loaded.
-func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds plugin.Flags) error {
+func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds plugin.Flags) error {
 	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds)
 }
 
@@ -378,7 +392,7 @@ func installPlugin(
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]workspace.PluginSpec {
+func computeDefaultProviderPlugins(languagePlugins, allPlugins PluginSet) map[tokens.Package]workspace.PluginSpec {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
