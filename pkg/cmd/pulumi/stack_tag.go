@@ -117,9 +117,6 @@ func newStackTagLsCmd(
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
 			args := UnmarshalArgs[StackTagLsArgs](v, cmd)
 
-			fmt.Printf("STACK: %v\n", args.Stack)
-			fmt.Printf("JSON: %v\n", args.JSON)
-
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
