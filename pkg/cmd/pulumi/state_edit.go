@@ -73,7 +73,7 @@ a preview showing a diff of the altered state.`,
 	}
 	cmd.PersistentFlags().StringVar(
 		&stackName, "stack", "",
-		"The name of the stack to operation on. Defaults to the current stack")
+		"The name of the stack to operate on. Defaults to the current stack")
 	return cmd
 }
 
