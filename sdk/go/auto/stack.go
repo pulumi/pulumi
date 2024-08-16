@@ -1422,7 +1422,7 @@ func (s *Stack) remoteArgs() []string {
 	}
 
 	if remoteAgentPoolID != "" {
-		args = append(args, "--remote-agent-pool-id=" + remoteAgentPoolID)
+		args = append(args, "--remote-agent-pool-id="+remoteAgentPoolID)
 	}
 
 	if skipInstallDependencies {

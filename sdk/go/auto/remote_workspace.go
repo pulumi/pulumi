@@ -246,7 +246,8 @@ func RemoteExecutorImage(image *ExecutorImage) RemoteWorkspaceOption {
 	})
 }
 
-// RemoteExecutorImage sets the image to use for the remote executor.
+// RemoteExecutorImage sets the agent pool (also called deployment runner pool) to use for the
+// remote Pulumi operation.
 func RemoteAgentPoolID(agentPoolID string) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.AgentPoolID = agentPoolID
