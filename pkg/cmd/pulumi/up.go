@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -580,6 +581,7 @@ func newUpCmd(
 	BindFlags[UpArgs](v, cmd)
 
 	_ = cmd.PersistentFlags().MarkHidden("client")
+	cmd.PersistentFlags().Lookup("continue-on-error").DefValue = strconv.FormatBool(env.ContinueOnError.Value())
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().Lookup("parallel").DefValue = strconv.Itoa(defaultParallel)
