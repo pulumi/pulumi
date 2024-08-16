@@ -31,6 +31,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -62,32 +63,37 @@ type chooseTemplateFunc func(templates []workspace.Template, opts display.Option
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
 	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
 
+type NewArgs struct {
+	ConfigArray     []string                   `argsShort:"c" argsUsage:"Config to save"`
+	ConfigPath      bool                       `argsUsage:"Config keys contain a path to a property in a map or list to set"`
+	Description     string                     `argsShort:"d" argsUsage:"The project description; if not specified, a prompt will request it"`
+	Dir             string                     `argsUsage:"The location to place the generated project; if not specified, the current directory is used"`
+	Force           bool                       `argsShort:"f" argsUsage:"Forces content to be generated even if it would change existing files"`
+	GenerateOnly    bool                       `argsShort:"g" argsUsage:"Generate the project only; do not create a stack, save config, or install dependencies"`
+	Name            string                     `argsShort:"n" argsUsage:"The project name; if not specified, a prompt will request it"`
+	Offline         bool                       `argsShort:"o" argsUsage:"Use locally cached templates without making any network requests"`
+	SecretsProvider string                     `argsDefault:"default" argsUsage:"The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"`
+	Stack           string                     `argsShort:"s" argsUsage:"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it"`
+	Yes             bool                       `argsShort:"y" argsUsage:"Skip prompts and proceed with default values"`
+	ListTemplates   bool                       `argsShort:"l" argsUsage:"List locally installed templates and exit"`
+	AiPrompt        string                     `argsUsage:"Prompt to use for Pulumi AI"`
+	AiLanguage      httpstate.PulumiAILanguage `args:"language" argsUsage:"Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML)"`
+	TemplateMode    bool                       `argsShort:"t" argsUsage:"Run in template mode, which will skip prompting for AI or Template functionality"`
+	RuntimeOptions  []string                   `argsUsage:"Additional options for the language runtime (format: key1=value1,key2=value2)"`
+}
+
 type newArgs struct {
-	configArray          []string
-	configPath           bool
-	description          string
-	dir                  string
-	force                bool
-	generateOnly         bool
-	interactive          bool
-	name                 string
-	offline              bool
+	NewArgs
+
 	prompt               promptForValueFunc
 	promptRuntimeOptions runtimeOptionsFunc
 	chooseTemplate       chooseTemplateFunc
-	secretsProvider      string
-	stack                string
+	interactive          bool
 	templateNameOrURL    string
-	yes                  bool
-	listTemplates        bool
-	aiPrompt             string
-	aiLanguage           httpstate.PulumiAILanguage
-	templateMode         bool
-	runtimeOptions       []string
 }
 
 func runNew(ctx context.Context, args newArgs) error {
-	if !args.interactive && !args.yes {
+	if !args.interactive && !args.Yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 
@@ -98,12 +104,12 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Validate name (if specified) before further prompts/operations.
-	if args.name != "" && pkgWorkspace.ValidateProjectName(args.name) != nil {
-		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, pkgWorkspace.ValidateProjectName(args.name))
+	if args.Name != "" && pkgWorkspace.ValidateProjectName(args.Name) != nil {
+		return fmt.Errorf("'%s' is not a valid project name: %w", args.Name, pkgWorkspace.ValidateProjectName(args.Name))
 	}
 
 	// Validate secrets provider type
-	if err := validateSecretsProvider(args.secretsProvider); err != nil {
+	if err := validateSecretsProvider(args.SecretsProvider); err != nil {
 		return err
 	}
 
@@ -116,15 +122,15 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
-	if args.dir != "" {
-		cwd, err = useSpecifiedDir(args.dir)
+	if args.Dir != "" {
+		cwd, err = useSpecifiedDir(args.Dir)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Return an error if the directory isn't empty.
-	if !args.force {
+	if !args.Force {
 		if err = errorIfNotEmptyDirectory(cwd); err != nil {
 			return err
 		}
@@ -133,7 +139,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
 	var b backend.Backend
-	if !args.generateOnly {
+	if !args.GenerateOnly {
 		// There is no current project at this point to pass into currentBackend
 		b, err = currentBackend(ctx, nil, opts)
 		if err != nil {
@@ -142,15 +148,15 @@ func runNew(ctx context.Context, args newArgs) error {
 
 		// Check project name and stack reference project name are the same, we skip this check if
 		// --generate-only is set because we're not going to actually use the --stack argument given.
-		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
+		if err := compareStackProjectName(b, args.Stack, args.Name); err != nil {
 			return err
 		}
 	}
 
 	// Ensure the project doesn't already exist.
-	if args.name != "" {
+	if args.Name != "" {
 		// There is no --org flag at the moment. The backend determines the orgName value if it is "".
-		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, b, "" /* orgName */, args.Name, args.GenerateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -189,7 +195,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 	// Retrieve the template repo.
-	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
+	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.Offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
 		return err
 	}
@@ -218,8 +224,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Do a dry run, if we're not forcing files to be overwritten.
-	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
+	if !args.Force {
+		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.Name); err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
@@ -234,14 +240,14 @@ func runNew(ctx context.Context, args newArgs) error {
 	// created via the web app.
 	var s backend.Stack
 	var orgName string
-	if !args.generateOnly && args.stack != "" && strings.Count(args.stack, "/") == 2 {
-		parts := strings.SplitN(args.stack, "/", 3)
+	if !args.GenerateOnly && args.Stack != "" && strings.Count(args.Stack, "/") == 2 {
+		parts := strings.SplitN(args.Stack, "/", 3)
 
 		// Set the org name for future use.
 		orgName = parts[0]
 		projectName := parts[1]
 
-		stackName, err := buildStackName(args.stack)
+		stackName, err := buildStackName(args.Stack)
 		if err != nil {
 			return err
 		}
@@ -252,16 +258,16 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 		if existingStack != nil {
 			s = existingStack
-			if args.description == "" {
-				args.description = existingDesc
+			if args.Description == "" {
+				args.Description = existingDesc
 			}
 		}
-		args.name = projectName
+		args.Name = projectName
 	}
 
 	// Show instructions, if we're going to show at least one prompt.
-	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
-	if !args.yes && hasAtLeastOnePrompt {
+	hasAtLeastOnePrompt := (args.Name == "") || (args.Description == "") || (!args.GenerateOnly && args.Stack == "")
+	if !args.Yes && hasAtLeastOnePrompt {
 		fmt.Println("This command will walk you through creating a new Pulumi project.")
 		fmt.Println()
 		fmt.Println(
@@ -275,47 +281,47 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Prompt for the project name, if it wasn't already specified.
-	if args.name == "" {
-		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
+	if args.Name == "" {
+		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.Name, template.ProjectName, filepath.Base(cwd))
 		err := validateProjectName(
-			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false))
+			ctx, b, orgName, defaultValue, args.GenerateOnly, opts.WithIsInteractive(false))
 		if err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
-			if args.yes {
+			if args.Yes {
 				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
 			}
 		}
 		validate := func(s string) error {
-			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
+			return validateProjectName(ctx, b, orgName, s, args.GenerateOnly, opts)
 		}
-		args.name, err = args.prompt(args.yes, "Project name", defaultValue, false, validate, opts)
+		args.Name, err = args.prompt(args.Yes, "Project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Prompt for the project description, if it wasn't already specified.
-	if args.description == "" {
+	if args.Description == "" {
 		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
-			args.description, template.ProjectDescription, template.Description)
-		args.description, err = args.prompt(
-			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
+			args.Description, template.ProjectDescription, template.Description)
+		args.Description, err = args.prompt(
+			args.Yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
+	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.Force, args.Name, args.Description); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
 		return err
 	}
 
-	fmt.Printf("Created project '%s'\n", args.name)
+	fmt.Printf("Created project '%s'\n", args.Name)
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
@@ -323,8 +329,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	if err != nil {
 		return err
 	}
-	proj.Name = tokens.PackageName(args.name)
-	proj.Description = &args.description
+	proj.Name = tokens.PackageName(args.Name)
+	proj.Description = &args.Description
 	proj.Template = nil
 
 	// Set the pulumi:template tag to the template name or URL.
@@ -336,7 +342,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		apitype.ProjectTemplateTag: templateTag,
 	})
 
-	for _, opt := range args.runtimeOptions {
+	for _, opt := range args.RuntimeOptions {
 		parts := strings.Split(strings.TrimSpace(opt), "=")
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid runtime option: %s", opt)
@@ -359,9 +365,9 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Create the stack, if needed.
-	if !args.generateOnly && s == nil {
+	if !args.GenerateOnly && s == nil {
 		if s, err = promptAndCreateStack(ctx, b, args.prompt,
-			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
+			args.Stack, root, true /*setCurrent*/, args.Yes, opts, args.SecretsProvider); err != nil {
 			return err
 		}
 		// The backend will print "Created stack '<stack>'" on success.
@@ -386,7 +392,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 		defer pluginCtx.Close()
 		options, err := args.promptRuntimeOptions(pluginCtx, &proj.Runtime, entryPoint, opts,
-			args.yes, args.interactive, args.prompt)
+			args.Yes, args.interactive, args.prompt)
 		if err != nil {
 			return err
 		}
@@ -402,23 +408,23 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Prompt for config values (if needed) and save.
-	if !args.generateOnly {
+	if !args.GenerateOnly {
 		err = handleConfig(
 			ctx, args.prompt, proj, s,
-			args.templateNameOrURL, template, args.configArray,
-			args.yes, args.configPath, opts)
+			args.templateNameOrURL, template, args.ConfigArray,
+			args.Yes, args.ConfigPath, opts)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Ensure the stack is selected.
-	if !args.generateOnly && s != nil {
+	if !args.GenerateOnly && s != nil {
 		contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
 	}
 
 	// Install dependencies.
-	if !args.generateOnly {
+	if !args.GenerateOnly {
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
@@ -448,7 +454,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Print out next steps.
-	printNextSteps(proj, originalCwd, cwd, args.generateOnly, opts)
+	printNextSteps(proj, originalCwd, cwd, args.GenerateOnly, opts)
 
 	if template.Quickstart != "" {
 		fmt.Println(template.Quickstart)
@@ -501,7 +507,7 @@ func isInteractive() bool {
 // Intentionally disabling here for cleaner err declaration/assignment.
 //
 //nolint:vetshadow
-func newNewCmd() *cobra.Command {
+func newNewCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	args := newArgs{
 		prompt:               promptForValue,
 		chooseTemplate:       chooseTemplate,
@@ -574,7 +580,7 @@ func newNewCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
-			if args.listTemplates {
+			if args.ListTemplates {
 				templates, err := getTemplates()
 				if err != nil {
 					logging.Warningf("could not list templates: %v", err)
@@ -589,7 +595,7 @@ func newNewCmd() *cobra.Command {
 				return nil
 			}
 
-			args.yes = args.yes || skipConfirmations()
+			args.Yes = args.Yes || skipConfirmations()
 			args.interactive = isInteractive()
 			return runNew(ctx, args)
 		}),
@@ -614,57 +620,8 @@ func newNewCmd() *cobra.Command {
 		}
 	})
 
-	cmd.PersistentFlags().StringArrayVarP(
-		&args.configArray, "config", "c", []string{},
-		"Config to save")
-	cmd.PersistentFlags().BoolVar(
-		&args.configPath, "config-path", false,
-		"Config keys contain a path to a property in a map or list to set")
-	cmd.PersistentFlags().StringVarP(
-		&args.description, "description", "d", "",
-		"The project description; if not specified, a prompt will request it")
-	cmd.PersistentFlags().StringVar(
-		&args.dir, "dir", "",
-		"The location to place the generated project; if not specified, the current directory is used")
-	cmd.PersistentFlags().BoolVarP(
-		&args.force, "force", "f", false,
-		"Forces content to be generated even if it would change existing files")
-	cmd.PersistentFlags().BoolVarP(
-		&args.generateOnly, "generate-only", "g", false,
-		"Generate the project only; do not create a stack, save config, or install dependencies")
-	cmd.PersistentFlags().StringVarP(
-		&args.name, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
-	cmd.PersistentFlags().BoolVarP(
-		&args.offline, "offline", "o", false,
-		"Use locally cached templates without making any network requests")
-	cmd.PersistentFlags().StringVarP(
-		&args.stack, "stack", "s", "",
-		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
-	cmd.PersistentFlags().BoolVarP(
-		&args.yes, "yes", "y", false,
-		"Skip prompts and proceed with default values")
-	cmd.PersistentFlags().StringVar(
-		&args.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
-	cmd.PersistentFlags().BoolVarP(
-		&args.listTemplates, "list-templates", "l", false,
-		"List locally installed templates and exit")
-	cmd.PersistentFlags().StringVar(
-		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
-	)
-	cmd.PersistentFlags().Var(
-		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
-			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
-	)
-	cmd.PersistentFlags().BoolVarP(
-		&args.templateMode, "template-mode", "t", false,
-		"Run in template mode, which will skip prompting for AI or Template functionality",
-	)
-	cmd.PersistentFlags().StringSliceVar(
-		&args.runtimeOptions, "runtime-options", []string{},
-		"Additional options for the language runtime (format: key1=value1,key2=value2)",
-	)
+	parentCmd.AddCommand(cmd)
+	BindFlags[NewArgs](v, cmd)
 
 	return cmd
 }
