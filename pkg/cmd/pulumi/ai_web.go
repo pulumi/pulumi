@@ -126,7 +126,7 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAIWebCommand(v *viper.Viper) *cobra.Command {
+func newAIWebCommand(v *viper.Viper, parentAICmd *cobra.Command) *cobra.Command {
 	var aiwebcmd aiWebCmd
 
 	cmd := &cobra.Command{
@@ -156,6 +156,7 @@ by passing the --no-auto-submit flag.
 		),
 	}
 
+	parentAICmd.AddCommand(cmd)
 	BindFlags[AIWebArgs](v, cmd)
 
 	return cmd

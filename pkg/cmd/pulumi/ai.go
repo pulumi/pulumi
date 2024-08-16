@@ -46,7 +46,7 @@ func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAICommand(v *viper.Viper) *cobra.Command {
+func newAICommand(v *viper.Viper, parentPulumiCmd *cobra.Command) *cobra.Command {
 	var aiCommand aiCmd
 	cmd := &cobra.Command{
 		Use:    "ai",
@@ -63,6 +63,9 @@ func newAICommand(v *viper.Viper) *cobra.Command {
 		},
 		),
 	}
-	cmd.AddCommand(newAIWebCommand(v))
+
+	parentPulumiCmd.AddCommand(cmd)
+	newAIWebCommand(v, cmd)
+
 	return cmd
 }
