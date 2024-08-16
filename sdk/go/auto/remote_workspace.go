@@ -111,9 +111,6 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 
 	if !remoteOpts.InheritSettings {
 		ifNotSet := " if RemoteInheritSettings(true) is not set"
-		if repo.URL == "" {
-			return nil, errors.New("repo.URL is required" + ifNotSet)
-		}
 		if repo.Branch == "" && repo.CommitHash == "" {
 			return nil, errors.New("either repo.Branch or repo.CommitHash is required" + ifNotSet)
 		}
@@ -168,6 +165,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 		Repo(repo),
 		remoteExecutorImage(remoteOpts.ExecutorImage),
 		remoteAgentPoolID(remoteOpts.AgentPoolID),
+		remoteGitHubRepository(remoteOpts.GitHubRepository),
 	}
 	return localOpts, nil
 }
@@ -186,6 +184,8 @@ type remoteWorkspaceOptions struct {
 	ExecutorImage *ExecutorImage
 	// AgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
 	AgentPoolID string
+	// GitHubRepository is the GitHub repository to use for the remote executor. The format is "owner/repo".
+	GitHubRepository string
 }
 
 type ExecutorImage struct {
@@ -251,6 +251,14 @@ func RemoteExecutorImage(image *ExecutorImage) RemoteWorkspaceOption {
 func RemoteAgentPoolID(agentPoolID string) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.AgentPoolID = agentPoolID
+	})
+}
+
+// RemoteExecutorImage sets the agent pool (also called deployment runner pool) to use for the
+// remote Pulumi operation.
+func GitHubRepository(repository string) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.GitHubRepository = repository
 	})
 }
 

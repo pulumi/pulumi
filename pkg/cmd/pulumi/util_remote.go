@@ -171,6 +171,7 @@ type RemoteArgs struct {
 	executorImageUsername    string
 	executorImagePassword    string
 	agentPoolID              string
+	gitHubRepository         string
 }
 
 func (r *RemoteArgs) applyFlagsForDeploymentCommand(cmd *cobra.Command) {
@@ -305,19 +306,22 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 		&r.agentPoolID, "remote-agent-pool-id", "",
 		"[EXPERIMENTAL] The agent pool to use to run the deployment job. When empty, the Pulumi Cloud shared queue "+
 			"will be used.")
+	cmd.PersistentFlags().StringVar(
+		&r.gitHubRepository, "remote-github-repository", "",
+		"[EXPERIMENTAL] The GitHub repository to use for the remote executor. The format is \"owner/repo\"")
 }
 
 func validateRemoteDeploymentFlags(url string, args RemoteArgs) result.Result {
 	// Validate args.
-	if url == "" && !args.inheritSettings {
-		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings"))
+	if url == "" && (!args.inheritSettings && args.gitHubRepository == "") {
+		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings or --remote-github-repository"))
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
 		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
 	}
-	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
+	if args.gitBranch == "" && args.gitCommit == "" && (!args.inheritSettings && args.gitHubRepository == "") {
 		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required " +
-			"if not passing --remote-inherit-settings"))
+			"if not passing --remote-inherit-settings or --remote-github-repository"))
 	}
 	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
 		return result.FromError(errors.New("`--remote-git-auth-ssh-private-key` and " +
@@ -366,7 +370,7 @@ func validateDeploymentFlags(url string, args RemoteArgs) result.Result {
 }
 
 // runDeployment kicks off a remote deployment.
-func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options,
+func runDeployment(ctx context.Context, opts display.Options,
 	operation apitype.PulumiOperation, stack, url string, args RemoteArgs,
 ) result.Result {
 	// Parse and validate the environment args.
@@ -406,7 +410,7 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 
 	// Ensure the cloud backend is being used.
 	cb, isCloud := b.(httpstate.Backend)
-	if !isCloud {
+	if !isCloud && backendInstance == nil /* mock backend */ {
 		return result.FromError(errors.New("the Pulumi Cloud backend must be used for remote operations; " +
 			"use `pulumi login` without arguments to log into the Pulumi Cloud backend"))
 	}
@@ -486,23 +490,41 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 		}
 	}
 
+	if (url == "") == (args.gitHubRepository == "") {
+		// Either URL or GitHub repository must be specified, but not both.
+		return result.FromError(errors.New("one of `url` or `github-repository` must be specified, and not both"))
+	}
+
+	var gitHub *apitype.DeploymentSettingsGitHub
+	if args.gitHubRepository != "" {
+		gitHub = &apitype.DeploymentSettingsGitHub{
+			Repository: args.gitHubRepository,
+		}
+	}
+
 	// we have a custom marshaller for CreateDeploymentRequest, to handle semantics around
 	// defined/undefined/null values on AgentPoolID
 	agentPoolID := apitype.AgentPoolIDMarshaller(args.agentPoolID)
-
 	req := apitype.CreateDeploymentRequest{
 		Op:              operation,
 		InheritSettings: args.inheritSettings,
-		Executor: &apitype.ExecutorContext{
-			ExecutorImage: executorImage,
+		DeploymentSettings: apitype.DeploymentSettings{
+			Executor: &apitype.ExecutorContext{
+				ExecutorImage: executorImage,
+			},
+			SourceContext: sourceContext,
+			GitHub: gitHub,
+			Operation: &apitype.OperationContext{
+				PreRunCommands:       args.preRunCommands,
+				EnvironmentVariables: env,
+				Options:              operationOptions,
+			},
+			AgentPoolID: &agentPoolID,
 		},
-		Source: sourceContext,
-		Operation: &apitype.OperationContext{
-			PreRunCommands:       args.preRunCommands,
-			EnvironmentVariables: env,
-			Options:              operationOptions,
-		},
-		AgentPoolID: &agentPoolID,
+	}
+
+	if cb == nil {
+		return result.FromError(errors.New("no cloud backend available"))
 	}
 
 	// For now, these commands are only used by automation API, so we can unilaterally set the initiator

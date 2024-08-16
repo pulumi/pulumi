@@ -85,7 +85,7 @@ func newDeploymentRunCmd() *cobra.Command {
 				return errResult
 			}
 
-			return runDeployment(ctx, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			return runDeployment(ctx, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
 		}),
 	}
 

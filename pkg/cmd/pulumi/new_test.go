@@ -38,6 +38,9 @@ import (
 
 // mockBackendInstance sets the backendInstance for the test and cleans it up after.
 func mockBackendInstance(t *testing.T, b backend.Backend) {
+	// Setenv internally asserts that it's not called in parallel tests we call it here to prevent a
+	// race on setting backendInstance
+	t.Setenv("GO_TEST_IS_PARALLEL", "true")
 	t.Cleanup(func() {
 		backendInstance = nil
 	})

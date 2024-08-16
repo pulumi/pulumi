@@ -100,23 +100,14 @@ func (v *DeploymentDuration) UnmarshalYAML(node *yaml.Node) error {
 // CreateDeploymentRequest defines the request payload that is expected when
 // creating a new deployment.
 type CreateDeploymentRequest struct {
+	DeploymentSettings
+
 	// Op
 	Op PulumiOperation `json:"operation"`
 
 	// InheritSettings is a flag that indicates whether the deployment should inherit
 	// deployment settings from the stack.
 	InheritSettings bool `json:"inheritSettings"`
-
-	// Executor defines options that the executor is going to use to run the job.
-	Executor *ExecutorContext `json:"executorContext,omitempty"`
-
-	// Source defines how the source code to the Pulumi program will be gathered.
-	Source *SourceContext `json:"sourceContext,omitempty"`
-
-	// Operation defines the options that the executor will use to run the Pulumi commands.
-	Operation *OperationContext `json:"operationContext,omitempty"`
-
-	AgentPoolID *AgentPoolIDMarshaller `json:"agentPoolID,omitempty"`
 }
 
 type AgentPoolIDMarshaller string
@@ -134,7 +125,7 @@ type DeploymentSettings struct {
 	SourceContext *SourceContext            `json:"sourceContext,omitempty" yaml:"sourceContext,omitempty"`
 	GitHub        *DeploymentSettingsGitHub `json:"gitHub,omitempty" yaml:"gitHub,omitempty"`
 	Operation     *OperationContext         `json:"operationContext,omitempty" yaml:"operationContext,omitempty"`
-	AgentPoolID   *string                   `json:"agentPoolID,omitempty" yaml:"agentPoolID,omitempty"`
+	AgentPoolID   *AgentPoolIDMarshaller    `json:"agentPoolID,omitempty" yaml:"agentPoolID,omitempty"`
 }
 
 type DeploymentSettingsGitHub struct {

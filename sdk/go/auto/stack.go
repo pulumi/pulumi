@@ -1346,6 +1346,7 @@ func (s *Stack) remoteArgs() []string {
 	var envvars map[string]EnvVarValue
 	var executorImage *ExecutorImage
 	var remoteAgentPoolID string
+	var remoteGitHubRepository string
 	var skipInstallDependencies bool
 	var inheritSettings bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
@@ -1357,6 +1358,7 @@ func (s *Stack) remoteArgs() []string {
 		executorImage = lws.remoteExecutorImage
 		remoteAgentPoolID = lws.remoteAgentPoolID
 		inheritSettings = lws.remoteInheritSettings
+		remoteGitHubRepository = lws.remoteGitHubRepository
 	}
 	if !remote {
 		return nil
@@ -1423,6 +1425,10 @@ func (s *Stack) remoteArgs() []string {
 
 	if remoteAgentPoolID != "" {
 		args = append(args, "--remote-agent-pool-id="+remoteAgentPoolID)
+	}
+
+	if remoteGitHubRepository != "" {
+		args = append(args, "--remote-github-repository="+remoteGitHubRepository)
 	}
 
 	if skipInstallDependencies {

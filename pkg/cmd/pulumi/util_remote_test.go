@@ -15,9 +15,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseEnv(t *testing.T) {
@@ -50,6 +57,74 @@ func TestParseEnv(t *testing.T) {
 			}
 			assert.Equal(t, tc.name, name)
 			assert.Equal(t, tc.value, value)
+		})
+	}
+}
+
+//nolint:paralleltest // uses mock backend
+func TestRemoteExclusiveURL(t *testing.T) {
+	stackRef := "org/foo/bar"
+	mockBackendInstance(t, &backend.MockBackend{
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			if s != stackRef {
+				return nil, errors.New("unexpected stack reference")
+			}
+			return &backend.MockStackReference{
+				StringV:             "org/project/name",
+				NameV:               tokens.MustParseStackName("name"),
+				ProjectV:            "project",
+				FullyQualifiedNameV: tokens.QName("org/project/name"),
+			}, nil
+		},
+	})
+
+	type testCase struct {
+		name string
+
+		url              string
+		gitHubRepository string
+
+		expectUrlError bool
+	}
+
+	testCases := []testCase{
+		{
+			name: "url only",
+			url:  "https://example.com/foo/bar.git",
+		},
+		{
+			name:             "github-repository only",
+			gitHubRepository: "thwomp/quux",
+		},
+		{
+			name:             "both",
+			url:              "https://example.com/foo/bar.git",
+			gitHubRepository: "thwomp/quux",
+			expectUrlError:   true,
+		},
+		{
+			name:           "neither",
+			expectUrlError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			res := runDeployment(context.Background(), display.Options{}, apitype.Update, stackRef, tc.url, RemoteArgs{
+				remote:           true,
+				gitHubRepository: tc.gitHubRepository,
+			})
+
+			err := res.Error()
+			require.Error(t, err)
+			if tc.expectUrlError {
+				assert.Contains(t, err.Error(), "one of `url` or `github-repository` must be specified, and not both")
+			} else {
+				assert.Contains(t, err.Error(), "no cloud backend available")
+			}
 		})
 	}
 }

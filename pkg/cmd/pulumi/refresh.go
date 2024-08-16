@@ -154,7 +154,7 @@ func newRefreshCmd() *cobra.Command {
 					return errResult
 				}
 
-				return runDeployment(ctx, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
+				return runDeployment(ctx, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
