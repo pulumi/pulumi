@@ -48,6 +48,7 @@ import (
 // each root is sampled at a particular granularity. the nested traces are converted into a callstack at each
 // sampling point.
 
+//nolint:lll
 type ConvertTraceArgs struct {
 	Otel           bool          `argsUsage:"true to export to OpenTelementry"`
 	IgnoreLogSpans bool          `argsDefault:"true" argsUsage:"true to ignore log spans"`

@@ -50,6 +50,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
+//nolint:lll
 type ConvertArgs struct {
 	OutDir       string   `args:"out" argsDefault:"." argsUsage:"The output directory to write the converted project to"`
 	From         string   `argsDefault:"yaml" argsUsage:"Which converter plugin to use to read the source program"`

@@ -273,9 +273,8 @@ func defaultDuration(defaultValue string) time.Duration {
 	if defaultValue != "" {
 		if d, err := time.ParseDuration(defaultValue); err == nil {
 			return d
-		} else {
-			contract.Failf("failed to parse default value %q as duration: %v", defaultValue, err)
 		}
+		contract.Failf("failed to parse default value %q as duration: %v", defaultValue, err)
 	}
 	return time.Duration(0)
 }
