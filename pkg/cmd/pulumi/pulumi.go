@@ -323,7 +323,7 @@ func NewPulumiCmd() *cobra.Command {
 				newNewCmd(v, cmd),
 				newConfigCmd(v, cmd),
 				newStackCmd(v, cmd),
-				newConsoleCmd(),
+				newConsoleCmd(v, cmd),
 				newImportCmd(v, cmd),
 				newRefreshCmd(v, cmd),
 				newStateCmd(v, cmd),
