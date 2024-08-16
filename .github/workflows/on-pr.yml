@@ -84,7 +84,6 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
       # codegen tests take quite a while to run.
       # Run them only if ci/test is set,
       # or if one of the codegen files changed.
