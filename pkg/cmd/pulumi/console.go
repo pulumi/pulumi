@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -29,14 +30,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type ConsoleConfig struct {
-	PulumiConfig
-
-	Stack string
+type ConsoleArgs struct {
+	Stack string `argsShort:"s" argsUsage:"The name of the stack to view"`
 }
 
-func newConsoleCmd() *cobra.Command {
-	config := ConsoleConfig{}
+func newConsoleCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
+	config := ConsoleArgs{}
 	cmd := &cobra.Command{
 		Use:   "console",
 		Short: "Opens the current stack in the Pulumi Console",
@@ -103,8 +102,10 @@ func newConsoleCmd() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "", "The name of the stack to view")
+
+	parentCmd.AddCommand(cmd)
+	BindFlags[ConsoleArgs](v, cmd)
+
 	return cmd
 }
 
