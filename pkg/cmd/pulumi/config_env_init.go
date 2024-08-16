@@ -34,10 +34,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
-func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
+type ConfigEnvInitArgs struct {
+	Env         string `argsUsage:"The name of the environment to create. Defaults to \"<project name>-<stack name>\""`
+	ShowSecrets bool   `argsUsage:"Show secret values in plaintext instead of ciphertext"`
+	KeepConfig  bool   `argsUsage:"Do not remove configuration values from the stack after creating the environment"`
+	Yes         bool   `argsShort:"y" argsUsage:"True to save the created environment without prompting"`
+}
+
+func newConfigEnvInitCmd(v *viper.Viper, parentConfigcmd *cobra.Command, parent *configEnvCmd) *cobra.Command {
 	impl := &configEnvInitCmd{
 		parent:     parent,
 		newCrypter: newConfigEnvInitCrypter,
@@ -50,24 +58,15 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			parent.initArgs()
-			return impl.run(cmd.Context(), args)
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			parent.initArgs(v, parentConfigcmd)
+			impl.args = UnmarshalArgs[ConfigEnvInitArgs](v, cmd)
+			return impl.run(cmd.Context(), cliArgs)
 		}),
 	}
 
-	cmd.Flags().StringVar(
-		&impl.envName, "env", "",
-		`The name of the environment to create. Defaults to "<project name>-<stack name>"`)
-	cmd.Flags().BoolVar(
-		&impl.showSecrets, "show-secrets", false,
-		"Show secret values in plaintext instead of ciphertext")
-	cmd.Flags().BoolVar(
-		&impl.keepConfig, "keep-config", false,
-		"Do not remove configuration values from the stack after creating the environment")
-	cmd.Flags().BoolVarP(
-		&impl.yes, "yes", "y", false,
-		"True to save the created environment without prompting")
+	parentConfigcmd.AddCommand(cmd)
+	BindFlags[ConfigEnvInitArgs](v, cmd)
 
 	return cmd
 }
@@ -86,18 +85,15 @@ type configEnvInitCmd struct {
 
 	newCrypter func() (evalCrypter, error)
 
-	envName     string
-	showSecrets bool
-	keepConfig  bool
-	yes         bool
+	args ConfigEnvInitArgs
 }
 
-func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
-	if !cmd.yes && !cmd.parent.interactive {
+func (cmd *configEnvInitCmd) run(ctx context.Context, cliArgs []string) error {
+	if !cmd.args.Yes && !cmd.parent.args.Interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 
-	opts := display.Options{Color: cmd.parent.color}
+	opts := display.Options{Color: cmd.parent.args.Color}
 
 	project, _, err := cmd.parent.readProject()
 	if err != nil {
@@ -116,11 +112,11 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	orgName := stack.(interface{ OrgName() string }).OrgName()
 
-	if cmd.envName == "" {
-		cmd.envName = fmt.Sprintf("%v-%v", project.Name, stack.Ref().Name())
+	if cmd.args.Env == "" {
+		cmd.args.Env = fmt.Sprintf("%v-%v", project.Name, stack.Ref().Name())
 	}
 
-	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v for stack %v...\n", cmd.envName, stack.Ref().Name())
+	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v for stack %v...\n", cmd.args.Env, stack.Ref().Name())
 
 	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
 	if err != nil {
@@ -132,18 +128,18 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	yaml, err := cmd.renderEnvironmentDefinition(ctx, cmd.envName, crypter, config, cmd.showSecrets)
+	yaml, err := cmd.renderEnvironmentDefinition(ctx, cmd.args.Env, crypter, config, cmd.args.ShowSecrets)
 	if err != nil {
 		return err
 	}
 
-	preview, err := cmd.renderPreview(ctx, envBackend, orgName, cmd.envName, yaml, cmd.showSecrets)
+	preview, err := cmd.renderPreview(ctx, envBackend, orgName, cmd.args.Env, yaml, cmd.args.ShowSecrets)
 	if err != nil {
 		return err
 	}
 	fmt.Fprint(cmd.parent.stdout, preview)
 
-	if !cmd.yes {
+	if !cmd.args.Yes {
 		save, err := confirmation.New("Save?", confirmation.Yes).RunPrompt()
 		if err != nil {
 			return err
@@ -153,14 +149,14 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		}
 	}
 
-	if !cmd.showSecrets {
-		yaml, err = eval.DecryptSecrets(ctx, cmd.envName, yaml, crypter)
+	if !cmd.args.ShowSecrets {
+		yaml, err = eval.DecryptSecrets(ctx, cmd.args.Env, yaml, crypter)
 		if err != nil {
 			return err
 		}
 	}
 
-	diags, err := envBackend.CreateEnvironment(ctx, orgName, cmd.envName, yaml)
+	diags, err := envBackend.CreateEnvironment(ctx, orgName, cmd.args.Env, yaml)
 	if err != nil {
 		return fmt.Errorf("creating environment: %w", err)
 	}
@@ -168,8 +164,8 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("internal error creating environment: %w", diags)
 	}
 
-	projectStack.Environment = projectStack.Environment.Append(cmd.envName)
-	if !cmd.keepConfig {
+	projectStack.Environment = projectStack.Environment.Append(cmd.args.Env)
+	if !cmd.args.KeepConfig {
 		projectStack.Config = nil
 	}
 	if err = cmd.parent.saveProjectStack(stack, projectStack); err != nil {

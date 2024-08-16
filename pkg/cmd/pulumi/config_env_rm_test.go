@@ -61,7 +61,7 @@ Save? Yes
 		var newStackYAML string
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", nil, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, yes: true}
+		rm := &configEnvRmCmd{parent: parent, args: ConfigEnvRmArgs{Yes: true}}
 		ctx := context.Background()
 		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
@@ -86,7 +86,7 @@ Save? Yes
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, nil, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, yes: true}
+		rm := &configEnvRmCmd{parent: parent, args: ConfigEnvRmArgs{Yes: true}}
 		ctx := context.Background()
 		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
@@ -190,7 +190,7 @@ Save? Yes
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		rm := &configEnvRmCmd{parent: parent, showSecrets: true}
+		rm := &configEnvRmCmd{parent: parent, args: ConfigEnvRmArgs{ShowSecrets: true}}
 		ctx := context.Background()
 		err := rm.run(ctx, []string{"env2"})
 		require.NoError(t, err)

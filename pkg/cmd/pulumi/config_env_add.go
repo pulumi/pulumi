@@ -20,11 +20,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// TODO: hack/pulumirc
+type ConfigEnvAddArgs struct {
+	ShowSecrets bool `argsUsage:"Show secret values in plaintext instead of ciphertext"`
+	Yes         bool `argsShort:"y" argsUsage:"True to save the created environment without prompting"`
+}
 
-func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
+func newConfigEnvAddCmd(v *viper.Viper, parentConfigEnvCmd *cobra.Command, parent *configEnvCmd) *cobra.Command {
 	impl := configEnvAddCmd{parent: parent}
 
 	cmd := &cobra.Command{
@@ -35,31 +39,26 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 			"environment.",
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			parent.initArgs()
+			parent.initArgs(v, parentConfigEnvCmd)
+			impl.args = UnmarshalArgs[ConfigEnvAddArgs](v, cmd)
 			return impl.run(cmd.Context(), args)
 		}),
 	}
 
-	cmd.Flags().BoolVar(
-		&impl.showSecrets, "show-secrets", false,
-		"Show secret values in plaintext instead of ciphertext")
-	cmd.Flags().BoolVarP(
-		&impl.yes, "yes", "y", false,
-		"True to save changes without prompting")
+	parentConfigEnvCmd.AddCommand(cmd)
+	BindFlags[ConfigEnvAddArgs](v, cmd)
 
 	return cmd
 }
 
 type configEnvAddCmd struct {
 	parent *configEnvCmd
-
-	showSecrets bool
-	yes         bool
+	args   ConfigEnvAddArgs
 }
 
 func (cmd *configEnvAddCmd) run(ctx context.Context, args []string) error {
 	return cmd.parent.editStackEnvironment(
-		ctx, cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
+		ctx, cmd.args.ShowSecrets, cmd.args.Yes, func(stack *workspace.ProjectStack) error {
 			stack.Environment = stack.Environment.Append(args...)
 			return nil
 		})

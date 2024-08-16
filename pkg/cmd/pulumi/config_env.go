@@ -31,7 +31,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-func newConfigEnvCmd(_ *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
+type ConfigEnvArgs struct {
+	Interactive bool
+	Color       colors.Colorization
+}
+
+func newConfigEnvCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
@@ -50,12 +55,12 @@ func newConfigEnvCmd(_ *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Comm
 	}
 
 	parentConfigCmd.AddCommand(cmd)
+	BindFlags[ConfigEnvArgs](v, cmd)
 
-	// TODO hack/pulumirc
-	cmd.AddCommand(newConfigEnvInitCmd(&impl))
-	cmd.AddCommand(newConfigEnvAddCmd(&impl))
-	cmd.AddCommand(newConfigEnvRmCmd(&impl))
-	cmd.AddCommand(newConfigEnvLsCmd(&impl))
+	newConfigEnvInitCmd(v, cmd, &impl)
+	newConfigEnvAddCmd(v, cmd, &impl)
+	newConfigEnvRmCmd(v, cmd, &impl)
+	newConfigEnvLsCmd(v, cmd, &impl)
 
 	return cmd
 }
@@ -64,8 +69,7 @@ type configEnvCmd struct {
 	stdin  io.Reader
 	stdout io.Writer
 
-	interactive bool
-	color       colors.Colorization
+	args ConfigEnvArgs
 
 	readProject func() (*workspace.Project, string, error)
 
@@ -83,14 +87,13 @@ type configEnvCmd struct {
 	stackRef *string // TODO hack/pulumirc: remove, this should be read from config
 }
 
-func (cmd *configEnvCmd) initArgs() {
-	cmd.interactive = cmdutil.Interactive()
-	cmd.color = cmdutil.GetGlobalColorization()
+func (cmd *configEnvCmd) initArgs(v *viper.Viper, cobraCommand *cobra.Command) {
+	cmd.args = UnmarshalArgs[ConfigEnvArgs](v, cobraCommand)
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
-	opts := display.Options{Color: cmd.color}
+	opts := display.Options{Color: cmd.args.Color}
 
 	project, _, err := cmd.readProject()
 	if err != nil {
@@ -158,7 +161,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	yes bool,
 	edit func(stack *workspace.ProjectStack) error,
 ) error {
-	if !yes && !cmd.interactive {
+	if !yes && !cmd.args.Interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 

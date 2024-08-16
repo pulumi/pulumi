@@ -81,7 +81,7 @@ Save? Yes
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
-		add := &configEnvAddCmd{parent: parent, yes: true}
+		add := &configEnvAddCmd{parent: parent, args: ConfigEnvAddArgs{Yes: true}}
 		ctx := context.Background()
 		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
@@ -131,7 +131,7 @@ aws:region  us-west-2
 		var newStackYAML string
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", env, nil, &newStackYAML)
-		add := &configEnvAddCmd{parent: parent, yes: true}
+		add := &configEnvAddCmd{parent: parent, args: ConfigEnvAddArgs{Yes: true}}
 		ctx := context.Background()
 		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
@@ -211,7 +211,7 @@ Save? Yes
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
-		add := &configEnvAddCmd{parent: parent, showSecrets: true}
+		add := &configEnvAddCmd{parent: parent, args: ConfigEnvAddArgs{ShowSecrets: true}}
 		ctx := context.Background()
 		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
