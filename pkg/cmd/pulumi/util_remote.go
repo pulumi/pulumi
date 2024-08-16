@@ -301,6 +301,10 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(
 		&r.executorImagePassword, "remote-executor-image-password", "",
 		"[EXPERIMENTAL] The password for the credentials with access to the Docker image to use for the executor")
+	cmd.PersistentFlags().StringVar(
+		&r.agentPoolID, "remote-agent-pool-id", "",
+		"[EXPERIMENTAL] The agent pool to use to run the deployment job. When empty, the Pulumi Cloud shared queue "+
+			"will be used.")
 }
 
 func validateRemoteDeploymentFlags(url string, args RemoteArgs) result.Result {
@@ -482,6 +486,10 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 		}
 	}
 
+	// we have a custom marshaller for CreateDeploymentRequest, to handle semantics around
+	// defined/undefined/null values on AgentPoolID
+	agentPoolID := apitype.AgentPoolIDMarshaller(args.agentPoolID)
+
 	req := apitype.CreateDeploymentRequest{
 		Op:              operation,
 		InheritSettings: args.inheritSettings,
@@ -494,19 +502,7 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 			EnvironmentVariables: env,
 			Options:              operationOptions,
 		},
-	}
-
-	// we have a custom marshaller for CreateDeploymentRequest, to handle semantics around
-	// defined/undefined/null values on AgentPoolID
-	agentPoolIDConfig := cmd.Flag("agent-pool-id")
-	if agentPoolIDConfig != nil && agentPoolIDConfig.Changed {
-		// if agent pool id is set, we forward it
-		// if it is empty, we will send a null, to make it default to the shared queue
-		v := apitype.AgentPoolIDMarshaller(args.agentPoolID)
-		req.AgentPoolID = &v
-	} else {
-		// if not set, it should be treated as undefined
-		req.AgentPoolID = nil
+		AgentPoolID: &agentPoolID,
 	}
 
 	// For now, these commands are only used by automation API, so we can unilaterally set the initiator

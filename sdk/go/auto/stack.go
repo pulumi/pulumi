@@ -1345,6 +1345,7 @@ func (s *Stack) remoteArgs() []string {
 	var preRunCommands []string
 	var envvars map[string]EnvVarValue
 	var executorImage *ExecutorImage
+	var remoteAgentPoolID string
 	var skipInstallDependencies bool
 	var inheritSettings bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
@@ -1354,6 +1355,7 @@ func (s *Stack) remoteArgs() []string {
 		envvars = lws.remoteEnvVars
 		skipInstallDependencies = lws.remoteSkipInstallDependencies
 		executorImage = lws.remoteExecutorImage
+		remoteAgentPoolID = lws.remoteAgentPoolID
 		inheritSettings = lws.remoteInheritSettings
 	}
 	if !remote {
@@ -1417,6 +1419,10 @@ func (s *Stack) remoteArgs() []string {
 				args = append(args, "--remote-executor-image-password="+executorImage.Credentials.Password)
 			}
 		}
+	}
+
+	if remoteAgentPoolID != "" {
+		args = append(args, "--remote-agent-pool-id="+remoteAgentPoolID)
 	}
 
 	if skipInstallDependencies {

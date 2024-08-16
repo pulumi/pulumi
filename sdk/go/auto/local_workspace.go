@@ -60,6 +60,7 @@ type LocalWorkspace struct {
 	remoteInheritSettings         bool
 	pulumiCommand                 PulumiCommand
 	remoteExecutorImage           *ExecutorImage
+	remoteAgentPoolID             string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -903,6 +904,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
 		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
+		remoteAgentPoolID:             lwOpts.RemoteAgentPoolID,
 		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
 		repo:                          lwOpts.Repo,
 		pulumiCommand:                 pulumiCommand,
@@ -1000,6 +1002,8 @@ type localWorkspaceOptions struct {
 	RemoteSkipInstallDependencies bool
 	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
 	RemoteExecutorImage *ExecutorImage
+	// RemoteAgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
+	RemoteAgentPoolID string
 	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
 	RemoteInheritSettings bool
 }
@@ -1164,6 +1168,12 @@ func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceO
 func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteExecutorImage = image
+	})
+}
+
+func remoteAgentPoolID(agentPoolID string) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteAgentPoolID = agentPoolID
 	})
 }
 
