@@ -59,15 +59,6 @@ as in:
 			plugin := args[0]
 			parameters := args[1:]
 
-			var pluginInstallCommand pluginInstallCmd
-			err = pluginInstallCommand.Run(ctx, []string{
-				"resource", /*plugin kind*/
-				plugin,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to install plugin: %w", err)
-			}
-
 			pkg, err := schemaFromSchemaSource(ctx, plugin, parameters)
 			if err != nil {
 				return fmt.Errorf("failed to get schema: %w", err)
