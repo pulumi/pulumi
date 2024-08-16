@@ -73,7 +73,7 @@ a preview showing a diff of the altered state.`,
 	}
 	cmd.PersistentFlags().StringVar(
 		&stackName, "stack", "",
-		"Remove the stack and its config file after all resources in the stack have been deleted")
+		"The name of the stack to operation on. Defaults to the current stack")
 	return cmd
 }
 
