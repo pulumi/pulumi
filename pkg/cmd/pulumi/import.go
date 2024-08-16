@@ -58,6 +58,513 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 )
 
+//nolint:lll
+type ImportArgs struct {
+	ConfigFile     string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
+	ParentSpec     string `args:"parent" argsUsage:"The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource"`
+	ProviderSpec   string `args:"provider" argsUsage:"The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource"`
+	ImportFilePath string `args:"file" argsShort:"f" argsUsage:"The path to a JSON-encoded file containing a list of resources to import"`
+	OutputFilePath string `args:"out" argsShort:"o" argsUsage:"The path to the file that will contain the generated resource declarations"`
+	GenerateCode   bool   `argsDefault:"true" argsUsage:"Generate resource declaration code for the imported resources"`
+
+	Debug     bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
+	Message   string `argsShort:"m" argsUsage:"Optional message to associate with the update operation"`
+	StackName string `args:"stack" argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	ExecKind  string
+	ExecAgent string
+
+	// Flags for engine.UpdateOptions.
+	JSONDisplay       bool     `args:"json" argsShort:"j" argsUsage:"Serialize the import diffs, operations, and overall output as JSON"`
+	DiffDisplay       bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
+	EventLogPath      string   `args:"event-log" argsUsage:"Log events to a file at this path"`
+	Parallel          int      `argsShort:"p" argsDefault:"80" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
+	PreviewOnly       bool     `argsUsage:"Only show a preview of the import, but don't perform the import itself"`
+	SkipPreview       bool     `argsUsage:"Do not calculate a preview before performing the import"`
+	SuppressOutputs   bool     `argsUsage:"Suppress display of stack outputs (in case they contain sensitive values)"`
+	SuppressProgress  bool     `argsUsage:"Suppress display of periodic progress dots"`
+	SuppressPermalink string   `argsUsage:"Suppress display of the state permalink"`
+	Yes               bool     `argsShort:"y" argsUsage:"Automatically approve and perform the import after previewing it"`
+	ProtectResources  bool     `args:"protect" argsDefault:"true" argsUsage:"Allow resources to be imported with protection from deletion enabled"`
+	Properties        []string `argsUsage:"The property names to use for the import in the format name1,name2"`
+
+	From string `argsUsage:"Invoke a converter to import the resources"`
+}
+
+func newImportCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "import [type] [name] [id]",
+		Short: "Import resources into an existing stack",
+		Long: "Import resources into an existing stack.\n" +
+			"\n" +
+			"Resources that are not managed by Pulumi can be imported into a Pulumi stack\n" +
+			"using this command. A definition for each resource will be printed to stdout\n" +
+			"in the language used by the project associated with the stack; these definitions\n" +
+			"should be added to the Pulumi program. The resources are protected from deletion\n" +
+			"by default.\n" +
+			"\n" +
+			"Should you want to import your resource(s) without protection, you can pass\n" +
+			"`--protect=false` as an argument to the command. This will leave all resources unprotected.\n" +
+			"\n" +
+			"A single resource may be specified in the command line arguments or a set of\n" +
+			"resources may be specified by a JSON file.\n" +
+			"\n" +
+			"If using the command line args directly, the type token, name, id and optional flags\n" +
+			"must be provided.  For example:\n" +
+			"\n" +
+			"    pulumi import 'aws:iam/user:User' name id\n" +
+			"\n" +
+			"The type token and property used for resource lookup are available in the Import section of\n" +
+			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
+			"\n" +
+			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"\n" +
+			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
+			"\n" +
+			"If using the JSON file format to define the imported resource(s), use this instead:\n" +
+			"\n" +
+			"     pulumi import -f import.json\n" +
+			"\n" +
+			"Where import.json is a file that matches the following JSON format:\n" +
+			"\n" +
+			"    {\n" +
+			"        \"nameTable\": {\n" +
+			"            \"provider-or-parent-name-0\": \"provider-or-parent-urn-0\",\n" +
+			"            ...\n" +
+			"            \"provider-or-parent-name-n\": \"provider-or-parent-urn-n\",\n" +
+			"        },\n" +
+			"        \"resources\": [\n" +
+			"            {\n" +
+			"                \"type\": \"type-token\",\n" +
+			"                \"name\": \"name\",\n" +
+			"                \"id\": \"resource-id\",\n" +
+			"                \"parent\": \"optional-parent-name\",\n" +
+			"                \"provider\": \"optional-provider-name\",\n" +
+			"                \"version\": \"optional-provider-version\",\n" +
+			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
+			"                \"logicalName\": \"optionalLogicalName\",\n" +
+			"                \"properties\": [\"optional-property-names\"],\n" +
+			"                \"component\": false,\n" +
+			"                \"remote\": false,\n" +
+			"            },\n" +
+			"            ...\n" +
+			"            {\n" +
+			"                ...\n" +
+			"            }\n" +
+			"        ],\n" +
+			"    }\n" +
+			"\n" +
+			"The name table maps language names to parent and provider URNs. These names are\n" +
+			"used in the generated definitions, and should match the corresponding declarations\n" +
+			"in the source program. This table is required if any parents or providers are\n" +
+			"specified by the resources to import.\n" +
+			"\n" +
+			"The resources list contains the set of resources to import. Each resource is\n" +
+			"specified as a triple of its type, name, and ID. The format of the ID is specific\n" +
+			"to the resource type. Each resource may specify the name of a parent or provider;\n" +
+			"these names must correspond to entries in the name table. If a resource does not\n" +
+			"specify a provider, it will be imported using the default provider for its type. A\n" +
+			"resource that does specify a provider may specify the version of the provider\n" +
+			"that will be used for its import.\n" +
+			"\n" +
+			"A resource can define a logical name as well as its name for the name table.\n" +
+			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
+			"\n" +
+			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
+			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
+			"\n" +
+			"Each resource may specify which input properties to import with;\n" +
+			"\n" +
+			"If a resource does not specify any properties the default behaviour is to\n" +
+			"import using all required properties.\n" +
+			"\n" +
+			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
+			"for all resources that need creating from the preview. This will fill in all the name,\n" +
+			"type, parent and provider information for you and just require you to fill in resource\n" +
+			"IDs and any properties.\n",
+		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, cliArgs []string) result.Result {
+			args := UnmarshalArgs[ImportArgs](v, cmd)
+
+			ctx := cmd.Context()
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				return result.FromError(fmt.Errorf("get working directory: %w", err))
+			}
+			sink := cmdutil.Diag()
+			pCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+			if err != nil {
+				return result.FromError(fmt.Errorf("create plugin context: %w", err))
+			}
+
+			var importFile importFile
+			if args.ImportFilePath != "" {
+				if len(cliArgs) != 0 || args.ParentSpec != "" || args.ProviderSpec != "" || len(args.Properties) != 0 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
+				}
+				if args.From != "" {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf("a converter may not be specified in conjunction with an import file")
+				}
+				f, err := readImportFile(args.ImportFilePath)
+				if err != nil {
+					return result.FromError(fmt.Errorf("could not read import file: %w", err))
+				}
+				importFile = f
+			} else if args.From != "" {
+				log := func(sev diag.Severity, msg string) {
+					pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
+				}
+				converter, err := loadConverterPlugin(pCtx, args.From, log)
+				if err != nil {
+					return result.Errorf("load converter plugin: %w", err)
+				}
+				defer contract.IgnoreClose(converter)
+
+				installProvider := func(provider tokens.Package) *semver.Version {
+					// If auto plugin installs are disabled just return nil, the mapper will still carry on
+					if env.DisableAutomaticPluginAcquisition.Value() {
+						return nil
+					}
+
+					log := func(sev diag.Severity, msg string) {
+						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
+					}
+
+					pluginSpec := workspace.PluginSpec{
+						Name: string(provider),
+						Kind: apitype.ResourcePlugin,
+					}
+					version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
+					if err != nil {
+						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
+						return nil
+					}
+					return version
+				}
+
+				mapper, err := convert.NewPluginMapper(
+					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
+					args.From, nil, installProvider)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				mapperServer := convert.NewMapperServer(mapper)
+				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
+					MapperTarget: grpcServer.Addr(),
+					Args:         cliArgs,
+				})
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				printDiagnostics(sink, resp.Diagnostics)
+				if resp.Diagnostics.HasErrors() {
+					// If we've got error diagnostics then state conversion failed, we've printed the error above so
+					// just return a plain message here.
+					return result.Error("conversion failed")
+				}
+
+				f, err := makeImportFileFromResourceList(resp.Resources)
+				if err != nil {
+					return result.FromError(err)
+				}
+				importFile = f
+			} else {
+				msg := "an inline resource must be specified if no converter or import file is used, missing "
+				if len(cliArgs) == 0 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf(msg + "type, name, and id")
+				}
+				if len(cliArgs) == 1 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf(msg + "name and id")
+				}
+				if len(cliArgs) == 2 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf(msg + "id")
+				}
+				if len(cliArgs) > 3 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf("only expected at most three arguments")
+				}
+				f, err := makeImportFile(cliArgs[0], cliArgs[1], cliArgs[2], args.Properties, args.ParentSpec, args.ProviderSpec, "")
+				if err != nil {
+					return result.FromError(err)
+				}
+				importFile = f
+			}
+
+			if !args.GenerateCode && args.OutputFilePath != "" {
+				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
+			}
+
+			var outputResult bytes.Buffer
+			output := io.Writer(&outputResult)
+			if args.OutputFilePath != "" {
+				f, err := os.Create(args.OutputFilePath)
+				if err != nil {
+					return result.Errorf("could not open output file: %v", err)
+				}
+				defer contract.IgnoreClose(f)
+				output = f
+			}
+
+			// Fetch the project.
+			proj, root, err := readProject()
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			yes := args.Yes || args.SkipPreview || skipConfirmations()
+			interactive := cmdutil.Interactive()
+			if !interactive && !yes && !args.PreviewOnly {
+				return result.FromError(
+					errors.New("--yes or --skip-preview or --preview-only" +
+						" must be passed in to proceed when running in non-interactive mode"))
+			}
+
+			opts, err := updateFlagsToOptions(interactive, args.SkipPreview, yes, args.PreviewOnly)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			displayType := display.DisplayProgress
+			if args.DiffDisplay {
+				displayType = display.DisplayDiff
+			}
+
+			opts.Display = display.Options{
+				Color:            cmdutil.GetGlobalColorization(),
+				SuppressOutputs:  args.SuppressOutputs,
+				SuppressProgress: args.SuppressProgress,
+				IsInteractive:    interactive,
+				Type:             displayType,
+				EventLogPath:     args.EventLogPath,
+				Debug:            args.Debug,
+				JSONDisplay:      args.JSONDisplay,
+			}
+
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			if args.SuppressPermalink == "true" {
+				opts.Display.SuppressPermalink = true
+			} else {
+				opts.Display.SuppressPermalink = false
+			}
+
+			isDIYBackend, err := isDIYBackend(opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			// by default, we are going to suppress the permalink when using DIY backends
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
+			if args.SuppressPermalink != "false" && isDIYBackend {
+				opts.Display.SuppressPermalink = true
+			}
+
+			// Fetch the current stack.
+			s, err := requireStack(ctx, args.StackName, stackLoadOnly, opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, args.ProtectResources)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			wrapper := func(
+				f func(*pcl.Program) (map[string][]byte, hcl.Diagnostics, error),
+			) func(*pcl.Program, schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
+				return func(p *pcl.Program, loader schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
+					return f(p)
+				}
+			}
+
+			var programGenerator programGeneratorFunc
+			switch proj.Runtime.Name() {
+			case "dotnet":
+				programGenerator = wrapper(dotnet.GenerateProgram)
+			case "java":
+				programGenerator = wrapper(javagen.GenerateProgram)
+			case "yaml":
+				programGenerator = wrapper(yamlgen.GenerateProgram)
+			default:
+				programGenerator = func(
+					program *pcl.Program, loader schema.ReferenceLoader,
+				) (map[string][]byte, hcl.Diagnostics, error) {
+					cwd, err := os.Getwd()
+					if err != nil {
+						return nil, nil, err
+					}
+					sink := cmdutil.Diag()
+
+					ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+					if err != nil {
+						return nil, nil, err
+					}
+					defer contract.IgnoreClose(pCtx.Host)
+					programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
+					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+					if err != nil {
+						return nil, nil, err
+					}
+
+					loaderServer := schema.NewLoaderServer(loader)
+					grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+					if err != nil {
+						return nil, nil, err
+					}
+					defer contract.IgnoreClose(grpcServer)
+
+					// by default, binding the PCL program for generating import definition is not strict
+					// this is because we might generate unbound variables in the generated code that reference
+					// a parent resource or a provider
+					strict := false
+					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+					if err != nil {
+						return nil, nil, err
+					}
+
+					return files, diagnostics, nil
+				}
+			}
+
+			m, err := getUpdateMetadata(args.Message, root, args.ExecKind, args.ExecAgent, false, cmd.Flags())
+			if err != nil {
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+			}
+
+			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			decrypter, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+			}
+			encrypter, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			}
+
+			stackName := s.Ref().Name().String()
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
+			if configErr != nil {
+				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+			}
+
+			opts.Engine = engine.UpdateOptions{
+				Parallel:             args.Parallel,
+				Debug:                args.Debug,
+				UseLegacyDiff:        useLegacyDiff(),
+				UseLegacyRefreshDiff: useLegacyRefreshDiff(),
+				Experimental:         hasExperimentalCommands(),
+			}
+
+			_, res := s.Import(ctx, backend.UpdateOperation{
+				Proj:               proj,
+				Root:               root,
+				M:                  m,
+				Opts:               opts,
+				StackConfiguration: cfg,
+				SecretsManager:     sm,
+				SecretsProvider:    stack.DefaultSecretsProvider,
+				Scopes:             backend.CancellationScopes,
+			}, imports)
+
+			if args.GenerateCode {
+				deployment, err := getCurrentDeploymentForStack(ctx, s)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				validImports, err := generateImportedDefinitions(
+					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+					args.ProtectResources)
+				if err != nil {
+					if _, ok := err.(*importer.DiagnosticsError); ok {
+						err = fmt.Errorf("internal error: %w", err)
+					}
+					return result.FromError(err)
+				}
+
+				if validImports {
+					// we only want to output the helper string if there is a set of valid imports to convert into code
+					// this protects against invalid package types or import errors that will not actually result
+					// in a codegen call
+					// It's a little bit more memory but is a better experience that writing to stdout and then an error
+					// occurring
+					if args.OutputFilePath == "" && !args.JSONDisplay {
+						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
+							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+						if args.ProtectResources {
+							fmt.Print(("Please note that the imported resources are marked as protected. " +
+								"To destroy them\n" +
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
+								"the destroy will take effect.\n\n"))
+						}
+						fmt.Print(outputResult.String())
+					}
+				}
+			}
+
+			if res != nil {
+				if res.Error() == context.Canceled {
+					return result.FromError(errors.New("import cancelled"))
+				}
+
+				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
+				// directory so if there's any issues users can manually edit the file and try again with --file
+				if args.From != "" {
+					path, err := writeImportFileToTemp(importFile)
+					if err != nil {
+						return result.FromError(err)
+					}
+					pCtx.Diag.Infof(diag.Message("",
+						"Generated import file written out, edit and rerun import with --file %s"),
+						path, path)
+				}
+
+				return PrintEngineResult(res)
+			}
+			return nil
+		}),
+	}
+
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[ImportArgs](v, cmd)
+
+	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	// TODO: hack/pulumirc
+	if !hasDebugCommands() {
+		_ = cmd.PersistentFlags().MarkHidden("event-log")
+	}
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	return cmd
+}
+
 func parseResourceSpec(spec string) (string, resource.URN, error) {
 	equals := strings.Index(spec, "=")
 	if equals == -1 {
@@ -529,506 +1036,4 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		}
 		return nil
 	}, resources, names)
-}
-
-//nolint:lll
-type ImportConfig struct {
-	ConfigFile     string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
-	ParentSpec     string `args:"parent" argsUsage:"The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource"`
-	ProviderSpec   string `args:"provider" argsUsage:"The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource"`
-	ImportFilePath string `args:"file" argsShort:"f" argsUsage:"The path to a JSON-encoded file containing a list of resources to import"`
-	OutputFilePath string `args:"out" argsShort:"o" argsUsage:"The path to the file that will contain the generated resource declarations"`
-	GenerateCode   bool   `argsDefault:"true" argsUsage:"Generate resource declaration code for the imported resources"`
-
-	Debug     bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
-	Message   string `argsShort:"m" argsUsage:"Optional message to associate with the update operation"`
-	StackName string `args:"stack" argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	ExecKind  string
-	ExecAgent string
-
-	// Flags for engine.UpdateOptions.
-	JSONDisplay       bool     `args:"json" argsShort:"j" argsUsage:"Serialize the import diffs, operations, and overall output as JSON"`
-	DiffDisplay       bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
-	EventLogPath      string   `args:"event-log" argsUsage:"Log events to a file at this path"`
-	Parallel          int      `argsShort:"p" argsDefault:"80" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
-	PreviewOnly       bool     `argsUsage:"Only show a preview of the import, but don't perform the import itself"`
-	SkipPreview       bool     `argsUsage:"Do not calculate a preview before performing the import"`
-	SuppressOutputs   bool     `argsUsage:"Suppress display of stack outputs (in case they contain sensitive values)"`
-	SuppressProgress  bool     `argsUsage:"Suppress display of periodic progress dots"`
-	SuppressPermalink string   `argsUsage:"Suppress display of the state permalink"`
-	Yes               bool     `argsShort:"y" argsUsage:"Automatically approve and perform the import after previewing it"`
-	ProtectResources  bool     `args:"protect" argsDefault:"true" argsUsage:"Allow resources to be imported with protection from deletion enabled"`
-	Properties        []string `argsUsage:"The property names to use for the import in the format name1,name2"`
-
-	From string `argsUsage:"Invoke a converter to import the resources"`
-}
-
-func newImportCmd(v *viper.Viper) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "import [type] [name] [id]",
-		Short: "Import resources into an existing stack",
-		Long: "Import resources into an existing stack.\n" +
-			"\n" +
-			"Resources that are not managed by Pulumi can be imported into a Pulumi stack\n" +
-			"using this command. A definition for each resource will be printed to stdout\n" +
-			"in the language used by the project associated with the stack; these definitions\n" +
-			"should be added to the Pulumi program. The resources are protected from deletion\n" +
-			"by default.\n" +
-			"\n" +
-			"Should you want to import your resource(s) without protection, you can pass\n" +
-			"`--protect=false` as an argument to the command. This will leave all resources unprotected.\n" +
-			"\n" +
-			"A single resource may be specified in the command line arguments or a set of\n" +
-			"resources may be specified by a JSON file.\n" +
-			"\n" +
-			"If using the command line args directly, the type token, name, id and optional flags\n" +
-			"must be provided.  For example:\n" +
-			"\n" +
-			"    pulumi import 'aws:iam/user:User' name id\n" +
-			"\n" +
-			"The type token and property used for resource lookup are available in the Import section of\n" +
-			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
-			"\n" +
-			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
-			"\n" +
-			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
-			"\n" +
-			"If using the JSON file format to define the imported resource(s), use this instead:\n" +
-			"\n" +
-			"     pulumi import -f import.json\n" +
-			"\n" +
-			"Where import.json is a file that matches the following JSON format:\n" +
-			"\n" +
-			"    {\n" +
-			"        \"nameTable\": {\n" +
-			"            \"provider-or-parent-name-0\": \"provider-or-parent-urn-0\",\n" +
-			"            ...\n" +
-			"            \"provider-or-parent-name-n\": \"provider-or-parent-urn-n\",\n" +
-			"        },\n" +
-			"        \"resources\": [\n" +
-			"            {\n" +
-			"                \"type\": \"type-token\",\n" +
-			"                \"name\": \"name\",\n" +
-			"                \"id\": \"resource-id\",\n" +
-			"                \"parent\": \"optional-parent-name\",\n" +
-			"                \"provider\": \"optional-provider-name\",\n" +
-			"                \"version\": \"optional-provider-version\",\n" +
-			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
-			"                \"logicalName\": \"optionalLogicalName\",\n" +
-			"                \"properties\": [\"optional-property-names\"],\n" +
-			"                \"component\": false,\n" +
-			"                \"remote\": false,\n" +
-			"            },\n" +
-			"            ...\n" +
-			"            {\n" +
-			"                ...\n" +
-			"            }\n" +
-			"        ],\n" +
-			"    }\n" +
-			"\n" +
-			"The name table maps language names to parent and provider URNs. These names are\n" +
-			"used in the generated definitions, and should match the corresponding declarations\n" +
-			"in the source program. This table is required if any parents or providers are\n" +
-			"specified by the resources to import.\n" +
-			"\n" +
-			"The resources list contains the set of resources to import. Each resource is\n" +
-			"specified as a triple of its type, name, and ID. The format of the ID is specific\n" +
-			"to the resource type. Each resource may specify the name of a parent or provider;\n" +
-			"these names must correspond to entries in the name table. If a resource does not\n" +
-			"specify a provider, it will be imported using the default provider for its type. A\n" +
-			"resource that does specify a provider may specify the version of the provider\n" +
-			"that will be used for its import.\n" +
-			"\n" +
-			"A resource can define a logical name as well as its name for the name table.\n" +
-			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
-			"\n" +
-			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
-			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
-			"\n" +
-			"Each resource may specify which input properties to import with;\n" +
-			"\n" +
-			"If a resource does not specify any properties the default behaviour is to\n" +
-			"import using all required properties.\n" +
-			"\n" +
-			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
-			"for all resources that need creating from the preview. This will fill in all the name,\n" +
-			"type, parent and provider information for you and just require you to fill in resource\n" +
-			"IDs and any properties.\n",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
-			config := UnmarshalArgs[ImportConfig](v, cmd)
-
-			cwd, err := os.Getwd()
-			if err != nil {
-				return result.FromError(fmt.Errorf("get working directory: %w", err))
-			}
-			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-			if err != nil {
-				return result.FromError(fmt.Errorf("create plugin context: %w", err))
-			}
-
-			var importFile importFile
-			if config.ImportFilePath != "" {
-				if len(args) != 0 || config.ParentSpec != "" || config.ProviderSpec != "" || len(config.Properties) != 0 {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
-				}
-				if config.From != "" {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf("a converter may not be specified in conjunction with an import file")
-				}
-				f, err := readImportFile(config.ImportFilePath)
-				if err != nil {
-					return result.FromError(fmt.Errorf("could not read import file: %w", err))
-				}
-				importFile = f
-			} else if config.From != "" {
-				log := func(sev diag.Severity, msg string) {
-					pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
-				}
-				converter, err := loadConverterPlugin(pCtx, config.From, log)
-				if err != nil {
-					return result.Errorf("load converter plugin: %w", err)
-				}
-				defer contract.IgnoreClose(converter)
-
-				installProvider := func(provider tokens.Package) *semver.Version {
-					// If auto plugin installs are disabled just return nil, the mapper will still carry on
-					if env.DisableAutomaticPluginAcquisition.Value() {
-						return nil
-					}
-
-					log := func(sev diag.Severity, msg string) {
-						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
-					}
-
-					pluginSpec := workspace.PluginSpec{
-						Name: string(provider),
-						Kind: apitype.ResourcePlugin,
-					}
-					version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
-					if err != nil {
-						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
-						return nil
-					}
-					return version
-				}
-
-				mapper, err := convert.NewPluginMapper(
-					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-					config.From, nil, installProvider)
-				if err != nil {
-					return result.FromError(err)
-				}
-
-				mapperServer := convert.NewMapperServer(mapper)
-				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
-				if err != nil {
-					return result.FromError(err)
-				}
-
-				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperTarget: grpcServer.Addr(),
-					Args:         args,
-				})
-				if err != nil {
-					return result.FromError(err)
-				}
-
-				printDiagnostics(sink, resp.Diagnostics)
-				if resp.Diagnostics.HasErrors() {
-					// If we've got error diagnostics then state conversion failed, we've printed the error above so
-					// just return a plain message here.
-					return result.Error("conversion failed")
-				}
-
-				f, err := makeImportFileFromResourceList(resp.Resources)
-				if err != nil {
-					return result.FromError(err)
-				}
-				importFile = f
-			} else {
-				msg := "an inline resource must be specified if no converter or import file is used, missing "
-				if len(args) == 0 {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf(msg + "type, name, and id")
-				}
-				if len(args) == 1 {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf(msg + "name and id")
-				}
-				if len(args) == 2 {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf(msg + "id")
-				}
-				if len(args) > 3 {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf("only expected at most three arguments")
-				}
-				f, err := makeImportFile(args[0], args[1], args[2], config.Properties, config.ParentSpec, config.ProviderSpec, "")
-				if err != nil {
-					return result.FromError(err)
-				}
-				importFile = f
-			}
-
-			if !config.GenerateCode && config.OutputFilePath != "" {
-				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
-			}
-
-			var outputResult bytes.Buffer
-			output := io.Writer(&outputResult)
-			if config.OutputFilePath != "" {
-				f, err := os.Create(config.OutputFilePath)
-				if err != nil {
-					return result.Errorf("could not open output file: %v", err)
-				}
-				defer contract.IgnoreClose(f)
-				output = f
-			}
-
-			// Fetch the project.
-			proj, root, err := readProject()
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			yes := config.Yes || config.SkipPreview || skipConfirmations()
-			interactive := cmdutil.Interactive()
-			if !interactive && !yes && !config.PreviewOnly {
-				return result.FromError(
-					errors.New("--yes or --skip-preview or --preview-only" +
-						" must be passed in to proceed when running in non-interactive mode"))
-			}
-
-			opts, err := updateFlagsToOptions(interactive, config.SkipPreview, yes, config.PreviewOnly)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			displayType := display.DisplayProgress
-			if config.DiffDisplay {
-				displayType = display.DisplayDiff
-			}
-
-			opts.Display = display.Options{
-				Color:            cmdutil.GetGlobalColorization(),
-				SuppressOutputs:  config.SuppressOutputs,
-				SuppressProgress: config.SuppressProgress,
-				IsInteractive:    interactive,
-				Type:             displayType,
-				EventLogPath:     config.EventLogPath,
-				Debug:            config.Debug,
-				JSONDisplay:      config.JSONDisplay,
-			}
-
-			// we only suppress permalinks if the user passes true. the default is an empty string
-			// which we pass as 'false'
-			if config.SuppressPermalink == "true" {
-				opts.Display.SuppressPermalink = true
-			} else {
-				opts.Display.SuppressPermalink = false
-			}
-
-			isDIYBackend, err := isDIYBackend(opts.Display)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			// by default, we are going to suppress the permalink when using DIY backends
-			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if config.SuppressPermalink != "false" && isDIYBackend {
-				opts.Display.SuppressPermalink = true
-			}
-
-			// Fetch the current stack.
-			s, err := requireStack(ctx, config.StackName, stackLoadOnly, opts.Display)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, config.ProtectResources)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			wrapper := func(
-				f func(*pcl.Program) (map[string][]byte, hcl.Diagnostics, error),
-			) func(*pcl.Program, schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-				return func(p *pcl.Program, loader schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-					return f(p)
-				}
-			}
-
-			var programGenerator programGeneratorFunc
-			switch proj.Runtime.Name() {
-			case "dotnet":
-				programGenerator = wrapper(dotnet.GenerateProgram)
-			case "java":
-				programGenerator = wrapper(javagen.GenerateProgram)
-			case "yaml":
-				programGenerator = wrapper(yamlgen.GenerateProgram)
-			default:
-				programGenerator = func(
-					program *pcl.Program, loader schema.ReferenceLoader,
-				) (map[string][]byte, hcl.Diagnostics, error) {
-					cwd, err := os.Getwd()
-					if err != nil {
-						return nil, nil, err
-					}
-					sink := cmdutil.Diag()
-
-					ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-					if err != nil {
-						return nil, nil, err
-					}
-					defer contract.IgnoreClose(pCtx.Host)
-					programInfo := plugin.NewProgramInfo(cwd, cwd, "entry", nil)
-					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					loaderServer := schema.NewLoaderServer(loader)
-					grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
-					if err != nil {
-						return nil, nil, err
-					}
-					defer contract.IgnoreClose(grpcServer)
-
-					// by default, binding the PCL program for generating import definition is not strict
-					// this is because we might generate unbound variables in the generated code that reference
-					// a parent resource or a provider
-					strict := false
-					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					return files, diagnostics, nil
-				}
-			}
-
-			m, err := getUpdateMetadata(config.Message, root, config.ExecKind, config.ExecAgent, false, cmd.Flags())
-			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
-			}
-
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
-			}
-
-			decrypter, err := sm.Decrypter()
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
-			}
-			encrypter, err := sm.Encrypter()
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
-			}
-
-			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter)
-			if configErr != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
-			}
-
-			opts.Engine = engine.UpdateOptions{
-				Parallel:             config.Parallel,
-				Debug:                config.Debug,
-				UseLegacyDiff:        useLegacyDiff(),
-				UseLegacyRefreshDiff: useLegacyRefreshDiff(),
-				Experimental:         hasExperimentalCommands(),
-			}
-
-			_, res := s.Import(ctx, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             backend.CancellationScopes,
-			}, imports)
-
-			if config.GenerateCode {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
-				if err != nil {
-					return result.FromError(err)
-				}
-
-				validImports, err := generateImportedDefinitions(
-					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-					config.ProtectResources)
-				if err != nil {
-					if _, ok := err.(*importer.DiagnosticsError); ok {
-						err = fmt.Errorf("internal error: %w", err)
-					}
-					return result.FromError(err)
-				}
-
-				if validImports {
-					// we only want to output the helper string if there is a set of valid imports to convert into code
-					// this protects against invalid package types or import errors that will not actually result
-					// in a codegen call
-					// It's a little bit more memory but is a better experience that writing to stdout and then an error
-					// occurring
-					if config.OutputFilePath == "" && !config.JSONDisplay {
-						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
-						if config.ProtectResources {
-							fmt.Print(("Please note that the imported resources are marked as protected. " +
-								"To destroy them\n" +
-								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-								"the destroy will take effect.\n\n"))
-						}
-						fmt.Print(outputResult.String())
-					}
-				}
-			}
-
-			if res != nil {
-				if res.Error() == context.Canceled {
-					return result.FromError(errors.New("import cancelled"))
-				}
-
-				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
-				// directory so if there's any issues users can manually edit the file and try again with --file
-				if config.From != "" {
-					path, err := writeImportFileToTemp(importFile)
-					if err != nil {
-						return result.FromError(err)
-					}
-					pCtx.Diag.Infof(diag.Message("",
-						"Generated import file written out, edit and rerun import with --file %s"),
-						path, path)
-				}
-
-				return PrintEngineResult(res)
-			}
-			return nil
-		}),
-	}
-
-	BindFlags[ImportConfig](v, cmd)
-
-	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
-	// TODO: hack/pulumirc
-	if !hasDebugCommands() {
-		_ = cmd.PersistentFlags().MarkHidden("event-log")
-	}
-	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
-	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
-
-	return cmd
 }
