@@ -316,8 +316,6 @@ func newConfigGetCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Comm
 			args := UnmarshalArgs[ConfigGetArgs](v, cmd)
 			parentArgs := UnmarshalArgs[ConfigArgs](v, cmd)
 
-			fmt.Println("parentArgs.Stack: ", parentArgs.Stack)
-
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
