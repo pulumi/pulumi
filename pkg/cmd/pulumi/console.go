@@ -35,13 +35,14 @@ type ConsoleArgs struct {
 }
 
 func newConsoleCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
-	config := ConsoleArgs{}
 	cmd := &cobra.Command{
 		Use:   "console",
 		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			config := UnmarshalArgs[ConsoleArgs](v, cmd)
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
