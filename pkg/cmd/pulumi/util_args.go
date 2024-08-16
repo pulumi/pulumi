@@ -12,9 +12,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	ScopeSeparator = ":"
+	FlagSeparator  = "."
+)
+
 func lookupArg(v *viper.Viper, scopes []string, name string) any {
 	for _, scope := range scopes {
-		key := scope + "." + name
+		key := scope + FlagSeparator + name
 		if v.IsSet(key) {
 			return v.Get(key)
 		}
@@ -80,7 +85,7 @@ func getScopes(cmd *cobra.Command) []string {
 	for i := len(hierarchy) - 1; i >= 0; i-- {
 		scopes[i] = prefix + hierarchy[i]
 		if i < len(hierarchy)-1 {
-			prefix += hierarchy[i] + ":"
+			prefix += hierarchy[i] + ScopeSeparator
 		}
 	}
 
@@ -199,7 +204,7 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 				contract.Failf("no flags found for command %s", cmd.Name())
 			}
 
-			storeKey := scope + "." + longName
+			storeKey := scope + FlagSeparator + longName
 
 			//nolint:exhaustive
 			switch rv.Field(i).Kind() {
