@@ -89,7 +89,7 @@ type configEnvInitCmd struct {
 }
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, cliArgs []string) error {
-	if !cmd.args.Yes && !cmd.parent.args.Interactive {
+	if !cmd.args.Yes && !cmd.parent.interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 

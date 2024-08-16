@@ -80,11 +80,9 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 ) *configEnvCmd {
 	stackRef := "stack"
 	return &configEnvCmd{
-		stdin:  stdin,
-		stdout: stdout,
-		args: ConfigEnvArgs{
-			Interactive: true,
-		},
+		stdin:       stdin,
+		stdout:      stdout,
+		interactive: true,
 
 		readProject: func() (*workspace.Project, string, error) {
 			p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
