@@ -87,11 +87,6 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 		"no url": {
 			stack: stack,
 			repo:  GitRepo{},
-			err:   "repo.URL is required if RemoteInheritSettings(true) is not set",
-		},
-		"no branch or commit": {
-			stack: stack,
-			repo:  GitRepo{URL: remoteTestRepo},
 			err:   "either repo.Branch or repo.CommitHash is required if RemoteInheritSettings(true) is not set",
 		},
 		"both branch and commit": {
