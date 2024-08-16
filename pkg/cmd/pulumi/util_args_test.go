@@ -44,7 +44,7 @@ func TestGetScopes(t *testing.T) {
 
 				return grandchildCmd
 			},
-			want: []string{"child.grandchild", "child", "pulumi"},
+			want: []string{"child:grandchild", "child", "pulumi"},
 		},
 		{
 			cmd: func() *cobra.Command {
@@ -59,7 +59,7 @@ func TestGetScopes(t *testing.T) {
 
 				return greatGrandchildCmd
 			},
-			want: []string{"child.grandchild.great-grandchild", "child.grandchild", "child", "pulumi"},
+			want: []string{"child:grandchild:great-grandchild", "child:grandchild", "child", "pulumi"},
 		},
 	}
 
