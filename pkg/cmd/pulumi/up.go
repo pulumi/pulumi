@@ -62,6 +62,7 @@ type UpArgs struct {
 	PolicyPackPaths        []string `args:"policy-pack" argsUsage:"Run one or more policy packs as part of this update"`
 	PolicyPackConfigPaths  []string "args:\"policy-pack-config\" argsUsage:\"Path to JSON file containing the config for the policy pack of the corresponding \\\"--policy-pack\\\" flag\""
 	DiffDisplay            bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
+	EventLogPath           string   `args:"event-log" argsUsage:"Log events to a file at this path"`
 	Parallel               int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
 	Refresh                string   `argsShort:"r" argsUsage:"Refresh the state of the stack's resources before this update"`
 	ShowConfig             bool     `argsUsage:"Show configuration keys and variables"`
