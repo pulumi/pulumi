@@ -25,7 +25,7 @@ import (
 
 type ConfigEnvAddArgs struct {
 	ShowSecrets bool `argsUsage:"Show secret values in plaintext instead of ciphertext"`
-	Yes         bool `argsShort:"y" argsUsage:"True to save the created environment without prompting"`
+	Yes         bool `argsShort:"y" argsUsage:"True to save changes without prompting"`
 }
 
 func newConfigEnvAddCmd(v *viper.Viper, parentConfigEnvCmd *cobra.Command, parent *configEnvCmd) *cobra.Command {
