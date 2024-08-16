@@ -25,10 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func boolPtr(v bool) *bool {
-	return &v
-}
-
 func TestConfigEnvLsCmd(t *testing.T) {
 	t.Parallel()
 

@@ -199,7 +199,14 @@ runtime: yaml`
 		stdin := strings.NewReader("y")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
-		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, args: ConfigEnvInitArgs{Yes: true, ShowSecrets: true}}
+		init := &configEnvInitCmd{
+			parent:     parent,
+			newCrypter: newBase64EvalCrypter,
+			args: ConfigEnvInitArgs{
+				Yes:         true,
+				ShowSecrets: true,
+			},
+		}
 		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -280,7 +287,14 @@ runtime: yaml`
 		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{
 			"env": `{"values": {"pulumiConfig": {"app:tags": {"name": "project"}}}}`,
 		})
-		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, args: ConfigEnvInitArgs{Yes: true, ShowSecrets: true}}
+		init := &configEnvInitCmd{
+			parent:     parent,
+			newCrypter: newBase64EvalCrypter,
+			args: ConfigEnvInitArgs{
+				Yes:         true,
+				ShowSecrets: true,
+			},
+		}
 		err = init.run(ctx, nil)
 		require.NoError(t, err)
 
