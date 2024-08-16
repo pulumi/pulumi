@@ -54,6 +54,7 @@ const (
 	optSkipIntermediateDeployments = "Skip intermediate deployments"
 )
 
+//nolint:lll
 type DeploymentArgs struct {
 	StackDeploymentConfigFile string `args:"config-file" argsUsage:"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml"`
 }
@@ -190,6 +191,7 @@ func initializeDeploymentSettingsCmd(
 	}, nil
 }
 
+//nolint:lll
 type DeploymentSettingsInitArgs struct {
 	Force                 bool   `argsShort:"f" argsUsage:"Forces content to be generated even if it is already configured"`
 	Stack                 string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`

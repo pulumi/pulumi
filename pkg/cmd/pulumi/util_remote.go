@@ -151,6 +151,8 @@ func validateUnsupportedRemoteFlags(
 }
 
 // Flags for remote operations.
+//
+//nolint:lll
 type RemoteArgs struct {
 	Remote                   bool
 	InheritSettings          bool     `argsDefault:"true" argsUsage:"Inherit deployment settings from the current stack"`
@@ -183,6 +185,7 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 		&r.Remote, "remote", false,
 		"[EXPERIMENTAL] Run the operation remotely")
 	cmd.PersistentFlags().BoolVar(
+		//nolint:misspell // supress is a typo in the flag name, but we need to keep it for backwards compatibility
 		&r.SuppressStreamLogs, "supress-stream-logs", false,
 		"[EXPERIMENTAL] Suppress log streaming of the deployment job")
 	cmd.PersistentFlags().BoolVar(
