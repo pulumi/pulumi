@@ -154,7 +154,7 @@ func validateUnsupportedRemoteFlags(
 type RemoteArgs struct {
 	remote                   bool
 	inheritSettings          bool
-	supressStreamLogs        bool
+	suppressStreamLogs       bool
 	envVars                  []string
 	secretEnvVars            []string
 	preRunCommands           []string
@@ -178,7 +178,7 @@ func (r *RemoteArgs) applyFlagsForDeploymentCommand(cmd *cobra.Command) {
 		&r.inheritSettings, "inherit-settings", true,
 		"Inherit deployment settings from the current stack")
 	cmd.PersistentFlags().BoolVar(
-		&r.supressStreamLogs, "suppress-stream-logs", true,
+		&r.suppressStreamLogs, "suppress-stream-logs", true,
 		"Suppress log streaming of the deployment job")
 	cmd.PersistentFlags().StringArrayVar(
 		&r.envVars, "env", []string{},
@@ -246,7 +246,7 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 		&r.remote, "remote", false,
 		"[EXPERIMENTAL] Run the operation remotely")
 	cmd.PersistentFlags().BoolVar(
-		&r.supressStreamLogs, "suppress-stream-logs", false,
+		&r.suppressStreamLogs, "suppress-stream-logs", false,
 		"[EXPERIMENTAL] Suppress log streaming of the deployment job")
 	cmd.PersistentFlags().BoolVar(
 		&r.inheritSettings, "remote-inherit-settings", false,
@@ -513,7 +513,7 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 	// to "automation-api".
 	// In the future, we may want to expose initiating deployments from the CLI, in which case we would need to
 	// pass this value in from the CLI as a flag or environment variable.
-	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/, args.supressStreamLogs)
+	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/, args.suppressStreamLogs)
 	if err != nil {
 		return result.FromError(err)
 	}
