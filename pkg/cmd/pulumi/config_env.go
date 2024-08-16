@@ -67,6 +67,7 @@ type configEnvCmd struct {
 	stdout io.Writer
 
 	args        ConfigEnvArgs
+	stack       string
 	color       colors.Colorization
 	interactive bool
 
@@ -82,12 +83,12 @@ type configEnvCmd struct {
 	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
 
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
-
-	stackRef *string // TODO hack/pulumirc: remove, this should be read from config
 }
 
 func (cmd *configEnvCmd) initArgs(v *viper.Viper, cobraCommand *cobra.Command) {
 	cmd.args = UnmarshalArgs[ConfigEnvArgs](v, cobraCommand)
+	parentConfig := UnmarshalArgs[ConfigArgs](v, cobraCommand)
+	cmd.stack = parentConfig.Stack
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
 }
@@ -101,7 +102,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, err
 	}
 
-	stack, err := cmd.requireStack(ctx, *cmd.stackRef, stackOfferNew|stackSetCurrent, opts)
+	stack, err := cmd.requireStack(ctx, cmd.stack, stackOfferNew|stackSetCurrent, opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}

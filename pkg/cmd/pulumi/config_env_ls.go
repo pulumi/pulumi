@@ -23,7 +23,7 @@ import (
 )
 
 type ConfigEnvLsArgs struct {
-	JSON bool `args:"json" argsUsage:"Emit output as JSON"`
+	JSON bool `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 }
 
 func newConfigEnvLsCmd(v *viper.Viper, parentConfigEnvCmd *cobra.Command, parent *configEnvCmd) *cobra.Command {
