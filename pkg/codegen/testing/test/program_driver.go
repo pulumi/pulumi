@@ -78,12 +78,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet("nodejs", "dotnet", "go"), // not a real package
 	},
 	{
-		Directory:      "aws-s3-folder",
-		Description:    "AWS S3 Folder",
-		Skip:           codegen.NewStringSet("dotnet"),
-		ExpectNYIDiags: codegen.NewStringSet("dotnet", "python"),
-		SkipCompile:    codegen.NewStringSet("go", "python"),
-		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
+		Directory:   "aws-s3-folder",
+		Description: "AWS S3 Folder",
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8064]
 		//   TODO[pulumi/pulumi#8065]

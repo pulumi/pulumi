@@ -28,6 +28,9 @@ return await Deployment.RunAsync(() =>
             Key = range.Value,
             Source = new FileAsset($"{siteDir}/{range.Value}"),
             ContentType = range.Value,
+        }, new CustomResourceOptions
+        {
+            DeletedWith = siteBucket,
         }));
     }
     // set the MIME type of the file
