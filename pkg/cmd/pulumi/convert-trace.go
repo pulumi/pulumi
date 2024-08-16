@@ -31,6 +31,7 @@ import (
 	"github.com/pgavlin/fx"
 	"github.com/pulumi/appdash"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -47,12 +48,10 @@ import (
 // each root is sampled at a particular granularity. the nested traces are converted into a callstack at each
 // sampling point.
 
-type ConvertTraceConfig struct {
-	PulumiConfig
-
-	Otel           bool
-	IgnoreLogSpans bool
-	Quantum        time.Duration
+type ConvertTraceArgs struct {
+	Otel           bool          `argsUsage:"true to export to OpenTelementry"`
+	IgnoreLogSpans bool          `argsDefault:"true" argsUsage:"true to ignore log spans"`
+	Quantum        time.Duration `args:"granularity" argsShort:"g" argsType:"duration" argsDefault:"500ms" argsUsage:"the sample granularity"`
 }
 
 func traceRoots(querier appdash.Queryer) ([]*appdash.Trace, error) {
@@ -701,8 +700,7 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 	return exporter.Shutdown(context.Background())
 }
 
-func newConvertTraceCmd() *cobra.Command {
-	config := ConvertTraceConfig{}
+func newConvertTraceCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "convert-trace [trace-file]",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
@@ -715,6 +713,7 @@ func newConvertTraceCmd() *cobra.Command {
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			config := UnmarshalArgs[ConvertTraceArgs](v, cmd)
 			store := appdash.NewMemoryStore()
 			if err := readTrace(args[0], store); err != nil {
 				return err
@@ -726,9 +725,8 @@ func newConvertTraceCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().DurationVarP(&config.Quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")
-	cmd.Flags().BoolVar(&config.Otel, "otel", false, "true to export to OpenTelemetry")
-	cmd.Flags().BoolVar(&config.IgnoreLogSpans, "ignore-log-spans", true, "true to ignore log spans")
+	parentCmd.AddCommand(cmd)
+	BindFlags[ConvertTraceArgs](v, cmd)
 
 	return cmd
 }

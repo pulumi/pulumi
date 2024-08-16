@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -221,12 +222,19 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 				reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
 				reflect.Uint64, reflect.Uintptr:
-				d := defaultInt(defaultValue)
-				flagSet.IntP(longName, shortName, d, usage)
-				if defaultSet {
+				if rv.Type().Field(i).Tag.Get("argsType") == "duration" {
+					d := defaultDuration(defaultValue)
+					flagSet.DurationP(longName, shortName, d, usage)
 					v.SetDefault(storeKey, d)
+					_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
+				} else {
+					d := defaultInt(defaultValue)
+					flagSet.IntP(longName, shortName, d, usage)
+					if defaultSet {
+						v.SetDefault(storeKey, d)
+					}
+					_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
 				}
-				_ = v.BindPFlag(storeKey, flagSet.Lookup(longName))
 			case reflect.String:
 				if rv.Type().Field(i).Tag.Get("argsType") == "var" {
 					if defaultSet {
@@ -259,6 +267,17 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 	default:
 		contract.Failf("unexpected type %v", ref.Kind())
 	}
+}
+
+func defaultDuration(defaultValue string) time.Duration {
+	if defaultValue != "" {
+		if d, err := time.ParseDuration(defaultValue); err == nil {
+			return d
+		} else {
+			contract.Failf("failed to parse default value %q as duration: %v", defaultValue, err)
+		}
+	}
+	return time.Duration(0)
 }
 
 func defaultBool(defaultValue string) bool {
