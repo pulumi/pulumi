@@ -44,7 +44,7 @@ type StackArgs struct {
 	ShowSecrets bool   `argsUsage:"Display stack outputs which are marked as secret in plaintext" argsNoPersist:"true"`
 
 	// TODO hack/pulumirc args that are in the struct but not the CLI
-	ShowStackName          bool `args:show-name" argsUsage:"Display only the stack name" argsNoPersist:"true"`
+	ShowStackName          bool `args:"show-name" argsUsage:"Display only the stack name" argsNoPersist:"true"`
 	FullyQualifyStackNames bool `argsNoPersist:"true" argsShort:"Q" argsUsage:"Show fully-qualified stack names"`
 }
 
