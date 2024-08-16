@@ -86,7 +86,7 @@ func newAboutCmd(
 	parentPulumiCmd.AddCommand(cmd)
 	BindFlags[AboutConfig](v, cmd)
 
-	cmd.AddCommand(newAboutEnvCmd())
+	newAboutEnvCmd(v, cmd)
 
 	return cmd
 }
