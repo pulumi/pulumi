@@ -60,7 +60,7 @@ type DestroyArgs struct {
 	// Flags for engine.UpdateOptions.
 	JSONDisplay          bool     `args:"json" argsShort:"j" argsUsage:"Serialize the destroy diffs, operations, and overall output as JSON"`
 	DiffDisplay          bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
-	EventLogPath         string   `argsUsage:"Log events to a file at this path"`
+	EventLogPath         string   `args:"event-log" argsUsage:"Log events to a file at this path"`
 	Parallel             int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)"`
 	PreviewOnly          bool     `argsUsage:"Only perform a preview of the destroy, don't perform the destroy itself"`
 	Refresh              string   `argsShort:"r" argsUsage:"Refresh the state of the stack's resources before this update"`
