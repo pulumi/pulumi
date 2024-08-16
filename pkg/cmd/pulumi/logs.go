@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	mobytime "github.com/moby/moby/api/types/time"
 
@@ -38,14 +39,19 @@ import (
 // See https://tools.ietf.org/html/rfc5424#section-6.2.3.
 const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
-func newLogsCmd() *cobra.Command {
-	var stackName string
-	var follow bool
-	var since string
-	var resource string
-	var jsonOut bool
+type LogsArgs struct {
+	Stack    string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Follow   bool   `argsShort:"f" argsUsage:"Follow the log stream in real time (like tail -f)"`
+	Since    string `argsUsage:"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp. Defaults to returning the last 1 hour of logs." argsDefault:"1h"`
+	Resource string `argsShort:"r" argsUsage:"Only return logs for the requested resource ('name', 'type::name' or full URN). Defaults to returning all logs."`
+	JSON     bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+}
 
-	logsCmd := &cobra.Command{
+func newLogsCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "logs",
 		Short: "Show aggregated resource logs for a stack",
 		Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
@@ -54,7 +60,9 @@ func newLogsCmd() *cobra.Command {
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			args := UnmarshalArgs[LogsArgs](v, cmd)
+
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -66,7 +74,7 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+			s, err := requireStack(ctx, args.Stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -98,17 +106,17 @@ func newLogsCmd() *cobra.Command {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
-			startTime, err := parseSince(since, time.Now())
+			startTime, err := parseSince(args.Since, time.Now())
 			if err != nil {
 				return fmt.Errorf("failed to parse argument to '--since' as duration or timestamp: %w", err)
 			}
 			var resourceFilter *operations.ResourceFilter
-			if resource != "" {
-				rf := operations.ResourceFilter(resource)
+			if args.Resource != "" {
+				rf := operations.ResourceFilter(args.Resource)
 				resourceFilter = &rf
 			}
 
-			if !jsonOut {
+			if !args.JSON {
 				fmt.Printf(
 					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 					s.Ref().String(),
@@ -133,7 +141,7 @@ func newLogsCmd() *cobra.Command {
 				}
 
 				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
-				if !follow && jsonOut {
+				if !args.Follow && args.JSON {
 					entries := slice.Prealloc[logEntryJSON](len(logs))
 
 					for _, logEntry := range logs {
@@ -157,7 +165,7 @@ func newLogsCmd() *cobra.Command {
 					if _, shownAlready := shown[logEntry]; !shownAlready {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
-						if !jsonOut {
+						if !args.JSON {
 							fmt.Printf(
 								"%30.30s[%30.30s] %v\n",
 								eventTime.Format(timeFormat),
@@ -179,7 +187,7 @@ func newLogsCmd() *cobra.Command {
 					}
 				}
 
-				if !follow {
+				if !args.Follow {
 					return nil
 				}
 
@@ -188,26 +196,10 @@ func newLogsCmd() *cobra.Command {
 		}),
 	}
 
-	logsCmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	logsCmd.PersistentFlags().StringVar(
-		&stackConfigFile, "config-file", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
-	logsCmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
-	logsCmd.PersistentFlags().BoolVarP(
-		&follow, "follow", "f", false,
-		"Follow the log stream in real time (like tail -f)")
-	logsCmd.PersistentFlags().StringVar(
-		&since, "since", "1h",
-		"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp.  "+
-			"Defaults to returning the last 1 hour of logs.")
-	logsCmd.PersistentFlags().StringVarP(
-		&resource, "resource", "r", "",
-		"Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.")
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[LogsArgs](v, cmd)
 
-	return logsCmd
+	return cmd
 }
 
 func parseSince(since string, reference time.Time) (*time.Time, error) {
