@@ -456,7 +456,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		}
 	}
 
-	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/)
+	nestedTypes := mod.genNestedTypes(f, false /*resourceType*/, false /*isProvider*/)
 
 	// Generate the per-language map for the function name.
 	funcNameMap := map[string]string{}
