@@ -65,7 +65,7 @@ type RefreshArgs struct {
 	Targets              []string `args:"target" argsShort:"t" argsUsage:"Specify a single resource URN to refresh. Multiple resource can be specified using: --target urn1 --target urn2"`
 	SkipPendingCreates   bool     `argsUsage:"Skip importing pending creates in interactive mode"`
 	ClearPendingCreates  bool     `argsUsage:"Clear all pending creates, dropping them from the state"`
-	ImportPendingCreates []string `argsUsage:"A list of form [[URN ID]...] describing the provider IDs of pending creates"`
+	ImportPendingCreates []string `argsCommaSplit:"false" argsUsage:"A list of form [[URN ID]...] describing the provider IDs of pending creates"`
 }
 
 func newRefreshCmd(

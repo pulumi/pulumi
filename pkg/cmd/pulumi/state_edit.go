@@ -38,7 +38,7 @@ import (
 )
 
 type StateEditArgs struct {
-	Stack string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
+	Stack string `argsUsage:"The name of the stack to operation on. Defaults to the current stack"`
 }
 
 type stateEditCmd struct {

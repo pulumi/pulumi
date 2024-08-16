@@ -32,7 +32,7 @@ import (
 type StackSelectArgs struct {
 	Stack           string `argsShort:"s" argsUsage:"The name of the stack to select"`
 	Create          bool   `argsShort:"c" argsUsage:"If selected stack does not exist, create it"`
-	SecretsProvider string `argsUsage:"Use with --create flag, the type of the provider that should be used to encrypt and decrypt secrets\n    (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)" argsDefault:"default"`
+	SecretsProvider string `argsUsage:"Use with --create flag, The type of the provider that should be used to encrypt and decrypt secrets\n    (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)" argsDefault:"default"`
 }
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.

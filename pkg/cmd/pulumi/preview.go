@@ -50,18 +50,18 @@ type PreviewArgs struct {
 	ExecKind               string
 	ExecAgent              string
 	Stack                  string   `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	ConfigArray            []string `args:"config" argsShort:"c" argsUsage:"Config to use during the preview and save to the stack config file"`
+	ConfigArray            []string `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to use during the preview and save to the stack config file"`
 	ConfigPath             bool     `argsUsage:"Config keys contain a path to a property in a map or list to set"`
 	Client                 string   `argsUsage:"The address of an existing language runtime host to connect to"`
 	PlanFilePath           string   `args:"save-plan" argsUsage:"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path"`
 	ImportFilePath         string   `args:"import-file" argsUsage:"Save any creates seen during the preview into an import file to use with 'pulumi import'"`
-	ShowSecrets            bool     `argsUsage:"Emit secrets in plaintext in the plan file. Defaults to false"`
+	ShowSecrets            bool     "argsUsage:\"Emit secrets in plaintext in the plan file. Defaults to `false`\""
 	JSON                   bool     `args:"json" argsShort:"j" argsUsage:"Serialize the preview diffs, operations, and overall output as JSON"`
 	PolicyPackPaths        []string `args:"policy-pack" argsUsage:"Run one or more policy packs as part of this update"`
 	PolicyPackConfigPaths  []string "args:\"policy-pack-config\" argsUsage:\"Path to JSON file containing the config for the policy pack of the corresponding \\\"--policy-pack\\\" flag\""
 	DisplayDiff            bool     `args:"diff" argsUsage:"Display operation as a rich diff showing the overall change"`
 	EventLogPath           string   `args:"event-log" argsUsage:"Log events to a file at this path"`
-	Parallel               int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)"`
+	Parallel               int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
 	Refresh                string   `argsShort:"r" argsUsage:"Refresh the state of the stack's resources before this update"`
 	ShowConfig             bool     `argsUsage:"Show configuration keys and variables"`
 	ShowPolicyRemediations bool     `argsUsage:"Show per-resource policy remediation details instead of a summary"`
@@ -71,9 +71,9 @@ type PreviewArgs struct {
 	SuppressOutputs        bool     `argsUsage:"Suppress display of stack outputs (in case they contain sensitive values)"`
 	SuppressProgress       bool     `argsUsage:"Suppress display of periodic progress dots"`
 	SuppressPermalink      string   `argsUsage:"Suppress display of the state permalink"`
-	Targets                []string `args:"target" argsShort:"t" argsUsage:"Specify a single resource URN to update. Other resources will not be updated. Multiple resources can be specified using --target urn1 --target urn2"`
-	Replaces               []string `args:"replace" argsUsage:"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2"`
-	TargetReplaces         []string `args:"target-replace" argsUsage:"Specify a single resource URN to replace. Other resources will not be updated. Shorthand for --target urn --replace urn."`
+	Targets                []string `args:"target" argsCommaSplit:"false" argsShort:"t" argsUsage:"Specify a single resource URN to update. Other resources will not be updated. Multiple resources can be specified using --target urn1 --target urn2"`
+	Replaces               []string `args:"replace" argsCommaSplit:"false" argsUsage:"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2"`
+	TargetReplaces         []string `args:"target-replace" argsCommmaSplit:"false" argsUsage:"Specify a single resource URN to replace. Other resources will not be updated. Shorthand for --target urn --replace urn."`
 	TargetDependents       bool     `argsUsage:"Allows updating of dependent targets discovered but not specified in --target list"`
 }
 
@@ -364,6 +364,13 @@ func newPreviewCmd(
 	// TODO: hack/pulumirc -- support these?
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	_ = cmd.PersistentFlags().MarkHidden("client")
+	if !hasDebugCommands() {
+		_ = cmd.PersistentFlags().MarkHidden("event-log")
+	}
+	if !hasExperimentalCommands() {
+		_ = cmd.PersistentFlags().MarkHidden("save-plan")
+	}
 
 	// TODO: hack/pulumirc stackConfigFile filth
 

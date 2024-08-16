@@ -41,11 +41,12 @@ const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 //nolint:lll
 type LogsArgs struct {
-	Stack    string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	Follow   bool   `argsShort:"f" argsUsage:"Follow the log stream in real time (like tail -f)"`
-	Since    string `argsUsage:"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp. Defaults to returning the last 1 hour of logs." argsDefault:"1h"`
-	Resource string `argsShort:"r" argsUsage:"Only return logs for the requested resource ('name', 'type::name' or full URN). Defaults to returning all logs."`
-	JSON     bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
+	ConfigFile string `argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
+	Stack      string `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	Follow     bool   `argsShort:"f" argsUsage:"Follow the log stream in real time (like tail -f)"`
+	Since      string `argsUsage:"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp. Defaults to returning the last 1 hour of logs." argsDefault:"1h"`
+	Resource   string `argsShort:"r" argsUsage:"Only return logs for the requested resource ('name', 'type::name' or full URN). Defaults to returning all logs."`
+	JSON       bool   `args:"json" argsShort:"j" argsUsage:"Emit output as JSON"`
 }
 
 // TODO hack/pulumirc stackConfigFile

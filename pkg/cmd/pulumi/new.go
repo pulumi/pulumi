@@ -578,6 +578,7 @@ func newNewCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
+			args.NewArgs = UnmarshalArgs[NewArgs](v, cmd)
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}

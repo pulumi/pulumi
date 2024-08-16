@@ -35,7 +35,7 @@ type StackInitArgs struct {
 	Stack                    string   `argsShort:"s" argsUsage:"The name of the stack to create"`
 	ConfigurationSourceStack string   `args:"copy-config-from" argsUsage:"The name of the stack to copy existing config from"`
 	NoSelect                 bool     `args:"no-select" argsUsage:"Do not select the stack"`
-	Teams                    []string `argsUsage:"A list of team names that should have permission to read and update this stack, once created"`
+	Teams                    []string `argsCommaSplit:"false" argsUsage:"A list of team names that should have permission to read and update this stack, once created"`
 }
 
 // stackInitCmd implements the `pulumi stack init` command.

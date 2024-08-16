@@ -44,9 +44,14 @@ type StackArgs struct {
 	ShowSecrets bool   `argsUsage:"Display stack outputs which are marked as secret in plaintext" argsNoPersist:"true"`
 
 	// TODO hack/pulumirc args that are in the struct but not the CLI
-	StartTime              string `argsNoPersist:"true"`
-	ShowStackName          bool   `argsUsage:"Display only the stack name" argsNoPersist:"true"`
-	FullyQualifyStackNames bool   `argsNoPersist:"true"`
+	ShowStackName          bool `args:show-name" argsUsage:"Display only the stack name" argsNoPersist:"true"`
+	FullyQualifyStackNames bool `argsNoPersist:"true" argsShort:"Q" argsUsage:"Show fully-qualified stack names"`
+}
+
+type stackArgs struct {
+	StackArgs
+
+	StartTime string
 }
 
 func newStackCmd(
@@ -63,7 +68,8 @@ func newStackCmd(
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
-			args := UnmarshalArgs[StackArgs](v, cmd)
+			args := stackArgs{}
+			args.StackArgs = UnmarshalArgs[StackArgs](v, cmd)
 
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -100,7 +106,7 @@ func newStackCmd(
 	return cmd
 }
 
-func runStack(ctx context.Context, s backend.Stack, out io.Writer, args StackArgs) error {
+func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
 	if args.ShowStackName {
 		if args.FullyQualifyStackNames {
 			fmt.Fprintln(out, s.Ref().String())
