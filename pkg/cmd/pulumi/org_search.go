@@ -84,26 +84,6 @@ func newSearchCmd(
 
 	newSearchAICmd(v, cmd)
 
-	cmd.PersistentFlags().StringVar(
-		&scmd.Args.Organization, "org", "",
-		"Name of the organization to search. Defaults to the current user's default organization.",
-	)
-	cmd.PersistentFlags().StringArrayVarP(
-		&scmd.Args.QueryParams, "query", "q", nil,
-	)
-	cmd.PersistentFlags().VarP(
-		&scmd.Args.OutputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'.",
-	)
-	cmd.PersistentFlags().Var(
-		&scmd.Args.CSVDelimiter, "delimiter",
-		"Delimiter to use when rendering CSV output.",
-	)
-	cmd.PersistentFlags().BoolVar(
-		&scmd.Args.OpenWebBrowser, "web", false,
-		"Open the search results in a web browser.",
-	)
-
 	return cmd
 }
 
