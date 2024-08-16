@@ -102,6 +102,7 @@ func LookupArg(v *viper.Viper, cmd *cobra.Command, name string) any {
 // To override the fieldname, use the `args` tag.
 // To set a default value, use the `argsDefault` tag.
 // To set a usage description, use the `argsUsage` tag.
+// To make a flag non-persistent (child commands don't inherit the flag), use the `argsNoPersist:"true"` tag.
 func UnmarshalArgs[T any](v *viper.Viper, cmd *cobra.Command) T {
 	scopes := getScopes(cmd)
 
