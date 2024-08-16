@@ -348,7 +348,7 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				newLoginCmd(),
+				newLoginCmd(v, cmd),
 				newLogoutCmd(v, cmd),
 				newWhoAmICmd(v, cmd),
 				newOrgCmd(v, cmd),
