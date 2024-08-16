@@ -271,7 +271,8 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command, opts any) {
 
 func defaultDuration(defaultValue string) time.Duration {
 	if defaultValue != "" {
-		if d, err := time.ParseDuration(defaultValue); err == nil {
+		d, err := time.ParseDuration(defaultValue)
+		if err == nil {
 			return d
 		}
 		contract.Failf("failed to parse default value %q as duration: %v", defaultValue, err)
