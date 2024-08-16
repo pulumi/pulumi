@@ -31,9 +31,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type ConfigEnvArgs struct {
-	Interactive bool
-}
+type ConfigEnvArgs struct{}
 
 func newConfigEnvCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	impl := configEnvCmd{
@@ -68,8 +66,9 @@ type configEnvCmd struct {
 	stdin  io.Reader
 	stdout io.Writer
 
-	args  ConfigEnvArgs
-	color colors.Colorization
+	args        ConfigEnvArgs
+	color       colors.Colorization
+	interactive bool
 
 	readProject func() (*workspace.Project, string, error)
 
@@ -89,6 +88,7 @@ type configEnvCmd struct {
 
 func (cmd *configEnvCmd) initArgs(v *viper.Viper, cobraCommand *cobra.Command) {
 	cmd.args = UnmarshalArgs[ConfigEnvArgs](v, cobraCommand)
+	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
 }
 
@@ -162,7 +162,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	yes bool,
 	edit func(stack *workspace.ProjectStack) error,
 ) error {
-	if !yes && !cmd.args.Interactive {
+	if !yes && !cmd.interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 
