@@ -37,8 +37,8 @@ import (
 
 type PackageGenSDKArgs struct {
 	Overlays string `argsUsage:"A folder of extra overlay files to copy to the generated SDK"`
-	Language string `argsUsage:"The SDK language to generate: [nodejs|python|go|dotnet|java|all]"`
-	Out      string `argsShort:"o" argsUsage:"The directory to write the SDK to"`
+	Language string `argsDefault:"all" argsUsage:"The SDK language to generate: [nodejs|python|go|dotnet|java|all]"`
+	Out      string `argsShort:"o" argsDefault:"./sdk" argsUsage:"The directory to write the SDK to"`
 	Version  string `argsUsage:"The provider plugin version to generate the SDK for"`
 	Local    bool   `argsUsage:"Generate an SDK appropriate for local usage"`
 }

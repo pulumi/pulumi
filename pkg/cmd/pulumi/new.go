@@ -64,7 +64,7 @@ type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntime
 	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
 
 type NewArgs struct {
-	ConfigArray     []string                   `argsShort:"c" argsUsage:"Config to save"`
+	ConfigArray     []string                   `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to save"`
 	ConfigPath      bool                       `argsUsage:"Config keys contain a path to a property in a map or list to set"`
 	Description     string                     `argsShort:"d" argsUsage:"The project description; if not specified, a prompt will request it"`
 	Dir             string                     `argsUsage:"The location to place the generated project; if not specified, the current directory is used"`
@@ -76,7 +76,7 @@ type NewArgs struct {
 	Stack           string                     `argsShort:"s" argsUsage:"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it"`
 	Yes             bool                       `argsShort:"y" argsUsage:"Skip prompts and proceed with default values"`
 	ListTemplates   bool                       `argsShort:"l" argsUsage:"List locally installed templates and exit"`
-	AiPrompt        string                     `argsUsage:"Prompt to use for Pulumi AI"`
+	AiPrompt        string                     `args:"ai" argsUsage:"Prompt to use for Pulumi AI"`
 	AiLanguage      httpstate.PulumiAILanguage `args:"language" argsUsage:"Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML)"`
 	TemplateMode    bool                       `argsShort:"t" argsUsage:"Run in template mode, which will skip prompting for AI or Template functionality"`
 	RuntimeOptions  []string                   `argsUsage:"Additional options for the language runtime (format: key1=value1,key2=value2)"`

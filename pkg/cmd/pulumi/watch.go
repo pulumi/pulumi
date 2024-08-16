@@ -34,16 +34,17 @@ import (
 
 //nolint:lll
 type WatchArgs struct {
+	ConfigFile            string `argsCommaSplit:"false" argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
 	Debug                 bool   `argsShort:"d" argsUsage:"Print detailed debugging output during resource operations"`
 	Message               string `argsShort:"m" argsUsage:"Optional message to associate with each update operation"`
 	ExecKind              string
 	Stack                 string   `argsShort:"s" argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
-	ConfigArray           []string `args:"config" argsShort:"c" argsUsage:"Config to use during the update"`
-	PathArray             []string `args:"path" argsUsage:"Specify one or more relative or absolute paths that need to be watched. A path can point to a folder or a file. Defaults to working directory"`
+	ConfigArray           []string `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to use during the update"`
+	PathArray             []string `args:"path" argsCommaSplit:"false" argsUsage:"Specify one or more relative or absolute paths that need to be watched. A path can point to a folder or a file. Defaults to working directory"`
 	ConfigPath            bool     `argsUsage:"Config keys contain a path to a property in a map or list to set"`
 	PolicyPackPaths       []string `args:"policy-pack" argsUsage:"Run one or more policy packs as part of each update"`
 	PolicyPackConfigPaths []string `args:"policy-pack-config" argsUsage:"Path to JSON file containing the config for the policy pack of the corresponding \"--policy-pack\" flag"`
-	Parallel              int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)"`
+	Parallel              int      `argsShort:"p" argsUsage:"Allow P resource operations to run in parallel at once (1 for no parallelism)."`
 	Refresh               bool     `argsShort:"r" argsUsage:"Refresh the state of the stack's resources before each update"`
 	ShowConfig            bool     `argsUsage:"Show configuration keys and variables"`
 	ShowReplacementSteps  bool     `argsUsage:"Show detailed resource replacement creates and deletes instead of a single step"`
