@@ -33,10 +33,12 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	})
 
 	testNewArgs := newArgs{
-		aiPrompt:        "prompt",
-		aiLanguage:      "typescript",
-		interactive:     true,
-		secretsProvider: "default",
+		NewArgs: NewArgs{
+			AiPrompt:        "prompt",
+			AiLanguage:      "typescript",
+			SecretsProvider: "default",
+		},
+		interactive: true,
 	}
 
 	assert.ErrorContains(t,

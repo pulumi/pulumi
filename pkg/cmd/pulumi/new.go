@@ -63,6 +63,7 @@ type chooseTemplateFunc func(templates []workspace.Template, opts display.Option
 type runtimeOptionsFunc func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo, main string,
 	opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]interface{}, error)
 
+//nolint:lll
 type NewArgs struct {
 	ConfigArray     []string                   `args:"config" argsCommaSplit:"false" argsShort:"c" argsUsage:"Config to save"`
 	ConfigPath      bool                       `argsUsage:"Config keys contain a path to a property in a map or list to set"`

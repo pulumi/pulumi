@@ -52,11 +52,13 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	chdir(t, tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             false,
+			SecretsProvider: "default",
+			Stack:           stackName,
+		},
 		interactive:       false,
-		yes:               false,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
 
@@ -72,12 +74,14 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 	chdir(t, tempdir)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			SecretsProvider: "default",
+			Stack:           "org/projectA/stack",
+			Name:            "projectB",
+		},
 		interactive:       false,
-		yes:               true,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             "org/projectA/stack",
-		name:              "projectB",
 		templateNameOrURL: "typescript",
 	}
 
@@ -96,11 +100,13 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			SecretsProvider: "default",
+			Stack:           orgStackName,
+		},
 		interactive:       false,
-		yes:               true,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             orgStackName,
 		templateNameOrURL: "typescript",
 	}
 
@@ -122,9 +128,11 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, orgStackName),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -147,11 +155,13 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), uniqueProjectName, stackName)
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			SecretsProvider: "default",
+			Stack:           fullStackName,
+		},
 		interactive:       false,
-		yes:               true,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             fullStackName,
 		templateNameOrURL: "typescript",
 	}
 
@@ -171,12 +181,14 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			Name:            uniqueProjectName,
+			SecretsProvider: "default",
+			Stack:           stackName,
+		},
 		interactive:       false,
-		yes:               true,
-		name:              uniqueProjectName,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
-		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
 
@@ -198,9 +210,11 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, stackName),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -227,11 +241,13 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	})
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			Yes:             true,
+			Name:            projectName,
+			SecretsProvider: "default",
+		},
 		interactive:       false,
-		yes:               true,
-		name:              projectName,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -253,9 +269,11 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	})
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock(projectName, ""),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -278,12 +296,14 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly:      true,
+		NewArgs: NewArgs{
+			GenerateOnly:    true,
+			Yes:             true,
+			Name:            projectName,
+			SecretsProvider: "default",
+		},
 		interactive:       false,
-		yes:               true,
-		name:              projectName,
 		prompt:            promptForValue,
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -309,10 +329,12 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly:      true,
+		NewArgs: NewArgs{
+			GenerateOnly:    true,
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock(projectName, ""),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -342,11 +364,13 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	}
 
 	args := newArgs{
-		name:              uniqueProjectName,
-		stack:             stackName,
+		NewArgs: NewArgs{
+			Name:            uniqueProjectName,
+			Stack:           stackName,
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            prompt,
-		secretsProvider:   "default",
 		templateNameOrURL: "aws-typescript",
 	}
 
@@ -377,12 +401,14 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	args := newArgs{
-		generateOnly:      true,
+		NewArgs: NewArgs{
+			GenerateOnly:    true,
+			Yes:             true,
+			Name:            "not#valid",
+			SecretsProvider: "default",
+		},
 		interactive:       false,
-		yes:               true,
-		name:              "not#valid",
 		prompt:            promptForValue,
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
 
@@ -405,19 +431,23 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
 	err := runNew(context.Background(), newArgs{
-		generateOnly:      true,
+		NewArgs: NewArgs{
+			GenerateOnly:    true,
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock("not#valid", ""),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	})
 	assert.ErrorContains(t, err, "project names may only contain")
 
 	err = runNew(context.Background(), newArgs{
-		generateOnly:      true,
+		NewArgs: NewArgs{
+			GenerateOnly:    true,
+			SecretsProvider: "default",
+		},
 		interactive:       true,
 		prompt:            promptMock("", ""),
-		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	})
 	assert.ErrorContains(t, err, "project names may not be empty")
@@ -432,12 +462,14 @@ func TestInvalidTemplateName(t *testing.T) {
 		chdir(t, tempdir)
 
 		args := newArgs{
+			NewArgs: NewArgs{
+				Yes:             true,
+				SecretsProvider: "default",
+				TemplateMode:    true,
+			},
 			chooseTemplate:    chooseTemplate,
 			interactive:       false,
-			yes:               true,
-			secretsProvider:   "default",
 			templateNameOrURL: "",
-			templateMode:      true,
 		}
 
 		err := runNew(context.Background(), args)
@@ -452,9 +484,11 @@ func TestInvalidTemplateName(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		args := newArgs{
+			NewArgs: NewArgs{
+				Yes:             true,
+				SecretsProvider: "default",
+			},
 			interactive:       false,
-			yes:               true,
-			secretsProvider:   "default",
 			templateNameOrURL: template,
 		}
 
@@ -470,11 +504,13 @@ func TestInvalidTemplateName(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		args := newArgs{
-			generateOnly:      true,
-			offline:           true,
-			secretsProvider:   "default",
+			NewArgs: NewArgs{
+				GenerateOnly:    true,
+				Offline:         true,
+				SecretsProvider: "default",
+				Yes:             true,
+			},
 			templateNameOrURL: template,
-			yes:               true,
 		}
 
 		err := runNew(context.Background(), args)
@@ -1005,13 +1041,15 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 			chdir(t, tempdir)
 
 			args := newArgs{
-				generateOnly:      true,
+				NewArgs: NewArgs{
+					GenerateOnly:    true,
+					Yes:             true,
+					SecretsProvider: "default",
+					Stack:           tt.stack,
+					Name:            "project",
+				},
 				interactive:       false,
-				yes:               true,
 				prompt:            promptForValue,
-				secretsProvider:   "default",
-				stack:             tt.stack,
-				name:              "project",
 				templateNameOrURL: "typescript",
 			}
 
@@ -1105,15 +1143,17 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			}
 
 			args := newArgs{
+				NewArgs: NewArgs{
+					GenerateOnly:    true,
+					Yes:             true,
+					TemplateMode:    true,
+					Name:            projectName,
+					SecretsProvider: "default",
+				},
 				interactive:          tt.prompted != "",
-				generateOnly:         true,
-				yes:                  true,
-				templateMode:         true,
-				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
 				promptRuntimeOptions: runtimeOptionsMock,
 				chooseTemplate:       chooseTemplateMock,
-				secretsProvider:      "default",
 				templateNameOrURL:    tt.argument,
 			}
 
@@ -1166,14 +1206,16 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	}
 
 	args := newArgs{
+		NewArgs: NewArgs{
+			GenerateOnly:    true,
+			Name:            projectName,
+			Yes:             true,
+			TemplateMode:    true,
+			SecretsProvider: "default",
+		},
 		interactive:          false,
-		generateOnly:         true,
-		yes:                  true,
-		templateMode:         true,
-		name:                 projectName,
 		prompt:               promptForValue,
 		promptRuntimeOptions: runtimeOptionsMock,
-		secretsProvider:      "default",
 		templateNameOrURL:    "python",
 	}
 

@@ -21,30 +21,41 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type GenCompletionArgs struct{}
+
 // newGenCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
-func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
-	return &cobra.Command{
+func newGenCompletionCmd(
+	v *viper.Viper,
+	parentPulumiCmd *cobra.Command,
+) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "gen-completion <SHELL>",
 		Aliases: []string{"completion"},
 		Args:    cmdutil.ExactArgs(1),
 		Short:   "Generate completion scripts for the Pulumi CLI",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			switch {
-			case args[0] == "bash":
-				return root.GenBashCompletion(os.Stdout)
-			case args[0] == "zsh":
-				return genZshCompletion(os.Stdout, root)
-			case args[0] == "fish":
-				return root.GenFishCompletion(os.Stdout, true)
+			case cliArgs[0] == "bash":
+				return parentPulumiCmd.GenBashCompletion(os.Stdout)
+			case cliArgs[0] == "zsh":
+				return genZshCompletion(os.Stdout, parentPulumiCmd)
+			case cliArgs[0] == "fish":
+				return parentPulumiCmd.GenFishCompletion(os.Stdout, true)
 			default:
-				return fmt.Errorf("%q is not a supported shell", args[0])
+				return fmt.Errorf("%q is not a supported shell", cliArgs[0])
 			}
 		}),
 	}
+
+	parentPulumiCmd.AddCommand(cmd)
+	BindFlags[GenCompletionArgs](v, cmd)
+
+	return cmd
 }
 
 const (
