@@ -504,6 +504,7 @@ func newUpCmd(
 				TruncateOutput:         !args.ShowFullOutput,
 				IsInteractive:          interactive,
 				Type:                   displayType,
+				EventLogPath:           args.EventLogPath,
 				Debug:                  args.Debug,
 				JSONDisplay:            args.JSON,
 			}
