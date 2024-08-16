@@ -403,7 +403,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Developer Commands",
 			Commands: []*cobra.Command{
 				newViewTraceCmd(v, cmd),
-				newConvertTraceCmd(),
+				newConvertTraceCmd(v, cmd),
 				newReplayEventsCmd(v, cmd),
 			},
 		},
