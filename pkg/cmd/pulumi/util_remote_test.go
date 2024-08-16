@@ -84,7 +84,7 @@ func TestRemoteExclusiveURL(t *testing.T) {
 		url              string
 		gitHubRepository string
 
-		expectUrlError bool
+		expectURLError bool
 	}
 
 	testCases := []testCase{
@@ -100,11 +100,11 @@ func TestRemoteExclusiveURL(t *testing.T) {
 			name:             "both",
 			url:              "https://example.com/foo/bar.git",
 			gitHubRepository: "thwomp/quux",
-			expectUrlError:   true,
+			expectURLError:   true,
 		},
 		{
 			name:           "neither",
-			expectUrlError: true,
+			expectURLError: true,
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestRemoteExclusiveURL(t *testing.T) {
 
 			err := res.Error()
 			require.Error(t, err)
-			if tc.expectUrlError {
+			if tc.expectURLError {
 				assert.Contains(t, err.Error(), "one of `url` or `github-repository` must be specified, and not both")
 			} else {
 				assert.Contains(t, err.Error(), "no cloud backend available")

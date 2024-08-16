@@ -314,7 +314,8 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 func validateRemoteDeploymentFlags(url string, args RemoteArgs) result.Result {
 	// Validate args.
 	if url == "" && (!args.inheritSettings && args.gitHubRepository == "") {
-		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings or --remote-github-repository"))
+		return result.FromError(
+			errors.New("the url arg must be specified if not passing --remote-inherit-settings or --remote-github-repository"))
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
 		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
@@ -513,7 +514,7 @@ func runDeployment(ctx context.Context, opts display.Options,
 				ExecutorImage: executorImage,
 			},
 			SourceContext: sourceContext,
-			GitHub: gitHub,
+			GitHub:        gitHub,
 			Operation: &apitype.OperationContext{
 				PreRunCommands:       args.preRunCommands,
 				EnvironmentVariables: env,
