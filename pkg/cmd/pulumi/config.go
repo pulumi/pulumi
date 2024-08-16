@@ -58,7 +58,7 @@ type ConfigArgs struct {
 	StackConfigFile string `args:"config-file" argsUsage:"Use the configuration values in the specified file rather than detecting the file name"`
 }
 
-func newConfigCmd(v *viper.Viper) *cobra.Command {
+func newConfigCmd(v *viper.Viper, parentPulumiCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage configuration",
@@ -104,16 +104,17 @@ func newConfigCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentPulumiCmd.AddCommand(cmd)
 	BindFlags[ConfigArgs](v, cmd)
 
-	cmd.AddCommand(newConfigGetCmd(v))
-	cmd.AddCommand(newConfigRmCmd(v))
-	cmd.AddCommand(newConfigRmAllCmd(v))
-	cmd.AddCommand(newConfigSetCmd(v))
-	cmd.AddCommand(newConfigSetAllCmd(v))
-	cmd.AddCommand(newConfigRefreshCmd(v))
-	cmd.AddCommand(newConfigCopyCmd(v))
-	cmd.AddCommand(newConfigEnvCmd(v))
+	newConfigGetCmd(v, cmd)
+	newConfigRmCmd(v, cmd)
+	newConfigRmAllCmd(v, cmd)
+	newConfigSetCmd(v, cmd)
+	newConfigSetAllCmd(v, cmd)
+	newConfigRefreshCmd(v, cmd)
+	newConfigCopyCmd(v, cmd)
+	newConfigEnvCmd(v, cmd)
 
 	return cmd
 }
@@ -123,7 +124,7 @@ type ConfigCopyArgs struct {
 	DestinationStackName string `args:"dest" argsShort:"d" argsUsage:"The name of the new stack to copy the config to"`
 }
 
-func newConfigCopyCmd(v *viper.Viper) *cobra.Command {
+func newConfigCopyCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	cpCommand := &cobra.Command{
 		Use:   "cp [key]",
 		Short: "Copy config to another stack",
@@ -195,6 +196,7 @@ func newConfigCopyCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(cpCommand)
 	BindFlags[ConfigCopyArgs](v, cpCommand)
 
 	return cpCommand
@@ -298,7 +300,7 @@ type ConfigGetArgs struct {
 	Path bool `argsUsage:"The key contains a path to a property in a map or list to get"`
 }
 
-func newConfigGetCmd(v *viper.Viper) *cobra.Command {
+func newConfigGetCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a single configuration value",
@@ -334,6 +336,7 @@ func newConfigGetCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(getCmd)
 	BindFlags[ConfigGetArgs](v, getCmd)
 
 	return getCmd
@@ -343,7 +346,7 @@ type ConfigRmArgs struct {
 	Path bool `argsUsage:"The key contains a path to a property in a map or list to remove"`
 }
 
-func newConfigRmCmd(v *viper.Viper) *cobra.Command {
+func newConfigRmCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
@@ -392,6 +395,7 @@ func newConfigRmCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(rmCmd)
 	BindFlags[ConfigRmArgs](v, rmCmd)
 
 	return rmCmd
@@ -401,7 +405,7 @@ type ConfigRmAllArgs struct {
 	Path bool `argsUsage:"Parse the keys as paths in a map or list rather than raw strings"`
 }
 
-func newConfigRmAllCmd(v *viper.Viper) *cobra.Command {
+func newConfigRmAllCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	rmAllCmd := &cobra.Command{
 		Use:   "rm-all <key1> <key2> <key3> ...",
 		Short: "Remove multiple configuration values",
@@ -451,6 +455,7 @@ func newConfigRmAllCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(rmAllCmd)
 	BindFlags[ConfigRmAllArgs](v, rmAllCmd)
 
 	return rmAllCmd
@@ -460,7 +465,7 @@ type ConfigRefreshArgs struct {
 	Force bool `argsShort:"f" argsUsage:"Overwrite configuration file, if it exists, without creating a backup"`
 }
 
-func newConfigRefreshCmd(v *viper.Viper) *cobra.Command {
+func newConfigRefreshCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
 		Short: "Update the local configuration based on the most recent deployment of the stack",
@@ -563,6 +568,7 @@ func newConfigRefreshCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(refreshCmd)
 	BindFlags[ConfigRefreshArgs](v, refreshCmd)
 
 	return refreshCmd
@@ -574,7 +580,7 @@ type ConfigSetArgs struct {
 	Secret    bool `argsUsage:"Encrypt the value instead of storing it in plaintext"`
 }
 
-func newConfigSetCmd(v *viper.Viper) *cobra.Command {
+func newConfigSetCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
 		Short: "Set configuration value",
@@ -677,6 +683,7 @@ func newConfigSetCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(setCmd)
 	BindFlags[ConfigSetArgs](v, setCmd)
 
 	return setCmd
@@ -688,7 +695,7 @@ type ConfigSetAllArgs struct {
 	SecretArgs    []string `args:"secret" argsUsage:"Marks a value as secret to be encrypted" argsCommaSplit:"false"`
 }
 
-func newConfigSetAllCmd(v *viper.Viper) *cobra.Command {
+func newConfigSetAllCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
 		Short: "Set multiple configuration values",
@@ -768,6 +775,7 @@ func newConfigSetAllCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
+	parentConfigCmd.AddCommand(setCmd)
 	BindFlags[ConfigSetAllArgs](v, setCmd)
 
 	return setCmd

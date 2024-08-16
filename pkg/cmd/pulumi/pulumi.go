@@ -321,7 +321,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newNewCmd(),
-				newConfigCmd(v),
+				newConfigCmd(v, cmd),
 				newStackCmd(v, cmd),
 				newConsoleCmd(),
 				newImportCmd(v),

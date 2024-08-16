@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func newConfigEnvCmd(v *viper.Viper) *cobra.Command {
+func newConfigEnvCmd(_ *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
@@ -49,6 +49,9 @@ func newConfigEnvCmd(v *viper.Viper) *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
+	parentConfigCmd.AddCommand(cmd)
+
+	// TODO hack/pulumirc
 	cmd.AddCommand(newConfigEnvInitCmd(&impl))
 	cmd.AddCommand(newConfigEnvAddCmd(&impl))
 	cmd.AddCommand(newConfigEnvRmCmd(&impl))
