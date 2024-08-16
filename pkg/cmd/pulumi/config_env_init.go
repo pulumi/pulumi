@@ -93,7 +93,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, cliArgs []string) error {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
 
-	opts := display.Options{Color: cmd.parent.args.Color}
+	opts := display.Options{Color: cmd.parent.color}
 
 	project, _, err := cmd.parent.readProject()
 	if err != nil {

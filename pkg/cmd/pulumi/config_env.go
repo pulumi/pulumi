@@ -33,7 +33,6 @@ import (
 
 type ConfigEnvArgs struct {
 	Interactive bool
-	Color       colors.Colorization
 }
 
 func newConfigEnvCmd(v *viper.Viper, parentConfigCmd *cobra.Command) *cobra.Command {
@@ -69,7 +68,8 @@ type configEnvCmd struct {
 	stdin  io.Reader
 	stdout io.Writer
 
-	args ConfigEnvArgs
+	args  ConfigEnvArgs
+	color colors.Colorization
 
 	readProject func() (*workspace.Project, string, error)
 
@@ -89,11 +89,12 @@ type configEnvCmd struct {
 
 func (cmd *configEnvCmd) initArgs(v *viper.Viper, cobraCommand *cobra.Command) {
 	cmd.args = UnmarshalArgs[ConfigEnvArgs](v, cobraCommand)
+	cmd.color = cmdutil.GetGlobalColorization()
 }
 
 func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
-	opts := display.Options{Color: cmd.args.Color}
+	opts := display.Options{Color: cmd.color}
 
 	project, _, err := cmd.readProject()
 	if err != nil {
