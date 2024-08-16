@@ -24,23 +24,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-type DeploymentRunConfig struct {
-	PulumiConfig
-
-	// TODO: hack/pulumirc
+type DeploymentRunArgs struct {
 	RemoteArgs        RemoteArgs
-	Stack             string
-	SuppressPermalink bool
+	Stack             string `argsUsage:"The name of the stack to operate on. Defaults to the current stack"`
+	SuppressPermalink bool   `argsUsage:"Suppress display of the state permalink"`
 }
 
-func newDeploymentRunCmd() *cobra.Command {
-	config := DeploymentRunConfig{}
-
-	// Flags for remote operations.
-	// remoteArgs := RemoteArgs{}
-
+func newDeploymentRunCmd(v *viper.Viper, parentCmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <operation> [url]",
 		Short: "Launch a deployment job on Pulumi Cloud",
@@ -51,6 +44,8 @@ func newDeploymentRunCmd() *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := cmd.Context()
+
+			config := UnmarshalArgs[DeploymentRunArgs](v, cmd)
 
 			operation, err := apitype.ParsePulumiOperation(args[0])
 			if err != nil {
@@ -97,16 +92,8 @@ func newDeploymentRunCmd() *cobra.Command {
 		}),
 	}
 
-	// Remote flags
-	config.RemoteArgs.applyFlagsForDeploymentCommand(cmd)
-
-	cmd.PersistentFlags().BoolVar(
-		&config.SuppressPermalink, "suppress-permalink", false,
-		"Suppress display of the state permalink")
-
-	cmd.PersistentFlags().StringVarP(
-		&config.Stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+	parentCmd.AddCommand(cmd)
+	BindFlags[DeploymentRunArgs](v, cmd)
 
 	return cmd
 }

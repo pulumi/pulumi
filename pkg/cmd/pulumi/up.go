@@ -466,7 +466,7 @@ func newUpCmd(
 			args := UnmarshalArgs[UpArgs](v, cmd)
 
 			// Remote implies we're skipping previews.
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				args.SkipPreview = true
 			}
 
@@ -517,7 +517,7 @@ func newUpCmd(
 				opts.Display.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				err = validateUnsupportedRemoteFlags(
 					args.ExpectNoChanges,
 					args.ConfigArray,

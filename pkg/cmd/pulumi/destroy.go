@@ -106,7 +106,7 @@ func newDestroyCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
-			if config.RemoteArgs.remote {
+			if config.RemoteArgs.Remote {
 				config.SkipPreview = true
 			}
 
@@ -151,7 +151,7 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			if config.RemoteArgs.remote {
+			if config.RemoteArgs.Remote {
 				err = validateUnsupportedRemoteFlags(false, nil, false, "", config.JSONDisplay, nil,
 					nil, config.Refresh, config.ShowConfig, false, config.ShowReplacementSteps, config.ShowSames, false,
 					config.SuppressOutputs, "default", *config.Targets, nil, nil,

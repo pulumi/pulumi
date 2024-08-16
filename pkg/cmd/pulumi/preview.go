@@ -138,7 +138,7 @@ func newPreviewCmd(
 				displayOpts.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				err := validateUnsupportedRemoteFlags(
 					args.ExpectNoChanges,
 					args.ConfigArray,

@@ -99,7 +99,7 @@ func newRefreshCmd(
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				args.SkipPreview = true
 			}
 
@@ -143,7 +143,7 @@ func newRefreshCmd(
 				opts.Display.SuppressPermalink = false
 			}
 
-			if remoteArgs.remote {
+			if remoteArgs.Remote {
 				err = validateUnsupportedRemoteFlags(args.ExpectNoChanges, nil, false, "", args.JSON, nil,
 					nil, "", args.ShowConfig, false, args.ShowReplacementSteps, args.ShowSames, false,
 					args.SuppressOutputs, "default", args.Targets, nil, nil,
