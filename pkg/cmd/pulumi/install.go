@@ -38,14 +38,15 @@ import (
 )
 
 type InstallArgs struct {
-	PulumiConfig
-
-	Reinstall      bool
-	NoPlugins      bool
-	NoDependencies bool
+	Reinstall      bool `argsUsage:"Reinstall a plugin even if it already exists"`
+	NoPlugins      bool `argsUsage:"Skip installing plugins"`
+	NoDependencies bool `argsUsage:"Skip installing dependencies"`
 }
 
-func newInstallCmd(v *viper.Viper) *cobra.Command {
+func newInstallCmd(
+	v *viper.Viper,
+	parentPullCmd *cobra.Command,
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Args:  cmdutil.NoArgs,
@@ -53,7 +54,7 @@ func newInstallCmd(v *viper.Viper) *cobra.Command {
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cmdArgs []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			args := UnmarshalArgs[InstallArgs](v, cmd)
 
 			ctx := cmd.Context()
@@ -183,9 +184,8 @@ func newInstallCmd(v *viper.Viper) *cobra.Command {
 		}),
 	}
 
-	AddBoolConfig(v, cmd, "reinstall", "", false, "Reinstall a plugin even if it already exists")
-	AddBoolConfig(v, cmd, "no-plugins", "", false, "Skip installing plugins")
-	AddBoolConfig(v, cmd, "no-dependencies", "", false, "Skip installing dependencies")
+	parentPullCmd.AddCommand(cmd)
+	BindFlags[InstallArgs](v, cmd)
 
 	return cmd
 }
