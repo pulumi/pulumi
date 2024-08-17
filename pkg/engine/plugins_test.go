@@ -47,7 +47,7 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		PluginDownloadURL: "com.server.url",
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet(), nil)
 	assert.NotNil(t, defaultProviders)
 
 	aws, ok := defaultProviders[tokens.Package("aws")]
@@ -79,7 +79,7 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 		Kind:    apitype.ResourcePlugin,
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet(), nil)
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -108,7 +108,7 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 		Kind:    apitype.ResourcePlugin,
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet(), nil)
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -132,7 +132,7 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 		Kind:    apitype.ResourcePlugin,
 	})
 
-	defaultProviders := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins)
+	defaultProviders := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins, nil)
 	assert.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -210,8 +210,76 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 		Kind:    apitype.ResourcePlugin,
 	}
 	plugins := newPluginSet(p1, p2)
-	result := computeDefaultProviderPlugins(plugins, plugins)
+	result := computeDefaultProviderPlugins(plugins, plugins, nil)
 	assert.Equal(t, map[tokens.Package]workspace.PluginSpec{
 		"foo": p2,
+	}, result)
+}
+
+func TestDefaultVersionsFromProject(t *testing.T) {
+	t.Parallel()
+	v1 := semver.MustParse("0.0.1")
+	v2 := semver.MustParse("0.0.2")
+
+	p1 := workspace.PluginSpec{
+		Name:    "foo",
+		Version: &v2,
+		Kind:    apitype.ResourcePlugin,
+	}
+	p2 := workspace.PluginSpec{
+		Name:    "bar",
+		Version: &v2,
+		Kind:    apitype.ResourcePlugin,
+	}
+	p3 := workspace.PluginSpec{
+		Name:    "frob",
+		Version: &v2,
+		Kind:    apitype.LanguagePlugin,
+	}
+	plugins := newPluginSet(p1, p2, p3)
+
+	projectPlugins := []workspace.ProjectPlugin{
+		{
+			Name:    "foo",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+			Default: true,
+		},
+		{
+			Name:    "bar",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+			Path:    "./bar",
+		},
+		{
+			Name:    "xyz",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+		},
+		{
+			// This plugin should be ignored because it's not a resource plugin.
+			Name:    "frob",
+			Kind:    apitype.LanguagePlugin,
+			Version: &v1,
+		},
+	}
+	result := computeDefaultProviderPlugins(plugins, plugins, projectPlugins)
+	assert.Equal(t, map[tokens.Package]workspace.PluginSpec{
+		"foo": {
+			Name:    "foo",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+		},
+		"bar": {
+			Name:    "bar",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v2,
+		},
+		// If the project defines a plugin that the query didn't return, it's still included in the default providers.
+		"xyz": {
+			Name:    "xyz",
+			Kind:    apitype.ResourcePlugin,
+			Version: &v1,
+		},
 	}, result)
 }

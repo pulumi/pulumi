@@ -291,11 +291,13 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 
 // computeDefaultProviderPlugins computes, for every resource plugin, a mapping from packages to semver versions
 // reflecting the version of a provider that should be used as the "default" resource when registering resources. This
-// function takes two sets of plugins: a set of plugins given to us from the language host and the full set of plugins.
-// If the language host has sent us a non-empty set of plugins, we will use those exclusively to service default
-// provider requests. Otherwise, we will use the full set of plugins, which is the existing behavior today.
+// function takes three sets of plugins: a set of plugins given to us from the language host, the full set of plugins
+// from the snapshot, and the set of plugins from the project file. If the language host has sent us a non-empty set of
+// plugins, we will use those exclusively to service default provider requests. Otherwise, we will use the full set of
+// plugins, which is the existing behavior today. Either way anything in the project file is included and takes
+// precedence.
 //
-// The justification for favoring language plugins over all else is that, ultimately, it is the language plugin that
+// The justification for favoring language plugins over the snapshot is that, ultimately, it is the language plugin that
 // produces resource registrations and therefore it is the language plugin that should dictate exactly what plugins to
 // use to satisfy a resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and
 // version) they want to use in RegisterResource. If the plugin is left unspecified, we make a best guess effort to
@@ -306,7 +308,10 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]workspace.PluginSpec {
+func computeDefaultProviderPlugins(
+	languagePlugins, allPlugins pluginSet,
+	projectPlugins []workspace.ProjectPlugin,
+) map[tokens.Package]workspace.PluginSpec {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -371,6 +376,29 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 		logging.V(preparePluginLog).Infof(
 			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name)
 		defaultProviderPlugins[tokens.Package(p.Name)] = p
+	}
+
+	// Now take into account the project plugins. These take precedence over anything the plugin queries returned.
+	for _, p := range projectPlugins {
+		if p.Kind != apitype.ResourcePlugin {
+			// Default providers are only relevant for resource plugins.
+			continue
+		}
+		spec := p.Spec()
+		pkg := tokens.Package(p.Name)
+
+		// If we've already seen a plugin for this package overwrite it if this plugin is marked as the default.
+		if seenPlugin, has := defaultProviderPlugins[pkg]; has && p.Default {
+			logging.V(preparePluginLog).Infof(
+				"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was %s)",
+				spec, pkg, seenPlugin.Version)
+			defaultProviderPlugins[pkg] = spec
+			continue
+		}
+
+		logging.V(preparePluginLog).Infof(
+			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", spec, pkg)
+		defaultProviderPlugins[pkg] = spec
 	}
 
 	if logging.V(preparePluginLog) {

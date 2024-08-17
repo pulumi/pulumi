@@ -257,8 +257,7 @@
             "type":"object",
             "additionalProperties":false,
             "required":[
-                "name",
-                "path"
+                "name"
             ],
             "properties":{
                 "name":{
@@ -271,7 +270,11 @@
                 },
                 "version":{
                     "type":"string",
-                    "description":"Version of the plugin, if not set, will match any version the engine requests."
+                    "description":"Version or range of the plugin, if not set, will match any version the engine requests."
+                },
+                "default":{
+                    "type":"boolean",
+                    "description":"If true, this plugin is the default one to use for its package."
                 }
             }
         },

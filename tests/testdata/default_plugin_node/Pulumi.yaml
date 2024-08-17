@@ -1,0 +1,8 @@
+name: import_node
+runtime: nodejs
+description: A minimal NodeJS program to test relative provider plugin paths.
+plugins:
+  providers:
+    - name: random
+      version: v4.15 # This is a version lower than what package.json specifies
+      default: true

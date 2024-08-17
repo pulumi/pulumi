@@ -763,6 +763,7 @@ type ProjectPlugin struct {
 	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version *semver.Version    // the plugin's semantic version, if present.
 	Path    string             // the path that a plugin is to be loaded from (this will always be a directory)
+	Default bool               // if true, this plugin is the default for its name, only relevant for resource plugins.
 }
 
 // Spec Return a PluginSpec object for this project plugin.
@@ -1835,6 +1836,9 @@ func getPluginInfoAndPath(
 					name, plugin.Version, version)
 				continue
 			}
+		}
+		if plugin.Path == "" {
+			continue
 		}
 
 		spec := plugin.Spec()
