@@ -2,9 +2,14 @@ package toolchain
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os/exec"
 	"runtime"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type typeChecker int
@@ -49,9 +54,11 @@ type Info struct {
 
 type Toolchain interface {
 	// InstallDependencies installs the dependencies of the project found in `cwd`.
-	InstallDependencies(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
+		showOutput bool, infoWriter, errorWriter io.Writer) error
 	// EnsureVenv validates virtual environment of the toolchain and creates it if it doesn't exist.
-	EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
+		showOutput bool, infoWriter, errorWriter io.Writer) error
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
@@ -88,4 +95,63 @@ func virtualEnvBinDirName() string {
 		return "Scripts"
 	}
 	return "bin"
+}
+
+// Determines if we should use pyenv. To use pyenv we need:
+//   - pyenv installed
+//   - .python-version file in the current directory or any of its parents
+func usePyenv(cwd string) (bool, string, string, error) {
+	versionFile, err := fsutil.Searchup(cwd, ".python-version")
+	if err != nil {
+		if !errors.Is(err, fsutil.ErrNotFound) {
+			return false, "", "", fmt.Errorf("error while looking for .python-version %s", err)
+		}
+		// No .python-version file found
+		return false, "", "", nil
+	}
+	logging.V(9).Infof("Python toolchain: found .python-version %s", versionFile)
+	pyenvPath, err := exec.LookPath("pyenv")
+	if err != nil {
+		if !errors.Is(err, exec.ErrNotFound) {
+			return false, "", "", fmt.Errorf("error while looking for pyenv %+v", err)
+		}
+		// No pyenv installed
+		logging.V(9).Infof("Python toolchain: found .python-version file at %s, but could not find pyenv executable",
+			versionFile)
+		return false, "", "", nil
+	}
+	return true, pyenvPath, versionFile, nil
+}
+
+func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	use, pyenv, versionFile, err := usePyenv(cwd)
+	if err != nil {
+		return err
+	}
+	if !use {
+		return nil
+	}
+
+	if showOutput {
+		_, err := infoWriter.Write([]byte(fmt.Sprintf("Installing python version from .python-version file at %s\n",
+			versionFile)))
+		if err != nil {
+			return fmt.Errorf("error while writing to infoWriter %s", err)
+		}
+	}
+	cmd := exec.CommandContext(ctx, pyenv, "install", "--skip-existing")
+	cmd.Dir = cwd
+	if showOutput {
+		cmd.Stdout = infoWriter
+		cmd.Stderr = errorWriter
+	}
+	err = cmd.Run()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return fmt.Errorf("error while running pyenv install: %s", string(exitErr.Stderr))
+		}
+		return fmt.Errorf("error while running pyenv install: %s", err)
+	}
+	return nil
 }

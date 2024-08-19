@@ -82,7 +82,7 @@ func validateVersion(versionOut string) error {
 }
 
 func (p *poetry) InstallDependencies(ctx context.Context,
-	root string, showOutput bool, infoWriter, errorWriter io.Writer,
+	root string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
 	// If pyproject.toml does not exist, but we have a requirements.txt,
 	// generate a new pyproject.toml.
@@ -97,7 +97,24 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
+	if useLanguageVersionTools {
+		if err := installPython(ctx, root, showOutput, infoWriter, errorWriter); err != nil {
+			return err
+		}
+	}
+
 	poetryCmd := exec.Command(p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
+	if useLanguageVersionTools {
+		// For poetry to work nicely with pyenv, we need to make poetry use the active python,
+		// otherwise poetry will use the python version used to run poetry itself.
+		use, _, _, err := usePyenv(root)
+		if err != nil {
+			return fmt.Errorf("checking for pyenv: %w", err)
+		}
+		if use {
+			poetryCmd.Env = append(os.Environ(), "POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true")
+		}
+	}
 	poetryCmd.Dir = p.directory
 	poetryCmd.Stdout = infoWriter
 	poetryCmd.Stderr = errorWriter
@@ -186,11 +203,13 @@ func (p *poetry) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (p *poetry) EnsureVenv(ctx context.Context, cwd string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
+	showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
 	_, err := p.virtualenvPath(ctx)
 	if err != nil {
 		// Couldn't get the virtualenv path, this means it does not exist. Let's create it.
-		return p.InstallDependencies(ctx, cwd, showOutput, infoWriter, errorWriter)
+		return p.InstallDependencies(ctx, cwd, useLanguageVersionTools, showOutput, infoWriter, errorWriter)
 	}
 	return nil
 }

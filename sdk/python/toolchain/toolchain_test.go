@@ -1,6 +1,7 @@
 package toolchain
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -46,7 +47,7 @@ func TestValidateVenv(t *testing.T) {
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
-			err = tc.InstallDependencies(context.Background(), opts.Root, true, os.Stdout, os.Stderr)
+			err = tc.InstallDependencies(context.Background(), opts.Root, false, true, os.Stdout, os.Stderr)
 			require.NoError(t, err)
 			err = tc.ValidateVenv(context.Background())
 			require.NoError(t, err)
@@ -194,13 +195,80 @@ func TestAbout(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
+func TestPyenv(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("pyenv is not supported on Windows")
+	}
+	tmpDir := t.TempDir()
+
+	// Test without pyenv, a .python-version file
+	use, _, _, err := usePyenv(tmpDir)
+	require.NoError(t, err)
+	require.False(t, use)
+
+	// Add a fake pyenv binary to $tmp/bin and set $PATH to $tmp/bin
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
+	//nolint:gosec // we want this file to be executable
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "pyenv"), []byte("#!/bin/sh\nexit 0;\n"), 0o700))
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
+
+	// Test witbout .python-version file
+	use, _, _, err = usePyenv(tmpDir)
+	require.NoError(t, err)
+	require.False(t, use)
+
+	// Create a .python-version file
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".python-version"), []byte("3.9.0"), 0o600))
+
+	use, pyenvPath, versionFile, err := usePyenv(tmpDir)
+	t.Log("X", use, pyenvPath, versionFile, err)
+	require.NoError(t, err)
+	require.True(t, use)
+	require.Equal(t, filepath.Join(tmpDir, ".python-version"), versionFile)
+	require.Equal(t, filepath.Join(tmpDir, "bin", "pyenv"), pyenvPath)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestPyenvInstall(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("pyenv is not supported on Windows")
+	}
+	tmpDir := t.TempDir()
+
+	t.Log("tmpDir", tmpDir)
+
+	// Add a fake pyenv binary to $tmp/bin and set $PATH to $tmp/bin.
+	// The binary will write its arguments to a file, that we read back later to verify that it was called with the
+	// correct arguments.
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
+	outPath := filepath.Join(tmpDir, "out.txt")
+	script := fmt.Sprintf("#!/bin/sh\necho $@ > %s\n", outPath)
+	//nolint:gosec // we want this file to be executable
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "pyenv"), []byte(script), 0o700))
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
+
+	// Create a .python-version file
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".python-version"), []byte("3.9.0"), 0o600))
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := installPython(context.Background(), tmpDir, false, stdout, stderr)
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(outPath)
+	require.NoError(t, err)
+	require.Equal(t, "install --skip-existing", strings.TrimSpace(string(b)))
+}
+
 func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	t.Helper()
 
 	if opts.Toolchain == Pip {
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, true, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {
@@ -215,7 +283,8 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePoetryToml(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, true, os.Stdout, os.Stderr)
+		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {

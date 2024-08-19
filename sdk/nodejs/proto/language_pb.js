@@ -2978,7 +2978,8 @@ proto.pulumirpc.InstallDependenciesRequest.toObject = function(includeInstance, 
   var f, obj = {
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     isTerminal: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f)
+    info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
+    useLanguageVersionTools: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -3027,6 +3028,10 @@ proto.pulumirpc.InstallDependenciesRequest.deserializeBinaryFromReader = functio
       var value = new proto.pulumirpc.ProgramInfo;
       reader.readMessage(value,proto.pulumirpc.ProgramInfo.deserializeBinaryFromReader);
       msg.setInfo(value);
+      break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setUseLanguageVersionTools(value);
       break;
     default:
       reader.skipField();
@@ -3077,6 +3082,13 @@ proto.pulumirpc.InstallDependenciesRequest.serializeBinaryToWriter = function(me
       3,
       f,
       proto.pulumirpc.ProgramInfo.serializeBinaryToWriter
+    );
+  }
+  f = message.getUseLanguageVersionTools();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
     );
   }
 };
@@ -3152,6 +3164,24 @@ proto.pulumirpc.InstallDependenciesRequest.prototype.clearInfo = function() {
  */
 proto.pulumirpc.InstallDependenciesRequest.prototype.hasInfo = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional bool use_language_version_tools = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.InstallDependenciesRequest.prototype.getUseLanguageVersionTools = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.InstallDependenciesRequest} returns this
+ */
+proto.pulumirpc.InstallDependenciesRequest.prototype.setUseLanguageVersionTools = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 

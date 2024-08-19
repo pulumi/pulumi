@@ -1088,7 +1088,7 @@ func installPolicyPackDependencies(ctx context.Context, root string, proj *works
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(programInfo); err != nil {
+	if err = lang.InstallDependencies(plugin.InstallDependenciesRequest{Info: programInfo}); err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}
 
