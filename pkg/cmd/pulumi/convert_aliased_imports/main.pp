@@ -2,8 +2,8 @@ resource cluster "aws:ecs/cluster:Cluster" {
 	__logicalName = "cluster"
 }
 
-resource lb "awsx:lb:ApplicationLoadBalancer" {
-	__logicalName = "lb"
+resource loadBalancer "awsx:lb:ApplicationLoadBalancer" {
+	__logicalName = "loadBalancer"
 }
 
 resource nginx "awsx:ecs:FargateService" {
@@ -16,7 +16,7 @@ resource nginx "awsx:ecs:FargateService" {
 			memory = 128,
 			portMappings = [{
 				containerPort = 80,
-				targetGroup = lb.defaultTargetGroup
+				targetGroup = loadBalancer.defaultTargetGroup
 			}]
 		}
 	}
@@ -24,5 +24,5 @@ resource nginx "awsx:ecs:FargateService" {
 
 output url {
 	__logicalName = "url"
-	value = lb.loadBalancer.dnsName
+	value = loadBalancer.loadBalancer.dnsName
 }

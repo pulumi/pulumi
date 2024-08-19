@@ -1072,7 +1072,15 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	applyArgs, then := pcl.ParseApplyCall(expr)
 	isInput := false
 	retType := g.argumentTypeName(then.Signature.ReturnType, isInput)
-	// TODO account for outputs in other namespaces like aws
+
+	// Add all argument/return types to imports.
+	for _, applyArg := range applyArgs {
+		schemaType, _ := pcl.GetSchemaForType(applyArg.Type())
+		g.collectTypeImports(g.program, schemaType)
+	}
+	retSchemaTy, _ := pcl.GetSchemaForType(then.Type())
+	g.collectTypeImports(g.program, retSchemaTy)
+
 	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
 	var typeAssertion string
 	if retType == "[]string" {

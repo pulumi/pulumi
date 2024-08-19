@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ecs"
+	awslb "github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lb"
 	awsxecs "github.com/pulumi/pulumi-awsx/sdk/v2/go/awsx/ecs"
 	"github.com/pulumi/pulumi-awsx/sdk/v2/go/awsx/lb"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -13,7 +14,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		lb, err := lb.NewApplicationLoadBalancer(ctx, "lb", nil)
+		loadBalancer, err := lb.NewApplicationLoadBalancer(ctx, "loadBalancer", nil)
 		if err != nil {
 			return err
 		}
@@ -27,7 +28,7 @@ func main() {
 					PortMappings: awsxecs.TaskDefinitionPortMappingArray{
 						&awsxecs.TaskDefinitionPortMappingArgs{
 							ContainerPort: pulumi.Int(80),
-							TargetGroup:   lb.DefaultTargetGroup,
+							TargetGroup:   loadBalancer.DefaultTargetGroup,
 						},
 					},
 				},
@@ -36,7 +37,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("url", lb.LoadBalancer.ApplyT(func(loadBalancer *lb.LoadBalancer) (string, error) {
+		ctx.Export("url", loadBalancer.LoadBalancer.ApplyT(func(loadBalancer *awslb.LoadBalancer) (string, error) {
 			return loadBalancer.DnsName, nil
 		}).(pulumi.StringOutput))
 		return nil
