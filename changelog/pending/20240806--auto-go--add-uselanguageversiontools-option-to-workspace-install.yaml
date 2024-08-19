@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: auto/go
-  description: Add UseLanguageVersionTools option to Workspace.Install
+  description: Add options to automation API Workspace.Install
