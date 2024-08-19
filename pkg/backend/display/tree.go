@@ -333,22 +333,31 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	// Re-home the cursor.
 	r.print("\r")
-	for ; r.rewind > 0; r.rewind-- {
-		// If there is content that we won't overwrite, clear it.
-		if r.rewind > totalHeight-1 {
-			r.term.ClearEnd()
-		}
-		r.term.CursorUp(1)
+	if r.rewind > 0 {
+		r.term.CursorUp(r.rewind)
 	}
-	r.rewind = totalHeight - 1
 
 	// Render the tree table.
 	r.overln(r.clampLine(treeTableHeader, termWidth))
 	for _, row := range treeTableRows {
 		r.overln(r.clampLine(row, termWidth))
 	}
+
+	// Each time we render, the number of lines we write out may differ. If we
+	// previously rendered more lines than we are about to render, we need to
+	// "rewind" the terminal by the difference, clearing the now-obsolete lines.
+	// To achieve this, we count the number of lines we render and compare it to
+	// the number of lines we rendered last time.
+	lineCount := 1 + len(treeTableRows)
+
 	if treeTableFooter != "" {
 		r.over(treeTableFooter)
+
+		// If the table footer ends with a newline, include that break in the line
+		// count.
+		if strings.HasSuffix(treeTableFooter, "\n") {
+			lineCount++
+		}
 	}
 
 	// Render the system messages.
@@ -357,21 +366,38 @@ func (r *treeRenderer) frame(locked, done bool) {
 		r.overln(colors.Yellow + "System Messages" + colors.Reset)
 
 		for _, line := range systemMessages {
-			r.overln("  " + line)
+			r.overln(r.clampLine("  "+line, termWidth))
 		}
+		lineCount += 2 + len(systemMessages)
 	}
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
 		padding := termWidth - colors.MeasureColorizedString(statusMessage)
+		if padding < 0 {
+			padding = 0
+		}
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
+		lineCount++
 	}
 
 	if done && totalHeight > 0 {
 		r.overln("")
+		lineCount++
 	}
+
+	// If we didn't write out as many lines as we did last time, then overwrite
+	// the unwriten lines with empty space.
+	if r.rewind > lineCount {
+		delta := r.rewind - lineCount
+		for i := 0; i < delta; i++ {
+			r.overln("")
+		}
+		r.term.CursorUp(delta)
+	}
+	r.rewind = lineCount
 
 	// Handle the status message timer. We do this at the end to ensure that any message is displayed for at least one
 	// frame.
