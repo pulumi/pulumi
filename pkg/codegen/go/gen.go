@@ -246,8 +246,9 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	var headerImportPath string
 	if pkg.externalPackageInfo != nil {
-		pkgInfo := pkg.externalPackageInfo[components[0]]
-		headerImportPath = path.Join(pkgInfo.ImportBasePath, mod)
+		if pkgInfo, ok := pkg.externalPackageInfo[components[0]]; ok {
+			headerImportPath = path.Join(pkgInfo.ImportBasePath, mod)
+		}
 	}
 
 	var importPath string

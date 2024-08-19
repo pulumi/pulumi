@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ecs"
+	awslb "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/lb"
 	awsxecs "github.com/pulumi/pulumi-awsx/sdk/go/awsx/ecs"
 	"github.com/pulumi/pulumi-awsx/sdk/go/awsx/lb"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -36,7 +37,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("url", lb.LoadBalancer.ApplyT(func(loadBalancer *lb.LoadBalancer) (string, error) {
+		ctx.Export("url", lb.LoadBalancer.ApplyT(func(loadBalancer *awslb.LoadBalancer) (string, error) {
 			return loadBalancer.DnsName, nil
 		}).(pulumi.StringOutput))
 		return nil
