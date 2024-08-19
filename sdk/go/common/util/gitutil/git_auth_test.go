@@ -145,12 +145,11 @@ func TestDefaultIdentityFiles(t *testing.T) {
 		paths: []string{"~/.ssh/identity"},
 	}, "*")
 
-	require.Len(t, keys, 5)
+	require.Len(t, keys, 4)
 
 	require.ElementsMatch(t, keys, []string{
 		mustExpandHomeDir("~/.ssh/identity"),
 		mustExpandHomeDir("~/.ssh/id_rsa"),
-		mustExpandHomeDir("~/.ssh/id_dsa"),
 		mustExpandHomeDir("~/.ssh/id_ecdsa"),
 		mustExpandHomeDir("~/.ssh/id_ed25519"),
 	})

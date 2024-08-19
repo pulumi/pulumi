@@ -348,7 +348,7 @@ func TestGitAuthParse(t *testing.T) {
 			if tc.expectedWrappedBasicAuth != nil {
 				wrapper, ok := authMethod.(*gitutil.TransportAuth)
 				require.Truef(t, ok, "expected transport to be of type *gitutil.TransportAuth, got %T", authMethod)
-				basicAuth, ok := authMethod.(*http.BasicAuth)
+				basicAuth, ok := wrapper.AuthMethod.(*http.BasicAuth)
 				require.Truef(t, ok, "expected Auth to be of type *http.BasicAuth, got %T", wrapper.AuthMethod)
 				if basicAuth.Username != tc.expectedWrappedBasicAuth.Username ||
 					basicAuth.Password != tc.expectedWrappedBasicAuth.Password {
