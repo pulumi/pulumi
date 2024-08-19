@@ -787,6 +787,15 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 			args = append(args, "--use-language-version-tools")
 		}
 	}
+	if opts.NoPlugins {
+		args = append(args, "--no-plugins")
+	}
+	if opts.NoDependencies {
+		args = append(args, "--no-dependencies")
+	}
+	if opts.Reinstall {
+		args = append(args, "--reinstall")
+	}
 	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)

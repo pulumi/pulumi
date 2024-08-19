@@ -2986,6 +2986,45 @@ func TestInstallWithOptions(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestInstallOptions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "install")
+	m := mockPulumiCommand{}
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
+	require.NoError(t, err)
+
+	err = workspace.Install(ctx, &InstallOptions{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		NoPlugins: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--no-plugins"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		NoDependencies: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--no-dependencies"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		Reinstall: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		NoDependencies: true,
+		NoPlugins:      true,
+		Reinstall:      true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--no-plugins", "--no-dependencies", "--reinstall"}, m.capturedArgs)
+}
+
 func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

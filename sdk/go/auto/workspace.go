@@ -203,4 +203,10 @@ type InstallOptions struct {
 	Stderr io.Writer
 	// Use language version tools setup the language runtime before installing the dependencies.
 	UseLanguageVersionTools bool
+	// Skip installing plugins
+	NoPlugins bool
+	// Skip installing dependencies
+	NoDependencies bool
+	// Reinstall plugin even if they already exist
+	Reinstall bool
 }
