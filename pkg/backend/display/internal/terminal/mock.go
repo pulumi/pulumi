@@ -1,7 +1,9 @@
 package terminal
 
 import (
+	"fmt"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -22,10 +24,45 @@ func NewMockTerminal(dest io.Writer, width, height int, raw bool) *MockTerminal 
 		width:  width,
 		height: height,
 		raw:    raw,
-		info:   info{noTermInfo(0)},
+		info:   info{mockTermInfo(0)},
 		keys:   make(chan string),
 		dest:   dest,
 	}
+}
+
+// A mock terminal info implementation that prints out terminal codes as
+// explicit strings for identification in test outputs.
+type mockTermInfo int
+
+var termOps = map[string]string{
+	"el1":   "clear-to-cursor",
+	"el":    "clear-to-end",
+	"cuu":   "cursor-up",
+	"cud":   "cursor-down",
+	"civis": "hide-cursor",
+	"cnorm": "show-cursor",
+}
+
+func (ti mockTermInfo) Parse(attr string, params ...interface{}) (string, error) {
+	opName, ok := termOps[attr]
+	if !ok {
+		opName = attr
+	}
+
+	if len(params) == 0 {
+		return fmt.Sprintf("<%%%s%%>", opName), nil
+	}
+
+	// If the operation has parameters, format them all as a colon-delimited
+	// string, e.g. "cursor-up:2".
+	var op strings.Builder
+	op.WriteString(opName)
+	for _, p := range params {
+		op.WriteRune(':')
+		op.WriteString(fmt.Sprint(p))
+	}
+
+	return fmt.Sprintf("<%%%s%%>", op.String()), nil
 }
 
 func (t *MockTerminal) IsRaw() bool {
