@@ -71,6 +71,19 @@ jobs:
       # defined in filters.
       test-codegen: ${{ steps.changes.outputs.test-codegen }}
 
+  pr-download-message-pre:
+    name: PR Binaries In Progress
+    if: ${{ always() }}
+    uses: ./.github/workflows/ci-comment-pr-binaries.yml
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+      note: pre
+    secrets: inherit
+
   ci:
     name: CI
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
@@ -107,6 +120,21 @@ jobs:
         }}
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false
+    secrets: inherit
+
+  pr-download-message-post:
+    name: PR Binaries Ready
+    needs: [ci]
+    if: ${{ always() }}
+    uses: ./.github/workflows/ci-comment-pr-binaries.yml
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+      note: post
+      failure: ${{ needs.ci.result != 'success' }}
     secrets: inherit
 
   prepare-release:

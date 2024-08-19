@@ -1,0 +1,89 @@
+name: PR Comment with PR Binaries
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        required: true
+        description: "GitHub PR number"
+        type: number
+      note:
+        required: true
+        description: Note to add to comment, must be one of "pre", "post"
+        type: string
+      failure:
+        required: false
+        description: Whether the CI build failed, defaults to false. Set this if note is "post"
+        type: boolean
+        default: false
+    secrets:
+      PULUMI_BOT_TOKEN:
+        required: true
+        description: "GitHub access token, required to mitigate GitHub rate limits"
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+
+jobs:
+  pr-download-message:
+    name: PR download message
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+          sparse-checkout: .github/scripts/
+      - name: Find Comment
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ inputs.pr-number }}
+          body-includes: "# PR Binaries"
+      - name: Set note
+        id: note
+        run: |
+          if [[ "${{ inputs.note }}" == "pre" ]]; then
+            ./.github/scripts/set-output note "⚙️ The binaries for this PR are being built and tested, and may not be available yet."
+            exit 0
+          fi
+
+          if [[ "${{ inputs.note }}" == "post" ]]; then
+            if [[ "${{ inputs.failure }}" == "true" ]]; then
+              ./.github/scripts/set-output note "❌ The binaries for this PR may not be available, as the CI job failed."
+              exit 0
+            else
+              ./.github/scripts/set-output note "✅ The binaries for this PR are now available."
+              exit 0
+            fi
+          fi
+
+          ./.github/scripts/set-output note "❌ Invalid note: ${{ inputs.note }}"
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ inputs.pr-number }}
+          body: |
+            # PR Binaries
+
+            Contributors may install the binaries from this PR by running the following command:
+
+            ```sh
+            curl -fsSL https://get.pulumi.com | sh -s -- --version pr#${{ inputs.pr-number }}
+            ```
+
+            ${{ fromJSON(steps.note.outputs.note) }}
+          edit-mode: replace
