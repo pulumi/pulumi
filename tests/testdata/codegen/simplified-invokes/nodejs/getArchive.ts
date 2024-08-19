@@ -15,5 +15,5 @@ export function getArchiveOutput(a?: pulumi.Input<number | undefined>, opts?: pu
     var args = {
         "a": a,
     };
-    return pulumi.output(args).apply((resolvedArgs: any) => getArchive(resolvedArgs.a, opts))
+    return pulumi.output(args).apply((resolvedArgs: any) => getArchive(resolvedArgs.a, opts));
 }

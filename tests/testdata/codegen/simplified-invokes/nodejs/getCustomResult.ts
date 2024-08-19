@@ -17,5 +17,5 @@ export function getCustomResultOutput(a?: pulumi.Input<number | undefined>, opts
     var args = {
         "a": a,
     };
-    return pulumi.output(args).apply((resolvedArgs: any) => getCustomResult(resolvedArgs.a, opts))
+    return pulumi.output(args).apply((resolvedArgs: any) => getCustomResult(resolvedArgs.a, opts));
 }

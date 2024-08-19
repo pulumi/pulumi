@@ -1387,7 +1387,7 @@ func (mod *modContext) genFunctionOutputVersion(
 			// Pass the argument to the invocation.
 			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
 		}
-		fmt.Fprint(w, "opts))\n")
+		fmt.Fprint(w, "opts));\n")
 		fmt.Fprint(w, "}\n")
 	}
 
