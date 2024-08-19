@@ -882,7 +882,9 @@ func TestUnmarshalPointer(t *testing.T) {
 	}
 
 	var d any
-	RegisterResourceModule("test", "index", &testResourceModule{})
+	RegisterResourceModule("test", "index", &testResourceModule{
+		version: semver.MustParse("2.0.0"),
+	})
 	_, err = unmarshalOutput(ctx, resource.NewResourceReferenceProperty(res), reflect.ValueOf(&d).Elem())
 	assert.NoError(t, err)
 	assert.IsType(t, &simpleComponentResource{}, d)
