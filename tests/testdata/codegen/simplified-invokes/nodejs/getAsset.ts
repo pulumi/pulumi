@@ -15,5 +15,5 @@ export function getAssetOutput(a?: pulumi.Input<number | undefined>, opts?: pulu
     var args = {
         "a": a,
     };
-    return pulumi.output(args).apply((resolvedArgs: any) => getAsset(resolvedArgs.a, opts))
+    return pulumi.output(args).apply((resolvedArgs: any) => getAsset(resolvedArgs.a, opts));
 }

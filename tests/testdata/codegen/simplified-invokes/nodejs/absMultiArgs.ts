@@ -29,5 +29,5 @@ export function absMultiArgsOutput(a: pulumi.Input<number>, b?: pulumi.Input<num
         "a": a,
         "b": b,
     };
-    return pulumi.output(args).apply((resolvedArgs: any) => absMultiArgs(resolvedArgs.a, resolvedArgs.b, opts))
+    return pulumi.output(args).apply((resolvedArgs: any) => absMultiArgs(resolvedArgs.a, resolvedArgs.b, opts));
 }

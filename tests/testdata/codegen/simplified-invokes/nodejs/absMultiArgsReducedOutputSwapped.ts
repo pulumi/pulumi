@@ -25,5 +25,5 @@ export function absMultiArgsReducedOutputSwappedOutput(b: pulumi.Input<number>, 
         "b": b,
         "a": a,
     };
-    return pulumi.output(args).apply((resolvedArgs: any) => absMultiArgsReducedOutputSwapped(resolvedArgs.b, resolvedArgs.a, opts))
+    return pulumi.output(args).apply((resolvedArgs: any) => absMultiArgsReducedOutputSwapped(resolvedArgs.b, resolvedArgs.a, opts));
 }
