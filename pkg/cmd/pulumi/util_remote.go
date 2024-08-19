@@ -411,7 +411,8 @@ func runDeployment(ctx context.Context, opts display.Options,
 
 	// Ensure the cloud backend is being used.
 	cb, isCloud := b.(httpstate.Backend)
-	if !isCloud && backendInstance == nil /* mock backend */ {
+	isMockBackend := backendInstance != nil
+	if !isCloud && !isMockBackend {
 		return result.FromError(errors.New("the Pulumi Cloud backend must be used for remote operations; " +
 			"use `pulumi login` without arguments to log into the Pulumi Cloud backend"))
 	}
