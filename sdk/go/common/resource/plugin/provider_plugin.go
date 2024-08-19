@@ -1396,10 +1396,30 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{}, err
 	}
 
-	// If the provider is not fully configured, we need to error. We can't support unknown URNs but if the
-	// provider isn't configured we can't call into it to get the URN.
+	// If the provider is not fully configured.  Pretend we are the provider and call RegisterResource to get the URN.
 	if !pcfg.known {
-		return ConstructResult{}, errors.New("cannot construct components if the provider is configured with unknown values")
+		// Connect to the resource monitor and create an appropriate client.
+		conn, err := grpc.Dial(
+			req.Info.MonitorAddress,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			rpcutil.GrpcChannelOptions(),
+		)
+		if err != nil {
+			return ConstructResult{}, fmt.Errorf("could not connect to resource monitor: %w", err)
+		}
+		resmon := pulumirpc.NewResourceMonitorClient(conn)
+		resp, err := resmon.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+			Type:   string(req.Type),
+			Name:   req.Name,
+			Parent: string(req.Parent),
+		})
+		if err != nil {
+			return ConstructResult{}, err
+		}
+		return ConstructResult{
+			URN: resource.URN(resp.GetUrn()),
+		}, nil
+
 	}
 
 	if !pcfg.acceptSecrets {
