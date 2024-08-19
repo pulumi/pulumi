@@ -650,6 +650,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "Deployment.Instance.StackName")
 	case "project":
 		g.Fgen(w, "Deployment.Instance.ProjectName")
+	case "organization":
+		g.Fgen(w, "Deployment.Instance.OrganizationName")
 	case "cwd":
 		g.Fgenf(w, "Directory.GetCurrentDirectory()")
 	default:

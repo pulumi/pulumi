@@ -495,6 +495,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.getStack()")
 	case "project":
 		g.Fgenf(w, "pulumi.getProject()")
+	case "organization":
+		g.Fgenf(w, "pulumi.getOrganization()")
 	case "cwd":
 		g.Fgen(w, "process.cwd()")
 	case "getOutput":

@@ -346,6 +346,10 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		"project": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
+		// Returns the name of the current organization
+		"organization": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
 		// Returns the directory from which pulumi was run
 		"cwd": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
