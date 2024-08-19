@@ -149,9 +149,9 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			return fmt.Errorf("error while running pyenv install %s", string(exitErr.Stderr))
+			return fmt.Errorf("error while running pyenv install: %s", string(exitErr.Stderr))
 		}
-		return fmt.Errorf("error while running pyenv install %s", err)
+		return fmt.Errorf("error while running pyenv install: %s", err)
 	}
 	return nil
 }

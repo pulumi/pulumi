@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/install
-  description: Setup python version using pyenv during installation
+  description: Add `--use-language-version-tools` flag to setup python version using pyenv during installation
