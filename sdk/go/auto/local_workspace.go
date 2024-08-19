@@ -780,7 +780,9 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 		stderrWriters = append(stderrWriters, opts.Stderr)
 	}
 	args := []string{"install"}
-	if l.pulumiCommand.Version().GTE(semver.Version{Major: 3, Minor: 129}) {
+	// Pulumi 3.130.0 introduced the `--use-language-version-tools` flag. If we are on a version
+	// before that, ignore the flag.
+	if l.pulumiCommand.Version().GTE(semver.Version{Major: 3, Minor: 130}) {
 		if opts.UseLanguageVersionTools {
 			args = append(args, "--use-language-version-tools")
 		}

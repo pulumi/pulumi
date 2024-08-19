@@ -2991,9 +2991,9 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	ctx := context.Background()
 	pDir := filepath.Join(".", "test", "install-use-language-version-tools")
 
-	// Option is not used on < 3.129
+	// Option is not available on < 3.130
 	m := mockPulumiCommand{
-		version: semver.Version{Major: 3, Minor: 128},
+		version: semver.Version{Major: 3, Minor: 129},
 	}
 
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
@@ -3004,9 +3004,9 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"install"}, m.capturedArgs)
 
-	// Option is used on >= 3.129
+	// Option is available on >= 3.130
 	m = mockPulumiCommand{
-		version: semver.Version{Major: 3, Minor: 129},
+		version: semver.Version{Major: 3, Minor: 130},
 	}
 
 	workspace, err = NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
