@@ -798,6 +798,9 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 			return false, err
 		}
 		resV := reflect.ValueOf(res)
+		// If we unmarshal a pointer and the destination is "any", we also want to make sure the result is a
+		// pointer.  We check above whether the destination is a pointer, but that's not true for "any", even
+		// though it can hold a pointer.
 		if !allocatedPointer && resV.Kind() == reflect.Ptr && dest.Type().Kind() == reflect.Interface &&
 			resV.Elem().Type().AssignableTo(dest.Type()) {
 			dest.Set(resV)
