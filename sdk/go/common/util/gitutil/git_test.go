@@ -407,9 +407,6 @@ func TestParseAuthURL(t *testing.T) {
 
 		path := filepath.Join(t.TempDir(), "test-key")
 		err = os.WriteFile(path, pem.EncodeToMemory(block), 0o600)
-		t.Cleanup(func() {
-			os.Remove(path)
-		})
 		require.NoError(t, err)
 
 		return path
