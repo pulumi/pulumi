@@ -1318,7 +1318,9 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 		}
 		idx := strings.LastIndex(function.Token, "/")
 		if idx == -1 || function.Token[:idx] != resourceToken {
-			diags = diags.Append(errorf(methodPath, "invalid function token format %s", token))
+			d := errorf(methodPath, "invalid function token format %s", token)
+			d.Detail = fmt.Sprintf(`expected a token of the shape: "%s/<method name>"`, resourceToken)
+			diags = diags.Append(d)
 			continue
 		}
 		if function.Inputs == nil || function.Inputs.Properties == nil || len(function.Inputs.Properties) == 0 ||

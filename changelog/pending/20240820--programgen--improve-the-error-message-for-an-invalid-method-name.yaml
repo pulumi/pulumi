@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: programgen
+  description: Improve the error message for an invalid method name
