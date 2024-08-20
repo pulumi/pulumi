@@ -15,11 +15,9 @@
 package backend
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -30,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -221,8 +218,11 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		if response == string(details) {
-			diff := createDiff(kind, events, opts.Display)
-			_, err := os.Stdout.WriteString(diff + "\n")
+			diff, err := display.CreateDiff(events, opts.Display)
+			if err != nil {
+				return nil, err
+			}
+			_, err = os.Stdout.WriteString(diff + "\n")
 			contract.IgnoreError(err)
 			continue
 		}
@@ -304,60 +304,4 @@ func computeUpdateStats(events []engine.Event) updateStats {
 		}
 	}
 	return stats
-}
-
-func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
-	buff := &bytes.Buffer{}
-
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-	displayOpts.SummaryDiff = true
-
-	outputEventsDiff := make([]string, 0)
-	remediationEventsDiff := make([]string, 0)
-	for _, e := range events {
-		if e.Type == engine.SummaryEvent {
-			continue
-		}
-
-		msg := display.RenderDiffEvent(e, seen, displayOpts)
-		if msg == "" {
-			continue
-		}
-
-		// Keep track of output and remediation events separately, since we print them after the
-		// ordinary resource diff information.
-		if e.Type == engine.ResourceOutputsEvent {
-			outputEventsDiff = append(outputEventsDiff, msg)
-			continue
-		} else if e.Type == engine.PolicyRemediationEvent {
-			remediationEventsDiff = append(remediationEventsDiff, msg)
-			continue
-		}
-
-		_, err := buff.WriteString(msg)
-		contract.IgnoreError(err)
-	}
-
-	// Print resource outputs next.
-	if len(outputEventsDiff) > 0 {
-		_, err := buff.WriteString("\n")
-		contract.IgnoreError(err)
-		for _, msg := range outputEventsDiff {
-			_, err := buff.WriteString(msg)
-			contract.IgnoreError(err)
-		}
-	}
-
-	// Print policy remediations last.
-	if len(remediationEventsDiff) > 0 {
-		_, err := buff.WriteString(displayOpts.Color.Colorize(
-			fmt.Sprintf("\n%s  Policy Remediations:%s\n", colors.SpecHeadline, colors.Reset)))
-		contract.IgnoreError(err)
-		for _, msg := range remediationEventsDiff {
-			_, err := buff.WriteString(msg)
-			contract.IgnoreError(err)
-		}
-	}
-
-	return strings.TrimSpace(buff.String())
 }

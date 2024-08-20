@@ -16,6 +16,7 @@ package display
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -482,4 +483,67 @@ func renderDiffResourceOutputsEvent(
 		}
 	}
 	return out.String()
+}
+
+// CreateDiff renders a view of the given events, enforcing an order of rendering that is consistent
+// with the diff view.
+func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
+	buff := &bytes.Buffer{}
+
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	displayOpts.SummaryDiff = true
+
+	if displayOpts.Color == "" {
+		// ColorizeWithMaxWidth panics if the colorization mode is not recognized, so we enforce it here.
+		return "", errors.New("color must be specified")
+	}
+
+	outputEventsDiff := make([]string, 0)
+	remediationEventsDiff := make([]string, 0)
+	for _, e := range events {
+		if e.Type == engine.SummaryEvent {
+			continue
+		}
+
+		msg := RenderDiffEvent(e, seen, displayOpts)
+		if msg == "" {
+			continue
+		}
+
+		// Keep track of output and remediation events separately, since we print them after the
+		// ordinary resource diff information.
+		if e.Type == engine.ResourceOutputsEvent {
+			outputEventsDiff = append(outputEventsDiff, msg)
+			continue
+		} else if e.Type == engine.PolicyRemediationEvent {
+			remediationEventsDiff = append(remediationEventsDiff, msg)
+			continue
+		}
+
+		_, err := buff.WriteString(msg)
+		contract.IgnoreError(err)
+	}
+
+	// Print resource outputs next.
+	if len(outputEventsDiff) > 0 {
+		_, err := buff.WriteString("\n")
+		contract.IgnoreError(err)
+		for _, msg := range outputEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	// Print policy remediations last.
+	if len(remediationEventsDiff) > 0 {
+		_, err := buff.WriteString(displayOpts.Color.Colorize(
+			fmt.Sprintf("\n%s  Policy Remediations:%s\n", colors.SpecHeadline, colors.Reset)))
+		contract.IgnoreError(err)
+		for _, msg := range remediationEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	return strings.TrimSpace(buff.String()), nil
 }
