@@ -151,6 +151,8 @@ type ProgressDisplay struct {
 
 	// Indicates whether we already printed the loading policy packs message.
 	shownPolicyLoadEvent bool
+
+	permalink string
 }
 
 type opStopwatch struct {
@@ -246,6 +248,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
+		permalink:             permalink,
 	}
 	renderer.initializeDisplay(display)
 
@@ -621,6 +624,12 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 		}
 
 	}
+
+	if wroteDiagnosticHeader {
+		display.println("    " + colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+		display.println("    " + colors.Underline + colors.Blue + display.permalink + "?askCopilot=Why%20did%20this%20fail%3F" + colors.Reset)
+	}
+
 	return hasError
 }
 
