@@ -779,7 +779,24 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 	if opts != nil && opts.Stderr != nil {
 		stderrWriters = append(stderrWriters, opts.Stderr)
 	}
-	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, "install")
+	args := []string{"install"}
+	if opts != nil && opts.UseLanguageVersionTools {
+		// Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+		if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 130}) {
+			return errors.New("UseLanguageVersionTools requires Pulumi CLI version >= 3.130.0")
+		}
+		args = append(args, "--use-language-version-tools")
+	}
+	if opts != nil && opts.NoPlugins {
+		args = append(args, "--no-plugins")
+	}
+	if opts != nil && opts.NoDependencies {
+		args = append(args, "--no-dependencies")
+	}
+	if opts != nil && opts.Reinstall {
+		args = append(args, "--reinstall")
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
 	}
