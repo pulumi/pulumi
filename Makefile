@@ -19,6 +19,9 @@ LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulum
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
 
+# Additional flags to pass to the go compiler ldflags
+ISSUE_17003_WORKAROUND := "-checklinkname=0"
+
 ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
@@ -65,21 +68,21 @@ generate::
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
 build:: build_proto build_display_wasm go.ensure
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION} ${ISSUE_17003_WORKAROUND}" ${PROJECT}
 
 build_display_wasm:: go.ensure
-	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ./backend/display/wasm
+	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION} ${ISSUE_17003_WORKAROUND}" ./backend/display/wasm
 
 install:: .ensure.phony go.ensure
-	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION} ${ISSUE_17003_WORKAROUND}" ${PROJECT}
 
 build_debug::
-	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION} ${ISSUE_17003_WORKAROUND}" ${PROJECT}
 
 build_cover::
 	cd pkg && go build -cover -o ../bin/pulumi \
 		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
-		-ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+		-ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION} ${ISSUE_17003_WORKAROUND}" ${PROJECT}
 
 install_cover:: build_cover
 	cp bin/pulumi $(PULUMI_BIN)
@@ -90,7 +93,7 @@ developer_docs::
 install_all:: install
 
 dist:: build
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION} ${ISSUE_17003_WORKAROUND}" ${PROJECT}
 
 .PHONY: brew
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
