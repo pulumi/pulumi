@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"golang.org/x/exp/maps"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -239,6 +241,16 @@ func (r *messageRenderer) systemMessage(payload engine.StdoutEventPayload) {
 	}
 }
 
+func (r *messageRenderer) progress(payload engine.ProgressEventPayload, first bool) {
+	if r.isInteractive {
+		r.render(false)
+	} else if payload.Done {
+		r.writeSimpleMessage(payload.Message + ": done")
+	} else if first {
+		r.writeSimpleMessage(payload.Message + ": starting")
+	}
+}
+
 func (r *messageRenderer) done() {
 	if r.isInteractive {
 		r.render(false)
@@ -278,8 +290,7 @@ func (r *messageRenderer) render(done bool) {
 
 	systemID := len(rows)
 
-	printedHeader := false
-	for _, payload := range r.display.systemEventPayloads {
+	for i, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		lines := splitIntoDisplayableLines(msg)
 
@@ -287,8 +298,7 @@ func (r *messageRenderer) render(done bool) {
 			continue
 		}
 
-		if !printedHeader {
-			printedHeader = true
+		if i == 0 {
 			r.colorizeAndWriteProgress(makeActionProgress(
 				strconv.Itoa(systemID), " "))
 			systemID++
@@ -303,6 +313,25 @@ func (r *messageRenderer) render(done bool) {
 			r.colorizeAndWriteProgress(makeActionProgress(
 				strconv.Itoa(systemID), "  "+line))
 			systemID++
+		}
+	}
+
+	if len(r.display.progressEventPayloads) > 0 {
+		// Render progress events into the JSON message stream using ASCII
+		// progress bars to be safe.
+		keys := maps.Keys(r.display.progressEventPayloads)
+		slices.Sort(keys)
+
+		for i, key := range keys {
+			if i == 0 {
+				r.colorizeAndWriteProgress(makeActionProgress(
+					strconv.Itoa(systemID),
+					colors.Yellow+"Downloads"+colors.Reset))
+			}
+
+			payload := r.display.progressEventPayloads[key]
+			rendered := renderProgress(renderASCIIProgressBar, r.terminalWidth, payload)
+			r.colorizeAndWriteProgress(makeActionProgress(payload.ID, rendered))
 		}
 	}
 

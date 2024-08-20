@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"golang.org/x/exp/maps"
 )
 
 type treeRenderer struct {
@@ -93,11 +95,15 @@ func (r *treeRenderer) tick() {
 	r.markDirty()
 }
 
-func (r *treeRenderer) rowUpdated(_ Row) {
+func (r *treeRenderer) rowUpdated(Row) {
 	r.markDirty()
 }
 
-func (r *treeRenderer) systemMessage(_ engine.StdoutEventPayload) {
+func (r *treeRenderer) systemMessage(engine.StdoutEventPayload) {
+	r.markDirty()
+}
+
+func (r *treeRenderer) progress(engine.ProgressEventPayload, bool) {
 	r.markDirty()
 }
 
@@ -138,7 +144,7 @@ func (r *treeRenderer) overln(text string) {
 	r.print("\n")
 }
 
-func (r *treeRenderer) render() {
+func (r *treeRenderer) render(termWidth int) {
 	contract.Assertf(!r.m.TryLock(), "treeRenderer.render() MUST be called from within a locked context")
 
 	if r.display.headerRow == nil {
@@ -175,6 +181,25 @@ func (r *treeRenderer) render() {
 	for _, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
+	}
+
+	if len(r.systemMessages) == 0 && len(r.display.progressEventPayloads) > 0 {
+		// If we don't have system messages, but we do have progress events, show
+		// the progress. For the most part, we shouldn't have both at the same time,
+		// since the most common system messages refer to cancellation/SIGINT
+		// handling, at which point the program will be terminating. That said, if
+		// we do, we'll give the system messages priority.
+		keys := maps.Keys(r.display.progressEventPayloads)
+		slices.Sort(keys)
+
+		for _, key := range keys {
+			payload := r.display.progressEventPayloads[key]
+			r.systemMessages = append(r.systemMessages, renderProgress(
+				renderUnicodeProgressBar,
+				termWidth-4,
+				payload,
+			))
+		}
 	}
 }
 
@@ -213,11 +238,11 @@ func (r *treeRenderer) frame(locked, done bool) {
 	}
 	r.dirty = false
 
-	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
-	r.render()
-
 	termWidth, termHeight, err := r.term.Size()
 	contract.IgnoreError(err)
+
+	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
+	r.render(termWidth)
 
 	treeTableRows := r.treeTableRows
 	systemMessages := r.systemMessages

@@ -184,6 +184,20 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 	case engine.PolicyLoadEvent:
 		apiEvent.PolicyLoadEvent = &apitype.PolicyLoadEvent{}
 
+	case engine.ProgressEvent:
+		p, ok := e.Payload().(engine.ProgressEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ProgressEvent = &apitype.ProgressEvent{
+			Type:      apitype.ProgressType(p.Type),
+			ID:        p.ID,
+			Message:   p.Message,
+			Completed: p.Completed,
+			Total:     p.Total,
+			Done:      p.Done,
+		}
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}
@@ -393,6 +407,17 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.PolicyLoadEvent != nil:
 		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
+
+	case apiEvent.ProgressEvent != nil:
+		p := apiEvent.ProgressEvent
+		event = engine.NewEvent(engine.ProgressEventPayload{
+			Type:      engine.ProgressType(p.Type),
+			ID:        p.ID,
+			Message:   p.Message,
+			Completed: p.Completed,
+			Total:     p.Total,
+			Done:      p.Done,
+		})
 
 	default:
 		return event, errors.New("unknown event type")

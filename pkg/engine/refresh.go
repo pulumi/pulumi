@@ -82,7 +82,7 @@ func newRefreshSource(
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, plugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, plugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}

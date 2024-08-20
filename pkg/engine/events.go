@@ -45,7 +45,8 @@ type Event struct {
 type EventPayload interface {
 	StdoutEventPayload | DiagEventPayload | PreludeEventPayload | SummaryEventPayload |
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
-		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload
+		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload |
+		ProgressEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -77,6 +78,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = PolicyLoadEvent
 	case StartDebuggingEventPayload:
 		typ = StartDebuggingEvent
+	case ProgressEventPayload:
+		typ = ProgressEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -102,6 +105,17 @@ const (
 	PolicyRemediationEvent  EventType = "policy-remediation"
 	PolicyLoadEvent         EventType = "policy-load"
 	StartDebuggingEvent     EventType = "debugging-start"
+	ProgressEvent           EventType = "progress"
+)
+
+// ProgressType is the type of download occurring.
+type ProgressType string
+
+const (
+	// PluginDownload represents a download of a plugin.
+	PluginDownload ProgressType = "plugin-download"
+	// PluginInstall represents the installation of a plugin.
+	PluginInstall ProgressType = "plugin-install"
 )
 
 func (e Event) Payload() interface{} {
@@ -116,6 +130,18 @@ func (e Event) Internal() bool {
 	case ResourceOutputsEventPayload:
 		return payload.Internal
 	case StartDebuggingEventPayload:
+		return true
+	default:
+		return false
+	}
+}
+
+// Returns true if and only if this is an ephemeral event that should not be
+// persisted. Ephemeral events are intended for display and reporting purposes
+// only (e.g. progress).
+func (e Event) Ephemeral() bool {
+	switch e.payload.(type) {
+	case ProgressEventPayload:
 		return true
 	default:
 		return false
@@ -162,6 +188,25 @@ type PolicyLoadEventPayload struct{}
 // StartDebuggingEventPayload is the payload for an event of type `debugging-start`
 type StartDebuggingEventPayload struct {
 	Config map[string]interface{} // the debug configuration (language-specific, see Debug Adapter Protocol)
+}
+
+// ProgressEventPayload is the payload for an event with type `progress`. This
+// payload reports on the progress of a potentially long-running process being
+// managed by the engine (e.g. a plugin download, or a plugin installation).
+type ProgressEventPayload struct {
+	// The type of process (e.g. plugin download, plugin install).
+	Type ProgressType
+	// A unique identifier for the process.
+	ID string
+	// A message accompanying the process.
+	Message string
+	// The number of items completed so far (e.g. bytes received, items installed,
+	// etc.)
+	Completed int64
+	// The total number of items that must be completed.
+	Total int64
+	// True if and only if the process has completed.
+	Done bool
 }
 
 type StdoutEventPayload struct {
@@ -539,6 +584,27 @@ func (e *eventEmitter) PolicyLoadEvent() {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(PolicyLoadEventPayload{}))
+}
+
+// Emit a new progress event with the specified payload.
+func (e *eventEmitter) progressEvent(
+	typ ProgressType,
+	id string,
+	message string,
+	completed int64,
+	total int64,
+	done bool,
+) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.sendEvent(NewEvent(ProgressEventPayload{
+		Type:      typ,
+		ID:        id,
+		Message:   message,
+		Completed: completed,
+		Total:     total,
+		Done:      done,
+	}))
 }
 
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,

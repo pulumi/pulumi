@@ -70,6 +70,12 @@ type progressRenderer interface {
 	tick()
 	rowUpdated(row Row)
 	systemMessage(payload engine.StdoutEventPayload)
+
+	// A callback to be invoked whenever a ProgressEvent is emitted. The boolean
+	// argument is true if and only if this is the first progress event received
+	// with the given ID.
+	progress(payload engine.ProgressEventPayload, first bool)
+
 	done()
 	println(line string)
 }
@@ -112,8 +118,12 @@ type ProgressDisplay struct {
 	// messages we're outputting for them.
 	summaryEventPayload *engine.SummaryEventPayload
 
-	// Any system events we've received.  They will be printed at the bottom of all the status rows
+	// Any system events we've received. They will be printed at the bottom of all
+	// the status rows.
 	systemEventPayloads []engine.StdoutEventPayload
+
+	// Any active download progress events that we've received.
+	progressEventPayloads map[string]engine.ProgressEventPayload
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -990,6 +1000,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.StdoutColorEvent:
 		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
 		return
+	case engine.ProgressEvent:
+		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
+		return
 	}
 
 	// At this point, all events should relate to resources.
@@ -1101,8 +1114,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 }
 
 func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
-	// We need too take the writer lock here because ensureHeaderAndStackRows expects to be
-	// called under the write lock
+	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
+	// called under the write lock.
 	display.eventMutex.Lock()
 	defer display.eventMutex.Unlock()
 
@@ -1112,6 +1125,31 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
 
 	display.renderer.systemMessage(payload)
+}
+
+func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEventPayload) {
+	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
+	// called under the write lock.
+	display.eventMutex.Lock()
+	defer display.eventMutex.Unlock()
+
+	// Make sure we have a header to display
+	display.ensureHeaderAndStackRows()
+
+	if display.progressEventPayloads == nil {
+		display.progressEventPayloads = make(map[string]engine.ProgressEventPayload)
+	}
+
+	_, seen := display.progressEventPayloads[payload.ID]
+	first := !seen
+
+	if payload.Done {
+		delete(display.progressEventPayloads, payload.ID)
+	} else {
+		display.progressEventPayloads[payload.ID] = payload
+	}
+
+	display.renderer.progress(payload, first)
 }
 
 func (display *ProgressDisplay) ensureHeaderAndStackRows() {
