@@ -780,12 +780,12 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 		stderrWriters = append(stderrWriters, opts.Stderr)
 	}
 	args := []string{"install"}
-	// Pulumi 3.130.0 introduced the `--use-language-version-tools` flag. If we are on a version
-	// before that, ignore the flag.
-	if l.pulumiCommand.Version().GTE(semver.Version{Major: 3, Minor: 130}) {
-		if opts != nil && opts.UseLanguageVersionTools {
-			args = append(args, "--use-language-version-tools")
+	if opts != nil && opts.UseLanguageVersionTools {
+		// Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+		if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 130}) {
+			return errors.New("UseLanguageVersionTools requires Pulumi CLI version >= 3.130.0")
 		}
+		args = append(args, "--use-language-version-tools")
 	}
 	if opts != nil && opts.NoPlugins {
 		args = append(args, "--no-plugins")

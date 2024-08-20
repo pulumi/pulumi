@@ -2990,13 +2990,22 @@ func TestInstallOptions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	pDir := filepath.Join(".", "test", "install")
-	m := mockPulumiCommand{}
+	m := mockPulumiCommand{
+		// Set a version high enough to support UseLanguageVersionTools
+		version: semver.Version{Major: 3, Minor: 130},
+	}
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(&m))
 	require.NoError(t, err)
 
 	err = workspace.Install(ctx, &InstallOptions{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"install"}, m.capturedArgs)
+
+	err = workspace.Install(ctx, &InstallOptions{
+		UseLanguageVersionTools: true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
 		NoPlugins: true,
@@ -3017,18 +3026,25 @@ func TestInstallOptions(t *testing.T) {
 	require.Equal(t, []string{"install", "--reinstall"}, m.capturedArgs)
 
 	err = workspace.Install(ctx, &InstallOptions{
-		NoDependencies: true,
-		NoPlugins:      true,
-		Reinstall:      true,
+		UseLanguageVersionTools: true,
+		NoDependencies:          true,
+		NoPlugins:               true,
+		Reinstall:               true,
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"install", "--no-plugins", "--no-dependencies", "--reinstall"}, m.capturedArgs)
+	require.Equal(t, []string{
+		"install",
+		"--use-language-version-tools",
+		"--no-plugins",
+		"--no-dependencies",
+		"--reinstall",
+	}, m.capturedArgs)
 }
 
 func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	pDir := filepath.Join(".", "test", "install")
+	pDir := filepath.Join(".", "test", "install-use-language-version-tools")
 
 	// Option is not available on < 3.130
 	m := mockPulumiCommand{
@@ -3040,8 +3056,7 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	err = workspace.Install(ctx, &InstallOptions{
 		UseLanguageVersionTools: true,
 	})
-	require.NoError(t, err)
-	require.Equal(t, []string{"install"}, m.capturedArgs)
+	require.ErrorContains(t, err, "UseLanguageVersionTools requires Pulumi CLI version >= 3.130.0")
 
 	// Option is available on >= 3.130
 	m = mockPulumiCommand{
