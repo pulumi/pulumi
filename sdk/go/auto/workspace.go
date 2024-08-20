@@ -201,12 +201,14 @@ type InstallOptions struct {
 	Stdout io.Writer
 	// Stderr is the optional writer to use for the error output during installation.
 	Stderr io.Writer
-	// Use language version tools setup the language runtime before installing the dependencies.
+	// Use language version tools to setup the language runtime before installing the dependencies.
+	// For Python this will use `pyenv` to install the Python version specified in a
+	// `.python-version` file.
 	UseLanguageVersionTools bool
 	// Skip installing plugins
 	NoPlugins bool
 	// Skip installing dependencies
 	NoDependencies bool
-	// Reinstall plugin even if they already exist
+	// Reinstall plugins even if they already exist
 	Reinstall bool
 }
