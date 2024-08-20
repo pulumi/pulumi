@@ -3028,7 +3028,7 @@ func TestInstallOptions(t *testing.T) {
 func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	pDir := filepath.Join(".", "test", "install-use-language-version-tools")
+	pDir := filepath.Join(".", "test", "install")
 
 	// Option is not available on < 3.130
 	m := mockPulumiCommand{
