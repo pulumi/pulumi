@@ -85,6 +85,19 @@ describe("LocalWorkspace", () => {
             name: projectName,
             runtime: "nodejs",
         };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        await ws.createStack(stackName);
+        await ws.selectStack(stackName);
+        await ws.removeStack(stackName);
+    });
+
+    it("create/select/remove LocalWorkspace stack -- local", async () => {
+        const projectName = "node_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
         const ws = await LocalWorkspace.create(withTemporaryFileBackend({ projectSettings }));
         const stackName = fullyQualifiedStackName("organization", projectName, `int_test${getTestSuffix()}`);
         await ws.createStack(stackName);
