@@ -6,34 +6,6 @@ Configuration:
         [id=eks-role-be36613]
         [urn=urn:pulumi:dev::eks::aws:iam/role:Role::eks-role]
         [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
-        [id=eks-role-be36613-20220401073059037900000001]
-        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
-        [id=eks-role-be36613-20220401073059129000000002]
-        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-    ~ aws:ec2/securityGroup:SecurityGroup: (update)
-        [id=sg-0d1f8bb63e78926f4]
-        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-      ~ ingress: [
-          + [1]: {
-                  + cidrBlocks: [
-                  +     [0]: "0.0.0.0/0"
-                    ]
-                  + fromPort  : 22
-                  + protocol  : "tcp"
-                  + self      : false
-                  + toPort    : 22
-                }
-        ]
-      aws:eks/cluster:Cluster: (same)
-        [id=eks-cluster-dc83353]
-        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-
         --outputs:--
         arn                : "arn:aws:iam::616138583583:role/eks-role-be36613"
         assumeRolePolicy   : (json) {
@@ -59,10 +31,33 @@ Configuration:
             }
         ]
         uniqueId           : "AROAY65FYVYPY5QOJG3Q3"
+      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
+        [id=eks-role-be36613-20220401073059037900000001]
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
         --outputs:--
         id       : "eks-role-be36613-20220401073059037900000001"
+      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
+        [id=eks-role-be36613-20220401073059129000000002]
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
         --outputs:--
         id       : "eks-role-be36613-20220401073059129000000002"
+    ~ aws:ec2/securityGroup:SecurityGroup: (update)
+        [id=sg-0d1f8bb63e78926f4]
+        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+      ~ ingress: [
+          + [1]: {
+                  + cidrBlocks: [
+                  +     [0]: "0.0.0.0/0"
+                    ]
+                  + fromPort  : 22
+                  + protocol  : "tcp"
+                  + self      : false
+                  + toPort    : 22
+                }
+        ]
         --outputs:--
         arn                : "arn:aws:ec2:us-west-2:616138583583:security-group/sg-0d1f8bb63e78926f4"
         egress             : [
@@ -110,6 +105,10 @@ Configuration:
                 }
         ]
         ownerId            : "616138583583"
+      aws:eks/cluster:Cluster: (same)
+        [id=eks-cluster-dc83353]
+        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
         --outputs:--
         arn                    : "arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-dc83353"
         certificateAuthority   : {

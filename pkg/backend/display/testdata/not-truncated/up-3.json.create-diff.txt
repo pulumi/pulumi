@@ -52,38 +52,6 @@ Configuration:
         name               : "eks-sg-b3dbcb0"
         revokeRulesOnDelete: false
         vpcId              : "vpc-4b82e033"
-    + aws:iam/rolePolicyAttachment:RolePolicyAttachment: (create)
-        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-        policyArn : "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
-        role      : "eks-role-be36613"
-    + aws:iam/rolePolicyAttachment:RolePolicyAttachment: (create)
-        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-        policyArn : "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-        role      : "eks-role-be36613"
-    + aws:eks/cluster:Cluster: (create)
-        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
-        name      : "eks-cluster-dc83353"
-        roleArn   : "arn:aws:iam::616138583583:role/eks-role-be36613"
-        vpcConfig : {
-            endpointPrivateAccess: false
-            endpointPublicAccess : true
-            publicAccessCidrs    : [
-                [0]: "0.0.0.0/0"
-            ]
-            securityGroupIds     : [
-                [0]: "sg-0d1f8bb63e78926f4"
-            ]
-            subnetIds            : [
-                [0]: "subnet-0016572b"
-                [1]: "subnet-d7e7fe9c"
-                [2]: "subnet-c7d926bf"
-                [3]: "subnet-43f43a1e"
-            ]
-        }
-
         --outputs:--
         arn                : "arn:aws:iam::616138583583:role/eks-role-be36613"
         assumeRolePolicy   : (json) {
@@ -109,6 +77,16 @@ Configuration:
             }
         ]
         uniqueId           : "AROAY65FYVYPY5QOJG3Q3"
+    + aws:iam/rolePolicyAttachment:RolePolicyAttachment: (create)
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        policyArn : "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+        role      : "eks-role-be36613"
+    + aws:iam/rolePolicyAttachment:RolePolicyAttachment: (create)
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        policyArn : "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+        role      : "eks-role-be36613"
         --outputs:--
         id       : "eks-role-be36613-20220401073059037900000001"
         --outputs:--
@@ -147,6 +125,27 @@ Configuration:
             }
         ]
         ownerId            : "616138583583"
+    + aws:eks/cluster:Cluster: (create)
+        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        name      : "eks-cluster-dc83353"
+        roleArn   : "arn:aws:iam::616138583583:role/eks-role-be36613"
+        vpcConfig : {
+            endpointPrivateAccess: false
+            endpointPublicAccess : true
+            publicAccessCidrs    : [
+                [0]: "0.0.0.0/0"
+            ]
+            securityGroupIds     : [
+                [0]: "sg-0d1f8bb63e78926f4"
+            ]
+            subnetIds            : [
+                [0]: "subnet-0016572b"
+                [1]: "subnet-d7e7fe9c"
+                [2]: "subnet-c7d926bf"
+                [3]: "subnet-43f43a1e"
+            ]
+        }
         --outputs:--
         arn                    : "arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-dc83353"
         certificateAuthority   : {

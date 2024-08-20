@@ -6,23 +6,6 @@ Configuration:
         [id=eks-role-24b1266]
         [urn=urn:pulumi:dev::eks::aws:iam/role:Role::eks-role]
         [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
-        [id=eks-role-24b1266-20220209231452499500000001]
-        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
-        [id=eks-role-24b1266-20220209231452597100000002]
-        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-      aws:ec2/securityGroup:SecurityGroup: (same)
-        [id=sg-0e760e824fba2d002]
-        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-      aws:eks/cluster:Cluster: (same)
-        [id=eks-cluster-fb2cd6e]
-        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
-        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-
         --outputs:--
         arn                : "arn:aws:iam::616138583583:role/eks-role-24b1266"
         assumeRolePolicy   : (json) {
@@ -52,10 +35,22 @@ Configuration:
             [1]: "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
         ]
         uniqueId           : "AROAY65FYVYPWXZQUXMBX"
+      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
+        [id=eks-role-24b1266-20220209231452499500000001]
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
         --outputs:--
         id       : "eks-role-24b1266-20220209231452499500000001"
+      aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
+        [id=eks-role-24b1266-20220209231452597100000002]
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
         --outputs:--
         id       : "eks-role-24b1266-20220209231452597100000002"
+      aws:ec2/securityGroup:SecurityGroup: (same)
+        [id=sg-0e760e824fba2d002]
+        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
         --outputs:--
         arn                : "arn:aws:ec2:us-west-2:616138583583:security-group/sg-0e760e824fba2d002"
         egress             : [
@@ -90,6 +85,10 @@ Configuration:
             }
         ]
         ownerId            : "616138583583"
+      aws:eks/cluster:Cluster: (same)
+        [id=eks-cluster-fb2cd6e]
+        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
         --outputs:--
         arn                    : "arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-fb2cd6e"
         certificateAuthority   : {

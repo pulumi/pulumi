@@ -498,7 +498,6 @@ func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
 		return "", errors.New("color must be specified")
 	}
 
-	outputEventsDiff := make([]string, 0)
 	remediationEventsDiff := make([]string, 0)
 	for _, e := range events {
 		if e.Type == engine.SummaryEvent {
@@ -510,28 +509,15 @@ func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
 			continue
 		}
 
-		// Keep track of output and remediation events separately, since we print them after the
-		// ordinary resource diff information.
-		if e.Type == engine.ResourceOutputsEvent {
-			outputEventsDiff = append(outputEventsDiff, msg)
-			continue
-		} else if e.Type == engine.PolicyRemediationEvent {
+		// Keep track of remediation events separately, since we print them after the ordinary resource
+		// diff information.
+		if e.Type == engine.PolicyRemediationEvent {
 			remediationEventsDiff = append(remediationEventsDiff, msg)
 			continue
 		}
 
 		_, err := buff.WriteString(msg)
 		contract.IgnoreError(err)
-	}
-
-	// Print resource outputs next.
-	if len(outputEventsDiff) > 0 {
-		_, err := buff.WriteString("\n")
-		contract.IgnoreError(err)
-		for _, msg := range outputEventsDiff {
-			_, err := buff.WriteString(msg)
-			contract.IgnoreError(err)
-		}
 	}
 
 	// Print policy remediations last.
