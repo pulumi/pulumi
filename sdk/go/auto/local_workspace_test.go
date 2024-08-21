@@ -130,6 +130,11 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 		t.FailNow()
 	}
 
+	// -- verify secrets_provider --
+	secretsProviderTag, err := s.workspace.GetTag(ctx, stackName, "pulumi:secrets_provider")
+	require.NoError(t, err, "failed to get tag")
+	assert.Equal(t, "passphrase", secretsProviderTag)
+
 	// -- pulumi up --
 	res, err := s.Up(ctx)
 	if err != nil {

@@ -1231,7 +1231,17 @@ func UpsertStackLocalSource(
 		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
-	return UpsertStack(ctx, stackName, w)
+	stack, err = UpsertStack(ctx, stackName, w)
+	if err != nil {
+		return stack, fmt.Errorf("failed to upsert stack: %w", err)
+	}
+
+	err = persistSecretsProvider(ctx, stack, w, opts)
+	if err != nil {
+		return stack, fmt.Errorf("failed to persist secrets provider: %w", err)
+	}
+
+	return stack, nil
 }
 
 // SelectStackLocalSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
@@ -1289,7 +1299,17 @@ func UpsertStackRemoteSource(
 		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
-	return UpsertStack(ctx, stackName, w)
+	stack, err = UpsertStack(ctx, stackName, w)
+	if err != nil {
+		return stack, fmt.Errorf("failed to upsert stack: %w", err)
+	}
+
+	err = persistSecretsProvider(ctx, stack, w, opts)
+	if err != nil {
+		return stack, fmt.Errorf("failed to persist secrets provider: %w", err)
+	}
+
+	return stack, nil
 }
 
 // SelectStackRemoteSource selects an existing Stack backed by a LocalWorkspace created on behalf of the user,
@@ -1369,7 +1389,17 @@ func UpsertStackInlineSource(
 		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
-	return UpsertStack(ctx, stackName, w)
+	stack, err = UpsertStack(ctx, stackName, w)
+	if err != nil {
+		return stack, fmt.Errorf("failed to upsert stack: %w", err)
+	}
+
+	err = persistSecretsProvider(ctx, stack, w, opts)
+	if err != nil {
+		return stack, fmt.Errorf("failed to persist secrets provider: %w", err)
+	}
+
+	return stack, nil
 }
 
 // SelectStackInlineSource selects an existing Stack backed by a new LocalWorkspace created on behalf of the user,
@@ -1484,4 +1514,47 @@ func getProjectSettings(
 		return nil, fmt.Errorf("failed to create default project: %w", err)
 	}
 	return &proj, nil
+}
+
+// persistSecretsProvider changes the secrets provider if it's set via options before the first update.
+// This is necessary in cases where a stack with a secrets provider is upserted but then not updated.
+// In that case, the secrets provider does not get persisted in the state. If a successive run
+// executes an update, the local workspace is in a different temporary directory with no secret
+// provider set.
+// This fixes https://github.com/pulumi/pulumi/issues/16890
+func persistSecretsProvider(
+	ctx context.Context,
+	stack Stack,
+	w Workspace,
+	opts []LocalWorkspaceOption,
+) error {
+	var optsBag localWorkspaceOptions
+	for _, opt := range opts {
+		opt.applyLocalWorkspaceOption(&optsBag)
+	}
+
+	// If there is no secrets provider we don't need to do anything.
+	if optsBag.SecretsProvider == "" {
+		return nil
+	}
+
+	s, err := w.Stack(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get stack summary: %w", err)
+	}
+
+	// If there have been previous updates, we don't need to do anything.
+	if s.LastUpdate != "" {
+		return nil
+	}
+
+	changeSecretsProviderOptions := &ChangeSecretsProviderOptions{}
+	if optsBag.SecretsProvider == "passphrase" &&
+		w.GetEnvVars() != nil &&
+		w.GetEnvVars()["PULUMI_CONFIG_PASSPHRASE"] != "" {
+		passphraseValue := w.GetEnvVars()["PULUMI_CONFIG_PASSPHRASE"]
+		changeSecretsProviderOptions.NewPassphrase = &passphraseValue
+	}
+
+	return stack.ChangeSecretsProvider(ctx, optsBag.SecretsProvider, changeSecretsProviderOptions)
 }
