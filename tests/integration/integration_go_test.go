@@ -1187,7 +1187,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 // Test a paramaterized provider with go.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestParamaterizedGo(t *testing.T) {
+func TestParameterizedGo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths

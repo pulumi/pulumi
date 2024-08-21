@@ -19,8 +19,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -99,7 +102,7 @@ as in:
 				return fmt.Errorf("failed to remove temporary directory: %w", err)
 			}
 
-			return printLinkInstructions(language, root, pkg.Name, out)
+			return printLinkInstructions(language, root, pkg, out)
 		}),
 	}
 
@@ -108,7 +111,7 @@ as in:
 
 // Prints instructions for linking a locally generated SDK to an existing
 // project, in the absence of us attempting to perform this linking automatically.
-func printLinkInstructions(language string, root string, pkg string, out string) error {
+func printLinkInstructions(language string, root string, pkg *schema.Package, out string) error {
 	switch language {
 	case "nodejs":
 		return printNodejsLinkInstructions(root, pkg, out)
@@ -128,8 +131,8 @@ func printLinkInstructions(language string, root string, pkg string, out string)
 
 // Prints instructions for linking a locally generated SDK to an existing NodeJS
 // project, in the absence of us attempting to perform this linking automatically.
-func printNodejsLinkInstructions(root string, pkg string, out string) error {
-	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg, out)
+func printNodejsLinkInstructions(root string, pkg *schema.Package, out string) error {
+	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Nodejs project, run the following command:")
 	fmt.Println()
@@ -141,7 +144,7 @@ func printNodejsLinkInstructions(root string, pkg string, out string) error {
 	if err != nil {
 		return err
 	}
-	packageSpecifier := fmt.Sprintf("%s@file:%s", pkg, relOut)
+	packageSpecifier := fmt.Sprintf("%s@file:%s", pkg.Name, relOut)
 	addCmd := ""
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
@@ -175,11 +178,11 @@ func printNodejsLinkInstructions(root string, pkg string, out string) error {
 	if useTypescript {
 		fmt.Println("You can then import the SDK in your TypeScript code with:")
 		fmt.Println()
-		fmt.Printf("  import * as %s from \"%s\";\n", pkg, pkg)
+		fmt.Printf("  import * as %s from \"%s\";\n", pkg.Name, pkg.Name)
 	} else {
 		fmt.Println("You can then import the SDK in your Javascript code with:")
 		fmt.Println()
-		fmt.Printf("  const %s = require(\"%s\");\n", pkg, pkg)
+		fmt.Printf("  const %s = require(\"%s\");\n", pkg.Name, pkg.Name)
 	}
 	fmt.Println()
 	return nil
@@ -187,8 +190,8 @@ func printNodejsLinkInstructions(root string, pkg string, out string) error {
 
 // Prints instructions for linking a locally generated SDK to an existing Python
 // project, in the absence of us attempting to perform this linking automatically.
-func printPythonLinkInstructions(root string, pkg string, out string) error {
-	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg, out)
+func printPythonLinkInstructions(root string, pkg *schema.Package, out string) error {
+	fmt.Printf("Successfully generated a Python SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Python project, run the following command:")
 	fmt.Println()
@@ -225,29 +228,43 @@ func printPythonLinkInstructions(root string, pkg string, out string) error {
 	fmt.Println()
 	fmt.Println("You can then import the SDK in your Python code with:")
 	fmt.Println()
-	fmt.Printf("  import pulumi_%s as %s\n", pkg, pkg)
+	fmt.Printf("  import pulumi_%s as %s\n", pkg.Name, pkg.Name)
 	fmt.Println()
 	return nil
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Go
 // project, in the absence of us attempting to perform this linking automatically.
-func printGoLinkInstructions(root string, pkg string, out string) error {
-	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", pkg, out)
+func printGoLinkInstructions(root string, pkg *schema.Package, out string) error {
+	fmt.Printf("Successfully generated a Go SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Go project, run the following command:")
 	fmt.Println()
 
 	relOut, err := filepath.Rel(root, out)
+	relOut = filepath.Join(relOut, pkg.Name)
 	if err != nil {
 		return err
 	}
+	if runtime.GOOS == "windows" {
+		relOut = ".\\" + relOut
+	} else {
+		relOut = "./" + relOut
+	}
 
-	fmt.Printf("   go mod edit -replace example.com/pulumi-%s/sdk/go/%s=%s\n", pkg, pkg, filepath.Join(".", relOut))
+	if err := pkg.ImportLanguages(map[string]schema.Language{"go": go_gen.Importer}); err != nil {
+		return err
+	}
+	goInfo, ok := pkg.Language["go"].(go_gen.GoPackageInfo)
+	if !ok {
+		return errors.New("failed to import go language info")
+	}
+
+	fmt.Printf("   go mod edit -replace %s=%s\n", goInfo.ImportBasePath, relOut)
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your Go code with:")
 	fmt.Println()
-	fmt.Printf("  import \"example.com/pulumi-%s/sdk/go/%s\"", pkg, pkg)
+	fmt.Printf("  import \"%s\"\n", goInfo.ImportBasePath)
 	fmt.Println()
 	return nil
 }
@@ -265,8 +282,8 @@ func csharpPackageName(pkgName string) string {
 
 // Prints instructions for linking a locally generated SDK to an existing .NET
 // project, in the absence of us attempting to perform this linking automatically.
-func printDotnetLinkInstructions(root string, pkg string, out string) error {
-	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", pkg, out)
+func printDotnetLinkInstructions(root string, pkg *schema.Package, out string) error {
+	fmt.Printf("Successfully generated a .NET SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your .NET project, run the following command:")
 	fmt.Println()
@@ -283,15 +300,15 @@ func printDotnetLinkInstructions(root string, pkg string, out string) error {
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your .NET code with:")
 	fmt.Println()
-	fmt.Printf("  using Pulumi.%s;\n", csharpPackageName(pkg))
+	fmt.Printf("  using Pulumi.%s;\n", csharpPackageName(pkg.Name))
 	fmt.Println()
 	return nil
 }
 
 // Prints instructions for linking a locally generated SDK to an existing Java
 // project, in the absence of us attempting to perform this linking automatically.
-func printJavaLinkInstructions(root string, pkg string, out string) error {
-	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", pkg, out)
+func printJavaLinkInstructions(root string, pkg *schema.Package, out string) error {
+	fmt.Printf("Successfully generated a Java SDK for the %s package at %s\n", pkg.Name, out)
 	fmt.Println()
 	fmt.Println("To use this SDK in your Java project, complete the following steps:")
 	fmt.Println()

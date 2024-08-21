@@ -4669,11 +4669,15 @@ func GeneratePackage(tool string,
 	// If the package is parameterized generate a go.mod for it
 	if pkg.Parameterization != nil {
 		mod := modfile.File{}
-		err = mod.AddModuleStmt(extractImportBasePath(pkg.Reference()))
+		err = mod.AddModuleStmt(goPkgInfo.ImportBasePath)
 		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
 		err = mod.AddGoStmt("1.21")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
-
+		// Parameterized packages need the pulumi SDK >= v3.129.0
+		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
+		pulumiVersion := "v3.129.0"
+		err = mod.AddRequire(pulumiPackagePath, pulumiVersion)
+		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
 		bytes, err := mod.Format()
 		if err != nil {
 			return nil, fmt.Errorf("format go.mod: %w", err)
@@ -5227,8 +5231,8 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 var packageRef *string
 // PkgGetPackageRef returns the package reference for the current package.
 func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
-	if packageRef == nil {	
-		
+	if packageRef == nil {
+
 		parameter, err := base64.StdEncoding.DecodeString(%q)
 		if err != nil {
 			return "", err
