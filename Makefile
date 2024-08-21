@@ -20,6 +20,8 @@ LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulum
 GOLANGCI_LINT_ARGS ?=
 
 # Additional flags to pass to the go compiler ldflags
+#
+# TODO: revert this once [pgavlin/text#1] is fixed.
 ISSUE_17003_WORKAROUND := "-checklinkname=0"
 
 ifeq ($(DEBUG),"true")
