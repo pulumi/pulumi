@@ -45,11 +45,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 const (
-	MinimumValidSDKVersion   string = "^3.42.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^14"
+	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
+	MinimumValidSDKVersion string = "^3.42.0"
+	// The minimum version of @pulumi/pulumi that supports parameterization.
+	MinimumValidParameterizationSDKVersion string = "^3.129.0"
+	MinimumTypescriptVersion               string = "^4.3.5"
+	MinimumNodeTypesVersion                string = "^14"
 )
 
 type typeDetails struct {
@@ -2525,6 +2527,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
+		} else if pkg.Parameterization != nil {
+			npminfo.Dependencies[sdkPack] = MinimumValidParameterizationSDKVersion
 		} else {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
 		}
