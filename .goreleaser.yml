@@ -17,6 +17,7 @@ builds:
   goamd64: ['v1']
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version=v{{.Env.PULUMI_VERSION}}
+    - "-checklinkname=0" #(pulumi/pulumi#17003) This is required until text dependency is fixed.
   mod_timestamp: '{{ .CommitTimestamp }}'
 - <<: *pulumibin
   id: pulumi-language-go
