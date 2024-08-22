@@ -292,7 +292,7 @@ func newPreviewCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -472,7 +472,7 @@ func newPreviewCmd() *cobra.Command {
 
 			switch {
 			case res != nil:
-				return PrintEngineResult(res)
+				return res
 			case expectNop && changes != nil && engine.HasChanges(changes):
 				return errors.New("error: no changes were expected but changes were proposed")
 			default:

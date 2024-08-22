@@ -27,8 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newPackagePublishCmd() *cobra.Command {
@@ -38,7 +36,7 @@ func newPackagePublishCmd() *cobra.Command {
 		Args:   cobra.RangeArgs(0, 1),
 		Short:  "Publish a package SDK to supported package registries.",
 		Hidden: !env.Dev.Value(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return publCmd.Run(ctx, args)
 		}),

@@ -24,7 +24,6 @@ import (
 
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -46,7 +45,7 @@ dashes, you may need to use '--' to separate the provider name from the paramete
 as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			proj, root, err := readProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				return err

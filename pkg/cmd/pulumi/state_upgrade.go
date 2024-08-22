@@ -43,7 +43,7 @@ func newStateUpgradeCommand() *cobra.Command {
 This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			if err := sucmd.Run(cmd.Context()); err != nil {
 				return err
 			}

@@ -40,7 +40,7 @@ func newDeploymentRunCmd() *cobra.Command {
 			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
 		Args: cmdutil.RangeArgs(1, 2),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			operation, err := apitype.ParsePulumiOperation(args[0])

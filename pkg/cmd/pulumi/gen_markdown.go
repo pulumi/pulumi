@@ -42,7 +42,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 		Args:   cmdutil.ExactArgs(1),
 		Short:  "Generate Pulumi CLI documentation as Markdown (one file per command)",
 		Hidden: true,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			var files []string
 
 			// filePrepender is used to add front matter to each file, and to keep track of all

@@ -649,7 +649,7 @@ func newImportCmd() *cobra.Command {
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			cwd, err := os.Getwd()
@@ -1008,7 +1008,7 @@ func newImportCmd() *cobra.Command {
 						path, path)
 				}
 
-				return PrintEngineResult(err)
+				return err
 			}
 			return nil
 		}),

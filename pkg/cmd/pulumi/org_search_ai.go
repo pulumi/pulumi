@@ -120,7 +120,7 @@ func newSearchAICmd() *cobra.Command {
 		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
 		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return scmd.Run(ctx, args)
 		},

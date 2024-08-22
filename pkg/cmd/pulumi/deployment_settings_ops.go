@@ -41,7 +41,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(0),
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {
 				return err
@@ -83,7 +83,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			if err := verifyInteractiveMode(yes); err != nil {
@@ -137,7 +137,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			if err := verifyInteractiveMode(yes); err != nil {
@@ -185,7 +185,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Args:  cmdutil.RangeArgs(1, 2),
 		Short: "Update stack's deployment settings secrets",
 		Long:  "",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), stack)
 			if err != nil {

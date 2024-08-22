@@ -64,7 +64,7 @@ func newWatchCmd() *cobra.Command {
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
@@ -165,7 +165,7 @@ func newWatchCmd() *cobra.Command {
 			case err == context.Canceled:
 				return errors.New("update cancelled")
 			case err != nil:
-				return PrintEngineResult(err)
+				return err
 			default:
 				return nil
 			}

@@ -11,28 +11,52 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/spf13/cobra"
 )
 
-// PrintEngineResult optionally provides a place for the CLI to provide human-friendly error
-// messages for messages that can happen during normal engine operation.
-func PrintEngineResult(err error) error {
-	// If we had no actual result, or the result was a request to 'Bail', then we have nothing to
-	// actually print to the user.
-	if err == nil || result.IsBail(err) {
-		return err
-	}
-
-	switch e := err.(type) {
-	case engine.DecryptError:
-		printDecryptError(e)
-		// We have printed the error already.  Should just bail at this point.
-		return nil
-	default:
-		// Caller will handle printing of this true error in a generalized fashion.
-		return err
-	}
+// runCmdFunc wraps cmdutil.RunFunc. While cmdutil.RunFunc provides a standard
+// wrapper for dealing with and logging errors before exiting with an
+// appropriate error code, runCmdFunc extends this with additional error
+// handling specific to the Pulumi CLI. This includes e.g. specific and more
+// helpful messages in the case of decryption or snapshot integrity errors.
+func runCmdFunc(
+	run func(cmd *cobra.Command, args []string) error,
+) func(cmd *cobra.Command, args []string) {
+	return cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		err := run(cmd, args)
+		return processCmdErrors(err)
+	})
 }
 
+// Processes errors that may be returned from commands, providing a central
+// location to insert more human-friendly messages when certain errors occur, or
+// to perform other type-specific handling.
+func processCmdErrors(err error) error {
+	// If no error occurred, we have nothing to do.
+	if err == nil {
+		return nil
+	}
+
+	// If the error is a "bail" (that is, some expected error flow), then a
+	// diagnostic or message will already have been reported. We can thus return
+	// it in order to effect the exit code without printing the error message
+	// again.
+	if result.IsBail(err) {
+		return err
+	}
+
+	// Other type-specific error handling.
+	if de, ok := engine.AsDecryptError(err); ok {
+		printDecryptError(*de)
+		return nil
+	}
+
+	// In all other cases, return the unexpected error as-is for generic handling.
+	return err
+}
+
+// A type-specific handler for engine.DecryptErrors that prints out help text
+// containing common causes of and possible resolutions for decryption errors.
 func printDecryptError(e engine.DecryptError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)

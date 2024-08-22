@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +32,7 @@ func newExtractSchemaCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
 			pkg, err := schemaFromSchemaSource(cmd.Context(), source, args[1:])

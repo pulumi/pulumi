@@ -47,7 +47,7 @@ func newQueryCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 
@@ -92,7 +92,7 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 			case err == context.Canceled:
 				return nil
 			case err != nil:
-				return PrintEngineResult(err)
+				return err
 			default:
 				return nil
 			}
