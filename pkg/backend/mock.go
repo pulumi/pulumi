@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -69,17 +68,17 @@ type MockBackend struct {
 	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
 	CurrentUserF                    func() (string, []string, *workspace.TokenInformation, error)
 	PreviewF                        func(context.Context, Stack,
-		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	UpdateF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	ImportF func(context.Context, Stack,
-		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
+		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	RefreshF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	WatchF func(context.Context, Stack,
-		UpdateOperation, []string) result.Result
+		UpdateOperation, []string) error
 	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
 
@@ -256,7 +255,7 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 
 func (be *MockBackend) Preview(ctx context.Context, stack Stack,
 	op UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	if be.PreviewF != nil {
 		return be.PreviewF(ctx, stack, op)
 	}
@@ -265,7 +264,7 @@ func (be *MockBackend) Preview(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Update(ctx context.Context, stack Stack,
 	op UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if be.UpdateF != nil {
 		return be.UpdateF(ctx, stack, op)
 	}
@@ -274,7 +273,7 @@ func (be *MockBackend) Update(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Import(ctx context.Context, stack Stack,
 	op UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if be.ImportF != nil {
 		return be.ImportF(ctx, stack, op, imports)
 	}
@@ -283,7 +282,7 @@ func (be *MockBackend) Import(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
 	op UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if be.RefreshF != nil {
 		return be.RefreshF(ctx, stack, op)
 	}
@@ -292,7 +291,7 @@ func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 	op UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if be.DestroyF != nil {
 		return be.DestroyF(ctx, stack, op)
 	}
@@ -301,7 +300,7 @@ func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	op UpdateOperation, paths []string,
-) result.Result {
+) error {
 	if be.WatchF != nil {
 		return be.WatchF(ctx, stack, op, paths)
 	}
@@ -493,14 +492,14 @@ type MockStack struct {
 	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	TagsF     func() map[apitype.StackTagName]string
 	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
-	UpdateF   func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	UpdateF   func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	ImportF   func(ctx context.Context, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
-	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
-	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
-	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) result.Result
-	QueryF   func(ctx context.Context, op UpdateOperation) result.Result
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
+	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) error
+	QueryF   func(ctx context.Context, op UpdateOperation) error
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
 	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
 	GetLogsF func(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
@@ -557,14 +556,14 @@ func (ms *MockStack) Backend() Backend {
 func (ms *MockStack) Preview(
 	ctx context.Context,
 	op UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
+func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
 	if ms.UpdateF != nil {
 		return ms.UpdateF(ctx, op)
 	}
@@ -573,35 +572,35 @@ func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (sdkDisplay
 
 func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
 	imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if ms.ImportF != nil {
 		return ms.ImportF(ctx, op, imports)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
+func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
 	if ms.RefreshF != nil {
 		return ms.RefreshF(ctx, op)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
+func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
 	if ms.DestroyF != nil {
 		return ms.DestroyF(ctx, op)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result {
+func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) error {
 	if ms.WatchF != nil {
 		return ms.WatchF(ctx, op, paths)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Query(ctx context.Context, op UpdateOperation) result.Result {
+func (ms *MockStack) Query(ctx context.Context, op UpdateOperation) error {
 	if ms.QueryF != nil {
 		return ms.QueryF(ctx, op)
 	}
@@ -698,7 +697,7 @@ func (r *MockStackReference) FullyQualifiedName() tokens.QName {
 type MockPolicyPack struct {
 	RefF      func() PolicyPackReference
 	BackendF  func() Backend
-	PublishF  func(context.Context, PublishOperation) result.Result
+	PublishF  func(context.Context, PublishOperation) error
 	EnableF   func(context.Context, string, PolicyPackOperation) error
 	DisableF  func(context.Context, string, PolicyPackOperation) error
 	ValidateF func(context.Context, PolicyPackOperation) error
@@ -721,7 +720,7 @@ func (mp *MockPolicyPack) Backend() Backend {
 	panic("not implemented")
 }
 
-func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) result.Result {
+func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) error {
 	if mp.PublishF != nil {
 		return mp.PublishF(ctx, op)
 	}

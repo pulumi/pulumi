@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -88,7 +87,7 @@ func newRefreshCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
@@ -99,14 +98,13 @@ func newRefreshCmd() *cobra.Command {
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return result.FromError(
-					errors.New("--yes or --skip-preview or --preview-only " +
-						"must be passed in to proceed when running in non-interactive mode"))
+				return errors.New("--yes or --skip-preview or --preview-only " +
+					"must be passed in to proceed when running in non-interactive mode")
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			displayType := display.DisplayProgress
@@ -142,7 +140,7 @@ func newRefreshCmd() *cobra.Command {
 					suppressOutputs, "default", targets, nil, nil,
 					false, "", stackConfigFile)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				var url string
@@ -159,7 +157,7 @@ func newRefreshCmd() *cobra.Command {
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
@@ -170,31 +168,31 @@ func newRefreshCmd() *cobra.Command {
 
 			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			proj, root, err := readProject()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
 			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -207,11 +205,11 @@ func newRefreshCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configErr != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			if skipPendingCreates && clearPendingCreates {
-				return result.FromError(errors.New("cannot set both --skip-pending-creates and --clear-pending-creates"))
+				return errors.New("cannot set both --skip-pending-creates and --clear-pending-creates")
 			}
 
 			// First we handle explicit create->imports we were given
@@ -221,7 +219,7 @@ func newRefreshCmd() *cobra.Command {
 					stderr = os.Stderr
 				}
 				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
-					return result.FromError(err)
+					return err
 				} else if len(unused) > 1 {
 					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
 						"warning: the following urns did not correspond to a pending create",
@@ -236,14 +234,14 @@ func newRefreshCmd() *cobra.Command {
 
 			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
+				return fmt.Errorf("getting snapshot: %w", err)
 			}
 
 			// We then allow the user to interactively handle remaining pending creates.
 			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
 				if err := filterMapPendingCreates(ctx, s, opts.Display,
 					yes, interactiveFixPendingCreate); err != nil {
-					return result.FromError(err)
+					return err
 				}
 			}
 
@@ -255,7 +253,7 @@ func newRefreshCmd() *cobra.Command {
 				}
 				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 			}
 
@@ -274,7 +272,7 @@ func newRefreshCmd() *cobra.Command {
 				Experimental:              hasExperimentalCommands(),
 			}
 
-			changes, res := s.Refresh(ctx, backend.UpdateOperation{
+			changes, err := s.Refresh(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -286,12 +284,12 @@ func newRefreshCmd() *cobra.Command {
 			})
 
 			switch {
-			case res != nil && res.Error() == context.Canceled:
-				return result.FromError(errors.New("refresh cancelled"))
-			case res != nil:
-				return PrintEngineResult(res)
+			case err == context.Canceled:
+				return errors.New("refresh cancelled")
+			case err != nil:
+				return PrintEngineResult(err)
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return result.FromError(errors.New("no changes were expected but changes occurred"))
+				return errors.New("no changes were expected but changes occurred")
 			default:
 				return nil
 			}

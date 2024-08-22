@@ -45,7 +45,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -81,7 +81,7 @@ const (
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -117,10 +117,10 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	plan, changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
-	if res != nil {
+	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	if err != nil {
 		close(eventsChannel)
-		return plan, changes, res
+		return plan, changes, err
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -158,9 +158,9 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err := confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
+	plan, err = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
 	close(eventsChannel)
-	return plan, changes, result.WrapIfNonNil(err)
+	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
@@ -231,7 +231,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
@@ -244,9 +244,9 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
-		if res != nil || kind == apitype.PreviewUpdate {
-			return changes, res
+		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		if err != nil || kind == apitype.PreviewUpdate {
+			return changes, err
 		}
 
 		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the

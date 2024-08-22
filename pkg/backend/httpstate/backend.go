@@ -1087,7 +1087,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -1099,13 +1099,13 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1116,9 +1116,9 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, res := b.apply(
+		_, changes, err := b.apply(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
-		return changes, res
+		return changes, err
 	}
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
@@ -1126,7 +1126,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1135,16 +1135,16 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, res := b.apply(
+		_, changes, err := b.apply(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
-		return changes, res
+		return changes, err
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1153,16 +1153,16 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, res := b.apply(
+		_, changes, err := b.apply(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
-		return changes, res
+		return changes, err
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
-) result.Result {
+) error {
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
@@ -1289,7 +1289,7 @@ func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
@@ -1301,7 +1301,7 @@ func (b *cloudBackend) apply(
 	// Create an update object to persist results.
 	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	// Display messages from the backend if present.
@@ -1349,11 +1349,11 @@ func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
 	callerEventsOpt chan<- engine.Event, dryRun bool,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
@@ -1418,7 +1418,6 @@ func (b *cloudBackend) runEngineAction(
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
-	res := result.WrapIfNonNil(updateErr)
 
 	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone
@@ -1433,7 +1432,7 @@ func (b *cloudBackend) runEngineAction(
 		// checks, or a failure to write that means the snapshot is incomplete).
 		// Reporting now should make debugging and reporting easier.
 		if err != nil {
-			return plan, changes, result.FromError(fmt.Errorf("writing snapshot: %w", err))
+			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
 		}
 	}
 
@@ -1444,15 +1443,15 @@ func (b *cloudBackend) runEngineAction(
 
 	// Mark the update as complete.
 	status := apitype.UpdateStatusSucceeded
-	if res != nil {
+	if updateErr != nil {
 		status = apitype.UpdateStatusFailed
 	}
 	completeErr := u.Complete(status)
 	if completeErr != nil {
-		res = result.Merge(res, result.FromError(fmt.Errorf("failed to complete update: %w", completeErr)))
+		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
 
-	return plan, changes, res
+	return plan, changes, updateErr
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

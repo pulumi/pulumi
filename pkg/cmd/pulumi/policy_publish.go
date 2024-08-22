@@ -129,11 +129,11 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, args []string) error {
 	// Attempt to publish the PolicyPack.
 	//
 
-	res := policyPack.Publish(ctx, backend.PublishOperation{
+	err = policyPack.Publish(ctx, backend.PublishOperation{
 		Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: backend.CancellationScopes,
 	})
-	if res != nil && res.Error() != nil {
-		return res.Error()
+	if err != nil {
+		return err
 	}
 
 	return nil

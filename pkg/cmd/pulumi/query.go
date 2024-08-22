@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
@@ -48,7 +47,7 @@ func newQueryCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 
@@ -70,12 +69,12 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 			// Try to read the current project
 			project, root, err := readProject()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			b, err := currentBackend(ctx, project, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -90,10 +89,10 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 				SecretsProvider: stack.DefaultSecretsProvider,
 			})
 			switch {
-			case err != nil && err == context.Canceled:
+			case err == context.Canceled:
 				return nil
 			case err != nil:
-				return PrintEngineResult(result.FromError(err))
+				return PrintEngineResult(err)
 			default:
 				return nil
 			}

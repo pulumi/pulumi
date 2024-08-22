@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -95,7 +94,7 @@ func newDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
@@ -106,14 +105,13 @@ func newDestroyCmd() *cobra.Command {
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return result.FromError(
-					errors.New("--yes or --skip-preview or --preview-only " +
-						"must be passed in to proceed when running in non-interactive mode"))
+				return errors.New("--yes or --skip-preview or --preview-only " +
+					"must be passed in to proceed when running in non-interactive mode")
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			displayType := display.DisplayProgress
@@ -149,7 +147,7 @@ func newDestroyCmd() *cobra.Command {
 					suppressOutputs, "default", targets, nil, nil,
 					targetDependents, "", stackConfigFile)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				var url string
@@ -166,7 +164,7 @@ func newDestroyCmd() *cobra.Command {
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
@@ -177,7 +175,7 @@ func newDestroyCmd() *cobra.Command {
 
 			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			proj, root, err := readProject()
@@ -195,17 +193,17 @@ func newDestroyCmd() *cobra.Command {
 				}
 				root = ""
 			} else if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
 			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
@@ -222,16 +220,16 @@ func newDestroyCmd() *cobra.Command {
 			}
 			cfg, sm, err := getConfig(ctx, s, proj, defaultSecretsManager)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -244,16 +242,16 @@ func newDestroyCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configError != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
+				return fmt.Errorf("validating stack config: %w", configError)
 			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			if len(*targets) > 0 && excludeProtected {
-				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
+				return errors.New("You cannot specify --target and --exclude-protected")
 			}
 
 			var protectedCount int
@@ -262,7 +260,7 @@ func newDestroyCmd() *cobra.Command {
 				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
 					if !jsonDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
@@ -290,7 +288,7 @@ func newDestroyCmd() *cobra.Command {
 				ContinueOnError:           continueOnError,
 			}
 
-			_, res := s.Destroy(ctx, backend.UpdateOperation{
+			_, destroyErr := s.Destroy(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -301,10 +299,10 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			})
 
-			if res == nil && protectedCount > 0 && !jsonDisplay {
+			if destroyErr == nil && protectedCount > 0 && !jsonDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
-			} else if res == nil && len(*targets) == 0 {
+			} else if destroyErr == nil && len(*targets) == 0 {
 				if !jsonDisplay && !remove && !previewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
@@ -312,22 +310,22 @@ func newDestroyCmd() *cobra.Command {
 				} else if remove {
 					_, err = s.Remove(ctx, false)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					// Remove also the stack config file.
-					if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
-						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
-							return result.FromError(err)
+					if _, path, detectErr := workspace.DetectProjectStackPath(s.Ref().Name().Q()); detectErr == nil {
+						if detectErr = os.Remove(path); detectErr != nil && !os.IsNotExist(detectErr) {
+							return detectErr
 						} else if !jsonDisplay {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
 					}
 				}
-			} else if res != nil && res.Error() == context.Canceled {
-				return result.FromError(errors.New("destroy cancelled"))
+			} else if destroyErr == context.Canceled {
+				return errors.New("destroy cancelled")
 			}
-			return PrintEngineResult(res)
+			return PrintEngineResult(destroyErr)
 		}),
 	}
 

@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -46,7 +45,7 @@ type PolicyPack interface {
 	// Backend returns the backend this PolicyPack is managed by.
 	Backend() Backend
 	// Publish the PolicyPack to the service.
-	Publish(ctx context.Context, op PublishOperation) result.Result
+	Publish(ctx context.Context, op PublishOperation) error
 	// Enable the PolicyPack to a Policy Group in an organization. If Policy Group is
 	// empty, it enables it for the default Policy Group.
 	Enable(ctx context.Context, policyGroup string, op PolicyPackOperation) error

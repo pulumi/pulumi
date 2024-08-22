@@ -34,14 +34,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
 func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	apply Applier, paths []string,
-) result.Result {
+) error {
 	opts := ApplierOptions{
 		DryRun:   false,
 		ShowLink: false,
@@ -76,7 +75,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	// Provided paths can be both relative and absolute.
 	events, stop, err := watchPaths(op.Root, paths)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	defer stop()
 
@@ -88,11 +87,11 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
 
 		// Perform the update operation
-		_, _, res := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
-		if res != nil {
-			logging.V(5).Infof("watch update failed: %v", res.Error())
-			if res.Error() == context.Canceled {
-				return res
+		_, _, err = apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		if err != nil {
+			logging.V(5).Infof("watch update failed: %v", err)
+			if err == context.Canceled {
+				return err
 			}
 			display.PrintfWithWatchPrefix(time.Now(), "",
 				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))

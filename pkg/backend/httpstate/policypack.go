@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
@@ -146,7 +145,7 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
-) result.Result {
+) error {
 	//
 	// Get PolicyPack metadata from the plugin.
 	//
@@ -155,17 +154,17 @@ func (pack *cloudPolicyPack) Publish(
 
 	abs, err := filepath.Abs(op.PlugCtx.Pwd)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	analyzerInfo, err := analyzer.GetAnalyzerInfo()
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	// Update the name and version tag from the metadata.
@@ -181,7 +180,7 @@ func (pack *cloudPolicyPack) Publish(
 	if strings.EqualFold(runtime, "nodejs") {
 		packTarball, err = npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not publish policies because of error running npm pack: %w", err))
+			return fmt.Errorf("could not publish policies because of error running npm pack: %w", err)
 		}
 	} else {
 		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
@@ -189,7 +188,7 @@ func (pack *cloudPolicyPack) Publish(
 		// package directory to determine the runtime of the policy pack.
 		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err))
+			return fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
 		}
 	}
 
@@ -201,7 +200,7 @@ func (pack *cloudPolicyPack) Publish(
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)

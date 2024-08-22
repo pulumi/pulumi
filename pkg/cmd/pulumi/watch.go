@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -65,13 +64,13 @@ func newWatchCmd() *cobra.Command {
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
 				false /* previewOnly */)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			opts.Display = display.Options{
@@ -88,41 +87,41 @@ func newWatchCmd() *cobra.Command {
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Save any config values passed via flags.
 			if err := parseAndSaveConfigArray(s, configArray, configPath); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			proj, root, err := readProject()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */, false, cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
 			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -135,7 +134,7 @@ func newWatchCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configErr != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -151,7 +150,7 @@ func newWatchCmd() *cobra.Command {
 				Experimental:              hasExperimentalCommands(),
 			}
 
-			res := s.Watch(ctx, backend.UpdateOperation{
+			err = s.Watch(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -163,10 +162,10 @@ func newWatchCmd() *cobra.Command {
 			}, pathArray)
 
 			switch {
-			case res != nil && res.Error() == context.Canceled:
-				return result.FromError(errors.New("update cancelled"))
-			case res != nil:
-				return PrintEngineResult(res)
+			case err == context.Canceled:
+				return errors.New("update cancelled")
+			case err != nil:
+				return PrintEngineResult(err)
 			default:
 				return nil
 			}

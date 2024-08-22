@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
@@ -44,9 +43,9 @@ func newStateUpgradeCommand() *cobra.Command {
 This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if err := sucmd.Run(cmd.Context()); err != nil {
-				return result.FromError(err)
+				return err
 			}
 			return nil
 		}),

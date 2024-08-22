@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -41,12 +40,12 @@ func newDeploymentRunCmd() *cobra.Command {
 			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
 		Args: cmdutil.RangeArgs(1, 2),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			operation, err := apitype.ParsePulumiOperation(args[0])
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			var url string
@@ -63,22 +62,22 @@ func newDeploymentRunCmd() *cobra.Command {
 
 			project, _, err := readProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return result.FromError(err)
+				return err
 			}
 
 			currentBe, err := currentBackend(ctx, project, display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			if !currentBe.SupportsDeployments() {
-				return result.FromError(fmt.Errorf("backends of this type %q do not support deployments",
-					currentBe.Name()))
+				return fmt.Errorf("backends of this type %q do not support deployments",
+					currentBe.Name())
 			}
 
 			s, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			if errResult := validateDeploymentFlags(url, remoteArgs); errResult != nil {
