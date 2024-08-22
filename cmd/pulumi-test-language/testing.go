@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -218,20 +217,20 @@ var (
 	_ require.TestingT = (TestingT)(nil) // ensure testify compatibility
 )
 
-func assertStackResource(t TestingT, res result.Result, changes display.ResourceChanges) (ok bool) {
+func assertStackResource(t TestingT, err error, changes display.ResourceChanges) (ok bool) {
 	t.Helper()
 
 	ok = true
-	ok = ok && assert.Nil(t, res, "expected no error, got %v", res)
+	ok = ok && assert.Nil(t, err, "expected no error, got %v", err)
 	ok = ok && assert.NotEmpty(t, changes, "expected at least 1 StepOp")
 	ok = ok && assert.NotZero(t, changes[deploy.OpCreate], "expected at least 1 Create")
 	return ok
 }
 
-func requireStackResource(t TestingT, res result.Result, changes display.ResourceChanges) {
+func requireStackResource(t TestingT, err error, changes display.ResourceChanges) {
 	t.Helper()
 
-	if !assertStackResource(t, res, changes) {
+	if !assertStackResource(t, err, changes) {
 		t.FailNow()
 	}
 }

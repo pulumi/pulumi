@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -307,59 +306,59 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 			"will be used.")
 }
 
-func validateRemoteDeploymentFlags(url string, args RemoteArgs) result.Result {
+func validateRemoteDeploymentFlags(url string, args RemoteArgs) error {
 	// Validate args.
 	if url == "" && !args.inheritSettings {
-		return result.FromError(errors.New("the url arg must be specified if not passing --remote-inherit-settings"))
+		return errors.New("the url arg must be specified if not passing --remote-inherit-settings")
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
-		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
+		return errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified")
 	}
 	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
-		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required " +
-			"if not passing --remote-inherit-settings"))
+		return errors.New("either `--remote-git-branch` or `--remote-git-commit` is required " +
+			"if not passing --remote-inherit-settings")
 	}
 	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
-		return result.FromError(errors.New("`--remote-git-auth-ssh-private-key` and " +
-			"`--remote-git-auth-ssh-private-key-path` cannot both be specified"))
+		return errors.New("`--remote-git-auth-ssh-private-key` and " +
+			"`--remote-git-auth-ssh-private-key-path` cannot both be specified")
 	}
 	if args.executorImage == "" && (args.executorImageUsername != "" || args.executorImagePassword != "") {
-		return result.FromError(errors.New("`--remote-executor-image-username` and `--remote-executor-image-password` " +
-			"cannot be specified without `--remote-executor-image`"))
+		return errors.New("`--remote-executor-image-username` and `--remote-executor-image-password` " +
+			"cannot be specified without `--remote-executor-image`")
 	}
 	if (args.executorImagePassword != "" && args.executorImageUsername == "") ||
 		(args.executorImageUsername != "" && args.executorImagePassword == "") {
-		return result.FromError(errors.New("`--remote-executor-image-username` and `--remote-executor-image-password` " +
-			"must both be specified"))
+		return errors.New("`--remote-executor-image-username` and `--remote-executor-image-password` " +
+			"must both be specified")
 	}
 
 	return nil
 }
 
-func validateDeploymentFlags(url string, args RemoteArgs) result.Result {
+func validateDeploymentFlags(url string, args RemoteArgs) error {
 	// Validate args.
 	if url == "" && !args.inheritSettings {
-		return result.FromError(errors.New("the url arg must be specified if not passing --inherit-settings"))
+		return errors.New("the url arg must be specified if not passing --inherit-settings")
 	}
 	if args.gitBranch != "" && args.gitCommit != "" {
-		return result.FromError(errors.New("`--git-branch` and `--git-commit` cannot both be specified"))
+		return errors.New("`--git-branch` and `--git-commit` cannot both be specified")
 	}
 	if args.gitBranch == "" && args.gitCommit == "" && !args.inheritSettings {
-		return result.FromError(errors.New("either `--git-branch` or `--git-commit` is required " +
-			"if not passing --inherit-settings"))
+		return errors.New("either `--git-branch` or `--git-commit` is required " +
+			"if not passing --inherit-settings")
 	}
 	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
-		return result.FromError(errors.New("`--git-auth-ssh-private-key` and " +
-			"`--git-auth-ssh-private-key-path` cannot both be specified"))
+		return errors.New("`--git-auth-ssh-private-key` and " +
+			"`--git-auth-ssh-private-key-path` cannot both be specified")
 	}
 	if args.executorImage == "" && (args.executorImageUsername != "" || args.executorImagePassword != "") {
-		return result.FromError(errors.New("`--executor-image-username` and `--executor-image-password` " +
-			"cannot be specified without `--executor-image`"))
+		return errors.New("`--executor-image-username` and `--executor-image-password` " +
+			"cannot be specified without `--executor-image`")
 	}
 	if (args.executorImagePassword != "" && args.executorImageUsername == "") ||
 		(args.executorImageUsername != "" && args.executorImagePassword == "") {
-		return result.FromError(errors.New("`--executor-image-username` and `--executor-image-password` " +
-			"must both be specified"))
+		return errors.New("`--executor-image-username` and `--executor-image-password` " +
+			"must both be specified")
 	}
 
 	return nil
@@ -368,13 +367,13 @@ func validateDeploymentFlags(url string, args RemoteArgs) result.Result {
 // runDeployment kicks off a remote deployment.
 func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options,
 	operation apitype.PulumiOperation, stack, url string, args RemoteArgs,
-) result.Result {
+) error {
 	// Parse and validate the environment args.
 	env := map[string]apitype.SecretValue{}
 	for i, e := range append(args.envVars, args.secretEnvVars...) {
 		name, value, err := parseEnv(e)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		env[name] = apitype.SecretValue{
 			Value:  value,
@@ -387,8 +386,8 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 	if args.gitAuthSSHPrivateKeyPath != "" {
 		key, err := os.ReadFile(args.gitAuthSSHPrivateKeyPath)
 		if err != nil {
-			return result.FromError(fmt.Errorf(
-				"reading SSH private key path %q: %w", args.gitAuthSSHPrivateKeyPath, err))
+			return fmt.Errorf(
+				"reading SSH private key path %q: %w", args.gitAuthSSHPrivateKeyPath, err)
 		}
 		sshPrivateKey = string(key)
 	}
@@ -396,24 +395,24 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 	// Try to read the current project
 	project, _, err := readProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return result.FromError(err)
+		return err
 	}
 
 	b, err := currentBackend(ctx, project, opts)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	// Ensure the cloud backend is being used.
 	cb, isCloud := b.(httpstate.Backend)
 	if !isCloud {
-		return result.FromError(errors.New("the Pulumi Cloud backend must be used for remote operations; " +
-			"use `pulumi login` without arguments to log into the Pulumi Cloud backend"))
+		return errors.New("the Pulumi Cloud backend must be used for remote operations; " +
+			"use `pulumi login` without arguments to log into the Pulumi Cloud backend")
 	}
 
 	stackRef, err := b.ParseStackReference(stack)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	var gitAuth *apitype.GitAuthConfig
@@ -511,7 +510,7 @@ func runDeployment(ctx context.Context, cmd *cobra.Command, opts display.Options
 	// pass this value in from the CLI as a flag or environment variable.
 	err = cb.RunDeployment(ctx, stackRef, req, opts, "automation-api" /*deploymentInitiator*/, args.suppressStreamLogs)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	return nil

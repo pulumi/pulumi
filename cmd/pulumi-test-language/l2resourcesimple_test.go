@@ -393,7 +393,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	require.Len(t, runResponse.Messages, 1)
 	failureMessage := runResponse.Messages[0]
 	assert.Contains(t, failureMessage,
-		"expected no error, got Error: unexpected required plugins: "+
+		"expected no error, got unexpected required plugins: "+
 			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@2.0.0]")
 }
 

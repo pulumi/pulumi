@@ -15,23 +15,21 @@ import (
 
 // PrintEngineResult optionally provides a place for the CLI to provide human-friendly error
 // messages for messages that can happen during normal engine operation.
-func PrintEngineResult(res result.Result) result.Result {
+func PrintEngineResult(err error) error {
 	// If we had no actual result, or the result was a request to 'Bail', then we have nothing to
 	// actually print to the user.
-	if res == nil || res.IsBail() {
-		return res
+	if err == nil || result.IsBail(err) {
+		return err
 	}
-
-	err := res.Error()
 
 	switch e := err.(type) {
 	case engine.DecryptError:
 		printDecryptError(e)
 		// We have printed the error already.  Should just bail at this point.
-		return result.Bail()
+		return nil
 	default:
 		// Caller will handle printing of this true error in a generalized fashion.
-		return res
+		return err
 	}
 }
 

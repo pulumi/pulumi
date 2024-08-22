@@ -59,64 +59,118 @@ func TestIsBail(t *testing.T) {
 	assert.True(t, IsBail(wrapped))
 }
 
-func TestFromError(t *testing.T) {
+func TestMergeBails(t *testing.T) {
 	t.Parallel()
 
-	errBail := BailErrorf("bail")
-	errSimilarToBail := errors.New("bail")
-	errSadness := errors.New("great sadness")
-
-	tests := []struct {
-		desc string
-		give error
-
-		// Properties of the Result:
-		wantIsBail bool
-		wantErr    error
+	// Arrange.
+	cases := []struct {
+		name     string
+		errs     []error
+		expected error
 	}{
 		{
-			desc:       "bail",
-			give:       errBail,
-			wantIsBail: true,
-			wantErr:    nil,
+			name:     "no errors",
+			errs:     []error{},
+			expected: nil,
 		},
 		{
-			// an error with the same message as ErrBail
-			// should not be considered a bail.
-			desc:    "similar to bail",
-			give:    errSimilarToBail,
-			wantErr: errSimilarToBail,
+			name:     "one nil",
+			errs:     []error{nil},
+			expected: nil,
 		},
 		{
-			desc:       "wraps bail",
-			give:       fmt.Errorf("wraps bail: %w", errBail),
-			wantIsBail: true,
-			wantErr:    nil,
+			name:     "one error",
+			errs:     []error{errors.New("boom")},
+			expected: errors.New("boom"),
 		},
 		{
-			desc:       "other error",
-			give:       errSadness,
-			wantIsBail: false,
-			wantErr:    errSadness,
+			name:     "one bail",
+			errs:     []error{BailErrorf("boom")},
+			expected: BailErrorf("BAIL: boom"),
+		},
+		{
+			name:     "all nil",
+			errs:     []error{nil, nil, nil},
+			expected: nil,
+		},
+		{
+			name: "all bails",
+			errs: []error{
+				BailError(errors.New("boom")),
+				BailError(errors.New("bang")),
+				BailErrorf("biff"),
+			},
+			expected: BailErrorf("BAIL: boom\nBAIL: bang\nBAIL: biff"),
+		},
+		{
+			name: "all errors",
+			errs: []error{
+				errors.New("boom"),
+				errors.New("bang"),
+				errors.New("biff"),
+			},
+			expected: errors.New("boom\nbang\nbiff"),
+		},
+		{
+			name: "nils and errors",
+			errs: []error{
+				nil,
+				errors.New("boom"),
+				nil,
+				errors.New("bang"),
+			},
+			expected: errors.New("boom\nbang"),
+		},
+		{
+			name: "nils and bails",
+			errs: []error{
+				nil,
+				BailError(errors.New("boom")),
+				nil,
+				BailErrorf("bang"),
+			},
+			expected: BailErrorf("BAIL: boom\nBAIL: bang"),
+		},
+		{
+			name: "errors and bails",
+			errs: []error{
+				errors.New("boom"),
+				BailError(errors.New("bang")),
+				errors.New("biff"),
+			},
+			expected: errors.New("boom\nbiff"),
+		},
+		{
+			name: "errors, bails, and nils",
+			errs: []error{
+				errors.New("boom"),
+				nil,
+				BailErrorf("bang"),
+				nil,
+				nil,
+				errors.New("biff"),
+				nil,
+			},
+			expected: errors.New("boom\nbiff"),
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.desc, func(t *testing.T) {
+	for _, c := range cases {
+		c := c
+
+		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			res := FromError(tt.give)
-			assert.Equal(t, tt.wantIsBail, res.IsBail(), "Result.IsBail")
-			assert.ErrorIs(t, res.Error(), tt.wantErr, "Result.Error")
+			// Act.
+			err := MergeBails(c.errs...)
+
+			// Assert.
+			if c.expected == nil {
+				assert.Nil(t, err)
+			} else {
+				assert.Equalf(t, IsBail(c.expected), IsBail(err), "Expected IsBail to be %v", IsBail(c.expected))
+				assert.EqualError(t, err, c.expected.Error())
+			}
 		})
 	}
-}
-
-func TestFromError_nil(t *testing.T) {
-	t.Parallel()
-
-	assert.Panics(t, func() {
-		FromError(nil)
-	})
 }

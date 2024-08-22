@@ -9,7 +9,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +18,7 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) result.Result {
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
 			return nil
 		},
 	}
@@ -53,7 +52,7 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) result.Result {
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
 			return nil
 		},
 	}

@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -45,16 +44,16 @@ type Stack interface {
 	// Preview changes to this stack if an Update was run.
 	Preview(
 		ctx context.Context, op UpdateOperation, events chan<- engine.Event,
-	) (*deploy.Plan, display.ResourceChanges, result.Result)
+	) (*deploy.Plan, display.ResourceChanges, error)
 	// Update this stack.
-	Update(ctx context.Context, op UpdateOperation) (display.ResourceChanges, result.Result)
+	Update(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
 	// Import resources into this stack.
-	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (display.ResourceChanges, result.Result)
+	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (display.ResourceChanges, error)
 	// Refresh this stack's state from the cloud provider.
-	Refresh(ctx context.Context, op UpdateOperation) (display.ResourceChanges, result.Result)
-	Destroy(ctx context.Context, op UpdateOperation) (display.ResourceChanges, result.Result)
+	Refresh(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
+	Destroy(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
 	// Watch this stack.
-	Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result
+	Watch(ctx context.Context, op UpdateOperation, paths []string) error
 
 	// Remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -88,35 +87,35 @@ func PreviewStack(
 	s Stack,
 	op UpdateOperation,
 	events chan<- engine.Event,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	return s.Backend().Preview(ctx, s, op, events)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, result.Result) {
+func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
 	return s.Backend().Update(ctx, s, op)
 }
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).
 func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
 	imports []deploy.Import,
-) (display.ResourceChanges, result.Result) {
+) (display.ResourceChanges, error) {
 	return s.Backend().Import(ctx, s, op, imports)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, result.Result) {
+func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
 	return s.Backend().Refresh(ctx, s, op)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, result.Result) {
+func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
 	return s.Backend().Destroy(ctx, s, op)
 }
 
 // WatchStack watches the projects working directory for changes and automatically updates the
 // active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) result.Result {
+func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) error {
 	return s.Backend().Watch(ctx, s, op, paths)
 }
 

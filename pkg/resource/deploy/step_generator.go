@@ -174,7 +174,7 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 }
 
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
-func (sg *stepGenerator) bailDaig(diag *diag.Diag, args ...interface{}) error {
+func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...interface{}) error {
 	sg.deployment.Diag().Errorf(diag, args...)
 	return result.BailErrorf(diag.Message, args...)
 }
@@ -187,7 +187,7 @@ func (sg *stepGenerator) generateURN(
 	urn := sg.deployment.generateURN(parent, ty, name)
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		return "", sg.bailDaig(diag.GetDuplicateResourceURNError(urn), urn)
+		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 	sg.urns[urn] = true
 	return urn, nil
@@ -1922,15 +1922,15 @@ func (sg *stepGenerator) loadResourceProvider(
 	contract.Assertf(provider != "", "must have a provider for custom resource %v", urn)
 	ref, refErr := providers.ParseReference(provider)
 	if refErr != nil {
-		return nil, sg.bailDaig(diag.GetBadProviderError(urn), provider, urn, refErr)
+		return nil, sg.bailDiag(diag.GetBadProviderError(urn), provider, urn, refErr)
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
 		pkg := providers.GetDeniedDefaultProviderPkg(ref)
-		return nil, sg.bailDaig(diag.GetDefaultProviderDenied(urn), pkg, urn)
+		return nil, sg.bailDiag(diag.GetDefaultProviderDenied(urn), pkg, urn)
 	}
 	p, ok := sg.deployment.GetProvider(ref)
 	if !ok {
-		return nil, sg.bailDaig(diag.GetUnknownProviderError(urn), provider, urn)
+		return nil, sg.bailDiag(diag.GetUnknownProviderError(urn), provider, urn)
 	}
 	return p, nil
 }

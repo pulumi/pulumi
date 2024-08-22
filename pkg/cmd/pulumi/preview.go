@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -293,7 +292,7 @@ func newPreviewCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -330,7 +329,7 @@ func newPreviewCmd() *cobra.Command {
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
 					targetReplaces, targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				var url string
@@ -347,7 +346,7 @@ func newPreviewCmd() *cobra.Command {
 
 			isDIYBackend, err := isDIYBackend(displayOpts)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends
@@ -357,41 +356,41 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			s, err := requireStack(ctx, stackName, stackOfferNew, displayOpts)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Save any config values passed via flags.
 			if err = parseAndSaveConfigArray(s, configArray, configPath); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			proj, root, err := readProjectForUpdate(client)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
 			if err != nil {
-				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 
 			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 			encrypter, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+				return fmt.Errorf("getting stack encrypter: %w", err)
 			}
 
 			stackName := s.Ref().Name().String()
@@ -404,7 +403,7 @@ func newPreviewCmd() *cobra.Command {
 				encrypter,
 				decrypter)
 			if configErr != nil {
-				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			targetURNs := []string{}
@@ -420,7 +419,7 @@ func newPreviewCmd() *cobra.Command {
 
 			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			opts := backend.UpdateOptions{
@@ -475,15 +474,15 @@ func newPreviewCmd() *cobra.Command {
 			case res != nil:
 				return PrintEngineResult(res)
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
+				return errors.New("error: no changes were expected but changes were proposed")
 			default:
 				if planFilePath != "" {
 					encrypter, err := sm.Encrypter()
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
-						return result.FromError(err)
+						return err
 					}
 
 					// Write out message on how to use the plan (if not writing out --json)
@@ -500,17 +499,17 @@ func newPreviewCmd() *cobra.Command {
 				if importFilePromise != nil {
 					importFile, err := importFilePromise.Result(ctx)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 
 					f, err := os.Create(importFilePath)
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 					err = writeImportFile(importFile, f)
 					err = errors.Join(err, f.Close())
 					if err != nil {
-						return result.FromError(err)
+						return err
 					}
 				}
 				return nil

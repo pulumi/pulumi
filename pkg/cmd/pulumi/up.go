@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -88,39 +87,39 @@ func newUpCmd() *cobra.Command {
 	var planFilePath string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
-	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) result.Result {
+	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) error {
 		s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		// Save any config values passed via flags.
 		if err := parseAndSaveConfigArray(s, configArray, path); err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		proj, root, err := readProjectForUpdate(client)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
 		if err != nil {
-			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
 		cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 		if err != nil {
-			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			return fmt.Errorf("getting stack configuration: %w", err)
 		}
 
 		decrypter, err := sm.Decrypter()
 		if err != nil {
-			return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+			return fmt.Errorf("getting stack decrypter: %w", err)
 		}
 		encrypter, err := sm.Encrypter()
 		if err != nil {
-			return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			return fmt.Errorf("getting stack encrypter: %w", err)
 		}
 
 		stackName := s.Ref().Name().String()
@@ -133,7 +132,7 @@ func newUpCmd() *cobra.Command {
 			encrypter,
 			decrypter)
 		if configErr != nil {
-			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
 		targetURNs, replaceURNs := []string{}, []string{}
@@ -147,7 +146,7 @@ func newUpCmd() *cobra.Command {
 
 		refreshOption, err := getRefreshOption(proj, refresh)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
@@ -172,20 +171,20 @@ func newUpCmd() *cobra.Command {
 		if planFilePath != "" {
 			dec, err := sm.Decrypter()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 			enc, err := sm.Encrypter()
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 			plan, err := readPlan(planFilePath, dec, enc)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 			opts.Engine.Plan = plan
 		}
 
-		changes, res := s.Update(ctx, backend.UpdateOperation{
+		changes, err := s.Update(ctx, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -196,12 +195,12 @@ func newUpCmd() *cobra.Command {
 			Scopes:             backend.CancellationScopes,
 		})
 		switch {
-		case res != nil && res.Error() == context.Canceled:
-			return result.FromError(errors.New("update cancelled"))
-		case res != nil:
-			return PrintEngineResult(res)
+		case err == context.Canceled:
+			return errors.New("update cancelled")
+		case err != nil:
+			return PrintEngineResult(err)
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return result.FromError(errors.New("no changes were expected but changes occurred"))
+			return errors.New("no changes were expected but changes occurred")
 		default:
 			return nil
 		}
@@ -210,11 +209,11 @@ func newUpCmd() *cobra.Command {
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
 	upTemplateNameOrURL := func(ctx context.Context,
 		templateNameOrURL string, opts backend.UpdateOptions, cmd *cobra.Command,
-	) result.Result {
+	) error {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		defer func() {
 			contract.IgnoreError(repo.Delete())
@@ -223,29 +222,29 @@ func newUpCmd() *cobra.Command {
 		// List the templates from the repo.
 		templates, err := repo.Templates()
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		var template workspace.Template
 		if len(templates) == 0 {
-			return result.FromError(errors.New("no template found"))
+			return errors.New("no template found")
 		} else if len(templates) == 1 {
 			template = templates[0]
 		} else {
 			if template, err = chooseTemplate(templates, opts.Display); err != nil {
-				return result.FromError(err)
+				return err
 			}
 		}
 
 		// Validate secrets provider type
 		if err := validateSecretsProvider(secretsProvider); err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		// Create temp directory for the "virtual workspace".
 		temp, err := os.MkdirTemp("", "pulumi-up-")
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		defer func() {
 			contract.IgnoreError(os.RemoveAll(temp))
@@ -253,13 +252,13 @@ func newUpCmd() *cobra.Command {
 
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
-			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
+			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
 		// There is no current project at this point to pass into currentBackend
 		b, err := currentBackend(ctx, nil, opts.Display)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		// If a stack was specified via --stack, see if it already exists.
@@ -268,7 +267,7 @@ func newUpCmd() *cobra.Command {
 		var s backend.Stack
 		if stackName != "" {
 			if s, name, description, err = getStack(ctx, b, stackName, opts.Display); err != nil {
-				return result.FromError(err)
+				return err
 			}
 		}
 
@@ -278,7 +277,7 @@ func newUpCmd() *cobra.Command {
 			name, err = promptForValue(
 				yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 		}
 
@@ -289,32 +288,32 @@ func newUpCmd() *cobra.Command {
 			description, err = promptForValue(
 				yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 		}
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
 		if err = workspace.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
 		proj, root, err := readProject()
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		proj.Name = tokens.PackageName(name)
 		proj.Description = &description
 		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
-			return result.FromError(fmt.Errorf("saving project: %w", err))
+			return fmt.Errorf("saving project: %w", err)
 		}
 
 		// Create the stack, if needed.
 		if s == nil {
 			if s, err = promptAndCreateStack(ctx, b, promptForValue, stackName, root, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
-				return result.FromError(err)
+				return err
 			}
 			// The backend will print "Created stack '<stack>'." on success.
 		}
@@ -324,7 +323,7 @@ func newUpCmd() *cobra.Command {
 			ctx, promptForValue, proj, s,
 			templateNameOrURL, template, configArray,
 			yes, path, opts.Display); err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		// Install dependencies.
@@ -332,32 +331,32 @@ func newUpCmd() *cobra.Command {
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
-			return result.FromError(fmt.Errorf("building project context: %w", err))
+			return fmt.Errorf("building project context: %w", err)
 		}
 
 		defer pctx.Close()
 
 		if err = installDependencies(pctx, &proj.Runtime, main); err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cmd.Flags())
 		if err != nil {
-			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
+			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
 
 		cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 		if err != nil {
-			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			return fmt.Errorf("getting stack configuration: %w", err)
 		}
 
 		decrypter, err := sm.Decrypter()
 		if err != nil {
-			return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+			return fmt.Errorf("getting stack decrypter: %w", err)
 		}
 		encrypter, err := sm.Encrypter()
 		if err != nil {
-			return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			return fmt.Errorf("getting stack encrypter: %w", err)
 		}
 
 		stackName := s.Ref().String()
@@ -370,12 +369,12 @@ func newUpCmd() *cobra.Command {
 			encrypter,
 			decrypter)
 		if configErr != nil {
-			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		opts.Engine = engine.UpdateOptions{
@@ -398,7 +397,7 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, res := s.Update(ctx, backend.UpdateOperation{
+		changes, err := s.Update(ctx, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -409,12 +408,12 @@ func newUpCmd() *cobra.Command {
 			Scopes:             backend.CancellationScopes,
 		})
 		switch {
-		case res != nil && res.Error() == context.Canceled:
-			return result.FromError(errors.New("update cancelled"))
-		case res != nil:
-			return PrintEngineResult(res)
+		case err == context.Canceled:
+			return errors.New("update cancelled")
+		case err != nil:
+			return PrintEngineResult(err)
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return result.FromError(errors.New("no changes were expected but changes occurred"))
+			return errors.New("no changes were expected but changes occurred")
 		default:
 			return nil
 		}
@@ -437,7 +436,7 @@ func newUpCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
@@ -449,17 +448,18 @@ func newUpCmd() *cobra.Command {
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(
-					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
+				return errors.New(
+					"--yes or --skip-preview must be passed in to proceed when running in non-interactive mode",
+				)
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			if err = validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			displayType := display.DisplayProgress
@@ -498,7 +498,7 @@ func newUpCmd() *cobra.Command {
 					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
 					targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 
 				var url string
@@ -506,8 +506,8 @@ func newUpCmd() *cobra.Command {
 					url = args[0]
 				}
 
-				if errResult := validateRemoteDeploymentFlags(url, remoteArgs); errResult != nil {
-					return errResult
+				if err = validateRemoteDeploymentFlags(url, remoteArgs); err != nil {
+					return err
 				}
 
 				return runDeployment(ctx, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
@@ -515,7 +515,7 @@ func newUpCmd() *cobra.Command {
 
 			isDIYBackend, err := isDIYBackend(opts.Display)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// by default, we are going to suppress the permalink when using DIY backends

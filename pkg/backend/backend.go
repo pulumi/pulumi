@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -184,18 +183,18 @@ type Backend interface {
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(
 		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
-	) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Import imports resources into a stack.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
-	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) result.Result
+	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
 	// Query against the resource outputs in a stack's state checkpoint.
 	Query(ctx context.Context, op QueryOperation) error

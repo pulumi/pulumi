@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // diyStack is a diy stack descriptor.
@@ -82,29 +81,29 @@ func (s *diyStack) Rename(ctx context.Context, newName tokens.QName) (backend.St
 func (s *diyStack) Preview(
 	ctx context.Context,
 	op backend.UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	return backend.PreviewStack(ctx, s, op, events)
 }
 
-func (s *diyStack) Update(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, result.Result) {
+func (s *diyStack) Update(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, error) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
 func (s *diyStack) Import(ctx context.Context, op backend.UpdateOperation,
 	imports []deploy.Import,
-) (display.ResourceChanges, result.Result) {
+) (display.ResourceChanges, error) {
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
-func (s *diyStack) Refresh(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, result.Result) {
+func (s *diyStack) Refresh(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, error) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *diyStack) Destroy(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, result.Result) {
+func (s *diyStack) Destroy(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, error) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *diyStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+func (s *diyStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) error {
 	return backend.WatchStack(ctx, s, op, paths)
 }
 
