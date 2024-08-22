@@ -165,26 +165,14 @@ func exitErrorCodef(code int, format string, args ...interface{}) {
 func errorMessage(err error) string {
 	contract.Requiref(err != nil, "err", "must not be nil")
 
-	var underlying []error
-	switch multi := err.(type) {
-	case *multierror.Error:
-		underlying = multi.WrappedErrors()
-	case interface{ Unwrap() []error }:
-		// The standard library supported multi-errors (available since Go 1.20)
-		// use this interface.
-		underlying = multi.Unwrap()
-	default:
-		return err.Error()
-	}
+	underlying := flattenErrors(err)
 
 	switch len(underlying) {
 	case 0:
-		// This should never happen, but just in case.
-		// Return the original error message.
 		return err.Error()
 
 	case 1:
-		return errorMessage(underlying[0])
+		return underlying[0].Error()
 
 	default:
 		msg := fmt.Sprintf("%d errors occurred:", len(underlying))
@@ -193,4 +181,26 @@ func errorMessage(err error) string {
 		}
 		return msg
 	}
+}
+
+// Flattens an error into a slice of errors containing the supplied error and
+// all errors it wraps. If the set of wrapped errors is a tree (as e.g. produced
+// by errors.Join), the errors are flattened in a depth-first manner. This
+// function supports both native wrapped errors and those produced by the
+// multierror package.
+func flattenErrors(err error) []error {
+	var errs []error
+	switch multi := err.(type) {
+	case *multierror.Error:
+		for _, e := range multi.Errors {
+			errs = append(errs, flattenErrors(e)...)
+		}
+	case interface{ Unwrap() []error }:
+		for _, e := range multi.Unwrap() {
+			errs = append(errs, flattenErrors(e)...)
+		}
+	default:
+		errs = append(errs, err)
+	}
+	return errs
 }

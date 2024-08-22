@@ -125,6 +125,62 @@ func TestErrorMessage(t *testing.T) {
 			want: "great sadness",
 		},
 		{
+			desc: "error trees (left-nested)",
+			give: errors.Join(
+				errors.Join(
+					errors.New("foo"),
+					errors.New("bar"),
+				),
+				errors.New("baz"),
+			),
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+		{
+			desc: "error trees (right-nested)",
+			give: errors.Join(
+				errors.New("foo"),
+				errors.Join(
+					errors.New("bar"),
+					errors.New("baz"),
+				),
+			),
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+		{
+			desc: "error trees (mixed)",
+			give: errors.Join(
+				errors.Join(
+					errors.New("foo"),
+					errors.Join(
+						errors.New("bar"),
+						errors.New("baz"),
+					),
+				),
+				errors.Join(
+					errors.Join(
+						errors.New("quux"),
+						errors.New("frob"),
+					),
+					errors.New("urk"),
+					errors.New("blog"),
+				),
+			),
+			want: "7 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz" +
+				"\n    4) quux" +
+				"\n    5) frob" +
+				"\n    6) urk" +
+				"\n    7) blog",
+		},
+		{
 			desc: "multi error inside single wrapped error",
 			give: &multierror.Error{
 				Errors: []error{
