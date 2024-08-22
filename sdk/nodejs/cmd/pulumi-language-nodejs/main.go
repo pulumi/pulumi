@@ -1550,6 +1550,7 @@ func (o *oomSniffer) Scan(r io.Reader) {
 			if !o.detected && (strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
 				// Because we hook into the debugger API, the OOM error message can be obscured by
 				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
+				//nolint:lll
 				// https://github.com/nodejs/node/blob/cef2047b1fdd797d5125c4cafe9f17220a0774f7/deps/v8/src/debug/debug-scopes.cc#L447
 				strings.Contains(line, "Check failed: needs_context && current_scope_ == closure_scope_")) {
 				o.detected = true
