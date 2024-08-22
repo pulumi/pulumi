@@ -44,13 +44,14 @@ func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDi
 func (b *cloudBackend) CreateEnvironment(
 	ctx context.Context,
 	org string,
-	name string,
+	projectName string,
+	envName string,
 	yaml []byte,
 ) (apitype.EnvironmentDiagnostics, error) {
-	if err := b.escClient.CreateEnvironment(ctx, org, name); err != nil {
+	if err := b.escClient.CreateEnvironmentWithProject(ctx, org, projectName, envName); err != nil {
 		return nil, err
 	}
-	diags, err := b.escClient.UpdateEnvironment(ctx, org, name, yaml, "")
+	diags, err := b.escClient.UpdateEnvironmentWithProject(ctx, org, projectName, envName, yaml, "")
 	return convertESCDiags(diags), err
 }
 
@@ -73,6 +74,6 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	if err != nil || len(diags) != 0 {
 		return nil, convertESCDiags(diags), err
 	}
-	env, err := b.escClient.GetOpenEnvironment(ctx, org, "yaml", id)
+	env, err := b.escClient.GetOpenEnvironmentWithProject(ctx, org, "project", "yaml", id)
 	return env, nil, err
 }
