@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -139,7 +140,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 	if snap != nil {
 		// Ensure the magic cookie checks out.
 		if snap.Manifest.Magic != snap.Manifest.NewMagic() {
-			return errors.New("magic cookie mismatch; possible tampering/corruption detected")
+			return SnapshotIntegrityErrorf("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
 		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
@@ -152,17 +153,17 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
 				if err != nil {
-					return fmt.Errorf("provider %s is not referenceable: %w", urn, err)
+					return SnapshotIntegrityErrorf("provider %s is not referenceable: %w", urn, err)
 				}
 				provs[ref] = struct{}{}
 			}
 			if provider := state.Provider; provider != "" {
 				ref, err := providers.ParseReference(provider)
 				if err != nil {
-					return fmt.Errorf("failed to parse provider reference for resource %s: %w", urn, err)
+					return SnapshotIntegrityErrorf("failed to parse provider reference for resource %s: %w", urn, err)
 				}
 				if _, has := provs[ref]; !has && !state.PendingReplacement {
-					return fmt.Errorf("resource %s refers to unknown provider %s", urn, ref)
+					return SnapshotIntegrityErrorf("resource %s refers to unknown provider %s", urn, ref)
 				}
 			}
 
@@ -182,10 +183,10 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				if _, has := urns[par]; !has {
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == par {
-							return fmt.Errorf("child resource %s's parent %s comes after it", urn, par)
+							return SnapshotIntegrityErrorf("child resource %s's parent %s comes after it", urn, par)
 						}
 					}
-					return fmt.Errorf("child resource %s refers to missing parent %s", urn, par)
+					return SnapshotIntegrityErrorf("child resource %s refers to missing parent %s", urn, par)
 				}
 
 				// Ensure that our URN is a child of the parent's URN.
@@ -206,11 +207,17 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				if _, has := urns[dep]; !has {
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == dep {
-							return fmt.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
+							return SnapshotIntegrityErrorf(
+								"resource %s's dependency %s comes after it",
+								urn, other.URN,
+							)
 						}
 					}
 
-					return fmt.Errorf("resource %s's dependency %s refers to missing resource", urn, dep)
+					return SnapshotIntegrityErrorf(
+						"resource %s's dependency %s refers to missing resource",
+						urn, dep,
+					)
 				}
 			}
 
@@ -220,14 +227,14 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					if _, has := urns[dep]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep {
-								return fmt.Errorf(
+								return SnapshotIntegrityErrorf(
 									"resource %s's property dependency %s (from property %s) comes after it",
 									urn, other.URN, prop,
 								)
 							}
 						}
 
-						return fmt.Errorf(
+						return SnapshotIntegrityErrorf(
 							"resource %s's property dependency %s (from property %s) refers to missing resource",
 							urn, dep, prop,
 						)
@@ -240,17 +247,23 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				if _, has := urns[dw]; !has {
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == dw {
-							return fmt.Errorf("resource %s is specified as being deleted with %s, which comes after it", urn, other.URN)
+							return SnapshotIntegrityErrorf(
+								"resource %s is specified as being deleted with %s, which comes after it",
+								urn, dw,
+							)
 						}
 					}
 
-					return fmt.Errorf("resource %s is specified as being deleted with %s, which is missing", urn, dw)
+					return SnapshotIntegrityErrorf(
+						"resource %s is specified as being deleted with %s, which is missing",
+						urn, dw,
+					)
 				}
 			}
 
 			if _, has := urns[urn]; has && !state.Delete {
 				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
-				return fmt.Errorf("duplicate resource %s (not marked for deletion)", urn)
+				return SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
 			}
 
 			urns[urn] = state
@@ -279,4 +292,46 @@ func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resourc
 	newSnap := *snap // shallow copy
 	newSnap.Resources = new
 	return &newSnap
+}
+
+// A snapshot integrity error is raised when a snapshot is found to be malformed
+// or invalid in some way (e.g. missing or out-of-order dependencies, or
+// unparseable data).
+type SnapshotIntegrityError struct {
+	// The underlying error that caused this integrity error, if applicable.
+	Err error
+	// The stack trace at the point the error was raised.
+	Stack []byte
+}
+
+// Creates a new snapshot integrity error with a message produced by the given
+// format string and arguments. Supports wrapping errors with %w. Snapshot
+// integrity errors are raised by Snapshot.VerifyIntegrity when a problem is
+// detected with a snapshot (e.g. missing or out-of-order dependencies, or
+// unparseable data).
+func SnapshotIntegrityErrorf(format string, args ...interface{}) error {
+	return &SnapshotIntegrityError{Err: fmt.Errorf(format, args...), Stack: debug.Stack()}
+}
+
+func (s *SnapshotIntegrityError) Error() string {
+	if s.Err == nil {
+		return "snapshot integrity error"
+	}
+
+	return s.Err.Error()
+}
+
+func (s *SnapshotIntegrityError) Unwrap() error {
+	return s.Err
+}
+
+// Returns a tuple in which the second element is true if and only if any error
+// in the given error's tree is a SnapshotIntegrityError. In that case, the
+// first element will be the first SnapshotIntegrityError in the tree. In the
+// event that there is no such SnapshotIntegrityError, the first element will be
+// nil.
+func AsSnapshotIntegrityError(err error) (*SnapshotIntegrityError, bool) {
+	var sie *SnapshotIntegrityError
+	ok := errors.As(err, &sie)
+	return sie, ok
 }
