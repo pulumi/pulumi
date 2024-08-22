@@ -750,6 +750,8 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		// error messages in the engine.
 		contract.IgnoreError(os.Stdout.Sync())
 		contract.IgnoreError(os.Stderr.Sync())
+		// Close the write end of the pipe to signal to the sniffer that it should stop scanning.
+		contract.IgnoreError(w.Close())
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often,
 			// since user errors will trigger this.  So, the error message should look as nice as
@@ -1548,7 +1550,8 @@ func (o *oomSniffer) Scan(r io.Reader) {
 			if !o.detected && (strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
 				// Because we hook into the debugger API, the OOM error message can be obscured by
 				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
-				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_")) {
+				// https://github.com/nodejs/node/blob/cef2047b1fdd797d5125c4cafe9f17220a0774f7/deps/v8/src/debug/debug-scopes.cc#L447
+				strings.Contains(line, "Check failed: needs_context && current_scope_ == closure_scope_")) {
 				o.detected = true
 				close(o.waitChan)
 			}
