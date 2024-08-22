@@ -1545,10 +1545,10 @@ func (o *oomSniffer) Scan(r io.Reader) {
 	go func() {
 		for scanner.Scan() {
 			line := scanner.Text()
-			if !o.detected && strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
+			if !o.detected && (strings.Contains(line, "<--- Last few GCs --->") /* "Normal" OOM output */ ||
 				// Because we hook into the debugger API, the OOM error message can be obscured by
 				// a failed assertion in the debugger https://github.com/pulumi/pulumi/issues/16596.
-				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_") {
+				strings.Contains(line, "Check failed: needs_context && current_scope_ = closure_scope_")) {
 				o.detected = true
 				close(o.waitChan)
 			}
