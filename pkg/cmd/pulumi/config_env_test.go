@@ -68,6 +68,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 	createEnvironment func(
 		ctx context.Context,
 		org string,
+		project string,
 		name string,
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error),
@@ -197,6 +198,7 @@ func newConfigEnvCmdForInitTest(
 		func(
 			ctx context.Context,
 			org string,
+			project string,
 			name string,
 			yaml []byte,
 		) (apitype.EnvironmentDiagnostics, error) {
