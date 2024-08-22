@@ -10,7 +10,7 @@ function heapInfo() {
 }
 
 const data = []
-console.log()
+
 for (let i = 0; i < 1_000_000; i++) {
     if (i % 100 === 0) heapInfo();
     data.push(new Array(1_000_000).fill('a'))
