@@ -15,10 +15,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -484,4 +487,106 @@ func TestRunWithOutputDoesNotMissData(t *testing.T) {
 
 	require.Equal(t, 100+2 /* "x\n" */, *stdout.nWrites)
 	require.Equal(t, 100+2 /* "x\n" */, *stderr.nWrites)
+}
+
+func TestUseFnm(t *testing.T) {
+	t.Parallel()
+	t.Run("no version files", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		_, err := useFnm(tmpDir)
+		require.ErrorIs(t, err, errVersionFileNotFound)
+	})
+
+	t.Run(".node-version in cwd", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("22.7.3"), 0o600))
+		version, err := useFnm(tmpDir)
+		require.NoError(t, err)
+		require.Equal(t, "22.7.3", version)
+	})
+
+	t.Run(".nvmrc in cwd", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".nvmrc"), []byte("20.1.1"), 0o600))
+		version, err := useFnm(tmpDir)
+		require.NoError(t, err)
+		require.Equal(t, "20.1.1", version)
+	})
+
+	t.Run(".nvmrc & .node-version in cwd", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		// .nvmrc should take precedence
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".nvmrc"), []byte("20.1.1"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("22.7.3"), 0o600))
+		version, err := useFnm(tmpDir)
+		require.NoError(t, err)
+		require.Equal(t, "20.1.1", version)
+	})
+
+	t.Run(".node-version in parent folder", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		tmpDirNested := filepath.Join(tmpDir, "nested")
+		require.NoError(t, os.MkdirAll(tmpDirNested, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("20.1.1"), 0o600))
+		version, err := useFnm(tmpDirNested)
+		require.NoError(t, err)
+		require.Equal(t, "20.1.1", version)
+	})
+
+	t.Run(".node-version in cwd & parent", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		tmpDirNested := filepath.Join(tmpDir, "nested")
+		require.NoError(t, os.MkdirAll(tmpDirNested, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("20.1.1"), 0o600))
+		// This should take precedence over the parent folder's .node-version
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDirNested, ".node-version"), []byte("20.7.3"), 0o600))
+		version, err := useFnm(tmpDirNested)
+		require.NoError(t, err)
+		require.Equal(t, "20.7.3", version)
+	})
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestNodeInstall(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+	tmpDir := t.TempDir()
+
+	// Add a fake fnm executable to $tmp/bin and set $PATH to $tmp/bin.
+	// For each exeuction the executable will append a line with its arguments to a file. We read
+	// back the file to verify that it was called with the correct arguments.
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
+	outPath := filepath.Join(tmpDir, "out.txt")
+	script := fmt.Sprintf("#!/bin/sh\necho $@ >> %s\n", outPath)
+	//nolint:gosec // we want this file to be executable
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "fnm"), []byte(script), 0o700))
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
+
+	// There's no .node-version or .nvmrc file, so the binary should not be called.
+	// We expect the file written by our mock fnm executable to not exist.
+	stdout := &bytes.Buffer{}
+	err := installNodeVersion(tmpDir, stdout)
+	require.NoError(t, err)
+	_, err = os.Stat(outPath)
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	// Create a .node-version file
+	// The mock fnm executable should be called with a command to install the requested version,
+	// and a command to set the default version to this version.
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("20.1.2"), 0o600))
+	stdout = &bytes.Buffer{}
+	err = installNodeVersion(tmpDir, stdout)
+	require.NoError(t, err)
+	b, err := os.ReadFile(outPath)
+	require.NoError(t, err)
+	commands := strings.Split(strings.TrimSpace(string(b)), "\n")
+	require.Equal(t, "install 20.1.2 --progress never", commands[0])
+	require.Equal(t, "alias 20.1.2 default", commands[1])
 }
