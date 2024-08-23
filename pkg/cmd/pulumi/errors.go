@@ -5,8 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"runtime"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -49,6 +54,13 @@ func processCmdErrors(err error) error {
 	if de, ok := engine.AsDecryptError(err); ok {
 		printDecryptError(*de)
 		return nil
+	} else if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
+		printSnapshotIntegrityError(*sie)
+
+		// Having printed out a specific error, we don't want RunFunc to print out
+		// the underlying message again. We do however want it to exit with a
+		// non-zero exit code, so we return a BailError to satisfy both these needs.
+		return result.BailError(err)
 	}
 
 	// In all other cases, return the unexpected error as-is for generic handling.
@@ -60,7 +72,7 @@ func processCmdErrors(err error) error {
 func printDecryptError(e engine.DecryptError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
-	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s", e.Key, e.Err)
+	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s\n", e.Key, e.Err)
 	fprintf(writer, ""+
 		"This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and "+
 		"it is not possible to share an encrypted configuration value across stacks.\n"+
@@ -71,6 +83,43 @@ func printDecryptError(e engine.DecryptError) {
 		"refusing to proceed", e.Key)
 	contract.IgnoreError(writer.Flush())
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
+}
+
+// Snapshot integrity errors are generally indicative of a serious bug in the
+// Pulumi engine. This function is a type-specific handler for these errors that
+// prints out a panic-like banner with information about the error and how to
+// report it.
+func printSnapshotIntegrityError(err deploy.SnapshotIntegrityError) {
+	cmdutil.Diag().Errorf(diag.RawMessage(
+		"", /*urn*/
+		fmt.Sprintf(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
+
+================================================================================
+We would appreciate a report: https://github.com/pulumi/pulumi/issues/
+Please provide all of the below text in your report.
+================================================================================
+Pulumi Version:    %s
+Go Version:        %s
+Go Compiler:       %s
+Architecture:      %s
+Operating System:  %s
+Command:           %s
+Error:             %s
+
+Stack Trace:
+
+%s
+`,
+			version.Version,
+			runtime.Version(),
+			runtime.Compiler,
+			runtime.GOARCH,
+			runtime.GOOS,
+			strings.Join(os.Args, " "),
+			err.Error(),
+			string(err.Stack),
+		),
+	))
 }
 
 // Quick and dirty utility function for printing to writers that we know will never fail.
