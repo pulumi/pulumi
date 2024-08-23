@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Show a better message when logging out with `--all`

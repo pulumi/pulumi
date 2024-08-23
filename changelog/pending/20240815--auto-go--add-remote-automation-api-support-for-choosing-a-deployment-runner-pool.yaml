@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Add Remote Automation API support for choosing a deployment runner pool.

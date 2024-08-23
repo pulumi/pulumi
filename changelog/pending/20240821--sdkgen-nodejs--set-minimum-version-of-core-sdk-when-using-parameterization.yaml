@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/nodejs
-  description: Set minimum version of core SDK when using parameterization
