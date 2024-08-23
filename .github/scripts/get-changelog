@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+>&2 echo "::group::Get changelog"
+trap ">&2 echo '::endgroup::'" EXIT # bash equivalent of defer func()
+
+# Argument must be a committish or release tag.
+PREVIOUS_VERSION="${1:-""}"
+if [ -z "${PREVIOUS_VERSION}" ]; then
+  >&2 echo "::warn::Previous version argument missing, use a release tag or commitish."
+  PREVIOUS_VERSION=$(git rev-list --max-parents=0 HEAD)
+fi
+# All other arguments are passed to git-cliff as is.
+shift 1
+
+# For debugging, use a commit other than HEAD as the 'current commit' to calculate the changelog.
+CURRENT_COMMIT="${CURRENT_COMMIT:-"HEAD"}"
+
+if git merge-base --is-ancestor "${PREVIOUS_VERSION}" "${CURRENT_COMMIT}"; then
+  >&2 echo "::debug::Previous version is an ancestor."
+  MERGE_BASE="${PREVIOUS_VERSION}"
+else
+  >&2 echo "::debug::Previous version is not an ancestor, finding best common ancestor."
+  MERGE_BASE="$(git merge-base "${PREVIOUS_VERSION}" "${CURRENT_COMMIT}")"
+fi
+
+>&2 echo "::debug::Merge base ${MERGE_BASE}"
+
+go run github.com/pulumi/go-change@v0.1.3 render --filter-since-commit "${MERGE_BASE}" "${@}"
