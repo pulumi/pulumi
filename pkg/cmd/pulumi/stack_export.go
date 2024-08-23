@@ -44,7 +44,7 @@ func newStackExportCmd() *cobra.Command {
 			"`pulumi stack import`. This process may be used to correct inconsistencies\n" +
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

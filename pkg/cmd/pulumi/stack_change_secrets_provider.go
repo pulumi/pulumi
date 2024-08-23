@@ -65,7 +65,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider " +
 			"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return scspcmd.Run(ctx, args)
 		}),

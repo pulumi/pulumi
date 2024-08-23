@@ -87,7 +87,7 @@ func newRefreshCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			// Remote implies we're skipping previews.
@@ -287,7 +287,7 @@ func newRefreshCmd() *cobra.Command {
 			case err == context.Canceled:
 				return errors.New("refresh cancelled")
 			case err != nil:
-				return PrintEngineResult(err)
+				return err
 			case expectNop && changes != nil && engine.HasChanges(changes):
 				return errors.New("no changes were expected but changes occurred")
 			default:

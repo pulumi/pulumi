@@ -54,7 +54,7 @@ func newViewTraceCmd() *cobra.Command {
 			"port 8008; the --port flag can be used to change this if necessary.",
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 			if err != nil {
 				return err

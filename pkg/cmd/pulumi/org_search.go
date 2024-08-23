@@ -190,7 +190,7 @@ func newSearchCmd() *cobra.Command {
 		Short: "Search for resources in Pulumi Cloud",
 		Long:  "Search for resources in Pulumi Cloud.",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(scmd.queryParams) == 0 {
 				return cmd.Help()

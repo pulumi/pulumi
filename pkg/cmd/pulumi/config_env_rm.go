@@ -30,7 +30,7 @@ func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
 		Short: "Remove environments from a stack",
 		Long:  "Removes an environment from a stack's import list.",
 		Args:  cmdutil.ExactArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		}),

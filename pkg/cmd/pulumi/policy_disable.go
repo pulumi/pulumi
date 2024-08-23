@@ -33,7 +33,7 @@ func newPolicyDisableCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Disable a Policy Pack for a Pulumi organization",
 		Long:  "Disable a Policy Pack for a Pulumi organization",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			var err error

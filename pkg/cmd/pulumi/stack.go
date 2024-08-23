@@ -57,7 +57,7 @@ func newStackCmd() *cobra.Command {
 			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

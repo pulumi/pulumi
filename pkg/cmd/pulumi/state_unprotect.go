@@ -43,7 +43,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.

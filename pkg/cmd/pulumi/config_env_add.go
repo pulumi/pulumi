@@ -32,7 +32,7 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 			"per the ESC merge rules. The list of stacks behaves as if it were the import list in an anonymous\n" +
 			"environment.",
 		Args: cmdutil.MinimumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		}),

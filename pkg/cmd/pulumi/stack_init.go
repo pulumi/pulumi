@@ -67,7 +67,7 @@ func newStackInitCmd() *cobra.Command {
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return sicmd.Run(ctx, args)
 		}),

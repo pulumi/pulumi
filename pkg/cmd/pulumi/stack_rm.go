@@ -47,7 +47,7 @@ func newStackRmCmd() *cobra.Command {
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.

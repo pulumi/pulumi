@@ -136,7 +136,7 @@ func newPluginRunCmd() *cobra.Command {
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
 			"the latest installed plugin will be used.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return c.run(args)
 		}),
 	}

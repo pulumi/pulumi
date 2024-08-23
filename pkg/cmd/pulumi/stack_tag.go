@@ -58,7 +58,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 		Use:   "get <name>",
 		Short: "Get a single stack tag value",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			name := args[0]
 
@@ -92,7 +92,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		Use:   "ls",
 		Short: "List all stack tags",
 		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -148,7 +148,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 		Use:   "rm <name>",
 		Short: "Remove a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			name := args[0]
 
@@ -178,7 +178,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 		Use:   "set <name> <value>",
 		Short: "Set a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			name := args[0]
 			value := args[1]

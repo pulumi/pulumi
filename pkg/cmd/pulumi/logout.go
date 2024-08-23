@@ -44,7 +44,7 @@ func newLogoutCmd() *cobra.Command {
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		Run: runCmdFunc(func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
 				if cloudURL != "" || all {
