@@ -241,7 +241,6 @@ func printGoLinkInstructions(root string, pkg *schema.Package, out string) error
 	fmt.Println()
 
 	relOut, err := filepath.Rel(root, out)
-	relOut = filepath.Join(relOut, pkg.Name)
 	if err != nil {
 		return err
 	}
