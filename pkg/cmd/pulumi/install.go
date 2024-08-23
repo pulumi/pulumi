@@ -143,11 +143,25 @@ func newInstallCmd() *cobra.Command {
 						}
 					}
 
-					pctx.Diag.Infoerrf(diag.Message("", "%s installing"), label)
+					// If we don't have a version yet but we are installing try and call GetLatestVersion
+					// to fill it in.
+					if install.Version == nil {
+						logging.V(8).Infof(
+							"installPlugin(%s): version not specified, trying to lookup latest version", install.Name)
+
+						version, err := install.GetLatestVersion()
+						if err != nil {
+							return fmt.Errorf("could not get latest version for plugin %s: %w", install.Name, err)
+						}
+						install.Version = version
+					}
+
+					pctx.Diag.Infoerrf(diag.Message("", "%s version %s installing"), label, install.Version)
 
 					// If we got here, actually try to do the download.
 					withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-						return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", displayOpts.Color)
+						return workspace.ReadCloserProgressBar(stream, size,
+							"Downloading plugin", displayOpts.Color)
 					}
 					retry := func(err error, attempt int, limit int, delay time.Duration) {
 						pctx.Diag.Warningf(

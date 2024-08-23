@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -451,4 +452,46 @@ func TestPluginRun(t *testing.T) {
 	assert.Contains(t, stderr, "flag: help requested")
 	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
+}
+
+func TestInstall(t *testing.T) {
+	t.Parallel()
+
+	for _, runtime := range Runtimes {
+		// Reassign runtime before capture since it changes while looping.
+		runtime := runtime
+
+		t.Run(runtime, func(t *testing.T) {
+			t.Parallel()
+
+			e := ptesting.NewEnvironment(t)
+			defer deleteIfNotFailed(e)
+
+			// Make sure the random provider is not installed locally
+			// so that we can test the `install` command works.
+			out, _ := e.RunCommand("pulumi", "plugin", "ls")
+			if strings.Contains(out, "random  resource") {
+				e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
+			}
+
+			// `new` wants to work in an empty directory but our use of local url means we have a
+			// ".pulumi" directory at root.
+			projectDir := filepath.Join(e.RootPath, "project")
+			err := os.Mkdir(projectDir, 0o700)
+			require.NoError(t, err)
+
+			e.CWD = projectDir
+
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			// Pass `--generate-only` so dependencies are not installed as part of the `new` command.
+			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes", "--generate-only")
+
+			// Ensure `install` works and subsequent `up` and `destroy` operations work.
+			_, stderr := e.RunCommand("pulumi", "install")
+			assert.Regexp(t, regexp.MustCompile(`resource plugin random.+ installing`), stderr)
+			e.RunCommand("pulumi", "stack", "init", "test")
+			e.RunCommand("pulumi", "up", "--yes")
+			e.RunCommand("pulumi", "destroy", "--yes")
+		})
+	}
 }
