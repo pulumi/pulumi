@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Print panic banners for snapshot integrity errors

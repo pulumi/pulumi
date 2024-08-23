@@ -1,5 +1,88 @@
 # Changelog
 
+## 3.130.0 (2024-08-23)
+
+
+### Features
+
+- [cli/display] Print panic banners for snapshot integrity errors
+  [#17047](https://github.com/pulumi/pulumi/pull/17047)
+
+- [auto/go] Add options to automation API Workspace.Install
+  [#16888](https://github.com/pulumi/pulumi/pull/16888)
+
+- [auto/go] Add Remote Automation API support for choosing a deployment runner pool.
+  [#16991](https://github.com/pulumi/pulumi/pull/16991)
+
+- [backend/service] Prefer `PULUMI_ACCESS_TOKEN` set in the environment over the one stored in the config when they don't match
+  [#17051](https://github.com/pulumi/pulumi/pull/17051)
+  [#16970](https://github.com/pulumi/pulumi/pull/16970)
+
+- [engine] Allow provider to be unknown during preview
+  [#16868](https://github.com/pulumi/pulumi/pull/16868)
+
+- [programgen] Add an organization intrinsic to PCL
+  [#16948](https://github.com/pulumi/pulumi/pull/16948)
+
+- [cli/install] Add `--use-language-version-tools` flag to setup python version using pyenv during installation
+  [#16855](https://github.com/pulumi/pulumi/pull/16855)
+
+- [cli/package] Allow `pulumi package add` to work with arbitrary schema sources
+  [#16989](https://github.com/pulumi/pulumi/pull/16989)
+
+
+### Bug Fixes
+
+- [auto] Fix panic in remote automation API
+  [#16978](https://github.com/pulumi/pulumi/pull/16978)
+
+- [cli] Show a better message when logging out with `--all`
+  [#17051](https://github.com/pulumi/pulumi/pull/17051)
+  [#16998](https://github.com/pulumi/pulumi/pull/16998)
+
+- [cli/install] Fix installation of dependencies that do not specify a version (eg yaml)
+  [#16981](https://github.com/pulumi/pulumi/pull/16981)
+
+- [docs] Use `ComponentResourceOptions` for components
+  [#16968](https://github.com/pulumi/pulumi/pull/16968)
+
+- [docs] Show envvars for provider nested types
+  [#17051](https://github.com/pulumi/pulumi/pull/17051)
+  [#16984](https://github.com/pulumi/pulumi/pull/16984)
+
+- [sdk/go] Unmarshal pointers correctly if destination type is any
+  [#16914](https://github.com/pulumi/pulumi/pull/16914)
+
+- [sdkgen/go] Use provided ImportBasePath for parameterized SDKs
+  [#17036](https://github.com/pulumi/pulumi/pull/17036)
+
+- [sdkgen/go] Update package add instructions for go
+  [#17055](https://github.com/pulumi/pulumi/pull/17055)
+
+- [sdk/nodejs] Fix type checking of `Output<Record<string, any>>`
+  [#16959](https://github.com/pulumi/pulumi/pull/16959)
+
+- [sdk/nodejs] Fix NodeJS OOM detection condition
+  [#17045](https://github.com/pulumi/pulumi/pull/17045)
+
+- [sdk/nodejs] Prevent double close on OOM detection channel
+  [#17043](https://github.com/pulumi/pulumi/pull/17043)
+
+- [sdkgen/nodejs] Set minimum version of core SDK when using parameterization
+  [#17032](https://github.com/pulumi/pulumi/pull/17032)
+
+- [sdk/python] Fix the type of `StackReference.outputs` to be `Dict[str, any]`
+  [#16956](https://github.com/pulumi/pulumi/pull/16956)
+
+
+### Miscellaneous
+
+- [cli] Warn that query is planned to be removed
+  [#16963](https://github.com/pulumi/pulumi/pull/16963)
+
+- [programgen] Improve the error message for an invalid method name
+  [#17026](https://github.com/pulumi/pulumi/pull/17026)
+
 ## 3.129.0 (2024-08-12)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Prefer `PULUMI_ACCESS_TOKEN` set in the environment over the one stored in the config when they don't match
