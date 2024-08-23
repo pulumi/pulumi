@@ -21,20 +21,6 @@ concurrency:
 # commands for running workflows from forks.
 
 jobs:
-  changelog-comment:
-    name: changelog preview
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    permissions:
-      contents: read
-      pull-requests: write
-    uses: ./.github/workflows/on-pr-changelog.yml
-    with:
-      ref: ${{ github.ref }}
-      base-ref: origin/${{ github.base_ref }}
-      pr-number: ${{ github.event.pull_request.number }}
-      changelog-required: ${{ !contains(github.event.pull_request.labels.*.name, 'impact/no-changelog-required') }}
-    secrets: inherit
-
   info:
     name: info
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
