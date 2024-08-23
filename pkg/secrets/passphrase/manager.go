@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -64,6 +65,7 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Cry
 	ignoredCtx := context.Background()
 	decrypted, err := decrypter.DecryptValue(ignoredCtx, state[indexN(state, ":", 2)+1:])
 	if err != nil || decrypted != "pulumi" {
+		logging.V(7).Infof("incorrect passphrase: %v", err)
 		return nil, ErrIncorrectPassphrase
 	}
 
