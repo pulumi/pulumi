@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: docs
-  description: Show envvars for provider nested types.
+  description: Show envvars for provider nested types
