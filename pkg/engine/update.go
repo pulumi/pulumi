@@ -123,7 +123,7 @@ type UpdateOptions struct {
 	RequiredPolicies []RequiredPolicy
 
 	// the degree of parallelism for resource operations (<=1 for serial).
-	Parallel int
+	Parallel int32
 
 	// true if debugging output it enabled
 	Debug bool

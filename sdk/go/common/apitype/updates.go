@@ -50,7 +50,7 @@ type UpdateOptions struct {
 	LocalPolicyPackPaths []string            `json:"localPolicyPackPaths"`
 	Color                colors.Colorization `json:"color"`
 	DryRun               bool                `json:"dryRun"`
-	Parallel             int                 `json:"parallel"`
+	Parallel             int32               `json:"parallel"`
 	ShowConfig           bool                `json:"showConfig"`
 	ShowReplacementSteps bool                `json:"showReplacementSteps"`
 	ShowSames            bool                `json:"showNames"`

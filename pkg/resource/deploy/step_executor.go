@@ -599,7 +599,7 @@ func newStepExecutor(
 
 	// Otherwise, launch a worker goroutine for each degree of parallelism.
 	fanout := deployment.opts.DegreeOfParallelism()
-	for i := 0; i < fanout; i++ {
+	for i := 0; i < int(fanout); i++ {
 		exec.workers.Add(1)
 		go exec.worker(i, false /*launchAsync*/)
 	}

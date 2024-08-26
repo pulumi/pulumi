@@ -40,7 +40,8 @@ import (
 
 // The default number of parallel resource operations to run at once during an update, if --parallel is unset.
 // See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
-var defaultParallel = runtime.NumCPU() * 4
+var defaultParallel = int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
+//                                                                  but the NumCPU function returns an int.
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
@@ -65,7 +66,7 @@ func newUpCmd() *cobra.Command {
 	var policyPackConfigPaths []string
 	var diffDisplay bool
 	var eventLogPath string
-	var parallel int
+	var parallel int32
 	var refresh string
 	var showConfig bool
 	var showPolicyRemediations bool
@@ -593,7 +594,7 @@ func newUpCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
-	cmd.PersistentFlags().IntVarP(
+	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(

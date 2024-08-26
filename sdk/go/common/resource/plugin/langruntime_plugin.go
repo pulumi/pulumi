@@ -227,7 +227,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		ConfigPropertyMap: configPropertyMap,
 		DryRun:            info.DryRun,
 		QueryMode:         info.QueryMode,
-		Parallel:          int32(info.Parallel),
+		Parallel:          info.Parallel,
 		Organization:      info.Organization,
 		Info:              minfo,
 	})

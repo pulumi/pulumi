@@ -304,7 +304,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 	}
 	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", pkg, version)
 
-	schemaFormatVersion := 0
+	var schemaFormatVersion int32
 	schema, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{
 		Version: schemaFormatVersion,
 	})

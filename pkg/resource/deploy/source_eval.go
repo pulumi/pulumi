@@ -80,7 +80,7 @@ type EvalSourceOptions struct {
 	// true if the evaluation is producing resources for a dry-run/preview.
 	DryRun bool
 	// the degree of parallelism for resource operations (<=1 for serial).
-	Parallel int
+	Parallel int32
 	// true to disable resource reference support.
 	DisableResourceReferences bool
 	// true to disable output value support.

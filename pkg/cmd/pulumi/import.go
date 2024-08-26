@@ -546,7 +546,7 @@ func newImportCmd() *cobra.Command {
 	var jsonDisplay bool
 	var diffDisplay bool
 	var eventLogPath string
-	var parallel int
+	var parallel int32
 	var previewOnly bool
 	var showConfig bool
 	var skipPreview bool
@@ -1047,7 +1047,7 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().IntVarP(
+	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(

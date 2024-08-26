@@ -29,7 +29,7 @@ import (
 
 type GetSchemaRequest struct {
 	// Version is the version of the schema to return. If omitted, the latest version of the schema should be returned.
-	Version int
+	Version int32
 	// Subpackage name to get the schema for.
 	SubpackageName string
 	// Subpackage version to get the schema for.
@@ -606,7 +606,7 @@ type ConstructInfo struct {
 	Config           map[config.Key]string // the configuration variables to apply before running.
 	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
 	DryRun           bool                  // true if we are performing a dry-run (preview).
-	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress   string                // the RPC address to the host resource monitor.
 }
 
@@ -679,7 +679,7 @@ type CallInfo struct {
 	Stack          string                // the stack name being evaluated.
 	Config         map[config.Key]string // the configuration variables to apply before running.
 	DryRun         bool                  // true if we are performing a dry-run (preview).
-	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel       int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress string                // the RPC address to the host resource monitor.
 }
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path"
@@ -273,7 +274,7 @@ func (ctx *Context) Project() string { return ctx.state.info.Project }
 func (ctx *Context) Stack() string { return ctx.state.info.Stack }
 
 // Parallel returns the degree of parallelism currently being used by the engine (1 being entirely serial).
-func (ctx *Context) Parallel() int { return ctx.state.info.Parallel }
+func (ctx *Context) Parallel() int32 { return ctx.state.info.Parallel }
 
 // DryRun is true when evaluating a program for purposes of planning, instead of performing a true deployment.
 func (ctx *Context) DryRun() bool { return ctx.state.info.DryRun }
@@ -2378,8 +2379,16 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	for i := range elems {
 		elems[i] = url.PathEscape(elems[i])
 	}
+	var line int32
+	if frame.Line <= math.MaxInt32 {
+		//nolint:gosec
+		line = int32(frame.Line)
+	} else {
+		// line is out of range for int32, that's a long sourcefile!
+		line = 0
+	}
 	return &pulumirpc.SourcePosition{
 		Uri:  "project://" + path.Join(elems...),
-		Line: int32(frame.Line),
+		Line: line,
 	}
 }

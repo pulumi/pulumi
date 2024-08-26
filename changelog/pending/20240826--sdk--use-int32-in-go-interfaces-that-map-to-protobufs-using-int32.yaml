@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk
+  description: Use int32 in Go interfaces that map to protobufs using int32
