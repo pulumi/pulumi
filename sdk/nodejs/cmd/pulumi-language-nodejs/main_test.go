@@ -489,8 +489,15 @@ func TestRunWithOutputDoesNotMissData(t *testing.T) {
 	require.Equal(t, 100+2 /* "x\n" */, *stderr.nWrites)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestUseFnm(t *testing.T) {
-	t.Parallel()
+	// Add a fake fnm binary to $tmp/bin and set $PATH to $tmp/bin so that `useFnm` can find it.
+	tmpDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
+	//nolint:gosec // we want this file to be executable
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "fnm"), []byte("#!/bin/sh\nexit 0;\n"), 0o700))
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
+
 	t.Run("no version files", func(t *testing.T) {
 		t.Parallel()
 		tmpDir := t.TempDir()
