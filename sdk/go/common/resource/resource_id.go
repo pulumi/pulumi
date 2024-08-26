@@ -17,7 +17,6 @@ package resource
 import (
 	"crypto"
 	cryptorand "crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 
@@ -88,46 +87,6 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 func NewUniqueHexID(prefix string, randlen, maxlen int) (ID, error) {
 	u, err := NewUniqueHex(prefix, randlen, maxlen)
 	return ID(u), err
-}
-
-// NewUniqueHexV2 generates a new "random" hex string for use by resource providers. It will take the optional prefix
-// and append randLen random characters (defaulting to 8 if not > 0).  The result must not exceed maxLen total
-// characters (if > 0).  Note that capping to maxLen necessarily increases the risk of collisions.
-// The randomness for this method is a function of urn and sequenceNumber iff sequenceNUmber > 0, else it falls back to
-// a non-deterministic source of randomness.
-func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randLen, maxLen int) (string, error) {
-	if randLen <= 0 {
-		randLen = 8
-	}
-	if maxLen > 0 && len(prefix)+randLen > maxLen {
-		return "", fmt.Errorf(
-			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randLen, maxLen)
-	}
-
-	if sequenceNumber == 0 {
-		// No sequence number fallback to old logic
-		return NewUniqueHex(prefix, randLen, maxLen)
-	}
-
-	if randLen > 32 {
-		return "", fmt.Errorf("randLen is longer than 32, %d", randLen)
-	}
-
-	// TODO(seqnum) This is seeded by urn and sequence number, and urn has the stack and project names in it.
-	// But do we care about org name as well?
-	// Do we need a config source of randomness so if users hit a collision they can set a config value to get out of it?
-	hasher := crypto.SHA512.New()
-
-	_, err := hasher.Write([]byte(urn))
-	contract.AssertNoErrorf(err, "error hashing urn")
-
-	err = binary.Write(hasher, binary.LittleEndian, uint32(sequenceNumber))
-	contract.AssertNoErrorf(err, "error hashing sequence number")
-
-	bs := hasher.Sum(nil)
-	contract.Assertf(len(bs) == 64, "expected 64 bytes from sha512, got %d", len(bs))
-
-	return prefix + hex.EncodeToString(bs)[:randLen], nil
 }
 
 // NewUniqueName generates a new "random" string primarily intended for use by resource providers for

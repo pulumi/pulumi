@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk
+  description: Remove unused resource.NewUniqueHexV2
