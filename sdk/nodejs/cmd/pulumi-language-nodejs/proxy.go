@@ -154,6 +154,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 
 				// write the 4-byte response length
 				logging.V(10).Infoln("Sync invoke: Writing length to request pipe")
+				//nolint:gosec // Max message size for protobuf is 2GB, so the int -> uint32 conversion is safe.
 				if err := binary.Write(pipes.writer(), binary.BigEndian, uint32(len(resBytes))); err != nil {
 					logging.V(10).Infof("Sync invoke: Error writing length to pipe: %s\n", err)
 					return err

@@ -49,6 +49,7 @@ func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
 	}
 
 	return &codegenrpc.Diagnostic{
+		//nolint:gosec // diag.Seveverity is 0, 1 or 2, the int -> int32 conversion is safe.
 		Severity: codegenrpc.DiagnosticSeverity(diag.Severity),
 		Summary:  diag.Summary,
 		Detail:   diag.Detail,

@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -970,6 +971,10 @@ func (r *zipArchiveReader) Next() (string, *asset.Blob, error) {
 			return "", nil, fmt.Errorf("failed to read ZIP inner file %v: %w", file.Name, err)
 		}
 
+		if file.UncompressedSize64 > math.MaxInt64 {
+			return "", nil, fmt.Errorf("file %v is too large to read", file.Name)
+		}
+		//nolint:gosec // uint64 -> int64 overflow is checked above.
 		blob := asset.NewRawBlob(body, int64(file.UncompressedSize64))
 		name := filepath.Clean(file.Name)
 		return name, blob, nil

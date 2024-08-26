@@ -608,6 +608,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			switch {
 			case len(args) == 2:
 				value = args[1]
+			//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
 			case !term.IsTerminal(int(os.Stdin.Fd())):
 				b, readerr := io.ReadAll(os.Stdin)
 				if readerr != nil {
