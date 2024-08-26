@@ -68,10 +68,7 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption) error {
 	// Parse the info out of environment variables.  This is a lame contract with the caller, but helps to keep
 	// boilerplate to a minimum in the average Pulumi Go program.
-	info, err := getEnvInfo()
-	if err != nil {
-		return err
-	}
+	info := getEnvInfo()
 	if info.getPlugins {
 		return ErrPlugins
 	}
@@ -165,20 +162,11 @@ type RunInfo struct {
 }
 
 // getEnvInfo reads various program information from the process environment.
-func getEnvInfo() (RunInfo, error) {
+func getEnvInfo() RunInfo {
 	// Most of the variables are just strings, and we can read them directly.  A few of them require more parsing.
-	parallel, err := strconv.ParseInt(os.Getenv(EnvParallel), 10, 32)
-	if err != nil {
-		return RunInfo{}, fmt.Errorf("parsing %s: %v", EnvParallel, err)
-	}
-	dryRun, err := strconv.ParseBool(os.Getenv(EnvDryRun))
-	if err != nil {
-		return RunInfo{}, fmt.Errorf("parsing %s: %v", EnvDryRun, err)
-	}
-	getPlugins, err := strconv.ParseBool(os.Getenv(envPlugins))
-	if err != nil {
-		return RunInfo{}, fmt.Errorf("parsing %s: %v", envPlugins, err)
-	}
+	parallel, _ := strconv.ParseInt(os.Getenv(EnvParallel), 10, 32)
+	dryRun, _ := strconv.ParseBool(os.Getenv(EnvDryRun))
+	getPlugins, _ := strconv.ParseBool(os.Getenv(envPlugins))
 
 	var config map[string]string
 	if cfg := os.Getenv(EnvConfig); cfg != "" {
@@ -201,7 +189,7 @@ func getEnvInfo() (RunInfo, error) {
 		MonitorAddr:      os.Getenv(EnvMonitor),
 		EngineAddr:       os.Getenv(EnvEngine),
 		getPlugins:       getPlugins,
-	}, nil
+	}
 }
 
 const (
