@@ -491,12 +491,17 @@ func TestRunWithOutputDoesNotMissData(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestUseFnm(t *testing.T) {
-	// Add a fake fnm binary to $tmp/bin and set $PATH to $tmp/bin so that `useFnm` can find it.
+	// Set $PATH to to $TMPDIR/bin so that no `fnm` executable can be found.
 	tmpDir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
+
+	_, err := useFnm(tmpDir)
+	require.ErrorIs(t, err, errFnmNotFound)
+
+	// Add a fake fnm binary to $TMPDIR/bin for the rest of the tests.
 	//nolint:gosec // we want this file to be executable
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "fnm"), []byte("#!/bin/sh\nexit 0;\n"), 0o700))
-	t.Setenv("PATH", filepath.Join(tmpDir, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	t.Run("no version files", func(t *testing.T) {
 		t.Parallel()
@@ -565,24 +570,29 @@ func TestNodeInstall(t *testing.T) {
 		t.Skip()
 	}
 	tmpDir := t.TempDir()
+	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
-	// Add a fake fnm executable to $tmp/bin and set $PATH to $tmp/bin.
-	// For each exeuction the executable will append a line with its arguments to a file. We read
-	// back the file to verify that it was called with the correct arguments.
+	fmt.Println(os.Getenv("PATH"))
+
+	// There's no fnm executable in PATH, installNodeVersion is a no-op
+	stdout := &bytes.Buffer{}
+	err := installNodeVersion(tmpDir, stdout)
+	require.ErrorIs(t, err, errFnmNotFound)
+
+	// Add a mock fnm executable to $tmp/bin. For each execution, the mock fnm executable will
+	// append a line with its arguments to a file. We read back the file to verify that it was
+	// called with the expected arguments.
 	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "bin"), 0o755))
 	outPath := filepath.Join(tmpDir, "out.txt")
 	script := fmt.Sprintf("#!/bin/sh\necho $@ >> %s\n", outPath)
 	//nolint:gosec // we want this file to be executable
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bin", "fnm"), []byte(script), 0o700))
-	t.Setenv("PATH", filepath.Join(tmpDir, "bin"))
 
 	// There's no .node-version or .nvmrc file, so the binary should not be called.
 	// We expect the file written by our mock fnm executable to not exist.
-	stdout := &bytes.Buffer{}
-	err := installNodeVersion(tmpDir, stdout)
-	require.NoError(t, err)
-	_, err = os.Stat(outPath)
-	require.ErrorIs(t, err, os.ErrNotExist)
+	stdout = &bytes.Buffer{}
+	err = installNodeVersion(tmpDir, stdout)
+	require.Error(t, err, errVersionFileNotFound)
 
 	// Create a .node-version file
 	// The mock fnm executable should be called with a command to install the requested version,

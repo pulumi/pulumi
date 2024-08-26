@@ -886,11 +886,15 @@ func (host *nodeLanguageHost) InstallDependencies(
 	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
 	defer tracingSpan.Finish()
 
-	// Look for a .nvmrc or .node-version file, install the version specified in it, and set it as
-	// the default nodejs version.
 	if req.UseLanguageVersionTools {
+		// Look for a .nvmrc or .node-version file, install the version specified in it, and set it
+		// as the default nodejs version.
 		if err := installNodeVersion(req.Info.ProgramDirectory, stdout); err != nil {
-			return fmt.Errorf("failed to install node version: %w", err)
+			// If no version file is present, or fnm is not installed, we ignore the error and
+			// continue.
+			if !errors.Is(err, errVersionFileNotFound) && !errors.Is(err, errFnmNotFound) {
+				return fmt.Errorf("failed to install node version: %w", err)
+			}
 		}
 	}
 
@@ -985,10 +989,6 @@ func useFnm(cwd string) (string, error) {
 func installNodeVersion(cwd string, stdout io.Writer) error {
 	version, err := useFnm(cwd)
 	if err != nil {
-		if errors.Is(err, errVersionFileNotFound) || errors.Is(err, errFnmNotFound) {
-			// No version file found, or no fnm executable found -> nothing to do
-			return nil
-		}
 		return err
 	}
 	fmt.Fprintf(stdout, "Setting Nodejs version to %s\n", version)
