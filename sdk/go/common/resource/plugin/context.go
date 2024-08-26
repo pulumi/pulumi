@@ -34,11 +34,12 @@ import (
 // associated OS resources can be cached, shared, and reclaimed as
 // appropriate. It also carries shared plugin configuration.
 type Context struct {
-	Diag       diag.Sink // the diagnostics sink to use for messages.
-	StatusDiag diag.Sink // the diagnostics sink to use for status messages.
-	Host       Host      // the host that can be used to fetch providers.
-	Pwd        string    // the working directory to spawn all plugins in.
-	Root       string    // the root directory of the context.
+	Diag       diag.Sink         // the diagnostics sink to use for messages.
+	StatusDiag diag.Sink         // the diagnostics sink to use for status messages.
+	Debugging  DebugEventEmitter // the debugging event emitter to use to signal the engine that the debugger started.
+	Host       Host              // the host that can be used to fetch providers.
+	Pwd        string            // the working directory to spawn all plugins in.
+	Root       string            // the root directory of the context.
 
 	// If non-nil, configures custom gRPC client options. Receives pluginInfo which is a JSON-serializable bit of
 	// metadata describing the plugin.

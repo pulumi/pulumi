@@ -89,6 +89,9 @@ type Host interface {
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
 
+	// StartDebugging asks the host to start a debugging session with the given configuration.
+	StartDebugging(DebuggingInfo) error
+
 	// Close reclaims any resources associated with the host.
 	Close() error
 }
@@ -273,6 +276,11 @@ func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, st
 
 func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+}
+
+func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
+	contract.Assertf(host.ctx.Debugging != nil, "expected ctx.Debugging to be non-nil")
+	return host.ctx.Debugging.StartDebugging(info)
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.

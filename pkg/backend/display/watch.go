@@ -65,6 +65,8 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 			}
 			PrintfWithWatchPrefix(time.Now(), resourceName,
 				"%s", renderDiffDiagEvent(p, opts))
+		case engine.StartDebuggingEvent:
+			continue
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {

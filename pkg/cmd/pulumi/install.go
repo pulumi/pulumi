@@ -89,6 +89,7 @@ func newInstallCmd() *cobra.Command {
 				nil,
 				cmdutil.Diag(),
 				cmdutil.Diag(),
+				nil,
 				false,
 				span,
 				nil,

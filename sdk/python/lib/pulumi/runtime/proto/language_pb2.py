@@ -17,7 +17,7 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15pulumi/language.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x7f\n\x0bProgramInfo\x12\x16\n\x0eroot_directory\x18\x01 \x01(\t\x12\x19\n\x11program_directory\x18\x02 \x01(\t\x12\x13\n\x0b\x65ntry_point\x18\x03 \x01(\t\x12(\n\x07options\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"4\n\x0c\x41\x62outRequest\x12$\n\x04info\x18\x01 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"\x9f\x01\n\rAboutResponse\x12\x12\n\nexecutable\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x38\n\x08metadata\x18\x03 \x03(\x0b\x32&.pulumirpc.AboutResponse.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa0\x01\n\x1dGetProgramDependenciesRequest\x12\x13\n\x07project\x18\x01 \x01(\tB\x02\x18\x01\x12\x0f\n\x03pwd\x18\x02 \x01(\tB\x02\x18\x01\x12\x13\n\x07program\x18\x03 \x01(\tB\x02\x18\x01\x12\x1e\n\x16transitiveDependencies\x18\x04 \x01(\x08\x12$\n\x04info\x18\x05 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"/\n\x0e\x44\x65pendencyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"Q\n\x1eGetProgramDependenciesResponse\x12/\n\x0c\x64\x65pendencies\x18\x01 \x03(\x0b\x32\x19.pulumirpc.DependencyInfo\"|\n\x19GetRequiredPluginsRequest\x12\x13\n\x07project\x18\x01 \x01(\tB\x02\x18\x01\x12\x0f\n\x03pwd\x18\x02 \x01(\tB\x02\x18\x01\x12\x13\n\x07program\x18\x03 \x01(\tB\x02\x18\x01\x12$\n\x04info\x18\x04 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"J\n\x1aGetRequiredPluginsResponse\x12,\n\x07plugins\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.PluginDependency\"\xad\x03\n\nRunRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\r\n\x05stack\x18\x02 \x01(\t\x12\x0b\n\x03pwd\x18\x03 \x01(\t\x12\x13\n\x07program\x18\x04 \x01(\tB\x02\x18\x01\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12\x31\n\x06\x63onfig\x18\x06 \x03(\x0b\x32!.pulumirpc.RunRequest.ConfigEntry\x12\x0e\n\x06\x64ryRun\x18\x07 \x01(\x08\x12\x10\n\x08parallel\x18\x08 \x01(\x05\x12\x17\n\x0fmonitor_address\x18\t \x01(\t\x12\x11\n\tqueryMode\x18\n \x01(\x08\x12\x18\n\x10\x63onfigSecretKeys\x18\x0b \x03(\t\x12\x14\n\x0corganization\x18\x0c \x01(\t\x12\x32\n\x11\x63onfigPropertyMap\x18\r \x01(\x0b\x32\x17.google.protobuf.Struct\x12$\n\x04info\x18\x0e \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\x12\x15\n\rloader_target\x18\x0f \x01(\t\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"*\n\x0bRunResponse\x12\r\n\x05\x65rror\x18\x01 \x01(\t\x12\x0c\n\x04\x62\x61il\x18\x02 \x01(\x08\"\x92\x01\n\x1aInstallDependenciesRequest\x12\x15\n\tdirectory\x18\x01 \x01(\tB\x02\x18\x01\x12\x13\n\x0bis_terminal\x18\x02 \x01(\x08\x12$\n\x04info\x18\x03 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\x12\"\n\x1ause_language_version_tools\x18\x04 \x01(\x08\"=\n\x1bInstallDependenciesResponse\x12\x0e\n\x06stdout\x18\x01 \x01(\x0c\x12\x0e\n\x06stderr\x18\x02 \x01(\x0c\"=\n\x15RuntimeOptionsRequest\x12$\n\x04info\x18\x01 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"\xcc\x03\n\x13RuntimeOptionPrompt\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x44\n\npromptType\x18\x03 \x01(\x0e\x32\x30.pulumirpc.RuntimeOptionPrompt.RuntimeOptionType\x12\x42\n\x07\x63hoices\x18\x04 \x03(\x0b\x32\x31.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue\x12\x42\n\x07\x64\x65\x66\x61ult\x18\x05 \x01(\x0b\x32\x31.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue\x1a\x98\x01\n\x12RuntimeOptionValue\x12\x44\n\npromptType\x18\x01 \x01(\x0e\x32\x30.pulumirpc.RuntimeOptionPrompt.RuntimeOptionType\x12\x13\n\x0bstringValue\x18\x02 \x01(\t\x12\x12\n\nint32Value\x18\x03 \x01(\x05\x12\x13\n\x0b\x64isplayName\x18\x04 \x01(\t\"*\n\x11RuntimeOptionType\x12\n\n\x06STRING\x10\x00\x12\t\n\x05INT32\x10\x01\"I\n\x16RuntimeOptionsResponse\x12/\n\x07prompts\x18\x01 \x03(\x0b\x32\x1e.pulumirpc.RuntimeOptionPrompt\"u\n\x10RunPluginRequest\x12\x0b\n\x03pwd\x18\x01 \x01(\t\x12\x13\n\x07program\x18\x02 \x01(\tB\x02\x18\x01\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x0b\n\x03\x65nv\x18\x04 \x03(\t\x12$\n\x04info\x18\x05 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"U\n\x11RunPluginResponse\x12\x10\n\x06stdout\x18\x01 \x01(\x0cH\x00\x12\x10\n\x06stderr\x18\x02 \x01(\x0cH\x00\x12\x12\n\x08\x65xitcode\x18\x03 \x01(\x05H\x00\x42\x08\n\x06output\"\xad\x01\n\x16GenerateProgramRequest\x12=\n\x06source\x18\x01 \x03(\x0b\x32-.pulumirpc.GenerateProgramRequest.SourceEntry\x12\x15\n\rloader_target\x18\x02 \x01(\t\x12\x0e\n\x06strict\x18\x03 \x01(\x08\x1a-\n\x0bSourceEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xbc\x01\n\x17GenerateProgramResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12>\n\x06source\x18\x02 \x03(\x0b\x32..pulumirpc.GenerateProgramResponse.SourceEntry\x1a-\n\x0bSourceEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\x94\x02\n\x16GenerateProjectRequest\x12\x18\n\x10source_directory\x18\x01 \x01(\t\x12\x18\n\x10target_directory\x18\x02 \x01(\t\x12\x0f\n\x07project\x18\x03 \x01(\t\x12\x0e\n\x06strict\x18\x04 \x01(\x08\x12\x15\n\rloader_target\x18\x05 \x01(\t\x12T\n\x12local_dependencies\x18\x06 \x03(\x0b\x32\x38.pulumirpc.GenerateProjectRequest.LocalDependenciesEntry\x1a\x38\n\x16LocalDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"M\n\x17GenerateProjectResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\xec\x02\n\x16GeneratePackageRequest\x12\x11\n\tdirectory\x18\x01 \x01(\t\x12\x0e\n\x06schema\x18\x02 \x01(\t\x12\x46\n\x0b\x65xtra_files\x18\x03 \x03(\x0b\x32\x31.pulumirpc.GeneratePackageRequest.ExtraFilesEntry\x12\x15\n\rloader_target\x18\x04 \x01(\t\x12T\n\x12local_dependencies\x18\x05 \x03(\x0b\x32\x38.pulumirpc.GeneratePackageRequest.LocalDependenciesEntry\x12\r\n\x05local\x18\x06 \x01(\x08\x1a\x31\n\x0f\x45xtraFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x38\n\x16LocalDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"M\n\x17GeneratePackageResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"G\n\x0bPackRequest\x12\x19\n\x11package_directory\x18\x01 \x01(\t\x12\x1d\n\x15\x64\x65stination_directory\x18\x02 \x01(\t\"%\n\x0cPackResponse\x12\x15\n\rartifact_path\x18\x01 \x01(\t2\x84\x08\n\x0fLanguageRuntime\x12\x63\n\x12GetRequiredPlugins\x12$.pulumirpc.GetRequiredPluginsRequest\x1a%.pulumirpc.GetRequiredPluginsResponse\"\x00\x12\x36\n\x03Run\x12\x15.pulumirpc.RunRequest\x1a\x16.pulumirpc.RunResponse\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x12h\n\x13InstallDependencies\x12%.pulumirpc.InstallDependenciesRequest\x1a&.pulumirpc.InstallDependenciesResponse\"\x00\x30\x01\x12^\n\x15RuntimeOptionsPrompts\x12 .pulumirpc.RuntimeOptionsRequest\x1a!.pulumirpc.RuntimeOptionsResponse\"\x00\x12<\n\x05\x41\x62out\x12\x17.pulumirpc.AboutRequest\x1a\x18.pulumirpc.AboutResponse\"\x00\x12o\n\x16GetProgramDependencies\x12(.pulumirpc.GetProgramDependenciesRequest\x1a).pulumirpc.GetProgramDependenciesResponse\"\x00\x12J\n\tRunPlugin\x12\x1b.pulumirpc.RunPluginRequest\x1a\x1c.pulumirpc.RunPluginResponse\"\x00\x30\x01\x12Z\n\x0fGenerateProgram\x12!.pulumirpc.GenerateProgramRequest\x1a\".pulumirpc.GenerateProgramResponse\"\x00\x12Z\n\x0fGenerateProject\x12!.pulumirpc.GenerateProjectRequest\x1a\".pulumirpc.GenerateProjectResponse\"\x00\x12Z\n\x0fGeneratePackage\x12!.pulumirpc.GeneratePackageRequest\x1a\".pulumirpc.GeneratePackageResponse\"\x00\x12\x39\n\x04Pack\x12\x16.pulumirpc.PackRequest\x1a\x17.pulumirpc.PackResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15pulumi/language.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x7f\n\x0bProgramInfo\x12\x16\n\x0eroot_directory\x18\x01 \x01(\t\x12\x19\n\x11program_directory\x18\x02 \x01(\t\x12\x13\n\x0b\x65ntry_point\x18\x03 \x01(\t\x12(\n\x07options\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"4\n\x0c\x41\x62outRequest\x12$\n\x04info\x18\x01 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"\x9f\x01\n\rAboutResponse\x12\x12\n\nexecutable\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x38\n\x08metadata\x18\x03 \x03(\x0b\x32&.pulumirpc.AboutResponse.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa0\x01\n\x1dGetProgramDependenciesRequest\x12\x13\n\x07project\x18\x01 \x01(\tB\x02\x18\x01\x12\x0f\n\x03pwd\x18\x02 \x01(\tB\x02\x18\x01\x12\x13\n\x07program\x18\x03 \x01(\tB\x02\x18\x01\x12\x1e\n\x16transitiveDependencies\x18\x04 \x01(\x08\x12$\n\x04info\x18\x05 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"/\n\x0e\x44\x65pendencyInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\"Q\n\x1eGetProgramDependenciesResponse\x12/\n\x0c\x64\x65pendencies\x18\x01 \x03(\x0b\x32\x19.pulumirpc.DependencyInfo\"|\n\x19GetRequiredPluginsRequest\x12\x13\n\x07project\x18\x01 \x01(\tB\x02\x18\x01\x12\x0f\n\x03pwd\x18\x02 \x01(\tB\x02\x18\x01\x12\x13\n\x07program\x18\x03 \x01(\tB\x02\x18\x01\x12$\n\x04info\x18\x04 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"J\n\x1aGetRequiredPluginsResponse\x12,\n\x07plugins\x18\x01 \x03(\x0b\x32\x1b.pulumirpc.PluginDependency\"\xbc\x03\n\nRunRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\r\n\x05stack\x18\x02 \x01(\t\x12\x0b\n\x03pwd\x18\x03 \x01(\t\x12\x13\n\x07program\x18\x04 \x01(\tB\x02\x18\x01\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12\x31\n\x06\x63onfig\x18\x06 \x03(\x0b\x32!.pulumirpc.RunRequest.ConfigEntry\x12\x0e\n\x06\x64ryRun\x18\x07 \x01(\x08\x12\x10\n\x08parallel\x18\x08 \x01(\x05\x12\x17\n\x0fmonitor_address\x18\t \x01(\t\x12\x11\n\tqueryMode\x18\n \x01(\x08\x12\x18\n\x10\x63onfigSecretKeys\x18\x0b \x03(\t\x12\x14\n\x0corganization\x18\x0c \x01(\t\x12\x32\n\x11\x63onfigPropertyMap\x18\r \x01(\x0b\x32\x17.google.protobuf.Struct\x12$\n\x04info\x18\x0e \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\x12\x15\n\rloader_target\x18\x0f \x01(\t\x12\r\n\x05\x64\x65\x62ug\x18\x10 \x01(\x08\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"*\n\x0bRunResponse\x12\r\n\x05\x65rror\x18\x01 \x01(\t\x12\x0c\n\x04\x62\x61il\x18\x02 \x01(\x08\"\x92\x01\n\x1aInstallDependenciesRequest\x12\x15\n\tdirectory\x18\x01 \x01(\tB\x02\x18\x01\x12\x13\n\x0bis_terminal\x18\x02 \x01(\x08\x12$\n\x04info\x18\x03 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\x12\"\n\x1ause_language_version_tools\x18\x04 \x01(\x08\"=\n\x1bInstallDependenciesResponse\x12\x0e\n\x06stdout\x18\x01 \x01(\x0c\x12\x0e\n\x06stderr\x18\x02 \x01(\x0c\"=\n\x15RuntimeOptionsRequest\x12$\n\x04info\x18\x01 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"\xcc\x03\n\x13RuntimeOptionPrompt\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x44\n\npromptType\x18\x03 \x01(\x0e\x32\x30.pulumirpc.RuntimeOptionPrompt.RuntimeOptionType\x12\x42\n\x07\x63hoices\x18\x04 \x03(\x0b\x32\x31.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue\x12\x42\n\x07\x64\x65\x66\x61ult\x18\x05 \x01(\x0b\x32\x31.pulumirpc.RuntimeOptionPrompt.RuntimeOptionValue\x1a\x98\x01\n\x12RuntimeOptionValue\x12\x44\n\npromptType\x18\x01 \x01(\x0e\x32\x30.pulumirpc.RuntimeOptionPrompt.RuntimeOptionType\x12\x13\n\x0bstringValue\x18\x02 \x01(\t\x12\x12\n\nint32Value\x18\x03 \x01(\x05\x12\x13\n\x0b\x64isplayName\x18\x04 \x01(\t\"*\n\x11RuntimeOptionType\x12\n\n\x06STRING\x10\x00\x12\t\n\x05INT32\x10\x01\"I\n\x16RuntimeOptionsResponse\x12/\n\x07prompts\x18\x01 \x03(\x0b\x32\x1e.pulumirpc.RuntimeOptionPrompt\"u\n\x10RunPluginRequest\x12\x0b\n\x03pwd\x18\x01 \x01(\t\x12\x13\n\x07program\x18\x02 \x01(\tB\x02\x18\x01\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x0b\n\x03\x65nv\x18\x04 \x03(\t\x12$\n\x04info\x18\x05 \x01(\x0b\x32\x16.pulumirpc.ProgramInfo\"U\n\x11RunPluginResponse\x12\x10\n\x06stdout\x18\x01 \x01(\x0cH\x00\x12\x10\n\x06stderr\x18\x02 \x01(\x0cH\x00\x12\x12\n\x08\x65xitcode\x18\x03 \x01(\x05H\x00\x42\x08\n\x06output\"\xad\x01\n\x16GenerateProgramRequest\x12=\n\x06source\x18\x01 \x03(\x0b\x32-.pulumirpc.GenerateProgramRequest.SourceEntry\x12\x15\n\rloader_target\x18\x02 \x01(\t\x12\x0e\n\x06strict\x18\x03 \x01(\x08\x1a-\n\x0bSourceEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xbc\x01\n\x17GenerateProgramResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12>\n\x06source\x18\x02 \x03(\x0b\x32..pulumirpc.GenerateProgramResponse.SourceEntry\x1a-\n\x0bSourceEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\x94\x02\n\x16GenerateProjectRequest\x12\x18\n\x10source_directory\x18\x01 \x01(\t\x12\x18\n\x10target_directory\x18\x02 \x01(\t\x12\x0f\n\x07project\x18\x03 \x01(\t\x12\x0e\n\x06strict\x18\x04 \x01(\x08\x12\x15\n\rloader_target\x18\x05 \x01(\t\x12T\n\x12local_dependencies\x18\x06 \x03(\x0b\x32\x38.pulumirpc.GenerateProjectRequest.LocalDependenciesEntry\x1a\x38\n\x16LocalDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"M\n\x17GenerateProjectResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\xec\x02\n\x16GeneratePackageRequest\x12\x11\n\tdirectory\x18\x01 \x01(\t\x12\x0e\n\x06schema\x18\x02 \x01(\t\x12\x46\n\x0b\x65xtra_files\x18\x03 \x03(\x0b\x32\x31.pulumirpc.GeneratePackageRequest.ExtraFilesEntry\x12\x15\n\rloader_target\x18\x04 \x01(\t\x12T\n\x12local_dependencies\x18\x05 \x03(\x0b\x32\x38.pulumirpc.GeneratePackageRequest.LocalDependenciesEntry\x12\r\n\x05local\x18\x06 \x01(\x08\x1a\x31\n\x0f\x45xtraFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x38\n\x16LocalDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"M\n\x17GeneratePackageResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"G\n\x0bPackRequest\x12\x19\n\x11package_directory\x18\x01 \x01(\t\x12\x1d\n\x15\x64\x65stination_directory\x18\x02 \x01(\t\"%\n\x0cPackResponse\x12\x15\n\rartifact_path\x18\x01 \x01(\t2\x84\x08\n\x0fLanguageRuntime\x12\x63\n\x12GetRequiredPlugins\x12$.pulumirpc.GetRequiredPluginsRequest\x1a%.pulumirpc.GetRequiredPluginsResponse\"\x00\x12\x36\n\x03Run\x12\x15.pulumirpc.RunRequest\x1a\x16.pulumirpc.RunResponse\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x12h\n\x13InstallDependencies\x12%.pulumirpc.InstallDependenciesRequest\x1a&.pulumirpc.InstallDependenciesResponse\"\x00\x30\x01\x12^\n\x15RuntimeOptionsPrompts\x12 .pulumirpc.RuntimeOptionsRequest\x1a!.pulumirpc.RuntimeOptionsResponse\"\x00\x12<\n\x05\x41\x62out\x12\x17.pulumirpc.AboutRequest\x1a\x18.pulumirpc.AboutResponse\"\x00\x12o\n\x16GetProgramDependencies\x12(.pulumirpc.GetProgramDependenciesRequest\x1a).pulumirpc.GetProgramDependenciesResponse\"\x00\x12J\n\tRunPlugin\x12\x1b.pulumirpc.RunPluginRequest\x1a\x1c.pulumirpc.RunPluginResponse\"\x00\x30\x01\x12Z\n\x0fGenerateProgram\x12!.pulumirpc.GenerateProgramRequest\x1a\".pulumirpc.GenerateProgramResponse\"\x00\x12Z\n\x0fGenerateProject\x12!.pulumirpc.GenerateProjectRequest\x1a\".pulumirpc.GenerateProjectResponse\"\x00\x12Z\n\x0fGeneratePackage\x12!.pulumirpc.GeneratePackageRequest\x1a\".pulumirpc.GeneratePackageResponse\"\x00\x12\x39\n\x04Pack\x12\x16.pulumirpc.PackRequest\x1a\x17.pulumirpc.PackResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.language_pb2', globals())
@@ -76,55 +76,55 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _GETREQUIREDPLUGINSRESPONSE._serialized_start=908
   _GETREQUIREDPLUGINSRESPONSE._serialized_end=982
   _RUNREQUEST._serialized_start=985
-  _RUNREQUEST._serialized_end=1414
-  _RUNREQUEST_CONFIGENTRY._serialized_start=1369
-  _RUNREQUEST_CONFIGENTRY._serialized_end=1414
-  _RUNRESPONSE._serialized_start=1416
-  _RUNRESPONSE._serialized_end=1458
-  _INSTALLDEPENDENCIESREQUEST._serialized_start=1461
-  _INSTALLDEPENDENCIESREQUEST._serialized_end=1607
-  _INSTALLDEPENDENCIESRESPONSE._serialized_start=1609
-  _INSTALLDEPENDENCIESRESPONSE._serialized_end=1670
-  _RUNTIMEOPTIONSREQUEST._serialized_start=1672
-  _RUNTIMEOPTIONSREQUEST._serialized_end=1733
-  _RUNTIMEOPTIONPROMPT._serialized_start=1736
-  _RUNTIMEOPTIONPROMPT._serialized_end=2196
-  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONVALUE._serialized_start=2000
-  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONVALUE._serialized_end=2152
-  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONTYPE._serialized_start=2154
-  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONTYPE._serialized_end=2196
-  _RUNTIMEOPTIONSRESPONSE._serialized_start=2198
-  _RUNTIMEOPTIONSRESPONSE._serialized_end=2271
-  _RUNPLUGINREQUEST._serialized_start=2273
-  _RUNPLUGINREQUEST._serialized_end=2390
-  _RUNPLUGINRESPONSE._serialized_start=2392
-  _RUNPLUGINRESPONSE._serialized_end=2477
-  _GENERATEPROGRAMREQUEST._serialized_start=2480
-  _GENERATEPROGRAMREQUEST._serialized_end=2653
-  _GENERATEPROGRAMREQUEST_SOURCEENTRY._serialized_start=2608
-  _GENERATEPROGRAMREQUEST_SOURCEENTRY._serialized_end=2653
-  _GENERATEPROGRAMRESPONSE._serialized_start=2656
-  _GENERATEPROGRAMRESPONSE._serialized_end=2844
-  _GENERATEPROGRAMRESPONSE_SOURCEENTRY._serialized_start=2799
-  _GENERATEPROGRAMRESPONSE_SOURCEENTRY._serialized_end=2844
-  _GENERATEPROJECTREQUEST._serialized_start=2847
-  _GENERATEPROJECTREQUEST._serialized_end=3123
-  _GENERATEPROJECTREQUEST_LOCALDEPENDENCIESENTRY._serialized_start=3067
-  _GENERATEPROJECTREQUEST_LOCALDEPENDENCIESENTRY._serialized_end=3123
-  _GENERATEPROJECTRESPONSE._serialized_start=3125
-  _GENERATEPROJECTRESPONSE._serialized_end=3202
-  _GENERATEPACKAGEREQUEST._serialized_start=3205
-  _GENERATEPACKAGEREQUEST._serialized_end=3569
-  _GENERATEPACKAGEREQUEST_EXTRAFILESENTRY._serialized_start=3462
-  _GENERATEPACKAGEREQUEST_EXTRAFILESENTRY._serialized_end=3511
-  _GENERATEPACKAGEREQUEST_LOCALDEPENDENCIESENTRY._serialized_start=3067
-  _GENERATEPACKAGEREQUEST_LOCALDEPENDENCIESENTRY._serialized_end=3123
-  _GENERATEPACKAGERESPONSE._serialized_start=3571
-  _GENERATEPACKAGERESPONSE._serialized_end=3648
-  _PACKREQUEST._serialized_start=3650
-  _PACKREQUEST._serialized_end=3721
-  _PACKRESPONSE._serialized_start=3723
-  _PACKRESPONSE._serialized_end=3760
-  _LANGUAGERUNTIME._serialized_start=3763
-  _LANGUAGERUNTIME._serialized_end=4791
+  _RUNREQUEST._serialized_end=1429
+  _RUNREQUEST_CONFIGENTRY._serialized_start=1384
+  _RUNREQUEST_CONFIGENTRY._serialized_end=1429
+  _RUNRESPONSE._serialized_start=1431
+  _RUNRESPONSE._serialized_end=1473
+  _INSTALLDEPENDENCIESREQUEST._serialized_start=1476
+  _INSTALLDEPENDENCIESREQUEST._serialized_end=1622
+  _INSTALLDEPENDENCIESRESPONSE._serialized_start=1624
+  _INSTALLDEPENDENCIESRESPONSE._serialized_end=1685
+  _RUNTIMEOPTIONSREQUEST._serialized_start=1687
+  _RUNTIMEOPTIONSREQUEST._serialized_end=1748
+  _RUNTIMEOPTIONPROMPT._serialized_start=1751
+  _RUNTIMEOPTIONPROMPT._serialized_end=2211
+  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONVALUE._serialized_start=2015
+  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONVALUE._serialized_end=2167
+  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONTYPE._serialized_start=2169
+  _RUNTIMEOPTIONPROMPT_RUNTIMEOPTIONTYPE._serialized_end=2211
+  _RUNTIMEOPTIONSRESPONSE._serialized_start=2213
+  _RUNTIMEOPTIONSRESPONSE._serialized_end=2286
+  _RUNPLUGINREQUEST._serialized_start=2288
+  _RUNPLUGINREQUEST._serialized_end=2405
+  _RUNPLUGINRESPONSE._serialized_start=2407
+  _RUNPLUGINRESPONSE._serialized_end=2492
+  _GENERATEPROGRAMREQUEST._serialized_start=2495
+  _GENERATEPROGRAMREQUEST._serialized_end=2668
+  _GENERATEPROGRAMREQUEST_SOURCEENTRY._serialized_start=2623
+  _GENERATEPROGRAMREQUEST_SOURCEENTRY._serialized_end=2668
+  _GENERATEPROGRAMRESPONSE._serialized_start=2671
+  _GENERATEPROGRAMRESPONSE._serialized_end=2859
+  _GENERATEPROGRAMRESPONSE_SOURCEENTRY._serialized_start=2814
+  _GENERATEPROGRAMRESPONSE_SOURCEENTRY._serialized_end=2859
+  _GENERATEPROJECTREQUEST._serialized_start=2862
+  _GENERATEPROJECTREQUEST._serialized_end=3138
+  _GENERATEPROJECTREQUEST_LOCALDEPENDENCIESENTRY._serialized_start=3082
+  _GENERATEPROJECTREQUEST_LOCALDEPENDENCIESENTRY._serialized_end=3138
+  _GENERATEPROJECTRESPONSE._serialized_start=3140
+  _GENERATEPROJECTRESPONSE._serialized_end=3217
+  _GENERATEPACKAGEREQUEST._serialized_start=3220
+  _GENERATEPACKAGEREQUEST._serialized_end=3584
+  _GENERATEPACKAGEREQUEST_EXTRAFILESENTRY._serialized_start=3477
+  _GENERATEPACKAGEREQUEST_EXTRAFILESENTRY._serialized_end=3526
+  _GENERATEPACKAGEREQUEST_LOCALDEPENDENCIESENTRY._serialized_start=3082
+  _GENERATEPACKAGEREQUEST_LOCALDEPENDENCIESENTRY._serialized_end=3138
+  _GENERATEPACKAGERESPONSE._serialized_start=3586
+  _GENERATEPACKAGERESPONSE._serialized_end=3663
+  _PACKREQUEST._serialized_start=3665
+  _PACKREQUEST._serialized_end=3736
+  _PACKRESPONSE._serialized_start=3738
+  _PACKRESPONSE._serialized_end=3775
+  _LANGUAGERUNTIME._serialized_start=3778
+  _LANGUAGERUNTIME._serialized_end=4806
 # @@protoc_insertion_point(module_scope)
