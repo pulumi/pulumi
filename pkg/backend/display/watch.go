@@ -63,8 +63,8 @@ func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, op
 			if p.URN != "" {
 				resourceName = p.URN.Name()
 			}
-			PrintfWithWatchPrefix(time.Now(), resourceName,
-				"%s", renderDiffDiagEvent(p, opts))
+			PrintfWithWatchPrefix(time.Now(), resourceName, "%s",
+				renderDiffDiagEvent(p, opts))
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {

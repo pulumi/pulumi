@@ -1188,7 +1188,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				// we're doing a create before delete replacement we'll execute the create before getting
 				// to the delete error.
 				if !sg.deployment.opts.DryRun {
-					return nil, result.BailErrorf(message)
+					return nil, result.BailErrorf("%s", message)
 				}
 			}
 
@@ -1307,7 +1307,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 								dependentResource.URN, urn, dependentResource.URN)
 							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 							sg.sawError = true
-							return nil, result.BailErrorf(message)
+							return nil, result.BailErrorf("%s", message)
 						}
 						steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true))
 					}

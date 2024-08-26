@@ -775,7 +775,7 @@ func TestLegacyFolderStructure(t *testing.T) {
 	tmpDir := t.TempDir()
 	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
 	require.NoError(t, err)
-	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte("{}"), os.ModePerm)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte("{}"), 0o600)
 	require.NoError(t, err)
 
 	// Login to a temp dir diy backend
@@ -951,7 +951,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	require.NoError(t, err)
 	err = os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
 	require.NoError(t, err)
-	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.txt"), []byte("{}"), os.ModePerm)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.txt"), []byte("{}"), 0o600)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -967,7 +967,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	// Make a dummy stack file in the new project location
 	err = os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks", "testproj"), os.ModePerm)
 	assert.NoError(t, err)
-	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "testproj", "a.json"), []byte("{}"), os.ModePerm)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "testproj", "a.json"), []byte("{}"), 0o600)
 	assert.NoError(t, err)
 
 	// Check that testproj is reported as existing
@@ -1140,7 +1140,7 @@ func TestLegacyUpgrade(t *testing.T) {
 				}
 			]
 		}
-	}`), os.ModePerm)
+	}`), 0o600)
 	require.NoError(t, err)
 
 	var output bytes.Buffer
@@ -1179,7 +1179,7 @@ func TestLegacyUpgrade(t *testing.T) {
 				}
 			]
 		}
-	}`), os.ModePerm)
+	}`), 0o600)
 	require.NoError(t, err)
 
 	err = lb.Upgrade(ctx, nil /* opts */)

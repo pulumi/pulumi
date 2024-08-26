@@ -62,7 +62,7 @@ func ReplaceInFile(old, new, path string) error {
 		return err
 	}
 	newContents := strings.ReplaceAll(string(rawContents), old, new)
-	return os.WriteFile(path, []byte(newContents), os.ModePerm)
+	return os.WriteFile(path, []byte(newContents), 0o600)
 }
 
 // getCmdBin returns the binary named bin in location loc or, if it hasn't yet been initialized, will lazily

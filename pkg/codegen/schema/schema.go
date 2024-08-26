@@ -1904,7 +1904,7 @@ func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]interface{}, erro
 		data["overlaySupportedLanguages"] = funcSpec.OverlaySupportedLanguages
 	}
 
-	if funcSpec.Language != nil && len(funcSpec.Language) > 0 {
+	if len(funcSpec.Language) > 0 {
 		data["language"] = funcSpec.Language
 	}
 

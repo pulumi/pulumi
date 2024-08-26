@@ -138,7 +138,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		// Load all .pp files in the components' directory
 		files, err := os.ReadDir(componentSourceDir)
 		if err != nil {
-			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 			return nil, diagnostics, nil
 		}
 
@@ -157,14 +157,14 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			if filepath.Ext(fileName) == ".pp" {
 				file, err := os.Open(path)
 				if err != nil {
-					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
 				}
 
 				err = parser.ParseFile(file, fileName)
 				contract.IgnoreError(file.Close())
 				if err != nil {
-					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
 				}
 
@@ -305,13 +305,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		ComponentNodeRange:           node.SyntaxNode().Range(),
 	})
 	if err != nil {
-		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), err.Error()))
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), "%s", err.Error()))
 		node.VariableType = model.DynamicType
 		return diagnostics
 	}
 
 	if programDiags.HasErrors() || componentProgram == nil {
-		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), programDiags.Error()))
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), "%s", programDiags.Error()))
 		node.VariableType = model.DynamicType
 		return diagnostics
 	}

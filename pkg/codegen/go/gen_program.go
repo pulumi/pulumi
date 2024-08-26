@@ -233,7 +233,7 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 	g.Fgenf(w, "type %s struct {\n", argsTypeName)
 	g.Indented(func() {
 		for _, config := range configVariables {
-			g.Fgenf(w, g.Indent)
+			g.Fgen(w, g.Indent)
 			fieldName := Title(config.LogicalName())
 			inputType := componentInputType(config.Type())
 			switch configType := config.Type().(type) {
@@ -299,14 +299,14 @@ func (g *generator) genComponentType(w io.Writer, componentName string, componen
 	componentTypeName := Title(componentName)
 	g.Fgenf(w, "type %s struct {\n", componentTypeName)
 	g.Indented(func() {
-		g.Fgenf(w, g.Indent)
-		g.Fgenf(w, "pulumi.ResourceState\n")
+		g.Fgen(w, g.Indent)
+		g.Fgen(w, "pulumi.ResourceState\n")
 		for _, output := range outputs {
-			g.Fgenf(w, g.Indent)
+			g.Fgen(w, g.Indent)
 			fieldName := Title(output.LogicalName())
 			fieldType := "pulumi.AnyOutput" // TODO: update this
 			g.Fgenf(w, "%s %s\n", fieldName, fieldType)
-			g.Fgenf(w, "")
+			g.Fgen(w, "")
 		}
 	})
 	g.Fgenf(w, "}\n\n")
