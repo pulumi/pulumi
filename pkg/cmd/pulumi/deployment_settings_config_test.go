@@ -22,13 +22,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type promptAssertion[T any, I any] struct {
@@ -117,18 +115,12 @@ func (p *promptHandlersMock) PromptForValue(
 
 func TestDSConfigureGit(t *testing.T) {
 	t.Parallel()
+
+	repoDir := setUpGitWorkspace(t, context.Background())
+	workDir := filepath.Join(repoDir, "goproj")
+
 	t.Run("using the GH app", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-
-		repo := auto.GitRepo{
-			URL:         "https://github.com/pulumi/test-repo.git",
-			ProjectPath: "goproj",
-			Shallow:     true,
-			Branch:      "master",
-		}
-		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-		require.NoError(t, err)
 
 		gitSSHPrivateKeyPath := ""
 		gitSSHPrivateKeyValue := ""
@@ -160,7 +152,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		d := &deploymentSettingsCommandDependencies{
 			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    ws.WorkDir(),
+			WorkDir:    workDir,
 			DisplayOptions: &display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
@@ -168,7 +160,7 @@ func TestDSConfigureGit(t *testing.T) {
 			Prompts: prompts,
 		}
 
-		err = configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
@@ -183,16 +175,6 @@ func TestDSConfigureGit(t *testing.T) {
 
 	t.Run("using the GH app already configured", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-
-		repo := auto.GitRepo{
-			URL:         "https://github.com/pulumi/test-repo.git",
-			ProjectPath: "goproj",
-			Shallow:     true,
-			Branch:      "master",
-		}
-		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-		require.NoError(t, err)
 
 		gitSSHPrivateKeyPath := ""
 		gitSSHPrivateKeyValue := ""
@@ -236,7 +218,7 @@ func TestDSConfigureGit(t *testing.T) {
 					},
 				},
 			},
-			WorkDir: ws.WorkDir(),
+			WorkDir: workDir,
 			DisplayOptions: &display.Options{
 				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
@@ -244,7 +226,7 @@ func TestDSConfigureGit(t *testing.T) {
 			Prompts: prompts,
 		}
 
-		err = configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
@@ -259,16 +241,6 @@ func TestDSConfigureGit(t *testing.T) {
 
 	t.Run("no authentication", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-
-		repo := auto.GitRepo{
-			URL:         "https://github.com/pulumi/test-repo.git",
-			ProjectPath: "goproj",
-			Shallow:     true,
-			Branch:      "master",
-		}
-		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-		require.NoError(t, err)
 
 		gitSSHPrivateKeyPath := ""
 		gitSSHPrivateKeyValue := ""
@@ -303,7 +275,7 @@ func TestDSConfigureGit(t *testing.T) {
 					},
 				},
 			},
-			WorkDir: ws.WorkDir(),
+			WorkDir: workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -319,7 +291,7 @@ func TestDSConfigureGit(t *testing.T) {
 			Prompts: prompts,
 		}
 
-		err = configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
@@ -332,16 +304,6 @@ func TestDSConfigureGit(t *testing.T) {
 
 	t.Run("using credentials", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-
-		repo := auto.GitRepo{
-			URL:         "https://github.com/pulumi/test-repo.git",
-			ProjectPath: "goproj",
-			Shallow:     true,
-			Branch:      "master",
-		}
-		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-		require.NoError(t, err)
 
 		gitSSHPrivateKeyPath := ""
 		gitSSHPrivateKeyValue := ""
@@ -365,7 +327,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		d := &deploymentSettingsCommandDependencies{
 			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    ws.WorkDir(),
+			WorkDir:    workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -381,7 +343,7 @@ func TestDSConfigureGit(t *testing.T) {
 			Prompts: prompts,
 		}
 
-		err = configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
@@ -396,16 +358,6 @@ func TestDSConfigureGit(t *testing.T) {
 
 	t.Run("using ssh", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-
-		repo := auto.GitRepo{
-			URL:         "https://github.com/pulumi/test-repo.git",
-			ProjectPath: "goproj",
-			Shallow:     true,
-			Branch:      "master",
-		}
-		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-		require.NoError(t, err)
 
 		gitSSHPrivateKeyPath := ""
 		gitSSHPrivateKeyValue := "private_key"
@@ -428,7 +380,7 @@ func TestDSConfigureGit(t *testing.T) {
 
 		d := &deploymentSettingsCommandDependencies{
 			Deployment: &workspace.ProjectStackDeployment{},
-			WorkDir:    ws.WorkDir(),
+			WorkDir:    workDir,
 			Backend: &backend.MockBackend{
 				EncryptStackDeploymentSettingsSecretF: func(
 					ctx context.Context, stack backend.Stack, secret string,
@@ -447,7 +399,7 @@ func TestDSConfigureGit(t *testing.T) {
 			Prompts: prompts,
 		}
 
-		err = configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
+		err := configureGit(d, gitSSHPrivateKeyPath, gitSSHPrivateKeyValue)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "goproj", d.Deployment.DeploymentSettings.SourceContext.Git.RepoDir)
