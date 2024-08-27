@@ -22,7 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -56,22 +57,15 @@ func TestRepoLookup(t *testing.T) {
 
 	t.Run("should handle directories that are a git repo", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
 
-		repo := auto.GitRepo{
-			URL:         "https://github.com/pulumi/test-repo.git",
-			ProjectPath: "goproj",
-			Shallow:     true,
-			Branch:      "master",
-		}
-		ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-		require.NoError(t, err)
+		repoDir := setUpGitWorkspace(context.Background(), t)
+		workDir := filepath.Join(repoDir, "goproj")
 
-		rl, err := newRepoLookup(ws.WorkDir())
+		rl, err := newRepoLookup(workDir)
 		assert.NoError(t, err)
 		assert.IsType(t, &repoLookupImpl{}, rl)
 
-		dir, err := rl.GetRootDirectory(filepath.Join(ws.WorkDir(), "something"))
+		dir, err := rl.GetRootDirectory(filepath.Join(workDir, "something"))
 		assert.NoError(t, err)
 		// should assure the directory is using linux path separator as deployments are
 		// currently run only on linux images.
@@ -84,7 +78,7 @@ func TestRepoLookup(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
 
-		assert.Equal(t, filepath.Dir(ws.WorkDir()), rl.GetRepoRoot())
+		assert.Equal(t, filepath.Dir(workDir), rl.GetRepoRoot())
 	})
 }
 
@@ -95,16 +89,9 @@ type relativeDirectoryValidationCase struct {
 
 func TestValidateRelativeDirectory(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
-	repo := auto.GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
-		ProjectPath: "goproj",
-		Shallow:     true,
-		Branch:      "master",
-	}
-	ws, err := auto.NewLocalWorkspace(ctx, auto.Repo(repo))
-	require.NoError(t, err)
+	repoDir := setUpGitWorkspace(context.Background(), t)
+	workDir := filepath.Join(repoDir, "goproj")
 
 	// relative directory values are always linux type paths
 	pathsToTest := []relativeDirectoryValidationCase{
@@ -114,7 +101,7 @@ func TestValidateRelativeDirectory(t *testing.T) {
 	}
 
 	for _, c := range pathsToTest {
-		err = ValidateRelativeDirectory(filepath.Dir(ws.WorkDir()))(c.Path)
+		err := ValidateRelativeDirectory(filepath.Dir(workDir))(c.Path)
 		if c.Valid {
 			require.NoError(t, err)
 		} else {
@@ -228,4 +215,26 @@ func TestDSFileParsing(t *testing.T) {
 	assert.Equal(t, apitype.DeploymentDuration(duration), deploymentFile.DeploymentSettings.Operation.OIDC.AWS.Duration)
 	assert.Equal(t, []string{"policy:arn"}, deploymentFile.DeploymentSettings.Operation.OIDC.AWS.PolicyARNs)
 	assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *deploymentFile.DeploymentSettings.AgentPoolID)
+}
+
+func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
+	workDir, err := os.MkdirTemp("", "pulumi_deployment_settings")
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		os.RemoveAll(workDir)
+	})
+
+	cloneOptions := &git.CloneOptions{
+		RemoteName:    "origin",
+		URL:           "https://github.com/pulumi/test-repo.git",
+		Depth:         1,
+		SingleBranch:  true,
+		ReferenceName: plumbing.ReferenceName("master"),
+	}
+
+	_, err = git.PlainCloneContext(ctx, workDir, false, cloneOptions)
+	assert.NoError(t, err)
+
+	return workDir
 }
