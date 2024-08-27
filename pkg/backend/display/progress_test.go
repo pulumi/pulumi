@@ -77,7 +77,7 @@ func testProgressEvents(
 	opts := testOpts
 	opts.Stdout = &stdout
 	opts.Stderr = &stderr
-	opts.term = terminal.NewMockTerminal(&stdout, width, height, true)
+	opts.term = terminal.NewMockTerminal(&stdout, width, height, raw)
 	opts.DeterministicOutput = true
 
 	go ShowProgressEvents(
@@ -101,8 +101,9 @@ func testProgressEvents(
 	}
 }
 
+//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	t.Parallel()
+	t.Setenv("TERM", "vt102")
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -115,7 +116,6 @@ func TestProgressEvents(t *testing.T) {
 		{width: 200, height: 80},
 	}
 
-	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
