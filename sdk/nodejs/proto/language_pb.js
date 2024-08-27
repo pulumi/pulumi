@@ -2226,7 +2226,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
     organization: jspb.Message.getFieldWithDefault(msg, 12, ""),
     configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f)
+    info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 15, "")
   };
 
   if (includeInstance) {
@@ -2322,6 +2323,10 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
       var value = new proto.pulumirpc.ProgramInfo;
       reader.readMessage(value,proto.pulumirpc.ProgramInfo.deserializeBinaryFromReader);
       msg.setInfo(value);
+      break;
+    case 15:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
       break;
     default:
       reader.skipField();
@@ -2447,6 +2452,13 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
       14,
       f,
       proto.pulumirpc.ProgramInfo.serializeBinaryToWriter
+    );
+  }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      15,
+      f
     );
   }
 };
@@ -2781,6 +2793,24 @@ proto.pulumirpc.RunRequest.prototype.clearInfo = function() {
  */
 proto.pulumirpc.RunRequest.prototype.hasInfo = function() {
   return jspb.Message.getField(this, 14) != null;
+};
+
+
+/**
+ * optional string loader_target = 15;
+ * @return {string}
+ */
+proto.pulumirpc.RunRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 15, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 15, value);
 };
 
 

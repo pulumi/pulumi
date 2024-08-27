@@ -203,6 +203,7 @@ type RunInfo struct {
 	QueryMode         bool                  // true if we're only doing a query.
 	Parallel          int                   // the degree of parallelism for resource operations (<=1 for serial).
 	Organization      string                // the organization name housing the program being run (might be empty).
+	LoaderAddress     string                // the RPC address of the host's schema loader.
 }
 
 type RuntimeOptionType int

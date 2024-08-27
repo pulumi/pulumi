@@ -39,6 +39,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -156,14 +157,23 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
+	// Also start up a schema loader for the language runtime to use to fetch schema information.
+	loaderRegistration := schema.LoaderRegistration(
+		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
+	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start loader server: %w", err)
+	}
+
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		mon:         mon,
-		src:         src,
-		regChan:     regChan,
-		regOutChan:  regOutChan,
-		regReadChan: regReadChan,
-		finChan:     make(chan error),
+		loaderServer: loaderServer,
+		mon:          mon,
+		src:          src,
+		regChan:      regChan,
+		regOutChan:   regOutChan,
+		regReadChan:  regReadChan,
+		finChan:      make(chan error),
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -175,13 +185,14 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 }
 
 type evalSourceIterator struct {
-	mon         SourceResourceMonitor              // the resource monitor, per iterator.
-	src         *evalSource                        // the owning eval source object.
-	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
-	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
-	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan     chan error                         // the channel that communicates completion.
-	done        bool                               // set to true when the evaluation is done.
+	loaderServer *plugin.GrpcServer                 // the grpc server for the schema loader.
+	mon          SourceResourceMonitor              // the resource monitor, per iterator.
+	src          *evalSource                        // the owning eval source object.
+	regChan      chan *registerResourceEvent        // the channel that contains resource registrations.
+	regOutChan   chan *registerResourceOutputsEvent // the channel that contains resource completions.
+	regReadChan  chan *readResourceEvent            // the channel that contains read resource requests.
+	finChan      chan error                         // the channel that communicates completion.
+	done         bool                               // set to true when the evaluation is done.
 }
 
 func (iter *evalSourceIterator) Close() error {
@@ -271,6 +282,7 @@ func (iter *evalSourceIterator) forkRun(
 				Parallel:          iter.src.opts.Parallel,
 				Organization:      string(iter.src.runinfo.Target.Organization),
 				Info:              programInfo,
+				LoaderAddress:     iter.loaderServer.Addr(),
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
