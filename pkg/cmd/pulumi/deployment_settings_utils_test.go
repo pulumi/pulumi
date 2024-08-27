@@ -218,7 +218,7 @@ func TestDSFileParsing(t *testing.T) {
 }
 
 func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
-	workDir, err := os.MkdirTemp("", "pulumi_auto")
+	workDir, err := os.MkdirTemp("", "pulumi_deployment_settings")
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
