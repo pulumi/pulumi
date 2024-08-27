@@ -66,17 +66,37 @@ func (l *loaderClient) Close() error {
 }
 
 func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+	return l.LoadPackageReferenceV2(context.TODO(), &PackageDescriptor{
+		Name:    pkg,
+		Version: version,
+	})
+}
+
+func (l *loaderClient) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *PackageDescriptor,
+) (PackageReference, error) {
 	label := "GetSchema"
-	logging.V(7).Infof("%s executing: package=%s, version=%s", label, pkg, version)
+	logging.V(7).Infof("%s executing: package=%s, version=%s", label, descriptor.Name, descriptor.Version)
 
 	var versionString string
-	if version != nil {
-		versionString = version.String()
+	if descriptor.Version != nil {
+		versionString = descriptor.Version.String()
 	}
 
-	resp, err := l.clientRaw.GetSchema(context.TODO(), &codegenrpc.GetSchemaRequest{
-		Package: pkg,
-		Version: versionString,
+	var parameterization *codegenrpc.Parameterization
+	if descriptor.Parameterization != nil {
+		parameterization = &codegenrpc.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version.String(),
+			Value:   descriptor.Parameterization.Value,
+		}
+	}
+
+	resp, err := l.clientRaw.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
+		Package:          descriptor.Name,
+		Version:          versionString,
+		DownloadUrl:      descriptor.DownloadURL,
+		Parameterization: parameterization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -87,23 +107,6 @@ func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version)
 	var spec PartialPackageSpec
 	if _, err := json.Parse(resp.Schema, &spec, json.ZeroCopy); err != nil {
 		return nil, err
-	}
-
-	// Insert a version into the spec if the package does not provide one or if the
-	// existing version is less than the provided one
-	if version != nil {
-		setVersion := true
-		if spec.PackageInfoSpec.Version != "" {
-			vSemver, err := semver.Make(spec.PackageInfoSpec.Version)
-			if err == nil {
-				if vSemver.Compare(*version) == 1 {
-					setVersion = false
-				}
-			}
-		}
-		if setVersion {
-			spec.PackageInfoSpec.Version = version.String()
-		}
 	}
 
 	p, err := ImportPartialSpec(spec, nil, l)
@@ -117,6 +120,14 @@ func (l *loaderClient) LoadPackageReference(pkg string, version *semver.Version)
 
 func (l *loaderClient) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
 	ref, err := l.LoadPackageReference(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
+}
+
+func (l *loaderClient) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
+	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, err
 	}

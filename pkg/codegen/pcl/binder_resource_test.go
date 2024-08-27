@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -133,5 +134,11 @@ type stubSchemaLoader struct {
 var _ schema.Loader = (*stubSchemaLoader)(nil)
 
 func (l *stubSchemaLoader) LoadPackage(pkg string, ver *semver.Version) (*schema.Package, error) {
+	return l.Package, nil
+}
+
+func (l *stubSchemaLoader) LoadPackageV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (*schema.Package, error) {
 	return l.Package, nil
 }

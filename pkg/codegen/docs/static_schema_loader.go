@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -36,6 +37,12 @@ func (loader *staticSchemaLoader) LoadPackage(pkg string, version *semver.Versio
 	return nil, fmt.Errorf("package %s not found", pkg)
 }
 
+func (loader *staticSchemaLoader) LoadPackageV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (*schema.Package, error) {
+	return loader.LoadPackage(descriptor.Name, descriptor.Version)
+}
+
 func (loader *staticSchemaLoader) LoadPackageReference(
 	pkg string,
 	version *semver.Version,
@@ -46,4 +53,10 @@ func (loader *staticSchemaLoader) LoadPackageReference(
 	}
 
 	return loadedPackage.Reference(), nil
+}
+
+func (loader *staticSchemaLoader) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (schema.PackageReference, error) {
+	return loader.LoadPackageReference(descriptor.Name, descriptor.Version)
 }

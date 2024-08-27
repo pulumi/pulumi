@@ -123,20 +123,29 @@ type providerLoader struct {
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
-	if pkg == "pulumi" {
+	return l.LoadPackageReferenceV2(context.TODO(), &schema.PackageDescriptor{
+		Name:    pkg,
+		Version: version,
+	})
+}
+
+func (l *providerLoader) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (schema.PackageReference, error) {
+	if descriptor.Name == "pulumi" {
 		return schema.DefaultPulumiPackage.Reference(), nil
 	}
 
 	// Find the provider with the given package name
 	var provider plugin.Provider
 	for _, p := range l.providers {
-		if string(p.Pkg()) == pkg {
+		if string(p.Pkg()) == descriptor.Name {
 			info, err := p.GetPluginInfo(context.TODO())
 			if err != nil {
-				return nil, fmt.Errorf("get plugin info for %s: %w", pkg, err)
+				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)
 			}
 
-			if version == nil || (info.Version != nil && version.EQ(*info.Version)) {
+			if descriptor.Version == nil || (info.Version != nil && descriptor.Version.EQ(*info.Version)) {
 				provider = p
 				break
 			}
@@ -144,12 +153,14 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 	}
 
 	if provider == nil {
-		return nil, fmt.Errorf("could not load schema for %s, provider not known", pkg)
+		return nil, fmt.Errorf("could not load schema for %s, provider not known", descriptor.Name)
 	}
+
+	// TODO: We need to support parameterized packages here but we'll do that when we add a test that needs it.
 
 	jsonSchema, err := provider.GetSchema(context.TODO(), plugin.GetSchemaRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("get schema for %s: %w", pkg, err)
+		return nil, fmt.Errorf("get schema for %s: %w", descriptor.Name, err)
 	}
 
 	var spec schema.PartialPackageSpec
@@ -173,6 +184,16 @@ func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Versio
 
 func (l *providerLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
 	ref, err := l.LoadPackageReference(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
+}
+
+func (l *providerLoader) LoadPackageV2(
+	ctx context.Context, descriptor *schema.PackageDescriptor,
+) (*schema.Package, error) {
+	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, err
 	}

@@ -36,14 +36,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type ParameterizationDescriptor struct {
+	Name    string         // the name of the package.
+	Version semver.Version // the version of the package.
+	Value   []byte         // the parameter value of the package.
+}
+
+// PackageDescriptor is a descriptor for a package, this is similar to a plugin spec but also contains parameterization
+// info.
+type PackageDescriptor struct {
+	Name             string                      // the simple name of the plugin.
+	Version          *semver.Version             // the plugin's semantic version, if present.
+	DownloadURL      string                      // an optional server to use when downloading this plugin.
+	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
+}
+
 type Loader interface {
+	// deprecated: use LoadPackageV2
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
+
+	LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error)
 }
 
 type ReferenceLoader interface {
 	Loader
 
+	// deprecated: use LoadPackageReferenceV2
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
+
+	LoadPackageReferenceV2(ctx context.Context, descriptor *PackageDescriptor) (PackageReference, error)
 }
 
 type pluginLoader struct {
@@ -110,6 +131,14 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	return ref.Definition()
 }
 
+func (l *pluginLoader) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
+	ref, err := l.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
+}
+
 var ErrGetSchemaNotImplemented = getSchemaNotImplemented{}
 
 type getSchemaNotImplemented struct{}
@@ -134,19 +163,35 @@ func schemaIsEmpty(schemaBytes []byte) bool {
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
-	if pkg == "pulumi" {
+	return l.LoadPackageReferenceV2(
+		context.TODO(),
+		&PackageDescriptor{
+			Name:    pkg,
+			Version: version,
+		})
+}
+
+func (l *pluginLoader) LoadPackageReferenceV2(
+	ctx context.Context, descriptor *PackageDescriptor,
+) (PackageReference, error) {
+	if descriptor.Name == "pulumi" {
 		return DefaultPulumiPackage.Reference(), nil
 	}
 
 	l.m.Lock()
 	defer l.m.Unlock()
 
-	key := packageIdentity(pkg, version)
+	var key string
+	if descriptor.Parameterization == nil {
+		key = packageIdentity(descriptor.Name, descriptor.Version)
+	} else {
+		key = packageIdentity(descriptor.Parameterization.Name, &descriptor.Parameterization.Version)
+	}
 	if p, ok := l.getPackage(key); ok {
 		return p, nil
 	}
 
-	schemaBytes, version, err := l.loadSchemaBytes(context.TODO(), pkg, version)
+	schemaBytes, version, err := l.loadSchemaBytes(ctx, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -183,13 +228,26 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	return l.setPackage(key, p), nil
 }
 
+// deprecated: use LoadPackageReferenceV2
 func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
+	return LoadPackageReferenceV2(
+		context.TODO(),
+		loader,
+		&PackageDescriptor{
+			Name:    pkg,
+			Version: version,
+		})
+}
+
+func LoadPackageReferenceV2(
+	ctx context.Context, loader Loader, descriptor *PackageDescriptor,
+) (PackageReference, error) {
 	var ref PackageReference
 	var err error
 	if refLoader, ok := loader.(ReferenceLoader); ok {
-		ref, err = refLoader.LoadPackageReference(pkg, version)
+		ref, err = refLoader.LoadPackageReferenceV2(ctx, descriptor)
 	} else {
-		p, pErr := loader.LoadPackage(pkg, version)
+		p, pErr := loader.LoadPackageV2(ctx, descriptor)
 		err = pErr
 		if err == nil {
 			ref = p.Reference()
@@ -200,28 +258,34 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 		return nil, err
 	}
 
-	if pkg != ref.Name() || version != nil && ref.Version() != nil && !ref.Version().Equals(*version) {
+	if descriptor.Name != ref.Name() ||
+		descriptor.Version != nil &&
+			ref.Version() != nil &&
+			!ref.Version().Equals(*descriptor.Version) {
 		if l, ok := loader.(*pluginLoader); ok {
-			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", pkg, version,
+			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", descriptor.Name, descriptor.Version,
 				l.entries, ref.Name(), ref.Version())
 		}
-		return nil, fmt.Errorf("loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), pkg, version)
+		return nil, fmt.Errorf(
+			"loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), descriptor.Name, descriptor.Version)
 	}
 
 	return ref, nil
 }
 
 func (l *pluginLoader) loadSchemaBytes(
-	ctx context.Context, pkg string, version *semver.Version,
+	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, *semver.Version, error) {
-	attachPort, err := plugin.GetProviderAttachPort(tokens.Package(pkg))
+	attachPort, err := plugin.GetProviderAttachPort(tokens.Package(descriptor.Name))
 	if err != nil {
 		return nil, nil, err
 	}
+	version := descriptor.Version
+
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
 	// interaction and load the schema directly from the given port.
 	if attachPort != nil {
-		schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, pkg, version)
+		schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, descriptor)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
@@ -234,7 +298,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		return schemaBytes, version, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
+	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, version)
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
@@ -243,9 +307,10 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 
 		spec := workspace.PluginSpec{
-			Kind:    apitype.ResourcePlugin,
-			Name:    pkg,
-			Version: version,
+			Kind:              apitype.ResourcePlugin,
+			Name:              descriptor.Name,
+			Version:           version,
+			PluginDownloadURL: descriptor.DownloadURL,
 		}
 
 		log := func(sev diag.Severity, msg string) {
@@ -257,25 +322,25 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, pkg, version)
+		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, version)
 		if err != nil {
 			return nil, version, err
 		}
 	}
-	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", pkg)
+	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", descriptor.Name)
 
 	if version == nil {
 		version = pluginInfo.Version
 	}
 
-	if pluginInfo.SchemaPath != "" && version != nil {
-		schemaBytes, ok := l.loadCachedSchemaBytes(pkg, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
+	if pluginInfo.SchemaPath != "" && version != nil && descriptor.Parameterization == nil {
+		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil
 		}
 	}
 
-	schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, pkg, version)
+	schemaBytes, provider, err := l.loadPluginSchemaBytes(ctx, descriptor)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
@@ -296,18 +361,44 @@ func (l *pluginLoader) loadSchemaBytes(
 }
 
 func (l *pluginLoader) loadPluginSchemaBytes(
-	ctx context.Context, pkg string, version *semver.Version,
+	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
-	provider, err := l.host.Provider(tokens.Package(pkg), version)
+	provider, err := l.host.Provider(tokens.Package(descriptor.Name), descriptor.Version)
 	if err != nil {
 		return nil, nil, err
 	}
-	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", pkg, version)
+	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", descriptor.Name, descriptor.Version)
 
 	var schemaFormatVersion int32
-	schema, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{
+	getSchemaRequest := plugin.GetSchemaRequest{
 		Version: schemaFormatVersion,
-	})
+	}
+
+	// If this is a parameterized package, we need to pass the parameter value to the provider.
+	if descriptor.Parameterization != nil {
+		parameterization := plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{
+				Value: descriptor.Parameterization.Value,
+			},
+		}
+		resp, err := provider.Parameterize(ctx, parameterization)
+		if err != nil {
+			return nil, nil, err
+		}
+		if resp.Name != descriptor.Parameterization.Name {
+			return nil, nil, fmt.Errorf(
+				"unexpected parameterization response: %s != %s", resp.Name, descriptor.Parameterization.Name)
+		}
+		if !resp.Version.EQ(descriptor.Parameterization.Version) {
+			return nil, nil, fmt.Errorf(
+				"unexpected parameterization response: %s != %s", resp.Version, descriptor.Parameterization.Version)
+		}
+
+		getSchemaRequest.SubpackageName = resp.Name
+		getSchemaRequest.SubpackageVersion = &resp.Version
+	}
+
+	schema, err := provider.GetSchema(ctx, getSchemaRequest)
 	if err != nil {
 		return nil, nil, err
 	}
